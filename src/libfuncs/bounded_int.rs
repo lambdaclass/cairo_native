@@ -12,7 +12,7 @@ use cairo_lang_sierra::{
     extensions::{
         bounded_int::{
             BoundedIntConcreteLibfunc, BoundedIntConstrainConcreteLibfunc,
-            BoundedIntDivRemConcreteLibfunc,
+            BoundedIntDivRemConcreteLibfunc, BoundedIntTrimConcreteLibfunc,
         },
         core::{CoreLibfunc, CoreType},
         lib_func::SignatureOnlyConcreteLibfunc,
@@ -63,7 +63,9 @@ pub fn build<'ctx, 'this>(
         BoundedIntConcreteLibfunc::WrapNonZero(info) => {
             build_wrap_non_zero(context, registry, entry, location, helper, metadata, info)
         }
-        BoundedIntConcreteLibfunc::Trim(_) => todo!("Implement trim libfunc"),
+        BoundedIntConcreteLibfunc::Trim(info) => {
+            build_trim(context, registry, entry, location, helper, metadata, info)
+        }
     }
 }
 
@@ -761,4 +763,37 @@ fn build_wrap_non_zero<'ctx, 'this>(
         metadata,
         &info.signature.param_signatures,
     )
+}
+
+/// Generate MLIR operations for the `trim` libfunc.
+fn build_trim<'ctx, 'this>(
+    context: &'ctx Context,
+    _registry: &ProgramRegistry<CoreType, CoreLibfunc>,
+    entry: &'this Block<'ctx>,
+    location: Location<'ctx>,
+    helper: &LibfuncHelper<'ctx, 'this>,
+    _metadata: &mut MetadataStorage,
+    info: &BoundedIntTrimConcreteLibfunc,
+) -> Result<()> {
+    let value: Value = entry.arg(0)?;
+    let trimmed_value = entry.const_int_from_type(
+        context,
+        location,
+        info.trimmed_value.clone(),
+        value.r#type(),
+    )?;
+    let diff = entry.append_op_result(arith::subi(value, trimmed_value, location))?;
+    let k_0 = entry.const_int_from_type(context, location, 0, value.r#type())?;
+
+    let diff_is_zero = entry.cmpi(context, CmpiPredicate::Eq, diff, k_0, location)?;
+
+    entry.append_operation(helper.cond_br(
+        context,
+        diff_is_zero,
+        [0, 1],
+        [&[], &[value]],
+        location,
+    ));
+
+    Ok(())
 }
