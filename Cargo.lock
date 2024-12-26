@@ -1167,7 +1167,7 @@ dependencies = [
  "cairo-lang-test-plugin",
  "cairo-lang-utils",
  "cairo-native-runtime",
- "cairo-vm 2.0.0-rc2",
+ "cairo-vm 2.0.0-rc3",
  "cc",
  "clap",
  "colored",
@@ -1251,8 +1251,9 @@ dependencies = [
 
 [[package]]
 name = "cairo-vm"
-version = "2.0.0-rc2"
-source = "git+https://github.com/lambdaclass/cairo-vm?rev=88d92a94522196e978cc12d7491966ae35cbc7f4#88d92a94522196e978cc12d7491966ae35cbc7f4"
+version = "2.0.0-rc3"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "88898d02699b294573d2954d42900c8f0d1fa2c6de0514a36e86be8c8fb3165c"
 dependencies = [
  "anyhow",
  "ark-ff 0.4.2",

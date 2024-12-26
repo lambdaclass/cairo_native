@@ -807,7 +807,7 @@ mod tests {
                 &mut StubSyscallHandler::default(),
             )
             .unwrap();
-
+        dbg!("{:#d}", &result.return_values[0]);
         assert_eq!(result.return_values, vec![Felt::from(3628800)]);
         assert_eq!(result.remaining_gas, 18446744073709538915);
     }
