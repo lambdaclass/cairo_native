@@ -442,7 +442,7 @@ proptest! {
         let result_vm = run_vm_program(
             program,
             "run_test",
-            &[Arg::Value(a.into()), Arg::Value(b.into())],
+            vec![Arg::Value(a.into()), Arg::Value(b.into())],
             Some(DEFAULT_GAS as usize),
         )
         .unwrap();
@@ -468,7 +468,7 @@ proptest! {
         let result_vm = run_vm_program(
             program,
             "run_test",
-            &[Arg::Value(a.into()), Arg::Value(b.into())],
+            vec![Arg::Value(a.into()), Arg::Value(b.into())],
             Some(DEFAULT_GAS as usize),
         )
         .unwrap();
@@ -494,7 +494,7 @@ proptest! {
         let result_vm = run_vm_program(
             program,
             "run_test",
-            &[Arg::Value(a.into()), Arg::Value(b.into())],
+            vec![Arg::Value(a.into()), Arg::Value(b.into())],
             Some(DEFAULT_GAS as usize),
         )
         .unwrap();
@@ -520,7 +520,7 @@ proptest! {
         let result_vm = run_vm_program(
             program,
             "run_test",
-            &[Arg::Value(a.into()), Arg::Value(b.into())],
+            vec![Arg::Value(a.into()), Arg::Value(b.into())],
             Some(DEFAULT_GAS as usize),
         )
         .unwrap();
@@ -546,7 +546,7 @@ proptest! {
         let result_vm = run_vm_program(
             program,
             "run_test",
-            &[Arg::Value(a.into())],
+            vec![Arg::Value(a.into())],
             Some(DEFAULT_GAS as usize),
         )
         .unwrap();
@@ -574,7 +574,7 @@ proptest! {
         let result_vm = run_vm_program(
             program,
             "run_test",
-            &[Arg::Value(a.into()), Arg::Value(b.into())],
+            vec![Arg::Value(a.into()), Arg::Value(b.into())],
             Some(DEFAULT_GAS as usize),
         )
         .unwrap();
@@ -600,7 +600,7 @@ proptest! {
         let result_vm = run_vm_program(
             program,
             "run_test",
-            &[Arg::Value(a.into()), Arg::Value(b.into())],
+            vec![Arg::Value(a.into()), Arg::Value(b.into())],
             Some(DEFAULT_GAS as usize),
         )
         .unwrap();
@@ -626,7 +626,7 @@ proptest! {
         let result_vm = run_vm_program(
             program,
             "run_test",
-            &[Arg::Value(a.into()), Arg::Value(b.into())],
+            vec![Arg::Value(a.into()), Arg::Value(b.into())],
             Some(DEFAULT_GAS as usize),
         )
         .unwrap();
@@ -652,7 +652,7 @@ proptest! {
         let result_vm = run_vm_program(
             program,
             "run_test",
-            &[Arg::Value(a.into()), Arg::Value(b.into())],
+            vec![Arg::Value(a.into()), Arg::Value(b.into())],
             Some(DEFAULT_GAS as usize),
         )
         .unwrap();
@@ -678,7 +678,7 @@ proptest! {
         let result_vm = run_vm_program(
             program,
             "run_test",
-            &[Arg::Value(a.into())],
+            vec![Arg::Value(a.into())],
             Some(DEFAULT_GAS as usize),
         )
         .unwrap();
@@ -706,7 +706,7 @@ proptest! {
         let result_vm = run_vm_program(
             program,
             "run_test",
-            &[Arg::Value(a.into()), Arg::Value(b.into())],
+            vec![Arg::Value(a.into()), Arg::Value(b.into())],
             Some(DEFAULT_GAS as usize),
         )
         .unwrap();
@@ -732,7 +732,7 @@ proptest! {
         let result_vm = run_vm_program(
             program,
             "run_test",
-            &[Arg::Value(a.into()), Arg::Value(b.into())],
+            vec![Arg::Value(a.into()), Arg::Value(b.into())],
             Some(DEFAULT_GAS as usize),
         )
         .unwrap();
@@ -758,7 +758,7 @@ proptest! {
         let result_vm = run_vm_program(
             program,
             "run_test",
-            &[Arg::Value(a.into()), Arg::Value(b.into())],
+            vec![Arg::Value(a.into()), Arg::Value(b.into())],
             Some(DEFAULT_GAS as usize),
         )
         .unwrap();
@@ -784,7 +784,7 @@ proptest! {
         let result_vm = run_vm_program(
             program,
             "run_test",
-            &[Arg::Value(a.into()), Arg::Value(b.into())],
+            vec![Arg::Value(a.into()), Arg::Value(b.into())],
             Some(DEFAULT_GAS as usize),
         )
         .unwrap();
@@ -810,7 +810,7 @@ proptest! {
         let result_vm = run_vm_program(
             program,
             "run_test",
-            &[Arg::Value(a.into())],
+            vec![Arg::Value(a.into())],
             Some(DEFAULT_GAS as usize),
         )
         .unwrap();
@@ -838,7 +838,7 @@ proptest! {
         let result_vm = run_vm_program(
             program,
             "run_test",
-            &[Arg::Value(a.into()), Arg::Value(b.into())],
+            vec![Arg::Value(a.into()), Arg::Value(b.into())],
             Some(DEFAULT_GAS as usize),
         )
         .unwrap();
@@ -864,7 +864,7 @@ proptest! {
         let result_vm = run_vm_program(
             program,
             "run_test",
-            &[Arg::Value(a.into()), Arg::Value(b.into())],
+            vec![Arg::Value(a.into()), Arg::Value(b.into())],
             Some(DEFAULT_GAS as usize),
         )
         .unwrap();
@@ -890,7 +890,7 @@ proptest! {
         let result_vm = run_vm_program(
             program,
             "run_test",
-            &[Arg::Value(a.into()), Arg::Value(b.into())],
+            vec![Arg::Value(a.into()), Arg::Value(b.into())],
             Some(DEFAULT_GAS as usize),
         )
         .unwrap();
@@ -916,7 +916,7 @@ proptest! {
         let result_vm = run_vm_program(
             program,
             "run_test",
-            &[Arg::Value(a.into()), Arg::Value(b.into())],
+            vec![Arg::Value(a.into()), Arg::Value(b.into())],
             Some(DEFAULT_GAS as usize),
         )
         .unwrap();
@@ -942,7 +942,7 @@ proptest! {
         let result_vm = run_vm_program(
             program,
             "run_test",
-            &[Arg::Value(a.into())],
+            vec![Arg::Value(a.into())],
             Some(DEFAULT_GAS as usize),
         )
         .unwrap();
@@ -970,7 +970,7 @@ proptest! {
         let result_vm = run_vm_program(
             program,
             "run_test",
-            &[Arg::Value(a.into()), Arg::Value(b.into())],
+            vec![Arg::Value(a.into()), Arg::Value(b.into())],
             Some(DEFAULT_GAS as usize),
         )
         .unwrap();
@@ -996,7 +996,7 @@ proptest! {
         let result_vm = run_vm_program(
             program,
             "run_test",
-            &[Arg::Value(a.into()), Arg::Value(b.into())],
+            vec![Arg::Value(a.into()), Arg::Value(b.into())],
             Some(DEFAULT_GAS as usize),
         )
         .unwrap();
@@ -1022,7 +1022,7 @@ proptest! {
         let result_vm = run_vm_program(
             program,
             "run_test",
-            &[Arg::Value(a.into()), Arg::Value(b.into())],
+            vec![Arg::Value(a.into()), Arg::Value(b.into())],
             Some(DEFAULT_GAS as usize),
         )
         .unwrap();
@@ -1048,7 +1048,7 @@ proptest! {
         let result_vm = run_vm_program(
             program,
             "run_test",
-            &[Arg::Value(a.into()), Arg::Value(b.into())],
+            vec![Arg::Value(a.into()), Arg::Value(b.into())],
             Some(DEFAULT_GAS as usize),
         )
         .unwrap();
@@ -1074,7 +1074,7 @@ proptest! {
         let result_vm = run_vm_program(
             program,
             "run_test",
-            &[Arg::Value(a.into())],
+            vec![Arg::Value(a.into())],
             Some(DEFAULT_GAS as usize),
         )
         .unwrap();

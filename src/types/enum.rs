@@ -453,7 +453,7 @@ pub fn build<'ctx>(
             // before calling this closure.
             let mut needs_override = false;
             for variant in &info.variants {
-                registry.build_type(context, module, registry, metadata, variant)?;
+                registry.build_type(context, module, metadata, variant)?;
                 if metadata
                     .get::<DupOverridesMeta>()
                     .ok_or(Error::MissingMetadata)?
@@ -480,7 +480,7 @@ pub fn build<'ctx>(
             // before calling this closure.
             let mut needs_override = false;
             for variant in &info.variants {
-                registry.build_type(context, module, registry, metadata, variant)?;
+                registry.build_type(context, module, metadata, variant)?;
                 if metadata
                     .get::<DropOverridesMeta>()
                     .ok_or(Error::MissingMetadata)?
@@ -514,7 +514,7 @@ pub fn build<'ctx>(
     let i8_ty = IntegerType::new(context, 8).into();
     Ok(match info.variants.len() {
         0 => llvm::r#type::array(IntegerType::new(context, 8).into(), 0),
-        1 => registry.build_type(context, module, registry, metadata, &info.variants[0])?,
+        1 => registry.build_type(context, module, metadata, &info.variants[0])?,
         _ if 'block: {
             for type_id in &info.variants {
                 if !registry.get_type(type_id)?.is_zst(registry)? {
@@ -553,7 +553,7 @@ fn build_dup<'ctx>(
 ) -> Result<Region<'ctx>> {
     let location = Location::unknown(context);
 
-    let self_ty = registry.build_type(context, module, registry, metadata, info.self_ty())?;
+    let self_ty = registry.build_type(context, module, metadata, info.self_ty())?;
 
     let region = Region::new();
     let entry = region.append_block(Block::new(&[(self_ty, location)]));
@@ -651,7 +651,7 @@ fn build_drop<'ctx>(
 ) -> Result<Region<'ctx>> {
     let location = Location::unknown(context);
 
-    let self_ty = registry.build_type(context, module, registry, metadata, info.self_ty())?;
+    let self_ty = registry.build_type(context, module, metadata, info.self_ty())?;
 
     let region = Region::new();
     let entry = region.append_block(Block::new(&[(self_ty, location)]));
@@ -777,7 +777,7 @@ pub fn get_type_for_variants<'ctx>(
     let mut output = Vec::with_capacity(variants.len());
     for variant in variants {
         let (payload_ty, payload_layout) =
-            registry.build_type_with_layout(context, module, registry, metadata, variant)?;
+            registry.build_type_with_layout(context, module, metadata, variant)?;
 
         let full_layout = tag_layout.extend(payload_layout)?.0;
         layout = Layout::from_size_align(

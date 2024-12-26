@@ -6,7 +6,7 @@ use super::LibfuncHelper;
 use crate::{
     error::{panic::ToNativeAssertError, Error, Result},
     metadata::{enum_snapshot_variants::EnumSnapshotVariantsMeta, MetadataStorage},
-    native_panic,
+    native_assert, native_panic,
     types::TypeBuilder,
     utils::BlockExt,
 };
@@ -210,8 +210,11 @@ pub fn build_from_bounded_int<'ctx, 'this>(
         )?
         .try_into()?;
     let enum_type = registry.get_type(&info.branch_signatures()[0].vars[0].ty)?;
-    // we assume its never memory allocated since its always a enum with only a tag
-    assert!(!enum_type.is_memory_allocated(registry)?);
+    // we assume its never memory allocated since its always an enum with only a tag
+    native_assert!(
+        !enum_type.is_memory_allocated(registry)?,
+        "an enum with only a tag should not be allocated in memory"
+    );
 
     let enum_ty = enum_type.build(
         context,
@@ -385,7 +388,10 @@ pub fn build_match<'ctx, 'this>(
                         if variant_ids.len() == 1 {
                             entry.arg(0)?
                         } else {
-                            assert!(registry.get_type(&variant_ids[i])?.is_zst(registry)?);
+                            native_assert!(
+                                registry.get_type(&variant_ids[i])?.is_zst(registry)?,
+                                "should be zero sized"
+                            );
                             block
                                 .append_operation(llvm::undef(payload_ty, location))
                                 .result(0)?
@@ -527,7 +533,10 @@ pub fn build_snapshot_match<'ctx, 'this>(
                         if variant_ids.len() == 1 {
                             entry.arg(0)?
                         } else {
-                            assert!(registry.get_type(&variant_ids[i])?.is_zst(registry)?);
+                            native_assert!(
+                                registry.get_type(&variant_ids[i])?.is_zst(registry)?,
+                                "should be zero sized"
+                            );
                             block.append_op_result(llvm::undef(payload_ty, location))?
                         }
                     }
@@ -643,6 +652,8 @@ mod test {
         };
 
         let native_context = NativeContext::new();
-        native_context.compile(&program, false).unwrap();
+        native_context
+            .compile(&program, false, Some(Default::default()))
+            .unwrap();
     }
 }

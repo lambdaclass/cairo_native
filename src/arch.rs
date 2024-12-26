@@ -57,7 +57,7 @@ impl<'a> ValueWithInfoWrapper<'a> {
     }
 }
 
-impl<'a> AbiArgument for ValueWithInfoWrapper<'a> {
+impl AbiArgument for ValueWithInfoWrapper<'_> {
     fn to_bytes(&self, buffer: &mut Vec<u8>) -> Result<()> {
         match (self.value, self.info) {
             (value, CoreTypeConcrete::Box(info)) => {
@@ -146,12 +146,15 @@ impl<'a> AbiArgument for ValueWithInfoWrapper<'a> {
                 #[cfg(not(feature = "with-runtime"))]
                 native_panic!("enable the `with-runtime` feature to use felt252 dicts");
 
-                // TODO: Assert that `info.ty` matches all the values' types.
+                #[cfg(feature = "with-runtime")]
+                {
+                    // TODO: Assert that `info.ty` matches all the values' types.
 
-                self.value
-                    .to_ptr(self.arena, self.registry, self.type_id)?
-                    .as_ptr()
-                    .to_bytes(buffer)?
+                    self.value
+                        .to_ptr(self.arena, self.registry, self.type_id)?
+                        .as_ptr()
+                        .to_bytes(buffer)?
+                }
             }
             (
                 Value::Secp256K1Point(Secp256k1Point { x, y, is_infinity }),

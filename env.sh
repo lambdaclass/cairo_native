@@ -4,6 +4,10 @@
 #
 # You can copy this file to .envrc/.env and adapt it for your environment.
 
+# This line will ensure that the script can be used from any directory, not just
+# the project's root.
+ROOT_DIR="$(realpath $(dirname "${BASH_SOURCE[0]}"))"
+
 case $(uname) in
   Darwin)
     # If installed with brew
@@ -11,7 +15,7 @@ case $(uname) in
     MLIR_SYS_190_PREFIX="$(brew --prefix llvm@19)"
     LLVM_SYS_191_PREFIX="$(brew --prefix llvm@19)"
     TABLEGEN_190_PREFIX="$(brew --prefix llvm@19)"
-    CAIRO_NATIVE_RUNTIME_LIBRARY="$(pwd)/target/release/libcairo_native_runtime.a"
+    CAIRO_NATIVE_RUNTIME_LIBRARY="$ROOT_DIR/target/release/libcairo_native_runtime.a"
 
     export LIBRARY_PATH
     export MLIR_SYS_190_PREFIX
@@ -24,7 +28,7 @@ case $(uname) in
     MLIR_SYS_190_PREFIX=/usr/lib/llvm-19
     LLVM_SYS_191_PREFIX=/usr/lib/llvm-19
     TABLEGEN_190_PREFIX=/usr/lib/llvm-19
-    CAIRO_NATIVE_RUNTIME_LIBRARY="$(pwd)/target/release/libcairo_native_runtime.a"
+    CAIRO_NATIVE_RUNTIME_LIBRARY="$ROOT_DIR/target/release/libcairo_native_runtime.a"
 
     export MLIR_SYS_190_PREFIX
     export LLVM_SYS_191_PREFIX

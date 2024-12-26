@@ -12,6 +12,10 @@ use bumpalo::Bump;
 use cairo_lang_sierra::{
     extensions::{
         core::{CoreConcreteLibfunc, CoreLibfunc, CoreType, CoreTypeConcrete},
+        int::{
+            signed::{Sint16Traits, Sint32Traits, Sint64Traits, Sint8Traits},
+            unsigned::{Uint16Traits, Uint32Traits, Uint64Traits, Uint8Traits},
+        },
         lib_func::ParamSignature,
         starknet::StarkNetTypeConcrete,
         ConcreteLibfunc,
@@ -28,7 +32,6 @@ use num_bigint::BigInt;
 use std::{cell::Cell, error::Error, ops::Deref};
 
 mod array;
-mod bitwise;
 mod r#bool;
 mod bounded_int;
 mod r#box;
@@ -47,25 +50,16 @@ mod felt252_dict;
 mod felt252_dict_entry;
 mod function_call;
 mod gas;
+mod int;
 mod int_range;
 mod mem;
 mod nullable;
 mod pedersen;
 mod poseidon;
-mod sint128;
-mod sint16;
-mod sint32;
-mod sint64;
-mod sint8;
 mod starknet;
 mod r#struct;
-mod uint128;
-mod uint16;
 mod uint256;
-mod uint32;
 mod uint512;
-mod uint64;
-mod uint8;
 
 /// Generation of MLIR operations from their Sierra counterparts.
 ///
@@ -141,9 +135,9 @@ impl LibfuncBuilder for CoreConcreteLibfunc {
             Self::Const(selector) => self::r#const::build(
                 context, registry, entry, location, helper, metadata, selector,
             ),
-            Self::Coupon(info) => {
-                self::coupon::build(context, registry, entry, location, helper, metadata, info)
-            }
+            Self::Coupon(selector) => self::coupon::build(
+                context, registry, entry, location, helper, metadata, selector,
+            ),
             Self::CouponCall(info) => self::function_call::build(
                 context, registry, entry, location, helper, metadata, info,
             ),
@@ -192,40 +186,40 @@ impl LibfuncBuilder for CoreConcreteLibfunc {
             Self::Poseidon(selector) => self::poseidon::build(
                 context, registry, entry, location, helper, metadata, selector,
             ),
-            Self::Sint8(info) => {
-                self::sint8::build(context, registry, entry, location, helper, metadata, info)
-            }
-            Self::Sint16(info) => {
-                self::sint16::build(context, registry, entry, location, helper, metadata, info)
-            }
-            Self::Sint32(info) => {
-                self::sint32::build(context, registry, entry, location, helper, metadata, info)
-            }
-            Self::Sint64(info) => {
-                self::sint64::build(context, registry, entry, location, helper, metadata, info)
-            }
-            Self::Sint128(info) => {
-                self::sint128::build(context, registry, entry, location, helper, metadata, info)
-            }
+            Self::Sint8(selector) => self::int::build_signed::<Sint8Traits>(
+                context, registry, entry, location, helper, metadata, selector,
+            ),
+            Self::Sint16(selector) => self::int::build_signed::<Sint16Traits>(
+                context, registry, entry, location, helper, metadata, selector,
+            ),
+            Self::Sint32(selector) => self::int::build_signed::<Sint32Traits>(
+                context, registry, entry, location, helper, metadata, selector,
+            ),
+            Self::Sint64(selector) => self::int::build_signed::<Sint64Traits>(
+                context, registry, entry, location, helper, metadata, selector,
+            ),
+            Self::Sint128(selector) => self::int::build_i128(
+                context, registry, entry, location, helper, metadata, selector,
+            ),
             Self::StarkNet(selector) => self::starknet::build(
                 context, registry, entry, location, helper, metadata, selector,
             ),
             Self::Struct(selector) => self::r#struct::build(
                 context, registry, entry, location, helper, metadata, selector,
             ),
-            Self::Uint8(selector) => self::uint8::build(
+            Self::Uint8(selector) => self::int::build_unsigned::<Uint8Traits>(
                 context, registry, entry, location, helper, metadata, selector,
             ),
-            Self::Uint16(selector) => self::uint16::build(
+            Self::Uint16(selector) => self::int::build_unsigned::<Uint16Traits>(
                 context, registry, entry, location, helper, metadata, selector,
             ),
-            Self::Uint32(selector) => self::uint32::build(
+            Self::Uint32(selector) => self::int::build_unsigned::<Uint32Traits>(
                 context, registry, entry, location, helper, metadata, selector,
             ),
-            Self::Uint64(selector) => self::uint64::build(
+            Self::Uint64(selector) => self::int::build_unsigned::<Uint64Traits>(
                 context, registry, entry, location, helper, metadata, selector,
             ),
-            Self::Uint128(selector) => self::uint128::build(
+            Self::Uint128(selector) => self::int::build_u128(
                 context, registry, entry, location, helper, metadata, selector,
             ),
             Self::Uint256(selector) => self::uint256::build(
@@ -417,7 +411,7 @@ where
     }
 }
 
-impl<'ctx, 'this> Deref for LibfuncHelper<'ctx, 'this> {
+impl<'ctx> Deref for LibfuncHelper<'ctx, '_> {
     type Target = Module<'ctx>;
 
     fn deref(&self) -> &Self::Target {

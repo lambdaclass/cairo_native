@@ -34,10 +34,10 @@
 use crate::{
     arch::AbiArgument,
     context::NativeContext,
-    error::{panic::ToNativeAssertError, Error},
+    error::{panic::ToNativeAssertError, Error, Result},
     execution_result::{BuiltinStats, ContractExecutionResult},
     executor::invoke_trampoline,
-    metadata::gas::GasMetadata,
+    metadata::gas::MetadataComputationConfig,
     module::NativeModule,
     native_panic,
     starknet::{handler::StarknetSyscallHandlerCallbacks, StarknetSyscallHandler},
@@ -51,12 +51,13 @@ use crate::{
 use bumpalo::Bump;
 use cairo_lang_sierra::{
     extensions::{
-        circuit::CircuitTypeConcrete, core::CoreTypeConcrete, starknet::StarkNetTypeConcrete,
-        ConcreteType,
+        circuit::CircuitTypeConcrete, core::CoreTypeConcrete, gas::CostTokenType,
+        starknet::StarkNetTypeConcrete, ConcreteType,
     },
     ids::FunctionId,
     program::Program,
 };
+use cairo_lang_starknet_classes::casm_contract_class::ENTRY_POINT_COST;
 use cairo_lang_starknet_classes::contract_class::ContractEntryPoints;
 use educe::Educe;
 use libloading::Library;
@@ -98,7 +99,6 @@ pub enum ContractInfoVersion {
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq, PartialOrd, Ord)]
 pub struct EntryPointInfo {
     pub builtins: Vec<BuiltinType>,
-    pub initial_cost: BTreeMap<u64, u64>, // cost token type offset, cost
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq, PartialOrd, Ord)]
@@ -146,22 +146,8 @@ impl AotContractExecutor {
         sierra_program: &Program,
         entry_points: &ContractEntryPoints,
         opt_level: OptLevel,
-    ) -> Result<Self, Error> {
+    ) -> Result<Self> {
         let native_context = NativeContext::new();
-        let module = native_context.compile(sierra_program, true)?;
-
-        let NativeModule {
-            module,
-            registry,
-            metadata,
-        } = module;
-
-        let initial_gas_costs = {
-            let gas_meta: &GasMetadata = metadata.get().ok_or(Error::MissingMetadata)?;
-            gas_meta.initial_required_gas_for_entry_points()?
-        };
-
-        let mut infos = BTreeMap::new();
 
         let mut entry_point_selector_to_id = BTreeMap::new();
 
@@ -176,6 +162,32 @@ impl AotContractExecutor {
                 .insert(Felt::from(&entry.selector), entry.function_idx as u64);
             used_function_ids.insert(entry.function_idx as u64);
         }
+
+        let module = native_context.compile(
+            sierra_program,
+            true,
+            Some(MetadataComputationConfig {
+                function_set_costs: used_function_ids
+                    .iter()
+                    .map(|id| {
+                        (
+                            FunctionId::new(*id),
+                            [(CostTokenType::Const, ENTRY_POINT_COST)].into(),
+                        )
+                    })
+                    .collect(),
+                linear_gas_solver: true,
+                linear_ap_change_solver: true,
+            }),
+        )?;
+
+        let NativeModule {
+            module,
+            registry,
+            metadata: _,
+        } = module;
+
+        let mut infos = BTreeMap::new();
 
         for x in &sierra_program.funcs {
             // Avoid storing function info for methods that are not contract entry points.
@@ -225,13 +237,7 @@ impl AotContractExecutor {
                 }
             }
 
-            infos.insert(
-                x.id.id,
-                EntryPointInfo {
-                    builtins,
-                    initial_cost: initial_gas_costs.get(&x.id.id).cloned().unwrap_or_default(),
-                },
-            );
+            infos.insert(x.id.id, EntryPointInfo { builtins });
         }
 
         let library_path = NamedTempFile::new()?
@@ -255,7 +261,7 @@ impl AotContractExecutor {
     }
 
     /// Save the library to the desired path, alongside it is saved also a json file with additional info.
-    pub fn save(&mut self, to: impl AsRef<Path>) -> Result<(), Error> {
+    pub fn save(&mut self, to: impl AsRef<Path>) -> Result<()> {
         let to = to.as_ref();
         std::fs::copy(&self.path, to)?;
 
@@ -270,7 +276,7 @@ impl AotContractExecutor {
     }
 
     /// Load the executor from an already compiled library with the additional info json file.
-    pub fn load(library_path: &Path) -> Result<Self, Error> {
+    pub fn load(library_path: &Path) -> Result<Self> {
         let info_str = std::fs::read_to_string(library_path.with_extension("json"))?;
         let contract_info: NativeContractInfo = serde_json::from_str(&info_str)?;
         Ok(Self {
@@ -281,15 +287,23 @@ impl AotContractExecutor {
         })
     }
 
-    /// Runs the given entry point.
+    /// Runs the entry point by the given selector.
+    ///
+    /// - selector: The selector of the entry point to run.
+    /// - args: The calldata.
+    /// - gas: The gas for the execution.
+    /// - builtin_costs: An optional argument to customize the costs of the builtins.
+    /// - syscall_handler: The syscall handler implementation to use when executing the contract.
+    ///
+    /// The entry point gas cost is not deducted from the gas counter.
     pub fn run(
         &self,
         selector: Felt,
         args: &[Felt],
-        gas: Option<u64>,
+        gas: u64,
         builtin_costs: Option<BuiltinCosts>,
         mut syscall_handler: impl StarknetSyscallHandler,
-    ) -> Result<ContractExecutionResult, Error> {
+    ) -> Result<ContractExecutionResult> {
         let arena = Bump::new();
         let mut invoke_data = Vec::<u8>::new();
 
@@ -303,12 +317,7 @@ impl AotContractExecutor {
         };
         let function_ptr = self.find_function_ptr(&function_id, true)?;
 
-        let builtin_costs = builtin_costs.unwrap_or_default();
-        let builtin_costs_stack: [u64; 7] = builtin_costs.into();
-        // Note: the ptr into a slice is valid, it can be used with cast()
-        // Care should be taken if you dereference it and take the .as_ptr() of the slice, since when you
-        // deref it, it will be a copy on the stack, so you will get the ptr of the value in the stack.
-        let builtin_costs: *mut [u64; 7] = Box::into_raw(Box::new(builtin_costs_stack));
+        let builtin_costs: [u64; 7] = builtin_costs.unwrap_or_default().into();
         let set_costs_builtin = unsafe {
             self.library
                 .get::<extern "C" fn(*const u64) -> *const u64>(
@@ -316,27 +325,7 @@ impl AotContractExecutor {
                 )?
         };
         // We may be inside a recursive contract, save the possible saved builtin costs to restore it after our call.
-        let old_builtincosts_ptr = set_costs_builtin(builtin_costs.cast());
-
-        let initial_gas_cost = {
-            let mut cost = 0;
-
-            for (offset, val) in self
-                .contract_info
-                .entry_points_info
-                .get(&function_id.id)
-                .to_native_assert_error("entry point info for function should be available")?
-                .initial_cost
-                .iter()
-            {
-                let token_cost = builtin_costs_stack[*offset as usize] * val;
-                cost += token_cost;
-            }
-            cost
-        };
-        let gas = gas
-            .unwrap_or(initial_gas_cost)
-            .saturating_sub(initial_gas_cost);
+        let old_builtincosts_ptr = set_costs_builtin(builtin_costs.as_ptr());
 
         //  it can vary from contract to contract thats why we need to store/ load it.
         let builtins_size: usize = self.contract_info.entry_points_info[&function_id.id]
@@ -362,7 +351,7 @@ impl AotContractExecutor {
                 }
                 BuiltinType::BuiltinCosts => {
                     // todo: check if valid
-                    builtin_costs_stack.as_ptr().to_bytes(&mut invoke_data)?;
+                    builtin_costs.as_ptr().to_bytes(&mut invoke_data)?;
                 }
                 BuiltinType::System => {
                     (&mut syscall_handler as *mut StarknetSyscallHandlerCallbacks<_>)
@@ -375,16 +364,40 @@ impl AotContractExecutor {
         }
 
         let felt_layout = get_integer_layout(252).pad_to_align();
-        let ptr: *mut () = unsafe { libc_malloc(felt_layout.size() * args.len()).cast() };
+        let refcount_offset = get_integer_layout(32)
+            .align_to(felt_layout.align())
+            .unwrap()
+            .pad_to_align()
+            .size();
+
+        let ptr = match args.len() {
+            0 => std::ptr::null_mut(),
+            _ => unsafe {
+                let ptr: *mut () =
+                    libc_malloc(felt_layout.size() * args.len() + refcount_offset).cast();
+
+                // Write reference count.
+                ptr.cast::<u32>().write(1);
+                ptr.byte_add(refcount_offset)
+            },
+        };
         let len: u32 = args
             .len()
             .try_into()
             .to_native_assert_error("number of arguments should fit into a u32")?;
 
         ptr.to_bytes(&mut invoke_data)?;
-        0u32.to_bytes(&mut invoke_data)?; // start
-        len.to_bytes(&mut invoke_data)?; // end
-        len.to_bytes(&mut invoke_data)?; // cap
+        if cfg!(target_arch = "aarch64") {
+            0u32.to_bytes(&mut invoke_data)?; // start
+            len.to_bytes(&mut invoke_data)?; // end
+            len.to_bytes(&mut invoke_data)?; // cap
+        } else if cfg!(target_arch = "x86_64") {
+            (0u32 as u64).to_bytes(&mut invoke_data)?; // start
+            (len as u64).to_bytes(&mut invoke_data)?; // end
+            (len as u64).to_bytes(&mut invoke_data)?; // cap
+        } else {
+            unreachable!("unsupported architecture");
+        }
 
         for (idx, elem) in args.iter().enumerate() {
             let f = elem.to_bytes_le();
@@ -527,7 +540,12 @@ impl AotContractExecutor {
         }
 
         if !array_ptr.is_null() {
-            unsafe { libc_free(array_ptr.cast()) };
+            unsafe {
+                let ptr = array_ptr.byte_sub(refcount_offset);
+                assert_eq!(ptr.cast::<u32>().read(), 1);
+
+                libc_free(ptr.cast());
+            }
         }
 
         let error_msg = if tag != 0 {
@@ -544,14 +562,8 @@ impl AotContractExecutor {
             None
         };
 
-        // Restore the old ptr and get back our builtincost box and free it.
-        let our_builtincosts_ptr = set_costs_builtin(old_builtincosts_ptr);
-
-        if !our_builtincosts_ptr.is_null() && old_builtincosts_ptr.is_aligned() {
-            unsafe {
-                let _ = Box::<[u64; 7]>::from_raw(our_builtincosts_ptr.cast_mut().cast());
-            };
-        }
+        // Restore the original builtin costs pointer.
+        set_costs_builtin(old_builtincosts_ptr);
 
         #[cfg(feature = "with-mem-tracing")]
         crate::utils::mem_tracing::report_stats();
@@ -568,7 +580,7 @@ impl AotContractExecutor {
         &self,
         function_id: &FunctionId,
         is_for_contract_executor: bool,
-    ) -> Result<*mut c_void, Error> {
+    ) -> Result<*mut c_void> {
         let function_name = generate_function_name(function_id, is_for_contract_executor);
         let function_name = format!("_mlir_ciface_{function_name}");
 
@@ -720,14 +732,14 @@ mod tests {
                 .run(
                     Felt::from(&selector),
                     &[n.into()],
-                    Some(u64::MAX),
+                    u64::MAX,
                     None,
                     &mut StubSyscallHandler::default(),
                 )
                 .unwrap();
 
             assert_eq!(result.return_values, vec![Felt::from(n), Felt::from(n * 2)]);
-            assert_eq!(result.remaining_gas, 18446744073709548475);
+            assert_eq!(result.remaining_gas, 18446744073709551615);
         });
     }
 
@@ -755,7 +767,7 @@ mod tests {
             .run(
                 Felt::from(&selector),
                 &[2.into()],
-                Some(u64::MAX),
+                u64::MAX,
                 None,
                 &mut StubSyscallHandler::default(),
             )
@@ -790,14 +802,14 @@ mod tests {
             .run(
                 Felt::from(&selector),
                 &[10.into()],
-                Some(u64::MAX),
+                u64::MAX,
                 None,
                 &mut StubSyscallHandler::default(),
             )
             .unwrap();
 
         assert_eq!(result.return_values, vec![Felt::from(3628800)]);
-        assert_eq!(result.remaining_gas, 18446744073709534105);
+        assert_eq!(result.remaining_gas, 18446744073709538915);
     }
 
     #[rstest]
@@ -828,7 +840,7 @@ mod tests {
             .run(
                 Felt::from(&selector),
                 &[],
-                Some(u64::MAX),
+                u64::MAX,
                 None,
                 &mut StubSyscallHandler::default(),
             )

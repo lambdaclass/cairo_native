@@ -22,12 +22,12 @@ jobs:
         block: [742001, 769597, 779328, 801008, 803072]
     steps:
       - uses: actions/checkout@v4
-      - uses: dtolnay/rust-toolchain@1.82.0
+      - uses: dtolnay/rust-toolchain@1.83.0
         with:
           components: clippy
       - uses: Swatinem/rust-cache@v2
         with:
-          key: "ref-16302c859b1aacc019eea154a58eddc7b32050c1"
+          key: "ref-955512a96ab317c61d0b12ae230f33176b6005e4"
 
       - name: Check and free hdd space left
         if: ${{ matrix.runner == 'native' }}
@@ -66,7 +66,6 @@ jobs:
         if: ${{ matrix.runner == 'native' }}
         run: cargo b --release
       - name: Build runtime
-        if: ${{ matrix.runner == 'native' }}
         run: |
           make runtime
           cargo update
@@ -76,7 +75,7 @@ jobs:
         uses: actions/checkout@v4
         with:
           repository: lambdaclass/starknet-replay
-          ref: 16302c859b1aacc019eea154a58eddc7b32050c1
+          ref: 955512a96ab317c61d0b12ae230f33176b6005e4
           path: replay
 
       - name: Install Starknet Replay deps
@@ -86,7 +85,7 @@ jobs:
         if: ${{ matrix.runner == 'native' }}
         run: |
           cd replay
-          sed -r -i 's/cairo-native.*/cairo-native = { path = ".." }/' Cargo.toml
+          echo -e '[patch.crates-io]\ncairo-native = { path = ".." }' >> Cargo.toml
 
       - name: Run Blocks Native
         if: ${{ matrix.runner == 'native' }}

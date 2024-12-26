@@ -7,7 +7,6 @@ on:
 
 env:
   RANGE_SIZE: 25
-  SEQUENCER_REV: 8d3e6b5515e7b62e7ab173026b2c81c750dbb853
 
 jobs:
   run:
@@ -19,6 +18,7 @@ jobs:
       RPC_ENDPOINT_TESTNET: ${{ secrets.RPC_ENDPOINT_TESTNET }}
       RPC_ENDPOINT_MAINNET: ${{ secrets.RPC_ENDPOINT_MAINNET }}
     strategy:
+      max-parallel: 15
       matrix:
         block:
           - 740000
@@ -42,8 +42,8 @@ jobs:
           - 800400
           - 800450
           - 800500
-          - 800550
-          - 800600
+          - 801550
+          - 801600
           - 800650
           - 800700
           - 800750
@@ -86,7 +86,7 @@ jobs:
       # Install dependencies
       - uses: ./cairo_native/.github/actions/install-linux-deps
       - name: Setup rust env
-        uses: dtolnay/rust-toolchain@1.82.0
+        uses: dtolnay/rust-toolchain@1.83.0
       - name: Retreive cached dependecies
         uses: Swatinem/rust-cache@v2
       - name: Build Cairo Native Runtime Library
@@ -99,16 +99,7 @@ jobs:
       - name: Patch dependencies
         run: |
           # Patches native dependency to local path, to use current cairo native version
-          DEPENDENCY="cairo-native"
-          NEW_PATH="../cairo_native"
-          sed -Ei "s#^($DEPENDENCY *=).*#\1 { path = '$NEW_PATH' }#" Cargo.toml
-          grep $DEPENDENCY Cargo.toml
-
-          # Patches sequencer dependency to specified rev
-          GIT="https://github.com/lambdaclass/sequencer"
-          NEW_REV="$SEQUENCER_REV"
-          sed -Ei "s#(\"$GIT\" *, *rev *= *\").?*(\".*)#\1$NEW_REV\2#" Cargo.toml
-          grep $GIT Cargo.toml
+          echo -e "\n[patch.crates-io]\ncairo-native = { path = \"../cairo_native\" }" >> Cargo.toml
 
       - name: Run with Native
         if: ${{ matrix.runner == 'native' }}

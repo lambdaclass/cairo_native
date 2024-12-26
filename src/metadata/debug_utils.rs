@@ -770,7 +770,7 @@ extern "C" fn print_pointer_impl(value: *const ()) {
 unsafe extern "C" fn dump_mem_impl(ptr: *const (), len: u64) {
     println!("[DEBUG] Memory dump at {ptr:?}:");
     for chunk in (0..len).step_by(8) {
-        print!("  {ptr:?}:");
+        print!("  {:?}:", ptr.byte_add(chunk as usize));
         for offset in chunk..chunk + 8 {
             print!(" {:02x}", ptr.byte_add(offset as usize).cast::<u8>().read());
         }

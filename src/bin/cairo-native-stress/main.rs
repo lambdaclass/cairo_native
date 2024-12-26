@@ -280,7 +280,7 @@ where
     ) -> Arc<AotNativeExecutor> {
         let native_module = self
             .context
-            .compile(program, false)
+            .compile(program, false, Some(Default::default()))
             .expect("failed to compile program");
 
         let registry = ProgramRegistry::new(program).expect("failed to get program registry");
