@@ -734,9 +734,14 @@ fn build_trim<'ctx, 'this>(
     // and constraining their range a single value from either the lower or upper limit. However,
     // since we're returning a `BoundedInt` we need to offset its internal representation
     // accordingly.
-    let value = if info.trimmed_value == BigInt::ZERO {
-        let k1 = entry.const_int_from_type(context, location, 1, value.r#type())?;
-        entry.append_op_result(arith::subi(value, k1, location))?
+    let value = if info.trimmed_value <= BigInt::ZERO {
+        let offset = if info.trimmed_value == BigInt::ZERO {
+            entry.const_int_from_type(context, location, 1, value.r#type())?
+        } else {
+            entry.const_int_from_type(context, location, &info.trimmed_value + 1, value.r#type())?
+        };
+
+        entry.append_op_result(arith::subi(value, offset, location))?
     } else {
         value
     };
