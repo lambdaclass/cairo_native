@@ -702,7 +702,15 @@ fn build_constrain<'ctx, 'this>(
     Ok(())
 }
 
-/// Generate MLIR operations for the `bounded_int_trim` libfunc.
+/// Makes a downcast of a type `T` to `BoundedInt<T::MIN, T::MAX - 1>`
+/// or `BoundedInt<T::MIN + 1, T::MAX>` where `T` can be any type of signed
+/// or unsigned integer.
+///
+/// ```cairo
+/// extern fn bounded_int_trim<T, const TRIMMED_VALUE: felt252, impl H: TrimHelper<T, TRIMMED_VALUE>>(
+///     value: T,
+/// ) -> core::internal::OptionRev<H::Target> nopanic;
+/// ```
 fn build_trim<'ctx, 'this>(
     context: &'ctx Context,
     _registry: &ProgramRegistry<CoreType, CoreLibfunc>,
