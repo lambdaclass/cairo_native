@@ -815,7 +815,7 @@ mod test {
             use core::internal::{OptionRev, bounded_int::BoundedInt};
             use core::internal::bounded_int;
             fn main() -> BoundedInt<1, 255> {
-                let num = match bounded_int::trim::<u8, 0>(2) {
+                let num = match bounded_int::trim::<u8, 0>(1) {
                     OptionRev::Some(n) => n,
                     OptionRev::None => 1,
                 };
