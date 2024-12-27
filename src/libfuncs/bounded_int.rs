@@ -797,3 +797,97 @@ fn build_trim<'ctx, 'this>(
 
     Ok(())
 }
+
+#[cfg(test)]
+mod test {
+    use cairo_vm::Felt252;
+
+    use crate::{context::NativeContext, execution_result::ExecutionResult, executor::JitNativeExecutor, utils::test::load_cairo, OptLevel, Value};
+
+    #[test]
+    fn test_trim_some_u8() {
+        let (_, program) = load_cairo!(
+            use core::internal::{OptionRev, bounded_int::BoundedInt};
+            use core::internal::bounded_int;
+            fn main() -> BoundedInt::<1, 255> {
+                let num = match bounded_int::trim::<u8, 0>(2) {
+                    OptionRev::Some(n) => n,
+                    OptionRev::None => 1
+                };
+
+                num
+            }
+        );
+        let ctx = NativeContext::new();
+        let module = ctx.compile(&program, false, None).unwrap();
+        let executor = JitNativeExecutor::from_native_module(module, OptLevel::Default).unwrap();
+        let ExecutionResult {
+            remaining_gas: _,
+            return_value,
+            builtin_stats: _
+        } = executor.invoke_dynamic(&program.funcs[0].id, &[], None).unwrap();
+
+        let Value::BoundedInt {value, range: _} = return_value else {
+            panic!();
+        };
+        assert_eq!(value, Felt252::from(1 as u8));
+    }
+
+    #[test]
+    fn test_trim_some_u32() {
+        let (_, program) = load_cairo!(
+            use core::internal::{OptionRev, bounded_int::BoundedInt};
+            use core::internal::bounded_int;
+            fn main() -> BoundedInt::<0, 4294967294> {
+                let num = match bounded_int::trim::<u32, 0xffffffff>(0xfffffffe) {
+                    OptionRev::Some(n) => n,
+                    OptionRev::None => 0
+                };
+
+                num
+            }
+        );
+        let ctx = NativeContext::new();
+        let module = ctx.compile(&program, false, None).unwrap();
+        let executor = JitNativeExecutor::from_native_module(module, OptLevel::Default).unwrap();
+        let ExecutionResult {
+            remaining_gas: _,
+            return_value,
+            builtin_stats: _
+        } = executor.invoke_dynamic(&program.funcs[0].id, &[], None).unwrap();
+
+        let Value::BoundedInt {value, range: _} = return_value else {
+            panic!();
+        };
+        assert_eq!(value, Felt252::from(0xfffffffe as u32));
+    }
+
+    #[test]
+    fn test_trim_none() {
+        let (_, program) = load_cairo!(
+            use core::internal::{OptionRev, bounded_int::BoundedInt};
+            use core::internal::bounded_int;
+            fn main() -> BoundedInt::<-32767, 32767> {
+                let num = match bounded_int::trim::<i16, -0x8000>(-0x8000) {
+                    OptionRev::Some(n) => n,
+                    OptionRev::None => 0
+                };
+
+                num
+            }
+        );
+        let ctx = NativeContext::new();
+        let module = ctx.compile(&program, false, None).unwrap();
+        let executor = JitNativeExecutor::from_native_module(module, OptLevel::Default).unwrap();
+        let ExecutionResult {
+            remaining_gas: _,
+            return_value,
+            builtin_stats: _
+        } = executor.invoke_dynamic(&program.funcs[0].id, &[], None).unwrap();
+
+        let Value::BoundedInt {value, range: _} = return_value else {
+            panic!();
+        };
+        assert_eq!(value, Felt252::from(0));
+    }
+}
