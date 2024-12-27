@@ -868,7 +868,7 @@ mod test {
         let Value::BoundedInt { value, range: _ } = return_value else {
             panic!();
         };
-        assert_eq!(value, Felt252::from(0xfffffffe_32));
+        assert_eq!(value, Felt252::from(0xfffffffe_u32));
     }
 
     #[test]
