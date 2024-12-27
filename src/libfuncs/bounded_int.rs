@@ -735,11 +735,12 @@ fn build_trim<'ctx, 'this>(
     // since we're returning a `BoundedInt` we need to offset its internal representation
     // accordingly.
     let value = if info.trimmed_value <= BigInt::ZERO {
-        let offset = if info.trimmed_value == BigInt::ZERO {
-            entry.const_int_from_type(context, location, 1, value.r#type())?
-        } else {
-            entry.const_int_from_type(context, location, &info.trimmed_value + 1, value.r#type())?
-        };
+        let offset = entry.const_int_from_type(
+            context,
+            location,
+            &info.trimmed_value + 1,
+            value.r#type(),
+        )?;
 
         entry.append_op_result(arith::subi(value, offset, location))?
     } else {
