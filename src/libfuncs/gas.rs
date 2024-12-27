@@ -159,7 +159,7 @@ pub fn build_withdraw_gas<'ctx, 'this>(
 ///
 /// ```cairo
 /// extern fn redeposit_gas() implicits(GasBuiltin) nopanic;
-/// ``
+/// ```
 pub fn build_redeposit_gas<'ctx, 'this>(
     context: &'ctx Context,
     _registry: &ProgramRegistry<CoreType, CoreLibfunc>,
