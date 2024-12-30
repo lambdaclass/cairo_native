@@ -1103,9 +1103,12 @@ pub mod trace_dump {
                 let value = value_ptr.cast::<&FeltDict>().read();
 
                 let data = value
-                    .inner
+                    .mappings
                     .iter()
-                    .map(|(k, &p)| {
+                    .map(|(k, &i)| {
+                        let p = value
+                            .elements
+                            .byte_offset((value.layout.size() * i) as isize);
                         let v = match NonNull::new(p) {
                             Some(value_ptr) => {
                                 read_value_ptr(registry, &info.ty, value_ptr.cast(), get_layout)
@@ -1129,9 +1132,13 @@ pub mod trace_dump {
 
                 let data = value
                     .dict
-                    .inner
+                    .mappings
                     .iter()
-                    .map(|(k, &p)| {
+                    .map(|(k, &i)| {
+                        let p = value
+                            .dict
+                            .elements
+                            .byte_offset((value.dict.layout.size() * i) as isize);
                         let v = match NonNull::new(p) {
                             Some(value_ptr) => {
                                 read_value_ptr(registry, &info.ty, value_ptr.cast(), get_layout)
@@ -1200,6 +1207,7 @@ pub mod trace_dump {
 
                 Value::Bytes31(Felt::from_bytes_le(&data))
             }
+            CoreTypeConcrete::IntRange(_) => todo!(),
         }
     }
 
