@@ -1,4 +1,4 @@
-use std::io;
+use std::io::{self, Write};
 
 use crate::{
     error::Error,
@@ -57,13 +57,18 @@ impl AotNativeExecutor {
             mut metadata,
         } = module;
 
-        let library_path = NamedTempFile::new()?
-            .into_temp_path()
+        let (mut library_file, library_path) = NamedTempFile::new()?
             .keep()
             .map_err(io::Error::from)?;
 
         let object_data = crate::module_to_object(&module, opt_level)?;
-        crate::object_to_shared_lib(&object_data, &library_path)?;
+
+        // link the shared library manually
+        let runtime_library = include_bytes!(env!("CARGO_STATICLIB_FILE_CAIRO_NATIVE_RUNTIME", "library not found"));
+
+        library_file.write_all(runtime_library)?;
+        library_file.write_all(&object_data)?;
+        library_file.flush()?;
 
         Ok(Self {
             library: unsafe { Library::new(&library_path)? },
