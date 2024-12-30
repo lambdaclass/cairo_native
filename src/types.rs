@@ -124,7 +124,7 @@ pub trait TypeBuilder {
     ) -> Result<bool, Self::Error>;
 
     /// Return whether the type is signed, either directly or indirectly (ex. through
-        /// `Const`).
+    /// `Const`).
     fn is_signed(
         &self,
         registry: &ProgramRegistry<CoreType, CoreLibfunc>,
