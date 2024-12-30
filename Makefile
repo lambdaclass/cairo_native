@@ -59,7 +59,7 @@ build-dev: check-llvm
 .PHONY: check
 check: check-llvm
 	cargo fmt --all -- --check
-	cargo clippy --all-targets --all-features -- -D warnings
+	cargo clippy --all-targets --features build-cli,with-cheatcode,with-runtime -- -D warnings
 
 .PHONY: test
 test: check-llvm needs-cairo2 build-alexandria runtime-ci
@@ -88,11 +88,11 @@ coverage: check-llvm needs-cairo2 build-alexandria runtime-ci
 
 .PHONY: doc
 doc: check-llvm
-	cargo doc --all-features --no-deps --workspace
+	cargo doc --features build-cli,with-cheatcode,with-runtime --no-deps --workspace
 
 .PHONY: doc-open
 doc-open: check-llvm
-	cargo doc --all-features --no-deps --workspace --open
+	cargo doc --features build-cli,with-cheatcode,with-runtime --no-deps --workspace --open
 
 .PHONY: bench
 bench: needs-cairo2 runtime
@@ -179,8 +179,11 @@ build-alexandria:
 
 .PHONY: runtime
 runtime:
-	cargo b --release --all-features -p cairo-native-runtime && cp target/release/libcairo_native_runtime.a .
+	cargo b --release -p cairo-native-runtime && cp target/release/libcairo_native_runtime.a .
+
+runtime-with-trace-dump:
+	cargo b -p cairo-native-runtime --features=with-trace-dump && cp target/debug/libcairo_native_runtime.a .
 
 .PHONY: runtime-ci
 runtime-ci:
-	cargo b --profile ci --all-features -p cairo-native-runtime && cp target/ci/libcairo_native_runtime.a .
+	cargo b --profile ci -p cairo-native-runtime && cp target/ci/libcairo_native_runtime.a .
