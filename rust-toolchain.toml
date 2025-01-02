@@ -1,6 +1,6 @@
 [toolchain]
-channel = "nightly"
-components = ["rustfmt", "clippy"]
+channel = "1.83.0"
+components = ["cargo", "rustfmt", "clippy"]
 profile = "minimal"
 
 [unstable]
