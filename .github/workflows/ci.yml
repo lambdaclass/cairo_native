@@ -246,8 +246,8 @@ jobs:
           scarb-version: "2.9.2"
       - name: Install deps
         run: make deps
-      - name: Build runtime and alexandria
-        run: make runtime-ci && make check-llvm && make needs-cairo2 && make build-alexandria
+      - name: Build alexandria
+        run: make check-llvm && make needs-cairo2 && make build-alexandria
 
       - name: Run tests and generate coverage partition ${{ matrix.partition }}
         run: cargo llvm-cov nextest --verbose --features=scarb --workspace --lcov --output-path ${{ matrix.output }} --partition count:${{ matrix.partition }}/4

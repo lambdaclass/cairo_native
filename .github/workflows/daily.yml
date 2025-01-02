@@ -77,7 +77,6 @@ jobs:
         with:
           repository: lambdaclass/starknet-replay
           path: starknet-replay
-      # We need native for building the runtime
       - name: Checkout Native
         uses: actions/checkout@v4
         with:
@@ -89,12 +88,6 @@ jobs:
         uses: dtolnay/rust-toolchain@1.83.0
       - name: Retreive cached dependecies
         uses: Swatinem/rust-cache@v2
-      - name: Build Cairo Native Runtime Library
-        shell: bash
-        run: |
-          cd ../cairo_native
-          make runtime
-          echo "CAIRO_NATIVE_RUNTIME_LIBRARY=$(pwd)/libcairo_native_runtime.a" > $GITHUB_ENV
 
       - name: Patch dependencies
         run: |
