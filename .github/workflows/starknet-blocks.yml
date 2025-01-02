@@ -86,8 +86,8 @@ jobs:
         if: ${{ matrix.runner == 'native' }}
         run: |
           cd replay
-          cargo build --release --bin replay
-          cargo run --release --features state_dump block mainnet ${{ matrix.block }}
+          cargo build -Z bindeps --release --bin replay
+          cargo run -Z bindeps --release --features state_dump block mainnet ${{ matrix.block }}
 
       - name: Run Blocks VM
         if: ${{ matrix.runner == 'vm' }}
