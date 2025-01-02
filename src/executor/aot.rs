@@ -58,9 +58,9 @@ impl AotNativeExecutor {
         } = module;
 
         let library_path = NamedTempFile::new()?
-        .into_temp_path()
-        .keep()
-        .map_err(io::Error::from)?;
+            .into_temp_path()
+            .keep()
+            .map_err(io::Error::from)?;
 
         let object_data = crate::module_to_object(&module, opt_level)?;
 

@@ -232,7 +232,10 @@ pub fn object_to_shared_lib(object: &[u8], output_filename: &Path) -> Result<()>
     object_file.write_all(object)?;
     let object_file = object_file.into_temp_path();
 
-    let runtime_library = include_bytes!(env!("CARGO_STATICLIB_FILE_CAIRO_NATIVE_RUNTIME", "library not found"));
+    let runtime_library = include_bytes!(env!(
+        "CARGO_STATICLIB_FILE_CAIRO_NATIVE_RUNTIME",
+        "library not found"
+    ));
 
     let mut lib_file = NamedTempFile::new()?;
     lib_file.write_all(runtime_library)?;
@@ -250,7 +253,6 @@ pub fn object_to_shared_lib(object: &[u8], output_filename: &Path) -> Result<()>
             std::mem::forget(object_file);
         }
     }
-
 
     let args: Vec<Cow<'static, str>> = {
         #[cfg(target_os = "macos")]
