@@ -849,7 +849,11 @@
 <a href="#848" id="848">848</a>
 <a href="#849" id="849">849</a>
 <a href="#850" id="850">850</a>
-<a href="#851" id="851">851</a></pre></div><pre class="rust"><code><span class="doccomment">//! A specialized executor for Starknet contracts, avoiding the overhead of storing the sierra program registry and
+<a href="#851" id="851">851</a>
+<a href="#852" id="852">852</a>
+<a href="#853" id="853">853</a>
+<a href="#854" id="854">854</a>
+<a href="#855" id="855">855</a></pre></div><pre class="rust"><code><span class="doccomment">//! A specialized executor for Starknet contracts, avoiding the overhead of storing the sierra program registry and
 //! enabling efficient serialization of the program/data once compiled.
 //!
 //! This executor heavily relies on the stability of the contract entry point argument order.
@@ -970,20 +974,7 @@
 
 <span class="kw">impl </span>BuiltinType {
     <span class="kw">pub const fn </span>size_in_bytes(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; usize {
-        <span class="kw">match </span><span class="self">self </span>{
-            BuiltinType::Bitwise =&gt; <span class="number">8</span>,
-            BuiltinType::EcOp =&gt; <span class="number">8</span>,
-            BuiltinType::RangeCheck =&gt; <span class="number">8</span>,
-            BuiltinType::SegmentArena =&gt; <span class="number">8</span>,
-            BuiltinType::Poseidon =&gt; <span class="number">8</span>,
-            BuiltinType::Pedersen =&gt; <span class="number">8</span>,
-            BuiltinType::RangeCheck96 =&gt; <span class="number">8</span>,
-            BuiltinType::CircuitAdd =&gt; <span class="number">8</span>,
-            BuiltinType::CircuitMul =&gt; <span class="number">8</span>,
-            BuiltinType::Gas =&gt; <span class="number">16</span>,
-            BuiltinType::System =&gt; <span class="number">8</span>,
-            BuiltinType::BuiltinCosts =&gt; <span class="number">8</span>,
-        }
+        size_of::&lt;u64&gt;()
     }
 }
 
@@ -1130,8 +1121,25 @@
     </span><span class="kw">pub fn </span>load(library_path: <span class="kw-2">&amp;</span>Path) -&gt; <span class="prelude-ty">Result</span>&lt;<span class="self">Self</span>&gt; {
         <span class="kw">let </span>info_str = std::fs::read_to_string(library_path.with_extension(<span class="string">"json"</span>))<span class="question-mark">?</span>;
         <span class="kw">let </span>contract_info: NativeContractInfo = serde_json::from_str(<span class="kw-2">&amp;</span>info_str)<span class="question-mark">?</span>;
+
+        <span class="kw">let </span>library = Arc::new(<span class="kw">unsafe </span>{ Library::new(library_path)<span class="question-mark">? </span>});
+        <span class="kw">unsafe </span>{
+            <span class="kw">let </span>get_version = library
+                .get::&lt;<span class="kw">extern </span><span class="string">"C" </span><span class="kw">fn</span>(<span class="kw-2">*mut </span>u8, usize) -&gt; usize&gt;(<span class="string">b"cairo_native__get_version"</span>)<span class="question-mark">?</span>;
+
+            <span class="kw">let </span><span class="kw-2">mut </span>version_buffer = [<span class="number">0u8</span>; <span class="number">16</span>];
+            <span class="kw">let </span>version_len = get_version(version_buffer.as_mut_ptr(), version_buffer.len());
+
+            <span class="kw">let </span>target_version = <span class="macro">env!</span>(<span class="string">"CARGO_PKG_VERSION"</span>);
+            <span class="macro">assert_eq!</span>(
+                <span class="kw-2">&amp;</span>version_buffer[..version_len],
+                target_version.as_bytes(),
+                <span class="string">"aot-compiled contract version mismatch"
+            </span>);
+        };
+
         <span class="prelude-val">Ok</span>(<span class="self">Self </span>{
-            library: Arc::new(<span class="kw">unsafe </span>{ Library::new(library_path)<span class="question-mark">? </span>}),
+            library,
             path: library_path.to_path_buf(),
             is_temp_path: <span class="bool-val">false</span>,
             contract_info,

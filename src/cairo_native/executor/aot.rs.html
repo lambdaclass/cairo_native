@@ -346,10 +346,7 @@
 <a href="#345" id="345">345</a>
 <a href="#346" id="346">346</a>
 <a href="#347" id="347">347</a>
-<a href="#348" id="348">348</a>
-<a href="#349" id="349">349</a></pre></div><pre class="rust"><code><span class="kw">use </span>std::io;
-
-<span class="kw">use crate</span>::{
+<a href="#348" id="348">348</a></pre></div><pre class="rust"><code><span class="kw">use crate</span>::{
     error::Error,
     execution_result::{ContractExecutionResult, ExecutionResult},
     metadata::gas::GasMetadata,
@@ -369,6 +366,7 @@
 <span class="kw">use </span>libc::c_void;
 <span class="kw">use </span>libloading::Library;
 <span class="kw">use </span>starknet_types_core::felt::Felt;
+<span class="kw">use </span>std::io;
 <span class="kw">use </span>tempfile::NamedTempFile;
 
 <span class="attr">#[derive(Educe)]
