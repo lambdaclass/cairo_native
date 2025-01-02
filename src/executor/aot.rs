@@ -57,18 +57,14 @@ impl AotNativeExecutor {
             mut metadata,
         } = module;
 
-        let (mut library_file, library_path) = NamedTempFile::new()?
-            .keep()
-            .map_err(io::Error::from)?;
+        let library_path = NamedTempFile::new()?
+        .into_temp_path()
+        .keep()
+        .map_err(io::Error::from)?;
 
         let object_data = crate::module_to_object(&module, opt_level)?;
 
-        // link the shared library manually
-        let runtime_library = include_bytes!(env!("CARGO_STATICLIB_FILE_CAIRO_NATIVE_RUNTIME", "library not found"));
-
-        library_file.write_all(runtime_library)?;
-        library_file.write_all(&object_data)?;
-        library_file.flush()?;
+        crate::object_to_shared_lib(&object_data, &library_path)?;
 
         Ok(Self {
             library: unsafe { Library::new(&library_path)? },

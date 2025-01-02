@@ -228,36 +228,29 @@ pub fn module_to_object(module: &Module<'_>, opt_level: OptLevel) -> Result<Vec<
 /// Links the passed object into a shared library, stored on the given path.
 pub fn object_to_shared_lib(object: &[u8], output_filename: &Path) -> Result<()> {
     // linker seems to need a file and doesn't accept stdin
-    let mut file = NamedTempFile::new()?;
-    file.write_all(object)?;
-    let file = file.into_temp_path();
+    let mut object_file = NamedTempFile::new()?;
+    object_file.write_all(object)?;
+    let object_file = object_file.into_temp_path();
 
-    let file_path = file.display().to_string();
+    let runtime_library = include_bytes!(env!("CARGO_STATICLIB_FILE_CAIRO_NATIVE_RUNTIME", "library not found"));
+
+    let mut lib_file = NamedTempFile::new()?;
+    lib_file.write_all(runtime_library)?;
+    let lib_file = lib_file.into_temp_path();
+
+    let object_file_path = object_file.display().to_string();
+    let runtime_library_path = lib_file.display().to_string();
     let output_path = output_filename.display().to_string();
+
     if let Ok(x) = std::env::var("NATIVE_DEBUG_DUMP") {
         if x == "1" || x == "true" {
             // forget so the temp file is not deleted and the debugger can load it.
             // its still in a temp file directory so eventually the OS will delete it, but just not instantly.
             // todo: maybe remove it when exiting, for example using atexit.
-            std::mem::forget(file);
+            std::mem::forget(object_file);
         }
     }
 
-    let runtime_library_path = if let Ok(extra_dir) = std::env::var("CAIRO_NATIVE_RUNTIME_LIBRARY")
-    {
-        let path = Path::new(&extra_dir);
-        if path.is_absolute() {
-            extra_dir
-        } else {
-            let absolute_path = env::current_dir()?.join(path).canonicalize()?;
-            absolute_path
-                .to_str()
-                .to_native_assert_error("absolute path should not contain non-utf8 characters")?
-                .to_string()
-        }
-    } else {
-        String::from("libcairo_native_runtime.a")
-    };
 
     let args: Vec<Cow<'static, str>> = {
         #[cfg(target_os = "macos")]
@@ -272,7 +265,7 @@ pub fn object_to_shared_lib(object: &[u8], output_filename: &Path) -> Result<()>
             ];
 
             args.extend([
-                Cow::from(file_path),
+                Cow::from(object_file_path),
                 "-o".into(),
                 Cow::from(output_path),
                 "-lSystem".into(),
@@ -295,7 +288,7 @@ pub fn object_to_shared_lib(object: &[u8], output_filename: &Path) -> Result<()>
                 "-o".into(),
                 Cow::from(output_path),
                 "-lc".into(),
-                Cow::from(file_path),
+                Cow::from(object_file_path),
                 "--whole-archive".into(), // needed so `cairo_native__set_costs_builtin` is always available
                 Cow::from(runtime_library_path),
             ]);
