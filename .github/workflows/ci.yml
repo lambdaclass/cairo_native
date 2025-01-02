@@ -44,7 +44,7 @@ jobs:
       - uses: dtolnay/rust-toolchain@1.83.0
         with:
           components: rustfmt
-      - run: cargo +nightly fmt --all -- --check
+      - run: cargo fmt --all -- --check
       - name: Find Comment
         continue-on-error: true
         if: success() || failure()
@@ -62,7 +62,7 @@ jobs:
           comment-id: ${{ steps.fc.outputs.comment-id }}
           issue-number: ${{ github.event.pull_request.number }}
           body: |
-            ❌ Code is not formatted! Please run `cargo +nightly format` and push the changes.
+            ❌ Code is not formatted! Please run `cargo format` and push the changes.
 
             <!-- thiscommentistofindthisformatcomment -->
           edit-mode: replace
@@ -250,11 +250,11 @@ jobs:
         run: make runtime-ci && make check-llvm && make needs-cairo2 && make build-alexandria
 
       - name: Run tests and generate coverage partition ${{ matrix.partition }}
-        run: cargo +nightly  llvm-cov nextest --verbose --features=scarb --workspace --lcov --output-path ${{ matrix.output }} --partition count:${{ matrix.partition }}/4
+        run: cargo llvm-cov nextest --verbose --features=scarb --workspace --lcov --output-path ${{ matrix.output }} --partition count:${{ matrix.partition }}/4
 
       - name: test and generate coverage corelib
         if: ${{ matrix.partition == '1' }}
-        run: cargo +nightly  llvm-cov nextest --verbose --features=scarb --lcov --output-path lcov-test.info run --bin cairo-native-test -- corelib
+        run: cargo llvm-cov nextest --verbose --features=scarb --lcov --output-path lcov-test.info run --bin cairo-native-test -- corelib
 
       - name: save coverage data with corelib
         if: ${{ matrix.partition == '1' }}
