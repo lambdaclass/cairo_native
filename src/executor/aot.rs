@@ -1,4 +1,4 @@
-use std::io::{self, Write};
+use std::io;
 
 use crate::{
     error::Error,
