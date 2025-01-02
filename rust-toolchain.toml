@@ -1,7 +1,4 @@
 [toolchain]
 channel = "1.83.0"
-components = ["cargo", "rustfmt", "clippy"]
+components = ["rustfmt", "clippy"]
 profile = "minimal"
-
-[unstable]
-bindeps = true

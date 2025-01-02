@@ -64,7 +64,7 @@ jobs:
         run: make deps
       - name: Build Cairo Native project
         if: ${{ matrix.runner == 'native' }}
-        run: cargo b --release
+        run: cargo +nightly b --release
 
       - name: Checkout Starknet Replay
         uses: actions/checkout@v4
@@ -86,15 +86,15 @@ jobs:
         if: ${{ matrix.runner == 'native' }}
         run: |
           cd replay
-          cargo build --release --bin replay
-          cargo run -Z bindeps --release --features state_dump block mainnet ${{ matrix.block }}
+          cargo +nightly build --release --bin replay
+          cargo +nightly run --release --features state_dump block mainnet ${{ matrix.block }}
 
       - name: Run Blocks VM
         if: ${{ matrix.runner == 'vm' }}
         run: |
           cd replay
-          cargo build --release --bin replay
-          cargo run --release --features "state_dump,only_cairo_vm" block mainnet ${{ matrix.block }}
+          cargo +nightly build --release --bin replay
+          cargo +nightly run --release --features "state_dump,only_cairo_vm" block mainnet ${{ matrix.block }}
 
       - name: Upload dumps
         uses: actions/upload-artifact@v4
