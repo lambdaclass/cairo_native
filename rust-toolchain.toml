@@ -1,4 +1,7 @@
 [toolchain]
-channel = "1.83.0"
+channel = "nightly"
 components = ["rustfmt", "clippy"]
 profile = "minimal"
+
+[unstable]
+bindeps = true
