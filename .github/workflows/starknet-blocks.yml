@@ -65,11 +65,6 @@ jobs:
       - name: Build Cairo Native project
         if: ${{ matrix.runner == 'native' }}
         run: cargo b --release
-      - name: Build runtime
-        run: |
-          make runtime
-          cargo update
-          echo "CAIRO_NATIVE_RUNTIME_LIBRARY=$(pwd)/libcairo_native_runtime.a" > $GITHUB_ENV
 
       - name: Checkout Starknet Replay
         uses: actions/checkout@v4
@@ -92,7 +87,7 @@ jobs:
         run: |
           cd replay
           cargo build --release --bin replay
-          cargo run --release --features state_dump block mainnet ${{ matrix.block }}
+          cargo run -Z bindeps --release --features state_dump block mainnet ${{ matrix.block }}
 
       - name: Run Blocks VM
         if: ${{ matrix.runner == 'vm' }}
