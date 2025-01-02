@@ -46,11 +46,11 @@ endif
 
 .PHONY: build
 build: check-llvm runtime
-	cargo build --release --features=scarb
+	cargo +nightly build --release --features=scarb
 
 .PHONY: build-natives
 build-native: check-llvm runtime
-	RUSTFLAGS="-C target-cpu=native" cargo build --release --features=scarb
+	RUSTFLAGS="-C target-cpu=native" cargo +nightly build --release --features=scarb
 
 .PHONY: build-dev
 build-dev: check-llvm
@@ -58,33 +58,33 @@ build-dev: check-llvm
 
 .PHONY: check
 check: check-llvm
-	cargo fmt --all -- --check
-	cargo clippy --all-targets --all-features -- -D warnings
+	cargo +nightly fmt --all -- --check
+	cargo +nightly clippy --all-targets --all-features -- -D warnings
 
 .PHONY: test
 test: check-llvm needs-cairo2 build-alexandria runtime-ci
-	cargo test --profile ci --features=scarb,with-cheatcode,with-debug-utils
+	cargo +nightly test --profile ci --features=scarb,with-cheatcode,with-debug-utils
 
 .PHONY: test-cairo
 test-cairo: check-llvm needs-cairo2 runtime-ci
-	cargo r --profile ci --bin cairo-native-test -- corelib
+	cargo +nightly r --profile ci --bin cairo-native-test -- corelib
 
 .PHONY: proptest
 proptest: check-llvm needs-cairo2 runtime-ci
-	cargo test --profile ci --features=scarb,with-cheatcode,with-debug-utils proptest
+	cargo +nightly test --profile ci --features=scarb,with-cheatcode,with-debug-utils proptest
 
 .PHONY: test-cli
 test-ci: check-llvm needs-cairo2 build-alexandria runtime-ci
-	cargo test --profile ci --features=scarb,with-cheatcode,with-debug-utils
+	cargo +nightly test --profile ci --features=scarb,with-cheatcode,with-debug-utils
 
 .PHONY: proptest-cli
 proptest-ci: check-llvm needs-cairo2 runtime-ci
-	cargo test --profile ci --features=scarb,with-cheatcode,with-debug-utils proptest
+	cargo +nightly test --profile ci --features=scarb,with-cheatcode,with-debug-utils proptest
 
 .PHONY: coverage
 coverage: check-llvm needs-cairo2 build-alexandria runtime-ci
-	cargo llvm-cov --verbose --profile ci --features=scarb,with-cheatcode,with-debug-utils --workspace --lcov --output-path lcov.info
-	cargo llvm-cov --verbose --profile ci --features=scarb,with-cheatcode,with-debug-utils --lcov --output-path lcov-test.info run --bin cairo-native-test -- corelib
+	cargo +nightly llvm-cov --verbose --profile ci --features=scarb,with-cheatcode,with-debug-utils --workspace --lcov --output-path lcov.info
+	cargo +nightly llvm-cov --verbose --profile ci --features=scarb,with-cheatcode,with-debug-utils --lcov --output-path lcov-test.info run --bin cairo-native-test -- corelib
 
 .PHONY: doc
 doc: check-llvm
@@ -96,17 +96,17 @@ doc-open: check-llvm
 
 .PHONY: bench
 bench: needs-cairo2 runtime
-	cargo b --release --bin cairo-native-run
-	cargo b --release --bin cairo-native-compile
+	cargo +nightly b --release --bin cairo-native-run
+	cargo +nightly b --release --bin cairo-native-compile
 	./scripts/bench-hyperfine.sh
 
 .PHONY: bench-ci
 bench-ci: check-llvm needs-cairo2 runtime
-	cargo criterion --features=scarb,with-cheatcode,with-debug-utils
+	cargo +nightly criterion --features=scarb,with-cheatcode,with-debug-utils
 
 .PHONY: stress-test
 stress-test: check-llvm
-	RUST_LOG=cairo_native_stress=DEBUG cargo run --bin cairo-native-stress 1000000 --output cairo-native-stress-logs.jsonl
+	RUST_LOG=cairo_native_stress=DEBUG cargo +nightly run --bin cairo-native-stress 1000000 --output cairo-native-stress-logs.jsonl
 
 .PHONY: stress-plot
 stress-plot:
@@ -122,7 +122,7 @@ install: check-llvm
 
 .PHONY: clean
 clean: stress-clean
-	cargo clean
+	cargo +nightly clean
 
 .PHONY: deps
 deps:
@@ -179,8 +179,8 @@ build-alexandria:
 
 .PHONY: runtime
 runtime:
-	cargo b --release --all-features -p cairo-native-runtime && cp target/release/libcairo_native_runtime.a .
+	cargo +nightly b --release --all-features -p cairo-native-runtime && cp target/release/libcairo_native_runtime.a .
 
 .PHONY: runtime-ci
 runtime-ci:
-	cargo b --profile ci --all-features -p cairo-native-runtime && cp target/ci/libcairo_native_runtime.a .
+	cargo b +nightly --profile ci --all-features -p cairo-native-runtime && cp target/ci/libcairo_native_runtime.a .
