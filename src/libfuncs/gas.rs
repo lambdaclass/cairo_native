@@ -155,7 +155,7 @@ pub fn build_withdraw_gas<'ctx, 'this>(
     Ok(())
 }
 
-/// Adds the unused to the remaining gas
+/// Returns the unused gas to the remaining
 ///
 /// ```cairo
 /// extern fn redeposit_gas() implicits(GasBuiltin) nopanic;
