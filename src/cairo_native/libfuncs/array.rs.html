@@ -3063,7 +3063,8 @@
 <a href="#3062" id="3062">3062</a>
 <a href="#3063" id="3063">3063</a>
 <a href="#3064" id="3064">3064</a>
-<a href="#3065" id="3065">3065</a></pre></div><pre class="rust"><code><span class="doccomment">//! # Array libfuncs
+<a href="#3065" id="3065">3065</a>
+<a href="#3066" id="3066">3066</a></pre></div><pre class="rust"><code><span class="doccomment">//! # Array libfuncs
 
 </span><span class="kw">use </span><span class="kw">super</span>::LibfuncHelper;
 <span class="kw">use crate</span>::{
@@ -4140,7 +4141,8 @@
                     block.const_int(context, location, elem_layout.pad_to_align().size(), <span class="number">64</span>)<span class="question-mark">?</span>;
                 <span class="kw">match </span>metadata.get::&lt;DupOverridesMeta&gt;() {
                     <span class="prelude-val">Some</span>(dup_overrides_meta) <span class="kw">if </span>dup_overrides_meta.is_overriden(elem_ty) =&gt; {
-                        block.append_operation(scf::r#for(
+                        <span class="comment">// TODO: If extract_len is 1 there is no need for the for loop.
+                        </span>block.append_operation(scf::r#for(
                             k0,
                             value_size,
                             elem_stride,
@@ -4224,7 +4226,7 @@
                     )<span class="question-mark">?</span>;
 
                     <span class="kw">let </span>data_ptr = <span class="kw">if </span>REVERSE {
-                        data_ptr
+                        array_ptr
                     } <span class="kw">else </span>{
                         <span class="kw">let </span>offset = block.append_op_result(arith::extui(
                             extract_len_value,
