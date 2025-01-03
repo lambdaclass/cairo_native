@@ -95,7 +95,7 @@ jobs:
       - name: Checkout HEAD commit
         uses: actions/checkout@v4
         with:
-          ref: ${{ github.event.pull_request[head].sha }}
+          ref: ${{ github.event.pull_request["head"].sha }}
 
       - name: check and free hdd space left
         run: |
@@ -135,12 +135,6 @@ jobs:
         with:
           tool: hyperfine@1.16
 
-      - name: Fetch head binary
-        uses: actions/cache/restore@v3
-        with:
-          path: bin/cairo-native-run-head
-          key: binary-${{ github.event.pull_request[head].sha }}
-
       - name: Build Cairo Native
         run: |
           make build
@@ -156,8 +150,8 @@ jobs:
             --export-markdown "${f%.*}.md" \
             --export-json "${f%.*}.json" \
             --warmup 3 \
-            -n "head} $(basename $f) (JIT)" "./target/release/cairo-native-run --run-mode=jit -s $f --opt-level 3 --available-gas 18446744073709551615" \
-            -n "$head $(basename $f) (AOT)" "./target/release/cairo-native-run --run-mode=aot -s $f --opt-level 3 --available-gas 18446744073709551615" \
+            -n "head $(basename $f) (JIT)" "./target/release/cairo-native-run --run-mode=jit -s $f --opt-level 3 --available-gas 18446744073709551615" \
+            -n "head $(basename $f) (AOT)" "./target/release/cairo-native-run --run-mode=aot -s $f --opt-level 3 --available-gas 18446744073709551615" \
             >> /dev/stderr
           done
 
@@ -179,7 +173,7 @@ jobs:
       - name: Checkout BASE commit
         uses: actions/checkout@v4
         with:
-          ref: ${{ github.event.pull_request[base].sha }}
+          ref: ${{ github.event.pull_request["base"].sha }}
 
       - name: check and free hdd space left
         run: |
