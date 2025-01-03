@@ -93,7 +93,7 @@ jobs:
     runs-on: ubuntu-24.04
     needs: [ build-binaries ]
     steps:
-      - name: Checkout base commit
+      - name: Checkout HEAD commit
         uses: actions/checkout@v4
         with:
           ref: ${{ github.event.pull_request[head].sha }}
@@ -178,7 +178,7 @@ jobs:
     runs-on: ubuntu-24.04
     needs: [ build-binaries ]
     steps:
-      - name: Checkout base commit
+      - name: Checkout BASE commit
         uses: actions/checkout@v4
         with:
           ref: ${{ github.event.pull_request[base].sha }}
@@ -230,7 +230,7 @@ jobs:
           make deps
           mkdir bench-results-base
           cp programs/benches/*.cairo bench-results-base
-          for f in bench-results-head/*.cairo; do
+          for f in bench-results-base/*.cairo; do
             hyperfine \
             --show-output \
             --export-markdown "${f%.*}.md" \
