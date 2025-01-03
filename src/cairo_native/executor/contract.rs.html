@@ -851,9 +851,7 @@
 <a href="#850" id="850">850</a>
 <a href="#851" id="851">851</a>
 <a href="#852" id="852">852</a>
-<a href="#853" id="853">853</a>
-<a href="#854" id="854">854</a>
-<a href="#855" id="855">855</a></pre></div><pre class="rust"><code><span class="doccomment">//! A specialized executor for Starknet contracts, avoiding the overhead of storing the sierra program registry and
+<a href="#853" id="853">853</a></pre></div><pre class="rust"><code><span class="doccomment">//! A specialized executor for Starknet contracts, avoiding the overhead of storing the sierra program registry and
 //! enabling efficient serialization of the program/data once compiled.
 //!
 //! This executor heavily relies on the stability of the contract entry point argument order.
@@ -1596,7 +1594,6 @@
                     <span class="kw-2">&amp;mut </span>StubSyscallHandler::default(),
                 )
                 .unwrap();
-
             <span class="macro">assert_eq!</span>(result.return_values, <span class="macro">vec!</span>[Felt::from(n), Felt::from(n * <span class="number">2</span>)]);
             <span class="macro">assert_eq!</span>(result.remaining_gas, <span class="number">18446744073709551615</span>);
         });
@@ -1666,9 +1663,8 @@
                 <span class="kw-2">&amp;mut </span>StubSyscallHandler::default(),
             )
             .unwrap();
-
         <span class="macro">assert_eq!</span>(result.return_values, <span class="macro">vec!</span>[Felt::from(<span class="number">3628800</span>)]);
-        <span class="macro">assert_eq!</span>(result.remaining_gas, <span class="number">18446744073709538915</span>);
+        <span class="macro">assert_eq!</span>(result.remaining_gas, <span class="number">18446744073709537615</span>);
     }
 
     <span class="attr">#[rstest]
