@@ -24,6 +24,10 @@ jobs:
       - uses: dtolnay/rust-toolchain@1.83.0
         with:
           components: clippy, rustfmt
+      - uses: dtolnay/rust-toolchain@nightly
+        with:
+          components: clippy, rustfmt
+
       - uses: Swatinem/rust-cache@v2
       - name: add llvm deb repository
         uses: myci-actions/add-deb-repo@11

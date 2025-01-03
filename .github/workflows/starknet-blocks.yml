@@ -23,8 +23,8 @@ jobs:
     steps:
       - uses: actions/checkout@v4
       - uses: dtolnay/rust-toolchain@1.83.0
-        with:
-          components: clippy
+      - uses: dtolnay/rust-toolchain@nightly
+
       - uses: Swatinem/rust-cache@v2
         with:
           key: "ref-955512a96ab317c61d0b12ae230f33176b6005e4"
