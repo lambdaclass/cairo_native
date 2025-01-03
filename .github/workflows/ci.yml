@@ -21,10 +21,9 @@ jobs:
       TABLEGEN_190_PREFIX: /usr/lib/llvm-19/
     steps:
       - uses: actions/checkout@v4
-      - uses: dtolnay/rust-toolchain@1.83.0
+      - uses: dtolnay/rust-toolchain@nightly
         with:
           components: clippy, rustfmt
-      - uses: dtolnay/rust-toolchain@nightly
 
       - uses: Swatinem/rust-cache@v2
       - name: add llvm deb repository
@@ -43,11 +42,8 @@ jobs:
     runs-on: ubuntu-24.04
     steps:
       - uses: actions/checkout@v4
-      - uses: dtolnay/rust-toolchain@1.83.0
-        with:
-          components: rustfmt
       - uses: dtolnay/rust-toolchain@nightly
-      - run: cargo fmt --all -- --check
+      - run: cargo +nightly fmt --all -- --check
       - name: Find Comment
         continue-on-error: true
         if: success() || failure()
@@ -117,7 +113,6 @@ jobs:
       RUST_LOG: cairo_native=debug,cairo_native_test=debug
     steps:
       - uses: actions/checkout@v4
-      - uses: dtolnay/rust-toolchain@1.83.0
       - uses: dtolnay/rust-toolchain@nightly
       - name: check and free hdd space left
         run: |
@@ -169,10 +164,9 @@ jobs:
     steps:
       - uses: actions/checkout@v4
       - name: Rustup toolchain install
-        uses: dtolnay/rust-toolchain@1.83.0
+      - uses: dtolnay/rust-toolchain@nightly
         with:
           components: clippy
-      - uses: dtolnay/rust-toolchain@nightly
       - name: Rust `$PATH` workaround.
         run: echo "$HOME/.cargo/bin" >> $GITHUB_PATH
       - uses: Homebrew/actions/setup-homebrew@master
@@ -209,7 +203,6 @@ jobs:
       RUST_LOG: cairo_native=debug
     steps:
       - uses: actions/checkout@v4
-      - uses: dtolnay/rust-toolchain@1.83.0
       - uses: dtolnay/rust-toolchain@nightly
       - name: check and free hdd space left
         run: |
@@ -281,7 +274,6 @@ jobs:
     runs-on: ubuntu-24.04
     needs: [coverage]
     steps:
-      - uses: dtolnay/rust-toolchain@1.83.0
       - uses: dtolnay/rust-toolchain@nightly
       - name: Retreive cached dependencies
         uses: Swatinem/rust-cache@v2
