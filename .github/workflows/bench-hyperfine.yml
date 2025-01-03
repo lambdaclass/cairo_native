@@ -91,7 +91,6 @@ jobs:
       RUST_LOG: cairo_native=debug,cairo_native_test=debug
     name: Run benches for HEAD
     runs-on: ubuntu-24.04
-    needs: [ build-binaries ]
     steps:
       - name: Checkout HEAD commit
         uses: actions/checkout@v4
@@ -176,7 +175,6 @@ jobs:
       RUST_LOG: cairo_native=debug,cairo_native_test=debug
     name: Run benches for BASE
     runs-on: ubuntu-24.04
-    needs: [ build-binaries ]
     steps:
       - name: Checkout BASE commit
         uses: actions/checkout@v4
