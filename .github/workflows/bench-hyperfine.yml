@@ -43,7 +43,7 @@ jobs:
           sudo rm -rf /usr/share/dotnet/
           sudo rm -rf /usr/local/lib/android
           df -h
-      - uses: dtolnay/rust-toolchain@nighlty
+      - uses: dtolnay/rust-toolchain@nightly
         with:
           components: clippy
       - uses: Swatinem/rust-cache@v2
@@ -118,7 +118,7 @@ jobs:
           df -h
 
       - name: Install Rust Nightly
-        uses: dtolnay/rust-toolchain@nighlty
+        uses: dtolnay/rust-toolchain@nightly
 
       - name: add llvm deb repository
         uses: myci-actions/add-deb-repo@11
