@@ -97,11 +97,20 @@ jobs:
           make runtime
           echo "CAIRO_NATIVE_RUNTIME_LIBRARY=$(pwd)/libcairo_native_runtime.a" > $GITHUB_ENV
 
-      - name: Patch dependencies
+      - name: Patch replay dependencies
         run: |
-          # Patches native dependency to local path, to use current cairo native version
-          echo -e "\n[patch.crates-io]\ncairo-native = { path = \"../cairo_native\" }" >> Cargo.toml
+          # Updates sequencer dependency to local path
+          name='[[:alnum:]_-]+'
+          sequencer_url='"https:\/\/github.com\/lambdaclass\/sequencer\.git"'
+          rev='"[[:alnum:]]+"'
+          new_path='"..\/sequencer\/crates\/\1"'
+          sed -i'' -r "s/^($name) = \{ git = $sequencer_url, rev = $rev/\1 = { path = $new_path/" Cargo.toml
 
+          # Updates native dependency to local path
+          new_path='"..\/cairo_native"'
+          sed -i'' -r "s/^cairo-native = .*/cairo-native.path = $new_path/" Cargo.toml
+
+          git diff
       - name: Run with Native
         if: ${{ matrix.runner == 'native' }}
         run: |
