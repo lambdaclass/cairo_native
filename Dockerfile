@@ -22,6 +22,8 @@ RUN apt update -y && apt install -y \
 
 # Install rust
 RUN curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs | bash -s -- -y
+RUN rustup toolchain install nightly
+
 ENV PATH="/root/.cargo/bin:${PATH}"
 
 # Copy cairo_native code
