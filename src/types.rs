@@ -123,13 +123,6 @@ pub trait TypeBuilder {
         registry: &ProgramRegistry<CoreType, CoreLibfunc>,
     ) -> Result<bool, Self::Error>;
 
-    /// Return whether the type is signed, either directly or indirectly (ex. through
-    /// `Const`).
-    fn is_signed(
-        &self,
-        registry: &ProgramRegistry<CoreType, CoreLibfunc>,
-    ) -> Result<bool, Self::Error>;
-
     /// Return whether the type is a `felt252`, either directly or indirectly (ex. through
     /// `NonZero<BoundedInt<>>`).
     fn is_felt252(
@@ -885,24 +878,6 @@ impl TypeBuilder for CoreTypeConcrete {
                 registry.get_type(&info.ty)?.is_bounded_int(registry)?
             }
 
-            _ => false,
-        })
-    }
-
-    fn is_signed(
-        &self,
-        registry: &ProgramRegistry<CoreType, CoreLibfunc>,
-    ) -> Result<bool, Self::Error> {
-        Ok(match self {
-            CoreTypeConcrete::Sint8(_)
-            | CoreTypeConcrete::Sint16(_)
-            | CoreTypeConcrete::Sint32(_)
-            | CoreTypeConcrete::Sint64(_)
-            | CoreTypeConcrete::Sint128(_) => true,
-            CoreTypeConcrete::Const(info) => {
-                let inner_ty = registry.get_type(&info.inner_ty)?;
-                inner_ty.is_signed(registry)?
-            }
             _ => false,
         })
     }

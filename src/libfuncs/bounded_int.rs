@@ -728,14 +728,14 @@ fn build_trim<'ctx, 'this>(
         value.r#type(),
     )?;
     let trim_type = registry.get_type(&info.param_signatures()[0].ty)?;
-
     let is_invalid = entry.cmpi(context, CmpiPredicate::Eq, value, trimmed_value, location)?;
+    let int_range = trim_type.integer_range(registry)?;
 
     // There is no need to truncate the value type since we're only receiving power-of-two integers
     // and constraining their range a single value from either the lower or upper limit. However,
     // since we're returning a `BoundedInt` we need to offset its internal representation
     // accordingly.
-    let value = if info.trimmed_value == BigInt::ZERO || trim_type.is_signed(registry)? {
+    let value = if info.trimmed_value == BigInt::ZERO || int_range.lower < BigInt::ZERO {
         let offset = entry.const_int_from_type(
             context,
             location,
@@ -748,6 +748,7 @@ fn build_trim<'ctx, 'this>(
     };
 
     entry.append_operation(helper.cond_br(context, is_invalid, [0, 1], [&[], &[value]], location));
+
     Ok(())
 }
 
