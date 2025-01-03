@@ -199,7 +199,7 @@ jobs:
         uses: dtolnay/rust-toolchain@1.83.0
 
       - name: Install Rust Nightly
-        uses: dtolnay/rust-toolchain@nighlty
+        uses: dtolnay/rust-toolchain@nightly
 
       - name: add llvm deb repository
         uses: myci-actions/add-deb-repo@11
