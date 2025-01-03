@@ -45,7 +45,7 @@ endif
 	./scripts/check-corelib-version.sh $(CAIRO_2_VERSION)
 
 .PHONY: build
-build: check-llvm runtime
+build: check-llvm
 	cargo build --release --features=scarb
 
 .PHONY: build-natives

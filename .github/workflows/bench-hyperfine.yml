@@ -123,91 +123,212 @@ jobs:
           sudo rm -rf /usr/local/lib/android
           df -h
       - name: Install Rust
-        if: ${{ steps.cache-binary.outputs.cache-hit != 'true' || steps.cache-library.outputs.cache-hit != 'true' }}
+        if: ${{ steps.cache-binary.outputs.cache-hit != 'true' }}
         uses: dtolnay/rust-toolchain@1.83.0
       - name: add llvm deb repository
-        if: ${{ steps.cache-binary.outputs.cache-hit != 'true' || steps.cache-library.outputs.cache-hit != 'true' }}
+        if: ${{ steps.cache-binary.outputs.cache-hit != 'true' }}
         uses: myci-actions/add-deb-repo@11
         with:
           repo: deb http://apt.llvm.org/jammy/ llvm-toolchain-jammy-19 main
           repo-name: llvm-repo
           keys-asc: https://apt.llvm.org/llvm-snapshot.gpg.key
       - name: Install LLVM
-        if: ${{ steps.cache-binary.outputs.cache-hit != 'true' || steps.cache-library.outputs.cache-hit != 'true' }}
+        if: ${{ steps.cache-binary.outputs.cache-hit != 'true' }}
         run: sudo apt-get update && sudo apt-get install llvm-19 llvm-19-dev llvm-19-runtime clang-19 clang-tools-19 lld-19 libpolly-19-dev libmlir-19-dev mlir-19-tools
 
       - name: Checkout base commit
-        if: ${{ steps.cache-binary.outputs.cache-hit != 'true' || steps.cache-library.outputs.cache-hit != 'true' }}
+        if: ${{ steps.cache-binary.outputs.cache-hit != 'true' }}
         uses: actions/checkout@v4
         with:
           ref: ${{ github.event.pull_request[matrix.branch].sha }}
 
       - name: Fetch Rust cache
-        if: ${{ steps.cache-binary.outputs.cache-hit != 'true' || steps.cache-library.outputs.cache-hit != 'true' }}
+        if: ${{ steps.cache-binary.outputs.cache-hit != 'true' }}
         uses: Swatinem/rust-cache@v2
 
       - name: Build binary
-        if: ${{ steps.cache-binary.outputs.cache-hit != 'true' || steps.cache-library.outputs.cache-hit != 'true' }}
+        if: ${{ steps.cache-binary.outputs.cache-hit != 'true' }}
         run: |
           make build
-          mkdir lib bin
+          mkdir bin
           cp target/release/cairo-native-run bin/cairo-native-run-${{ matrix.branch }}
 
-  run-bench:
+  run-bench-head:
     env:
       MLIR_SYS_190_PREFIX: /usr/lib/llvm-19/
       LLVM_SYS_191_PREFIX: /usr/lib/llvm-19/
       TABLEGEN_190_PREFIX: /usr/lib/llvm-19/
       RUST_LOG: cairo_native=debug,cairo_native_test=debug
-    strategy:
-      matrix:
-        branch: [ base, head ]
-    name: Run benches for ${{ matrix.branch }}
+    name: Run benches for HEAD
     runs-on: ubuntu-24.04
     needs: [ build-binaries ]
     steps:
       - name: Checkout base commit
         uses: actions/checkout@v4
         with:
-          ref: ${{ github.event.pull_request[matrix.branch].sha }}
+          ref: ${{ github.event.pull_request[head].sha }}
+
+      - name: check and free hdd space left
+        if: ${{ steps.cache-binary.outputs.cache-hit != 'true' }}
+        run: |
+          echo "Listing 20 largest packages"
+          dpkg-query -Wf '${Installed-Size}\t${Package}\n' | sort -n | tail -n 20
+          df -h
+          sudo apt-get update
+          sudo apt-get remove -y '^llvm-.*'
+          sudo apt-get remove -y 'php.*'
+          sudo apt-get remove -y '^dotnet-.*'
+          sudo apt-get remove -y '^temurin-.*'
+          sudo apt-get remove -y azure-cli microsoft-edge-stable google-chrome-stable firefox mono-devel
+          sudo apt-get autoremove -y
+          sudo apt-get clean
+          df -h
+          echo "Removing large directories"
+          # deleting 15GB
+          sudo rm -rf /usr/share/dotnet/
+          sudo rm -rf /usr/local/lib/android
+          df -h
+
+      - name: Install Rust
+        if: ${{ steps.cache-binary.outputs.cache-hit != 'true' }}
+        uses: dtolnay/rust-toolchain@1.83.0
+
+      - name: add llvm deb repository
+        if: ${{ steps.cache-binary.outputs.cache-hit != 'true' }}
+        uses: myci-actions/add-deb-repo@11
+        with:
+          repo: deb http://apt.llvm.org/jammy/ llvm-toolchain-jammy-19 main
+          repo-name: llvm-repo
+          keys-asc: https://apt.llvm.org/llvm-snapshot.gpg.key
+
+      - name: Install LLVM
+        if: ${{ steps.cache-binary.outputs.cache-hit != 'true' }}
+        run: sudo apt-get update && sudo apt-get install llvm-19 llvm-19-dev llvm-19-runtime clang-19 clang-tools-19 lld-19 libpolly-19-dev libmlir-19-dev mlir-19-tools
 
       - name: Install Hyperfine
         uses: taiki-e/install-action@v2
         with:
           tool: hyperfine@1.16
 
-      - name: Fetch ${{ matrix.branch }} binary
+      - name: Fetch head binary
         uses: actions/cache/restore@v3
         with:
-          path: bin/cairo-native-run-${{ matrix.branch }}
-          key: binary-${{ github.event.pull_request[matrix.branch].sha }}
+          path: bin/cairo-native-run-head
+          key: binary-${{ github.event.pull_request[head].sha }}
+
+      - name: Build Cairo Native
+        run: |
+          make build
 
       - name: Run Program
         run: |
           make deps
-          mkdir bench-results-${{ matrix.branch }}
-          cp programs/benches/*.cairo bench-results-${{ matrix.branch }}
-          for f in bench-results-${{ matrix.branch }}/*.cairo; do
+          mkdir bench-results-head
+          cp programs/benches/*.cairo bench-results-head
+          for f in bench-results-head/*.cairo; do
             hyperfine \
             --show-output \
             --export-markdown "${f%.*}.md" \
             --export-json "${f%.*}.json" \
             --warmup 3 \
-            -n "${{matrix.branch}} $(basename $f) (JIT)" "./bin/cairo-native-run-${{ matrix.branch }} --run-mode=jit -s $f --opt-level 3 --available-gas 18446744073709551615" \
-            -n "${{matrix.branch}} $(basename $f) (AOT)" "./bin/cairo-native-run-${{ matrix.branch }} --run-mode=aot -s $f --opt-level 3 --available-gas 18446744073709551615" \
+            -n "head} $(basename $f) (JIT)" "./target/release/cairo-native-run --run-mode=jit -s $f --opt-level 3 --available-gas 18446744073709551615" \
+            -n "$head $(basename $f) (AOT)" "./target/release/cairo-native-run --run-mode=aot -s $f --opt-level 3 --available-gas 18446744073709551615" \
             >> /dev/stderr
           done
 
-      - name: Upload benches ${{matrix.branch}}
+      - name: Upload benches
         uses: actions/upload-artifact@v4
         with:
-          name: results-${{matrix.branch}}
-          path: bench-results-${{matrix.branch}}
+          name: results-head
+          path: bench-results-head
+
+  run-bench-base:
+    env:
+      MLIR_SYS_190_PREFIX: /usr/lib/llvm-19/
+      LLVM_SYS_191_PREFIX: /usr/lib/llvm-19/
+      TABLEGEN_190_PREFIX: /usr/lib/llvm-19/
+      RUST_LOG: cairo_native=debug,cairo_native_test=debug
+    name: Run benches for BASE
+    runs-on: ubuntu-24.04
+    needs: [ build-binaries ]
+    steps:
+      - name: Checkout base commit
+        uses: actions/checkout@v4
+        with:
+          ref: ${{ github.event.pull_request[base].sha }}
+
+      - name: check and free hdd space left
+        if: ${{ steps.cache-binary.outputs.cache-hit != 'true' }}
+        run: |
+          echo "Listing 20 largest packages"
+          dpkg-query -Wf '${Installed-Size}\t${Package}\n' | sort -n | tail -n 20
+          df -h
+          sudo apt-get update
+          sudo apt-get remove -y '^llvm-.*'
+          sudo apt-get remove -y 'php.*'
+          sudo apt-get remove -y '^dotnet-.*'
+          sudo apt-get remove -y '^temurin-.*'
+          sudo apt-get remove -y azure-cli microsoft-edge-stable google-chrome-stable firefox mono-devel
+          sudo apt-get autoremove -y
+          sudo apt-get clean
+          df -h
+          echo "Removing large directories"
+          # deleting 15GB
+          sudo rm -rf /usr/share/dotnet/
+          sudo rm -rf /usr/local/lib/android
+          df -h
+
+      - name: Install Rust
+        if: ${{ steps.cache-binary.outputs.cache-hit != 'true' }}
+        uses: dtolnay/rust-toolchain@1.83.0
+
+      - name: add llvm deb repository
+        if: ${{ steps.cache-binary.outputs.cache-hit != 'true' }}
+        uses: myci-actions/add-deb-repo@11
+        with:
+          repo: deb http://apt.llvm.org/jammy/ llvm-toolchain-jammy-19 main
+          repo-name: llvm-repo
+          keys-asc: https://apt.llvm.org/llvm-snapshot.gpg.key
+
+      - name: Install LLVM
+        if: ${{ steps.cache-binary.outputs.cache-hit != 'true' }}
+        run: sudo apt-get update && sudo apt-get install llvm-19 llvm-19-dev llvm-19-runtime clang-19 clang-tools-19 lld-19 libpolly-19-dev libmlir-19-dev mlir-19-tools
+
+      - name: Install Hyperfine
+        uses: taiki-e/install-action@v2
+        with:
+          tool: hyperfine@1.16
+
+      - name: Build Cairo Native
+        run: |
+          make build
+
+      - name: Run Program
+        run: |
+          make deps
+          mkdir bench-results-base
+          cp programs/benches/*.cairo bench-results-base
+          for f in bench-results-head/*.cairo; do
+            hyperfine \
+            --show-output \
+            --export-markdown "${f%.*}.md" \
+            --export-json "${f%.*}.json" \
+            --warmup 3 \
+            -n "base $(basename $f) (JIT)" "./target/release/cairo-native-run --run-mode=jit -s $f --opt-level 3 --available-gas 18446744073709551615" \
+            -n "base $(basename $f) (AOT)" "./target/release/cairo-native-run --run-mode=aot -s $f --opt-level 3 --available-gas 18446744073709551615" \
+            >> /dev/stderr
+          done
+
+      - name: Upload benches
+        uses: actions/upload-artifact@v4
+        with:
+          name: results-base
+          path: bench-results-base
 
   show-outputs:
     name: Print Bench Results
     runs-on: ubuntu-24.04
-    needs: [ run-bench ]
+    needs: [ run-bench-head, run-bench-base ]
     steps:
     - name: Fetch Base Result
       uses: actions/download-artifact@v4
