@@ -95,7 +95,7 @@ jobs:
       - name: Checkout HEAD commit
         uses: actions/checkout@v4
         with:
-          ref: ${{ github.event.pull_request[head].sha }}
+          ref: ${{ github.event.pull_request.head.ref }}
 
       - name: check and free hdd space left
         run: |
@@ -173,7 +173,7 @@ jobs:
       - name: Checkout BASE commit
         uses: actions/checkout@v4
         with:
-          ref: ${{ github.event.pull_request[base].sha }}
+          ref: ${{ github.event.pull_request.base.ref }}
 
       - name: check and free hdd space left
         run: |
