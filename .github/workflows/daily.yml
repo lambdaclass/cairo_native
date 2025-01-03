@@ -61,17 +61,24 @@ jobs:
         working-directory: ./starknet-replay
 
     steps:
-      # We checkout replay first, as it's the main repository for this workflow
+      # We checkout replay as it's the main repository for this workflow
       - name: Checkout Replay
         uses: actions/checkout@v4
         with:
           repository: lambdaclass/starknet-replay
           path: starknet-replay
-      # We need native for building the runtime
+      # We need native if we want to run with cairo native main
       - name: Checkout Native
         uses: actions/checkout@v4
         with:
           path: cairo_native
+      # We need sequencer if we want to run with cairo native main
+      - name: Checkout Native
+        uses: actions/checkout@v4
+        with:
+          repository: lambdaclass/sequencer
+          path: sequencer
+          ref: replay
 
       # Install dependencies
       - uses: ./cairo_native/.github/actions/install-linux-deps
@@ -79,6 +86,10 @@ jobs:
         uses: dtolnay/rust-toolchain@1.83.0
       - name: Retreive cached dependecies
         uses: Swatinem/rust-cache@v2
+        with:
+          workspaces: "starknet-replay -> target"
+          cache-directories: "cairo_native"
+
       - name: Build Cairo Native Runtime Library
         shell: bash
         run: |
@@ -86,10 +97,34 @@ jobs:
           make runtime
           echo "CAIRO_NATIVE_RUNTIME_LIBRARY=$(pwd)/libcairo_native_runtime.a" > $GITHUB_ENV
 
-      - name: Patch dependencies
+      - name: Patch replay dependencies
         run: |
-          # Patches native dependency to local path, to use current cairo native version
-          echo -e "\n[patch.crates-io]\ncairo-native = { path = \"../cairo_native\" }" >> Cargo.toml
+          # Updates sequencer dependency to local path
+          name='[[:alnum:]_-]+'
+          sequencer_url='"https:\/\/github.com\/lambdaclass\/sequencer\.git"'
+          rev='"[[:alnum:]]+"'
+          new_path='"..\/sequencer\/crates\/\1"'
+          sed -i'' -r "s/^($name) = \{ git = $sequencer_url, rev = $rev/\1 = { path = $new_path/" Cargo.toml
+
+          # Updates native dependency to local path
+          new_path='"..\/cairo_native"'
+          sed -i'' -r "s/^cairo-native = .*/cairo-native.path = $new_path/" Cargo.toml
+
+          git diff
+
+      - name: Patch sequencer dependencies
+        run: |
+          cd ../sequencer
+
+          # Updates native dependency to local path
+          new_path='"..\/cairo_native"'
+          sed -i'' -r "s/^cairo-native = .*/cairo-native.path = $new_path/" Cargo.toml
+
+          # Update native submodule
+          git rm crates/blockifier/cairo_native
+          ln -s ../../../cairo_native/ crates/blockifier/cairo_native
+
+          git diff
 
       - name: Run with Native
         if: ${{ matrix.runner == 'native' }}
