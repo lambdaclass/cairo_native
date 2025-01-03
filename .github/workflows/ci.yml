@@ -43,6 +43,8 @@ jobs:
     steps:
       - uses: actions/checkout@v4
       - uses: dtolnay/rust-toolchain@nightly
+        with:
+          components: rustfmt
       - run: cargo +nightly fmt --all -- --check
       - name: Find Comment
         continue-on-error: true
