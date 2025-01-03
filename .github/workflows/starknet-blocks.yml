@@ -63,7 +63,7 @@ jobs:
         run: make deps
       - name: Build Cairo Native project
         if: ${{ matrix.runner == 'native' }}
-        run: cargo +nighlty b --release
+        run: cargo +nightly b --release
 
       - name: Checkout Starknet Replay
         uses: actions/checkout@v4
