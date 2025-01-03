@@ -993,6 +993,12 @@ pub mod trace_dump {
                     ));
                 }
 
+                if let &[Value::Felt(x), Value::Felt(y)] = data.as_slice() {
+                    if x == Felt::from_hex_unchecked("0x8c4fd0147") && y == Felt::ZERO {
+                        breakpoint_marker()
+                    }
+                }
+
                 Value::Array {
                     ty: info.ty.clone(),
                     data,
@@ -1209,6 +1215,11 @@ pub mod trace_dump {
             }
             CoreTypeConcrete::IntRange(_) => todo!(),
         }
+    }
+
+    #[no_mangle]
+    pub extern "C" fn breakpoint_marker() {
+        println!("Breakpoint Marker!");
     }
 
     #[derive(Debug)]
