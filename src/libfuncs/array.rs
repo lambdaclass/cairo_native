@@ -1075,6 +1075,7 @@ fn build_pop<'ctx, 'this, const CONSUME: bool, const REVERSE: bool>(
                     block.const_int(context, location, elem_layout.pad_to_align().size(), 64)?;
                 match metadata.get::<DupOverridesMeta>() {
                     Some(dup_overrides_meta) if dup_overrides_meta.is_overriden(elem_ty) => {
+                        // TODO: If extract_len is 1 there is no need for the for loop.
                         block.append_operation(scf::r#for(
                             k0,
                             value_size,
@@ -1159,7 +1160,7 @@ fn build_pop<'ctx, 'this, const CONSUME: bool, const REVERSE: bool>(
                     )?;
 
                     let data_ptr = if REVERSE {
-                        data_ptr
+                        array_ptr
                     } else {
                         let offset = block.append_op_result(arith::extui(
                             extract_len_value,
