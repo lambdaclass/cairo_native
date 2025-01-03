@@ -111,6 +111,21 @@ jobs:
           sed -i'' -r "s/^cairo-native = .*/cairo-native.path = $new_path/" Cargo.toml
 
           git diff
+
+      - name: Patch sequencer dependencies
+        run: |
+          cd ../sequencer
+
+          # Updates native dependency to local path
+          new_path='"..\/cairo_native"'
+          sed -i'' -r "s/^cairo-native = .*/cairo-native.path = $new_path/" Cargo.toml
+
+          # Update native submodule
+          git rm crates/blockifier/cairo_native
+          ln -s ../../../cairo_native/ crates/blockifier/cairo_native
+
+          git diff
+
       - name: Run with Native
         if: ${{ matrix.runner == 'native' }}
         run: |
