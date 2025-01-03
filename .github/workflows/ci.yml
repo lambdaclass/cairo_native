@@ -164,7 +164,7 @@ jobs:
     steps:
       - uses: actions/checkout@v4
       - name: Rustup toolchain install
-      - uses: dtolnay/rust-toolchain@nightly
+        uses: dtolnay/rust-toolchain@nightly
         with:
           components: clippy
       - name: Rust `$PATH` workaround.
