@@ -61,17 +61,24 @@ jobs:
         working-directory: ./starknet-replay
 
     steps:
-      # We checkout replay first, as it's the main repository for this workflow
+      # We checkout replay as it's the main repository for this workflow
       - name: Checkout Replay
         uses: actions/checkout@v4
         with:
           repository: lambdaclass/starknet-replay
           path: starknet-replay
-      # We need native for building the runtime
+      # We need native if we want to run with cairo native main
       - name: Checkout Native
         uses: actions/checkout@v4
         with:
           path: cairo_native
+      # We need sequencer if we want to run with cairo native main
+      - name: Checkout Native
+        uses: actions/checkout@v4
+        with:
+          repository: lambdaclass/sequencer
+          path: sequencer
+          ref: replay
 
       # Install dependencies
       - uses: ./cairo_native/.github/actions/install-linux-deps
