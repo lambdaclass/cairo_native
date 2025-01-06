@@ -122,6 +122,7 @@ pub trait TypeBuilder {
         &self,
         registry: &ProgramRegistry<CoreType, CoreLibfunc>,
     ) -> Result<bool, Self::Error>;
+
     /// Return whether the type is a `felt252`, either directly or indirectly (ex. through
     /// `NonZero<BoundedInt<>>`).
     fn is_felt252(
