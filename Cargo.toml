@@ -1,6 +1,6 @@
 [package]
 name = "cairo-native"
-version = "0.2.5-rc2"
+version = "0.2.6"
 edition = "2021"
 license = "Apache-2.0"
 description = "A compiler to convert Cairo's intermediate representation Sierra code to MLIR."
@@ -56,7 +56,7 @@ with-runtime = ["dep:cairo-native-runtime"]
 normal = ["aquamarine"]
 
 [dependencies]
-aquamarine = "0.5.0"
+aquamarine = "0.6.0"
 bumpalo = "3.16.0"
 cairo-lang-compiler = "2.10.0-rc.0"
 cairo-lang-defs = "2.10.0-rc.0"
@@ -70,7 +70,7 @@ itertools = "0.13.0"
 lazy_static = "1.5"
 libc = "0.2"
 llvm-sys = "191.0.0"
-melior = { version = "0.20.0", features = ["ods-dialects", "helpers"] }
+melior = { version = "0.20.2", features = ["ods-dialects", "helpers"] }
 mlir-sys = { version = "0.4.1" }
 num-bigint = "0.4.6"
 num-traits = "0.2"
@@ -79,8 +79,8 @@ starknet-types-core = { version = "0.1.7", default-features = false, features = 
     "serde",
     "num-traits",
 ] }
-tempfile = "3.13"
-thiserror = "2.0.8"
+tempfile = "3.15.0"
+thiserror = "2.0.9"
 tracing = "0.1"
 utf8_iter = "1.0.4"
 
@@ -91,7 +91,7 @@ cairo-lang-sierra-gas = "2.10.0-rc.0"
 cairo-lang-starknet = "2.10.0-rc.0"
 cairo-lang-utils = "2.10.0-rc.0"
 cairo-lang-starknet-classes = "2.10.0-rc.0"
-cairo-native-runtime = { version = "0.2.5-rc2", path = "runtime", optional = true }
+cairo-native-runtime = { version = "0.2.6", path = "runtime", optional = true }
 clap = { version = "4.5.23", features = ["derive"], optional = true }
 libloading = "0.8.6"
 tracing-subscriber = { version = "0.3.19", features = [
@@ -125,14 +125,14 @@ criterion = { version = "0.5.1", features = ["html_reports"] }
 lambdaworks-math = "0.11.0"
 pretty_assertions_sorted = "1.2.3"
 proptest = "1.5.0"
-rstest = "0.23.0"
+rstest = "0.24.0"
 test-case = "3.3"
 walkdir = "2.5.0"
 serde_json = { version = "1.0.128" }
 rayon = "1.10.0"
 
 [build-dependencies]
-cc = "1.2.3"
+cc = "1.2.7"
 
 [profile.optimized-dev]
 inherits = "dev"
