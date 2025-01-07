@@ -272,7 +272,7 @@ impl AotContractExecutor {
             let get_version = library
                 .get::<extern "C" fn(*mut u8, usize) -> usize>(b"cairo_native__get_version")?;
 
-            let mut version_buffer = [0u8; 5];
+            let mut version_buffer = [0u8; 16];
             let version_len = get_version(version_buffer.as_mut_ptr(), version_buffer.len());
 
             let target_version = env!("CARGO_PKG_VERSION");

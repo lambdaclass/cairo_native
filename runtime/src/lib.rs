@@ -39,13 +39,10 @@ lazy_static! {
 #[no_mangle]
 #[allow(clippy::missing_safety_doc)]
 pub unsafe extern "C" fn cairo_native__get_version(target: *mut u8, length: usize) -> usize {
-    let target = slice::from_raw_parts_mut(target, length);
-
     let version = env!("CARGO_PKG_VERSION");
-    assert!(
-        length == version.len(),
-        "target buffer should have the same size as version buffer"
-    );
+    assert!(length > version.len(), "version buffer not big enough");
+
+    let target = slice::from_raw_parts_mut(target, version.len());
 
     target.copy_from_slice(version.as_bytes());
 
