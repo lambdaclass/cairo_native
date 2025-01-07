@@ -45,6 +45,7 @@ pub unsafe extern "C" fn cairo_native__get_version(target: *mut u8, length: usiz
     let target = slice::from_raw_parts_mut(target, version.len());
 
     target.copy_from_slice(version.as_bytes());
+    target[version.len()] = b'\0';
 
     version.len()
 }
