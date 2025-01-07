@@ -21,13 +21,12 @@ use cairo_lang_sierra::{
     ids::ConcreteTypeId,
     program_registry::ProgramRegistry,
 };
-use cairo_native_runtime::FeltDict;
 use educe::Educe;
 use num_bigint::{BigInt, BigUint, Sign};
 use num_traits::{Euclid, One};
 use starknet_types_core::felt::Felt;
 use std::{
-    alloc::{alloc, Layout},
+    alloc::Layout,
     collections::HashMap,
     ffi::c_void,
     mem::forget,
@@ -35,6 +34,8 @@ use std::{
     rc::Rc,
     slice,
 };
+#[cfg(feature = "with-runtime")]
+use {cairo_native_runtime::FeltDict, std::alloc::alloc};
 
 /// A Value is a value that can be passed to either the JIT engine or a compiled program as an argument or received as a result.
 ///
@@ -394,6 +395,7 @@ impl Value {
                         )))?
                     }
                 }
+                #[cfg(feature = "with-runtime")]
                 Self::Felt252Dict { value: map, .. } => {
                     if let CoreTypeConcrete::Felt252Dict(info) = Self::resolve_type(ty, registry)? {
                         let elem_ty = registry.get_type(&info.ty)?;
@@ -450,6 +452,10 @@ impl Value {
                             type_id.debug_name
                         )))?
                     }
+                }
+                #[cfg(not(feature = "with-runtime"))]
+                Self::Felt252Dict { .. } => {
+                    native_panic!("runtime is disabled, dicts are not available");
                 }
                 Self::Uint8(value) => {
                     let ptr = arena.alloc_layout(Layout::new::<u8>()).cast();
@@ -821,6 +827,7 @@ impl Value {
                         debug_name: type_id.debug_name.as_ref().map(|x| x.to_string()),
                     }
                 }
+                #[cfg(feature = "with-runtime")]
                 CoreTypeConcrete::Felt252Dict(info)
                 | CoreTypeConcrete::SquashedFelt252Dict(info) => {
                     let dict = Rc::from_raw(ptr.cast::<*const FeltDict>().read());
@@ -861,6 +868,10 @@ impl Value {
                         value: output_map,
                         debug_name: type_id.debug_name.as_ref().map(|x| x.to_string()),
                     }
+                }
+                #[cfg(not(feature = "with-runtime"))]
+                CoreTypeConcrete::Felt252Dict(_) | CoreTypeConcrete::SquashedFelt252Dict(_) => {
+                    native_panic!("runtime is disabled, dicts are not available")
                 }
                 CoreTypeConcrete::Felt252DictEntry(_) => {
                     native_panic!("unimplemented: should be impossible to return")

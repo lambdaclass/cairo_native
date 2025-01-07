@@ -167,7 +167,7 @@ pub fn get_integer_layout(width: u32) -> Layout {
 }
 
 /// Compile a cairo program found at the given path to sierra.
-pub fn cairo_to_sierra(program: &Path) -> anyhow::Result<Arc<Program>> {
+pub fn cairo_to_sierra(program: &Path) -> crate::error::Result<Arc<Program>> {
     if program
         .extension()
         .map(|x| {
@@ -184,14 +184,14 @@ pub fn cairo_to_sierra(program: &Path) -> anyhow::Result<Arc<Program>> {
                 ..Default::default()
             },
         )
-        .map(Arc::new)
+        .map_err(|err| crate::error::Error::ProgramParser(err.to_string()))
     } else {
         let source = std::fs::read_to_string(program)?;
         cairo_lang_sierra::ProgramParser::new()
             .parse(&source)
-            .map_err(|err| anyhow::Error::msg(err.to_string()))
-            .map(Arc::new)
+            .map_err(|err| crate::error::Error::ProgramParser(err.to_string()))
     }
+    .map(Arc::new)
 }
 
 /// Returns the given entry point if present.

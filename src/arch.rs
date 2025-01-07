@@ -188,12 +188,15 @@ impl AbiArgument for ValueWithInfoWrapper<'_> {
                 #[cfg(not(feature = "with-runtime"))]
                 native_panic!("enable the `with-runtime` feature to use felt252 dicts");
 
-                // TODO: Assert that `info.ty` matches all the values' types.
+                #[cfg(feature = "with-runtime")]
+                {
+                    // TODO: Assert that `info.ty` matches all the values' types.
 
-                self.value
-                    .to_ptr(self.arena, self.registry, self.type_id, find_dict_overrides)?
-                    .as_ptr()
-                    .to_bytes(buffer, find_dict_overrides)?
+                    self.value
+                        .to_ptr(self.arena, self.registry, self.type_id, find_dict_overrides)?
+                        .as_ptr()
+                        .to_bytes(buffer, find_dict_overrides)?
+                }
             }
             (
                 Value::Secp256K1Point(Secp256k1Point { x, y, is_infinity }),

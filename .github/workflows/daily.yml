@@ -41,16 +41,6 @@ jobs:
           - 800350
           - 800400
           - 800450
-          - 800500
-          - 800550
-          - 800600
-          - 800650
-          - 800700
-          - 800750
-          - 800800
-          - 800850
-          - 800900
-          - 800950
           - 900000
           - 900100
           - 900200
@@ -128,50 +118,6 @@ jobs:
     # We always run the compare job, to ensure that a single run job failing
     # would not cancel the whole comparison.
     if: ${{ always() }}
-    strategy:
-      matrix:
-        block:
-          - 740000
-          - 741000
-          - 742000
-          - 743000
-          - 744000
-          - 745000
-          - 746000
-          - 747000
-          - 748000
-          - 749000
-          - 800000
-          - 800050
-          - 800100
-          - 800150
-          - 800200
-          - 800250
-          - 800300
-          - 800350
-          - 800400
-          - 800450
-          - 800500
-          - 800550
-          - 800600
-          - 800650
-          - 800700
-          - 800750
-          - 800800
-          - 800850
-          - 800900
-          - 800950
-          - 900000
-          - 900100
-          - 900200
-          - 900300
-          - 900400
-          - 900500
-          - 900600
-          - 900700
-          - 900800
-          - 900900
-      fail-fast: false
     defaults:
       run:
         shell: bash
@@ -181,14 +127,16 @@ jobs:
       - name: Fetch Native dumps
         uses: actions/download-artifact@v4
         with:
-          name: dump-${{matrix.block}}-native
+          pattern: dump-*-native
           path: state_dumps/native
+          merge-multiple: true
         continue-on-error: true
       - name: Fetch VM dumps
         uses: actions/download-artifact@v4
         with:
-          name: dump-${{matrix.block}}-vm
+          pattern: dump-*-vm
           path: state_dumps/vm
+          merge-multiple: true
         continue-on-error: true
 
       - name: Compare states
@@ -198,12 +146,6 @@ jobs:
       - name: Prepare env vars
         if: ${{ always() }}
         run: |
-          # Save blocks to env var
-          BLOCK_START=${{ matrix.block }}
-          BLOCK_END=$(($BLOCK_START + $RANGE_SIZE - 1))
-          echo "BLOCK_END=$BLOCK_END" | tee -a $GITHUB_ENV
-          echo "BLOCK_START=$BLOCK_START" | tee -a $GITHUB_ENV
-
           # Save workflow url
           REPO_URL="${{ github.server_url }}/${{ github.repository }}"
           echo "WORKFLOW_URL=$REPO_URL/actions/runs/${{ github.run_id }}" | tee -a $GITHUB_ENV
