@@ -90,6 +90,12 @@ jobs:
           workspaces: "starknet-replay -> target"
           cache-directories: "cairo_native"
 
+      - name: Cache rpc calls
+        uses: actions/cache@v3
+        with:
+          path: starknet-replay/rpc_cache
+          key: cache-${{matrix.block}}-${{matrix.runner}}
+
       - name: Build Cairo Native Runtime Library
         shell: bash
         run: |
