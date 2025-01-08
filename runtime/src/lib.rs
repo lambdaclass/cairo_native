@@ -42,9 +42,9 @@ pub unsafe extern "C" fn cairo_native__get_version(target: *mut u8, length: usiz
     let version = env!("CARGO_PKG_VERSION");
     assert!(length > version.len(), "version buffer not big enough");
 
-    let target = slice::from_raw_parts_mut(target, version.len());
+    let target = slice::from_raw_parts_mut(target, length);
 
-    target.copy_from_slice(version.as_bytes());
+    target[..version.len()].copy_from_slice(version.as_bytes());
     target[version.len()] = b'\0';
 
     version.len()
