@@ -1023,10 +1023,10 @@
 <span class="attr">#[no_mangle]
 #[allow(clippy::missing_safety_doc)]
 </span><span class="kw">pub unsafe extern </span><span class="string">"C" </span><span class="kw">fn </span>cairo_native__get_version(target: <span class="kw-2">*mut </span>u8, length: usize) -&gt; usize {
-    <span class="kw">let </span>target = slice::from_raw_parts_mut(target, length);
-
     <span class="kw">let </span>version = <span class="macro">env!</span>(<span class="string">"CARGO_PKG_VERSION"</span>);
     <span class="macro">assert!</span>(length &gt; version.len(), <span class="string">"version buffer not big enough"</span>);
+
+    <span class="kw">let </span>target = slice::from_raw_parts_mut(target, version.len());
 
     target.copy_from_slice(version.as_bytes());
     target[version.len()] = <span class="string">b'\0'</span>;
