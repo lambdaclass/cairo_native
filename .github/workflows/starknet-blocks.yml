@@ -22,9 +22,8 @@ jobs:
         block: [742001, 769597, 779328, 801008, 803072]
     steps:
       - uses: actions/checkout@v4
-      - uses: dtolnay/rust-toolchain@1.83.0
-        with:
-          components: clippy
+      - uses: dtolnay/rust-toolchain@nightly
+
       - uses: Swatinem/rust-cache@v2
         with:
           key: "ref-955512a96ab317c61d0b12ae230f33176b6005e4"
@@ -64,18 +63,13 @@ jobs:
         run: make deps
       - name: Build Cairo Native project
         if: ${{ matrix.runner == 'native' }}
-        run: cargo b --release
-      - name: Build runtime
-        run: |
-          make runtime
-          cargo update
-          echo "CAIRO_NATIVE_RUNTIME_LIBRARY=$(pwd)/libcairo_native_runtime.a" > $GITHUB_ENV
+        run: cargo +nightly b --release
 
       - name: Checkout Starknet Replay
         uses: actions/checkout@v4
         with:
           repository: lambdaclass/starknet-replay
-          ref: 955512a96ab317c61d0b12ae230f33176b6005e4
+          ref: db6bebdb011b3ae1a7df1146b0bd274f8c03a139
           path: replay
 
       - name: Install Starknet Replay deps
@@ -91,8 +85,8 @@ jobs:
         if: ${{ matrix.runner == 'native' }}
         run: |
           cd replay
-          cargo build --release --bin replay
-          cargo run --release --features state_dump block mainnet ${{ matrix.block }}
+          cargo build -Z bindeps --release --bin replay
+          cargo run -Z bindeps --release --features state_dump block mainnet ${{ matrix.block }}
 
       - name: Run Blocks VM
         if: ${{ matrix.runner == 'vm' }}

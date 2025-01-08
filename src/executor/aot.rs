@@ -62,6 +62,7 @@ impl AotNativeExecutor {
             .map_err(io::Error::from)?;
 
         let object_data = crate::module_to_object(&module, opt_level)?;
+
         crate::object_to_shared_lib(&object_data, &library_path)?;
 
         Ok(Self {
