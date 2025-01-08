@@ -12,7 +12,7 @@ use cairo_lang_sierra::{
     extensions::{
         bounded_int::{
             BoundedIntConcreteLibfunc, BoundedIntConstrainConcreteLibfunc,
-            BoundedIntDivRemConcreteLibfunc,
+            BoundedIntDivRemConcreteLibfunc, BoundedIntTrimConcreteLibfunc,
         },
         core::{CoreLibfunc, CoreType},
         lib_func::SignatureOnlyConcreteLibfunc,
@@ -56,6 +56,9 @@ pub fn build<'ctx, 'this>(
         }
         BoundedIntConcreteLibfunc::Constrain(info) => {
             build_constrain(context, registry, entry, location, helper, metadata, info)
+        }
+        BoundedIntConcreteLibfunc::Trim(info) => {
+            build_trim(context, registry, entry, location, helper, metadata, info)
         }
         BoundedIntConcreteLibfunc::IsZero(info) => {
             build_is_zero(context, registry, entry, location, helper, metadata, info)
@@ -699,6 +702,56 @@ fn build_constrain<'ctx, 'this>(
     Ok(())
 }
 
+/// Makes a downcast of a type `T` to `BoundedInt<T::MIN, T::MAX - 1>`
+/// or `BoundedInt<T::MIN + 1, T::MAX>` where `T` can be any type of signed
+/// or unsigned integer.
+///
+/// ```cairo
+/// extern fn bounded_int_trim<T, const TRIMMED_VALUE: felt252, impl H: TrimHelper<T, TRIMMED_VALUE>>(
+///     value: T,
+/// ) -> core::internal::OptionRev<H::Target> nopanic;
+/// ```
+fn build_trim<'ctx, 'this>(
+    context: &'ctx Context,
+    registry: &ProgramRegistry<CoreType, CoreLibfunc>,
+    entry: &'this Block<'ctx>,
+    location: Location<'ctx>,
+    helper: &LibfuncHelper<'ctx, 'this>,
+    _metadata: &mut MetadataStorage,
+    info: &BoundedIntTrimConcreteLibfunc,
+) -> Result<()> {
+    let value: Value = entry.arg(0)?;
+    let trimmed_value = entry.const_int_from_type(
+        context,
+        location,
+        info.trimmed_value.clone(),
+        value.r#type(),
+    )?;
+    let trim_type = registry.get_type(&info.param_signatures()[0].ty)?;
+    let is_invalid = entry.cmpi(context, CmpiPredicate::Eq, value, trimmed_value, location)?;
+    let int_range = trim_type.integer_range(registry)?;
+
+    // There is no need to truncate the value type since we're only receiving power-of-two integers
+    // and constraining their range a single value from either the lower or upper limit. However,
+    // since we're returning a `BoundedInt` we need to offset its internal representation
+    // accordingly.
+    let value = if info.trimmed_value == BigInt::ZERO || int_range.lower < BigInt::ZERO {
+        let offset = entry.const_int_from_type(
+            context,
+            location,
+            &info.trimmed_value + 1,
+            value.r#type(),
+        )?;
+        entry.append_op_result(arith::subi(value, offset, location))?
+    } else {
+        value
+    };
+
+    entry.append_operation(helper.cond_br(context, is_invalid, [0, 1], [&[], &[value]], location));
+
+    Ok(())
+}
+
 /// Generate MLIR operations for the `bounded_int_is_zero` libfunc.
 fn build_is_zero<'ctx, 'this>(
     context: &'ctx Context,
@@ -760,4 +813,138 @@ fn build_wrap_non_zero<'ctx, 'this>(
         metadata,
         &info.signature.param_signatures,
     )
+}
+
+#[cfg(test)]
+mod test {
+    use cairo_vm::Felt252;
+
+    use crate::{
+        context::NativeContext, execution_result::ExecutionResult, executor::JitNativeExecutor,
+        utils::test::load_cairo, OptLevel, Value,
+    };
+
+    #[test]
+    fn test_trim_some_pos_i8() {
+        let (_, program) = load_cairo!(
+            use core::internal::{OptionRev, bounded_int::BoundedInt};
+            use core::internal::bounded_int;
+            fn main() -> BoundedInt<-128, 126> {
+                let num = match bounded_int::trim::<i8, 0x7f>(1) {
+                    OptionRev::Some(n) => n,
+                    OptionRev::None => 0,
+                };
+
+                num
+            }
+        );
+        let ctx = NativeContext::new();
+        let module = ctx.compile(&program, false, None).unwrap();
+        let executor = JitNativeExecutor::from_native_module(module, OptLevel::Default).unwrap();
+        let ExecutionResult {
+            remaining_gas: _,
+            return_value,
+            builtin_stats: _,
+        } = executor
+            .invoke_dynamic(&program.funcs[0].id, &[], None)
+            .unwrap();
+
+        let Value::BoundedInt { value, range: _ } = return_value else {
+            panic!();
+        };
+        assert_eq!(value, Felt252::from(1_u8));
+    }
+
+    #[test]
+    fn test_trim_some_neg_i8() {
+        let (_, program) = load_cairo!(
+            use core::internal::{OptionRev, bounded_int::BoundedInt};
+            use core::internal::bounded_int;
+            fn main() -> BoundedInt<-127, 127> {
+                let num = match bounded_int::trim::<i8, -0x80>(1) {
+                    OptionRev::Some(n) => n,
+                    OptionRev::None => 1,
+                };
+
+                num
+            }
+        );
+        let ctx = NativeContext::new();
+        let module = ctx.compile(&program, false, None).unwrap();
+        let executor = JitNativeExecutor::from_native_module(module, OptLevel::Default).unwrap();
+        let ExecutionResult {
+            remaining_gas: _,
+            return_value,
+            builtin_stats: _,
+        } = executor
+            .invoke_dynamic(&program.funcs[0].id, &[], None)
+            .unwrap();
+
+        let Value::BoundedInt { value, range: _ } = return_value else {
+            panic!();
+        };
+        assert_eq!(value, Felt252::from(1_u8));
+    }
+
+    #[test]
+    fn test_trim_some_u32() {
+        let (_, program) = load_cairo!(
+            use core::internal::{OptionRev, bounded_int::BoundedInt};
+            use core::internal::bounded_int;
+            fn main() -> BoundedInt<0, 4294967294> {
+                let num = match bounded_int::trim::<u32, 0xffffffff>(0xfffffffe) {
+                    OptionRev::Some(n) => n,
+                    OptionRev::None => 0,
+                };
+
+                num
+            }
+        );
+        let ctx = NativeContext::new();
+        let module = ctx.compile(&program, false, None).unwrap();
+        let executor = JitNativeExecutor::from_native_module(module, OptLevel::Default).unwrap();
+        let ExecutionResult {
+            remaining_gas: _,
+            return_value,
+            builtin_stats: _,
+        } = executor
+            .invoke_dynamic(&program.funcs[0].id, &[], None)
+            .unwrap();
+
+        let Value::BoundedInt { value, range: _ } = return_value else {
+            panic!();
+        };
+        assert_eq!(value, Felt252::from(0xfffffffe_u32));
+    }
+
+    #[test]
+    fn test_trim_none() {
+        let (_, program) = load_cairo!(
+            use core::internal::{OptionRev, bounded_int::BoundedInt};
+            use core::internal::bounded_int;
+            fn main() -> BoundedInt<-32767, 32767> {
+                let num = match bounded_int::trim::<i16, -0x8000>(-0x8000) {
+                    OptionRev::Some(n) => n,
+                    OptionRev::None => 0,
+                };
+
+                num
+            }
+        );
+        let ctx = NativeContext::new();
+        let module = ctx.compile(&program, false, None).unwrap();
+        let executor = JitNativeExecutor::from_native_module(module, OptLevel::Default).unwrap();
+        let ExecutionResult {
+            remaining_gas: _,
+            return_value,
+            builtin_stats: _,
+        } = executor
+            .invoke_dynamic(&program.funcs[0].id, &[], None)
+            .unwrap();
+
+        let Value::BoundedInt { value, range: _ } = return_value else {
+            panic!();
+        };
+        assert_eq!(value, Felt252::from(0));
+    }
 }
