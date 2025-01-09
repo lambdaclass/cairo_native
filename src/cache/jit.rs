@@ -69,23 +69,48 @@ where
 
 #[cfg(test)]
 mod test {
+    use cairo_lang_sierra::ProgramParser;
+
     use super::*;
-    use crate::utils::test::load_cairo;
     use std::time::Instant;
 
     #[test]
     fn test_cache() {
-        let (_, program1) = load_cairo!(
-            fn main(lhs: felt252, rhs: felt252) -> felt252 {
-                lhs + rhs
-            }
-        );
+        let program1 = ProgramParser::new()
+            .parse(
+                r#"
+            type [0] = felt252 [storable: true, drop: true, dup: true, zero_sized: false];
 
-        let (_, program2) = load_cairo!(
-            fn main(lhs: felt252, rhs: felt252) -> felt252 {
-                lhs - rhs
-            }
-        );
+            libfunc [0] = felt252_add;
+            libfunc [2] = store_temp<[0]>;
+
+            [0]([0], [1]) -> ([2]); // 0
+            [2]([2]) -> ([2]); // 1
+            return([2]); // 2
+
+            [0]@0([0]: [0], [1]: [0]) -> ([0]);
+        "#,
+            )
+            .map_err(|e| e.to_string())
+            .unwrap();
+
+        let program2 = ProgramParser::new()
+            .parse(
+                r#"
+            type [0] = felt252 [storable: true, drop: true, dup: true, zero_sized: false];
+
+            libfunc [0] = felt252_sub;
+            libfunc [2] = store_temp<[0]>;
+
+            [0]([0], [1]) -> ([2]); // 0
+            [2]([2]) -> ([2]); // 1
+            return([2]); // 2
+
+            [0]@0([0]: [0], [1]: [0]) -> ([0]);
+        "#,
+            )
+            .map_err(|e| e.to_string())
+            .unwrap();
 
         let context = NativeContext::new();
         let mut cache: JitProgramCache<&'static str> = JitProgramCache::new(&context);

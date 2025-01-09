@@ -89,7 +89,8 @@ where
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::{utils::test::load_cairo, values::Value};
+    use crate::values::Value;
+    use cairo_lang_sierra::ProgramParser;
     use starknet_types_core::felt::Felt;
 
     #[test]
@@ -97,11 +98,24 @@ mod tests {
         let native_context = NativeContext::new();
         let mut cache = AotProgramCache::new(&native_context);
 
-        let (_, program) = load_cairo! {
-            fn run_test() -> felt252 {
-                42
-            }
-        };
+        let program = ProgramParser::new()
+            .parse(
+                r#"
+            type [0] = felt252 [storable: true, drop: true, dup: true, zero_sized: false];
+            type [1] = Const<[0], 42> [storable: false, drop: false, dup: false, zero_sized: false];
+
+            libfunc [0] = const_as_immediate<[1]>;
+            libfunc [1] = store_temp<[0]>;
+
+            [0]() -> ([0]); // 0
+            [1]([0]) -> ([0]); // 1
+            return([0]); // 2
+
+            [0]@0() -> ([0]);
+        "#,
+            )
+            .map_err(|e| e.to_string())
+            .unwrap();
 
         let function_id = &program.funcs.first().expect("should have a function").id;
         let executor = cache.compile_and_insert((), &program, OptLevel::default());
