@@ -232,7 +232,8 @@ mod test {
             [0]@0([0]: [1]) -> ([1]);
             "#).map_err(|e| e.to_string()).unwrap();
 
-        let result = run_sierra_program(program.clone(), &[jit_enum!(0, jit_struct!())]).return_value;
+        let result =
+            run_sierra_program(program.clone(), &[jit_enum!(0, jit_struct!())]).return_value;
         assert_eq!(result, jit_enum!(1, jit_struct!()));
 
         let result = run_sierra_program(program, &[jit_enum!(1, jit_struct!())]).return_value;
@@ -419,7 +420,8 @@ mod test {
             [0]@0([0]: [1]) -> ([2]);
             "#).map_err(|e| e.to_string()).unwrap();
 
-        let result = run_sierra_program(program.clone(), &[jit_enum!(1, jit_struct!())]).return_value;
+        let result =
+            run_sierra_program(program.clone(), &[jit_enum!(1, jit_struct!())]).return_value;
         assert_eq!(result, Value::Felt252(1.into()));
 
         let result = run_sierra_program(program, &[jit_enum!(0, jit_struct!())]).return_value;
