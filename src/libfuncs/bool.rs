@@ -212,7 +212,7 @@ mod test {
     use cairo_lang_sierra::ProgramParser;
 
     use crate::{
-        utils::test::{jit_enum, jit_struct, load_cairo, run_program, run_sierra_program},
+        utils::test::{jit_enum, jit_struct, run_sierra_program},
         values::Value,
     };
 
