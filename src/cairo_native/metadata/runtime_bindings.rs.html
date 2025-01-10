@@ -948,14 +948,7 @@
 <a href="#947" id="947">947</a>
 <a href="#948" id="948">948</a>
 <a href="#949" id="949">949</a>
-<a href="#950" id="950">950</a>
-<a href="#951" id="951">951</a>
-<a href="#952" id="952">952</a>
-<a href="#953" id="953">953</a>
-<a href="#954" id="954">954</a>
-<a href="#955" id="955">955</a>
-<a href="#956" id="956">956</a>
-<a href="#957" id="957">957</a></pre></div><pre class="rust"><code><span class="doccomment">//! # Runtime library bindings
+<a href="#950" id="950">950</a></pre></div><pre class="rust"><code><span class="doccomment">//! # Runtime library bindings
 //!
 //! This metadata ensures that the bindings to the runtime functions exist in the current
 //! compilation context.
@@ -1496,6 +1489,8 @@
         module: <span class="kw-2">&amp;</span>Module,
         block: <span class="kw-2">&amp;</span><span class="lifetime">'a </span>Block&lt;<span class="lifetime">'c</span>&gt;,
         location: Location&lt;<span class="lifetime">'c</span>&gt;,
+        dup_fn: <span class="prelude-ty">Option</span>&lt;Value&lt;<span class="lifetime">'c</span>, <span class="lifetime">'a</span>&gt;&gt;,
+        drop_fn: <span class="prelude-ty">Option</span>&lt;Value&lt;<span class="lifetime">'c</span>, <span class="lifetime">'a</span>&gt;&gt;,
         layout: Layout,
     ) -&gt; <span class="prelude-ty">Result</span>&lt;Value&lt;<span class="lifetime">'c</span>, <span class="lifetime">'a</span>&gt;&gt;
     <span class="kw">where
@@ -1510,7 +1505,12 @@
                 TypeAttribute::new(
                     FunctionType::new(
                         context,
-                        <span class="kw-2">&amp;</span>[i64_ty, i64_ty],
+                        <span class="kw-2">&amp;</span>[
+                            i64_ty,
+                            i64_ty,
+                            llvm::r#type::pointer(context, <span class="number">0</span>),
+                            llvm::r#type::pointer(context, <span class="number">0</span>),
+                        ],
                         <span class="kw-2">&amp;</span>[llvm::r#type::pointer(context, <span class="number">0</span>)],
                     )
                     .into(),
@@ -1534,10 +1534,23 @@
         <span class="kw">let </span>size = block.const_int_from_type(context, location, layout.size(), i64_ty)<span class="question-mark">?</span>;
         <span class="kw">let </span>align = block.const_int_from_type(context, location, layout.align(), i64_ty)<span class="question-mark">?</span>;
 
+        <span class="kw">let </span>dup_fn = <span class="kw">match </span>dup_fn {
+            <span class="prelude-val">Some</span>(x) =&gt; x,
+            <span class="prelude-val">None </span>=&gt; {
+                block.append_op_result(llvm::zero(llvm::r#type::pointer(context, <span class="number">0</span>), location))<span class="question-mark">?
+            </span>}
+        };
+        <span class="kw">let </span>drop_fn = <span class="kw">match </span>drop_fn {
+            <span class="prelude-val">Some</span>(x) =&gt; x,
+            <span class="prelude-val">None </span>=&gt; {
+                block.append_op_result(llvm::zero(llvm::r#type::pointer(context, <span class="number">0</span>), location))<span class="question-mark">?
+            </span>}
+        };
+
         block.append_op_result(func::call(
             context,
             FlatSymbolRefAttribute::new(context, <span class="string">"cairo_native__dict_new"</span>),
-            <span class="kw-2">&amp;</span>[size, align],
+            <span class="kw-2">&amp;</span>[size, align, dup_fn, drop_fn],
             <span class="kw-2">&amp;</span>[llvm::r#type::pointer(context, <span class="number">0</span>)],
             location,
         ))
@@ -1553,7 +1566,6 @@
         module: <span class="kw-2">&amp;</span>Module,
         block: <span class="kw-2">&amp;</span><span class="lifetime">'a </span>Block&lt;<span class="lifetime">'c</span>&gt;,
         ptr: Value&lt;<span class="lifetime">'c</span>, <span class="lifetime">'a</span>&gt;,
-        drop_fn: <span class="prelude-ty">Option</span>&lt;Value&lt;<span class="lifetime">'c</span>, <span class="lifetime">'a</span>&gt;&gt;,
         location: Location&lt;<span class="lifetime">'c</span>&gt;,
     ) -&gt; <span class="prelude-ty">Result</span>&lt;OperationRef&lt;<span class="lifetime">'c</span>, <span class="lifetime">'a</span>&gt;&gt;
     <span class="kw">where
@@ -1564,15 +1576,7 @@
                 context,
                 StringAttribute::new(context, <span class="string">"cairo_native__dict_drop"</span>),
                 TypeAttribute::new(
-                    FunctionType::new(
-                        context,
-                        <span class="kw-2">&amp;</span>[
-                            llvm::r#type::pointer(context, <span class="number">0</span>),
-                            llvm::r#type::pointer(context, <span class="number">0</span>),
-                        ],
-                        <span class="kw-2">&amp;</span>[],
-                    )
-                    .into(),
+                    FunctionType::new(context, <span class="kw-2">&amp;</span>[llvm::r#type::pointer(context, <span class="number">0</span>)], <span class="kw-2">&amp;</span>[]).into(),
                 ),
                 Region::new(),
                 <span class="kw-2">&amp;</span>[
@@ -1590,17 +1594,10 @@
             ));
         }
 
-        <span class="kw">let </span>drop_fn = <span class="kw">match </span>drop_fn {
-            <span class="prelude-val">Some</span>(x) =&gt; x,
-            <span class="prelude-val">None </span>=&gt; {
-                block.append_op_result(llvm::zero(llvm::r#type::pointer(context, <span class="number">0</span>), location))<span class="question-mark">?
-            </span>}
-        };
-
         <span class="prelude-val">Ok</span>(block.append_operation(func::call(
             context,
             FlatSymbolRefAttribute::new(context, <span class="string">"cairo_native__dict_drop"</span>),
-            <span class="kw-2">&amp;</span>[ptr, drop_fn],
+            <span class="kw-2">&amp;</span>[ptr],
             <span class="kw-2">&amp;</span>[],
             location,
         )))
@@ -1616,7 +1613,6 @@
         module: <span class="kw-2">&amp;</span>Module,
         block: <span class="kw-2">&amp;</span><span class="lifetime">'a </span>Block&lt;<span class="lifetime">'c</span>&gt;,
         ptr: Value&lt;<span class="lifetime">'c</span>, <span class="lifetime">'a</span>&gt;,
-        dup_fn: <span class="prelude-ty">Option</span>&lt;Value&lt;<span class="lifetime">'c</span>, <span class="lifetime">'a</span>&gt;&gt;,
         location: Location&lt;<span class="lifetime">'c</span>&gt;,
     ) -&gt; <span class="prelude-ty">Result</span>&lt;Value&lt;<span class="lifetime">'c</span>, <span class="lifetime">'a</span>&gt;&gt;
     <span class="kw">where
@@ -1629,10 +1625,7 @@
                 TypeAttribute::new(
                     FunctionType::new(
                         context,
-                        <span class="kw-2">&amp;</span>[
-                            llvm::r#type::pointer(context, <span class="number">0</span>),
-                            llvm::r#type::pointer(context, <span class="number">0</span>),
-                        ],
+                        <span class="kw-2">&amp;</span>[llvm::r#type::pointer(context, <span class="number">0</span>)],
                         <span class="kw-2">&amp;</span>[llvm::r#type::pointer(context, <span class="number">0</span>)],
                     )
                     .into(),
@@ -1653,17 +1646,10 @@
             ));
         }
 
-        <span class="kw">let </span>dup_fn = <span class="kw">match </span>dup_fn {
-            <span class="prelude-val">Some</span>(x) =&gt; x,
-            <span class="prelude-val">None </span>=&gt; {
-                block.append_op_result(llvm::zero(llvm::r#type::pointer(context, <span class="number">0</span>), location))<span class="question-mark">?
-            </span>}
-        };
-
         block.append_op_result(func::call(
             context,
             FlatSymbolRefAttribute::new(context, <span class="string">"cairo_native__dict_dup"</span>),
-            <span class="kw-2">&amp;</span>[ptr, dup_fn],
+            <span class="kw-2">&amp;</span>[ptr],
             <span class="kw-2">&amp;</span>[llvm::r#type::pointer(context, <span class="number">0</span>)],
             location,
         ))

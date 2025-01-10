@@ -199,7 +199,69 @@
 <a href="#198" id="198">198</a>
 <a href="#199" id="199">199</a>
 <a href="#200" id="200">200</a>
-<a href="#201" id="201">201</a></pre></div><pre class="rust"><code><span class="kw">use crate</span>::{
+<a href="#201" id="201">201</a>
+<a href="#202" id="202">202</a>
+<a href="#203" id="203">203</a>
+<a href="#204" id="204">204</a>
+<a href="#205" id="205">205</a>
+<a href="#206" id="206">206</a>
+<a href="#207" id="207">207</a>
+<a href="#208" id="208">208</a>
+<a href="#209" id="209">209</a>
+<a href="#210" id="210">210</a>
+<a href="#211" id="211">211</a>
+<a href="#212" id="212">212</a>
+<a href="#213" id="213">213</a>
+<a href="#214" id="214">214</a>
+<a href="#215" id="215">215</a>
+<a href="#216" id="216">216</a>
+<a href="#217" id="217">217</a>
+<a href="#218" id="218">218</a>
+<a href="#219" id="219">219</a>
+<a href="#220" id="220">220</a>
+<a href="#221" id="221">221</a>
+<a href="#222" id="222">222</a>
+<a href="#223" id="223">223</a>
+<a href="#224" id="224">224</a>
+<a href="#225" id="225">225</a>
+<a href="#226" id="226">226</a>
+<a href="#227" id="227">227</a>
+<a href="#228" id="228">228</a>
+<a href="#229" id="229">229</a>
+<a href="#230" id="230">230</a>
+<a href="#231" id="231">231</a>
+<a href="#232" id="232">232</a>
+<a href="#233" id="233">233</a>
+<a href="#234" id="234">234</a>
+<a href="#235" id="235">235</a>
+<a href="#236" id="236">236</a>
+<a href="#237" id="237">237</a>
+<a href="#238" id="238">238</a>
+<a href="#239" id="239">239</a>
+<a href="#240" id="240">240</a>
+<a href="#241" id="241">241</a>
+<a href="#242" id="242">242</a>
+<a href="#243" id="243">243</a>
+<a href="#244" id="244">244</a>
+<a href="#245" id="245">245</a>
+<a href="#246" id="246">246</a>
+<a href="#247" id="247">247</a>
+<a href="#248" id="248">248</a>
+<a href="#249" id="249">249</a>
+<a href="#250" id="250">250</a>
+<a href="#251" id="251">251</a>
+<a href="#252" id="252">252</a>
+<a href="#253" id="253">253</a>
+<a href="#254" id="254">254</a>
+<a href="#255" id="255">255</a>
+<a href="#256" id="256">256</a>
+<a href="#257" id="257">257</a>
+<a href="#258" id="258">258</a>
+<a href="#259" id="259">259</a>
+<a href="#260" id="260">260</a>
+<a href="#261" id="261">261</a>
+<a href="#262" id="262">262</a>
+<a href="#263" id="263">263</a></pre></div><pre class="rust"><code><span class="kw">use crate</span>::{
     error::Result,
     native_panic,
     starknet::{ArrayAbi, Secp256k1Point, Secp256r1Point},
@@ -216,7 +278,10 @@
     ids::ConcreteTypeId,
     program_registry::ProgramRegistry,
 };
-<span class="kw">use </span>std::ptr::{null, NonNull};
+<span class="kw">use </span>std::{
+    ffi::c_void,
+    ptr::{null, NonNull},
+};
 
 <span class="kw">mod </span>aarch64;
 <span class="kw">mod </span>x86_64;
@@ -225,7 +290,17 @@
 </span><span class="kw">pub trait </span>AbiArgument {
     <span class="doccomment">/// Serialize the argument into the buffer. This method should keep track of arch-dependent
     /// stuff like register vs stack allocation.
-    </span><span class="kw">fn </span>to_bytes(<span class="kw-2">&amp;</span><span class="self">self</span>, buffer: <span class="kw-2">&amp;mut </span>Vec&lt;u8&gt;) -&gt; <span class="prelude-ty">Result</span>&lt;()&gt;;
+    </span><span class="kw">fn </span>to_bytes(
+        <span class="kw-2">&amp;</span><span class="self">self</span>,
+        buffer: <span class="kw-2">&amp;mut </span>Vec&lt;u8&gt;,
+        find_dict_overrides: <span class="kw">impl </span>Copy
+            + Fn(
+                <span class="kw-2">&amp;</span>ConcreteTypeId,
+            ) -&gt; (
+                <span class="prelude-ty">Option</span>&lt;<span class="kw">extern </span><span class="string">"C" </span><span class="kw">fn</span>(<span class="kw-2">*mut </span>c_void, <span class="kw-2">*mut </span>c_void)&gt;,
+                <span class="prelude-ty">Option</span>&lt;<span class="kw">extern </span><span class="string">"C" </span><span class="kw">fn</span>(<span class="kw-2">*mut </span>c_void)&gt;,
+            ),
+    ) -&gt; <span class="prelude-ty">Result</span>&lt;()&gt;;
 }
 
 <span class="doccomment">/// A wrapper that implements `AbiArgument` for `Value`s. It contains all the required stuff to
@@ -259,10 +334,21 @@
 }
 
 <span class="kw">impl </span>AbiArgument <span class="kw">for </span>ValueWithInfoWrapper&lt;<span class="lifetime">'_</span>&gt; {
-    <span class="kw">fn </span>to_bytes(<span class="kw-2">&amp;</span><span class="self">self</span>, buffer: <span class="kw-2">&amp;mut </span>Vec&lt;u8&gt;) -&gt; <span class="prelude-ty">Result</span>&lt;()&gt; {
+    <span class="kw">fn </span>to_bytes(
+        <span class="kw-2">&amp;</span><span class="self">self</span>,
+        buffer: <span class="kw-2">&amp;mut </span>Vec&lt;u8&gt;,
+        find_dict_overrides: <span class="kw">impl </span>Copy
+            + Fn(
+                <span class="kw-2">&amp;</span>ConcreteTypeId,
+            ) -&gt; (
+                <span class="prelude-ty">Option</span>&lt;<span class="kw">extern </span><span class="string">"C" </span><span class="kw">fn</span>(<span class="kw-2">*mut </span>c_void, <span class="kw-2">*mut </span>c_void)&gt;,
+                <span class="prelude-ty">Option</span>&lt;<span class="kw">extern </span><span class="string">"C" </span><span class="kw">fn</span>(<span class="kw-2">*mut </span>c_void)&gt;,
+            ),
+    ) -&gt; <span class="prelude-ty">Result</span>&lt;()&gt; {
         <span class="kw">match </span>(<span class="self">self</span>.value, <span class="self">self</span>.info) {
             (value, CoreTypeConcrete::Box(info)) =&gt; {
-                <span class="kw">let </span>ptr = value.to_ptr(<span class="self">self</span>.arena, <span class="self">self</span>.registry, <span class="self">self</span>.type_id)<span class="question-mark">?</span>;
+                <span class="kw">let </span>ptr =
+                    value.to_ptr(<span class="self">self</span>.arena, <span class="self">self</span>.registry, <span class="self">self</span>.type_id, find_dict_overrides)<span class="question-mark">?</span>;
 
                 <span class="kw">let </span>layout = <span class="self">self</span>.registry.get_type(<span class="kw-2">&amp;</span>info.ty)<span class="question-mark">?</span>.layout(<span class="self">self</span>.registry)<span class="question-mark">?</span>;
                 <span class="kw">let </span>heap_ptr = <span class="kw">unsafe </span>{
@@ -271,13 +357,18 @@
                     heap_ptr
                 };
 
-                heap_ptr.to_bytes(buffer)<span class="question-mark">?</span>;
+                heap_ptr.to_bytes(buffer, find_dict_overrides)<span class="question-mark">?</span>;
             }
             (value, CoreTypeConcrete::Nullable(info)) =&gt; {
                 <span class="kw">if </span><span class="macro">matches!</span>(value, Value::Null) {
-                    null::&lt;()&gt;().to_bytes(buffer)<span class="question-mark">?</span>;
+                    null::&lt;()&gt;().to_bytes(buffer, find_dict_overrides)<span class="question-mark">?</span>;
                 } <span class="kw">else </span>{
-                    <span class="kw">let </span>ptr = value.to_ptr(<span class="self">self</span>.arena, <span class="self">self</span>.registry, <span class="self">self</span>.type_id)<span class="question-mark">?</span>;
+                    <span class="kw">let </span>ptr = value.to_ptr(
+                        <span class="self">self</span>.arena,
+                        <span class="self">self</span>.registry,
+                        <span class="self">self</span>.type_id,
+                        find_dict_overrides,
+                    )<span class="question-mark">?</span>;
 
                     <span class="kw">let </span>layout = <span class="self">self</span>.registry.get_type(<span class="kw-2">&amp;</span>info.ty)<span class="question-mark">?</span>.layout(<span class="self">self</span>.registry)<span class="question-mark">?</span>;
                     <span class="kw">let </span>heap_ptr = <span class="kw">unsafe </span>{
@@ -286,51 +377,64 @@
                         heap_ptr
                     };
 
-                    heap_ptr.to_bytes(buffer)<span class="question-mark">?</span>;
+                    heap_ptr.to_bytes(buffer, find_dict_overrides)<span class="question-mark">?</span>;
                 }
             }
-            (value, CoreTypeConcrete::NonZero(info) | CoreTypeConcrete::Snapshot(info)) =&gt; {
-                <span class="self">self</span>.map(value, <span class="kw-2">&amp;</span>info.ty)<span class="question-mark">?</span>.to_bytes(buffer)<span class="question-mark">?
-            </span>}
+            (value, CoreTypeConcrete::NonZero(info) | CoreTypeConcrete::Snapshot(info)) =&gt; <span class="self">self
+                </span>.map(value, <span class="kw-2">&amp;</span>info.ty)<span class="question-mark">?
+                </span>.to_bytes(buffer, find_dict_overrides)<span class="question-mark">?</span>,
 
             (Value::Array(<span class="kw">_</span>), CoreTypeConcrete::Array(<span class="kw">_</span>)) =&gt; {
                 <span class="comment">// TODO: Assert that `info.ty` matches all the values' types.
 
-                </span><span class="kw">let </span>abi_ptr = <span class="self">self</span>.value.to_ptr(<span class="self">self</span>.arena, <span class="self">self</span>.registry, <span class="self">self</span>.type_id)<span class="question-mark">?</span>;
+                </span><span class="kw">let </span>abi_ptr = <span class="self">self</span>.value.to_ptr(
+                    <span class="self">self</span>.arena,
+                    <span class="self">self</span>.registry,
+                    <span class="self">self</span>.type_id,
+                    find_dict_overrides,
+                )<span class="question-mark">?</span>;
                 <span class="kw">let </span>abi = <span class="kw">unsafe </span>{ abi_ptr.cast::&lt;ArrayAbi&lt;()&gt;&gt;().as_ref() };
 
-                abi.ptr.to_bytes(buffer)<span class="question-mark">?</span>;
-                abi.since.to_bytes(buffer)<span class="question-mark">?</span>;
-                abi.until.to_bytes(buffer)<span class="question-mark">?</span>;
-                abi.capacity.to_bytes(buffer)<span class="question-mark">?</span>;
+                abi.ptr.to_bytes(buffer, find_dict_overrides)<span class="question-mark">?</span>;
+                abi.since.to_bytes(buffer, find_dict_overrides)<span class="question-mark">?</span>;
+                abi.until.to_bytes(buffer, find_dict_overrides)<span class="question-mark">?</span>;
+                abi.capacity.to_bytes(buffer, find_dict_overrides)<span class="question-mark">?</span>;
             }
             (Value::BoundedInt { .. }, CoreTypeConcrete::BoundedInt(<span class="kw">_</span>)) =&gt; {
                 <span class="macro">native_panic!</span>(<span class="string">"todo: implement AbiArgument for Value::BoundedInt case"</span>)
             }
-            (Value::Bytes31(value), CoreTypeConcrete::Bytes31(<span class="kw">_</span>)) =&gt; value.to_bytes(buffer)<span class="question-mark">?</span>,
+            (Value::Bytes31(value), CoreTypeConcrete::Bytes31(<span class="kw">_</span>)) =&gt; {
+                value.to_bytes(buffer, find_dict_overrides)<span class="question-mark">?
+            </span>}
             (Value::EcPoint(x, y), CoreTypeConcrete::EcPoint(<span class="kw">_</span>)) =&gt; {
-                x.to_bytes(buffer)<span class="question-mark">?</span>;
-                y.to_bytes(buffer)<span class="question-mark">?</span>;
+                x.to_bytes(buffer, find_dict_overrides)<span class="question-mark">?</span>;
+                y.to_bytes(buffer, find_dict_overrides)<span class="question-mark">?</span>;
             }
             (Value::EcState(x, y, x0, y0), CoreTypeConcrete::EcState(<span class="kw">_</span>)) =&gt; {
-                x.to_bytes(buffer)<span class="question-mark">?</span>;
-                y.to_bytes(buffer)<span class="question-mark">?</span>;
-                x0.to_bytes(buffer)<span class="question-mark">?</span>;
-                y0.to_bytes(buffer)<span class="question-mark">?</span>;
+                x.to_bytes(buffer, find_dict_overrides)<span class="question-mark">?</span>;
+                y.to_bytes(buffer, find_dict_overrides)<span class="question-mark">?</span>;
+                x0.to_bytes(buffer, find_dict_overrides)<span class="question-mark">?</span>;
+                y0.to_bytes(buffer, find_dict_overrides)<span class="question-mark">?</span>;
             }
             (Value::Enum { tag, value, .. }, CoreTypeConcrete::Enum(info)) =&gt; {
                 <span class="kw">if </span><span class="self">self</span>.info.is_memory_allocated(<span class="self">self</span>.registry)<span class="question-mark">? </span>{
-                    <span class="kw">let </span>abi_ptr = <span class="self">self</span>.value.to_ptr(<span class="self">self</span>.arena, <span class="self">self</span>.registry, <span class="self">self</span>.type_id)<span class="question-mark">?</span>;
+                    <span class="kw">let </span>abi_ptr = <span class="self">self</span>.value.to_ptr(
+                        <span class="self">self</span>.arena,
+                        <span class="self">self</span>.registry,
+                        <span class="self">self</span>.type_id,
+                        find_dict_overrides,
+                    )<span class="question-mark">?</span>;
 
                     <span class="kw">let </span>abi_ptr = <span class="kw">unsafe </span>{ <span class="kw-2">*</span>abi_ptr.cast::&lt;NonNull&lt;()&gt;&gt;().as_ref() };
-                    abi_ptr.as_ptr().to_bytes(buffer)<span class="question-mark">?</span>;
+                    abi_ptr.as_ptr().to_bytes(buffer, find_dict_overrides)<span class="question-mark">?</span>;
                 } <span class="kw">else </span>{
                     <span class="kw">match </span>(info.variants.len().next_power_of_two().trailing_zeros() + <span class="number">7</span>) / <span class="number">8 </span>{
                         <span class="number">0 </span>=&gt; {}
-                        <span class="kw">_ </span>=&gt; (<span class="kw-2">*</span>tag <span class="kw">as </span>u64).to_bytes(buffer)<span class="question-mark">?</span>,
+                        <span class="kw">_ </span>=&gt; (<span class="kw-2">*</span>tag <span class="kw">as </span>u64).to_bytes(buffer, find_dict_overrides)<span class="question-mark">?</span>,
                     }
 
-                    <span class="self">self</span>.map(value, <span class="kw-2">&amp;</span>info.variants[<span class="kw-2">*</span>tag])<span class="question-mark">?</span>.to_bytes(buffer)<span class="question-mark">?</span>;
+                    <span class="self">self</span>.map(value, <span class="kw-2">&amp;</span>info.variants[<span class="kw-2">*</span>tag])<span class="question-mark">?
+                        </span>.to_bytes(buffer, find_dict_overrides)<span class="question-mark">?</span>;
                 }
             }
             (
@@ -342,7 +446,7 @@
                     | StarkNetTypeConcrete::StorageAddress(<span class="kw">_</span>)
                     | StarkNetTypeConcrete::StorageBaseAddress(<span class="kw">_</span>),
                 ),
-            ) =&gt; value.to_bytes(buffer)<span class="question-mark">?</span>,
+            ) =&gt; value.to_bytes(buffer, find_dict_overrides)<span class="question-mark">?</span>,
             (Value::Felt252Dict { .. }, CoreTypeConcrete::Felt252Dict(<span class="kw">_</span>)) =&gt; {
                 <span class="attr">#[cfg(not(feature = <span class="string">"with-runtime"</span>))]
                 </span><span class="macro">native_panic!</span>(<span class="string">"enable the `with-runtime` feature to use felt252 dicts"</span>);
@@ -352,9 +456,9 @@
                     <span class="comment">// TODO: Assert that `info.ty` matches all the values' types.
 
                     </span><span class="self">self</span>.value
-                        .to_ptr(<span class="self">self</span>.arena, <span class="self">self</span>.registry, <span class="self">self</span>.type_id)<span class="question-mark">?
+                        .to_ptr(<span class="self">self</span>.arena, <span class="self">self</span>.registry, <span class="self">self</span>.type_id, find_dict_overrides)<span class="question-mark">?
                         </span>.as_ptr()
-                        .to_bytes(buffer)<span class="question-mark">?
+                        .to_bytes(buffer, find_dict_overrides)<span class="question-mark">?
                 </span>}
             }
             (
@@ -369,27 +473,47 @@
                     Secp256PointTypeConcrete::R1(<span class="kw">_</span>),
                 )),
             ) =&gt; {
-                x.to_bytes(buffer)<span class="question-mark">?</span>;
-                y.to_bytes(buffer)<span class="question-mark">?</span>;
-                is_infinity.to_bytes(buffer)<span class="question-mark">?</span>;
+                x.to_bytes(buffer, find_dict_overrides)<span class="question-mark">?</span>;
+                y.to_bytes(buffer, find_dict_overrides)<span class="question-mark">?</span>;
+                is_infinity.to_bytes(buffer, find_dict_overrides)<span class="question-mark">?</span>;
             }
-            (Value::Sint128(value), CoreTypeConcrete::Sint128(<span class="kw">_</span>)) =&gt; value.to_bytes(buffer)<span class="question-mark">?</span>,
-            (Value::Sint16(value), CoreTypeConcrete::Sint16(<span class="kw">_</span>)) =&gt; value.to_bytes(buffer)<span class="question-mark">?</span>,
-            (Value::Sint32(value), CoreTypeConcrete::Sint32(<span class="kw">_</span>)) =&gt; value.to_bytes(buffer)<span class="question-mark">?</span>,
-            (Value::Sint64(value), CoreTypeConcrete::Sint64(<span class="kw">_</span>)) =&gt; value.to_bytes(buffer)<span class="question-mark">?</span>,
-            (Value::Sint8(value), CoreTypeConcrete::Sint8(<span class="kw">_</span>)) =&gt; value.to_bytes(buffer)<span class="question-mark">?</span>,
+            (Value::Sint128(value), CoreTypeConcrete::Sint128(<span class="kw">_</span>)) =&gt; {
+                value.to_bytes(buffer, find_dict_overrides)<span class="question-mark">?
+            </span>}
+            (Value::Sint16(value), CoreTypeConcrete::Sint16(<span class="kw">_</span>)) =&gt; {
+                value.to_bytes(buffer, find_dict_overrides)<span class="question-mark">?
+            </span>}
+            (Value::Sint32(value), CoreTypeConcrete::Sint32(<span class="kw">_</span>)) =&gt; {
+                value.to_bytes(buffer, find_dict_overrides)<span class="question-mark">?
+            </span>}
+            (Value::Sint64(value), CoreTypeConcrete::Sint64(<span class="kw">_</span>)) =&gt; {
+                value.to_bytes(buffer, find_dict_overrides)<span class="question-mark">?
+            </span>}
+            (Value::Sint8(value), CoreTypeConcrete::Sint8(<span class="kw">_</span>)) =&gt; {
+                value.to_bytes(buffer, find_dict_overrides)<span class="question-mark">?
+            </span>}
             (Value::Struct { fields, .. }, CoreTypeConcrete::Struct(info)) =&gt; {
                 fields
                     .iter()
                     .zip(<span class="kw-2">&amp;</span>info.members)
                     .map(|(value, type_id)| <span class="self">self</span>.map(value, type_id))
-                    .try_for_each(|wrapper| wrapper<span class="question-mark">?</span>.to_bytes(buffer))<span class="question-mark">?</span>;
+                    .try_for_each(|wrapper| wrapper<span class="question-mark">?</span>.to_bytes(buffer, find_dict_overrides))<span class="question-mark">?</span>;
             }
-            (Value::Uint128(value), CoreTypeConcrete::Uint128(<span class="kw">_</span>)) =&gt; value.to_bytes(buffer)<span class="question-mark">?</span>,
-            (Value::Uint16(value), CoreTypeConcrete::Uint16(<span class="kw">_</span>)) =&gt; value.to_bytes(buffer)<span class="question-mark">?</span>,
-            (Value::Uint32(value), CoreTypeConcrete::Uint32(<span class="kw">_</span>)) =&gt; value.to_bytes(buffer)<span class="question-mark">?</span>,
-            (Value::Uint64(value), CoreTypeConcrete::Uint64(<span class="kw">_</span>)) =&gt; value.to_bytes(buffer)<span class="question-mark">?</span>,
-            (Value::Uint8(value), CoreTypeConcrete::Uint8(<span class="kw">_</span>)) =&gt; value.to_bytes(buffer)<span class="question-mark">?</span>,
+            (Value::Uint128(value), CoreTypeConcrete::Uint128(<span class="kw">_</span>)) =&gt; {
+                value.to_bytes(buffer, find_dict_overrides)<span class="question-mark">?
+            </span>}
+            (Value::Uint16(value), CoreTypeConcrete::Uint16(<span class="kw">_</span>)) =&gt; {
+                value.to_bytes(buffer, find_dict_overrides)<span class="question-mark">?
+            </span>}
+            (Value::Uint32(value), CoreTypeConcrete::Uint32(<span class="kw">_</span>)) =&gt; {
+                value.to_bytes(buffer, find_dict_overrides)<span class="question-mark">?
+            </span>}
+            (Value::Uint64(value), CoreTypeConcrete::Uint64(<span class="kw">_</span>)) =&gt; {
+                value.to_bytes(buffer, find_dict_overrides)<span class="question-mark">?
+            </span>}
+            (Value::Uint8(value), CoreTypeConcrete::Uint8(<span class="kw">_</span>)) =&gt; {
+                value.to_bytes(buffer, find_dict_overrides)<span class="question-mark">?
+            </span>}
             <span class="kw">_ </span>=&gt; <span class="macro">native_panic!</span>(
                 <span class="string">"todo: abi argument unimplemented for ({:?}, {:?})"</span>,
                 <span class="self">self</span>.value,

@@ -366,7 +366,12 @@
 <a href="#365" id="365">365</a>
 <a href="#366" id="366">366</a>
 <a href="#367" id="367">367</a>
-<a href="#368" id="368">368</a></pre></div><pre class="rust"><code><span class="doccomment">//! A stress tester for Cairo Native
+<a href="#368" id="368">368</a>
+<a href="#369" id="369">369</a>
+<a href="#370" id="370">370</a>
+<a href="#371" id="371">371</a>
+<a href="#372" id="372">372</a>
+<a href="#373" id="373">373</a></pre></div><pre class="rust"><code><span class="doccomment">//! A stress tester for Cairo Native
 //!
 //! See `StressTestCommand` for documentation on the CLI.
 //!
@@ -675,7 +680,12 @@ mod Contract {{
             }
         };
 
-        <span class="kw">let </span>executor = AotNativeExecutor::new(shared_library, registry, metadata);
+        <span class="kw">let </span>executor = AotNativeExecutor::new(
+            shared_library,
+            registry,
+            metadata,
+            native_module.metadata().get().cloned().unwrap_or_default(),
+        );
         <span class="kw">let </span>executor = Arc::new(executor);
 
         <span class="self">self</span>.cache.insert(key, executor.clone());

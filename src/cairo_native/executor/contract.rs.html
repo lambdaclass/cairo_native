@@ -851,7 +851,11 @@
 <a href="#850" id="850">850</a>
 <a href="#851" id="851">851</a>
 <a href="#852" id="852">852</a>
-<a href="#853" id="853">853</a></pre></div><pre class="rust"><code><span class="doccomment">//! A specialized executor for Starknet contracts, avoiding the overhead of storing the sierra program registry and
+<a href="#853" id="853">853</a>
+<a href="#854" id="854">854</a>
+<a href="#855" id="855">855</a>
+<a href="#856" id="856">856</a>
+<a href="#857" id="857">857</a></pre></div><pre class="rust"><code><span class="doccomment">//! A specialized executor for Starknet contracts, avoiding the overhead of storing the sierra program registry and
 //! enabling efficient serialization of the program/data once compiled.
 //!
 //! This executor heavily relies on the stability of the contract entry point argument order.
@@ -1197,25 +1201,29 @@
             </span>Layout::from_size_align_unchecked(<span class="number">128 </span>+ builtins_size, <span class="number">16</span>)
         });
 
-        return_ptr.as_ptr().to_bytes(<span class="kw-2">&amp;mut </span>invoke_data)<span class="question-mark">?</span>;
+        return_ptr
+            .as_ptr()
+            .to_bytes(<span class="kw-2">&amp;mut </span>invoke_data, |<span class="kw">_</span>| <span class="macro">unreachable!</span>())<span class="question-mark">?</span>;
 
         <span class="kw">let </span><span class="kw-2">mut </span>syscall_handler = StarknetSyscallHandlerCallbacks::new(<span class="kw-2">&amp;mut </span>syscall_handler);
 
         <span class="kw">for </span>b <span class="kw">in </span><span class="kw-2">&amp;</span><span class="self">self</span>.contract_info.entry_points_info[<span class="kw-2">&amp;</span>function_id.id].builtins {
             <span class="kw">match </span>b {
                 BuiltinType::Gas =&gt; {
-                    gas.to_bytes(<span class="kw-2">&amp;mut </span>invoke_data)<span class="question-mark">?</span>;
+                    gas.to_bytes(<span class="kw-2">&amp;mut </span>invoke_data, |<span class="kw">_</span>| <span class="macro">unreachable!</span>())<span class="question-mark">?</span>;
                 }
                 BuiltinType::BuiltinCosts =&gt; {
                     <span class="comment">// todo: check if valid
-                    </span>builtin_costs.as_ptr().to_bytes(<span class="kw-2">&amp;mut </span>invoke_data)<span class="question-mark">?</span>;
+                    </span>builtin_costs
+                        .as_ptr()
+                        .to_bytes(<span class="kw-2">&amp;mut </span>invoke_data, |<span class="kw">_</span>| <span class="macro">unreachable!</span>())<span class="question-mark">?</span>;
                 }
                 BuiltinType::System =&gt; {
                     (<span class="kw-2">&amp;mut </span>syscall_handler <span class="kw">as </span><span class="kw-2">*mut </span>StarknetSyscallHandlerCallbacks&lt;<span class="kw">_</span>&gt;)
-                        .to_bytes(<span class="kw-2">&amp;mut </span>invoke_data)<span class="question-mark">?</span>;
+                        .to_bytes(<span class="kw-2">&amp;mut </span>invoke_data, |<span class="kw">_</span>| <span class="macro">unreachable!</span>())<span class="question-mark">?</span>;
                 }
                 <span class="kw">_ </span>=&gt; {
-                    <span class="number">0u64</span>.to_bytes(<span class="kw-2">&amp;mut </span>invoke_data)<span class="question-mark">?</span>;
+                    <span class="number">0u64</span>.to_bytes(<span class="kw-2">&amp;mut </span>invoke_data, |<span class="kw">_</span>| <span class="macro">unreachable!</span>())<span class="question-mark">?</span>;
                 }
             }
         }
@@ -1243,15 +1251,15 @@
             .try_into()
             .to_native_assert_error(<span class="string">"number of arguments should fit into a u32"</span>)<span class="question-mark">?</span>;
 
-        ptr.to_bytes(<span class="kw-2">&amp;mut </span>invoke_data)<span class="question-mark">?</span>;
+        ptr.to_bytes(<span class="kw-2">&amp;mut </span>invoke_data, |<span class="kw">_</span>| <span class="macro">unreachable!</span>())<span class="question-mark">?</span>;
         <span class="kw">if </span><span class="macro">cfg!</span>(target_arch = <span class="string">"aarch64"</span>) {
-            <span class="number">0u32</span>.to_bytes(<span class="kw-2">&amp;mut </span>invoke_data)<span class="question-mark">?</span>; <span class="comment">// start
-            </span>len.to_bytes(<span class="kw-2">&amp;mut </span>invoke_data)<span class="question-mark">?</span>; <span class="comment">// end
-            </span>len.to_bytes(<span class="kw-2">&amp;mut </span>invoke_data)<span class="question-mark">?</span>; <span class="comment">// cap
+            <span class="number">0u32</span>.to_bytes(<span class="kw-2">&amp;mut </span>invoke_data, |<span class="kw">_</span>| <span class="macro">unreachable!</span>())<span class="question-mark">?</span>; <span class="comment">// start
+            </span>len.to_bytes(<span class="kw-2">&amp;mut </span>invoke_data, |<span class="kw">_</span>| <span class="macro">unreachable!</span>())<span class="question-mark">?</span>; <span class="comment">// end
+            </span>len.to_bytes(<span class="kw-2">&amp;mut </span>invoke_data, |<span class="kw">_</span>| <span class="macro">unreachable!</span>())<span class="question-mark">?</span>; <span class="comment">// cap
         </span>} <span class="kw">else if </span><span class="macro">cfg!</span>(target_arch = <span class="string">"x86_64"</span>) {
-            (<span class="number">0u32 </span><span class="kw">as </span>u64).to_bytes(<span class="kw-2">&amp;mut </span>invoke_data)<span class="question-mark">?</span>; <span class="comment">// start
-            </span>(len <span class="kw">as </span>u64).to_bytes(<span class="kw-2">&amp;mut </span>invoke_data)<span class="question-mark">?</span>; <span class="comment">// end
-            </span>(len <span class="kw">as </span>u64).to_bytes(<span class="kw-2">&amp;mut </span>invoke_data)<span class="question-mark">?</span>; <span class="comment">// cap
+            (<span class="number">0u32 </span><span class="kw">as </span>u64).to_bytes(<span class="kw-2">&amp;mut </span>invoke_data, |<span class="kw">_</span>| <span class="macro">unreachable!</span>())<span class="question-mark">?</span>; <span class="comment">// start
+            </span>(len <span class="kw">as </span>u64).to_bytes(<span class="kw-2">&amp;mut </span>invoke_data, |<span class="kw">_</span>| <span class="macro">unreachable!</span>())<span class="question-mark">?</span>; <span class="comment">// end
+            </span>(len <span class="kw">as </span>u64).to_bytes(<span class="kw-2">&amp;mut </span>invoke_data, |<span class="kw">_</span>| <span class="macro">unreachable!</span>())<span class="question-mark">?</span>; <span class="comment">// cap
         </span>} <span class="kw">else </span>{
             <span class="macro">unreachable!</span>(<span class="string">"unsupported architecture"</span>);
         }

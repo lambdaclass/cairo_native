@@ -112,12 +112,10 @@
 <a href="#111" id="111">111</a>
 <a href="#112" id="112">112</a>
 <a href="#113" id="113">113</a>
-<a href="#114" id="114">114</a>
-<a href="#115" id="115">115</a>
-<a href="#116" id="116">116</a></pre></div><pre class="rust"><code><span class="kw">use </span><span class="kw">crate</span>::error::{Error, <span class="prelude-ty">Result</span>};
+<a href="#114" id="114">114</a></pre></div><pre class="rust"><code><span class="kw">use </span><span class="kw">crate</span>::error::{Error, <span class="prelude-ty">Result</span>};
 <span class="kw">use crate</span>::{
-    context::NativeContext, executor::AotNativeExecutor, metadata::gas::GasMetadata,
-    module::NativeModule, utils::SHARED_LIBRARY_EXT, OptLevel,
+    context::NativeContext, executor::AotNativeExecutor, module::NativeModule,
+    utils::SHARED_LIBRARY_EXT, OptLevel,
 };
 <span class="kw">use </span>cairo_lang_sierra::program::Program;
 <span class="kw">use </span>libloading::Library;
@@ -160,7 +158,7 @@
         <span class="kw">let </span>NativeModule {
             module,
             registry,
-            metadata,
+            <span class="kw-2">mut </span>metadata,
         } = <span class="self">self
             </span>.context
             .compile(program, <span class="bool-val">false</span>, <span class="prelude-val">Some</span>(Default::default()))<span class="question-mark">?</span>;
@@ -180,10 +178,8 @@
         <span class="kw">let </span>executor = AotNativeExecutor::new(
             shared_library,
             registry,
-            metadata
-                .get::&lt;GasMetadata&gt;()
-                .cloned()
-                .ok_or(Error::MissingMetadata)<span class="question-mark">?</span>,
+            metadata.remove().ok_or(Error::MissingMetadata)<span class="question-mark">?</span>,
+            metadata.remove().unwrap_or_default(),
         );
 
         <span class="kw">let </span>executor = Arc::new(executor);

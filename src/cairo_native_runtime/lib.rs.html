@@ -982,7 +982,47 @@
 <a href="#981" id="981">981</a>
 <a href="#982" id="982">982</a>
 <a href="#983" id="983">983</a>
-<a href="#984" id="984">984</a></pre></div><pre class="rust"><code><span class="attr">#![allow(non_snake_case)]
+<a href="#984" id="984">984</a>
+<a href="#985" id="985">985</a>
+<a href="#986" id="986">986</a>
+<a href="#987" id="987">987</a>
+<a href="#988" id="988">988</a>
+<a href="#989" id="989">989</a>
+<a href="#990" id="990">990</a>
+<a href="#991" id="991">991</a>
+<a href="#992" id="992">992</a>
+<a href="#993" id="993">993</a>
+<a href="#994" id="994">994</a>
+<a href="#995" id="995">995</a>
+<a href="#996" id="996">996</a>
+<a href="#997" id="997">997</a>
+<a href="#998" id="998">998</a>
+<a href="#999" id="999">999</a>
+<a href="#1000" id="1000">1000</a>
+<a href="#1001" id="1001">1001</a>
+<a href="#1002" id="1002">1002</a>
+<a href="#1003" id="1003">1003</a>
+<a href="#1004" id="1004">1004</a>
+<a href="#1005" id="1005">1005</a>
+<a href="#1006" id="1006">1006</a>
+<a href="#1007" id="1007">1007</a>
+<a href="#1008" id="1008">1008</a>
+<a href="#1009" id="1009">1009</a>
+<a href="#1010" id="1010">1010</a>
+<a href="#1011" id="1011">1011</a>
+<a href="#1012" id="1012">1012</a>
+<a href="#1013" id="1013">1013</a>
+<a href="#1014" id="1014">1014</a>
+<a href="#1015" id="1015">1015</a>
+<a href="#1016" id="1016">1016</a>
+<a href="#1017" id="1017">1017</a>
+<a href="#1018" id="1018">1018</a>
+<a href="#1019" id="1019">1019</a>
+<a href="#1020" id="1020">1020</a>
+<a href="#1021" id="1021">1021</a>
+<a href="#1022" id="1022">1022</a>
+<a href="#1023" id="1023">1023</a>
+<a href="#1024" id="1024">1024</a></pre></div><pre class="rust"><code><span class="attr">#![allow(non_snake_case)]
 
 </span><span class="kw">use </span>cairo_lang_sierra_gas::core_libfunc_cost::{
     DICT_SQUASH_REPEATED_ACCESS_COST, DICT_SQUASH_UNIQUE_KEY_COST,
@@ -1004,9 +1044,10 @@
     ffi::{c_int, c_void},
     fs::File,
     io::Write,
-    mem::ManuallyDrop,
+    mem::{forget, ManuallyDrop},
     os::fd::FromRawFd,
     ptr::{<span class="self">self</span>, null, null_mut},
+    rc::Rc,
     slice,
 };
 <span class="kw">use </span>std::{ops::Mul, vec::IntoIter};
@@ -1150,7 +1191,94 @@
     <span class="kw">pub </span>layout: Layout,
     <span class="kw">pub </span>elements: <span class="kw-2">*mut </span>(),
 
+    <span class="kw">pub </span>dup_fn: <span class="prelude-ty">Option</span>&lt;<span class="kw">extern </span><span class="string">"C" </span><span class="kw">fn</span>(<span class="kw-2">*mut </span>c_void, <span class="kw-2">*mut </span>c_void)&gt;,
+    <span class="kw">pub </span>drop_fn: <span class="prelude-ty">Option</span>&lt;<span class="kw">extern </span><span class="string">"C" </span><span class="kw">fn</span>(<span class="kw-2">*mut </span>c_void)&gt;,
+
     <span class="kw">pub </span>count: u64,
+}
+
+<span class="kw">impl </span>Clone <span class="kw">for </span>FeltDict {
+    <span class="kw">fn </span>clone(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; <span class="self">Self </span>{
+        <span class="kw">let </span><span class="kw-2">mut </span>new_dict = FeltDict {
+            mappings: HashMap::with_capacity(<span class="self">self</span>.mappings.len()),
+
+            layout: <span class="self">self</span>.layout,
+            elements: <span class="kw">if </span><span class="self">self</span>.mappings.is_empty() {
+                null_mut()
+            } <span class="kw">else </span>{
+                <span class="kw">unsafe </span>{
+                    alloc(Layout::from_size_align_unchecked(
+                        <span class="self">self</span>.layout.pad_to_align().size() * <span class="self">self</span>.mappings.len(),
+                        <span class="self">self</span>.layout.align(),
+                    ))
+                    .cast()
+                }
+            },
+
+            dup_fn: <span class="self">self</span>.dup_fn,
+            drop_fn: <span class="self">self</span>.drop_fn,
+
+            <span class="comment">// TODO: Check if `0` is fine or otherwise we should copy the value from `old_dict` too.
+            </span>count: <span class="number">0</span>,
+        };
+
+        <span class="kw">for </span>(<span class="kw-2">&amp;</span>key, <span class="kw-2">&amp;</span>old_index) <span class="kw">in </span><span class="self">self</span>.mappings.iter() {
+            <span class="kw">let </span>old_value_ptr = <span class="kw">unsafe </span>{
+                <span class="self">self</span>.elements
+                    .byte_add(<span class="self">self</span>.layout.pad_to_align().size() * old_index)
+            };
+
+            <span class="kw">let </span>new_index = new_dict.mappings.len();
+            <span class="kw">let </span>new_value_ptr = <span class="kw">unsafe </span>{
+                new_dict
+                    .elements
+                    .byte_add(new_dict.layout.pad_to_align().size() * new_index)
+            };
+
+            new_dict.mappings.insert(key, new_index);
+            <span class="kw">match </span><span class="self">self</span>.dup_fn {
+                <span class="prelude-val">Some</span>(dup_fn) =&gt; dup_fn(old_value_ptr.cast(), new_value_ptr.cast()),
+                <span class="prelude-val">None </span>=&gt; <span class="kw">unsafe </span>{
+                    ptr::copy_nonoverlapping::&lt;u8&gt;(
+                        old_value_ptr.cast(),
+                        new_value_ptr.cast(),
+                        <span class="self">self</span>.layout.size(),
+                    )
+                },
+            }
+        }
+
+        new_dict
+    }
+}
+
+<span class="kw">impl </span>Drop <span class="kw">for </span>FeltDict {
+    <span class="kw">fn </span>drop(<span class="kw-2">&amp;mut </span><span class="self">self</span>) {
+        <span class="comment">// Free the entries manually.
+        </span><span class="kw">if let </span><span class="prelude-val">Some</span>(drop_fn) = <span class="self">self</span>.drop_fn {
+            <span class="kw">for </span>(<span class="kw">_</span>, <span class="kw-2">&amp;</span>index) <span class="kw">in </span><span class="self">self</span>.mappings.iter() {
+                <span class="kw">let </span>value_ptr = <span class="kw">unsafe </span>{
+                    <span class="self">self</span>.elements
+                        .byte_add(<span class="self">self</span>.layout.pad_to_align().size() * index)
+                };
+
+                drop_fn(value_ptr.cast());
+            }
+        }
+
+        <span class="comment">// Free the value data.
+        </span><span class="kw">if </span>!<span class="self">self</span>.elements.is_null() {
+            <span class="kw">unsafe </span>{
+                dealloc(
+                    <span class="self">self</span>.elements.cast(),
+                    Layout::from_size_align_unchecked(
+                        <span class="self">self</span>.layout.pad_to_align().size() * <span class="self">self</span>.mappings.capacity(),
+                        <span class="self">self</span>.layout.align(),
+                    ),
+                )
+            };
+        }
+    }
 }
 
 <span class="doccomment">/// Allocate a new dictionary.
@@ -1160,20 +1288,26 @@
 /// This function is intended to be called from MLIR, deals with pointers, and is therefore
 /// definitely unsafe to use manually.
 </span><span class="attr">#[no_mangle]
-</span><span class="kw">pub unsafe extern </span><span class="string">"C" </span><span class="kw">fn </span>cairo_native__dict_new(size: u64, align: u64) -&gt; <span class="kw-2">*mut </span>FeltDict {
-    Box::into_raw(Box::new(FeltDict {
+</span><span class="kw">pub unsafe extern </span><span class="string">"C" </span><span class="kw">fn </span>cairo_native__dict_new(
+    size: u64,
+    align: u64,
+    dup_fn: <span class="prelude-ty">Option</span>&lt;<span class="kw">extern </span><span class="string">"C" </span><span class="kw">fn</span>(<span class="kw-2">*mut </span>c_void, <span class="kw-2">*mut </span>c_void)&gt;,
+    drop_fn: <span class="prelude-ty">Option</span>&lt;<span class="kw">extern </span><span class="string">"C" </span><span class="kw">fn</span>(<span class="kw-2">*mut </span>c_void)&gt;,
+) -&gt; <span class="kw-2">*const </span>FeltDict {
+    Rc::into_raw(Rc::new(FeltDict {
         mappings: HashMap::default(),
 
         layout: Layout::from_size_align_unchecked(size <span class="kw">as </span>usize, align <span class="kw">as </span>usize),
         elements: null_mut(),
+
+        dup_fn,
+        drop_fn,
 
         count: <span class="number">0</span>,
     }))
 }
 
 <span class="doccomment">/// Free a dictionary using an optional callback to drop each element.
-///
-/// The `drop_fn` callback is present when the value implements `Drop`.
 ///
 /// # Safety
 ///
@@ -1183,88 +1317,23 @@
 //   pointer optimization. Check out
 //   https://doc.rust-lang.org/nomicon/ffi.html#the-nullable-pointer-optimization for more info.
 </span><span class="attr">#[no_mangle]
-</span><span class="kw">pub unsafe extern </span><span class="string">"C" </span><span class="kw">fn </span>cairo_native__dict_drop(
-    ptr: <span class="kw-2">*mut </span>FeltDict,
-    drop_fn: <span class="prelude-ty">Option</span>&lt;<span class="kw">extern </span><span class="string">"C" </span><span class="kw">fn</span>(<span class="kw-2">*mut </span>c_void)&gt;,
-) {
-    <span class="kw">let </span>dict = Box::from_raw(ptr);
-
-    <span class="comment">// Free the entries manually.
-    </span><span class="kw">if let </span><span class="prelude-val">Some</span>(drop_fn) = drop_fn {
-        <span class="kw">for </span>(<span class="kw">_</span>, <span class="kw-2">&amp;</span>index) <span class="kw">in </span>dict.mappings.iter() {
-            <span class="kw">let </span>value_ptr = dict
-                .elements
-                .byte_add(dict.layout.pad_to_align().size() * index);
-
-            drop_fn(value_ptr.cast());
-        }
-    }
-
-    <span class="comment">// Free the value data.
-    </span><span class="kw">if </span>!dict.elements.is_null() {
-        dealloc(
-            dict.elements.cast(),
-            Layout::from_size_align_unchecked(
-                dict.layout.pad_to_align().size() * dict.mappings.capacity(),
-                dict.layout.align(),
-            ),
-        );
-    }
+</span><span class="kw">pub unsafe extern </span><span class="string">"C" </span><span class="kw">fn </span>cairo_native__dict_drop(ptr: <span class="kw-2">*const </span>FeltDict) {
+    drop(Rc::from_raw(ptr));
 }
 
 <span class="doccomment">/// Duplicate a dictionary using a provided callback to clone each element.
-///
-/// The `dup_fn` callback is present when the value is not `Copy`, but `Clone`. The first argument
-/// is the original value while the second is the target pointer.
 ///
 /// # Safety
 ///
 /// This function is intended to be called from MLIR, deals with pointers, and is therefore
 /// definitely unsafe to use manually.
 </span><span class="attr">#[no_mangle]
-</span><span class="kw">pub unsafe extern </span><span class="string">"C" </span><span class="kw">fn </span>cairo_native__dict_dup(
-    old_dict: <span class="kw-2">&amp;</span>FeltDict,
-    dup_fn: <span class="prelude-ty">Option</span>&lt;<span class="kw">extern </span><span class="string">"C" </span><span class="kw">fn</span>(<span class="kw-2">*mut </span>c_void, <span class="kw-2">*mut </span>c_void)&gt;,
-) -&gt; <span class="kw-2">*mut </span>FeltDict {
-    <span class="kw">let </span><span class="kw-2">mut </span>new_dict = Box::new(FeltDict {
-        mappings: HashMap::with_capacity(old_dict.mappings.len()),
+</span><span class="kw">pub unsafe extern </span><span class="string">"C" </span><span class="kw">fn </span>cairo_native__dict_dup(dict_ptr: <span class="kw-2">*const </span>FeltDict) -&gt; <span class="kw-2">*const </span>FeltDict {
+    <span class="kw">let </span>old_dict = Rc::from_raw(dict_ptr);
+    <span class="kw">let </span>new_dict = Rc::clone(<span class="kw-2">&amp;</span>old_dict);
 
-        layout: old_dict.layout,
-        elements: <span class="kw">if </span>old_dict.mappings.is_empty() {
-            null_mut()
-        } <span class="kw">else </span>{
-            alloc(Layout::from_size_align_unchecked(
-                old_dict.layout.pad_to_align().size() * old_dict.mappings.len(),
-                old_dict.layout.align(),
-            ))
-            .cast()
-        },
-
-        <span class="comment">// TODO: Check if `0` is fine or otherwise we should copy the value from `old_dict` too.
-        </span>count: <span class="number">0</span>,
-    });
-
-    <span class="kw">for </span>(new_index, (<span class="kw-2">&amp;</span>key, <span class="kw-2">&amp;</span>old_index)) <span class="kw">in </span>old_dict.mappings.iter().enumerate() {
-        <span class="kw">let </span>old_value_ptr = old_dict
-            .elements
-            .byte_add(old_dict.layout.pad_to_align().size() * old_index);
-
-        <span class="kw">let </span>new_value_ptr = new_dict
-            .elements
-            .byte_add(new_dict.layout.pad_to_align().size() * new_index);
-
-        new_dict.mappings.insert(key, new_index);
-        <span class="kw">match </span>dup_fn {
-            <span class="prelude-val">Some</span>(dup_fn) =&gt; dup_fn(old_value_ptr.cast(), new_value_ptr.cast()),
-            <span class="prelude-val">None </span>=&gt; ptr::copy_nonoverlapping::&lt;u8&gt;(
-                old_value_ptr.cast(),
-                new_value_ptr.cast(),
-                old_dict.layout.size(),
-            ),
-        }
-    }
-
-    Box::into_raw(new_dict)
+    forget(old_dict);
+    Rc::into_raw(new_dict)
 }
 
 <span class="doccomment">/// Return a pointer to the entry's value pointer for a given key, inserting a null pointer if not
@@ -1279,45 +1348,46 @@
 /// definitely unsafe to use manually.
 </span><span class="attr">#[no_mangle]
 </span><span class="kw">pub unsafe extern </span><span class="string">"C" </span><span class="kw">fn </span>cairo_native__dict_get(
-    dict: <span class="kw-2">&amp;mut </span>FeltDict,
+    dict: <span class="kw-2">*const </span>FeltDict,
     key: <span class="kw-2">&amp;</span>[u8; <span class="number">32</span>],
     value_ptr: <span class="kw-2">*mut *mut </span>c_void,
 ) -&gt; c_int {
-    <span class="kw">let </span><span class="kw-2">mut </span>key = <span class="kw-2">*</span>key;
-    key[<span class="number">31</span>] &amp;= <span class="number">0x0F</span>; <span class="comment">// Filter out first 4 bits (they're outside an i252).
+    <span class="kw">let </span><span class="kw-2">mut </span>dict_rc = Rc::from_raw(dict);
+    <span class="kw">let </span>dict = Rc::make_mut(<span class="kw-2">&amp;mut </span>dict_rc);
 
-    </span><span class="kw">let </span>old_capacity = dict.mappings.capacity();
-    <span class="kw">let </span>index = dict.mappings.len();
-    <span class="kw">let </span>(index, is_present) = <span class="kw">match </span>dict.mappings.entry(key) {
-        Entry::Occupied(entry) =&gt; (<span class="kw-2">*</span>entry.get(), <span class="number">1</span>),
+    <span class="kw">let </span>num_mappings = dict.mappings.len();
+    <span class="kw">let </span>has_capacity = num_mappings != dict.mappings.capacity();
+
+    <span class="kw">let </span>(is_present, index) = <span class="kw">match </span>dict.mappings.entry(<span class="kw-2">*</span>key) {
+        Entry::Occupied(entry) =&gt; (<span class="bool-val">true</span>, <span class="kw-2">*</span>entry.get()),
         Entry::Vacant(entry) =&gt; {
-            entry.insert(index);
-
-            <span class="comment">// Reallocate `mem_data` to match the slab's capacity.
-            </span><span class="kw">if </span>old_capacity != dict.mappings.capacity() {
-                dict.elements = realloc(
-                    dict.elements.cast(),
-                    Layout::from_size_align_unchecked(
-                        dict.layout.pad_to_align().size() * old_capacity,
-                        dict.layout.align(),
-                    ),
-                    dict.layout.pad_to_align().size() * dict.mappings.capacity(),
-                )
-                .cast();
-            }
-
-            (index, <span class="number">0</span>)
+            entry.insert(num_mappings);
+            (<span class="bool-val">false</span>, num_mappings)
         }
     };
 
-    value_ptr.write(
-        dict.elements
-            .byte_add(dict.layout.pad_to_align().size() * index)
-            .cast(),
-    );
-    dict.count += <span class="number">1</span>;
+    <span class="comment">// Maybe realloc (conditions: !has_capacity &amp;&amp; !is_present).
+    </span><span class="kw">if </span>!has_capacity &amp;&amp; !is_present {
+        dict.elements = realloc(
+            dict.elements.cast(),
+            Layout::from_size_align_unchecked(
+                dict.layout.pad_to_align().size() * dict.mappings.len(),
+                dict.layout.align(),
+            ),
+            dict.layout.pad_to_align().size() * dict.mappings.capacity(),
+        )
+        .cast();
+    }
 
-    is_present
+    <span class="kw-2">*</span>value_ptr = dict
+        .elements
+        .byte_add(dict.layout.pad_to_align().size() * index)
+        .cast();
+
+    dict.count += <span class="number">1</span>;
+    forget(dict_rc);
+
+    is_present <span class="kw">as </span>c_int
 }
 
 <span class="doccomment">/// Compute the total gas refund for the dictionary at squash time.
@@ -1328,8 +1398,12 @@
 /// definitely unsafe to use manually.
 </span><span class="attr">#[no_mangle]
 </span><span class="kw">pub unsafe extern </span><span class="string">"C" </span><span class="kw">fn </span>cairo_native__dict_gas_refund(ptr: <span class="kw-2">*const </span>FeltDict) -&gt; u64 {
-    <span class="kw">let </span>dict = <span class="kw-2">&amp;*</span>ptr;
-    (dict.count.saturating_sub(dict.mappings.len() <span class="kw">as </span>u64)) * <span class="kw-2">*</span>DICT_GAS_REFUND_PER_ACCESS
+    <span class="kw">let </span>dict = Rc::from_raw(ptr);
+    <span class="kw">let </span>amount =
+        (dict.count.saturating_sub(dict.mappings.len() <span class="kw">as </span>u64)) * <span class="kw-2">*</span>DICT_GAS_REFUND_PER_ACCESS;
+
+    forget(dict);
+    amount
 }
 
 <span class="doccomment">/// Compute `ec_point_from_x_nz(x)` and store it.
@@ -1849,21 +1923,27 @@
 
     <span class="attr">#[test]
     </span><span class="kw">fn </span>test_dict() {
-        <span class="kw">let </span>dict =
-            <span class="kw">unsafe </span>{ cairo_native__dict_new(size_of::&lt;u64&gt;() <span class="kw">as </span>u64, align_of::&lt;u64&gt;() <span class="kw">as </span>u64) };
+        <span class="kw">let </span>dict = <span class="kw">unsafe </span>{
+            cairo_native__dict_new(
+                size_of::&lt;u64&gt;() <span class="kw">as </span>u64,
+                align_of::&lt;u64&gt;() <span class="kw">as </span>u64,
+                <span class="prelude-val">None</span>,
+                <span class="prelude-val">None</span>,
+            )
+        };
 
         <span class="kw">let </span>key = Felt::ONE.to_bytes_le();
         <span class="kw">let </span><span class="kw-2">mut </span>ptr = null_mut::&lt;u64&gt;();
 
         <span class="macro">assert_eq!</span>(
-            <span class="kw">unsafe </span>{ cairo_native__dict_get(<span class="kw-2">&amp;mut *</span>dict, <span class="kw-2">&amp;</span>key, (<span class="kw-2">&amp;</span>raw <span class="kw-2">mut </span>ptr).cast()) },
+            <span class="kw">unsafe </span>{ cairo_native__dict_get(dict, <span class="kw-2">&amp;</span>key, (<span class="kw-2">&amp;</span>raw <span class="kw-2">mut </span>ptr).cast()) },
             <span class="number">0</span>,
         );
         <span class="macro">assert!</span>(!ptr.is_null());
         <span class="kw">unsafe </span>{ <span class="kw-2">*</span>ptr = <span class="number">24 </span>};
 
         <span class="macro">assert_eq!</span>(
-            <span class="kw">unsafe </span>{ cairo_native__dict_get(<span class="kw-2">&amp;mut *</span>dict, <span class="kw-2">&amp;</span>key, (<span class="kw-2">&amp;</span>raw <span class="kw-2">mut </span>ptr).cast()) },
+            <span class="kw">unsafe </span>{ cairo_native__dict_get(dict, <span class="kw-2">&amp;</span>key, (<span class="kw-2">&amp;</span>raw <span class="kw-2">mut </span>ptr).cast()) },
             <span class="number">1</span>,
         );
         <span class="macro">assert!</span>(!ptr.is_null());
@@ -1873,17 +1953,17 @@
         <span class="kw">let </span>refund = <span class="kw">unsafe </span>{ cairo_native__dict_gas_refund(dict) };
         <span class="macro">assert_eq!</span>(refund, <span class="number">4050</span>);
 
-        <span class="kw">let </span>cloned_dict = <span class="kw">unsafe </span>{ cairo_native__dict_dup(<span class="kw-2">&amp;*</span>dict, <span class="prelude-val">None</span>) };
-        <span class="kw">unsafe </span>{ cairo_native__dict_drop(dict, <span class="prelude-val">None</span>) };
+        <span class="kw">let </span>cloned_dict = <span class="kw">unsafe </span>{ cairo_native__dict_dup(<span class="kw-2">&amp;*</span>dict) };
+        <span class="kw">unsafe </span>{ cairo_native__dict_drop(dict) };
 
         <span class="macro">assert_eq!</span>(
-            <span class="kw">unsafe </span>{ cairo_native__dict_get(<span class="kw-2">&amp;mut *</span>cloned_dict, <span class="kw-2">&amp;</span>key, (<span class="kw-2">&amp;</span>raw <span class="kw-2">mut </span>ptr).cast()) },
+            <span class="kw">unsafe </span>{ cairo_native__dict_get(cloned_dict, <span class="kw-2">&amp;</span>key, (<span class="kw-2">&amp;</span>raw <span class="kw-2">mut </span>ptr).cast()) },
             <span class="number">1</span>,
         );
         <span class="macro">assert!</span>(!ptr.is_null());
         <span class="macro">assert_eq!</span>(<span class="kw">unsafe </span>{ <span class="kw-2">*</span>ptr }, <span class="number">42</span>);
 
-        <span class="kw">unsafe </span>{ cairo_native__dict_drop(cloned_dict, <span class="prelude-val">None</span>) };
+        <span class="kw">unsafe </span>{ cairo_native__dict_drop(cloned_dict) };
     }
 
     <span class="attr">#[test]
