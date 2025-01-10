@@ -1,10 +1,4 @@
-use nullable::null;
-            use nullable::match_nullable;
-            use nullable::FromNullableResult;
-            use nullable::nullable_from_box;
-            use box::BoxTrait;
-
-            fn run_test() -> Nullable<u8> {
-                let a: Nullable<u8> = null();
-                a
-            }
+ use core::pedersen::pedersen;
+ fn run_test(a: felt252, b: felt252) -> felt252 {
+     pedersen(a, b)
+ }
