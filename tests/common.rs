@@ -750,7 +750,7 @@ pub fn compare_outputs(
 
     let mut size_cache = HashMap::new();
     let ty = function.signature.ret_types.last();
-    let is_builtin = ty.map_or(false, |ty| {
+    let is_builtin = ty.is_some_and(|ty| {
         matches!(
             registry.get_type(ty).unwrap(),
             CoreTypeConcrete::Bitwise(_)
@@ -768,7 +768,7 @@ pub fn compare_outputs(
                 | CoreTypeConcrete::Circuit(CircuitTypeConcrete::MulMod(_))
         )
     });
-    let returns_panic = ty.map_or(false, |ty| {
+    let returns_panic = ty.is_some_and(|ty| {
         ty.debug_name
             .as_ref()
             .map(|x| x.starts_with("core::panics::PanicResult"))
