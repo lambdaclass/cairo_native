@@ -390,7 +390,7 @@ pub fn build_upcast<'ctx, 'this>(
 #[cfg(test)]
 mod test {
     use crate::{
-        utils::test::{jit_enum, jit_struct, run_program_assert_output, run_sierra_program},
+        utils::test::{jit_enum, jit_struct, run_sierra_program},
         values::Value,
     };
     use cairo_lang_sierra::{program::Program, ProgramParser};
