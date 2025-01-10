@@ -1,4 +1,4 @@
-name: Execute blocks
+name: Starknet Blocks
 
 on:
   pull_request:
