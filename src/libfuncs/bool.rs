@@ -218,6 +218,11 @@ mod test {
 
     #[test]
     fn run_not() {
+        // use array::ArrayTrait;
+        //
+        // fn run_test(a: bool) -> bool {
+        //   !a
+        // }
         let program = ProgramParser::new().parse(r#"
             type [0] = Struct<ut@Tuple> [storable: true, drop: true, dup: true, zero_sized: true];
             type [1] = Enum<ut@core::bool, [0], [0]> [storable: true, drop: true, dup: true, zero_sized: false];
@@ -242,6 +247,11 @@ mod test {
 
     #[test]
     fn run_and() {
+        // use array::ArrayTrait;
+
+        // fn run_test(a: bool, b: bool) -> bool {
+        //     a && b
+        // }
         let program = ProgramParser::new().parse(r#"
             type [0] = Struct<ut@Tuple> [storable: true, drop: true, dup: true, zero_sized: true];
             type [1] = Enum<ut@core::bool, [0], [0]> [storable: true, drop: true, dup: true, zero_sized: false];

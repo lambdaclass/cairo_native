@@ -2083,6 +2083,10 @@ mod test {
 
     #[test]
     fn run_roundtrip() {
+        // use array::ArrayTrait;
+        // fn run_test(x: Array<u32>) -> Array<u32> {
+        //     x
+        // }
         let program = ProgramParser::new()
             .parse(
                 r#"
@@ -2107,6 +2111,12 @@ mod test {
 
     #[test]
     fn run_append() {
+        // use array::ArrayTrait;
+        // fn run_test() -> Array<u32> {
+        //     let mut numbers = ArrayTrait::new();
+        //     numbers.append(4_u32);
+        //     numbers
+        // }
         let program = ProgramParser::new()
             .parse(
                 r#"
@@ -2140,6 +2150,14 @@ mod test {
 
     #[test]
     fn run_len() {
+        // use array::ArrayTrait;
+        // fn run_test() -> u32 {
+        //     let mut numbers = ArrayTrait::new();
+        //     numbers.append(4_u32);
+        //     numbers.append(3_u32);
+        //     numbers.append(2_u32);
+        //     numbers.len()
+        // }
         let program = ProgramParser::new()
             .parse(
                 r#"
@@ -2191,6 +2209,20 @@ mod test {
 
     #[test]
     fn run_get() {
+        // use array::ArrayTrait;
+        // fn run_test() -> (u32, u32, u32, u32) {
+        //     let mut numbers = ArrayTrait::new();
+        //     numbers.append(4_u32);
+        //     numbers.append(3_u32);
+        //     numbers.append(2_u32);
+        //     numbers.append(1_u32);
+        //     (
+        //         *numbers.at(0),
+        //         *numbers.at(1),
+        //         *numbers.at(2),
+        //         *numbers.at(3),
+        //     )
+        // }
         let program = ProgramParser::new()
             .parse(
                 r#"
@@ -2378,6 +2410,40 @@ mod test {
 
     #[test]
     fn run_get_big() {
+        // use array::ArrayTrait;
+        // fn run_test() -> (u32, u32, u32, u32) {
+        //     let mut numbers = ArrayTrait::new();
+        //     numbers.append(4_u32);
+        //     numbers.append(3_u32);
+        //     numbers.append(2_u32);
+        //     numbers.append(2_u32);
+        //     numbers.append(2_u32);
+        //     numbers.append(2_u32);
+        //     numbers.append(2_u32);
+        //     numbers.append(2_u32);
+        //     numbers.append(2_u32);
+        //     numbers.append(2_u32);
+        //     numbers.append(2_u32);
+        //     numbers.append(2_u32);
+        //     numbers.append(2_u32);
+        //     numbers.append(2_u32);
+        //     numbers.append(2_u32);
+        //     numbers.append(2_u32);
+        //     numbers.append(17_u32);
+        //     numbers.append(17_u32);
+        //     numbers.append(18_u32);
+        //     numbers.append(19_u32);
+        //     numbers.append(20_u32);
+        //     numbers.append(21_u32);
+        //     numbers.append(22_u32);
+        //     numbers.append(23_u32);
+        //     (
+        //         *numbers.at(20),
+        //         *numbers.at(21),
+        //         *numbers.at(22),
+        //         *numbers.at(23),
+        //     )
+        // }
         let program = ProgramParser::new()
             .parse(
                 r#"
@@ -2636,6 +2702,15 @@ mod test {
 
     #[test]
     fn run_pop_front() {
+        // use array::ArrayTrait;
+        // fn run_test() -> u32 {
+        //     let mut numbers = ArrayTrait::new();
+        //     numbers.append(4_u32);
+        //     numbers.append(3_u32);
+        //     let _ = numbers.pop_front();
+        //     numbers.append(1_u32);
+        //     *numbers.at(0)
+        // }
         let program = ProgramParser::new()
             .parse(
                 r#"
@@ -2739,6 +2814,13 @@ mod test {
 
     #[test]
     fn run_pop_front_result() {
+        // use array::ArrayTrait;
+        // fn run_test() -> Option<u32> {
+        //     let mut numbers = ArrayTrait::new();
+        //     numbers.append(4_u32);
+        //     numbers.append(3_u32);
+        //     numbers.pop_front()
+        // }
         let program = ProgramParser::new()
             .parse(
                 r#"
@@ -2797,6 +2879,11 @@ mod test {
 
         assert_eq!(result, jit_enum!(0, 4u32.into()));
 
+        // use array::ArrayTrait;
+        // fn run_test() -> Option<u32> {
+        //     let mut numbers = ArrayTrait::new();
+        //     numbers.pop_front()
+        // }
         let program = ProgramParser::new()
             .parse(
                 r#"
@@ -2844,6 +2931,16 @@ mod test {
 
     #[test]
     fn run_pop_front_consume() {
+        // use array::ArrayTrait;
+        // fn run_test() -> u32 {
+        //     let mut numbers = ArrayTrait::new();
+        //     numbers.append(4_u32);
+        //     numbers.append(3_u32);
+        //     match numbers.pop_front_consume() {
+        //         Option::Some((_, x)) => x,
+        //         Option::None(()) => 0_u32,
+        //     }
+        // }
         let program = ProgramParser::new()
             .parse(
                 r#"
@@ -2898,6 +2995,20 @@ mod test {
 
     #[test]
     fn run_pop_back() {
+        // use array::ArrayTrait;
+        // fn run_test() -> (Option<@u32>, Option<@u32>, Option<@u32>, Option<@u32>) {
+        //     let mut numbers = ArrayTrait::new();
+        //     numbers.append(4_u32);
+        //     numbers.append(3_u32);
+        //     numbers.append(1_u32);
+        //     let mut numbers = numbers.span();
+        //     (
+        //         numbers.pop_back(),
+        //         numbers.pop_back(),
+        //         numbers.pop_back(),
+        //         numbers.pop_back(),
+        //     )
+        // }
         let program = ProgramParser::new()
             .parse(
                 r#"
@@ -3063,6 +3174,27 @@ mod test {
 
     #[test]
     fn run_slice() {
+        // use array::Array;
+        // use array::ArrayTrait;
+        // use array::SpanTrait;
+        // use option::OptionTrait;
+        // use box::BoxTrait;
+        // fn run_test() -> u32 {
+        //     let mut data: Array<u32> = ArrayTrait::new(); // Alloca (freed).
+        //     data.append(1_u32);
+        //     data.append(2_u32);
+        //     data.append(3_u32);
+        //     data.append(4_u32);
+        //     let sp = data.span(); // Alloca (leaked).
+        //     let slice = sp.slice(1, 2);
+        //     data.append(5_u32);
+        //     data.append(5_u32);
+        //     data.append(5_u32);
+        //     data.append(5_u32);
+        //     data.append(5_u32); // Realloc (freed).
+        //     data.append(5_u32);
+        //     *slice.get(1).unwrap().unbox()
+        // }
         let program = ProgramParser::new()
             .parse(
                 r#"
@@ -3207,6 +3339,22 @@ mod test {
 
     #[test]
     fn run_slice_fail() {
+        // use array::Array;
+        // use array::ArrayTrait;
+        // use array::SpanTrait;
+        // use option::OptionTrait;
+        // use box::BoxTrait;
+        // fn run_test() -> u32 {
+        //     let mut data: Array<u32> = ArrayTrait::new();
+        //     data.append(1_u32);
+        //     data.append(2_u32);
+        //     data.append(3_u32);
+        //     data.append(4_u32);
+        //     let sp = data.span();
+        //     let slice = sp.slice(1, 4); // oob
+        //     //data.append(5_u32);
+        //     *slice.get(0).unwrap().unbox()
+        // }
         let program = ProgramParser::new()
             .parse(
                 r#"
@@ -3333,6 +3481,10 @@ mod test {
 
     #[test]
     fn run_slice_empty_array() {
+        // fn run_test() -> Span<felt252> {
+        //     let x: Span<felt252> = array![].span();
+        //     x.slice(0, 0)
+        // }
         let program = ProgramParser::new()
             .parse(
                 r#"
@@ -3421,6 +3573,13 @@ mod test {
 
     #[test]
     fn run_span_from_tuple() {
+        // mod felt252_span_from_tuple {
+        //     pub extern fn span_from_tuple<T>(struct_like: Box<@T>) -> @Array<felt252> nopanic;
+        // }
+        // fn run_test() -> Array<felt252> {
+        //     let span = felt252_span_from_tuple::span_from_tuple(BoxTrait::new(@(10, 20, 30)));
+        //     span.clone()
+        // }
         let program = ProgramParser::new()
             .parse(
                 r#"
@@ -3609,6 +3768,18 @@ mod test {
 
     #[test]
     fn run_span_from_multi_tuple() {
+        // mod tuple_span_from_tuple {
+        //     pub extern fn span_from_tuple<T>(
+        //         struct_like: Box<@T>
+        //     ) -> @Array<(felt252, felt252, felt252)> nopanic;
+        // }
+        // fn run_test() {
+        //     let multi_tuple = ((10, 20, 30), (40, 50, 60), (70, 80, 90));
+        //     let span = tuple_span_from_tuple::span_from_tuple(BoxTrait::new(@multi_tuple));
+        //     assert!(*span[0] == (10, 20, 30));
+        //     assert!(*span[1] == (40, 50, 60));
+        //     assert!(*span[2] == (70, 80, 90));
+        // }
         let program = ProgramParser::new()
             .parse(
                 r#"
@@ -5491,6 +5662,12 @@ mod test {
 
     #[test]
     fn seq_append1() {
+        // use array::ArrayTrait;
+        // fn run_test() -> Array<u32> {
+        //     let mut data = ArrayTrait::new();
+        //     data.append(1);
+        //     data
+        // }
         let program = ProgramParser::new()
             .parse(
                 r#"
@@ -5525,6 +5702,13 @@ mod test {
 
     #[test]
     fn seq_append2() {
+        // use array::ArrayTrait;
+        // fn run_test() -> Array<u32> {
+        //     let mut data = ArrayTrait::new();
+        //     data.append(1);
+        //     data.append(2);
+        //     data
+        // }
         let program = ProgramParser::new()
             .parse(
                 r#"
@@ -5564,6 +5748,14 @@ mod test {
 
     #[test]
     fn seq_append2_popf1() {
+        // use array::ArrayTrait;
+        // fn run_test() -> Array<u32> {
+        //     let mut data = ArrayTrait::new();
+        //     data.append(1);
+        //     data.append(2);
+        //     let _ = data.pop_front();
+        //     data
+        // }
         let program = ProgramParser::new()
             .parse(
                 r#"
@@ -5616,6 +5808,15 @@ mod test {
 
     #[test]
     fn seq_append2_popb1() {
+        // use array::ArrayTrait;
+        // fn run_test() -> Span<u32> {
+        //     let mut data = ArrayTrait::new();
+        //     data.append(1);
+        //     data.append(2);
+        //     let mut data = data.span();
+        //     let _ = data.pop_back();
+        //     data
+        // }
         let program = ProgramParser::new()
             .parse(
                 r#"
@@ -5698,6 +5899,14 @@ mod test {
 
     #[test]
     fn seq_append1_popf1_append1() {
+        // use array::ArrayTrait;
+        // fn run_test() -> Array<u32> {
+        //     let mut data = ArrayTrait::new();
+        //     data.append(1);
+        //     let _ = data.pop_front();
+        //     data.append(2);
+        //     data
+        // }
         let program = ProgramParser::new()
             .parse(
                 r#"
@@ -5752,6 +5961,12 @@ mod test {
 
     #[test]
     fn seq_append1_first() {
+        // use array::ArrayTrait;
+        // fn run_test() -> u32 {
+        //     let mut data = ArrayTrait::new();
+        //     data.append(1);
+        //     *data.at(0)
+        // }
         let program = ProgramParser::new()
             .parse(
                 r#"
@@ -5840,6 +6055,13 @@ mod test {
 
     #[test]
     fn seq_append2_first() {
+        // use array::ArrayTrait;
+        // fn run_test() -> u32 {
+        //     let mut data = ArrayTrait::new();
+        //     data.append(1);
+        //     data.append(2);
+        //     *data.at(0)
+        // }
         let program = ProgramParser::new()
             .parse(
                 r#"
@@ -5933,6 +6155,14 @@ mod test {
 
     #[test]
     fn seq_append2_popf1_first() {
+        // use array::ArrayTrait;
+        // fn run_test() -> u32 {
+        //     let mut data = ArrayTrait::new();
+        //     data.append(1);
+        //     data.append(2);
+        //     let _ = data.pop_front();
+        //     *data.at(0)
+        // }
         let program = ProgramParser::new()
             .parse(
                 r#"
@@ -6037,6 +6267,16 @@ mod test {
 
     #[test]
     fn seq_append2_popb1_last() {
+        // use array::ArrayTrait;
+        // fn run_test() -> u32 {
+        //     let mut data = ArrayTrait::new();
+        //     data.append(1);
+        //     data.append(2);
+        //     let mut data_span = data.span();
+        //     let _ = data_span.pop_back();
+        //     let last = data_span.len() - 1;
+        //     *data_span.at(last)
+        // }
         let program = ProgramParser::new()
             .parse(
                 r#"
@@ -6188,6 +6428,14 @@ mod test {
 
     #[test]
     fn seq_append1_popf1_append1_first() {
+        // use array::ArrayTrait;
+        // fn run_test() -> u32 {
+        //     let mut data = ArrayTrait::new();
+        //     data.append(1);
+        //     let _ = data.pop_front();
+        //     data.append(2);
+        //     *data.at(0)
+        // }
         let program = ProgramParser::new()
             .parse(
                 r#"
@@ -6294,6 +6542,10 @@ mod test {
 
     #[test]
     fn array_clone() {
+        // fn run_test() -> Array<u32> {
+        //     let x = ArrayTrait::new();
+        //     x.clone()
+        // }
         let program = ProgramParser::new()
             .parse(
                 r#"
@@ -6479,6 +6731,16 @@ mod test {
 
     #[test]
     fn array_pop_back_state() {
+        // use array::ArrayTrait;
+        // fn run_test() -> Span<u32> {
+        //     let mut numbers = ArrayTrait::new();
+        //     numbers.append(1_u32);
+        //     numbers.append(2_u32);
+        //     numbers.append(3_u32);
+        //     let mut numbers = numbers.span();
+        //     let _ = numbers.pop_back();
+        //     numbers
+        // }
         let program = ProgramParser::new()
             .parse(
                 r#"
@@ -6566,6 +6828,10 @@ mod test {
     #[test]
     fn array_empty_span() {
         // Tests snapshot_take on a empty array.
+        // fn run_test() -> Span<u32> {
+        //     let x = ArrayTrait::new();
+        //     x.span()
+        // }
         let program = ProgramParser::new()
             .parse(
                 r#"
@@ -6602,6 +6868,16 @@ mod test {
     #[test]
     fn array_span_modify_span() {
         // Tests pop_back on a span.
+        // use core::array::SpanTrait;
+        // fn pop_elem(mut self: Span<u64>) -> Option<@u64> {
+        //     let x = self.pop_back();
+        //     x
+        // }
+        // fn run_test() -> Option<@u64> {
+        //     let mut data = array![2].span();
+        //     let x = pop_elem(data);
+        //     x
+        // }
         let program = ProgramParser::new()
             .parse(
                 r#"
@@ -6685,6 +6961,16 @@ mod test {
     #[test]
     fn array_span_check_array() {
         // Tests pop back on a span not modifying the original array.
+        // use core::array::SpanTrait;
+        // fn pop_elem(mut self: Span<u64>) -> Option<@u64> {
+        //     let x = self.pop_back();
+        //     x
+        // }
+        // fn run_test() -> Array<u64> {
+        //     let mut data = array![1, 2];
+        //     let _x = pop_elem(data.span());
+        //     data
+        // }
         let program = ProgramParser::new()
             .parse(
                 r#"
@@ -6771,6 +7057,10 @@ mod test {
 
     #[test]
     fn tuple_from_span() {
+        // use core::array::{tuple_from_span, FixedSizedArrayInfoImpl};
+        // fn run_test(x: Array<felt252>) -> [felt252; 3] {
+        //     (*tuple_from_span::<[felt252; 3], FixedSizedArrayInfoImpl<felt252, 3>>(@x).unwrap()).unbox()
+        // }
         let program = ProgramParser::new()
             .parse(
                 r#"
@@ -6859,6 +7149,10 @@ mod test {
 
     #[test]
     fn tuple_from_span_failed() {
+        // use core::array::{tuple_from_span, FixedSizedArrayInfoImpl};
+        // fn run_test(x: Array<felt252>) -> Option<@Box<[core::felt252; 3]>> {
+        //     tuple_from_span::<[felt252; 3], FixedSizedArrayInfoImpl<felt252, 3>>(@x)
+        // }
         let program = ProgramParser::new()
             .parse(
                 r#"
@@ -6913,6 +7207,12 @@ mod test {
 
     #[test]
     fn snapshot_multi_pop_front() {
+        // use array::ArrayTrait;
+        // fn run_test() -> (Span<felt252>, @Box<[felt252; 3]>) {
+        //     let mut numbers = array![1, 2, 3, 4, 5, 6].span();
+        //     let popped = numbers.multi_pop_front::<3>().unwrap();
+        //     (numbers, popped)
+        // }
         let program = ProgramParser::new()
             .parse(
                 r#"
@@ -7042,6 +7342,13 @@ mod test {
 
     #[test]
     fn snapshot_failed_multi_pop_front() {
+        // use array::ArrayTrait;
+        // fn run_test() -> Span<felt252> {
+        //     let mut numbers = array![1, 2].span();
+        //     // should fail (return none)
+        //     assert!(numbers.multi_pop_front::<3>().is_none());
+        //     numbers
+        // }
         let program = ProgramParser::new()
             .parse(
                 r#"
@@ -8446,6 +8753,13 @@ mod test {
 
     #[test]
     fn snapshot_multi_pop_back() {
+        // use array::ArrayTrait;
+        // fn run_test() -> (Span<felt252>, @Box<[felt252; 3]>) {
+        //     let mut numbers = array![1, 2, 3, 4, 5, 6].span();
+        //     let popped = numbers.multi_pop_back::<3>().unwrap();
+
+        //     (numbers, popped)
+        // }
         let program = ProgramParser::new()
             .parse(
                 r#"
@@ -8575,6 +8889,13 @@ mod test {
 
     #[test]
     fn snapshot_failed_multi_pop_back() {
+        // use array::ArrayTrait;
+        // fn run_test() -> Span<felt252> {
+        //     let mut numbers = array![1, 2].span();
+        //     // should fail (return none)
+        //     assert!(numbers.multi_pop_back::<3>().is_none());
+        //     numbers
+        // }
         let program = ProgramParser::new()
             .parse(
                 r#"
@@ -9979,6 +10300,13 @@ mod test {
 
     #[test]
     fn snapshot_multi_pop_back_front() {
+        // use array::ArrayTrait;
+        // fn run_test() -> (Span<felt252>, @Box<[felt252; 2]>, @Box<[felt252; 2]>) {
+        //     let mut numbers = array![1, 2, 3, 4, 5, 6].span();
+        //     let popped_front = numbers.multi_pop_front::<2>().unwrap();
+        //     let popped_back = numbers.multi_pop_back::<2>().unwrap();
+        //     (numbers, popped_front, popped_back)
+        // }
         let program = ProgramParser::new()
             .parse(
                 r#"
@@ -10123,6 +10451,12 @@ mod test {
     /// Test to ensure that the returned element in `array_get` does NOT get dropped.
     #[test]
     fn array_get_avoid_dropping_element() {
+        // use core::{array::{array_append, array_at, array_new}, box::{into_box, unbox}};
+        // fn run_test() -> @Box<felt252> {
+        //     let mut x: Array<Box<felt252>> = array_new();
+        //     array_append(ref x, into_box(42));
+        //     unbox(array_at(@x, 0))
+        // }
         let program = ProgramParser::new()
             .parse(
                 r#"
