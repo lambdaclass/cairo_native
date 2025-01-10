@@ -7,7 +7,7 @@ on:
     types: [checks_requested]
 
 jobs:
-  run:
+  run-blocks:
     name: Run Blocks
     runs-on: ubuntu-latest
     env:
@@ -112,9 +112,9 @@ jobs:
           name: dump-${{matrix.block}}-${{matrix.runner}}
           path: starknet-replay/state_dumps/${{matrix.runner}}
 
-  compare:
+  compare-dumps:
     name: Compare Dumps
-    needs: [run]
+    needs: [run-blocks]
     runs-on: ubuntu-latest
     strategy:
       matrix:
