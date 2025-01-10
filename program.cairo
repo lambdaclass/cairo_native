@@ -1,9 +1,10 @@
-#[derive(Copy, Drop)]
-pub extern type IntRange<T>;
-pub extern fn int_range_try_new<T>(
-    x: T, y: T
-) -> Result<IntRange<T>, IntRange<T>> implicits(core::RangeCheck) nopanic;
+use nullable::null;
+            use nullable::match_nullable;
+            use nullable::FromNullableResult;
+            use nullable::nullable_from_box;
+            use box::BoxTrait;
 
-fn run_test(lhs: u64, rhs: u64) -> IntRange<u64> {
-    int_range_try_new(lhs, rhs).unwrap()
-}
+            fn run_test() -> Nullable<u8> {
+                let a: Nullable<u8> = null();
+                a
+            }
