@@ -996,7 +996,7 @@ mod test {
         utils::{
             felt252_str,
             test::{
-                jit_enum, jit_panic, jit_struct, run_program_assert_output, run_sierra_program,
+                jit_enum, jit_panic, jit_struct, run_sierra_program,
             },
         },
         values::Value,
@@ -2677,7 +2677,6 @@ mod test {
         //     circuit_sub, circuit_mul, circuit_inverse, EvalCircuitTrait, u384,
         //     CircuitOutputsTrait, CircuitModulus, AddInputResultTrait, CircuitInputs,
         // };
-
         // fn main() -> u384 {
         //     let in1 = CircuitElement::<CircuitInput<0>> {};
         //     let in2 = CircuitElement::<CircuitInput<1>> {};
@@ -2689,9 +2688,7 @@ mod test {
         //     let sub2 = circuit_sub(sub1, mul2);
         //     let inv2 = circuit_inverse(sub2);
         //     let add2 = circuit_add(inv2, inv2);
-
         //     let modulus = TryInto::<_, CircuitModulus>::try_into([17, 14, 14, 14]).unwrap();
-
         //     let outputs = (add2,)
         //         .new_inputs()
         //         .next([9, 2, 9, 3])
@@ -2699,7 +2696,6 @@ mod test {
         //         .done()
         //         .eval(modulus)
         //         .unwrap();
-
         //     outputs.get_output(add2)
         // }
         let program = ProgramParser::new().parse(r#"
