@@ -1,4 +1,5 @@
- use core::poseidon::hades_permutation;
- fn run_test(a: felt252, b: felt252, c: felt252) -> (felt252, felt252, felt252) {
-     hades_permutation(a, b, c)
+ use starknet::class_hash::{class_hash_const, ClassHash};
+
+ fn run_program() -> ClassHash {
+     class_hash_const::<0>()
  }
