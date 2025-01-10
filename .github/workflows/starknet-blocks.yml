@@ -53,7 +53,7 @@ jobs:
       # Install dependencies
       - uses: ./cairo_native/.github/actions/install-linux-deps
       - name: Setup rust env
-        uses: dtolnay/rust-toolchain@1.83.0
+        uses: dtolnay/rust-toolchain@1.84.0
       - name: Retreive cached dependecies
         uses: Swatinem/rust-cache@v2
         with:
