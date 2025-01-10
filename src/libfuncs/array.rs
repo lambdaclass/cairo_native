@@ -2104,7 +2104,7 @@ mod test {
             .map_err(|e| e.to_string())
             .unwrap();
 
-        let result = run_sierra_program(program, &[[1u32, 2u32].into()]).return_value;
+        let result = run_sierra_program(&program, &[[1u32, 2u32].into()]).return_value;
 
         assert_eq!(result, Value::from([1u32, 2u32]));
     }
@@ -2143,7 +2143,7 @@ mod test {
             .map_err(|e| e.to_string())
             .unwrap();
 
-        let result = run_sierra_program(program, &[]).return_value;
+        let result = run_sierra_program(&program, &[]).return_value;
 
         assert_eq!(result, [4u32].into());
     }
@@ -2202,7 +2202,7 @@ mod test {
             .map_err(|e| e.to_string())
             .unwrap();
 
-        let result = run_sierra_program(program, &[]).return_value;
+        let result = run_sierra_program(&program, &[]).return_value;
 
         assert_eq!(result, 3u32.into());
     }
@@ -2392,7 +2392,7 @@ mod test {
             .map_err(|e| e.to_string())
             .unwrap();
 
-        let result = run_sierra_program(program, &[]).return_value;
+        let result = run_sierra_program(&program, &[]).return_value;
 
         assert_eq!(
             result,
@@ -2684,7 +2684,7 @@ mod test {
             .map_err(|e| e.to_string())
             .unwrap();
 
-        let result = run_sierra_program(program, &[]).return_value;
+        let result = run_sierra_program(&program, &[]).return_value;
 
         assert_eq!(
             result,
@@ -2807,7 +2807,7 @@ mod test {
             .map_err(|e| e.to_string())
             .unwrap();
 
-        let result = run_sierra_program(program, &[]).return_value;
+        let result = run_sierra_program(&program, &[]).return_value;
 
         assert_eq!(result, jit_enum!(0, jit_struct!(3u32.into())));
     }
@@ -2875,7 +2875,7 @@ mod test {
             .map_err(|e| e.to_string())
             .unwrap();
 
-        let result = run_sierra_program(program, &[]).return_value;
+        let result = run_sierra_program(&program, &[]).return_value;
 
         assert_eq!(result, jit_enum!(0, 4u32.into()));
 
@@ -2924,7 +2924,7 @@ mod test {
             .map_err(|e| e.to_string())
             .unwrap();
 
-        let result = run_sierra_program(program, &[]).return_value;
+        let result = run_sierra_program(&program, &[]).return_value;
 
         assert_eq!(result, jit_enum!(1, jit_struct!()));
     }
@@ -2988,7 +2988,7 @@ mod test {
             .map_err(|e| e.to_string())
             .unwrap();
 
-        let result = run_sierra_program(program, &[]).return_value;
+        let result = run_sierra_program(&program, &[]).return_value;
 
         assert_eq!(result, 4u32.into());
     }
@@ -3153,7 +3153,7 @@ mod test {
             .map_err(|e| e.to_string())
             .unwrap();
 
-        let result = run_sierra_program(program, &[]).return_value;
+        let result = run_sierra_program(&program, &[]).return_value;
 
         assert_eq!(
             result,
@@ -3332,7 +3332,7 @@ mod test {
             .map_err(|e| e.to_string())
             .unwrap();
 
-        let result = run_sierra_program(program, &[]).return_value;
+        let result = run_sierra_program(&program, &[]).return_value;
 
         assert_eq!(result, jit_enum!(0, jit_struct!(3u32.into())));
     }
@@ -3469,7 +3469,7 @@ mod test {
             .map_err(|e| e.to_string())
             .unwrap();
 
-        let result = run_sierra_program(program, &[]).return_value;
+        let result = run_sierra_program(&program, &[]).return_value;
 
         assert_eq!(
             result,
@@ -3553,7 +3553,7 @@ mod test {
             .map_err(|e| e.to_string())
             .unwrap();
 
-        let result = run_sierra_program(program, &[]).return_value;
+        let result = run_sierra_program(&program, &[]).return_value;
 
         assert_eq!(
             result,
@@ -3751,7 +3751,7 @@ mod test {
             .map_err(|e| e.to_string())
             .unwrap();
 
-        let result = run_sierra_program(program, &[]).return_value;
+        let result = run_sierra_program(&program, &[]).return_value;
 
         assert_eq!(
             result,
@@ -5655,7 +5655,7 @@ mod test {
             .map_err(|e| e.to_string())
             .unwrap();
 
-        let result = run_sierra_program(program, &[]).return_value;
+        let result = run_sierra_program(&program, &[]).return_value;
 
         assert_eq!(result, jit_enum!(0, jit_struct!(jit_struct!())));
     }
@@ -5695,7 +5695,7 @@ mod test {
             .unwrap();
 
         assert_eq!(
-            run_sierra_program(program, &[]).return_value,
+            run_sierra_program(&program, &[]).return_value,
             Value::from([1u32]),
         );
     }
@@ -5741,7 +5741,7 @@ mod test {
             .unwrap();
 
         assert_eq!(
-            run_sierra_program(program, &[]).return_value,
+            run_sierra_program(&program, &[]).return_value,
             Value::from([1u32, 2u32]),
         );
     }
@@ -5801,7 +5801,7 @@ mod test {
             .unwrap();
 
         assert_eq!(
-            run_sierra_program(program, &[]).return_value,
+            run_sierra_program(&program, &[]).return_value,
             Value::from([2u32]),
         );
     }
@@ -5892,7 +5892,7 @@ mod test {
             .unwrap();
 
         assert_eq!(
-            run_sierra_program(program, &[]).return_value,
+            run_sierra_program(&program, &[]).return_value,
             jit_struct!([1u32].into())
         );
     }
@@ -5954,7 +5954,7 @@ mod test {
             .unwrap();
 
         assert_eq!(
-            run_sierra_program(program, &[]).return_value,
+            run_sierra_program(&program, &[]).return_value,
             Value::from([2u32]),
         );
     }
@@ -6041,7 +6041,7 @@ mod test {
             .unwrap();
 
         assert_eq!(
-            run_sierra_program(program, &[]).return_value,
+            run_sierra_program(&program, &[]).return_value,
             Value::Enum {
                 tag: 0,
                 value: Box::new(Value::Struct {
@@ -6141,7 +6141,7 @@ mod test {
             .unwrap();
 
         assert_eq!(
-            run_sierra_program(program, &[]).return_value,
+            run_sierra_program(&program, &[]).return_value,
             Value::Enum {
                 tag: 0,
                 value: Box::new(Value::Struct {
@@ -6253,7 +6253,7 @@ mod test {
             .unwrap();
 
         assert_eq!(
-            run_sierra_program(program, &[]).return_value,
+            run_sierra_program(&program, &[]).return_value,
             Value::Enum {
                 tag: 0,
                 value: Box::new(Value::Struct {
@@ -6414,7 +6414,7 @@ mod test {
             .unwrap();
 
         assert_eq!(
-            run_sierra_program(program, &[]).return_value,
+            run_sierra_program(&program, &[]).return_value,
             Value::Enum {
                 tag: 0,
                 value: Box::new(Value::Struct {
@@ -6528,7 +6528,7 @@ mod test {
             .unwrap();
 
         assert_eq!(
-            run_sierra_program(program, &[]).return_value,
+            run_sierra_program(&program, &[]).return_value,
             Value::Enum {
                 tag: 0,
                 value: Box::new(Value::Struct {
@@ -6717,7 +6717,7 @@ mod test {
             .unwrap();
 
         assert_eq!(
-            run_sierra_program(program, &[]).return_value,
+            run_sierra_program(&program, &[]).return_value,
             Value::Enum {
                 tag: 0,
                 value: Box::new(Value::Struct {
@@ -6820,7 +6820,7 @@ mod test {
             .map_err(|e| e.to_string())
             .unwrap();
 
-        let result = run_sierra_program(program, &[]).return_value;
+        let result = run_sierra_program(&program, &[]).return_value;
 
         assert_eq!(result, jit_struct!([1u32, 2u32].into()));
     }
@@ -6860,7 +6860,7 @@ mod test {
             .unwrap();
 
         assert_eq!(
-            run_sierra_program(program, &[]).return_value,
+            run_sierra_program(&program, &[]).return_value,
             jit_struct!(Value::Array(vec![])),
         );
     }
@@ -6953,7 +6953,7 @@ mod test {
             .unwrap();
 
         assert_eq!(
-            run_sierra_program(program, &[]).return_value,
+            run_sierra_program(&program, &[]).return_value,
             jit_enum!(0, 2u64.into()),
         );
     }
@@ -7050,7 +7050,7 @@ mod test {
             .unwrap();
 
         assert_eq!(
-            run_sierra_program(program, &[]).return_value,
+            run_sierra_program(&program, &[]).return_value,
             Value::Array(vec![1u64.into(), 2u64.into()]),
         );
     }
@@ -7121,7 +7121,7 @@ mod test {
 
         assert_eq!(
             run_sierra_program(
-                program,
+                &program,
                 &[Value::Array(vec![
                     Value::Felt252(1.into()),
                     Value::Felt252(2.into()),
@@ -7194,7 +7194,7 @@ mod test {
 
         assert_eq!(
             run_sierra_program(
-                program,
+                &program,
                 &[Value::Array(vec![
                     Value::Felt252(1.into()),
                     Value::Felt252(2.into()),
@@ -7312,7 +7312,7 @@ mod test {
             .map_err(|e| e.to_string())
             .unwrap();
 
-        let result = run_sierra_program(program, &[]).return_value;
+        let result = run_sierra_program(&program, &[]).return_value;
 
         assert_eq!(
             result,
@@ -8733,7 +8733,7 @@ mod test {
             .map_err(|e| e.to_string())
             .unwrap();
 
-        let result = run_sierra_program(program, &[]).return_value;
+        let result = run_sierra_program(&program, &[]).return_value;
 
         assert_eq!(
             result,
@@ -8859,7 +8859,7 @@ mod test {
             .map_err(|e| e.to_string())
             .unwrap();
 
-        let result = run_sierra_program(program, &[]).return_value;
+        let result = run_sierra_program(&program, &[]).return_value;
 
         assert_eq!(
             result,
@@ -10280,7 +10280,7 @@ mod test {
             .map_err(|e| e.to_string())
             .unwrap();
 
-        let result = run_sierra_program(program, &[]).return_value;
+        let result = run_sierra_program(&program, &[]).return_value;
 
         assert_eq!(
             result,
@@ -10423,7 +10423,7 @@ mod test {
             .map_err(|e| e.to_string())
             .unwrap();
 
-        let result = run_sierra_program(program, &[]).return_value;
+        let result = run_sierra_program(&program, &[]).return_value;
 
         assert_eq!(
             result,
@@ -10526,7 +10526,7 @@ mod test {
             .map_err(|e| e.to_string())
             .unwrap();
 
-        let result = run_sierra_program(program, &[]).return_value;
+        let result = run_sierra_program(&program, &[]).return_value;
 
         assert_eq!(result, jit_enum!(0, jit_struct!(Value::Felt252(42.into()))));
     }

@@ -228,7 +228,7 @@ mod test {
     #[test]
     fn bytes31_roundtrip() {
         let return_value1 =
-            run_sierra_program(BYTES31_ROUNDTRIP.clone(), &[Felt::from(2).into()]).return_value;
+            run_sierra_program(&BYTES31_ROUNDTRIP, &[Felt::from(2).into()]).return_value;
 
         assert_eq!(
             jit_enum!(0, jit_struct!(Felt::from(2).into())),
@@ -236,7 +236,7 @@ mod test {
         );
 
         let return_value2 =
-            run_sierra_program(BYTES31_ROUNDTRIP.clone(), &[Felt::MAX.into()]).return_value;
+            run_sierra_program(&BYTES31_ROUNDTRIP, &[Felt::MAX.into()]).return_value;
 
         assert_eq!(
             return_value2,

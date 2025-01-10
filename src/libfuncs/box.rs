@@ -187,7 +187,7 @@ mod test {
             .map_err(|e| e.to_string())
             .unwrap();
 
-        let return_value = run_sierra_program(program, &[]).return_value;
+        let return_value = run_sierra_program(&program, &[]).return_value;
 
         assert_eq!(Value::Uint32(2), return_value);
     }
@@ -219,7 +219,7 @@ mod test {
             .map_err(|e| e.to_string())
             .unwrap();
 
-        let return_value = run_sierra_program(program, &[]).return_value;
+        let return_value = run_sierra_program(&program, &[]).return_value;
 
         assert_eq!(Value::Uint32(2), return_value);
     }
@@ -253,7 +253,7 @@ mod test {
             [0]@0() -> ([1]);
         "#).map_err(|e| e.to_string()).unwrap();
 
-        let return_value = run_sierra_program(program, &[]).return_value;
+        let return_value = run_sierra_program(&program, &[]).return_value;
 
         assert_eq!(
             return_value,
@@ -295,7 +295,7 @@ mod test {
             [0]@0() -> ([1]);
         "#).map_err(|e| e.to_string()).unwrap();
 
-        let return_value = run_sierra_program(program, &[]).return_value;
+        let return_value = run_sierra_program(&program, &[]).return_value;
 
         assert_eq!(
             return_value,
@@ -340,7 +340,7 @@ mod test {
             [0]@0() -> ([1]);
         "#).map_err(|e| e.to_string()).unwrap();
 
-        let return_value = run_sierra_program(program, &[]).return_value;
+        let return_value = run_sierra_program(&program, &[]).return_value;
 
         assert_eq!(
             return_value,
@@ -388,7 +388,7 @@ mod test {
             [0]@0() -> ([2]);
         "#).map_err(|e| e.to_string()).unwrap();
 
-        let return_value = run_sierra_program(program, &[]).return_value;
+        let return_value = run_sierra_program(&program, &[]).return_value;
 
         assert_eq!(
             return_value,

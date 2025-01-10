@@ -995,9 +995,7 @@ mod test {
     use crate::{
         utils::{
             felt252_str,
-            test::{
-                jit_enum, jit_panic, jit_struct, run_sierra_program,
-            },
+            test::{jit_enum, jit_panic, jit_struct, run_sierra_program},
         },
         values::Value,
     };
@@ -1312,7 +1310,7 @@ mod test {
             [0]@0([0]: [0], [1]: [1], [2]: [2]) -> ([0], [1], [2], [21]);
         "#).map_err(|e| e.to_string()).unwrap();
 
-        let return_value = run_sierra_program(program, &[]).return_value;
+        let return_value = run_sierra_program(&program, &[]).return_value;
 
         assert_eq!(
             jit_enum!(0, jit_struct!(u384(["0x9", "0x9", "0x9", "0x9"]))),
@@ -1593,7 +1591,7 @@ mod test {
             [0]@0([0]: [0], [1]: [1], [2]: [2]) -> ([0], [1], [2], [21]);
         "#).map_err(|e| e.to_string()).unwrap();
 
-        let return_value = run_sierra_program(program, &[]).return_value;
+        let return_value = run_sierra_program(&program, &[]).return_value;
 
         assert_eq!(
             jit_enum!(0, jit_struct!(u384(["0x3", "0x3", "0x3", "0x3"]))),
@@ -1874,7 +1872,7 @@ mod test {
             [0]@0([0]: [0], [1]: [1], [2]: [2]) -> ([0], [1], [2], [21]);
         "#).map_err(|e| e.to_string()).unwrap();
 
-        let return_value = run_sierra_program(program, &[]).return_value;
+        let return_value = run_sierra_program(&program, &[]).return_value;
 
         assert_eq!(
             jit_enum!(0, jit_struct!(u384(["0x9", "0x9", "0x9", "0x9"]))),
@@ -2122,7 +2120,7 @@ mod test {
             [0]@0([0]: [0], [1]: [1], [2]: [2]) -> ([0], [1], [2], [30]);
         "#).map_err(|e| e.to_string()).unwrap();
 
-        let return_value = run_sierra_program(program, &[]).return_value;
+        let return_value = run_sierra_program(&program, &[]).return_value;
 
         assert_eq!(
             jit_enum!(0, jit_struct!(u384(["0x6", "0x0", "0x0", "0x0"]))),
@@ -2370,7 +2368,7 @@ mod test {
             [0]@0([0]: [0], [1]: [1], [2]: [2]) -> ([0], [1], [2], [30]);
         "#).map_err(|e| e.to_string()).unwrap();
 
-        let return_value = run_sierra_program(program, &[]).return_value;
+        let return_value = run_sierra_program(&program, &[]).return_value;
 
         assert_eq!(
             jit_panic!(felt252_str(
@@ -2659,7 +2657,7 @@ mod test {
             [0]@0([0]: [0], [1]: [1], [2]: [2]) -> ([0], [1], [2], [21]);
         "#).map_err(|e| e.to_string()).unwrap();
 
-        let return_value = run_sierra_program(program, &[]).return_value;
+        let return_value = run_sierra_program(&program, &[]).return_value;
 
         assert_eq!(
             jit_enum!(
@@ -2969,7 +2967,7 @@ mod test {
             [0]@0([0]: [0], [1]: [1], [2]: [2]) -> ([0], [1], [2], [28]);
         "#).map_err(|e| e.to_string()).unwrap();
 
-        let return_value = run_sierra_program(program, &[]).return_value;
+        let return_value = run_sierra_program(&program, &[]).return_value;
 
         assert_eq!(
             jit_enum!(

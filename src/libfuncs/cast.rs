@@ -800,7 +800,7 @@ mod test {
     #[test]
     fn downcast() {
         let return_value = run_sierra_program(
-            DOWNCAST.clone(),
+            &DOWNCAST,
             &[
                 u8::MAX.into(),
                 u16::MAX.into(),
@@ -841,7 +841,7 @@ mod test {
     #[test]
     fn upcast() {
         let return_value = run_sierra_program(
-            UPCAST.clone(),
+            &UPCAST,
             &[
                 u8::MAX.into(),
                 u16::MAX.into(),

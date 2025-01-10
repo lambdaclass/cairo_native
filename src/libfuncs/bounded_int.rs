@@ -860,7 +860,7 @@ mod test {
             [0]@0() -> ([1]);
         "#).map_err(|e| e.to_string()).unwrap();
 
-        let return_value = run_sierra_program(program, &[]).return_value;
+        let return_value = run_sierra_program(&program, &[]).return_value;
 
         let Value::BoundedInt { value, range: _ } = return_value else {
             panic!();
@@ -907,7 +907,7 @@ mod test {
             [0]@0() -> ([1]);
         "#).map_err(|e| e.to_string()).unwrap();
 
-        let return_value = run_sierra_program(program, &[]).return_value;
+        let return_value = run_sierra_program(&program, &[]).return_value;
 
         let Value::BoundedInt { value, range: _ } = return_value else {
             panic!();
@@ -953,7 +953,7 @@ mod test {
             [0]@0() -> ([1]);
         "#).map_err(|e| e.to_string()).unwrap();
 
-        let return_value = run_sierra_program(program, &[]).return_value;
+        let return_value = run_sierra_program(&program, &[]).return_value;
 
         let Value::BoundedInt { value, range: _ } = return_value else {
             panic!();
@@ -990,7 +990,7 @@ mod test {
             [0]@0() -> ([1]);
         "#).map_err(|e| e.to_string()).unwrap();
 
-        let return_value = run_sierra_program(program, &[]).return_value;
+        let return_value = run_sierra_program(&program, &[]).return_value;
 
         let Value::BoundedInt { value, range: _ } = return_value else {
             panic!();

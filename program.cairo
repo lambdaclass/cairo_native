@@ -1,10 +1,7 @@
-use core::box::BoxTrait;
-struct Hello {
-    x: i32,
-}
-fn run_test() -> Hello {
-    let x = BoxTrait::new(Hello {
-        x: -2
-    });
-    x.unbox()
+use core::ec::{ec_state_add_mul, EcPoint, EcState};
+use core::zeroable::NonZero;
+
+fn run_test(mut state: EcState, scalar: felt252, point: NonZero<EcPoint>) -> EcState {
+    ec_state_add_mul(ref state, scalar, point);
+    state
 }

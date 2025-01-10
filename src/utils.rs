@@ -716,7 +716,7 @@ pub mod test {
             .unwrap()
     }
 
-    pub fn run_sierra_program(program: Program, args: &[Value]) -> ExecutionResult {
+    pub fn run_sierra_program(program: &Program, args: &[Value]) -> ExecutionResult {
         let entry_point_id = &program
             .funcs
             .first()

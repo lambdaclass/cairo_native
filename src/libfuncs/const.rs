@@ -328,7 +328,7 @@ pub mod test {
             [0]@0() -> ([1]);
         "#).map_err(|e| e.to_string()).unwrap();
 
-        let result = run_sierra_program(program, &[]).return_value;
+        let result = run_sierra_program(&program, &[]).return_value;
 
         assert_eq!(result, jit_struct!(Value::Sint32(-2)));
     }
