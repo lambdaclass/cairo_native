@@ -154,10 +154,7 @@ pub fn build_unbox<'ctx, 'this>(
 mod test {
     use cairo_lang_sierra::ProgramParser;
 
-    use crate::{
-        utils::test::run_sierra_program,
-        values::Value,
-    };
+    use crate::{utils::test::run_sierra_program, values::Value};
 
     #[test]
     fn run_box_unbox() {
@@ -168,7 +165,9 @@ mod test {
         //     let box_x: Box<u32> = BoxTrait::new(x);
         //     box_x.unbox()
         // }
-        let program = ProgramParser::new().parse(r#"
+        let program = ProgramParser::new()
+            .parse(
+                r#"
             type [1] = Box<[0]> [storable: true, drop: true, dup: true, zero_sized: false];
             type [0] = u32 [storable: true, drop: true, dup: true, zero_sized: false];
             type [2] = Const<[0], 2> [storable: false, drop: false, dup: false, zero_sized: false];
@@ -183,7 +182,10 @@ mod test {
             return([1]); // 3
 
             [0]@0() -> ([0]);
-        "#).map_err(|e| e.to_string()).unwrap();
+        "#,
+            )
+            .map_err(|e| e.to_string())
+            .unwrap();
 
         let return_value = run_sierra_program(program, &[]).return_value;
 
@@ -199,7 +201,9 @@ mod test {
         //     let box_x: Box<u32> = BoxTrait::new(x);
         //     box_x
         // }
-        let program = ProgramParser::new().parse(r#"
+        let program = ProgramParser::new()
+            .parse(
+                r#"
             type [1] = Box<[0]> [storable: true, drop: true, dup: true, zero_sized: false];
             type [2] = Const<[0], 2> [storable: false, drop: false, dup: false, zero_sized: false];
             type [0] = u32 [storable: true, drop: true, dup: true, zero_sized: false];
@@ -210,7 +214,10 @@ mod test {
             return([0]); // 1
 
             [0]@0() -> ([1]);
-        "#).map_err(|e| e.to_string()).unwrap();
+        "#,
+            )
+            .map_err(|e| e.to_string())
+            .unwrap();
 
         let return_value = run_sierra_program(program, &[]).return_value;
 
