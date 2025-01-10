@@ -368,6 +368,7 @@ pub mod test {
 
             [0]@0([0]: [0], [1]: [0]) -> ([0]);
         "#).map_err(|e| e.to_string()).unwrap();
+
         // fn run_test(lhs: felt252, rhs: felt252) -> felt252 {
         //     lhs * rhs
         // }
@@ -438,7 +439,6 @@ pub mod test {
         // TODO: Add test program for `felt252_sub_const`.
         // TODO: Add test program for `felt252_mul_const`.
         // TODO: Add test program for `felt252_div_const`.
-
         // extern fn felt252_const<const value: felt252>() -> felt252 nopanic;
         // fn run_test() -> (felt252, felt252, felt252, felt252) {
         //     (
