@@ -44,6 +44,12 @@ jobs:
           path: sequencer
           ref: replay
 
+      - name: Cache RPC Calls
+        uses: actions/cache@v4
+        with:
+          path: starknet-replay/rpc_cache
+          key: cache-${{matrix.block}}-${{matrix.runner}}
+
       # Install dependencies
       - uses: ./cairo_native/.github/actions/install-linux-deps
       - name: Setup rust env
