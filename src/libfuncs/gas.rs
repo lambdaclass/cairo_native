@@ -362,8 +362,9 @@ mod test {
         //         i = i - 1;
         //     }
         // }
-        #[rustfmt::skip]
-        let program = ProgramParser::new().parse(r#"
+        let program = ProgramParser::new()
+            .parse(
+                r#"
             type [0] = RangeCheck [storable: true, drop: false, dup: false, zero_sized: false];
             type [3] = Struct<ut@Tuple> [storable: true, drop: true, dup: true, zero_sized: true];
             type [2] = felt252 [storable: true, drop: true, dup: true, zero_sized: false];
@@ -447,7 +448,10 @@ mod test {
 
             [1]@0([0]: [0], [1]: [1]) -> ([0], [1]);
             [0]@24([0]: [0], [1]: [1], [2]: [2]) -> ([0], [1], [2]);
-        "#).map_err(|e| e.to_string()).unwrap();
+        "#,
+            )
+            .map_err(|e| e.to_string())
+            .unwrap();
 
         let result = run_sierra_program(&program, &[]);
         assert_eq!(result.remaining_gas, Some(18446744073709545265));

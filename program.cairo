@@ -1,21 +1,9 @@
-use gas::withdraw_gas;
+#[derive(Copy, Drop)]
+pub extern type IntRange<T>;
+pub extern fn int_range_try_new<T>(
+    x: T, y: T
+) -> Result<IntRange<T>, IntRange<T>> implicits(core::RangeCheck) nopanic;
 
-fn run_test() {
-    let mut i = 10;
-
-    loop {
-        if i == 0 {
-            break;
-        }
-
-        match withdraw_gas() {
-            Option::Some(()) => {
-                i = i - 1;
-            },
-            Option::None(()) => {
-                break;
-            }
-        };
-        i = i - 1;
-    }
+fn run_test(lhs: u64, rhs: u64) -> IntRange<u64> {
+    int_range_try_new(lhs, rhs).unwrap()
 }
