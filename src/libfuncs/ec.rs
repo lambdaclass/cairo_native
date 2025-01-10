@@ -493,9 +493,7 @@ pub fn build_zero<'ctx, 'this>(
 #[cfg(test)]
 mod test {
     use crate::{
-        utils::test::{
-            jit_enum, jit_struct, run_sierra_program,
-        },
+        utils::test::{jit_enum, jit_struct, run_sierra_program},
         values::Value,
     };
     use cairo_lang_sierra::{program::Program, ProgramParser};
@@ -950,7 +948,8 @@ mod test {
                 )
                 .unwrap(),
             )],
-        ).return_value;
+        )
+        .return_value;
 
         assert_eq!(jit_enum!(0, Value::EcPoint(
                 Felt::from(1234),
