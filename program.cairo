@@ -1,5 +1,5 @@
- use starknet::class_hash::{class_hash_const, ClassHash};
+use core::math::u256_inv_mod;
 
- fn run_program() -> ClassHash {
-     class_hash_const::<0>()
- }
+fn run_test(a: u256, n: NonZero<u256>) -> Option<NonZero<u256>> {
+    u256_inv_mod(a, n)
+}
