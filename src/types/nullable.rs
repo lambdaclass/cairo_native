@@ -249,6 +249,15 @@ mod test {
 
     #[test]
     fn test_nullable_deep_clone() {
+        // use core::array::ArrayTrait;
+        // use core::NullableTrait;
+        // fn run_test() -> @Nullable<Array<felt252>> {
+        //     let mut x = NullableTrait::new(array![1, 2, 3]);
+        //     let x_s = @x;
+        //     let mut y = NullableTrait::deref(x);
+        //     y.append(4);
+        //     x_s
+        // }
         let program = ProgramParser::new().parse(r#"
             type [1] = Array<[0]> [storable: true, drop: true, dup: false, zero_sized: false];
             type [3] = Nullable<[1]> [storable: true, drop: true, dup: false, zero_sized: false];

@@ -267,6 +267,11 @@ mod test {
 
     #[test]
     fn dict_snapshot_take() {
+        // fn run_test() -> @Felt252Dict<u32> {
+        //     let mut dict: Felt252Dict<u32> = Default::default();
+        //     dict.insert(2, 1_u32);
+        //     @dict
+        // }
         let program = ProgramParser::new().parse(r#"
             type [6] = Felt252DictEntry<[3]> [storable: true, drop: false, dup: false, zero_sized: false];
             type [11] = Uninitialized<[6]> [storable: false, drop: true, dup: false, zero_sized: false];
@@ -353,6 +358,11 @@ mod test {
 
     #[test]
     fn dict_snapshot_take_complex() {
+        // fn run_test() -> @Felt252Dict<Nullable<Array<u32>>> {
+        //     let mut dict: Felt252Dict<Nullable<Array<u32>>> = Default::default();
+        //     dict.insert(2, NullableTrait::new(array![3, 4]));
+        //     @dict
+        // }
         let program = ProgramParser::new().parse(r#"
             type [9] = Felt252DictEntry<[5]> [storable: true, drop: false, dup: false, zero_sized: false];
             type [15] = Uninitialized<[9]> [storable: false, drop: true, dup: false, zero_sized: false];
@@ -457,104 +467,165 @@ mod test {
 
     #[test]
     fn dict_snapshot_take_compare() {
-        let program_input = r#"
-            type [9] = Felt252DictEntry<[5]> [storable: true, drop: false, dup: false, zero_sized: false];
-            type [15] = Uninitialized<[9]> [storable: false, drop: true, dup: false, zero_sized: false];
-            type [11] = SquashedFelt252Dict<[5]> [storable: true, drop: true, dup: false, zero_sized: false];
-            type [2] = GasBuiltin [storable: true, drop: false, dup: false, zero_sized: false];
-            type [0] = RangeCheck [storable: true, drop: false, dup: false, zero_sized: false];
-            type [6] = Felt252Dict<[5]> [storable: true, drop: false, dup: false, zero_sized: false];
-            type [10] = Snapshot<[6]> [storable: true, drop: true, dup: true, zero_sized: false];
-            type [14] = Const<[8], 2> [storable: false, drop: false, dup: false, zero_sized: false];
-            type [8] = felt252 [storable: true, drop: true, dup: true, zero_sized: false];
-            type [7] = Box<[4]> [storable: true, drop: true, dup: false, zero_sized: false];
-            type [13] = Const<[3], 4> [storable: false, drop: false, dup: false, zero_sized: false];
-            type [12] = Const<[3], 3> [storable: false, drop: false, dup: false, zero_sized: false];
-            type [3] = u32 [storable: true, drop: true, dup: true, zero_sized: false];
-            type [4] = Array<[3]> [storable: true, drop: true, dup: false, zero_sized: false];
-            type [5] = Nullable<[4]> [storable: true, drop: true, dup: false, zero_sized: false];
-            type [1] = SegmentArena [storable: true, drop: false, dup: false, zero_sized: false];
-
-            libfunc [15] = alloc_local<[9]>;
-            libfunc [16] = finalize_locals;
-            libfunc [3] = disable_ap_tracking;
-            libfunc [14] = felt252_dict_new<[5]>;
-            libfunc [13] = array_new<[3]>;
-            libfunc [17] = const_as_immediate<[12]>;
-            libfunc [23] = store_temp<[3]>;
-            libfunc [12] = array_append<[3]>;
-            libfunc [18] = const_as_immediate<[13]>;
-            libfunc [24] = store_temp<[4]>;
-            libfunc [11] = into_box<[4]>;
-            libfunc [10] = nullable_from_box<[4]>;
-            libfunc [19] = const_as_immediate<[14]>;
-            libfunc [25] = store_temp<[6]>;
-            libfunc [26] = store_temp<[8]>;
-            libfunc [9] = felt252_dict_entry_get<[5]>;
-            libfunc [20] = drop<[5]>;
-            libfunc [27] = store_local<[9]>;
-            libfunc [8] = felt252_dict_entry_finalize<[5]>;
-            libfunc [21] = snapshot_take<[6]>;
-            libfunc [4] = store_temp<[0]>;
-            libfunc [5] = store_temp<[1]>;
-            libfunc [6] = store_temp<[2]>;
-            libfunc [0] = function_call<user@[0]>;
-            libfunc [22] = drop<[11]>;
-            libfunc [28] = store_temp<[10]>;
-            libfunc [1] = felt252_dict_squash<[5]>;
-            libfunc [7] = store_temp<[11]>;
-
-            [15]() -> ([4]); // 0
-            [16]() -> (); // 1
-            [3]() -> (); // 2
-            [14]([1]) -> ([5], [6]); // 3
-            [13]() -> ([7]); // 4
-            [17]() -> ([8]); // 5
-            [23]([8]) -> ([8]); // 6
-            [12]([7], [8]) -> ([9]); // 7
-            [18]() -> ([10]); // 8
-            [23]([10]) -> ([10]); // 9
-            [12]([9], [10]) -> ([11]); // 10
-            [24]([11]) -> ([11]); // 11
-            [11]([11]) -> ([12]); // 12
-            [10]([12]) -> ([13]); // 13
-            [19]() -> ([14]); // 14
-            [25]([6]) -> ([6]); // 15
-            [26]([14]) -> ([14]); // 16
-            [9]([6], [14]) -> ([3], [15]); // 17
-            [20]([15]) -> (); // 18
-            [27]([4], [3]) -> ([3]); // 19
-            [8]([3], [13]) -> ([16]); // 20
-            [21]([16]) -> ([17], [18]); // 21
-            [4]([0]) -> ([0]); // 22
-            [5]([5]) -> ([5]); // 23
-            [6]([2]) -> ([2]); // 24
-            [25]([17]) -> ([17]); // 25
-            [0]([0], [5], [2], [17]) -> ([19], [20], [21], [22]); // 26
-            [22]([22]) -> (); // 27
-            [4]([19]) -> ([19]); // 28
-            [5]([20]) -> ([20]); // 29
-            [6]([21]) -> ([21]); // 30
-            [28]([18]) -> ([18]); // 31
-            return([19], [20], [21], [18]); // 32
-            [3]() -> (); // 33
-            [1]([0], [2], [1], [3]) -> ([4], [5], [6], [7]); // 34
-            [4]([4]) -> ([4]); // 35
-            [5]([6]) -> ([6]); // 36
-            [6]([5]) -> ([5]); // 37
-            [7]([7]) -> ([7]); // 38
-            return([4], [6], [5], [7]); // 39
-
-            [1]@0([0]: [0], [1]: [1], [2]: [2]) -> ([0], [1], [2], [10]);
-            [0]@33([0]: [0], [1]: [1], [2]: [2], [3]: [6]) -> ([0], [1], [2], [11]);
-        "#;
-
+        // fn run_test() -> @Felt252Dict<Nullable<Array<u32>>> {
+        //     let mut dict: Felt252Dict<Nullable<Array<u32>>> = Default::default();
+        //     dict.insert(2, NullableTrait::new(array![3, 4]));
+        //     @dict
+        // }
         let program = ProgramParser::new()
-            .parse(program_input)
+            .parse(r#"
+                type [9] = Felt252DictEntry<[5]> [storable: true, drop: false, dup: false, zero_sized: false];
+                type [15] = Uninitialized<[9]> [storable: false, drop: true, dup: false, zero_sized: false];
+                type [11] = SquashedFelt252Dict<[5]> [storable: true, drop: true, dup: false, zero_sized: false];
+                type [2] = GasBuiltin [storable: true, drop: false, dup: false, zero_sized: false];
+                type [0] = RangeCheck [storable: true, drop: false, dup: false, zero_sized: false];
+                type [6] = Felt252Dict<[5]> [storable: true, drop: false, dup: false, zero_sized: false];
+                type [10] = Snapshot<[6]> [storable: true, drop: true, dup: true, zero_sized: false];
+                type [14] = Const<[8], 2> [storable: false, drop: false, dup: false, zero_sized: false];
+                type [8] = felt252 [storable: true, drop: true, dup: true, zero_sized: false];
+                type [7] = Box<[4]> [storable: true, drop: true, dup: false, zero_sized: false];
+                type [13] = Const<[3], 4> [storable: false, drop: false, dup: false, zero_sized: false];
+                type [12] = Const<[3], 3> [storable: false, drop: false, dup: false, zero_sized: false];
+                type [3] = u32 [storable: true, drop: true, dup: true, zero_sized: false];
+                type [4] = Array<[3]> [storable: true, drop: true, dup: false, zero_sized: false];
+                type [5] = Nullable<[4]> [storable: true, drop: true, dup: false, zero_sized: false];
+                type [1] = SegmentArena [storable: true, drop: false, dup: false, zero_sized: false];
+
+                libfunc [15] = alloc_local<[9]>;
+                libfunc [16] = finalize_locals;
+                libfunc [3] = disable_ap_tracking;
+                libfunc [14] = felt252_dict_new<[5]>;
+                libfunc [13] = array_new<[3]>;
+                libfunc [17] = const_as_immediate<[12]>;
+                libfunc [23] = store_temp<[3]>;
+                libfunc [12] = array_append<[3]>;
+                libfunc [18] = const_as_immediate<[13]>;
+                libfunc [24] = store_temp<[4]>;
+                libfunc [11] = into_box<[4]>;
+                libfunc [10] = nullable_from_box<[4]>;
+                libfunc [19] = const_as_immediate<[14]>;
+                libfunc [25] = store_temp<[6]>;
+                libfunc [26] = store_temp<[8]>;
+                libfunc [9] = felt252_dict_entry_get<[5]>;
+                libfunc [20] = drop<[5]>;
+                libfunc [27] = store_local<[9]>;
+                libfunc [8] = felt252_dict_entry_finalize<[5]>;
+                libfunc [21] = snapshot_take<[6]>;
+                libfunc [4] = store_temp<[0]>;
+                libfunc [5] = store_temp<[1]>;
+                libfunc [6] = store_temp<[2]>;
+                libfunc [0] = function_call<user@[0]>;
+                libfunc [22] = drop<[11]>;
+                libfunc [28] = store_temp<[10]>;
+                libfunc [1] = felt252_dict_squash<[5]>;
+                libfunc [7] = store_temp<[11]>;
+
+                [15]() -> ([4]); // 0
+                [16]() -> (); // 1
+                [3]() -> (); // 2
+                [14]([1]) -> ([5], [6]); // 3
+                [13]() -> ([7]); // 4
+                [17]() -> ([8]); // 5
+                [23]([8]) -> ([8]); // 6
+                [12]([7], [8]) -> ([9]); // 7
+                [18]() -> ([10]); // 8
+                [23]([10]) -> ([10]); // 9
+                [12]([9], [10]) -> ([11]); // 10
+                [24]([11]) -> ([11]); // 11
+                [11]([11]) -> ([12]); // 12
+                [10]([12]) -> ([13]); // 13
+                [19]() -> ([14]); // 14
+                [25]([6]) -> ([6]); // 15
+                [26]([14]) -> ([14]); // 16
+                [9]([6], [14]) -> ([3], [15]); // 17
+                [20]([15]) -> (); // 18
+                [27]([4], [3]) -> ([3]); // 19
+                [8]([3], [13]) -> ([16]); // 20
+                [21]([16]) -> ([17], [18]); // 21
+                [4]([0]) -> ([0]); // 22
+                [5]([5]) -> ([5]); // 23
+                [6]([2]) -> ([2]); // 24
+                [25]([17]) -> ([17]); // 25
+                [0]([0], [5], [2], [17]) -> ([19], [20], [21], [22]); // 26
+                [22]([22]) -> (); // 27
+                [4]([19]) -> ([19]); // 28
+                [5]([20]) -> ([20]); // 29
+                [6]([21]) -> ([21]); // 30
+                [28]([18]) -> ([18]); // 31
+                return([19], [20], [21], [18]); // 32
+                [3]() -> (); // 33
+                [1]([0], [2], [1], [3]) -> ([4], [5], [6], [7]); // 34
+                [4]([4]) -> ([4]); // 35
+                [5]([6]) -> ([6]); // 36
+                [6]([5]) -> ([5]); // 37
+                [7]([7]) -> ([7]); // 38
+                return([4], [6], [5], [7]); // 39
+
+                [1]@0([0]: [0], [1]: [1], [2]: [2]) -> ([0], [1], [2], [10]);
+                [0]@33([0]: [0], [1]: [1], [2]: [2], [3]: [6]) -> ([0], [1], [2], [11]);
+            "#)
             .map_err(|e| e.to_string())
             .unwrap();
+
+        // fn run_test() -> Felt252Dict<Nullable<Array<u32>>> {
+        //     let mut dict: Felt252Dict<Nullable<Array<u32>>> = Default::default();
+        //     dict.insert(2, NullableTrait::new(array![3, 4]));
+        //     dict
+        // }
         let program2 = ProgramParser::new()
-            .parse(program_input)
+            .parse(r#"
+                type [0] = SegmentArena [storable: true, drop: false, dup: false, zero_sized: false];
+                type [7] = Felt252DictEntry<[3]> [storable: true, drop: false, dup: false, zero_sized: false];
+                type [10] = Const<[6], 2> [storable: false, drop: false, dup: false, zero_sized: false];
+                type [6] = felt252 [storable: true, drop: true, dup: true, zero_sized: false];
+                type [5] = Box<[2]> [storable: true, drop: true, dup: false, zero_sized: false];
+                type [9] = Const<[1], 4> [storable: false, drop: false, dup: false, zero_sized: false];
+                type [8] = Const<[1], 3> [storable: false, drop: false, dup: false, zero_sized: false];
+                type [1] = u32 [storable: true, drop: true, dup: true, zero_sized: false];
+                type [2] = Array<[1]> [storable: true, drop: true, dup: false, zero_sized: false];
+                type [3] = Nullable<[2]> [storable: true, drop: true, dup: false, zero_sized: false];
+                type [4] = Felt252Dict<[3]> [storable: true, drop: false, dup: false, zero_sized: false];
+
+                libfunc [6] = felt252_dict_new<[3]>;
+                libfunc [5] = array_new<[1]>;
+                libfunc [8] = const_as_immediate<[8]>;
+                libfunc [12] = store_temp<[1]>;
+                libfunc [4] = array_append<[1]>;
+                libfunc [9] = const_as_immediate<[9]>;
+                libfunc [13] = store_temp<[2]>;
+                libfunc [3] = into_box<[2]>;
+                libfunc [2] = nullable_from_box<[2]>;
+                libfunc [10] = const_as_immediate<[10]>;
+                libfunc [14] = store_temp<[4]>;
+                libfunc [15] = store_temp<[6]>;
+                libfunc [1] = felt252_dict_entry_get<[3]>;
+                libfunc [11] = drop<[3]>;
+                libfunc [0] = felt252_dict_entry_finalize<[3]>;
+                libfunc [16] = store_temp<[0]>;
+
+                [6]([0]) -> ([1], [2]); // 0
+                [5]() -> ([3]); // 1
+                [8]() -> ([4]); // 2
+                [12]([4]) -> ([4]); // 3
+                [4]([3], [4]) -> ([5]); // 4
+                [9]() -> ([6]); // 5
+                [12]([6]) -> ([6]); // 6
+                [4]([5], [6]) -> ([7]); // 7
+                [13]([7]) -> ([7]); // 8
+                [3]([7]) -> ([8]); // 9
+                [2]([8]) -> ([9]); // 10
+                [10]() -> ([10]); // 11
+                [14]([2]) -> ([2]); // 12
+                [15]([10]) -> ([10]); // 13
+                [1]([2], [10]) -> ([11], [12]); // 14
+                [11]([12]) -> (); // 15
+                [0]([11], [9]) -> ([13]); // 16
+                [16]([1]) -> ([1]); // 17
+                [14]([13]) -> ([13]); // 18
+                return([1], [13]); // 19
+
+                [0]@0([0]: [0]) -> ([0], [4]);
+            "#)
             .map_err(|e| e.to_string())
             .unwrap();
 
@@ -567,6 +638,12 @@ mod test {
     /// Ensure that a dictionary of booleans compiles.
     #[test]
     fn dict_type_bool() {
+        // fn run_program() -> Felt252Dict<bool> {
+        //     let mut x: Felt252Dict<bool> = Default::default();
+        //     x.insert(0, false);
+        //     x.insert(1, true);
+        //     x
+        // }
         let program = ProgramParser::new().parse(r#"
             type [0] = SegmentArena [storable: true, drop: false, dup: false, zero_sized: false];
             type [7] = Const<[4], 1> [storable: false, drop: false, dup: false, zero_sized: false];
@@ -652,6 +729,14 @@ mod test {
     /// Ensure that a dictionary of felts compiles.
     #[test]
     fn dict_type_felt252() {
+        // fn run_program() -> Felt252Dict<felt252> {
+        //     let mut x: Felt252Dict<felt252> = Default::default();
+        //     x.insert(0, 0);
+        //     x.insert(1, 1);
+        //     x.insert(2, 2);
+        //     x.insert(3, 3);
+        //     x
+        // }
         let program = ProgramParser::new().parse(r#"
             type [0] = SegmentArena [storable: true, drop: false, dup: false, zero_sized: false];
             type [7] = Const<[1], 3> [storable: false, drop: false, dup: false, zero_sized: false];
@@ -729,6 +814,20 @@ mod test {
     /// Ensure that a dictionary of nullables compiles.
     #[test]
     fn dict_type_nullable() {
+        // #[derive(Drop)]
+        // struct MyStruct {
+        //     a: u8,
+        //     b: i16,
+        //     c: felt252,
+        // }
+        // fn run_program() -> Felt252Dict<Nullable<MyStruct>> {
+        //     let mut x: Felt252Dict<Nullable<MyStruct>> = Default::default();
+        //     x.insert(0, Default::default());
+        //     x.insert(1, NullableTrait::new(MyStruct { a: 0, b: 1, c: 2 }));
+        //     x.insert(2, NullableTrait::new(MyStruct { a: 1, b: -2, c: 3 }));
+        //     x.insert(3, NullableTrait::new(MyStruct { a: 2, b: 3, c: 4 }));
+        //     x
+        // }
         let program = ProgramParser::new().parse(r#"
             type [0] = SegmentArena [storable: true, drop: false, dup: false, zero_sized: false];
             type [17] = Const<[3], 3> [storable: false, drop: false, dup: false, zero_sized: false];
@@ -857,6 +956,14 @@ mod test {
     /// Ensure that a dictionary of unsigned integers compiles.
     #[test]
     fn dict_type_unsigned() {
+        // fn run_program() -> Felt252Dict<u128> {
+        //     let mut x: Felt252Dict<u128> = Default::default();
+        //     x.insert(0, 0_u128);
+        //     x.insert(1, 1_u128);
+        //     x.insert(2, 2_u128);
+        //     x.insert(3, 3_u128);
+        //     x
+        // }
         let program = ProgramParser::new().parse(r#"
             type [0] = SegmentArena [storable: true, drop: false, dup: false, zero_sized: false];
             type [12] = Const<[1], 3> [storable: false, drop: false, dup: false, zero_sized: false];

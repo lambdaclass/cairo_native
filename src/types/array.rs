@@ -410,6 +410,13 @@ mod test {
 
     #[test]
     fn test_array_snapshot_deep_clone() {
+        // fn run_test() -> @Array<Array<felt252>> {
+        //     let mut inputs: Array<Array<felt252>> = ArrayTrait::new();
+        //     inputs.append(array![1, 2, 3]);
+        //     inputs.append(array![4, 5, 6]);
+
+        //     @inputs
+        // }
         let program = ProgramParser::new()
             .parse(
                 r#"
