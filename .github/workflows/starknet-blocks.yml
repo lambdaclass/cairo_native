@@ -32,6 +32,7 @@ jobs:
         with:
           repository: lambdaclass/starknet-replay
           path: starknet-replay
+          ref: 4d8b4711844d9d6f7b731f98c4183af2bbd5bb38
       # We need native to build the runtime
       - name: Checkout Native
         uses: actions/checkout@v4
@@ -42,7 +43,7 @@ jobs:
         with:
           repository: lambdaclass/sequencer
           path: sequencer
-          ref: replay
+          ref: 8954e86a5bdcbc59e711279a1efa963ff12a9fc1
 
       - name: Cache RPC Calls
         uses: actions/cache@v4
@@ -89,10 +90,6 @@ jobs:
           # Updates native dependency to local path
           new_path='"..\/cairo_native"'
           sed -i'' -r "s/^cairo-native = .*/cairo-native.path = $new_path/" Cargo.toml
-
-          # Update native submodule
-          git rm crates/blockifier/cairo_native
-          ln -s ../../../cairo_native/ crates/blockifier/cairo_native
 
           git diff
 
