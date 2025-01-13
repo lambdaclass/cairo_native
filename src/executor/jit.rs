@@ -85,6 +85,9 @@ impl<'m> JitNativeExecutor<'m> {
         let set_builtin_costs_fnptr: extern "C" fn(*const u64) -> *const u64 =
             unsafe { std::mem::transmute(self.engine.lookup("cairo_native__set_costs_builtin")) };
 
+        #[cfg(feature = "with-profiler")]
+        self.setup_profiling();
+
         super::invoke_dynamic(
             &self.registry,
             self.find_function_ptr(function_id),
@@ -113,6 +116,9 @@ impl<'m> JitNativeExecutor<'m> {
         let set_builtin_costs_fnptr: extern "C" fn(*const u64) -> *const u64 =
             unsafe { std::mem::transmute(self.engine.lookup("cairo_native__set_costs_builtin")) };
 
+        #[cfg(feature = "with-profiler")]
+        self.setup_profiling();
+
         super::invoke_dynamic(
             &self.registry,
             self.find_function_ptr(function_id),
@@ -139,6 +145,9 @@ impl<'m> JitNativeExecutor<'m> {
 
         let set_builtin_costs_fnptr: extern "C" fn(*const u64) -> *const u64 =
             unsafe { std::mem::transmute(self.engine.lookup("cairo_native__set_costs_builtin")) };
+
+        #[cfg(feature = "with-profiler")]
+        self.setup_profiling();
 
         ContractExecutionResult::from_execution_result(super::invoke_dynamic(
             &self.registry,
@@ -203,6 +212,16 @@ impl<'m> JitNativeExecutor<'m> {
                     .and_then(|symbol| self.find_symbol_ptr(symbol))
                     .map(|ptr| unsafe { transmute(ptr as *const ()) }),
             )
+        }
+    }
+
+    #[cfg(feature = "with-profiler")]
+    fn setup_profiling(&self) {
+        unsafe {
+            let callback_ptr: *mut extern "C" fn(u64, u64) =
+                self.engine.lookup("__profiler_callback").cast();
+
+            *callback_ptr = crate::metadata::profiler::ProfilerImpl::callback;
         }
     }
 }
