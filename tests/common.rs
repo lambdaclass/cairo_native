@@ -35,7 +35,7 @@ use cairo_lang_utils::Upcast;
 use cairo_native::{
     context::NativeContext,
     execution_result::{ContractExecutionResult, ExecutionResult},
-    executor::{AotContractExecutor, AotNativeExecutor, JitNativeExecutor},
+    executor::{AotContractExecutor, JitNativeExecutor},
     starknet::{DummySyscallHandler, StarknetSyscallHandler},
     utils::{find_entry_point_by_idx, HALF_PRIME, PRIME},
     OptLevel, Value,
@@ -256,7 +256,7 @@ pub fn run_native_program(
 pub fn run_vm_program(
     program: &(String, Program, SierraCasmRunner),
     entry_point: &str,
-    args: &[Arg],
+    args: Vec<Arg>,
     gas: Option<usize>,
 ) -> Result<RunResultStarknet, RunnerError> {
     let runner = &program.2;
@@ -401,7 +401,7 @@ pub fn compare_inputless_program(program_path: &str) {
     let program: (String, Program, SierraCasmRunner) = load_cairo_path(program_path);
     let program = &program;
 
-    let result_vm = run_vm_program(program, "main", &[], Some(DEFAULT_GAS as usize)).unwrap();
+    let result_vm = run_vm_program(program, "main", vec![], Some(DEFAULT_GAS as usize)).unwrap();
     let result_native = run_native_program(
         program,
         "main",
@@ -436,7 +436,7 @@ pub fn run_native_starknet_contract(
     let entry_point_id = &entry_point_fn.id;
 
     let native_executor =
-        AotNativeExecutor::from_native_module(native_program, Default::default()).unwrap();
+        JitNativeExecutor::from_native_module(native_program, Default::default()).unwrap();
     native_executor
         .invoke_contract_dynamic(entry_point_id, args, u64::MAX.into(), handler)
         .expect("failed to execute the given contract")
@@ -750,7 +750,7 @@ pub fn compare_outputs(
 
     let mut size_cache = HashMap::new();
     let ty = function.signature.ret_types.last();
-    let is_builtin = ty.map_or(false, |ty| {
+    let is_builtin = ty.is_some_and(|ty| {
         matches!(
             registry.get_type(ty).unwrap(),
             CoreTypeConcrete::Bitwise(_)
@@ -768,7 +768,7 @@ pub fn compare_outputs(
                 | CoreTypeConcrete::Circuit(CircuitTypeConcrete::MulMod(_))
         )
     });
-    let returns_panic = ty.map_or(false, |ty| {
+    let returns_panic = ty.is_some_and(|ty| {
         ty.debug_name
             .as_ref()
             .map(|x| x.starts_with("core::panics::PanicResult"))

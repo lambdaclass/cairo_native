@@ -7,7 +7,6 @@ on:
 
 env:
   RANGE_SIZE: 25
-  SEQUENCER_REV: 8d3e6b5515e7b62e7ab173026b2c81c750dbb853
 
 jobs:
   run:
@@ -19,6 +18,7 @@ jobs:
       RPC_ENDPOINT_TESTNET: ${{ secrets.RPC_ENDPOINT_TESTNET }}
       RPC_ENDPOINT_MAINNET: ${{ secrets.RPC_ENDPOINT_MAINNET }}
     strategy:
+      max-parallel: 30
       matrix:
         block:
           - 740000
@@ -41,16 +41,6 @@ jobs:
           - 800350
           - 800400
           - 800450
-          - 800500
-          - 800550
-          - 800600
-          - 800650
-          - 800700
-          - 800750
-          - 800800
-          - 800850
-          - 800900
-          - 800950
           - 900000
           - 900100
           - 900200
@@ -61,6 +51,16 @@ jobs:
           - 900700
           - 900800
           - 900900
+          - 1000000
+          - 1001000
+          - 1002000
+          - 1003000
+          - 1004000
+          - 1005000
+          - 1006000
+          - 1007000
+          - 1008000
+          - 1009000
         runner:
           - native
           - vm
@@ -71,24 +71,35 @@ jobs:
         working-directory: ./starknet-replay
 
     steps:
-      # We checkout replay first, as it's the main repository for this workflow
+      # We checkout replay as it's the main repository for this workflow
       - name: Checkout Replay
         uses: actions/checkout@v4
         with:
           repository: lambdaclass/starknet-replay
           path: starknet-replay
-      # We need native for building the runtime
+      # We need native if we want to run with cairo native main
       - name: Checkout Native
         uses: actions/checkout@v4
         with:
           path: cairo_native
+      # We need sequencer if we want to run with cairo native main
+      - name: Checkout Native
+        uses: actions/checkout@v4
+        with:
+          repository: lambdaclass/sequencer
+          path: sequencer
+          ref: replay
 
       # Install dependencies
       - uses: ./cairo_native/.github/actions/install-linux-deps
       - name: Setup rust env
-        uses: dtolnay/rust-toolchain@1.82.0
+        uses: dtolnay/rust-toolchain@1.84.0
       - name: Retreive cached dependecies
         uses: Swatinem/rust-cache@v2
+        with:
+          workspaces: "starknet-replay -> target"
+          cache-directories: "cairo_native"
+
       - name: Build Cairo Native Runtime Library
         shell: bash
         run: |
@@ -96,19 +107,34 @@ jobs:
           make runtime
           echo "CAIRO_NATIVE_RUNTIME_LIBRARY=$(pwd)/libcairo_native_runtime.a" > $GITHUB_ENV
 
-      - name: Patch dependencies
+      - name: Patch replay dependencies
         run: |
-          # Patches native dependency to local path, to use current cairo native version
-          DEPENDENCY="cairo-native"
-          NEW_PATH="../cairo_native"
-          sed -Ei "s#^($DEPENDENCY *=).*#\1 { path = '$NEW_PATH' }#" Cargo.toml
-          grep $DEPENDENCY Cargo.toml
+          # Updates sequencer dependency to local path
+          name='[[:alnum:]_-]+'
+          sequencer_url='"https:\/\/github.com\/lambdaclass\/sequencer\.git"'
+          rev='"[[:alnum:]]+"'
+          new_path='"..\/sequencer\/crates\/\1"'
+          sed -i'' -r "s/^($name) = \{ git = $sequencer_url, rev = $rev/\1 = { path = $new_path/" Cargo.toml
 
-          # Patches sequencer dependency to specified rev
-          GIT="https://github.com/lambdaclass/sequencer"
-          NEW_REV="$SEQUENCER_REV"
-          sed -Ei "s#(\"$GIT\" *, *rev *= *\").?*(\".*)#\1$NEW_REV\2#" Cargo.toml
-          grep $GIT Cargo.toml
+          # Updates native dependency to local path
+          new_path='"..\/cairo_native"'
+          sed -i'' -r "s/^cairo-native = .*/cairo-native.path = $new_path/" Cargo.toml
+
+          git diff
+
+      - name: Patch sequencer dependencies
+        run: |
+          cd ../sequencer
+
+          # Updates native dependency to local path
+          new_path='"..\/cairo_native"'
+          sed -i'' -r "s/^cairo-native = .*/cairo-native.path = $new_path/" Cargo.toml
+
+          # Update native submodule
+          git rm crates/blockifier/cairo_native
+          ln -s ../../../cairo_native/ crates/blockifier/cairo_native
+
+          git diff
 
       - name: Run with Native
         if: ${{ matrix.runner == 'native' }}
@@ -137,50 +163,6 @@ jobs:
     # We always run the compare job, to ensure that a single run job failing
     # would not cancel the whole comparison.
     if: ${{ always() }}
-    strategy:
-      matrix:
-        block:
-          - 740000
-          - 741000
-          - 742000
-          - 743000
-          - 744000
-          - 745000
-          - 746000
-          - 747000
-          - 748000
-          - 749000
-          - 800000
-          - 800050
-          - 800100
-          - 800150
-          - 800200
-          - 800250
-          - 800300
-          - 800350
-          - 800400
-          - 800450
-          - 800500
-          - 800550
-          - 800600
-          - 800650
-          - 800700
-          - 800750
-          - 800800
-          - 800850
-          - 800900
-          - 800950
-          - 900000
-          - 900100
-          - 900200
-          - 900300
-          - 900400
-          - 900500
-          - 900600
-          - 900700
-          - 900800
-          - 900900
-      fail-fast: false
     defaults:
       run:
         shell: bash
@@ -190,14 +172,16 @@ jobs:
       - name: Fetch Native dumps
         uses: actions/download-artifact@v4
         with:
-          name: dump-${{matrix.block}}-native
+          pattern: dump-*-native
           path: state_dumps/native
+          merge-multiple: true
         continue-on-error: true
       - name: Fetch VM dumps
         uses: actions/download-artifact@v4
         with:
-          name: dump-${{matrix.block}}-vm
+          pattern: dump-*-vm
           path: state_dumps/vm
+          merge-multiple: true
         continue-on-error: true
 
       - name: Compare states
@@ -207,12 +191,6 @@ jobs:
       - name: Prepare env vars
         if: ${{ always() }}
         run: |
-          # Save blocks to env var
-          BLOCK_START=${{ matrix.block }}
-          BLOCK_END=$(($BLOCK_START + $RANGE_SIZE - 1))
-          echo "BLOCK_END=$BLOCK_END" | tee -a $GITHUB_ENV
-          echo "BLOCK_START=$BLOCK_START" | tee -a $GITHUB_ENV
-
           # Save workflow url
           REPO_URL="${{ github.server_url }}/${{ github.repository }}"
           echo "WORKFLOW_URL=$REPO_URL/actions/runs/${{ github.run_id }}" | tee -a $GITHUB_ENV

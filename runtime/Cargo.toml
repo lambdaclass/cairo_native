@@ -1,6 +1,6 @@
 [package]
 name = "cairo-native-runtime"
-version = "0.2.4"
+version = "0.2.7"
 description = "The runtime for cairo-native."
 edition = "2021"
 license = "Apache-2.0"
@@ -15,9 +15,9 @@ starknet-types-core = { version = "0.1.7", default-features = false, features = 
     "serde",
     "hash",
 ] }
-cairo-lang-sierra-gas = "2.9.0-dev.0"
+cairo-lang-sierra-gas = "2.10.0-rc.0"
 starknet-curve = "0.5.1"
 lazy_static = "1.5.0"
 rand = "0.8.5"
-itertools = "0.13.0"
+itertools = "0.14.0"
 num-traits = "0.2"

@@ -78,7 +78,6 @@ pub fn build_alloc_local<'ctx, 'this>(
     let target_type = registry.build_type(
         context,
         helper,
-        registry,
         metadata,
         &info.branch_signatures()[0].vars[0].ty,
     )?;

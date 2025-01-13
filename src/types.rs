@@ -122,6 +122,7 @@ pub trait TypeBuilder {
         &self,
         registry: &ProgramRegistry<CoreType, CoreLibfunc>,
     ) -> Result<bool, Self::Error>;
+
     /// Return whether the type is a `felt252`, either directly or indirectly (ex. through
     /// `NonZero<BoundedInt<>>`).
     fn is_felt252(
@@ -133,9 +134,6 @@ pub trait TypeBuilder {
     ///
     /// TODO: How is it used?
     fn variants(&self) -> Option<&[ConcreteTypeId]>;
-
-    // If the type is a struct, return the field types.
-    fn fields(&self) -> Option<&[ConcreteTypeId]>;
 
     #[allow(clippy::too_many_arguments)]
     fn build_default<'ctx, 'this>(
@@ -903,13 +901,6 @@ impl TypeBuilder for CoreTypeConcrete {
         }
     }
 
-    fn fields(&self) -> Option<&[ConcreteTypeId]> {
-        match self {
-            Self::Struct(info) => Some(&info.members),
-            _ => None,
-        }
-    }
-
     fn build_default<'ctx, 'this>(
         &self,
         context: &'ctx Context,
@@ -975,13 +966,13 @@ impl<'a, T> WithSelf<'a, T> {
     }
 }
 
-impl<'a, T> AsRef<T> for WithSelf<'a, T> {
+impl<T> AsRef<T> for WithSelf<'_, T> {
     fn as_ref(&self) -> &T {
         self.inner
     }
 }
 
-impl<'a, T> Deref for WithSelf<'a, T> {
+impl<T> Deref for WithSelf<'_, T> {
     type Target = T;
 
     fn deref(&self) -> &T {

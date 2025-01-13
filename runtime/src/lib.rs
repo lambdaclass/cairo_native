@@ -14,8 +14,17 @@ use starknet_types_core::{
     hash::StarkHash,
 };
 use std::{
-    cell::Cell, collections::HashMap, ffi::c_void, fs::File, io::Write, mem::ManuallyDrop,
-    os::fd::FromRawFd, ptr::null,
+    alloc::{alloc, dealloc, realloc, Layout},
+    cell::Cell,
+    collections::{hash_map::Entry, HashMap},
+    ffi::{c_int, c_void},
+    fs::File,
+    io::Write,
+    mem::{forget, ManuallyDrop},
+    os::fd::FromRawFd,
+    ptr::{self, null, null_mut},
+    rc::Rc,
+    slice,
 };
 use std::{ops::Mul, vec::IntoIter};
 
@@ -26,6 +35,20 @@ lazy_static! {
     .unwrap();
     pub static ref DICT_GAS_REFUND_PER_ACCESS: u64 =
         (DICT_SQUASH_UNIQUE_KEY_COST.cost() - DICT_SQUASH_REPEATED_ACCESS_COST.cost()) as u64;
+}
+
+#[no_mangle]
+#[allow(clippy::missing_safety_doc)]
+pub unsafe extern "C" fn cairo_native__get_version(target: *mut u8, length: usize) -> usize {
+    let version = env!("CARGO_PKG_VERSION");
+    assert!(length > version.len(), "version buffer not big enough");
+
+    let target = slice::from_raw_parts_mut(target, length);
+
+    target[..version.len()].copy_from_slice(version.as_bytes());
+    target[version.len()] = b'\0';
+
+    version.len()
 }
 
 /// Based on `cairo-lang-runner`'s implementation.
@@ -139,10 +162,99 @@ pub unsafe extern "C" fn cairo_native__libfunc__hades_permutation(
 /// Felt252 type used in cairo native runtime
 #[derive(Debug)]
 pub struct FeltDict {
-    pub inner: HashMap<[u8; 32], *mut c_void>,
-    pub count: u64,
+    pub mappings: HashMap<[u8; 32], usize>,
 
-    pub free_fn: unsafe extern "C" fn(*mut c_void),
+    pub layout: Layout,
+    pub elements: *mut (),
+
+    pub dup_fn: Option<extern "C" fn(*mut c_void, *mut c_void)>,
+    pub drop_fn: Option<extern "C" fn(*mut c_void)>,
+
+    pub count: u64,
+}
+
+impl Clone for FeltDict {
+    fn clone(&self) -> Self {
+        let mut new_dict = FeltDict {
+            mappings: HashMap::with_capacity(self.mappings.len()),
+
+            layout: self.layout,
+            elements: if self.mappings.is_empty() {
+                null_mut()
+            } else {
+                unsafe {
+                    alloc(Layout::from_size_align_unchecked(
+                        self.layout.pad_to_align().size() * self.mappings.len(),
+                        self.layout.align(),
+                    ))
+                    .cast()
+                }
+            },
+
+            dup_fn: self.dup_fn,
+            drop_fn: self.drop_fn,
+
+            // TODO: Check if `0` is fine or otherwise we should copy the value from `old_dict` too.
+            count: 0,
+        };
+
+        for (&key, &old_index) in self.mappings.iter() {
+            let old_value_ptr = unsafe {
+                self.elements
+                    .byte_add(self.layout.pad_to_align().size() * old_index)
+            };
+
+            let new_index = new_dict.mappings.len();
+            let new_value_ptr = unsafe {
+                new_dict
+                    .elements
+                    .byte_add(new_dict.layout.pad_to_align().size() * new_index)
+            };
+
+            new_dict.mappings.insert(key, new_index);
+            match self.dup_fn {
+                Some(dup_fn) => dup_fn(old_value_ptr.cast(), new_value_ptr.cast()),
+                None => unsafe {
+                    ptr::copy_nonoverlapping::<u8>(
+                        old_value_ptr.cast(),
+                        new_value_ptr.cast(),
+                        self.layout.size(),
+                    )
+                },
+            }
+        }
+
+        new_dict
+    }
+}
+
+impl Drop for FeltDict {
+    fn drop(&mut self) {
+        // Free the entries manually.
+        if let Some(drop_fn) = self.drop_fn {
+            for (_, &index) in self.mappings.iter() {
+                let value_ptr = unsafe {
+                    self.elements
+                        .byte_add(self.layout.pad_to_align().size() * index)
+                };
+
+                drop_fn(value_ptr.cast());
+            }
+        }
+
+        // Free the value data.
+        if !self.elements.is_null() {
+            unsafe {
+                dealloc(
+                    self.elements.cast(),
+                    Layout::from_size_align_unchecked(
+                        self.layout.pad_to_align().size() * self.mappings.capacity(),
+                        self.layout.align(),
+                    ),
+                )
+            };
+        }
+    }
 }
 
 /// Allocate a new dictionary.
@@ -153,12 +265,21 @@ pub struct FeltDict {
 /// definitely unsafe to use manually.
 #[no_mangle]
 pub unsafe extern "C" fn cairo_native__dict_new(
-    free_fn: extern "C" fn(*mut c_void),
-) -> *mut FeltDict {
-    Box::into_raw(Box::new(FeltDict {
-        inner: HashMap::default(),
+    size: u64,
+    align: u64,
+    dup_fn: Option<extern "C" fn(*mut c_void, *mut c_void)>,
+    drop_fn: Option<extern "C" fn(*mut c_void)>,
+) -> *const FeltDict {
+    Rc::into_raw(Rc::new(FeltDict {
+        mappings: HashMap::default(),
+
+        layout: Layout::from_size_align_unchecked(size as usize, align as usize),
+        elements: null_mut(),
+
+        dup_fn,
+        drop_fn,
+
         count: 0,
-        free_fn,
     }))
 }
 
@@ -172,22 +293,8 @@ pub unsafe extern "C" fn cairo_native__dict_new(
 //   pointer optimization. Check out
 //   https://doc.rust-lang.org/nomicon/ffi.html#the-nullable-pointer-optimization for more info.
 #[no_mangle]
-pub unsafe extern "C" fn cairo_native__dict_drop(
-    ptr: *mut FeltDict,
-    drop_fn: Option<extern "C" fn(*mut c_void)>,
-) {
-    let dict = Box::from_raw(ptr);
-
-    // Free the entries manually.
-    for entry in dict.inner.into_values() {
-        if !entry.is_null() {
-            if let Some(drop_fn) = drop_fn {
-                drop_fn(entry);
-            }
-
-            (dict.free_fn)(entry);
-        }
-    }
+pub unsafe extern "C" fn cairo_native__dict_drop(ptr: *const FeltDict) {
+    drop(Rc::from_raw(ptr));
 }
 
 /// Duplicate a dictionary using a provided callback to clone each element.
@@ -197,25 +304,12 @@ pub unsafe extern "C" fn cairo_native__dict_drop(
 /// This function is intended to be called from MLIR, deals with pointers, and is therefore
 /// definitely unsafe to use manually.
 #[no_mangle]
-pub unsafe extern "C" fn cairo_native__dict_dup(
-    ptr: *mut FeltDict,
-    dup_fn: extern "C" fn(*mut c_void) -> *mut c_void,
-) -> *mut FeltDict {
-    let old_dict = &*ptr;
-    let mut new_dict = Box::new(FeltDict {
-        inner: HashMap::default(),
-        count: 0,
-        free_fn: old_dict.free_fn,
-    });
+pub unsafe extern "C" fn cairo_native__dict_dup(dict_ptr: *const FeltDict) -> *const FeltDict {
+    let old_dict = Rc::from_raw(dict_ptr);
+    let new_dict = Rc::clone(&old_dict);
 
-    new_dict.inner.extend(
-        old_dict
-            .inner
-            .iter()
-            .filter_map(|(&k, &v)| (!v.is_null()).then_some((k, dup_fn(v)))),
-    );
-
-    Box::into_raw(new_dict)
+    forget(old_dict);
+    Rc::into_raw(new_dict)
 }
 
 /// Return a pointer to the entry's value pointer for a given key, inserting a null pointer if not
@@ -230,14 +324,46 @@ pub unsafe extern "C" fn cairo_native__dict_dup(
 /// definitely unsafe to use manually.
 #[no_mangle]
 pub unsafe extern "C" fn cairo_native__dict_get(
-    dict: &mut FeltDict,
+    dict: *const FeltDict,
     key: &[u8; 32],
-) -> *mut c_void {
-    let mut key = *key;
-    key[31] &= 0x0F; // Filter out first 4 bits (they're outside an i252).
+    value_ptr: *mut *mut c_void,
+) -> c_int {
+    let mut dict_rc = Rc::from_raw(dict);
+    let dict = Rc::make_mut(&mut dict_rc);
+
+    let num_mappings = dict.mappings.len();
+    let has_capacity = num_mappings != dict.mappings.capacity();
+
+    let (is_present, index) = match dict.mappings.entry(*key) {
+        Entry::Occupied(entry) => (true, *entry.get()),
+        Entry::Vacant(entry) => {
+            entry.insert(num_mappings);
+            (false, num_mappings)
+        }
+    };
+
+    // Maybe realloc (conditions: !has_capacity && !is_present).
+    if !has_capacity && !is_present {
+        dict.elements = realloc(
+            dict.elements.cast(),
+            Layout::from_size_align_unchecked(
+                dict.layout.pad_to_align().size() * dict.mappings.len(),
+                dict.layout.align(),
+            ),
+            dict.layout.pad_to_align().size() * dict.mappings.capacity(),
+        )
+        .cast();
+    }
+
+    *value_ptr = dict
+        .elements
+        .byte_add(dict.layout.pad_to_align().size() * index)
+        .cast();
 
     dict.count += 1;
-    std::ptr::from_mut(dict.inner.entry(key).or_insert(std::ptr::null_mut())).cast::<c_void>()
+    forget(dict_rc);
+
+    is_present as c_int
 }
 
 /// Compute the total gas refund for the dictionary at squash time.
@@ -248,8 +374,12 @@ pub unsafe extern "C" fn cairo_native__dict_get(
 /// definitely unsafe to use manually.
 #[no_mangle]
 pub unsafe extern "C" fn cairo_native__dict_gas_refund(ptr: *const FeltDict) -> u64 {
-    let dict = &*ptr;
-    (dict.count.saturating_sub(dict.inner.len() as u64)) * *DICT_GAS_REFUND_PER_ACCESS
+    let dict = Rc::from_raw(ptr);
+    let amount =
+        (dict.count.saturating_sub(dict.mappings.len() as u64)) * *DICT_GAS_REFUND_PER_ACCESS;
+
+    forget(dict);
+    amount
 }
 
 /// Compute `ec_point_from_x_nz(x)` and store it.
@@ -682,21 +812,11 @@ pub fn as_cairo_short_string_ex(value: &Felt, length: usize) -> Option<String> {
 
 #[cfg(test)]
 mod tests {
+    use super::*;
     use std::{
-        env,
-        fs::{remove_file, File},
+        env, fs,
         io::{Read, Seek},
-        os::{fd::AsRawFd, raw::c_void},
-    };
-
-    use starknet_types_core::felt::Felt;
-
-    use crate::{
-        cairo_native__dict_drop, cairo_native__dict_dup, cairo_native__dict_gas_refund,
-        cairo_native__dict_get, cairo_native__dict_new, cairo_native__libfunc__debug__print,
-        cairo_native__libfunc__ec__ec_point_try_new_nz, cairo_native__libfunc__ec__ec_state_add,
-        cairo_native__libfunc__ec__ec_state_init, cairo_native__libfunc__hades_permutation,
-        cairo_native__libfunc__pedersen,
+        os::fd::AsRawFd,
     };
 
     pub fn felt252_short_str(value: &str) -> Felt {
@@ -712,7 +832,7 @@ mod tests {
     #[test]
     fn test_debug_print() {
         let dir = env::temp_dir();
-        remove_file(dir.join("print.txt")).ok();
+        fs::remove_file(dir.join("print.txt")).ok();
         let mut file = File::create_new(dir.join("print.txt")).unwrap();
         {
             let fd = file.as_raw_fd();
@@ -777,56 +897,49 @@ mod tests {
         );
     }
 
-    // Test free_fn for the dict testing, values are u64.
-    pub extern "C" fn free_fn_test(ptr: *mut c_void) {
-        assert!(!ptr.is_null());
-        let b: Box<u64> = unsafe { Box::from_raw(ptr.cast()) };
-        drop(b);
-    }
-
-    pub extern "C" fn dup_fn_test(ptr: *mut c_void) -> *mut c_void {
-        assert!(!ptr.is_null());
-        let ptr: *mut u64 = ptr.cast();
-        let dup = unsafe { Box::into_raw(Box::new(*ptr)) };
-        dup.cast()
-    }
-
     #[test]
     fn test_dict() {
-        let dict = unsafe { cairo_native__dict_new(free_fn_test) };
+        let dict = unsafe {
+            cairo_native__dict_new(
+                size_of::<u64>() as u64,
+                align_of::<u64>() as u64,
+                None,
+                None,
+            )
+        };
 
         let key = Felt::ONE.to_bytes_le();
+        let mut ptr = null_mut::<u64>();
 
-        {
-            let ptr: *mut *mut u64 = unsafe { cairo_native__dict_get(&mut *dict, &key) }.cast();
-            unsafe { *ptr = Box::into_raw(Box::new(2u64)) };
-        }
+        assert_eq!(
+            unsafe { cairo_native__dict_get(dict, &key, (&raw mut ptr).cast()) },
+            0,
+        );
+        assert!(!ptr.is_null());
+        unsafe { *ptr = 24 };
 
-        {
-            let ptr: *mut *mut u64 = unsafe { cairo_native__dict_get(&mut *dict, &key) }.cast();
-            assert!(!ptr.is_null());
-            assert!(!unsafe { *ptr }.is_null());
-            assert_eq!(unsafe { **ptr }, 2);
-        }
+        assert_eq!(
+            unsafe { cairo_native__dict_get(dict, &key, (&raw mut ptr).cast()) },
+            1,
+        );
+        assert!(!ptr.is_null());
+        assert_eq!(unsafe { *ptr }, 24);
+        unsafe { *ptr = 42 };
 
-        {
-            let refund = unsafe { cairo_native__dict_gas_refund(dict) };
-            assert_eq!(refund, 4050);
-        }
+        let refund = unsafe { cairo_native__dict_gas_refund(dict) };
+        assert_eq!(refund, 4050);
 
-        let cloned_dict = unsafe { cairo_native__dict_dup(dict, dup_fn_test) };
+        let cloned_dict = unsafe { cairo_native__dict_dup(&*dict) };
+        unsafe { cairo_native__dict_drop(dict) };
 
-        unsafe { cairo_native__dict_drop(dict, None) };
+        assert_eq!(
+            unsafe { cairo_native__dict_get(cloned_dict, &key, (&raw mut ptr).cast()) },
+            1,
+        );
+        assert!(!ptr.is_null());
+        assert_eq!(unsafe { *ptr }, 42);
 
-        {
-            let ptr: *mut *mut u64 =
-                unsafe { cairo_native__dict_get(&mut *cloned_dict, &key) }.cast();
-            assert!(!ptr.is_null());
-            assert!(!unsafe { *ptr }.is_null());
-            assert_eq!(unsafe { **ptr }, 2);
-        }
-
-        unsafe { cairo_native__dict_drop(cloned_dict, None) };
+        unsafe { cairo_native__dict_drop(cloned_dict) };
     }
 
     #[test]

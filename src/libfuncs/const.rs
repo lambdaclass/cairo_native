@@ -133,7 +133,7 @@ pub fn build_const_type_value<'ctx, 'this>(
     //   type of the const type must be the same as the corresponding enum variant type.
 
     let inner_type = registry.get_type(&info.inner_ty)?;
-    let inner_ty = registry.build_type(context, helper, registry, metadata, &info.inner_ty)?;
+    let inner_ty = registry.build_type(context, helper, metadata, &info.inner_ty)?;
 
     match inner_type {
         CoreTypeConcrete::Struct(_) => {

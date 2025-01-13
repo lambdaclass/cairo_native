@@ -63,6 +63,7 @@ extern "C" {
 /// constructs the function call in place.
 ///
 /// To pass the arguments, they are stored in a arena.
+#[allow(clippy::too_many_arguments)]
 fn invoke_dynamic(
     registry: &ProgramRegistry<CoreType, CoreLibfunc>,
     function_ptr: *const c_void,
@@ -71,6 +72,13 @@ fn invoke_dynamic(
     args: &[Value],
     gas: u64,
     mut syscall_handler: Option<impl StarknetSyscallHandler>,
+    find_dict_overrides: impl Copy
+        + Fn(
+            &ConcreteTypeId,
+        ) -> (
+            Option<extern "C" fn(*mut c_void, *mut c_void)>,
+            Option<extern "C" fn(*mut c_void)>,
+        ),
 ) -> Result<ExecutionResult, Error> {
     tracing::info!("Invoking function with signature: {function_signature:?}.");
     let arena = Bump::new();
@@ -116,7 +124,9 @@ fn invoke_dynamic(
         })?;
 
         let return_ptr = arena.alloc_layout(layout).cast::<()>();
-        return_ptr.as_ptr().to_bytes(&mut invoke_data)?;
+        return_ptr
+            .as_ptr()
+            .to_bytes(&mut invoke_data, |_| unreachable!())?;
 
         Some(return_ptr)
     } else {
@@ -164,19 +174,23 @@ fn invoke_dynamic(
 
         // Process gas requirements and syscall handler.
         match type_info {
-            CoreTypeConcrete::GasBuiltin(_) => gas.to_bytes(&mut invoke_data)?,
+            CoreTypeConcrete::GasBuiltin(_) => {
+                gas.to_bytes(&mut invoke_data, |_| unreachable!())?
+            }
             CoreTypeConcrete::StarkNet(StarkNetTypeConcrete::System(_)) => {
                 let syscall_handler = syscall_handler
                     .as_mut()
                     .to_native_assert_error("syscall handler should be available")?;
 
                 (syscall_handler as *mut StarknetSyscallHandlerCallbacks<_>)
-                    .to_bytes(&mut invoke_data)?;
+                    .to_bytes(&mut invoke_data, |_| unreachable!())?;
             }
             CoreTypeConcrete::BuiltinCosts(_) => {
-                builtin_costs.to_bytes(&mut invoke_data)?;
+                builtin_costs.to_bytes(&mut invoke_data, |_| unreachable!())?;
             }
-            type_info if type_info.is_builtin() => 0u64.to_bytes(&mut invoke_data)?,
+            type_info if type_info.is_builtin() => {
+                0u64.to_bytes(&mut invoke_data, |_| unreachable!())?
+            }
             type_info => ValueWithInfoWrapper {
                 value: iter
                     .next()
@@ -187,7 +201,7 @@ fn invoke_dynamic(
                 arena: &arena,
                 registry,
             }
-            .to_bytes(&mut invoke_data)?,
+            .to_bytes(&mut invoke_data, find_dict_overrides)?,
         }
     }
 
@@ -351,7 +365,6 @@ fn parse_result(
     #[cfg(target_arch = "aarch64")] mut ret_registers: [u64; 4],
 ) -> Result<Value, Error> {
     let type_info = registry.get_type(type_id)?;
-    let debug_name = type_info.info().long_id.to_string();
 
     // Align the pointer to the actual return value.
     if let Some(return_ptr) = &mut return_ptr {
@@ -373,11 +386,12 @@ fn parse_result(
             return_ptr.to_native_assert_error("return pointer should be valid")?,
             type_id,
             registry,
+            true,
         )?),
         CoreTypeConcrete::Box(info) => unsafe {
             let ptr =
                 return_ptr.unwrap_or_else(|| NonNull::new_unchecked(ret_registers[0] as *mut ()));
-            let value = Value::from_ptr(ptr, &info.ty, registry)?;
+            let value = Value::from_ptr(ptr, &info.ty, registry, true)?;
             libc_free(ptr.cast().as_ptr());
             Ok(value)
         },
@@ -385,6 +399,7 @@ fn parse_result(
             return_ptr.to_native_assert_error("return pointer should be valid")?,
             type_id,
             registry,
+            true,
         )?),
         CoreTypeConcrete::Felt252(_)
         | CoreTypeConcrete::StarkNet(
@@ -393,7 +408,7 @@ fn parse_result(
             | StarkNetTypeConcrete::StorageAddress(_)
             | StarkNetTypeConcrete::StorageBaseAddress(_),
         ) => match return_ptr {
-            Some(return_ptr) => Ok(Value::from_ptr(return_ptr, type_id, registry)?),
+            Some(return_ptr) => Ok(Value::from_ptr(return_ptr, type_id, registry, true)?),
             None => {
                 #[cfg(target_arch = "x86_64")]
                 // Since x86_64's return values hold at most two different 64bit registers,
@@ -412,7 +427,7 @@ fn parse_result(
             }
         },
         CoreTypeConcrete::Bytes31(_) => match return_ptr {
-            Some(return_ptr) => Ok(Value::from_ptr(return_ptr, type_id, registry)?),
+            Some(return_ptr) => Ok(Value::from_ptr(return_ptr, type_id, registry, true)?),
             None => {
                 #[cfg(target_arch = "x86_64")]
                 // Since x86_64's return values hold at most two different 64bit registers,
@@ -427,7 +442,7 @@ fn parse_result(
             }
         },
         CoreTypeConcrete::BoundedInt(info) => match return_ptr {
-            Some(return_ptr) => Ok(Value::from_ptr(return_ptr, type_id, registry)?),
+            Some(return_ptr) => Ok(Value::from_ptr(return_ptr, type_id, registry, true)?),
             None => {
                 let mut data = if info.range.offset_bit_width() <= 64 {
                     BigInt::from(ret_registers[0])
@@ -499,7 +514,7 @@ fn parse_result(
                 Ok(Value::Null)
             } else {
                 let ptr = NonNull::new_unchecked(ptr);
-                let value = Value::from_ptr(ptr, &info.ty, registry)?;
+                let value = Value::from_ptr(ptr, &info.ty, registry, true)?;
                 libc_free(ptr.as_ptr().cast());
                 Ok(value)
             }
@@ -555,7 +570,7 @@ fn parse_result(
                 }
             };
             let value = match ptr {
-                Ok(ptr) => Box::new(Value::from_ptr(ptr, &info.variants[tag], registry)?),
+                Ok(ptr) => Box::new(Value::from_ptr(ptr, &info.variants[tag], registry, true)?),
                 Err(offset) => {
                     ret_registers.copy_within(offset.., 0);
                     Box::new(parse_result(
@@ -570,27 +585,28 @@ fn parse_result(
             Ok(Value::Enum {
                 tag,
                 value,
-                debug_name: Some(debug_name),
+                debug_name: Some(type_info.info().long_id.to_string()),
             })
         }
         CoreTypeConcrete::Struct(info) => {
             if info.members.is_empty() {
                 Ok(Value::Struct {
                     fields: Vec::new(),
-                    debug_name: Some(debug_name),
+                    debug_name: Some(type_info.info().long_id.to_string()),
                 })
             } else {
                 Ok(Value::from_ptr(
                     return_ptr.to_native_assert_error("return pointer should be valid")?,
                     type_id,
                     registry,
+                    true,
                 )?)
             }
         }
         CoreTypeConcrete::Felt252Dict(_) | CoreTypeConcrete::SquashedFelt252Dict(_) => unsafe {
             let ptr = return_ptr
                 .unwrap_or_else(|| NonNull::new_unchecked((&raw mut ret_registers[0]) as *mut ()));
-            Ok(Value::from_ptr(ptr, type_id, registry)?)
+            Ok(Value::from_ptr(ptr, type_id, registry, true)?)
         },
 
         CoreTypeConcrete::Snapshot(info) => {

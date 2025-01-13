@@ -68,7 +68,6 @@ pub fn build_binary_operation<'ctx, 'this>(
     let felt252_ty = registry.build_type(
         context,
         helper,
-        registry,
         metadata,
         &info.branch_signatures()[0].vars[0].ty,
     )?;
@@ -299,7 +298,6 @@ pub fn build_const<'ctx, 'this>(
     let felt252_ty = registry.build_type(
         context,
         helper,
-        registry,
         metadata,
         &info.branch_signatures()[0].vars[0].ty,
     )?;

@@ -18,6 +18,7 @@ use melior::{
 };
 use std::{cell::UnsafeCell, mem};
 
+#[derive(Clone)]
 pub struct ProfilerMeta {
     _private: (),
 }

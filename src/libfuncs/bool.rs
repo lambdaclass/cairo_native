@@ -184,7 +184,6 @@ pub fn build_bool_to_felt252<'ctx, 'this>(
     let felt252_ty = registry.build_type(
         context,
         helper,
-        registry,
         metadata,
         &info.branch_signatures()[0].vars[0].ty,
     )?;

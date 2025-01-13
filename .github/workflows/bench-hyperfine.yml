@@ -43,7 +43,7 @@ jobs:
           sudo rm -rf /usr/share/dotnet/
           sudo rm -rf /usr/local/lib/android
           df -h
-      - uses: dtolnay/rust-toolchain@1.82.0
+      - uses: dtolnay/rust-toolchain@1.84.0
         with:
           components: clippy
       - uses: Swatinem/rust-cache@v2
@@ -131,7 +131,7 @@ jobs:
           df -h
       - name: Install Rust
         if: ${{ steps.cache-binary.outputs.cache-hit != 'true' || steps.cache-library.outputs.cache-hit != 'true' }}
-        uses: dtolnay/rust-toolchain@1.82.0
+        uses: dtolnay/rust-toolchain@1.84.0
       - name: add llvm deb repository
         if: ${{ steps.cache-binary.outputs.cache-hit != 'true' || steps.cache-library.outputs.cache-hit != 'true' }}
         uses: myci-actions/add-deb-repo@11

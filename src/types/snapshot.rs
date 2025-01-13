@@ -63,7 +63,7 @@ pub fn build<'ctx>(
         metadata,
         info.self_ty(),
         |metadata| {
-            registry.build_type(context, module, registry, metadata, &info.ty)?;
+            registry.build_type(context, module, metadata, &info.ty)?;
 
             // The following unwrap is unreachable because `register_with` will always insert it before
             // calling this closure.
@@ -83,7 +83,7 @@ pub fn build<'ctx>(
         metadata,
         info.self_ty(),
         |metadata| {
-            registry.build_type(context, module, registry, metadata, &info.ty)?;
+            registry.build_type(context, module, metadata, &info.ty)?;
 
             // The following unwrap is unreachable because `register_with` will always insert it before
             // calling this closure.
@@ -96,7 +96,7 @@ pub fn build<'ctx>(
         },
     )?;
 
-    registry.build_type(context, module, registry, metadata, &info.ty)
+    registry.build_type(context, module, metadata, &info.ty)
 }
 
 fn build_dup<'ctx>(
@@ -108,7 +108,7 @@ fn build_dup<'ctx>(
 ) -> Result<Region<'ctx>> {
     let location = Location::unknown(context);
 
-    let inner_ty = registry.build_type(context, module, registry, metadata, &info.ty)?;
+    let inner_ty = registry.build_type(context, module, metadata, &info.ty)?;
 
     let region = Region::new();
     let entry = region.append_block(Block::new(&[(inner_ty, location)]));
@@ -132,7 +132,7 @@ fn build_drop<'ctx>(
 ) -> Result<Region<'ctx>> {
     let location = Location::unknown(context);
 
-    let inner_ty = registry.build_type(context, module, registry, metadata, &info.ty)?;
+    let inner_ty = registry.build_type(context, module, metadata, &info.ty)?;
 
     let region = Region::new();
     let entry = region.append_block(Block::new(&[(inner_ty, location)]));

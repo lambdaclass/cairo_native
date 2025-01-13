@@ -201,7 +201,6 @@ pub fn build_call_contract<'ctx, 'this>(
     let (gas_ty, gas_layout) = registry.build_type_with_layout(
         context,
         helper,
-        registry,
         metadata,
         &info.param_signatures()[0].ty,
     )?;
@@ -518,7 +517,6 @@ pub fn build_storage_read<'ctx, 'this>(
     let (gas_ty, gas_layout) = registry.build_type_with_layout(
         context,
         helper,
-        registry,
         metadata,
         &info.param_signatures()[0].ty,
     )?;
@@ -676,7 +674,6 @@ pub fn build_storage_write<'ctx, 'this>(
     let (gas_ty, gas_layout) = registry.build_type_with_layout(
         context,
         helper,
-        registry,
         metadata,
         &info.param_signatures()[0].ty,
     )?;
@@ -949,7 +946,6 @@ pub fn build_emit_event<'ctx, 'this>(
     let (gas_ty, gas_layout) = registry.build_type_with_layout(
         context,
         helper,
-        registry,
         metadata,
         &info.param_signatures()[0].ty,
     )?;
@@ -1148,7 +1144,6 @@ pub fn build_get_block_hash<'ctx, 'this>(
     let (gas_ty, gas_layout) = registry.build_type_with_layout(
         context,
         helper,
-        registry,
         metadata,
         &info.param_signatures()[0].ty,
     )?;
@@ -1297,7 +1292,6 @@ pub fn build_get_execution_info<'ctx, 'this>(
     let (gas_ty, gas_layout) = registry.build_type_with_layout(
         context,
         helper,
-        registry,
         metadata,
         &info.param_signatures()[0].ty,
     )?;
@@ -1440,7 +1434,6 @@ pub fn build_get_execution_info_v2<'ctx, 'this>(
     let (gas_ty, gas_layout) = registry.build_type_with_layout(
         context,
         helper,
-        registry,
         metadata,
         &info.param_signatures()[0].ty,
     )?;
@@ -1560,14 +1553,12 @@ pub fn build_deploy<'ctx, 'this>(
                 let (p0_ty, p0_layout) = registry.build_type_with_layout(
                     context,
                     helper,
-                    registry,
                     metadata,
                     &info.branch_signatures()[0].vars[2].ty,
                 )?;
                 let (p1_ty, p1_layout) = registry.build_type_with_layout(
                     context,
                     helper,
-                    registry,
                     metadata,
                     &info.branch_signatures()[0].vars[3].ty,
                 )?;
@@ -1587,7 +1578,6 @@ pub fn build_deploy<'ctx, 'this>(
                 let (payload_ty, payload_layout) = registry.build_type_with_layout(
                     context,
                     helper,
-                    registry,
                     metadata,
                     &info.branch_signatures()[1].vars[2].ty,
                 )?;
@@ -1626,7 +1616,6 @@ pub fn build_deploy<'ctx, 'this>(
     let (gas_ty, gas_layout) = registry.build_type_with_layout(
         context,
         helper,
-        registry,
         metadata,
         &info.param_signatures()[0].ty,
     )?;
@@ -1838,7 +1827,6 @@ pub fn build_keccak<'ctx, 'this>(
     let (gas_ty, gas_layout) = registry.build_type_with_layout(
         context,
         helper,
-        registry,
         metadata,
         &info.param_signatures()[0].ty,
     )?;
@@ -1997,7 +1985,6 @@ pub fn build_library_call<'ctx, 'this>(
     let (gas_ty, gas_layout) = registry.build_type_with_layout(
         context,
         helper,
-        registry,
         metadata,
         &info.param_signatures()[0].ty,
     )?;
@@ -2181,7 +2168,6 @@ pub fn build_replace_class<'ctx, 'this>(
     let (gas_ty, gas_layout) = registry.build_type_with_layout(
         context,
         helper,
-        registry,
         metadata,
         &info.param_signatures()[0].ty,
     )?;
@@ -2331,7 +2317,6 @@ pub fn build_send_message_to_l1<'ctx, 'this>(
     let (gas_ty, gas_layout) = registry.build_type_with_layout(
         context,
         helper,
-        registry,
         metadata,
         &info.param_signatures()[0].ty,
     )?;
@@ -2506,7 +2491,6 @@ pub fn build_sha256_process_block_syscall<'ctx, 'this>(
     let (gas_ty, gas_layout) = registry.build_type_with_layout(
         context,
         helper,
-        registry,
         metadata,
         &info.param_signatures()[0].ty,
     )?;
@@ -2552,7 +2536,6 @@ pub fn build_sha256_process_block_syscall<'ctx, 'this>(
     registry.build_type(
         context,
         helper,
-        registry,
         metadata,
         &info.signature.param_signatures[3].ty,
     )?;
@@ -2654,7 +2637,6 @@ pub fn build_get_class_hash_at<'ctx, 'this>(
     let (gas_ty, gas_layout) = registry.build_type_with_layout(
         context,
         helper,
-        registry,
         metadata,
         &info.param_signatures()[0].ty,
     )?;

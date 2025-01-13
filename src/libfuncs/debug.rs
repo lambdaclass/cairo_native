@@ -105,7 +105,7 @@ pub fn build_print<'ctx, 'this>(
     )?;
 
     let input_ty = &info.signature.param_signatures[0].ty;
-    registry.build_type(context, helper, registry, metadata, input_ty)?;
+    registry.build_type(context, helper, metadata, input_ty)?;
     metadata
         .get::<DropOverridesMeta>()
         .ok_or(Error::MissingMetadata)?
