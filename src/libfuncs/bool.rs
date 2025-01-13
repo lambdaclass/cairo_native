@@ -99,7 +99,6 @@ fn build_bool_binary<'ctx, 'this>(
         .next_power_of_two()
         .trailing_zeros();
     let tag_ty = IntegerType::new(context, tag_bits).into();
-
     let lhs = entry.arg(0)?;
     let rhs = entry.arg(1)?;
 
@@ -255,26 +254,12 @@ mod test {
             type [0] = Struct<ut@Tuple> [storable: true, drop: true, dup: true, zero_sized: true];
             type [1] = Enum<ut@core::bool, [0], [0]> [storable: true, drop: true, dup: true, zero_sized: false];
 
-            libfunc [2] = enum_match<[1]>;
-            libfunc [3] = branch_align;
-            libfunc [4] = drop<[0]>;
-            libfunc [5] = drop<[1]>;
-            libfunc [1] = struct_construct<[0]>;
-            libfunc [0] = enum_init<[1], 0>;
-            libfunc [6] = store_temp<[1]>;
+            libfunc [0] = bool_and_impl;
+            libfunc [2] = store_temp<[1]>;
 
-            [2]([0]) { fallthrough([2]) 8([3]) }; // 0
-            [3]() -> (); // 1
-            [4]([2]) -> (); // 2
-            [5]([1]) -> (); // 3
-            [1]() -> ([4]); // 4
-            [0]([4]) -> ([5]); // 5
-            [6]([5]) -> ([5]); // 6
-            return([5]); // 7
-            [3]() -> (); // 8
-            [4]([3]) -> (); // 9
-            [6]([1]) -> ([1]); // 10
-            return([1]); // 11
+            [0]([0], [1]) -> ([2]); // 0
+            [2]([2]) -> ([2]); // 1
+            return([2]); // 2
 
             [0]@0([0]: [1], [1]: [1]) -> ([1]);
             "#).map_err(|e| e.to_string()).unwrap();
@@ -359,26 +344,12 @@ mod test {
             type [0] = Struct<ut@Tuple> [storable: true, drop: true, dup: true, zero_sized: true];
             type [1] = Enum<ut@core::bool, [0], [0]> [storable: true, drop: true, dup: true, zero_sized: false];
 
-            libfunc [2] = enum_match<[1]>;
-            libfunc [3] = branch_align;
-            libfunc [4] = drop<[0]>;
-            libfunc [6] = store_temp<[1]>;
-            libfunc [5] = drop<[1]>;
-            libfunc [1] = struct_construct<[0]>;
-            libfunc [0] = enum_init<[1], 1>;
+            libfunc [0] = bool_or_impl;
+            libfunc [2] = store_temp<[1]>;
 
-            [2]([0]) { fallthrough([2]) 5([3]) }; // 0
-            [3]() -> (); // 1
-            [4]([2]) -> (); // 2
-            [6]([1]) -> ([1]); // 3
-            return([1]); // 4
-            [3]() -> (); // 5
-            [4]([3]) -> (); // 6
-            [5]([1]) -> (); // 7
-            [1]() -> ([4]); // 8
-            [0]([4]) -> ([5]); // 9
-            [6]([5]) -> ([5]); // 10
-            return([5]); // 11
+            [0]([0], [1]) -> ([2]); // 0
+            [2]([2]) -> ([2]); // 1
+            return([2]); // 2
 
             [0]@0([0]: [1], [1]: [1]) -> ([1]);
             "#).map_err(|e| e.to_string()).unwrap();
