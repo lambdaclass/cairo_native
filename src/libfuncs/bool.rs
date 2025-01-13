@@ -99,7 +99,6 @@ fn build_bool_binary<'ctx, 'this>(
         .next_power_of_two()
         .trailing_zeros();
     let tag_ty = IntegerType::new(context, tag_bits).into();
-
     let lhs = entry.arg(0)?;
     let rhs = entry.arg(1)?;
 
@@ -209,65 +208,85 @@ pub fn build_bool_to_felt252<'ctx, 'this>(
 
 #[cfg(test)]
 mod test {
+    use cairo_lang_sierra::ProgramParser;
+
     use crate::{
-        utils::test::{jit_enum, jit_struct, load_cairo, run_program},
+        utils::test::{jit_enum, jit_struct, run_sierra_program},
         values::Value,
     };
 
     #[test]
     fn run_not() {
-        let program = load_cairo!(
-            use array::ArrayTrait;
+        // use array::ArrayTrait;
+        //
+        // fn run_test(a: bool) -> bool {
+        //   !a
+        // }
+        let program = ProgramParser::new().parse(r#"
+            type [0] = Struct<ut@Tuple> [storable: true, drop: true, dup: true, zero_sized: true];
+            type [1] = Enum<ut@core::bool, [0], [0]> [storable: true, drop: true, dup: true, zero_sized: false];
 
-            fn run_test(a: bool) -> bool {
-                !a
-            }
-        );
+            libfunc [0] = bool_not_impl;
+            libfunc [2] = store_temp<[1]>;
 
-        let result = run_program(&program, "run_test", &[jit_enum!(0, jit_struct!())]).return_value;
+            [0]([0]) -> ([1]); // 0
+            [2]([1]) -> ([1]); // 1
+            return([1]); // 2
+
+            [0]@0([0]: [1]) -> ([1]);
+            "#).map_err(|e| e.to_string()).unwrap();
+
+        let result = run_sierra_program(&program, &[jit_enum!(0, jit_struct!())]).return_value;
         assert_eq!(result, jit_enum!(1, jit_struct!()));
 
-        let result = run_program(&program, "run_test", &[jit_enum!(1, jit_struct!())]).return_value;
+        let result = run_sierra_program(&program, &[jit_enum!(1, jit_struct!())]).return_value;
         assert_eq!(result, jit_enum!(0, jit_struct!()));
     }
 
     #[test]
     fn run_and() {
-        let program = load_cairo!(
-            use array::ArrayTrait;
+        // use array::ArrayTrait;
 
-            fn run_test(a: bool, b: bool) -> bool {
-                a && b
-            }
-        );
+        // fn run_test(a: bool, b: bool) -> bool {
+        //     a && b
+        // }
+        let program = ProgramParser::new().parse(r#"
+            type [0] = Struct<ut@Tuple> [storable: true, drop: true, dup: true, zero_sized: true];
+            type [1] = Enum<ut@core::bool, [0], [0]> [storable: true, drop: true, dup: true, zero_sized: false];
 
-        let result = run_program(
+            libfunc [0] = bool_and_impl;
+            libfunc [2] = store_temp<[1]>;
+
+            [0]([0], [1]) -> ([2]); // 0
+            [2]([2]) -> ([2]); // 1
+            return([2]); // 2
+
+            [0]@0([0]: [1], [1]: [1]) -> ([1]);
+            "#).map_err(|e| e.to_string()).unwrap();
+
+        let result = run_sierra_program(
             &program,
-            "run_test",
             &[jit_enum!(1, jit_struct!()), jit_enum!(1, jit_struct!())],
         )
         .return_value;
         assert_eq!(result, jit_enum!(1, jit_struct!()));
 
-        let result = run_program(
+        let result = run_sierra_program(
             &program,
-            "run_test",
             &[jit_enum!(1, jit_struct!()), jit_enum!(0, jit_struct!())],
         )
         .return_value;
         assert_eq!(result, jit_enum!(0, jit_struct!()));
 
-        let result = run_program(
+        let result = run_sierra_program(
             &program,
-            "run_test",
             &[jit_enum!(0, jit_struct!()), jit_enum!(1, jit_struct!())],
         )
         .return_value;
         assert_eq!(result, jit_enum!(0, jit_struct!()));
 
-        let result = run_program(
+        let result = run_sierra_program(
             &program,
-            "run_test",
             &[jit_enum!(0, jit_struct!()), jit_enum!(0, jit_struct!())],
         )
         .return_value;
@@ -276,41 +295,43 @@ mod test {
 
     #[test]
     fn run_xor() {
-        let program = load_cairo!(
-            use array::ArrayTrait;
+        let program = ProgramParser::new().parse(r#"
+            type [0] = Struct<ut@Tuple> [storable: true, drop: true, dup: true, zero_sized: true];
+            type [1] = Enum<ut@core::bool, [0], [0]> [storable: true, drop: true, dup: true, zero_sized: false];
 
-            fn run_test(a: bool, b: bool) -> bool {
-                a ^ b
-            }
-        );
+            libfunc [0] = bool_xor_impl;
+            libfunc [2] = store_temp<[1]>;
 
-        let result = run_program(
+            [0]([0], [1]) -> ([2]); // 0
+            [2]([2]) -> ([2]); // 1
+            return([2]); // 2
+
+            [0]@0([0]: [1], [1]: [1]) -> ([1]);
+            "#).map_err(|e| e.to_string()).unwrap();
+
+        let result = run_sierra_program(
             &program,
-            "run_test",
             &[jit_enum!(1, jit_struct!()), jit_enum!(1, jit_struct!())],
         )
         .return_value;
         assert_eq!(result, jit_enum!(0, jit_struct!()));
 
-        let result = run_program(
+        let result = run_sierra_program(
             &program,
-            "run_test",
             &[jit_enum!(1, jit_struct!()), jit_enum!(0, jit_struct!())],
         )
         .return_value;
         assert_eq!(result, jit_enum!(1, jit_struct!()));
 
-        let result = run_program(
+        let result = run_sierra_program(
             &program,
-            "run_test",
             &[jit_enum!(0, jit_struct!()), jit_enum!(1, jit_struct!())],
         )
         .return_value;
         assert_eq!(result, jit_enum!(1, jit_struct!()));
 
-        let result = run_program(
+        let result = run_sierra_program(
             &program,
-            "run_test",
             &[jit_enum!(0, jit_struct!()), jit_enum!(0, jit_struct!())],
         )
         .return_value;
@@ -319,41 +340,43 @@ mod test {
 
     #[test]
     fn run_or() {
-        let program = load_cairo!(
-            use array::ArrayTrait;
+        let program = ProgramParser::new().parse(r#"
+            type [0] = Struct<ut@Tuple> [storable: true, drop: true, dup: true, zero_sized: true];
+            type [1] = Enum<ut@core::bool, [0], [0]> [storable: true, drop: true, dup: true, zero_sized: false];
 
-            fn run_test(a: bool, b: bool) -> bool {
-                a || b
-            }
-        );
+            libfunc [0] = bool_or_impl;
+            libfunc [2] = store_temp<[1]>;
 
-        let result = run_program(
+            [0]([0], [1]) -> ([2]); // 0
+            [2]([2]) -> ([2]); // 1
+            return([2]); // 2
+
+            [0]@0([0]: [1], [1]: [1]) -> ([1]);
+            "#).map_err(|e| e.to_string()).unwrap();
+
+        let result = run_sierra_program(
             &program,
-            "run_test",
             &[jit_enum!(1, jit_struct!()), jit_enum!(1, jit_struct!())],
         )
         .return_value;
         assert_eq!(result, jit_enum!(1, jit_struct!()));
 
-        let result = run_program(
+        let result = run_sierra_program(
             &program,
-            "run_test",
             &[jit_enum!(1, jit_struct!()), jit_enum!(0, jit_struct!())],
         )
         .return_value;
         assert_eq!(result, jit_enum!(1, jit_struct!()));
 
-        let result = run_program(
+        let result = run_sierra_program(
             &program,
-            "run_test",
             &[jit_enum!(0, jit_struct!()), jit_enum!(1, jit_struct!())],
         )
         .return_value;
         assert_eq!(result, jit_enum!(1, jit_struct!()));
 
-        let result = run_program(
+        let result = run_sierra_program(
             &program,
-            "run_test",
             &[jit_enum!(0, jit_struct!()), jit_enum!(0, jit_struct!())],
         )
         .return_value;
@@ -362,16 +385,25 @@ mod test {
 
     #[test]
     fn bool_to_felt252() {
-        let program = load_cairo!(
-            fn run_test(a: bool) -> felt252 {
-                bool_to_felt252(a)
-            }
-        );
+        let program = ProgramParser::new().parse(r#"
+            type [0] = Struct<ut@Tuple> [storable: true, drop: true, dup: true, zero_sized: true];
+            type [1] = Enum<ut@core::bool, [0], [0]> [storable: true, drop: true, dup: true, zero_sized: false];
+            type [2] = felt252 [storable: true, drop: true, dup: true, zero_sized: false];
 
-        let result = run_program(&program, "run_test", &[jit_enum!(1, jit_struct!())]).return_value;
+            libfunc [0] = bool_to_felt252;
+            libfunc [2] = store_temp<[2]>;
+
+            [0]([0]) -> ([1]); // 0
+            [2]([1]) -> ([1]); // 1
+            return([1]); // 2
+
+            [0]@0([0]: [1]) -> ([2]);
+            "#).map_err(|e| e.to_string()).unwrap();
+
+        let result = run_sierra_program(&program, &[jit_enum!(1, jit_struct!())]).return_value;
         assert_eq!(result, Value::Felt252(1.into()));
 
-        let result = run_program(&program, "run_test", &[jit_enum!(0, jit_struct!())]).return_value;
+        let result = run_sierra_program(&program, &[jit_enum!(0, jit_struct!())]).return_value;
         assert_eq!(result, Value::Felt252(0.into()));
     }
 }
