@@ -113,10 +113,6 @@ jobs:
     name: Compare Dumps
     needs: [run-blocks]
     runs-on: ubuntu-latest
-    strategy:
-      matrix:
-        block: [742001, 769597, 779328, 801008, 803072]
-      fail-fast: false
     steps:
       - uses: actions/checkout@v4
 
