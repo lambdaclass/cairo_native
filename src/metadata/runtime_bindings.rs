@@ -18,7 +18,12 @@ use melior::{
     },
     Context,
 };
-use std::{alloc::Layout, collections::HashSet, ffi::c_int, marker::PhantomData};
+use std::{
+    alloc::Layout,
+    collections::HashSet,
+    ffi::{c_int, c_void},
+    marker::PhantomData,
+};
 
 #[derive(Clone, Copy, Debug, Hash, Eq, PartialEq)]
 enum RuntimeBinding {
@@ -945,6 +950,18 @@ impl Default for RuntimeBindingsMeta {
         Self {
             active_map: HashSet::new(),
             phantom: PhantomData,
+        }
+    }
+}
+
+pub fn setup_runtime(find_symbol_ptr: impl Fn(&str) -> Option<*mut c_void>) {
+    for (symbol, function) in [(
+        "cairo_native_2_libfunc__pedersen",
+        cairo_native_runtime::cairo_native__libfunc__pedersen as *const (),
+    )] {
+        if let Some(global) = find_symbol_ptr(symbol) {
+            let global = global.cast::<*const ()>();
+            unsafe { *global = function };
         }
     }
 }

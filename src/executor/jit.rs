@@ -1,7 +1,9 @@
 use crate::{
     error::Error,
     execution_result::{ContractExecutionResult, ExecutionResult},
-    metadata::{felt252_dict::Felt252DictOverrides, gas::GasMetadata},
+    metadata::{
+        felt252_dict::Felt252DictOverrides, gas::GasMetadata, runtime_bindings::setup_runtime,
+    },
     module::NativeModule,
     starknet::{DummySyscallHandler, StarknetSyscallHandler},
     utils::{create_engine, generate_function_name},
@@ -61,14 +63,7 @@ impl<'m> JitNativeExecutor<'m> {
             dict_overrides: metadata.remove().unwrap_or_default(),
         };
 
-        if let Some(pedersen_global) = executor.find_symbol_ptr("cairo_native_2_libfunc__pedersen")
-        {
-            let pedersen_global = pedersen_global.cast::<*const ()>();
-            unsafe {
-                *pedersen_global =
-                    cairo_native_runtime::cairo_native__libfunc__pedersen as *const ()
-            };
-        }
+        setup_runtime(|name| executor.find_symbol_ptr(name));
 
         Ok(executor)
     }
