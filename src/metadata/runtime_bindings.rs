@@ -138,45 +138,21 @@ impl RuntimeBindingsMeta {
     where
         'c: 'a,
     {
-        if self.active_map.insert(RuntimeBinding::HadesPermutation) {
-            module.body().append_operation(func::func(
-                context,
-                StringAttribute::new(context, "cairo_native__libfunc__hades_permutation"),
-                TypeAttribute::new(
-                    FunctionType::new(
-                        context,
-                        &[
-                            llvm::r#type::pointer(context, 0),
-                            llvm::r#type::pointer(context, 0),
-                            llvm::r#type::pointer(context, 0),
-                        ],
-                        &[],
-                    )
-                    .into(),
-                ),
-                Region::new(),
-                &[
-                    (
-                        Identifier::new(context, "sym_visibility"),
-                        StringAttribute::new(context, "private").into(),
-                    ),
-                    (
-                        Identifier::new(context, "llvm.linkage"),
-                        Attribute::parse(context, "#llvm.linkage<external>")
-                            .ok_or(Error::ParseAttributeError)?,
-                    ),
-                ],
-                Location::unknown(context),
-            ));
-        }
-
-        Ok(block.append_operation(func::call(
+        let function = self.build_function(
             context,
-            FlatSymbolRefAttribute::new(context, "cairo_native__libfunc__hades_permutation"),
-            &[op0_ptr, op1_ptr, op2_ptr],
-            &[],
+            module,
+            block,
             location,
-        )))
+            RuntimeBinding::HadesPermutation,
+            "cairo_native_2_libfunc__hades_permutation",
+        )?;
+
+        Ok(block.append_operation(
+            OperationBuilder::new("llvm.call", location)
+                .add_operands(&[function])
+                .add_operands(&[op0_ptr, op1_ptr, op2_ptr])
+                .build()?,
+        ))
     }
 
     /// Register if necessary, then invoke the `ec_point_from_x_nz()` function.
@@ -959,6 +935,10 @@ pub fn setup_runtime(find_symbol_ptr: impl Fn(&str) -> Option<*mut c_void>) {
         (
             "cairo_native_2_libfunc__debug__print",
             cairo_native_runtime::cairo_native__libfunc__debug__print as *const (),
+        ),
+        (
+            "cairo_native_2_libfunc__hades_permutation",
+            cairo_native_runtime::cairo_native__libfunc__hades_permutation as *const (),
         ),
     ] {
         if let Some(global) = find_symbol_ptr(symbol) {
