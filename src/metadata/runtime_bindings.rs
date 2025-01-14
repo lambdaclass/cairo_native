@@ -840,6 +840,20 @@ pub fn setup_runtime(find_symbol_ptr: impl Fn(&str) -> Option<*mut c_void>) {
         RuntimeBinding::DebugPrint,
         RuntimeBinding::Pedersen,
         RuntimeBinding::HadesPermutation,
+        // RuntimeBinding::EcStateTryFinalizeNz,
+        // RuntimeBinding::EcStateAddMul,
+        // RuntimeBinding::EcStateInit,
+        // RuntimeBinding::EcStateAdd,
+        // RuntimeBinding::EcPointTryNewNz,
+        // RuntimeBinding::EcPointFromXNz,
+        // RuntimeBinding::DictNew,
+        // RuntimeBinding::DictGet,
+        // RuntimeBinding::DictGasRefund,
+        // RuntimeBinding::DictDrop,
+        // RuntimeBinding::DictDup,
+        // RuntimeBinding::GetGasBuiltin,
+        // #[cfg(feature = "with-cheatcode")]
+        // RuntimeBinding::VtableCheatcode,
     ] {
         if let Some(global) = find_symbol_ptr(binding.symbol()) {
             let global = global.cast::<*const ()>();
