@@ -9,9 +9,10 @@ use crate::{
     utils::BlockExt,
 };
 use melior::{
-    dialect::{func, llvm},
+    dialect::{func, llvm, ods},
     ir::{
         attribute::{FlatSymbolRefAttribute, StringAttribute, TypeAttribute},
+        operation::OperationBuilder,
         r#type::{FunctionType, IntegerType},
         Attribute, Block, Identifier, Location, Module, OperationRef, Region, Value,
     },
@@ -123,44 +124,43 @@ impl RuntimeBindingsMeta {
         'c: 'a,
     {
         if self.active_map.insert(RuntimeBinding::Pedersen) {
-            module.body().append_operation(func::func(
-                context,
-                StringAttribute::new(context, "cairo_native__libfunc__pedersen"),
-                TypeAttribute::new(
-                    FunctionType::new(
-                        context,
-                        &[
-                            llvm::r#type::pointer(context, 0),
-                            llvm::r#type::pointer(context, 0),
-                            llvm::r#type::pointer(context, 0),
-                        ],
-                        &[],
-                    )
-                    .into(),
-                ),
-                Region::new(),
-                &[
-                    (
-                        Identifier::new(context, "sym_visibility"),
-                        StringAttribute::new(context, "private").into(),
-                    ),
-                    (
-                        Identifier::new(context, "llvm.linkage"),
-                        Attribute::parse(context, "#llvm.linkage<external>")
-                            .ok_or(Error::ParseAttributeError)?,
-                    ),
-                ],
-                Location::unknown(context),
-            ));
+            module.body().append_operation(
+                ods::llvm::mlir_global(
+                    context,
+                    Region::new(),
+                    TypeAttribute::new(llvm::r#type::pointer(context, 0)),
+                    StringAttribute::new(context, "cairo_native_2_libfunc__pedersen"),
+                    Attribute::parse(context, "#llvm.linkage<weak>")
+                        .ok_or(Error::ParseAttributeError)?,
+                    location,
+                )
+                .into(),
+            );
         }
 
-        Ok(block.append_operation(func::call(
+        let global_address = block.append_op_result(
+            ods::llvm::mlir_addressof(
+                context,
+                llvm::r#type::pointer(context, 0),
+                FlatSymbolRefAttribute::new(context, "cairo_native_2_libfunc__pedersen"),
+                location,
+            )
+            .into(),
+        )?;
+
+        let function = block.load(
             context,
-            FlatSymbolRefAttribute::new(context, "cairo_native__libfunc__pedersen"),
-            &[dst_ptr, lhs_ptr, rhs_ptr],
-            &[],
             location,
-        )))
+            global_address,
+            llvm::r#type::pointer(context, 0),
+        )?;
+
+        Ok(block.append_operation(
+            OperationBuilder::new("llvm.call", location)
+                .add_operands(&[function])
+                .add_operands(&[dst_ptr, lhs_ptr, rhs_ptr])
+                .build()?,
+        ))
     }
 
     /// Register if necessary, then invoke the `poseidon()` function.

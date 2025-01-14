@@ -37,18 +37,29 @@ unsafe impl Send for AotNativeExecutor {}
 unsafe impl Sync for AotNativeExecutor {}
 
 impl AotNativeExecutor {
-    pub const fn new(
+    pub fn new(
         library: Library,
         registry: ProgramRegistry<CoreType, CoreLibfunc>,
         gas_metadata: GasMetadata,
         dict_overrides: Felt252DictOverrides,
     ) -> Self {
-        Self {
+        let executor = Self {
             library,
             registry,
             gas_metadata,
             dict_overrides,
+        };
+
+        if let Some(pedersen_global) = executor.find_symbol_ptr("cairo_native_2_libfunc__pedersen")
+        {
+            let pedersen_global = pedersen_global.cast::<*const ()>();
+            unsafe {
+                *pedersen_global =
+                    cairo_native_runtime::cairo_native__libfunc__pedersen as *const ()
+            };
         }
+
+        executor
     }
 
     /// Utility to convert a [`NativeModule`] into an [`AotNativeExecutor`].
@@ -67,12 +78,12 @@ impl AotNativeExecutor {
         let object_data = crate::module_to_object(&module, opt_level)?;
         crate::object_to_shared_lib(&object_data, &library_path)?;
 
-        Ok(Self {
-            library: unsafe { Library::new(&library_path)? },
+        Ok(Self::new(
+            unsafe { Library::new(&library_path)? },
             registry,
-            gas_metadata: metadata.remove().ok_or(Error::MissingMetadata)?,
-            dict_overrides: metadata.remove().unwrap_or_default(),
-        })
+            metadata.remove().ok_or(Error::MissingMetadata)?,
+            metadata.remove().unwrap_or_default(),
+        ))
     }
 
     pub fn invoke_dynamic(
