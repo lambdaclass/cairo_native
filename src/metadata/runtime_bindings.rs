@@ -119,7 +119,7 @@ impl RuntimeBinding {
 }
 
 /// Runtime library bindings metadata.
-#[derive(Debug)]
+#[derive(Debug, Default)]
 pub struct RuntimeBindingsMeta {
     active_map: HashSet<RuntimeBinding>,
 }
@@ -971,14 +971,6 @@ impl RuntimeBindingsMeta {
             global_address,
             llvm::r#type::pointer(context, 0),
         )
-    }
-}
-
-impl Default for RuntimeBindingsMeta {
-    fn default() -> Self {
-        Self {
-            active_map: HashSet::new(),
-        }
     }
 }
 
