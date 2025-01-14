@@ -201,7 +201,7 @@ jobs:
           # Save workflow url
           REPO_URL="${{ github.server_url }}/${{ github.repository }}"
           echo "WORKFLOW_URL=$REPO_URL/actions/runs/${{ github.run_id }}" | tee -a $GITHUB_ENV
-          echo "COMPARISSON_RESULT=$REPO_URL/actions/runs/${{ github.run_id }}/artifacts/${{ steps.upload_compare_results.outputs.artifact-id }}" | tee -a $GITHUB_ENV
+          echo "COMPARISON_RESULT=$REPO_URL/actions/runs/${{ github.run_id }}/artifacts/${{ steps.upload_compare_results.outputs.artifact-id }}" | tee -a $GITHUB_ENV
 
       - name: Create Issue
         if: ${{ failure() }}
