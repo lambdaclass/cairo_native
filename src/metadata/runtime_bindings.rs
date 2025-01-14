@@ -46,6 +46,58 @@ enum RuntimeBinding {
     VtableCheatcode,
 }
 
+impl RuntimeBinding {
+    const fn symbol(self) -> &'static str {
+        match self {
+            RuntimeBinding::DebugPrint => "cairo_native_2_libfunc__debug__print",
+            RuntimeBinding::Pedersen => "cairo_native_2_libfunc__pedersen",
+            RuntimeBinding::HadesPermutation => "cairo_native_2_libfunc__hades_permutation",
+            RuntimeBinding::EcStateTryFinalizeNz => todo!(),
+            RuntimeBinding::EcStateAddMul => todo!(),
+            RuntimeBinding::EcStateInit => todo!(),
+            RuntimeBinding::EcStateAdd => todo!(),
+            RuntimeBinding::EcPointTryNewNz => todo!(),
+            RuntimeBinding::EcPointFromXNz => todo!(),
+            RuntimeBinding::DictNew => todo!(),
+            RuntimeBinding::DictGet => todo!(),
+            RuntimeBinding::DictGasRefund => todo!(),
+            RuntimeBinding::DictDrop => todo!(),
+            RuntimeBinding::DictDup => todo!(),
+            RuntimeBinding::GetGasBuiltin => todo!(),
+            #[cfg(feature = "with-cheatcode")]
+            RuntimeBinding::VtableCheatcode => todo!(),
+        }
+    }
+
+    const fn function_ptr(self) -> *const () {
+        match self {
+            RuntimeBinding::DebugPrint => {
+                cairo_native_runtime::cairo_native__libfunc__debug__print as *const ()
+            }
+            RuntimeBinding::Pedersen => {
+                cairo_native_runtime::cairo_native__libfunc__pedersen as *const ()
+            }
+            RuntimeBinding::HadesPermutation => {
+                cairo_native_runtime::cairo_native__libfunc__hades_permutation as *const ()
+            }
+            RuntimeBinding::EcStateTryFinalizeNz => todo!(),
+            RuntimeBinding::EcStateAddMul => todo!(),
+            RuntimeBinding::EcStateInit => todo!(),
+            RuntimeBinding::EcStateAdd => todo!(),
+            RuntimeBinding::EcPointTryNewNz => todo!(),
+            RuntimeBinding::EcPointFromXNz => todo!(),
+            RuntimeBinding::DictNew => todo!(),
+            RuntimeBinding::DictGet => todo!(),
+            RuntimeBinding::DictGasRefund => todo!(),
+            RuntimeBinding::DictDrop => todo!(),
+            RuntimeBinding::DictDup => todo!(),
+            RuntimeBinding::GetGasBuiltin => todo!(),
+            #[cfg(feature = "with-cheatcode")]
+            RuntimeBinding::VtableCheatcode => todo!(),
+        }
+    }
+}
+
 /// Runtime library bindings metadata.
 #[derive(Debug)]
 pub struct RuntimeBindingsMeta {
@@ -69,14 +121,8 @@ impl RuntimeBindingsMeta {
     where
         'c: 'a,
     {
-        let function = self.build_function(
-            context,
-            module,
-            block,
-            location,
-            RuntimeBinding::DebugPrint,
-            "cairo_native_2_libfunc__debug__print",
-        )?;
+        let function =
+            self.build_function(context, module, block, location, RuntimeBinding::DebugPrint)?;
 
         Ok(block
             .append_operation(
@@ -105,14 +151,8 @@ impl RuntimeBindingsMeta {
     where
         'c: 'a,
     {
-        let function = self.build_function(
-            context,
-            module,
-            block,
-            location,
-            RuntimeBinding::Pedersen,
-            "cairo_native_2_libfunc__pedersen",
-        )?;
+        let function =
+            self.build_function(context, module, block, location, RuntimeBinding::Pedersen)?;
 
         Ok(block.append_operation(
             OperationBuilder::new("llvm.call", location)
@@ -144,7 +184,6 @@ impl RuntimeBindingsMeta {
             block,
             location,
             RuntimeBinding::HadesPermutation,
-            "cairo_native_2_libfunc__hades_permutation",
         )?;
 
         Ok(block.append_operation(
@@ -881,7 +920,6 @@ impl RuntimeBindingsMeta {
         block: &'a Block<'c>,
         location: Location<'c>,
         binding: RuntimeBinding,
-        symbol: &str,
     ) -> Result<Value<'c, 'a>> {
         if self.active_map.insert(binding) {
             module.body().append_operation(
@@ -889,7 +927,7 @@ impl RuntimeBindingsMeta {
                     context,
                     Region::new(),
                     TypeAttribute::new(llvm::r#type::pointer(context, 0)),
-                    StringAttribute::new(context, symbol),
+                    StringAttribute::new(context, binding.symbol()),
                     Attribute::parse(context, "#llvm.linkage<weak>")
                         .ok_or(Error::ParseAttributeError)?,
                     location,
@@ -902,7 +940,7 @@ impl RuntimeBindingsMeta {
             ods::llvm::mlir_addressof(
                 context,
                 llvm::r#type::pointer(context, 0),
-                FlatSymbolRefAttribute::new(context, symbol),
+                FlatSymbolRefAttribute::new(context, binding.symbol()),
                 location,
             )
             .into(),
@@ -927,23 +965,14 @@ impl Default for RuntimeBindingsMeta {
 }
 
 pub fn setup_runtime(find_symbol_ptr: impl Fn(&str) -> Option<*mut c_void>) {
-    for (symbol, function) in [
-        (
-            "cairo_native_2_libfunc__pedersen",
-            cairo_native_runtime::cairo_native__libfunc__pedersen as *const (),
-        ),
-        (
-            "cairo_native_2_libfunc__debug__print",
-            cairo_native_runtime::cairo_native__libfunc__debug__print as *const (),
-        ),
-        (
-            "cairo_native_2_libfunc__hades_permutation",
-            cairo_native_runtime::cairo_native__libfunc__hades_permutation as *const (),
-        ),
+    for binding in [
+        RuntimeBinding::DebugPrint,
+        RuntimeBinding::Pedersen,
+        RuntimeBinding::HadesPermutation,
     ] {
-        if let Some(global) = find_symbol_ptr(symbol) {
+        if let Some(global) = find_symbol_ptr(binding.symbol()) {
             let global = global.cast::<*const ()>();
-            unsafe { *global = function };
+            unsafe { *global = binding.function_ptr() };
         }
     }
 }
