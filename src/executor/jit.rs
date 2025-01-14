@@ -53,13 +53,24 @@ impl<'m> JitNativeExecutor<'m> {
             mut metadata,
         } = native_module;
 
-        Ok(Self {
+        let executor = Self {
             engine: create_engine(&module, &metadata, opt_level),
             module,
             registry,
             gas_metadata: metadata.remove().ok_or(Error::MissingMetadata)?,
             dict_overrides: metadata.remove().unwrap_or_default(),
-        })
+        };
+
+        if let Some(pedersen_global) = executor.find_symbol_ptr("cairo_native_2_libfunc__pedersen")
+        {
+            let pedersen_global = pedersen_global.cast::<*const ()>();
+            unsafe {
+                *pedersen_global =
+                    cairo_native_runtime::cairo_native__libfunc__pedersen as *const ()
+            };
+        }
+
+        Ok(executor)
     }
 
     pub const fn program_registry(&self) -> &ProgramRegistry<CoreType, CoreLibfunc> {
