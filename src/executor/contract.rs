@@ -37,7 +37,7 @@ use crate::{
     error::{panic::ToNativeAssertError, Error, Result},
     execution_result::{BuiltinStats, ContractExecutionResult},
     executor::invoke_trampoline,
-    metadata::gas::MetadataComputationConfig,
+    metadata::{gas::MetadataComputationConfig, runtime_bindings::setup_runtime},
     module::NativeModule,
     native_panic,
     starknet::{handler::StarknetSyscallHandlerCallbacks, StarknetSyscallHandler},
@@ -235,7 +235,7 @@ impl AotContractExecutor {
         let object_data = crate::module_to_object(&module, opt_level)?;
         crate::object_to_shared_lib(&object_data, &library_path)?;
 
-        Ok(Self {
+        let executor = Self {
             library: Arc::new(unsafe { Library::new(&library_path)? }),
             path: library_path,
             is_temp_path: true,
@@ -244,7 +244,11 @@ impl AotContractExecutor {
                 entry_points_info: infos,
                 entry_point_selector_to_id,
             },
-        })
+        };
+
+        setup_runtime(|name| executor.find_symbol_ptr(name));
+
+        Ok(executor)
     }
 
     /// Save the library to the desired path, alongside it is saved also a json file with additional info.
@@ -283,12 +287,14 @@ impl AotContractExecutor {
             );
         };
 
-        Ok(Self {
+        let executor = Self {
             library,
             path: library_path.to_path_buf(),
             is_temp_path: false,
             contract_info,
-        })
+        };
+        setup_runtime(|name| executor.find_symbol_ptr(name));
+        Ok(executor)
     }
 
     /// Runs the entry point by the given selector.
