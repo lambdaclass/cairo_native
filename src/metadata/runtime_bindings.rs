@@ -128,36 +128,13 @@ impl RuntimeBindingsMeta {
     where
         'c: 'a,
     {
-        if self.active_map.insert(RuntimeBinding::Pedersen) {
-            module.body().append_operation(
-                ods::llvm::mlir_global(
-                    context,
-                    Region::new(),
-                    TypeAttribute::new(llvm::r#type::pointer(context, 0)),
-                    StringAttribute::new(context, "cairo_native_2_libfunc__pedersen"),
-                    Attribute::parse(context, "#llvm.linkage<weak>")
-                        .ok_or(Error::ParseAttributeError)?,
-                    location,
-                )
-                .into(),
-            );
-        }
-
-        let global_address = block.append_op_result(
-            ods::llvm::mlir_addressof(
-                context,
-                llvm::r#type::pointer(context, 0),
-                FlatSymbolRefAttribute::new(context, "cairo_native_2_libfunc__pedersen"),
-                location,
-            )
-            .into(),
-        )?;
-
-        let function = block.load(
+        let function = self.build_function(
             context,
+            module,
+            block,
             location,
-            global_address,
-            llvm::r#type::pointer(context, 0),
+            RuntimeBinding::Pedersen,
+            "cairo_native_2_libfunc__pedersen",
         )?;
 
         Ok(block.append_operation(
@@ -942,6 +919,48 @@ impl RuntimeBindingsMeta {
             &[],
             location,
         )))
+    }
+
+    fn build_function<'c, 'a>(
+        &mut self,
+        context: &'c Context,
+        module: &Module,
+        block: &'a Block<'c>,
+        location: Location<'c>,
+        binding: RuntimeBinding,
+        symbol: &str,
+    ) -> Result<Value<'c, 'a>> {
+        if self.active_map.insert(binding) {
+            module.body().append_operation(
+                ods::llvm::mlir_global(
+                    context,
+                    Region::new(),
+                    TypeAttribute::new(llvm::r#type::pointer(context, 0)),
+                    StringAttribute::new(context, symbol),
+                    Attribute::parse(context, "#llvm.linkage<weak>")
+                        .ok_or(Error::ParseAttributeError)?,
+                    location,
+                )
+                .into(),
+            );
+        }
+
+        let global_address = block.append_op_result(
+            ods::llvm::mlir_addressof(
+                context,
+                llvm::r#type::pointer(context, 0),
+                FlatSymbolRefAttribute::new(context, symbol),
+                location,
+            )
+            .into(),
+        )?;
+
+        block.load(
+            context,
+            location,
+            global_address,
+            llvm::r#type::pointer(context, 0),
+        )
     }
 }
 
