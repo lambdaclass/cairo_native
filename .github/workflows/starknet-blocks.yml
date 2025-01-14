@@ -93,6 +93,9 @@ jobs:
 
           git diff
 
+      - name: Remove compiled programs
+        run: rm -rf compiled_programs
+
       - name: Run with Native
         if: ${{ matrix.runner == 'native' }}
         run: |
