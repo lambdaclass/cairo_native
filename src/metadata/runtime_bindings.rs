@@ -69,46 +69,23 @@ impl RuntimeBindingsMeta {
     where
         'c: 'a,
     {
-        if self.active_map.insert(RuntimeBinding::DebugPrint) {
-            module.body().append_operation(func::func(
-                context,
-                StringAttribute::new(context, "cairo_native__libfunc__debug__print"),
-                TypeAttribute::new(
-                    FunctionType::new(
-                        context,
-                        &[
-                            IntegerType::new(context, 32).into(),
-                            llvm::r#type::pointer(context, 0),
-                            IntegerType::new(context, 32).into(),
-                        ],
-                        &[IntegerType::new(context, 32).into()],
-                    )
-                    .into(),
-                ),
-                Region::new(),
-                &[
-                    (
-                        Identifier::new(context, "sym_visibility"),
-                        StringAttribute::new(context, "private").into(),
-                    ),
-                    (
-                        Identifier::new(context, "llvm.linkage"),
-                        Attribute::parse(context, "#llvm.linkage<external>")
-                            .ok_or(Error::ParseAttributeError)?,
-                    ),
-                ],
-                Location::unknown(context),
-            ));
-        }
+        let function = self.build_function(
+            context,
+            module,
+            block,
+            location,
+            RuntimeBinding::DebugPrint,
+            "cairo_native_2_libfunc__debug__print",
+        )?;
 
         Ok(block
-            .append_operation(func::call(
-                context,
-                FlatSymbolRefAttribute::new(context, "cairo_native__libfunc__debug__print"),
-                &[target_fd, values_ptr, values_len],
-                &[IntegerType::new(context, 32).into()],
-                location,
-            ))
+            .append_operation(
+                OperationBuilder::new("llvm.call", location)
+                    .add_operands(&[function])
+                    .add_operands(&[target_fd, values_ptr, values_len])
+                    .add_results(&[IntegerType::new(context, 32).into()])
+                    .build()?,
+            )
             .result(0)?
             .into())
     }
@@ -974,10 +951,16 @@ impl Default for RuntimeBindingsMeta {
 }
 
 pub fn setup_runtime(find_symbol_ptr: impl Fn(&str) -> Option<*mut c_void>) {
-    for (symbol, function) in [(
-        "cairo_native_2_libfunc__pedersen",
-        cairo_native_runtime::cairo_native__libfunc__pedersen as *const (),
-    )] {
+    for (symbol, function) in [
+        (
+            "cairo_native_2_libfunc__pedersen",
+            cairo_native_runtime::cairo_native__libfunc__pedersen as *const (),
+        ),
+        (
+            "cairo_native_2_libfunc__debug__print",
+            cairo_native_runtime::cairo_native__libfunc__debug__print as *const (),
+        ),
+    ] {
         if let Some(global) = find_symbol_ptr(symbol) {
             let global = global.cast::<*const ()>();
             unsafe { *global = function };
