@@ -18,7 +18,7 @@ jobs:
       RPC_ENDPOINT_TESTNET: ${{ secrets.RPC_ENDPOINT_TESTNET }}
       RPC_ENDPOINT_MAINNET: ${{ secrets.RPC_ENDPOINT_MAINNET }}
     strategy:
-      max-parallel: 10
+      max-parallel: 30
       matrix:
         block:
           - 740000
@@ -51,8 +51,8 @@ jobs:
           - 900700
           - 900800
           - 900900
-          - 1000000
-          - 1001000
+          - 1000400
+          - 1000500
           - 1002000
           - 1003000
           - 1004000
@@ -93,7 +93,7 @@ jobs:
       # Install dependencies
       - uses: ./cairo_native/.github/actions/install-linux-deps
       - name: Setup rust env
-        uses: dtolnay/rust-toolchain@1.83.0
+        uses: dtolnay/rust-toolchain@1.84.0
       - name: Retreive cached dependecies
         uses: Swatinem/rust-cache@v2
         with:
@@ -129,10 +129,6 @@ jobs:
           # Updates native dependency to local path
           new_path='"..\/cairo_native"'
           sed -i'' -r "s/^cairo-native = .*/cairo-native.path = $new_path/" Cargo.toml
-
-          # Update native submodule
-          git rm crates/blockifier/cairo_native
-          ln -s ../../../cairo_native/ crates/blockifier/cairo_native
 
           git diff
 

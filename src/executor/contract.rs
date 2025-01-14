@@ -344,25 +344,29 @@ impl AotContractExecutor {
             Layout::from_size_align_unchecked(128 + builtins_size, 16)
         });
 
-        return_ptr.as_ptr().to_bytes(&mut invoke_data)?;
+        return_ptr
+            .as_ptr()
+            .to_bytes(&mut invoke_data, |_| unreachable!())?;
 
         let mut syscall_handler = StarknetSyscallHandlerCallbacks::new(&mut syscall_handler);
 
         for b in &self.contract_info.entry_points_info[&function_id.id].builtins {
             match b {
                 BuiltinType::Gas => {
-                    gas.to_bytes(&mut invoke_data)?;
+                    gas.to_bytes(&mut invoke_data, |_| unreachable!())?;
                 }
                 BuiltinType::BuiltinCosts => {
                     // todo: check if valid
-                    builtin_costs.as_ptr().to_bytes(&mut invoke_data)?;
+                    builtin_costs
+                        .as_ptr()
+                        .to_bytes(&mut invoke_data, |_| unreachable!())?;
                 }
                 BuiltinType::System => {
                     (&mut syscall_handler as *mut StarknetSyscallHandlerCallbacks<_>)
-                        .to_bytes(&mut invoke_data)?;
+                        .to_bytes(&mut invoke_data, |_| unreachable!())?;
                 }
                 _ => {
-                    0u64.to_bytes(&mut invoke_data)?;
+                    0u64.to_bytes(&mut invoke_data, |_| unreachable!())?;
                 }
             }
         }
@@ -390,15 +394,15 @@ impl AotContractExecutor {
             .try_into()
             .to_native_assert_error("number of arguments should fit into a u32")?;
 
-        ptr.to_bytes(&mut invoke_data)?;
+        ptr.to_bytes(&mut invoke_data, |_| unreachable!())?;
         if cfg!(target_arch = "aarch64") {
-            0u32.to_bytes(&mut invoke_data)?; // start
-            len.to_bytes(&mut invoke_data)?; // end
-            len.to_bytes(&mut invoke_data)?; // cap
+            0u32.to_bytes(&mut invoke_data, |_| unreachable!())?; // start
+            len.to_bytes(&mut invoke_data, |_| unreachable!())?; // end
+            len.to_bytes(&mut invoke_data, |_| unreachable!())?; // cap
         } else if cfg!(target_arch = "x86_64") {
-            (0u32 as u64).to_bytes(&mut invoke_data)?; // start
-            (len as u64).to_bytes(&mut invoke_data)?; // end
-            (len as u64).to_bytes(&mut invoke_data)?; // cap
+            (0u32 as u64).to_bytes(&mut invoke_data, |_| unreachable!())?; // start
+            (len as u64).to_bytes(&mut invoke_data, |_| unreachable!())?; // end
+            (len as u64).to_bytes(&mut invoke_data, |_| unreachable!())?; // cap
         } else {
             unreachable!("unsupported architecture");
         }
