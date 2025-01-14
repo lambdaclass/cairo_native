@@ -34,6 +34,7 @@ mod block_ext;
 pub mod mem_tracing;
 mod program_registry_ext;
 mod range_ext;
+pub mod sierra_gen;
 
 #[cfg(target_os = "macos")]
 pub const SHARED_LIBRARY_EXT: &str = "dylib";
