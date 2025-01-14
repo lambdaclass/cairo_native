@@ -225,41 +225,21 @@ impl RuntimeBindingsMeta {
     where
         'c: 'a,
     {
-        if self.active_map.insert(RuntimeBinding::EcPointFromXNz) {
-            module.body().append_operation(func::func(
-                context,
-                StringAttribute::new(context, "cairo_native__libfunc__ec__ec_point_from_x_nz"),
-                TypeAttribute::new(
-                    FunctionType::new(
-                        context,
-                        &[llvm::r#type::pointer(context, 0)],
-                        &[IntegerType::new(context, 1).into()],
-                    )
-                    .into(),
-                ),
-                Region::new(),
-                &[
-                    (
-                        Identifier::new(context, "sym_visibility"),
-                        StringAttribute::new(context, "private").into(),
-                    ),
-                    (
-                        Identifier::new(context, "llvm.linkage"),
-                        Attribute::parse(context, "#llvm.linkage<external>")
-                            .ok_or(Error::ParseAttributeError)?,
-                    ),
-                ],
-                Location::unknown(context),
-            ));
-        }
-
-        Ok(block.append_operation(func::call(
+        let function = self.build_function(
             context,
-            FlatSymbolRefAttribute::new(context, "cairo_native__libfunc__ec__ec_point_from_x_nz"),
-            &[point_ptr],
-            &[IntegerType::new(context, 1).into()],
+            module,
+            block,
             location,
-        )))
+            RuntimeBinding::EcPointFromXNz,
+        )?;
+
+        Ok(block.append_operation(
+            OperationBuilder::new("llvm.call", location)
+                .add_operands(&[function])
+                .add_operands(&[point_ptr])
+                .add_results(&[IntegerType::new(context, 1).into()])
+                .build()?,
+        ))
     }
 
     /// Register if necessary, then invoke the `ec_point_try_new_nz()` function.
@@ -274,41 +254,21 @@ impl RuntimeBindingsMeta {
     where
         'c: 'a,
     {
-        if self.active_map.insert(RuntimeBinding::EcPointTryNewNz) {
-            module.body().append_operation(func::func(
-                context,
-                StringAttribute::new(context, "cairo_native__libfunc__ec__ec_point_try_new_nz"),
-                TypeAttribute::new(
-                    FunctionType::new(
-                        context,
-                        &[llvm::r#type::pointer(context, 0)],
-                        &[IntegerType::new(context, 1).into()],
-                    )
-                    .into(),
-                ),
-                Region::new(),
-                &[
-                    (
-                        Identifier::new(context, "sym_visibility"),
-                        StringAttribute::new(context, "private").into(),
-                    ),
-                    (
-                        Identifier::new(context, "llvm.linkage"),
-                        Attribute::parse(context, "#llvm.linkage<external>")
-                            .ok_or(Error::ParseAttributeError)?,
-                    ),
-                ],
-                Location::unknown(context),
-            ));
-        }
-
-        Ok(block.append_operation(func::call(
+        let function = self.build_function(
             context,
-            FlatSymbolRefAttribute::new(context, "cairo_native__libfunc__ec__ec_point_try_new_nz"),
-            &[point_ptr],
-            &[IntegerType::new(context, 1).into()],
+            module,
+            block,
             location,
-        )))
+            RuntimeBinding::EcPointTryNewNz,
+        )?;
+
+        Ok(block.append_operation(
+            OperationBuilder::new("llvm.call", location)
+                .add_operands(&[function])
+                .add_operands(&[point_ptr])
+                .add_results(&[IntegerType::new(context, 1).into()])
+                .build()?,
+        ))
     }
 
     /// Register if necessary, then invoke the `ec_state_init()` function.
@@ -323,36 +283,20 @@ impl RuntimeBindingsMeta {
     where
         'c: 'a,
     {
-        if self.active_map.insert(RuntimeBinding::EcStateInit) {
-            module.body().append_operation(func::func(
-                context,
-                StringAttribute::new(context, "cairo_native__libfunc__ec__ec_state_init"),
-                TypeAttribute::new(
-                    FunctionType::new(context, &[llvm::r#type::pointer(context, 0)], &[]).into(),
-                ),
-                Region::new(),
-                &[
-                    (
-                        Identifier::new(context, "sym_visibility"),
-                        StringAttribute::new(context, "private").into(),
-                    ),
-                    (
-                        Identifier::new(context, "llvm.linkage"),
-                        Attribute::parse(context, "#llvm.linkage<external>")
-                            .ok_or(Error::ParseAttributeError)?,
-                    ),
-                ],
-                Location::unknown(context),
-            ));
-        }
-
-        Ok(block.append_operation(func::call(
+        let function = self.build_function(
             context,
-            FlatSymbolRefAttribute::new(context, "cairo_native__libfunc__ec__ec_state_init"),
-            &[state_ptr],
-            &[],
+            module,
+            block,
             location,
-        )))
+            RuntimeBinding::EcStateInit,
+        )?;
+
+        Ok(block.append_operation(
+            OperationBuilder::new("llvm.call", location)
+                .add_operands(&[function])
+                .add_operands(&[state_ptr])
+                .build()?,
+        ))
     }
 
     /// Register if necessary, then invoke the `ec_state_add()` function.
@@ -368,44 +312,15 @@ impl RuntimeBindingsMeta {
     where
         'c: 'a,
     {
-        if self.active_map.insert(RuntimeBinding::EcStateAdd) {
-            module.body().append_operation(func::func(
-                context,
-                StringAttribute::new(context, "cairo_native__libfunc__ec__ec_state_add"),
-                TypeAttribute::new(
-                    FunctionType::new(
-                        context,
-                        &[
-                            llvm::r#type::pointer(context, 0),
-                            llvm::r#type::pointer(context, 0),
-                        ],
-                        &[],
-                    )
-                    .into(),
-                ),
-                Region::new(),
-                &[
-                    (
-                        Identifier::new(context, "sym_visibility"),
-                        StringAttribute::new(context, "private").into(),
-                    ),
-                    (
-                        Identifier::new(context, "llvm.linkage"),
-                        Attribute::parse(context, "#llvm.linkage<external>")
-                            .ok_or(Error::ParseAttributeError)?,
-                    ),
-                ],
-                Location::unknown(context),
-            ));
-        }
+        let function =
+            self.build_function(context, module, block, location, RuntimeBinding::EcStateAdd)?;
 
-        Ok(block.append_operation(func::call(
-            context,
-            FlatSymbolRefAttribute::new(context, "cairo_native__libfunc__ec__ec_state_add"),
-            &[state_ptr, point_ptr],
-            &[],
-            location,
-        )))
+        Ok(block.append_operation(
+            OperationBuilder::new("llvm.call", location)
+                .add_operands(&[function])
+                .add_operands(&[state_ptr, point_ptr])
+                .build()?,
+        ))
     }
 
     /// Register if necessary, then invoke the `ec_state_add_mul()` function.
@@ -423,45 +338,20 @@ impl RuntimeBindingsMeta {
     where
         'c: 'a,
     {
-        if self.active_map.insert(RuntimeBinding::EcStateAddMul) {
-            module.body().append_operation(func::func(
-                context,
-                StringAttribute::new(context, "cairo_native__libfunc__ec__ec_state_add_mul"),
-                TypeAttribute::new(
-                    FunctionType::new(
-                        context,
-                        &[
-                            llvm::r#type::pointer(context, 0),
-                            llvm::r#type::pointer(context, 0),
-                            llvm::r#type::pointer(context, 0),
-                        ],
-                        &[],
-                    )
-                    .into(),
-                ),
-                Region::new(),
-                &[
-                    (
-                        Identifier::new(context, "sym_visibility"),
-                        StringAttribute::new(context, "private").into(),
-                    ),
-                    (
-                        Identifier::new(context, "llvm.linkage"),
-                        Attribute::parse(context, "#llvm.linkage<external>")
-                            .ok_or(Error::ParseAttributeError)?,
-                    ),
-                ],
-                Location::unknown(context),
-            ));
-        }
-
-        Ok(block.append_operation(func::call(
+        let function = self.build_function(
             context,
-            FlatSymbolRefAttribute::new(context, "cairo_native__libfunc__ec__ec_state_add_mul"),
-            &[state_ptr, scalar_ptr, point_ptr],
-            &[],
+            module,
+            block,
             location,
-        )))
+            RuntimeBinding::EcStateAddMul,
+        )?;
+
+        Ok(block.append_operation(
+            OperationBuilder::new("llvm.call", location)
+                .add_operands(&[function])
+                .add_operands(&[state_ptr, scalar_ptr, point_ptr])
+                .build()?,
+        ))
     }
 
     pub fn libfunc_ec_state_try_finalize_nz<'c, 'a>(
@@ -476,50 +366,21 @@ impl RuntimeBindingsMeta {
     where
         'c: 'a,
     {
-        if self.active_map.insert(RuntimeBinding::EcStateTryFinalizeNz) {
-            module.body().append_operation(func::func(
-                context,
-                StringAttribute::new(
-                    context,
-                    "cairo_native__libfunc__ec__ec_state_try_finalize_nz",
-                ),
-                TypeAttribute::new(
-                    FunctionType::new(
-                        context,
-                        &[
-                            llvm::r#type::pointer(context, 0),
-                            llvm::r#type::pointer(context, 0),
-                        ],
-                        &[IntegerType::new(context, 1).into()],
-                    )
-                    .into(),
-                ),
-                Region::new(),
-                &[
-                    (
-                        Identifier::new(context, "sym_visibility"),
-                        StringAttribute::new(context, "private").into(),
-                    ),
-                    (
-                        Identifier::new(context, "llvm.linkage"),
-                        Attribute::parse(context, "#llvm.linkage<external>")
-                            .ok_or(Error::ParseAttributeError)?,
-                    ),
-                ],
-                location,
-            ));
-        }
-
-        Ok(block.append_operation(func::call(
+        let function = self.build_function(
             context,
-            FlatSymbolRefAttribute::new(
-                context,
-                "cairo_native__libfunc__ec__ec_state_try_finalize_nz",
-            ),
-            &[point_ptr, state_ptr],
-            &[IntegerType::new(context, 1).into()],
+            module,
+            block,
             location,
-        )))
+            RuntimeBinding::EcStateTryFinalizeNz,
+        )?;
+
+        Ok(block.append_operation(
+            OperationBuilder::new("llvm.call", location)
+                .add_operands(&[function])
+                .add_operands(&[point_ptr, state_ptr])
+                .add_results(&[IntegerType::new(context, 1).into()])
+                .build()?,
+        ))
     }
 
     /// Register if necessary, then invoke the `dict_alloc_new()` function.
