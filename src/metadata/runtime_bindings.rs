@@ -9,7 +9,7 @@ use crate::{
     utils::BlockExt,
 };
 use melior::{
-    dialect::{func, llvm, ods},
+    dialect::{func, llvm},
     ir::{
         attribute::{FlatSymbolRefAttribute, StringAttribute, TypeAttribute},
         r#type::{FunctionType, IntegerType},
@@ -17,11 +17,7 @@ use melior::{
     },
     Context,
 };
-use std::{
-    alloc::Layout,
-    collections::HashSet,
-    ffi::{c_int, c_void},
-};
+use std::{alloc::Layout, collections::HashSet, ffi::c_int, marker::PhantomData};
 
 #[derive(Clone, Copy, Debug, Hash, Eq, PartialEq)]
 enum RuntimeBinding {
@@ -44,83 +40,11 @@ enum RuntimeBinding {
     VtableCheatcode,
 }
 
-impl RuntimeBinding {
-    const fn symbol(self) -> &'static str {
-        match self {
-            RuntimeBinding::DebugPrint => "cairo_native_2_libfunc__debug__print",
-            RuntimeBinding::Pedersen => "cairo_native_2_libfunc__pedersen",
-            RuntimeBinding::HadesPermutation => "cairo_native_2_libfunc__hades_permutation",
-            RuntimeBinding::EcStateTryFinalizeNz => {
-                "cairo_native_2_libfunc__ec__ec_state_try_finalize_nz"
-            }
-            RuntimeBinding::EcStateAddMul => "cairo_native_2_libfunc__ec__ec_state_add_mul",
-            RuntimeBinding::EcStateInit => "cairo_native_2_libfunc__ec__ec_state_init",
-            RuntimeBinding::EcStateAdd => "cairo_native_2_libfunc__ec__ec_state_add",
-            RuntimeBinding::EcPointTryNewNz => "cairo_native_2_libfunc__ec__ec_point_try_new_nz",
-            RuntimeBinding::EcPointFromXNz => "cairo_native_2_libfunc__ec__ec_point_from_x_nz",
-            RuntimeBinding::DictNew => "cairo_native_2_dict_new",
-            RuntimeBinding::DictGet => "cairo_native_2_dict_get",
-            RuntimeBinding::DictGasRefund => "cairo_native_2_dict_gas_refund",
-            RuntimeBinding::DictDrop => "cairo_native_2_dict_drop",
-            RuntimeBinding::DictDup => "cairo_native_2_dict_dup",
-            RuntimeBinding::GetGasBuiltin => "cairo_native_2_get_costs_builtin",
-            #[cfg(feature = "with-cheatcode")]
-            RuntimeBinding::VtableCheatcode => "cairo_native_2_vtable_cheatcode",
-        }
-    }
-
-    const fn function_ptr(self) -> *const () {
-        match self {
-            RuntimeBinding::DebugPrint => {
-                cairo_native_runtime::cairo_native__libfunc__debug__print as *const ()
-            }
-            RuntimeBinding::Pedersen => {
-                cairo_native_runtime::cairo_native__libfunc__pedersen as *const ()
-            }
-            RuntimeBinding::HadesPermutation => {
-                cairo_native_runtime::cairo_native__libfunc__hades_permutation as *const ()
-            }
-            RuntimeBinding::EcStateTryFinalizeNz => {
-                cairo_native_runtime::cairo_native__libfunc__ec__ec_state_try_finalize_nz
-                    as *const ()
-            }
-            RuntimeBinding::EcStateAddMul => {
-                cairo_native_runtime::cairo_native__libfunc__ec__ec_state_add_mul as *const ()
-            }
-            RuntimeBinding::EcStateInit => {
-                cairo_native_runtime::cairo_native__libfunc__ec__ec_state_init as *const ()
-            }
-            RuntimeBinding::EcStateAdd => {
-                cairo_native_runtime::cairo_native__libfunc__ec__ec_state_add as *const ()
-            }
-            RuntimeBinding::EcPointTryNewNz => {
-                cairo_native_runtime::cairo_native__libfunc__ec__ec_point_try_new_nz as *const ()
-            }
-            RuntimeBinding::EcPointFromXNz => {
-                cairo_native_runtime::cairo_native__libfunc__ec__ec_point_from_x_nz as *const ()
-            }
-            RuntimeBinding::DictNew => cairo_native_runtime::cairo_native__dict_new as *const (),
-            RuntimeBinding::DictGet => cairo_native_runtime::cairo_native__dict_get as *const (),
-            RuntimeBinding::DictGasRefund => {
-                cairo_native_runtime::cairo_native__dict_gas_refund as *const ()
-            }
-            RuntimeBinding::DictDrop => cairo_native_runtime::cairo_native__dict_drop as *const (),
-            RuntimeBinding::DictDup => cairo_native_runtime::cairo_native__dict_dup as *const (),
-            RuntimeBinding::GetGasBuiltin => {
-                cairo_native_runtime::cairo_native__get_costs_builtin as *const ()
-            }
-            #[cfg(feature = "with-cheatcode")]
-            RuntimeBinding::VtableCheatcode => {
-                crate::starknet::cairo_native__vtable_cheatcode as *const ()
-            }
-        }
-    }
-}
-
 /// Runtime library bindings metadata.
-#[derive(Debug, Default)]
+#[derive(Debug)]
 pub struct RuntimeBindingsMeta {
     active_map: HashSet<RuntimeBinding>,
+    phantom: PhantomData<()>,
 }
 
 impl RuntimeBindingsMeta {
@@ -1014,72 +938,13 @@ impl RuntimeBindingsMeta {
             location,
         )))
     }
-
-    fn build_function<'c, 'a>(
-        &mut self,
-        context: &'c Context,
-        module: &Module,
-        block: &'a Block<'c>,
-        location: Location<'c>,
-        binding: RuntimeBinding,
-    ) -> Result<Value<'c, 'a>> {
-        if self.active_map.insert(binding) {
-            module.body().append_operation(
-                ods::llvm::mlir_global(
-                    context,
-                    Region::new(),
-                    TypeAttribute::new(llvm::r#type::pointer(context, 0)),
-                    StringAttribute::new(context, binding.symbol()),
-                    Attribute::parse(context, "#llvm.linkage<weak>")
-                        .ok_or(Error::ParseAttributeError)?,
-                    location,
-                )
-                .into(),
-            );
-        }
-
-        let global_address = block.append_op_result(
-            ods::llvm::mlir_addressof(
-                context,
-                llvm::r#type::pointer(context, 0),
-                FlatSymbolRefAttribute::new(context, binding.symbol()),
-                location,
-            )
-            .into(),
-        )?;
-
-        block.load(
-            context,
-            location,
-            global_address,
-            llvm::r#type::pointer(context, 0),
-        )
-    }
 }
 
-pub fn setup_runtime(find_symbol_ptr: impl Fn(&str) -> Option<*mut c_void>) {
-    for binding in [
-        RuntimeBinding::DebugPrint,
-        RuntimeBinding::Pedersen,
-        RuntimeBinding::HadesPermutation,
-        RuntimeBinding::EcStateTryFinalizeNz,
-        RuntimeBinding::EcStateAddMul,
-        RuntimeBinding::EcStateInit,
-        RuntimeBinding::EcStateAdd,
-        RuntimeBinding::EcPointTryNewNz,
-        RuntimeBinding::EcPointFromXNz,
-        RuntimeBinding::DictNew,
-        RuntimeBinding::DictGet,
-        RuntimeBinding::DictGasRefund,
-        RuntimeBinding::DictDrop,
-        RuntimeBinding::DictDup,
-        RuntimeBinding::GetGasBuiltin,
-        #[cfg(feature = "with-cheatcode")]
-        RuntimeBinding::VtableCheatcode,
-    ] {
-        if let Some(global) = find_symbol_ptr(binding.symbol()) {
-            let global = global.cast::<*const ()>();
-            unsafe { *global = binding.function_ptr() };
+impl Default for RuntimeBindingsMeta {
+    fn default() -> Self {
+        Self {
+            active_map: HashSet::new(),
+            phantom: PhantomData,
         }
     }
 }

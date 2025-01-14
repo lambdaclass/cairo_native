@@ -1,9 +1,7 @@
 use crate::{
     error::Error,
     execution_result::{ContractExecutionResult, ExecutionResult},
-    metadata::{
-        felt252_dict::Felt252DictOverrides, gas::GasMetadata, runtime_bindings::setup_runtime,
-    },
+    metadata::{felt252_dict::Felt252DictOverrides, gas::GasMetadata},
     module::NativeModule,
     starknet::{DummySyscallHandler, StarknetSyscallHandler},
     utils::generate_function_name,
@@ -39,22 +37,18 @@ unsafe impl Send for AotNativeExecutor {}
 unsafe impl Sync for AotNativeExecutor {}
 
 impl AotNativeExecutor {
-    pub fn new(
+    pub const fn new(
         library: Library,
         registry: ProgramRegistry<CoreType, CoreLibfunc>,
         gas_metadata: GasMetadata,
         dict_overrides: Felt252DictOverrides,
     ) -> Self {
-        let executor = Self {
+        Self {
             library,
             registry,
             gas_metadata,
             dict_overrides,
-        };
-
-        setup_runtime(|name| executor.find_symbol_ptr(name));
-
-        executor
+        }
     }
 
     /// Utility to convert a [`NativeModule`] into an [`AotNativeExecutor`].
@@ -73,12 +67,12 @@ impl AotNativeExecutor {
         let object_data = crate::module_to_object(&module, opt_level)?;
         crate::object_to_shared_lib(&object_data, &library_path)?;
 
-        Ok(Self::new(
-            unsafe { Library::new(&library_path)? },
+        Ok(Self {
+            library: unsafe { Library::new(&library_path)? },
             registry,
-            metadata.remove().ok_or(Error::MissingMetadata)?,
-            metadata.remove().unwrap_or_default(),
-        ))
+            gas_metadata: metadata.remove().ok_or(Error::MissingMetadata)?,
+            dict_overrides: metadata.remove().unwrap_or_default(),
+        })
     }
 
     pub fn invoke_dynamic(
