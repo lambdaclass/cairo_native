@@ -22,7 +22,6 @@ use std::{
     alloc::Layout,
     collections::HashSet,
     ffi::{c_int, c_void},
-    marker::PhantomData,
 };
 
 #[derive(Clone, Copy, Debug, Hash, Eq, PartialEq)]
@@ -120,10 +119,9 @@ impl RuntimeBinding {
 }
 
 /// Runtime library bindings metadata.
-#[derive(Debug)]
+#[derive(Debug, Default)]
 pub struct RuntimeBindingsMeta {
     active_map: HashSet<RuntimeBinding>,
-    phantom: PhantomData<()>,
 }
 
 impl RuntimeBindingsMeta {
@@ -671,15 +669,6 @@ impl RuntimeBindingsMeta {
                 .add_operands(&[result_ptr, selector_ptr, args])
                 .build()?,
         ))
-    }
-}
-
-impl Default for RuntimeBindingsMeta {
-    fn default() -> Self {
-        Self {
-            active_map: HashSet::new(),
-            phantom: PhantomData,
-        }
     }
 }
 
