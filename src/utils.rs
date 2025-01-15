@@ -1,11 +1,9 @@
 //! # Various utilities
 
-pub use self::safe_runner::setup_safe_runner;
 pub(crate) use self::{
     block_ext::{BlockExt, GepIndex},
     program_registry_ext::ProgramRegistryExt,
     range_ext::RangeExt,
-    safe_runner::run_safely,
 };
 use crate::{metadata::MetadataStorage, OptLevel};
 use cairo_lang_compiler::CompilerConfig;
@@ -36,7 +34,7 @@ mod block_ext;
 pub mod mem_tracing;
 mod program_registry_ext;
 mod range_ext;
-mod safe_runner;
+pub mod safe_runner;
 
 #[cfg(target_os = "macos")]
 pub const SHARED_LIBRARY_EXT: &str = "dylib";
