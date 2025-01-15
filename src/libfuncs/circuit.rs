@@ -999,7 +999,7 @@ mod test {
         },
         values::Value,
     };
-    use cairo_lang_sierra::{extensions::utils::Range};
+    use cairo_lang_sierra::extensions::utils::Range;
     use num_bigint::BigUint;
     use num_traits::Num;
     use starknet_types_core::felt::Felt;

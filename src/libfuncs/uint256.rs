@@ -950,7 +950,9 @@ pub fn build_u256_guarantee_inv_mod_n<'ctx, 'this>(
 #[cfg(test)]
 mod test {
     use crate::{
-        utils::test::{jit_enum, jit_panic, jit_struct, load_cairo, run_program, run_sierra_program},
+        utils::test::{
+            jit_enum, jit_panic, jit_struct, load_cairo, run_program, run_sierra_program,
+        },
         values::Value,
     };
     use cairo_lang_sierra::{program::Program, ProgramParser};
