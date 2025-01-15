@@ -353,7 +353,7 @@ mod test {
                     match withdraw_gas() {
                         Option::Some(()) => {
                             i = i - 1;
-                        },
+                        }
                         Option::None(()) => {
                             break;
                         }
