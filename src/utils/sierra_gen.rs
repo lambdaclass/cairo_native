@@ -3,17 +3,21 @@
 use cairo_lang_sierra::{
     extensions::{
         lib_func::{SierraApChange, SignatureSpecializationContext},
+        structure::{StructConstructLibfunc, StructType},
         type_specialization_context::TypeSpecializationContext,
-        GenericLibfunc,
+        GenericLibfunc, NamedLibfunc, NamedType,
     },
-    ids::{ConcreteLibfuncId, ConcreteTypeId, FunctionId, GenericTypeId, VarId},
+    ids::{
+        ConcreteLibfuncId, ConcreteTypeId, FunctionId, GenericLibfuncId, GenericTypeId, UserTypeId,
+        VarId,
+    },
     program::{
-        BranchInfo, ConcreteLibfuncLongId, ConcreteTypeLongId, Function, FunctionSignature,
-        GenBranchTarget, GenericArg, Invocation, LibfuncDeclaration, Param, Program, Statement,
+        BranchInfo, BranchTarget, ConcreteLibfuncLongId, ConcreteTypeLongId, Function,
+        FunctionSignature, GenericArg, Invocation, LibfuncDeclaration, Param, Program, Statement,
         StatementIdx, TypeDeclaration,
     },
 };
-use std::cell::RefCell;
+use std::{cell::RefCell, iter::once};
 
 pub fn generate_program<T>(args: &[GenericArg]) -> Program
 where
@@ -89,7 +93,41 @@ where
                 .iter()
                 .map(|branch_signature| match branch_signature.vars.len() {
                     1 => branch_signature.vars[0].ty.clone(),
-                    _ => todo!(),
+                    _ => {
+                        // Generate struct type.
+                        let return_type =
+                            ConcreteTypeId::new(program.type_declarations.len() as u64);
+                        program.type_declarations.push(TypeDeclaration {
+                            id: return_type.clone(),
+                            long_id: ConcreteTypeLongId {
+                                generic_id: StructType::ID,
+                                generic_args: once(GenericArg::UserType(UserTypeId::from_string(
+                                    "Tuple",
+                                )))
+                                .chain(
+                                    branch_signature
+                                        .vars
+                                        .iter()
+                                        .map(|var_info| GenericArg::Type(var_info.ty.clone())),
+                                )
+                                .collect(),
+                            },
+                            declared_type_info: None,
+                        });
+
+                        // Add the struct_construct libfunc declaration.
+                        program.libfunc_declarations.push(LibfuncDeclaration {
+                            id: ConcreteLibfuncId::new(program.libfunc_declarations.len() as u64),
+                            long_id: ConcreteLibfuncLongId {
+                                generic_id: GenericLibfuncId::from_string(
+                                    StructConstructLibfunc::STR_ID,
+                                ),
+                                generic_args: vec![GenericArg::Type(return_type.clone())],
+                            },
+                        });
+
+                        return_type
+                    }
                 });
 
             match num_branches {
@@ -136,9 +174,17 @@ where
         branches: Vec::new(),
     };
 
-    for branch_signature in &libfunc_signature.branch_signatures {
+    let mut libfunc_idx = match libfunc_signature.branch_signatures.len() {
+        0 => todo!(),
+        1 => 1,
+        _ => 2,
+    };
+    for (branch_idx, branch_signature) in libfunc_signature.branch_signatures.iter().enumerate() {
         libfunc_invocation.branches.push(BranchInfo {
-            target: GenBranchTarget::Statement(StatementIdx(program.statements.len() + 1)),
+            target: match branch_idx {
+                0 => BranchTarget::Fallthrough,
+                _ => BranchTarget::Statement(StatementIdx(program.statements.len() + 1)),
+            },
             results: branch_signature
                 .vars
                 .iter()
@@ -147,7 +193,38 @@ where
                 .collect(),
         });
 
+        if branch_idx != 0 {
+            program.statements.push(Statement::Invocation(Invocation {
+                libfunc_id: program.libfunc_declarations[1].id.clone(),
+                args: Vec::new(),
+                branches: vec![BranchInfo {
+                    target: BranchTarget::Fallthrough,
+                    results: Vec::new(),
+                }],
+            }));
+        }
+
         // TODO: Handle multiple return values (struct_construct).
+        if branch_signature.vars.len() != 1 {
+            let packer_libfunc = &program.libfunc_declarations[libfunc_idx].id;
+            libfunc_idx += 1;
+
+            program.statements.push(Statement::Invocation(Invocation {
+                libfunc_id: packer_libfunc.clone(),
+                args: branch_signature
+                    .vars
+                    .iter()
+                    .enumerate()
+                    .skip(num_builtins)
+                    .map(|(idx, _)| VarId::new(idx as u64))
+                    .collect(),
+                branches: vec![BranchInfo {
+                    target: BranchTarget::Fallthrough,
+                    results: vec![VarId::new(num_builtins as u64)],
+                }],
+            }));
+        }
+
         // TODO: Handle multiple branches (enum_init).
 
         program.statements.push(Statement::Return(
@@ -225,12 +302,29 @@ impl SignatureSpecializationContext for Context {
 #[cfg(test)]
 mod test {
     use super::*;
-    use cairo_lang_sierra::extensions::int::{unsigned::Uint64Traits, IntConstLibfunc};
+    use cairo_lang_sierra::extensions::int::{
+        signed::{Sint8Traits, SintDiffLibfunc},
+        unsigned::Uint64Traits,
+        unsigned128::U128GuaranteeMulLibfunc,
+        IntConstLibfunc,
+    };
 
     #[test]
     fn sierra_generator() {
         let program =
             generate_program::<IntConstLibfunc<Uint64Traits>>(&[GenericArg::Value(0.into())]);
+        println!("{program}");
+    }
+
+    #[test]
+    fn sierra_generator_multiret() {
+        let program = generate_program::<U128GuaranteeMulLibfunc>(&[]);
+        println!("{program}");
+    }
+
+    #[test]
+    fn sierra_generator_multibranch() {
+        let program = generate_program::<SintDiffLibfunc<Sint8Traits>>(&[]);
         println!("{program}");
     }
 }
