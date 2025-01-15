@@ -90,6 +90,9 @@ pub enum Error {
 
     #[error("Failed to parse a Cairo/Sierra program: {0}")]
     ProgramParser(String),
+
+    #[error("program execution segfaulted")]
+    ProgramExecutionSegfault,
 }
 
 impl Error {

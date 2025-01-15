@@ -436,14 +436,15 @@ impl AotContractExecutor {
         #[cfg(target_arch = "aarch64")]
         let mut ret_registers = [0; 4];
 
-        unsafe {
+        crate::utils::run_safely(|| unsafe {
             invoke_trampoline(
                 function_ptr,
                 invoke_data.as_ptr().cast(),
                 invoke_data.len() >> 3,
                 ret_registers.as_mut_ptr(),
             );
-        }
+        })
+        .map_err(|_| Error::ProgramExecutionSegfault)?;
 
         // Parse final gas.
         unsafe fn read_value<T>(ptr: &mut NonNull<()>) -> &T {
