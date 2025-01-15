@@ -9,11 +9,12 @@ use crate::{
     utils::BlockExt,
 };
 use melior::{
-    dialect::{func, llvm},
+    dialect::{llvm, ods},
     ir::{
         attribute::{FlatSymbolRefAttribute, StringAttribute, TypeAttribute},
-        r#type::{FunctionType, IntegerType},
-        Attribute, Block, Identifier, Location, Module, OperationRef, Region, Value,
+        operation::OperationBuilder,
+        r#type::IntegerType,
+        Attribute, Block, Location, Module, OperationRef, Region, Value,
     },
     Context,
 };
@@ -126,6 +127,51 @@ pub struct RuntimeBindingsMeta {
 }
 
 impl RuntimeBindingsMeta {
+    /// Register the global for the given binding, if not yet registered, and return
+    /// a pointer to the stored function.
+    ///
+    /// For the function to be available, `setup_runtime` must be called before running the module
+    fn build_function<'c, 'a>(
+        &mut self,
+        context: &'c Context,
+        module: &Module,
+        block: &'a Block<'c>,
+        location: Location<'c>,
+        binding: RuntimeBinding,
+    ) -> Result<Value<'c, 'a>> {
+        if self.active_map.insert(binding) {
+            module.body().append_operation(
+                ods::llvm::mlir_global(
+                    context,
+                    Region::new(),
+                    TypeAttribute::new(llvm::r#type::pointer(context, 0)),
+                    StringAttribute::new(context, binding.symbol()),
+                    Attribute::parse(context, "#llvm.linkage<weak>")
+                        .ok_or(Error::ParseAttributeError)?,
+                    location,
+                )
+                .into(),
+            );
+        }
+
+        let global_address = block.append_op_result(
+            ods::llvm::mlir_addressof(
+                context,
+                llvm::r#type::pointer(context, 0),
+                FlatSymbolRefAttribute::new(context, binding.symbol()),
+                location,
+            )
+            .into(),
+        )?;
+
+        block.load(
+            context,
+            location,
+            global_address,
+            llvm::r#type::pointer(context, 0),
+        )
+    }
+
     /// Register if necessary, then invoke the `debug::print()` function.
     #[allow(clippy::too_many_arguments)]
     pub fn libfunc_debug_print<'c, 'a>(
@@ -141,46 +187,17 @@ impl RuntimeBindingsMeta {
     where
         'c: 'a,
     {
-        if self.active_map.insert(RuntimeBinding::DebugPrint) {
-            module.body().append_operation(func::func(
-                context,
-                StringAttribute::new(context, "cairo_native__libfunc__debug__print"),
-                TypeAttribute::new(
-                    FunctionType::new(
-                        context,
-                        &[
-                            IntegerType::new(context, 32).into(),
-                            llvm::r#type::pointer(context, 0),
-                            IntegerType::new(context, 32).into(),
-                        ],
-                        &[IntegerType::new(context, 32).into()],
-                    )
-                    .into(),
-                ),
-                Region::new(),
-                &[
-                    (
-                        Identifier::new(context, "sym_visibility"),
-                        StringAttribute::new(context, "private").into(),
-                    ),
-                    (
-                        Identifier::new(context, "llvm.linkage"),
-                        Attribute::parse(context, "#llvm.linkage<external>")
-                            .ok_or(Error::ParseAttributeError)?,
-                    ),
-                ],
-                Location::unknown(context),
-            ));
-        }
+        let function =
+            self.build_function(context, module, block, location, RuntimeBinding::DebugPrint)?;
 
         Ok(block
-            .append_operation(func::call(
-                context,
-                FlatSymbolRefAttribute::new(context, "cairo_native__libfunc__debug__print"),
-                &[target_fd, values_ptr, values_len],
-                &[IntegerType::new(context, 32).into()],
-                location,
-            ))
+            .append_operation(
+                OperationBuilder::new("llvm.call", location)
+                    .add_operands(&[function])
+                    .add_operands(&[target_fd, values_ptr, values_len])
+                    .add_results(&[IntegerType::new(context, 32).into()])
+                    .build()?,
+            )
             .result(0)?
             .into())
     }
@@ -200,45 +217,15 @@ impl RuntimeBindingsMeta {
     where
         'c: 'a,
     {
-        if self.active_map.insert(RuntimeBinding::Pedersen) {
-            module.body().append_operation(func::func(
-                context,
-                StringAttribute::new(context, "cairo_native__libfunc__pedersen"),
-                TypeAttribute::new(
-                    FunctionType::new(
-                        context,
-                        &[
-                            llvm::r#type::pointer(context, 0),
-                            llvm::r#type::pointer(context, 0),
-                            llvm::r#type::pointer(context, 0),
-                        ],
-                        &[],
-                    )
-                    .into(),
-                ),
-                Region::new(),
-                &[
-                    (
-                        Identifier::new(context, "sym_visibility"),
-                        StringAttribute::new(context, "private").into(),
-                    ),
-                    (
-                        Identifier::new(context, "llvm.linkage"),
-                        Attribute::parse(context, "#llvm.linkage<external>")
-                            .ok_or(Error::ParseAttributeError)?,
-                    ),
-                ],
-                Location::unknown(context),
-            ));
-        }
+        let function =
+            self.build_function(context, module, block, location, RuntimeBinding::Pedersen)?;
 
-        Ok(block.append_operation(func::call(
-            context,
-            FlatSymbolRefAttribute::new(context, "cairo_native__libfunc__pedersen"),
-            &[dst_ptr, lhs_ptr, rhs_ptr],
-            &[],
-            location,
-        )))
+        Ok(block.append_operation(
+            OperationBuilder::new("llvm.call", location)
+                .add_operands(&[function])
+                .add_operands(&[dst_ptr, lhs_ptr, rhs_ptr])
+                .build()?,
+        ))
     }
 
     /// Register if necessary, then invoke the `poseidon()` function.
@@ -257,45 +244,20 @@ impl RuntimeBindingsMeta {
     where
         'c: 'a,
     {
-        if self.active_map.insert(RuntimeBinding::HadesPermutation) {
-            module.body().append_operation(func::func(
-                context,
-                StringAttribute::new(context, "cairo_native__libfunc__hades_permutation"),
-                TypeAttribute::new(
-                    FunctionType::new(
-                        context,
-                        &[
-                            llvm::r#type::pointer(context, 0),
-                            llvm::r#type::pointer(context, 0),
-                            llvm::r#type::pointer(context, 0),
-                        ],
-                        &[],
-                    )
-                    .into(),
-                ),
-                Region::new(),
-                &[
-                    (
-                        Identifier::new(context, "sym_visibility"),
-                        StringAttribute::new(context, "private").into(),
-                    ),
-                    (
-                        Identifier::new(context, "llvm.linkage"),
-                        Attribute::parse(context, "#llvm.linkage<external>")
-                            .ok_or(Error::ParseAttributeError)?,
-                    ),
-                ],
-                Location::unknown(context),
-            ));
-        }
-
-        Ok(block.append_operation(func::call(
+        let function = self.build_function(
             context,
-            FlatSymbolRefAttribute::new(context, "cairo_native__libfunc__hades_permutation"),
-            &[op0_ptr, op1_ptr, op2_ptr],
-            &[],
+            module,
+            block,
             location,
-        )))
+            RuntimeBinding::HadesPermutation,
+        )?;
+
+        Ok(block.append_operation(
+            OperationBuilder::new("llvm.call", location)
+                .add_operands(&[function])
+                .add_operands(&[op0_ptr, op1_ptr, op2_ptr])
+                .build()?,
+        ))
     }
 
     /// Register if necessary, then invoke the `ec_point_from_x_nz()` function.
@@ -310,41 +272,21 @@ impl RuntimeBindingsMeta {
     where
         'c: 'a,
     {
-        if self.active_map.insert(RuntimeBinding::EcPointFromXNz) {
-            module.body().append_operation(func::func(
-                context,
-                StringAttribute::new(context, "cairo_native__libfunc__ec__ec_point_from_x_nz"),
-                TypeAttribute::new(
-                    FunctionType::new(
-                        context,
-                        &[llvm::r#type::pointer(context, 0)],
-                        &[IntegerType::new(context, 1).into()],
-                    )
-                    .into(),
-                ),
-                Region::new(),
-                &[
-                    (
-                        Identifier::new(context, "sym_visibility"),
-                        StringAttribute::new(context, "private").into(),
-                    ),
-                    (
-                        Identifier::new(context, "llvm.linkage"),
-                        Attribute::parse(context, "#llvm.linkage<external>")
-                            .ok_or(Error::ParseAttributeError)?,
-                    ),
-                ],
-                Location::unknown(context),
-            ));
-        }
-
-        Ok(block.append_operation(func::call(
+        let function = self.build_function(
             context,
-            FlatSymbolRefAttribute::new(context, "cairo_native__libfunc__ec__ec_point_from_x_nz"),
-            &[point_ptr],
-            &[IntegerType::new(context, 1).into()],
+            module,
+            block,
             location,
-        )))
+            RuntimeBinding::EcPointFromXNz,
+        )?;
+
+        Ok(block.append_operation(
+            OperationBuilder::new("llvm.call", location)
+                .add_operands(&[function])
+                .add_operands(&[point_ptr])
+                .add_results(&[IntegerType::new(context, 1).into()])
+                .build()?,
+        ))
     }
 
     /// Register if necessary, then invoke the `ec_point_try_new_nz()` function.
@@ -359,41 +301,21 @@ impl RuntimeBindingsMeta {
     where
         'c: 'a,
     {
-        if self.active_map.insert(RuntimeBinding::EcPointTryNewNz) {
-            module.body().append_operation(func::func(
-                context,
-                StringAttribute::new(context, "cairo_native__libfunc__ec__ec_point_try_new_nz"),
-                TypeAttribute::new(
-                    FunctionType::new(
-                        context,
-                        &[llvm::r#type::pointer(context, 0)],
-                        &[IntegerType::new(context, 1).into()],
-                    )
-                    .into(),
-                ),
-                Region::new(),
-                &[
-                    (
-                        Identifier::new(context, "sym_visibility"),
-                        StringAttribute::new(context, "private").into(),
-                    ),
-                    (
-                        Identifier::new(context, "llvm.linkage"),
-                        Attribute::parse(context, "#llvm.linkage<external>")
-                            .ok_or(Error::ParseAttributeError)?,
-                    ),
-                ],
-                Location::unknown(context),
-            ));
-        }
-
-        Ok(block.append_operation(func::call(
+        let function = self.build_function(
             context,
-            FlatSymbolRefAttribute::new(context, "cairo_native__libfunc__ec__ec_point_try_new_nz"),
-            &[point_ptr],
-            &[IntegerType::new(context, 1).into()],
+            module,
+            block,
             location,
-        )))
+            RuntimeBinding::EcPointTryNewNz,
+        )?;
+
+        Ok(block.append_operation(
+            OperationBuilder::new("llvm.call", location)
+                .add_operands(&[function])
+                .add_operands(&[point_ptr])
+                .add_results(&[IntegerType::new(context, 1).into()])
+                .build()?,
+        ))
     }
 
     /// Register if necessary, then invoke the `ec_state_init()` function.
@@ -408,36 +330,20 @@ impl RuntimeBindingsMeta {
     where
         'c: 'a,
     {
-        if self.active_map.insert(RuntimeBinding::EcStateInit) {
-            module.body().append_operation(func::func(
-                context,
-                StringAttribute::new(context, "cairo_native__libfunc__ec__ec_state_init"),
-                TypeAttribute::new(
-                    FunctionType::new(context, &[llvm::r#type::pointer(context, 0)], &[]).into(),
-                ),
-                Region::new(),
-                &[
-                    (
-                        Identifier::new(context, "sym_visibility"),
-                        StringAttribute::new(context, "private").into(),
-                    ),
-                    (
-                        Identifier::new(context, "llvm.linkage"),
-                        Attribute::parse(context, "#llvm.linkage<external>")
-                            .ok_or(Error::ParseAttributeError)?,
-                    ),
-                ],
-                Location::unknown(context),
-            ));
-        }
-
-        Ok(block.append_operation(func::call(
+        let function = self.build_function(
             context,
-            FlatSymbolRefAttribute::new(context, "cairo_native__libfunc__ec__ec_state_init"),
-            &[state_ptr],
-            &[],
+            module,
+            block,
             location,
-        )))
+            RuntimeBinding::EcStateInit,
+        )?;
+
+        Ok(block.append_operation(
+            OperationBuilder::new("llvm.call", location)
+                .add_operands(&[function])
+                .add_operands(&[state_ptr])
+                .build()?,
+        ))
     }
 
     /// Register if necessary, then invoke the `ec_state_add()` function.
@@ -453,44 +359,15 @@ impl RuntimeBindingsMeta {
     where
         'c: 'a,
     {
-        if self.active_map.insert(RuntimeBinding::EcStateAdd) {
-            module.body().append_operation(func::func(
-                context,
-                StringAttribute::new(context, "cairo_native__libfunc__ec__ec_state_add"),
-                TypeAttribute::new(
-                    FunctionType::new(
-                        context,
-                        &[
-                            llvm::r#type::pointer(context, 0),
-                            llvm::r#type::pointer(context, 0),
-                        ],
-                        &[],
-                    )
-                    .into(),
-                ),
-                Region::new(),
-                &[
-                    (
-                        Identifier::new(context, "sym_visibility"),
-                        StringAttribute::new(context, "private").into(),
-                    ),
-                    (
-                        Identifier::new(context, "llvm.linkage"),
-                        Attribute::parse(context, "#llvm.linkage<external>")
-                            .ok_or(Error::ParseAttributeError)?,
-                    ),
-                ],
-                Location::unknown(context),
-            ));
-        }
+        let function =
+            self.build_function(context, module, block, location, RuntimeBinding::EcStateAdd)?;
 
-        Ok(block.append_operation(func::call(
-            context,
-            FlatSymbolRefAttribute::new(context, "cairo_native__libfunc__ec__ec_state_add"),
-            &[state_ptr, point_ptr],
-            &[],
-            location,
-        )))
+        Ok(block.append_operation(
+            OperationBuilder::new("llvm.call", location)
+                .add_operands(&[function])
+                .add_operands(&[state_ptr, point_ptr])
+                .build()?,
+        ))
     }
 
     /// Register if necessary, then invoke the `ec_state_add_mul()` function.
@@ -508,45 +385,20 @@ impl RuntimeBindingsMeta {
     where
         'c: 'a,
     {
-        if self.active_map.insert(RuntimeBinding::EcStateAddMul) {
-            module.body().append_operation(func::func(
-                context,
-                StringAttribute::new(context, "cairo_native__libfunc__ec__ec_state_add_mul"),
-                TypeAttribute::new(
-                    FunctionType::new(
-                        context,
-                        &[
-                            llvm::r#type::pointer(context, 0),
-                            llvm::r#type::pointer(context, 0),
-                            llvm::r#type::pointer(context, 0),
-                        ],
-                        &[],
-                    )
-                    .into(),
-                ),
-                Region::new(),
-                &[
-                    (
-                        Identifier::new(context, "sym_visibility"),
-                        StringAttribute::new(context, "private").into(),
-                    ),
-                    (
-                        Identifier::new(context, "llvm.linkage"),
-                        Attribute::parse(context, "#llvm.linkage<external>")
-                            .ok_or(Error::ParseAttributeError)?,
-                    ),
-                ],
-                Location::unknown(context),
-            ));
-        }
-
-        Ok(block.append_operation(func::call(
+        let function = self.build_function(
             context,
-            FlatSymbolRefAttribute::new(context, "cairo_native__libfunc__ec__ec_state_add_mul"),
-            &[state_ptr, scalar_ptr, point_ptr],
-            &[],
+            module,
+            block,
             location,
-        )))
+            RuntimeBinding::EcStateAddMul,
+        )?;
+
+        Ok(block.append_operation(
+            OperationBuilder::new("llvm.call", location)
+                .add_operands(&[function])
+                .add_operands(&[state_ptr, scalar_ptr, point_ptr])
+                .build()?,
+        ))
     }
 
     pub fn libfunc_ec_state_try_finalize_nz<'c, 'a>(
@@ -561,50 +413,21 @@ impl RuntimeBindingsMeta {
     where
         'c: 'a,
     {
-        if self.active_map.insert(RuntimeBinding::EcStateTryFinalizeNz) {
-            module.body().append_operation(func::func(
-                context,
-                StringAttribute::new(
-                    context,
-                    "cairo_native__libfunc__ec__ec_state_try_finalize_nz",
-                ),
-                TypeAttribute::new(
-                    FunctionType::new(
-                        context,
-                        &[
-                            llvm::r#type::pointer(context, 0),
-                            llvm::r#type::pointer(context, 0),
-                        ],
-                        &[IntegerType::new(context, 1).into()],
-                    )
-                    .into(),
-                ),
-                Region::new(),
-                &[
-                    (
-                        Identifier::new(context, "sym_visibility"),
-                        StringAttribute::new(context, "private").into(),
-                    ),
-                    (
-                        Identifier::new(context, "llvm.linkage"),
-                        Attribute::parse(context, "#llvm.linkage<external>")
-                            .ok_or(Error::ParseAttributeError)?,
-                    ),
-                ],
-                location,
-            ));
-        }
-
-        Ok(block.append_operation(func::call(
+        let function = self.build_function(
             context,
-            FlatSymbolRefAttribute::new(
-                context,
-                "cairo_native__libfunc__ec__ec_state_try_finalize_nz",
-            ),
-            &[point_ptr, state_ptr],
-            &[IntegerType::new(context, 1).into()],
+            module,
+            block,
             location,
-        )))
+            RuntimeBinding::EcStateTryFinalizeNz,
+        )?;
+
+        Ok(block.append_operation(
+            OperationBuilder::new("llvm.call", location)
+                .add_operands(&[function])
+                .add_operands(&[point_ptr, state_ptr])
+                .add_results(&[IntegerType::new(context, 1).into()])
+                .build()?,
+        ))
     }
 
     /// Register if necessary, then invoke the `dict_alloc_new()` function.
@@ -624,41 +447,10 @@ impl RuntimeBindingsMeta {
     where
         'c: 'a,
     {
+        let function =
+            self.build_function(context, module, block, location, RuntimeBinding::DictNew)?;
+
         let i64_ty = IntegerType::new(context, 64).into();
-
-        if self.active_map.insert(RuntimeBinding::DictNew) {
-            module.body().append_operation(func::func(
-                context,
-                StringAttribute::new(context, "cairo_native__dict_new"),
-                TypeAttribute::new(
-                    FunctionType::new(
-                        context,
-                        &[
-                            i64_ty,
-                            i64_ty,
-                            llvm::r#type::pointer(context, 0),
-                            llvm::r#type::pointer(context, 0),
-                        ],
-                        &[llvm::r#type::pointer(context, 0)],
-                    )
-                    .into(),
-                ),
-                Region::new(),
-                &[
-                    (
-                        Identifier::new(context, "sym_visibility"),
-                        StringAttribute::new(context, "private").into(),
-                    ),
-                    (
-                        Identifier::new(context, "llvm.linkage"),
-                        Attribute::parse(context, "#llvm.linkage<external>")
-                            .ok_or(Error::ParseAttributeError)?,
-                    ),
-                ],
-                Location::unknown(context),
-            ));
-        }
-
         let size = block.const_int_from_type(context, location, layout.size(), i64_ty)?;
         let align = block.const_int_from_type(context, location, layout.align(), i64_ty)?;
 
@@ -675,13 +467,13 @@ impl RuntimeBindingsMeta {
             }
         };
 
-        block.append_op_result(func::call(
-            context,
-            FlatSymbolRefAttribute::new(context, "cairo_native__dict_new"),
-            &[size, align, dup_fn, drop_fn],
-            &[llvm::r#type::pointer(context, 0)],
-            location,
-        ))
+        block.append_op_result(
+            OperationBuilder::new("llvm.call", location)
+                .add_operands(&[function])
+                .add_operands(&[size, align, dup_fn, drop_fn])
+                .add_results(&[llvm::r#type::pointer(context, 0)])
+                .build()?,
+        )
     }
 
     /// Register if necessary, then invoke the `dict_alloc_new()` function.
@@ -699,36 +491,15 @@ impl RuntimeBindingsMeta {
     where
         'c: 'a,
     {
-        if self.active_map.insert(RuntimeBinding::DictDrop) {
-            module.body().append_operation(func::func(
-                context,
-                StringAttribute::new(context, "cairo_native__dict_drop"),
-                TypeAttribute::new(
-                    FunctionType::new(context, &[llvm::r#type::pointer(context, 0)], &[]).into(),
-                ),
-                Region::new(),
-                &[
-                    (
-                        Identifier::new(context, "sym_visibility"),
-                        StringAttribute::new(context, "private").into(),
-                    ),
-                    (
-                        Identifier::new(context, "llvm.linkage"),
-                        Attribute::parse(context, "#llvm.linkage<external>")
-                            .ok_or(Error::ParseAttributeError)?,
-                    ),
-                ],
-                Location::unknown(context),
-            ));
-        }
+        let function =
+            self.build_function(context, module, block, location, RuntimeBinding::DictDrop)?;
 
-        Ok(block.append_operation(func::call(
-            context,
-            FlatSymbolRefAttribute::new(context, "cairo_native__dict_drop"),
-            &[ptr],
-            &[],
-            location,
-        )))
+        Ok(block.append_operation(
+            OperationBuilder::new("llvm.call", location)
+                .add_operands(&[function])
+                .add_operands(&[ptr])
+                .build()?,
+        ))
     }
 
     /// Register if necessary, then invoke the `dict_alloc_new()` function.
@@ -746,41 +517,16 @@ impl RuntimeBindingsMeta {
     where
         'c: 'a,
     {
-        if self.active_map.insert(RuntimeBinding::DictDup) {
-            module.body().append_operation(func::func(
-                context,
-                StringAttribute::new(context, "cairo_native__dict_dup"),
-                TypeAttribute::new(
-                    FunctionType::new(
-                        context,
-                        &[llvm::r#type::pointer(context, 0)],
-                        &[llvm::r#type::pointer(context, 0)],
-                    )
-                    .into(),
-                ),
-                Region::new(),
-                &[
-                    (
-                        Identifier::new(context, "sym_visibility"),
-                        StringAttribute::new(context, "private").into(),
-                    ),
-                    (
-                        Identifier::new(context, "llvm.linkage"),
-                        Attribute::parse(context, "#llvm.linkage<external>")
-                            .ok_or(Error::ParseAttributeError)?,
-                    ),
-                ],
-                Location::unknown(context),
-            ));
-        }
+        let function =
+            self.build_function(context, module, block, location, RuntimeBinding::DictDup)?;
 
-        block.append_op_result(func::call(
-            context,
-            FlatSymbolRefAttribute::new(context, "cairo_native__dict_dup"),
-            &[ptr],
-            &[llvm::r#type::pointer(context, 0)],
-            location,
-        ))
+        block.append_op_result(
+            OperationBuilder::new("llvm.call", location)
+                .add_operands(&[function])
+                .add_operands(&[ptr])
+                .add_results(&[llvm::r#type::pointer(context, 0)])
+                .build()?,
+        )
     }
 
     /// Register if necessary, then invoke the `dict_get()` function.
@@ -801,37 +547,8 @@ impl RuntimeBindingsMeta {
     where
         'c: 'a,
     {
-        if self.active_map.insert(RuntimeBinding::DictGet) {
-            helper.body().append_operation(func::func(
-                context,
-                StringAttribute::new(context, "cairo_native__dict_get"),
-                TypeAttribute::new(
-                    FunctionType::new(
-                        context,
-                        &[
-                            llvm::r#type::pointer(context, 0),
-                            llvm::r#type::pointer(context, 0),
-                            llvm::r#type::pointer(context, 0),
-                        ],
-                        &[IntegerType::new(context, c_int::BITS).into()],
-                    )
-                    .into(),
-                ),
-                Region::new(),
-                &[
-                    (
-                        Identifier::new(context, "sym_visibility"),
-                        StringAttribute::new(context, "private").into(),
-                    ),
-                    (
-                        Identifier::new(context, "llvm.linkage"),
-                        Attribute::parse(context, "#llvm.linkage<external>")
-                            .ok_or(Error::ParseAttributeError)?,
-                    ),
-                ],
-                Location::unknown(context),
-            ));
-        }
+        let function =
+            self.build_function(context, helper, block, location, RuntimeBinding::DictGet)?;
 
         let value_ptr = helper.init_block().alloca1(
             context,
@@ -840,13 +557,13 @@ impl RuntimeBindingsMeta {
             align_of::<*mut ()>(),
         )?;
 
-        let is_present = block.append_op_result(func::call(
-            context,
-            FlatSymbolRefAttribute::new(context, "cairo_native__dict_get"),
-            &[dict_ptr, key_ptr, value_ptr],
-            &[IntegerType::new(context, c_int::BITS).into()],
-            location,
-        ))?;
+        let is_present = block.append_op_result(
+            OperationBuilder::new("llvm.call", location)
+                .add_operands(&[function])
+                .add_operands(&[dict_ptr, key_ptr, value_ptr])
+                .add_results(&[IntegerType::new(context, c_int::BITS).into()])
+                .build()?,
+        )?;
 
         let value_ptr = block.load(
             context,
@@ -875,41 +592,21 @@ impl RuntimeBindingsMeta {
     where
         'c: 'a,
     {
-        if self.active_map.insert(RuntimeBinding::DictGasRefund) {
-            module.body().append_operation(func::func(
-                context,
-                StringAttribute::new(context, "cairo_native__dict_gas_refund"),
-                TypeAttribute::new(
-                    FunctionType::new(
-                        context,
-                        &[llvm::r#type::pointer(context, 0)],
-                        &[IntegerType::new(context, 64).into()],
-                    )
-                    .into(),
-                ),
-                Region::new(),
-                &[
-                    (
-                        Identifier::new(context, "sym_visibility"),
-                        StringAttribute::new(context, "private").into(),
-                    ),
-                    (
-                        Identifier::new(context, "llvm.linkage"),
-                        Attribute::parse(context, "#llvm.linkage<external>")
-                            .ok_or(Error::ParseAttributeError)?,
-                    ),
-                ],
-                Location::unknown(context),
-            ));
-        }
-
-        Ok(block.append_operation(func::call(
+        let function = self.build_function(
             context,
-            FlatSymbolRefAttribute::new(context, "cairo_native__dict_gas_refund"),
-            &[dict_ptr],
-            &[IntegerType::new(context, 64).into()],
+            module,
+            block,
             location,
-        )))
+            RuntimeBinding::DictGasRefund,
+        )?;
+
+        Ok(block.append_operation(
+            OperationBuilder::new("llvm.call", location)
+                .add_operands(&[function])
+                .add_operands(&[dict_ptr])
+                .add_results(&[IntegerType::new(context, 64).into()])
+                .build()?,
+        ))
     }
 
     // Register if necessary, then invoke the `set_gas_builtin()` function.
@@ -924,36 +621,20 @@ impl RuntimeBindingsMeta {
     where
         'c: 'a,
     {
-        if self.active_map.insert(RuntimeBinding::GetGasBuiltin) {
-            module.body().append_operation(func::func(
-                context,
-                StringAttribute::new(context, "cairo_native__get_costs_builtin"),
-                TypeAttribute::new(
-                    FunctionType::new(context, &[], &[llvm::r#type::pointer(context, 0)]).into(),
-                ),
-                Region::new(),
-                &[
-                    (
-                        Identifier::new(context, "sym_visibility"),
-                        StringAttribute::new(context, "private").into(),
-                    ),
-                    (
-                        Identifier::new(context, "llvm.linkage"),
-                        Attribute::parse(context, "#llvm.linkage<external>")
-                            .ok_or(Error::ParseAttributeError)?,
-                    ),
-                ],
-                Location::unknown(context),
-            ));
-        }
-
-        Ok(block.append_operation(func::call(
+        let function = self.build_function(
             context,
-            FlatSymbolRefAttribute::new(context, "cairo_native__get_costs_builtin"),
-            &[],
-            &[llvm::r#type::pointer(context, 0)],
+            module,
+            block,
             location,
-        )))
+            RuntimeBinding::GetGasBuiltin,
+        )?;
+
+        Ok(block.append_operation(
+            OperationBuilder::new("llvm.call", location)
+                .add_operands(&[function])
+                .add_results(&[llvm::r#type::pointer(context, 0)])
+                .build()?,
+        ))
     }
 
     /// Register if necessary, then invoke the `vtable_cheatcode()` runtime function.
@@ -976,45 +657,20 @@ impl RuntimeBindingsMeta {
     where
         'c: 'a,
     {
-        if self.active_map.insert(RuntimeBinding::VtableCheatcode) {
-            module.body().append_operation(func::func(
-                context,
-                StringAttribute::new(context, "cairo_native__vtable_cheatcode"),
-                TypeAttribute::new(
-                    FunctionType::new(
-                        context,
-                        &[
-                            llvm::r#type::pointer(context, 0),
-                            llvm::r#type::pointer(context, 0),
-                            llvm::r#type::pointer(context, 0),
-                        ],
-                        &[],
-                    )
-                    .into(),
-                ),
-                Region::new(),
-                &[
-                    (
-                        Identifier::new(context, "sym_visibility"),
-                        StringAttribute::new(context, "private").into(),
-                    ),
-                    (
-                        Identifier::new(context, "llvm.linkage"),
-                        Attribute::parse(context, "#llvm.linkage<external>")
-                            .ok_or(Error::ParseAttributeError)?,
-                    ),
-                ],
-                Location::unknown(context),
-            ));
-        }
-
-        Ok(block.append_operation(func::call(
+        let function = self.build_function(
             context,
-            FlatSymbolRefAttribute::new(context, "cairo_native__vtable_cheatcode"),
-            &[result_ptr, selector_ptr, args],
-            &[],
+            module,
+            block,
             location,
-        )))
+            RuntimeBinding::VtableCheatcode,
+        )?;
+
+        Ok(block.append_operation(
+            OperationBuilder::new("llvm.call", location)
+                .add_operands(&[function])
+                .add_operands(&[result_ptr, selector_ptr, args])
+                .build()?,
+        ))
     }
 }
 
