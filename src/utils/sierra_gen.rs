@@ -2,9 +2,12 @@
 
 use cairo_lang_sierra::{
     extensions::{
+        branch_align::BranchAlignLibfunc,
+        enm::{EnumInitLibfunc, EnumType},
         lib_func::{SierraApChange, SignatureSpecializationContext},
         structure::{StructConstructLibfunc, StructType},
         type_specialization_context::TypeSpecializationContext,
+        types::TypeInfo,
         GenericLibfunc, NamedLibfunc, NamedType,
     },
     ids::{
@@ -17,130 +20,140 @@ use cairo_lang_sierra::{
         StatementIdx, TypeDeclaration,
     },
 };
-use std::{cell::RefCell, iter::once};
+use std::{
+    cell::{OnceCell, RefCell},
+    iter::once,
+};
 
-pub fn generate_program<T>(args: &[GenericArg]) -> Program
+pub fn generate_program_with_libfunc_name<T>(
+    generic_id: GenericLibfuncId,
+    generic_args: impl Into<Vec<GenericArg>>,
+) -> Program
 where
     T: GenericLibfunc,
 {
-    // Initialize the Sierra generation context (which contains an empty program).
-    let context = Context(RefCell::new(Program {
-        type_declarations: Vec::new(),
-        libfunc_declarations: Vec::new(),
-        statements: Vec::new(),
-        funcs: Vec::new(),
-    }));
+    let context = ContextWrapper(RefCell::new(Context::default()));
+    let generic_args = generic_args.into();
 
-    // Extract the libfunc id.
-    let libfunc_ids = T::supported_ids();
-    let libfunc = T::by_id(&libfunc_ids[0]).unwrap();
-    assert_eq!(libfunc_ids.len(), 1);
+    let libfunc = T::by_id(&generic_id).unwrap();
+    let libfunc_signature = libfunc
+        .specialize_signature(&context, &generic_args)
+        .unwrap();
 
-    // Specialize the target libfunc signature. This will generate the required types within the
-    // program.
-    let libfunc_signature = libfunc.specialize_signature(&context, args).unwrap();
+    let mut context = RefCell::into_inner(context.0);
 
-    // Generate the target libfunc declaration.
-    let mut program = context.0.into_inner();
-    let libfunc_id = ConcreteLibfuncId::new(program.libfunc_declarations.len() as u64);
-    program.libfunc_declarations.push(LibfuncDeclaration {
-        id: libfunc_id.clone(),
-        long_id: ConcreteLibfuncLongId {
-            generic_id: libfunc_ids[0].clone(),
-            generic_args: args.to_vec(),
-        },
-    });
+    // Push the libfunc declaration.
+    let libfunc_id = context
+        .push_libfunc_declaration(ConcreteLibfuncLongId {
+            generic_id,
+            generic_args: generic_args.to_vec(),
+        })
+        .clone();
 
-    // Generate the test's entry point.
-    let num_builtins;
-    let ret_types = {
-        // Add all builtins.
-        let mut ret_types: Vec<ConcreteTypeId> = libfunc_signature
-            .param_signatures
-            .iter()
-            .take_while(|param_signature| {
-                let ty = program
-                    .type_declarations
-                    .iter()
-                    .find(|ty| ty.id == param_signature.ty)
-                    .unwrap();
-                matches!(
-                    ty.long_id.generic_id.0.as_str(),
-                    "Bitwise"
-                        | "EcOp"
-                        | "GasBuiltin"
-                        | "BuiltinCosts"
-                        | "RangeCheck"
-                        | "RangeCheck96"
-                        | "Pedersen"
-                        | "Poseidon"
-                        | "Coupon"
-                        | "System"
-                        | "SegmentArena"
-                        | "AddMod"
-                        | "MulMod"
-                )
-            })
-            .map(|param_signature| param_signature.ty.clone())
-            .collect();
-        num_builtins = ret_types.len();
-
-        // Push the return value.
-        ret_types.push({
-            let num_branches = libfunc_signature.branch_signatures.len();
-            let mut iter = libfunc_signature
-                .branch_signatures
+    // Generate packed types.
+    let num_builtins = libfunc_signature
+        .param_signatures
+        .iter()
+        .take_while(|param_signature| {
+            let long_id = &context
+                .program
+                .type_declarations
                 .iter()
-                .map(|branch_signature| match branch_signature.vars.len() {
-                    1 => branch_signature.vars[0].ty.clone(),
-                    _ => {
-                        // Generate struct type.
-                        let return_type =
-                            ConcreteTypeId::new(program.type_declarations.len() as u64);
-                        program.type_declarations.push(TypeDeclaration {
-                            id: return_type.clone(),
-                            long_id: ConcreteTypeLongId {
-                                generic_id: StructType::ID,
-                                generic_args: once(GenericArg::UserType(UserTypeId::from_string(
-                                    "Tuple",
-                                )))
-                                .chain(
-                                    branch_signature
-                                        .vars
-                                        .iter()
-                                        .map(|var_info| GenericArg::Type(var_info.ty.clone())),
-                                )
-                                .collect(),
-                            },
-                            declared_type_info: None,
-                        });
+                .find(|type_declaration| type_declaration.id == param_signature.ty)
+                .unwrap()
+                .long_id;
 
-                        // Add the struct_construct libfunc declaration.
-                        program.libfunc_declarations.push(LibfuncDeclaration {
-                            id: ConcreteLibfuncId::new(program.libfunc_declarations.len() as u64),
-                            long_id: ConcreteLibfuncLongId {
-                                generic_id: GenericLibfuncId::from_string(
-                                    StructConstructLibfunc::STR_ID,
-                                ),
-                                generic_args: vec![GenericArg::Type(return_type.clone())],
-                            },
-                        });
+            matches!(
+                long_id.generic_id.0.as_str(),
+                "Bitwise"
+                    | "EcOp"
+                    | "GasBuiltin"
+                    | "BuiltinCosts"
+                    | "RangeCheck"
+                    | "RangeCheck96"
+                    | "Pedersen"
+                    | "Poseidon"
+                    | "Coupon"
+                    | "System"
+                    | "SegmentArena"
+                    | "AddMod"
+                    | "MulMod"
+            )
+        })
+        .count();
 
-                        return_type
-                    }
-                });
+    let mut return_types = Vec::with_capacity(libfunc_signature.branch_signatures.len());
+    let mut packed_unit_type_id = None;
+    for branch_signature in &libfunc_signature.branch_signatures {
+        assert!(branch_signature
+            .vars
+            .iter()
+            .zip(libfunc_signature.param_signatures.iter().take(num_builtins))
+            .all(|(lhs, rhs)| lhs.ty == rhs.ty));
 
-            match num_branches {
-                0 => todo!(),
-                1 => iter.next().unwrap(),
-                _ => todo!(),
-            }
+        return_types.push(match branch_signature.vars.len() - num_builtins {
+            0 => match libfunc_signature.branch_signatures.len() {
+                1 => ResultVarType::Empty(None),
+                _ => ResultVarType::Empty(Some(
+                    packed_unit_type_id
+                        .get_or_insert_with(|| {
+                            context
+                                .push_type_declaration(ConcreteTypeLongId {
+                                    generic_id: StructType::ID,
+                                    generic_args: vec![GenericArg::UserType(
+                                        UserTypeId::from_string("Tuple"),
+                                    )],
+                                })
+                                .clone()
+                        })
+                        .clone(),
+                )),
+            },
+            1 => ResultVarType::Single(branch_signature.vars[num_builtins].ty.clone()),
+            _ => ResultVarType::Multi(
+                context
+                    .push_type_declaration(ConcreteTypeLongId {
+                        generic_id: StructType::ID,
+                        generic_args: once(GenericArg::UserType(UserTypeId::from_string("Tuple")))
+                            .chain(
+                                branch_signature
+                                    .vars
+                                    .iter()
+                                    .skip(num_builtins)
+                                    .map(|var_info| GenericArg::Type(var_info.ty.clone())),
+                            )
+                            .collect(),
+                    })
+                    .clone(),
+            ),
         });
+    }
 
-        ret_types
+    // Generate switch type.
+    let return_type = match return_types.len() {
+        1 => match return_types[0].clone() {
+            ResultVarType::Empty(ty) => ty.unwrap().clone(),
+            ResultVarType::Single(ty) => ty.clone(),
+            ResultVarType::Multi(ty) => ty.clone(),
+        },
+        _ => context
+            .push_type_declaration(ConcreteTypeLongId {
+                generic_id: EnumType::ID,
+                generic_args: once(GenericArg::UserType(UserTypeId::from_string("Tuple")))
+                    .chain(return_types.iter().map(|ty| {
+                        GenericArg::Type(match ty {
+                            ResultVarType::Empty(ty) => ty.clone().unwrap(),
+                            ResultVarType::Single(ty) => ty.clone(),
+                            ResultVarType::Multi(ty) => ty.clone(),
+                        })
+                    }))
+                    .collect(),
+            })
+            .clone(),
     };
 
-    program.funcs.push(Function {
+    // Generate function declaration.
+    context.program.funcs.push(Function {
         id: FunctionId::new(0),
         signature: FunctionSignature {
             param_types: libfunc_signature
@@ -148,21 +161,25 @@ where
                 .iter()
                 .map(|param_signature| param_signature.ty.clone())
                 .collect(),
-            ret_types,
+            ret_types: libfunc_signature.param_signatures[..num_builtins]
+                .iter()
+                .map(|param_signature| param_signature.ty.clone())
+                .chain(once(return_type.clone()))
+                .collect(),
         },
         params: libfunc_signature
             .param_signatures
             .iter()
             .enumerate()
-            .map(|(id, param_signature)| Param {
-                id: VarId::new(id as u64),
+            .map(|(idx, param_signature)| Param {
+                id: VarId::new(idx as u64),
                 ty: param_signature.ty.clone(),
             })
             .collect(),
         entry_point: StatementIdx(0),
     });
 
-    // Generate the statements.
+    // Generate statements.
     let mut libfunc_invocation = Invocation {
         libfunc_id,
         args: libfunc_signature
@@ -174,17 +191,123 @@ where
         branches: Vec::new(),
     };
 
-    let mut libfunc_idx = match libfunc_signature.branch_signatures.len() {
-        0 => todo!(),
-        1 => 1,
-        _ => 2,
-    };
-    for (branch_idx, branch_signature) in libfunc_signature.branch_signatures.iter().enumerate() {
+    let branch_align_libfunc = OnceCell::new();
+    let construct_unit_libfunc = packed_unit_type_id.map(|ty| {
+        context
+            .push_libfunc_declaration(ConcreteLibfuncLongId {
+                generic_id: GenericLibfuncId::from_string(StructConstructLibfunc::STR_ID),
+                generic_args: vec![GenericArg::Type(ty)],
+            })
+            .clone()
+    });
+
+    for (branch_index, branch_signature) in libfunc_signature.branch_signatures.iter().enumerate() {
+        let branch_target = match branch_index {
+            0 => BranchTarget::Fallthrough,
+            _ => {
+                let statement_idx = StatementIdx(context.program.statements.len() + 1);
+                let branch_align_libfunc_id = branch_align_libfunc
+                    .get_or_init(|| {
+                        context
+                            .push_libfunc_declaration(ConcreteLibfuncLongId {
+                                generic_id: GenericLibfuncId::from_string(
+                                    BranchAlignLibfunc::STR_ID,
+                                ),
+                                generic_args: Vec::new(),
+                            })
+                            .clone()
+                    })
+                    .clone();
+
+                context
+                    .program
+                    .statements
+                    .push(Statement::Invocation(Invocation {
+                        libfunc_id: branch_align_libfunc_id,
+                        args: Vec::new(),
+                        branches: vec![BranchInfo {
+                            target: BranchTarget::Fallthrough,
+                            results: Vec::new(),
+                        }],
+                    }));
+
+                BranchTarget::Statement(statement_idx)
+            }
+        };
+
+        // Maybe pack values.
+        match &return_types[branch_index] {
+            ResultVarType::Empty(Some(_)) => {
+                context
+                    .program
+                    .statements
+                    .push(Statement::Invocation(Invocation {
+                        libfunc_id: construct_unit_libfunc.clone().unwrap(),
+                        args: Vec::new(),
+                        branches: vec![BranchInfo {
+                            target: BranchTarget::Fallthrough,
+                            results: vec![VarId::new(num_builtins as u64)],
+                        }],
+                    }));
+            }
+            ResultVarType::Multi(type_id) => {
+                let construct_libfunc_id = context
+                    .push_libfunc_declaration(ConcreteLibfuncLongId {
+                        generic_id: GenericLibfuncId::from_string(StructConstructLibfunc::STR_ID),
+                        generic_args: vec![GenericArg::Type(type_id.clone())],
+                    })
+                    .clone();
+
+                context
+                    .program
+                    .statements
+                    .push(Statement::Invocation(Invocation {
+                        libfunc_id: construct_libfunc_id,
+                        args: (num_builtins..branch_signature.vars.len())
+                            .map(|x| VarId::new(x as u64))
+                            .collect(),
+                        branches: vec![BranchInfo {
+                            target: BranchTarget::Fallthrough,
+                            results: vec![VarId::new(num_builtins as u64)],
+                        }],
+                    }));
+            }
+            _ => {}
+        }
+
+        // Maybe enum values.
+        if libfunc_signature.branch_signatures.len() > 1 {
+            let enum_libfunc_id = context
+                .push_libfunc_declaration(ConcreteLibfuncLongId {
+                    generic_id: GenericLibfuncId::from_string(EnumInitLibfunc::STR_ID),
+                    generic_args: vec![
+                        GenericArg::Type(return_type.clone()),
+                        GenericArg::Value(branch_index.into()),
+                    ],
+                })
+                .clone();
+
+            context
+                .program
+                .statements
+                .push(Statement::Invocation(Invocation {
+                    libfunc_id: enum_libfunc_id,
+                    args: vec![VarId::new(num_builtins as u64)],
+                    branches: vec![BranchInfo {
+                        target: BranchTarget::Fallthrough,
+                        results: vec![VarId::new(num_builtins as u64)],
+                    }],
+                }));
+        }
+
+        // Return.
+        context.program.statements.push(Statement::Return(
+            (0..=num_builtins).map(|x| VarId::new(x as u64)).collect(),
+        ));
+
+        // Push the branch target.
         libfunc_invocation.branches.push(BranchInfo {
-            target: match branch_idx {
-                0 => BranchTarget::Fallthrough,
-                _ => BranchTarget::Statement(StatementIdx(program.statements.len() + 1)),
-            },
+            target: branch_target,
             results: branch_signature
                 .vars
                 .iter()
@@ -192,98 +315,97 @@ where
                 .map(|(idx, _)| VarId::new(idx as u64))
                 .collect(),
         });
-
-        if branch_idx != 0 {
-            program.statements.push(Statement::Invocation(Invocation {
-                libfunc_id: program.libfunc_declarations[1].id.clone(),
-                args: Vec::new(),
-                branches: vec![BranchInfo {
-                    target: BranchTarget::Fallthrough,
-                    results: Vec::new(),
-                }],
-            }));
-        }
-
-        // TODO: Handle multiple return values (struct_construct).
-        if branch_signature.vars.len() != 1 {
-            let packer_libfunc = &program.libfunc_declarations[libfunc_idx].id;
-            libfunc_idx += 1;
-
-            program.statements.push(Statement::Invocation(Invocation {
-                libfunc_id: packer_libfunc.clone(),
-                args: branch_signature
-                    .vars
-                    .iter()
-                    .enumerate()
-                    .skip(num_builtins)
-                    .map(|(idx, _)| VarId::new(idx as u64))
-                    .collect(),
-                branches: vec![BranchInfo {
-                    target: BranchTarget::Fallthrough,
-                    results: vec![VarId::new(num_builtins as u64)],
-                }],
-            }));
-        }
-
-        // TODO: Handle multiple branches (enum_init).
-
-        program.statements.push(Statement::Return(
-            (0..=num_builtins)
-                .map(|idx| VarId::new(idx as u64))
-                .collect(),
-        ));
     }
 
-    program
+    context
+        .program
         .statements
         .insert(0, Statement::Invocation(libfunc_invocation));
 
-    program
+    context.program
 }
 
-struct Context(RefCell<Program>);
-
-impl TypeSpecializationContext for Context {
-    fn try_get_type_info(
-        &self,
-        _id: ConcreteTypeId,
-    ) -> Option<cairo_lang_sierra::extensions::types::TypeInfo> {
-        todo!()
+pub fn generate_program<T>(args: &[GenericArg]) -> Program
+where
+    T: GenericLibfunc,
+{
+    match T::supported_ids().as_slice() {
+        [generic_id] => generate_program_with_libfunc_name::<T>(generic_id.clone(), args),
+        _ => panic!(),
     }
 }
 
-impl SignatureSpecializationContext for Context {
+#[derive(Debug)]
+struct Context {
+    program: Program,
+}
+
+impl Default for Context {
+    fn default() -> Self {
+        Self {
+            program: Program {
+                type_declarations: Vec::new(),
+                libfunc_declarations: Vec::new(),
+                statements: Vec::new(),
+                funcs: Vec::new(),
+            },
+        }
+    }
+}
+
+impl Context {
+    pub fn push_type_declaration(&mut self, long_id: ConcreteTypeLongId) -> &ConcreteTypeId {
+        let id = ConcreteTypeId::new(self.program.type_declarations.len() as u64);
+        self.program.type_declarations.push(TypeDeclaration {
+            id,
+            long_id,
+            declared_type_info: None,
+        });
+
+        &self.program.type_declarations.last().unwrap().id
+    }
+
+    pub fn push_libfunc_declaration(
+        &mut self,
+        long_id: ConcreteLibfuncLongId,
+    ) -> &ConcreteLibfuncId {
+        let id = ConcreteLibfuncId::new(self.program.libfunc_declarations.len() as u64);
+        self.program
+            .libfunc_declarations
+            .push(LibfuncDeclaration { id, long_id });
+
+        &self.program.libfunc_declarations.last().unwrap().id
+    }
+}
+
+struct ContextWrapper(RefCell<Context>);
+
+impl SignatureSpecializationContext for ContextWrapper {
     fn try_get_concrete_type(
         &self,
         id: GenericTypeId,
         generic_args: &[GenericArg],
     ) -> Option<ConcreteTypeId> {
-        let mut program = self.0.borrow_mut();
+        let mut context = self.0.borrow_mut();
 
         let long_id = ConcreteTypeLongId {
             generic_id: id,
             generic_args: generic_args.to_vec(),
         };
-        match program
+        assert!(!context
+            .program
             .type_declarations
             .iter()
-            .find_map(|ty| (ty.long_id == long_id).then_some(ty.id.clone()))
-        {
-            Some(x) => Some(x),
-            None => {
-                let type_id = ConcreteTypeId {
-                    id: program.type_declarations.len() as u64,
-                    debug_name: None,
-                };
-                program.type_declarations.push(TypeDeclaration {
-                    id: type_id.clone(),
-                    long_id,
-                    declared_type_info: None,
-                });
+            .any(|type_declaration| type_declaration.long_id == long_id));
 
-                Some(type_id)
-            }
-        }
+        let id = ConcreteTypeId::new(context.program.type_declarations.len() as u64);
+        context.program.type_declarations.push(TypeDeclaration {
+            id: id.clone(),
+            long_id,
+            declared_type_info: None,
+        });
+
+        Some(id)
     }
 
     fn try_get_function_signature(&self, _function_id: &FunctionId) -> Option<FunctionSignature> {
@@ -295,8 +417,21 @@ impl SignatureSpecializationContext for Context {
     }
 
     fn as_type_specialization_context(&self) -> &dyn TypeSpecializationContext {
+        self
+    }
+}
+
+impl TypeSpecializationContext for ContextWrapper {
+    fn try_get_type_info(&self, _id: ConcreteTypeId) -> Option<TypeInfo> {
         todo!()
     }
+}
+
+#[derive(Clone)]
+enum ResultVarType {
+    Empty(Option<ConcreteTypeId>),
+    Single(ConcreteTypeId),
+    Multi(ConcreteTypeId),
 }
 
 #[cfg(test)]
