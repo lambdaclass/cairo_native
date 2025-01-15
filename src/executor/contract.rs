@@ -272,21 +272,6 @@ impl AotContractExecutor {
         let contract_info: NativeContractInfo = serde_json::from_str(&info_str)?;
 
         let library = Arc::new(unsafe { Library::new(library_path)? });
-        unsafe {
-            let get_version = library
-                .get::<extern "C" fn(*mut u8, usize) -> usize>(b"cairo_native__get_version")?;
-
-            let mut version_buffer = [0u8; 16];
-            let version_len = get_version(version_buffer.as_mut_ptr(), version_buffer.len());
-
-            let target_version = env!("CARGO_PKG_VERSION");
-            assert_eq!(
-                &version_buffer[..version_len],
-                target_version.as_bytes(),
-                "aot-compiled contract version mismatch"
-            );
-        };
-
         let executor = Self {
             library,
             path: library_path.to_path_buf(),
