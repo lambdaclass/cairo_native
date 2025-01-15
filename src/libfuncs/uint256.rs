@@ -950,7 +950,7 @@ pub fn build_u256_guarantee_inv_mod_n<'ctx, 'this>(
 #[cfg(test)]
 mod test {
     use crate::{
-        utils::test::{jit_enum, jit_panic, jit_struct, run_sierra_program},
+        utils::test::{jit_enum, jit_panic, jit_struct, load_cairo, run_program, run_sierra_program},
         values::Value,
     };
     use cairo_lang_sierra::{program::Program, ProgramParser};
@@ -999,93 +999,13 @@ mod test {
 
             [0]@0([0]: [1]) -> ([4]);
         "#).map_err(|e| e.to_string()).unwrap();
-        // fn run_test(lhs: u256, rhs: u256) -> (u256, u256) {
-        //     let q = lhs / rhs;
-        //     let r = lhs % rhs;
-        //     (q, r)
-        // }
-        static ref U256_SAFE_DIVMOD: Program = ProgramParser::new().parse(r#"
-            type [1] = u128 [storable: true, drop: true, dup: true, zero_sized: false];
-            type [2] = Struct<ut@core::integer::u256, [1], [1]> [storable: true, drop: true, dup: true, zero_sized: false];
-            type [8] = Struct<ut@Tuple, [2], [2]> [storable: true, drop: true, dup: true, zero_sized: false];
-            type [9] = Struct<ut@Tuple, [8]> [storable: true, drop: true, dup: true, zero_sized: false];
-            type [11] = U128MulGuarantee [storable: true, drop: false, dup: false, zero_sized: false];
-            type [0] = RangeCheck [storable: true, drop: false, dup: false, zero_sized: false];
-            type [6] = Struct<ut@core::panics::Panic> [storable: true, drop: true, dup: true, zero_sized: true];
-            type [5] = Array<[4]> [storable: true, drop: true, dup: false, zero_sized: false];
-            type [7] = Struct<ut@Tuple, [6], [5]> [storable: true, drop: true, dup: false, zero_sized: false];
-            type [10] = Enum<ut@core::panics::PanicResult::<((core::integer::u256, core::integer::u256),)>, [9], [7]> [storable: true, drop: true, dup: false, zero_sized: false];
-            type [12] = Const<[4], 5420154128225384396790819266608> [storable: false, drop: false, dup: false, zero_sized: false];
-            type [4] = felt252 [storable: true, drop: true, dup: true, zero_sized: false];
-            type [3] = NonZero<[2]> [storable: true, drop: true, dup: true, zero_sized: false];
-
-            libfunc [11] = dup<[2]>;
-            libfunc [10] = u256_is_zero;
-            libfunc [12] = branch_align;
-            libfunc [13] = drop<[2]>;
-            libfunc [9] = array_new<[4]>;
-            libfunc [14] = const_as_immediate<[12]>;
-            libfunc [15] = store_temp<[4]>;
-            libfunc [8] = array_append<[4]>;
-            libfunc [7] = struct_construct<[6]>;
-            libfunc [6] = struct_construct<[7]>;
-            libfunc [5] = enum_init<[10], 1>;
-            libfunc [16] = store_temp<[0]>;
-            libfunc [17] = store_temp<[10]>;
-            libfunc [4] = u256_safe_divmod;
-            libfunc [3] = u128_mul_guarantee_verify;
-            libfunc [2] = struct_construct<[8]>;
-            libfunc [1] = struct_construct<[9]>;
-            libfunc [0] = enum_init<[10], 0>;
-
-            [11]([2]) -> ([2], [3]); // 0
-            [10]([3]) { fallthrough() 15([4]) }; // 1
-            [12]() -> (); // 2
-            [13]([2]) -> (); // 3
-            [13]([1]) -> (); // 4
-            [9]() -> ([5]); // 5
-            [14]() -> ([6]); // 6
-            [15]([6]) -> ([6]); // 7
-            [8]([5], [6]) -> ([7]); // 8
-            [7]() -> ([8]); // 9
-            [6]([8], [7]) -> ([9]); // 10
-            [5]([9]) -> ([10]); // 11
-            [16]([0]) -> ([0]); // 12
-            [17]([10]) -> ([10]); // 13
-            return([0], [10]); // 14
-            [12]() -> (); // 15
-            [11]([1]) -> ([1], [11]); // 16
-            [4]([0], [11], [4]) -> ([12], [13], [14], [15]); // 17
-            [13]([14]) -> (); // 18
-            [3]([12], [15]) -> ([16]); // 19
-            [16]([16]) -> ([16]); // 20
-            [10]([2]) { fallthrough() 35([17]) }; // 21
-            [12]() -> (); // 22
-            [13]([13]) -> (); // 23
-            [13]([1]) -> (); // 24
-            [9]() -> ([18]); // 25
-            [14]() -> ([19]); // 26
-            [15]([19]) -> ([19]); // 27
-            [8]([18], [19]) -> ([20]); // 28
-            [7]() -> ([21]); // 29
-            [6]([21], [20]) -> ([22]); // 30
-            [5]([22]) -> ([23]); // 31
-            [16]([16]) -> ([16]); // 32
-            [17]([23]) -> ([23]); // 33
-            return([16], [23]); // 34
-            [12]() -> (); // 35
-            [4]([16], [1], [17]) -> ([24], [25], [26], [27]); // 36
-            [13]([25]) -> (); // 37
-            [3]([24], [27]) -> ([28]); // 38
-            [2]([13], [26]) -> ([29]); // 39
-            [1]([29]) -> ([30]); // 40
-            [0]([30]) -> ([31]); // 41
-            [16]([28]) -> ([28]); // 42
-            [17]([31]) -> ([31]); // 43
-            return([28], [31]); // 44
-
-            [0]@0([0]: [0], [1]: [2], [2]: [2]) -> ([0], [10]);
-        "#).map_err(|e| e.to_string()).unwrap();
+        static ref U256_SAFE_DIVMOD: (String, Program) = load_cairo!(
+            fn run_test(lhs: u256, rhs: u256) -> (u256, u256) {
+                let q = lhs / rhs;
+                let r = lhs % rhs;
+                (q, r)
+            }
+        );
         // use core::num::traits::Sqrt;
         // fn run_test(value: u256) -> u128 {
         //     value.sqrt()
@@ -1189,8 +1109,9 @@ mod test {
     fn u256_safe_divmod() {
         #[track_caller]
         fn run(lhs: (u128, u128), rhs: (u128, u128), result: Value) {
-            let return_value = run_sierra_program(
+            let return_value = run_program(
                 &U256_SAFE_DIVMOD,
+                "run_test",
                 &[
                     jit_struct!(lhs.1.into(), lhs.0.into()),
                     jit_struct!(rhs.1.into(), rhs.0.into()),
