@@ -48,25 +48,25 @@ enum RuntimeBinding {
 impl RuntimeBinding {
     const fn symbol(self) -> &'static str {
         match self {
-            RuntimeBinding::DebugPrint => "cairo_native_2_libfunc__debug__print",
-            RuntimeBinding::Pedersen => "cairo_native_2_libfunc__pedersen",
-            RuntimeBinding::HadesPermutation => "cairo_native_2_libfunc__hades_permutation",
+            RuntimeBinding::DebugPrint => "cairo_native__libfunc__debug__print",
+            RuntimeBinding::Pedersen => "cairo_native__libfunc__pedersen",
+            RuntimeBinding::HadesPermutation => "cairo_native__libfunc__hades_permutation",
             RuntimeBinding::EcStateTryFinalizeNz => {
-                "cairo_native_2_libfunc__ec__ec_state_try_finalize_nz"
+                "cairo_native__libfunc__ec__ec_state_try_finalize_nz"
             }
-            RuntimeBinding::EcStateAddMul => "cairo_native_2_libfunc__ec__ec_state_add_mul",
-            RuntimeBinding::EcStateInit => "cairo_native_2_libfunc__ec__ec_state_init",
-            RuntimeBinding::EcStateAdd => "cairo_native_2_libfunc__ec__ec_state_add",
-            RuntimeBinding::EcPointTryNewNz => "cairo_native_2_libfunc__ec__ec_point_try_new_nz",
-            RuntimeBinding::EcPointFromXNz => "cairo_native_2_libfunc__ec__ec_point_from_x_nz",
-            RuntimeBinding::DictNew => "cairo_native_2_dict_new",
-            RuntimeBinding::DictGet => "cairo_native_2_dict_get",
-            RuntimeBinding::DictGasRefund => "cairo_native_2_dict_gas_refund",
-            RuntimeBinding::DictDrop => "cairo_native_2_dict_drop",
-            RuntimeBinding::DictDup => "cairo_native_2_dict_dup",
-            RuntimeBinding::GetGasBuiltin => "cairo_native_2_get_costs_builtin",
+            RuntimeBinding::EcStateAddMul => "cairo_native__libfunc__ec__ec_state_add_mul",
+            RuntimeBinding::EcStateInit => "cairo_native__libfunc__ec__ec_state_init",
+            RuntimeBinding::EcStateAdd => "cairo_native__libfunc__ec__ec_state_add",
+            RuntimeBinding::EcPointTryNewNz => "cairo_native__libfunc__ec__ec_point_try_new_nz",
+            RuntimeBinding::EcPointFromXNz => "cairo_native__libfunc__ec__ec_point_from_x_nz",
+            RuntimeBinding::DictNew => "cairo_native__dict_new",
+            RuntimeBinding::DictGet => "cairo_native__dict_get",
+            RuntimeBinding::DictGasRefund => "cairo_native__dict_gas_refund",
+            RuntimeBinding::DictDrop => "cairo_native__dict_drop",
+            RuntimeBinding::DictDup => "cairo_native__dict_dup",
+            RuntimeBinding::GetGasBuiltin => "cairo_native__get_costs_builtin",
             #[cfg(feature = "with-cheatcode")]
-            RuntimeBinding::VtableCheatcode => "cairo_native_2_vtable_cheatcode",
+            RuntimeBinding::VtableCheatcode => "cairo_native__vtable_cheatcode",
         }
     }
 
