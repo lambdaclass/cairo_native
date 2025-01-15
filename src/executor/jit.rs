@@ -1,7 +1,9 @@
 use crate::{
     error::Error,
     execution_result::{ContractExecutionResult, ExecutionResult},
-    metadata::{felt252_dict::Felt252DictOverrides, gas::GasMetadata},
+    metadata::{
+        felt252_dict::Felt252DictOverrides, gas::GasMetadata, runtime_bindings::setup_runtime,
+    },
     module::NativeModule,
     starknet::{DummySyscallHandler, StarknetSyscallHandler},
     utils::{create_engine, generate_function_name},
@@ -53,13 +55,17 @@ impl<'m> JitNativeExecutor<'m> {
             mut metadata,
         } = native_module;
 
-        Ok(Self {
+        let executor = Self {
             engine: create_engine(&module, &metadata, opt_level),
             module,
             registry,
             gas_metadata: metadata.remove().ok_or(Error::MissingMetadata)?,
             dict_overrides: metadata.remove().unwrap_or_default(),
-        })
+        };
+
+        setup_runtime(|name| executor.find_symbol_ptr(name));
+
+        Ok(executor)
     }
 
     pub const fn program_registry(&self) -> &ProgramRegistry<CoreType, CoreLibfunc> {
