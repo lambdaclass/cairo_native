@@ -12,6 +12,4 @@ Comparing VM execution against Native produced diffs:
 
 The transaction were not compared in order. You should rerun the whole failing block to find the error root
 
-```
-{{ env.OUTPUT }}
-```
+- State Diffs Comparison: {{ env.COMPARISON_RESULT }}
