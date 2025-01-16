@@ -58,8 +58,9 @@ jobs:
       - name: Retreive cached dependecies
         uses: Swatinem/rust-cache@v2
         with:
-          workspaces: "starknet-replay -> target"
-          cache-directories: "cairo_native"
+          workspaces: |
+            starknet-replay
+            cairo_native
 
       - name: Build Cairo Native Runtime Library
         shell: bash
