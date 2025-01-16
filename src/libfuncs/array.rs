@@ -2073,57 +2073,136 @@ mod test {
     use crate::{
         utils::{
             felt252_str,
-            test::{jit_enum, jit_panic, jit_struct, load_cairo, run_program},
+            test::{jit_enum, jit_panic, jit_struct, load_cairo, run_program, run_sierra_program},
         },
         values::Value,
     };
+    use cairo_lang_sierra::ProgramParser;
     use pretty_assertions_sorted::assert_eq;
     use starknet_types_core::felt::Felt;
 
     #[test]
     fn run_roundtrip() {
-        let program = load_cairo!(
-            use array::ArrayTrait;
+        // use array::ArrayTrait;
+        // fn run_test(x: Array<u32>) -> Array<u32> {
+        //     x
+        // }
+        let program = ProgramParser::new()
+            .parse(
+                r#"
+            type [1] = Array<[0]> [storable: true, drop: true, dup: false, zero_sized: false];
+            type [0] = u32 [storable: true, drop: true, dup: true, zero_sized: false];
 
-            fn run_test(x: Array<u32>) -> Array<u32> {
-                x
-            }
-        );
-        let result = run_program(&program, "run_test", &[[1u32, 2u32].into()]).return_value;
+            libfunc [0] = store_temp<[1]>;
+
+            [0]([0]) -> ([0]); // 0
+            return([0]); // 1
+
+            [0]@0([0]: [1]) -> ([1]);
+        "#,
+            )
+            .map_err(|e| e.to_string())
+            .unwrap();
+
+        let result = run_sierra_program(&program, &[[1u32, 2u32].into()]).return_value;
 
         assert_eq!(result, Value::from([1u32, 2u32]));
     }
 
     #[test]
     fn run_append() {
-        let program = load_cairo! {
-            use array::ArrayTrait;
+        // use array::ArrayTrait;
+        // fn run_test() -> Array<u32> {
+        //     let mut numbers = ArrayTrait::new();
+        //     numbers.append(4_u32);
+        //     numbers
+        // }
+        let program = ProgramParser::new()
+            .parse(
+                r#"
+                type [1] = Array<[0]> [storable: true, drop: true, dup: false, zero_sized: false];
+                type [2] = Const<[0], 4> [storable: false, drop: false, dup: false, zero_sized: false];
+                type [0] = u32 [storable: true, drop: true, dup: true, zero_sized: false];
 
-            fn run_test() -> Array<u32> {
-                let mut numbers = ArrayTrait::new();
-                numbers.append(4_u32);
-                numbers
-            }
-        };
-        let result = run_program(&program, "run_test", &[]).return_value;
+                libfunc [1] = array_new<[0]>;
+                libfunc [3] = const_as_immediate<[2]>;
+                libfunc [4] = store_temp<[0]>;
+                libfunc [0] = array_append<[0]>;
+                libfunc [5] = store_temp<[1]>;
+
+                [1]() -> ([0]); // 0
+                [3]() -> ([1]); // 1
+                [4]([1]) -> ([1]); // 2
+                [0]([0], [1]) -> ([2]); // 3
+                [5]([2]) -> ([2]); // 4
+                return([2]); // 5
+
+                [0]@0() -> ([1]);
+        "#,
+            )
+            .map_err(|e| e.to_string())
+            .unwrap();
+
+        let result = run_sierra_program(&program, &[]).return_value;
 
         assert_eq!(result, [4u32].into());
     }
 
     #[test]
     fn run_len() {
-        let program = load_cairo!(
-            use array::ArrayTrait;
+        // use array::ArrayTrait;
+        // fn run_test() -> u32 {
+        //     let mut numbers = ArrayTrait::new();
+        //     numbers.append(4_u32);
+        //     numbers.append(3_u32);
+        //     numbers.append(2_u32);
+        //     numbers.len()
+        // }
+        let program = ProgramParser::new()
+            .parse(
+                r#"
+                type [1] = Array<[0]> [storable: true, drop: true, dup: false, zero_sized: false];
+                type [2] = Snapshot<[1]> [storable: true, drop: true, dup: true, zero_sized: false];
+                type [5] = Const<[0], 2> [storable: false, drop: false, dup: false, zero_sized: false];
+                type [4] = Const<[0], 3> [storable: false, drop: false, dup: false, zero_sized: false];
+                type [3] = Const<[0], 4> [storable: false, drop: false, dup: false, zero_sized: false];
+                type [0] = u32 [storable: true, drop: true, dup: true, zero_sized: false];
 
-            fn run_test() -> u32 {
-                let mut numbers = ArrayTrait::new();
-                numbers.append(4_u32);
-                numbers.append(3_u32);
-                numbers.append(2_u32);
-                numbers.len()
-            }
-        );
-        let result = run_program(&program, "run_test", &[]).return_value;
+                libfunc [2] = array_new<[0]>;
+                libfunc [4] = const_as_immediate<[3]>;
+                libfunc [9] = store_temp<[0]>;
+                libfunc [1] = array_append<[0]>;
+                libfunc [5] = const_as_immediate<[4]>;
+                libfunc [6] = const_as_immediate<[5]>;
+                libfunc [7] = snapshot_take<[1]>;
+                libfunc [8] = drop<[1]>;
+                libfunc [10] = store_temp<[2]>;
+                libfunc [0] = array_len<[0]>;
+
+                [2]() -> ([0]); // 0
+                [4]() -> ([1]); // 1
+                [9]([1]) -> ([1]); // 2
+                [1]([0], [1]) -> ([2]); // 3
+                [5]() -> ([3]); // 4
+                [9]([3]) -> ([3]); // 5
+                [1]([2], [3]) -> ([4]); // 6
+                [6]() -> ([5]); // 7
+                [9]([5]) -> ([5]); // 8
+                [1]([4], [5]) -> ([6]); // 9
+                [7]([6]) -> ([7], [8]); // 10
+                [8]([7]) -> (); // 11
+                [10]([8]) -> ([8]); // 12
+                [0]([8]) -> ([9]); // 13
+                [9]([9]) -> ([9]); // 14
+                return([9]); // 15
+
+                [0]@0() -> ([0]);
+        "#,
+            )
+            .map_err(|e| e.to_string())
+            .unwrap();
+
+        let result = run_sierra_program(&program, &[]).return_value;
 
         assert_eq!(result, 3u32.into());
     }
@@ -2132,7 +2211,6 @@ mod test {
     fn run_get() {
         let program = load_cairo!(
             use array::ArrayTrait;
-
             fn run_test() -> (u32, u32, u32, u32) {
                 let mut numbers = ArrayTrait::new();
                 numbers.append(4_u32);
@@ -2147,6 +2225,7 @@ mod test {
                 )
             }
         );
+
         let result = run_program(&program, "run_test", &[]).return_value;
 
         assert_eq!(
@@ -2167,7 +2246,6 @@ mod test {
     fn run_get_big() {
         let program = load_cairo!(
             use array::ArrayTrait;
-
             fn run_test() -> (u32, u32, u32, u32) {
                 let mut numbers = ArrayTrait::new();
                 numbers.append(4_u32);
@@ -2202,6 +2280,7 @@ mod test {
                 )
             }
         );
+
         let result = run_program(&program, "run_test", &[]).return_value;
 
         assert_eq!(
@@ -2220,9 +2299,17 @@ mod test {
 
     #[test]
     fn run_pop_front() {
+        // use array::ArrayTrait;
+        // fn run_test() -> u32 {
+        //     let mut numbers = ArrayTrait::new();
+        //     numbers.append(4_u32);
+        //     numbers.append(3_u32);
+        //     let _ = numbers.pop_front();
+        //     numbers.append(1_u32);
+        //     *numbers.at(0)
+        // }
         let program = load_cairo!(
             use array::ArrayTrait;
-
             fn run_test() -> u32 {
                 let mut numbers = ArrayTrait::new();
                 numbers.append(4_u32);
@@ -2232,6 +2319,7 @@ mod test {
                 *numbers.at(0)
             }
         );
+
         let result = run_program(&program, "run_test", &[]).return_value;
 
         assert_eq!(result, jit_enum!(0, jit_struct!(3u32.into())));
@@ -2239,49 +2327,181 @@ mod test {
 
     #[test]
     fn run_pop_front_result() {
-        let program = load_cairo!(
-            use array::ArrayTrait;
+        // use array::ArrayTrait;
+        // fn run_test() -> Option<u32> {
+        //     let mut numbers = ArrayTrait::new();
+        //     numbers.append(4_u32);
+        //     numbers.append(3_u32);
+        //     numbers.pop_front()
+        // }
+        let program = ProgramParser::new()
+            .parse(
+                r#"
+                type [1] = Array<[0]> [storable: true, drop: true, dup: false, zero_sized: false];
+                type [3] = Struct<ut@Tuple> [storable: true, drop: true, dup: true, zero_sized: true];
+                type [0] = u32 [storable: true, drop: true, dup: true, zero_sized: false];
+                type [4] = Enum<ut@core::option::Option::<core::integer::u32>, [0], [3]> [storable: true, drop: true, dup: true, zero_sized: false];
+                type [2] = Box<[0]> [storable: true, drop: true, dup: true, zero_sized: false];
+                type [6] = Const<[0], 3> [storable: false, drop: false, dup: false, zero_sized: false];
+                type [5] = Const<[0], 4> [storable: false, drop: false, dup: false, zero_sized: false];
 
-            fn run_test() -> Option<u32> {
-                let mut numbers = ArrayTrait::new();
-                numbers.append(4_u32);
-                numbers.append(3_u32);
-                numbers.pop_front()
-            }
-        );
-        let result = run_program(&program, "run_test", &[]).return_value;
+                libfunc [6] = array_new<[0]>;
+                libfunc [8] = const_as_immediate<[5]>;
+                libfunc [12] = store_temp<[0]>;
+                libfunc [5] = array_append<[0]>;
+                libfunc [9] = const_as_immediate<[6]>;
+                libfunc [13] = store_temp<[1]>;
+                libfunc [4] = array_pop_front<[0]>;
+                libfunc [10] = branch_align;
+                libfunc [11] = drop<[1]>;
+                libfunc [3] = unbox<[0]>;
+                libfunc [2] = enum_init<[4], 0>;
+                libfunc [14] = store_temp<[4]>;
+                libfunc [1] = struct_construct<[3]>;
+                libfunc [0] = enum_init<[4], 1>;
+
+                [6]() -> ([0]); // 0
+                [8]() -> ([1]); // 1
+                [12]([1]) -> ([1]); // 2
+                [5]([0], [1]) -> ([2]); // 3
+                [9]() -> ([3]); // 4
+                [12]([3]) -> ([3]); // 5
+                [5]([2], [3]) -> ([4]); // 6
+                [13]([4]) -> ([4]); // 7
+                [4]([4]) { fallthrough([5], [6]) 15([7]) }; // 8
+                [10]() -> (); // 9
+                [11]([5]) -> (); // 10
+                [3]([6]) -> ([8]); // 11
+                [2]([8]) -> ([9]); // 12
+                [14]([9]) -> ([9]); // 13
+                return([9]); // 14
+                [10]() -> (); // 15
+                [11]([7]) -> (); // 16
+                [1]() -> ([10]); // 17
+                [0]([10]) -> ([11]); // 18
+                [14]([11]) -> ([11]); // 19
+                return([11]); // 20
+
+                [0]@0() -> ([4]);
+        "#,
+            )
+            .map_err(|e| e.to_string())
+            .unwrap();
+
+        let result = run_sierra_program(&program, &[]).return_value;
 
         assert_eq!(result, jit_enum!(0, 4u32.into()));
 
-        let program = load_cairo!(
-            use array::ArrayTrait;
+        // use array::ArrayTrait;
+        // fn run_test() -> Option<u32> {
+        //     let mut numbers = ArrayTrait::new();
+        //     numbers.pop_front()
+        // }
+        let program = ProgramParser::new()
+            .parse(
+                r#"
+                type [1] = Array<[0]> [storable: true, drop: true, dup: false, zero_sized: false];
+                type [3] = Struct<ut@Tuple> [storable: true, drop: true, dup: true, zero_sized: true];
+                type [0] = u32 [storable: true, drop: true, dup: true, zero_sized: false];
+                type [4] = Enum<ut@core::option::Option::<core::integer::u32>, [0], [3]> [storable: true, drop: true, dup: true, zero_sized: false];
+                type [2] = Box<[0]> [storable: true, drop: true, dup: true, zero_sized: false];
 
-            fn run_test() -> Option<u32> {
-                let mut numbers = ArrayTrait::new();
-                numbers.pop_front()
-            }
-        );
-        let result = run_program(&program, "run_test", &[]).return_value;
+                libfunc [5] = array_new<[0]>;
+                libfunc [4] = array_pop_front<[0]>;
+                libfunc [7] = branch_align;
+                libfunc [8] = drop<[1]>;
+                libfunc [3] = unbox<[0]>;
+                libfunc [2] = enum_init<[4], 0>;
+                libfunc [9] = store_temp<[4]>;
+                libfunc [1] = struct_construct<[3]>;
+                libfunc [0] = enum_init<[4], 1>;
+
+                [5]() -> ([0]); // 0
+                [4]([0]) { fallthrough([1], [2]) 8([3]) }; // 1
+                [7]() -> (); // 2
+                [8]([1]) -> (); // 3
+                [3]([2]) -> ([4]); // 4
+                [2]([4]) -> ([5]); // 5
+                [9]([5]) -> ([5]); // 6
+                return([5]); // 7
+                [7]() -> (); // 8
+                [8]([3]) -> (); // 9
+                [1]() -> ([6]); // 10
+                [0]([6]) -> ([7]); // 11
+                [9]([7]) -> ([7]); // 12
+                return([7]); // 13
+
+                [0]@0() -> ([4]);
+        "#,
+            )
+            .map_err(|e| e.to_string())
+            .unwrap();
+
+        let result = run_sierra_program(&program, &[]).return_value;
 
         assert_eq!(result, jit_enum!(1, jit_struct!()));
     }
 
     #[test]
     fn run_pop_front_consume() {
-        let program = load_cairo!(
-            use array::ArrayTrait;
+        // use array::ArrayTrait;
+        // fn run_test() -> u32 {
+        //     let mut numbers = ArrayTrait::new();
+        //     numbers.append(4_u32);
+        //     numbers.append(3_u32);
+        //     match numbers.pop_front_consume() {
+        //         Option::Some((_, x)) => x,
+        //         Option::None(()) => 0_u32,
+        //     }
+        // }
+        let program = ProgramParser::new()
+            .parse(
+                r#"
+                type [1] = Array<[0]> [storable: true, drop: true, dup: false, zero_sized: false];
+                type [5] = Const<[0], 0> [storable: false, drop: false, dup: false, zero_sized: false];
+                type [2] = Box<[0]> [storable: true, drop: true, dup: true, zero_sized: false];
+                type [4] = Const<[0], 3> [storable: false, drop: false, dup: false, zero_sized: false];
+                type [3] = Const<[0], 4> [storable: false, drop: false, dup: false, zero_sized: false];
+                type [0] = u32 [storable: true, drop: true, dup: true, zero_sized: false];
 
-            fn run_test() -> u32 {
-                let mut numbers = ArrayTrait::new();
-                numbers.append(4_u32);
-                numbers.append(3_u32);
-                match numbers.pop_front_consume() {
-                    Option::Some((_, x)) => x,
-                    Option::None(()) => 0_u32,
-                }
-            }
-        );
-        let result = run_program(&program, "run_test", &[]).return_value;
+                libfunc [3] = array_new<[0]>;
+                libfunc [5] = const_as_immediate<[3]>;
+                libfunc [10] = store_temp<[0]>;
+                libfunc [2] = array_append<[0]>;
+                libfunc [6] = const_as_immediate<[4]>;
+                libfunc [11] = store_temp<[1]>;
+                libfunc [1] = array_pop_front_consume<[0]>;
+                libfunc [7] = branch_align;
+                libfunc [8] = drop<[1]>;
+                libfunc [0] = unbox<[0]>;
+                libfunc [9] = const_as_immediate<[5]>;
+
+                [3]() -> ([0]); // 0
+                [5]() -> ([1]); // 1
+                [10]([1]) -> ([1]); // 2
+                [2]([0], [1]) -> ([2]); // 3
+                [6]() -> ([3]); // 4
+                [10]([3]) -> ([3]); // 5
+                [2]([2], [3]) -> ([4]); // 6
+                [11]([4]) -> ([4]); // 7
+                [1]([4]) { fallthrough([5], [6]) 14() }; // 8
+                [7]() -> (); // 9
+                [8]([5]) -> (); // 10
+                [0]([6]) -> ([7]); // 11
+                [10]([7]) -> ([7]); // 12
+                return([7]); // 13
+                [7]() -> (); // 14
+                [9]() -> ([8]); // 15
+                [10]([8]) -> ([8]); // 16
+                return([8]); // 17
+
+                [0]@0() -> ([0]);
+        "#,
+            )
+            .map_err(|e| e.to_string())
+            .unwrap();
+
+        let result = run_sierra_program(&program, &[]).return_value;
 
         assert_eq!(result, 4u32.into());
     }
@@ -2290,7 +2510,6 @@ mod test {
     fn run_pop_back() {
         let program = load_cairo!(
             use array::ArrayTrait;
-
             fn run_test() -> (Option<@u32>, Option<@u32>, Option<@u32>, Option<@u32>) {
                 let mut numbers = ArrayTrait::new();
                 numbers.append(4_u32);
@@ -2305,6 +2524,7 @@ mod test {
                 )
             }
         );
+
         let result = run_program(&program, "run_test", &[]).return_value;
 
         assert_eq!(
@@ -2332,7 +2552,6 @@ mod test {
             use array::SpanTrait;
             use option::OptionTrait;
             use box::BoxTrait;
-
             fn run_test() -> u32 {
                 let mut data: Array<u32> = ArrayTrait::new(); // Alloca (freed).
                 data.append(1_u32);
@@ -2349,8 +2568,8 @@ mod test {
                 data.append(5_u32);
                 *slice.get(1).unwrap().unbox()
             }
-
         );
+
         let result = run_program(&program, "run_test", &[]).return_value;
 
         assert_eq!(result, jit_enum!(0, jit_struct!(3u32.into())));
@@ -2364,7 +2583,6 @@ mod test {
             use array::SpanTrait;
             use option::OptionTrait;
             use box::BoxTrait;
-
             fn run_test() -> u32 {
                 let mut data: Array<u32> = ArrayTrait::new();
                 data.append(1_u32);
@@ -2377,6 +2595,7 @@ mod test {
                 *slice.get(0).unwrap().unbox()
             }
         );
+
         let result = run_program(&program, "run_test", &[]).return_value;
 
         assert_eq!(
@@ -2389,13 +2608,79 @@ mod test {
 
     #[test]
     fn run_slice_empty_array() {
-        let program = load_cairo!(
-            fn run_test() -> Span<felt252> {
-                let x: Span<felt252> = array![].span();
-                x.slice(0, 0)
-            }
-        );
-        let result = run_program(&program, "run_test", &[]).return_value;
+        // fn run_test() -> Span<felt252> {
+        //     let x: Span<felt252> = array![].span();
+        //     x.slice(0, 0)
+        // }
+        let program = ProgramParser::new()
+            .parse(
+                r#"
+                type [2] = Array<[1]> [storable: true, drop: true, dup: false, zero_sized: false];
+                type [7] = Struct<ut@core::panics::Panic> [storable: true, drop: true, dup: true, zero_sized: true];
+                type [8] = Struct<ut@Tuple, [7], [2]> [storable: true, drop: true, dup: false, zero_sized: false];
+                type [11] = Const<[1], 1637570914057682275393755530660268060279989363> [storable: false, drop: false, dup: false, zero_sized: false];
+                type [3] = Snapshot<[2]> [storable: true, drop: true, dup: true, zero_sized: false];
+                type [5] = Struct<ut@core::array::Span::<core::felt252>, [3]> [storable: true, drop: true, dup: true, zero_sized: false];
+                type [6] = Struct<ut@Tuple, [5]> [storable: true, drop: true, dup: true, zero_sized: false];
+                type [9] = Enum<ut@core::panics::PanicResult::<(core::array::Span::<core::felt252>,)>, [6], [8]> [storable: true, drop: true, dup: false, zero_sized: false];
+                type [0] = RangeCheck [storable: true, drop: false, dup: false, zero_sized: false];
+                type [10] = Const<[4], 0> [storable: false, drop: false, dup: false, zero_sized: false];
+                type [4] = u32 [storable: true, drop: true, dup: true, zero_sized: false];
+                type [1] = felt252 [storable: true, drop: true, dup: true, zero_sized: false];
+
+                libfunc [4] = array_new<[1]>;
+                libfunc [10] = snapshot_take<[2]>;
+                libfunc [11] = drop<[2]>;
+                libfunc [12] = const_as_immediate<[10]>;
+                libfunc [15] = store_temp<[4]>;
+                libfunc [8] = array_slice<[1]>;
+                libfunc [13] = branch_align;
+                libfunc [7] = struct_construct<[5]>;
+                libfunc [6] = struct_construct<[6]>;
+                libfunc [5] = enum_init<[9], 0>;
+                libfunc [16] = store_temp<[0]>;
+                libfunc [17] = store_temp<[9]>;
+                libfunc [14] = const_as_immediate<[11]>;
+                libfunc [18] = store_temp<[1]>;
+                libfunc [3] = array_append<[1]>;
+                libfunc [2] = struct_construct<[7]>;
+                libfunc [1] = struct_construct<[8]>;
+                libfunc [0] = enum_init<[9], 1>;
+
+                [4]() -> ([1]); // 0
+                [10]([1]) -> ([2], [3]); // 1
+                [11]([2]) -> (); // 2
+                [12]() -> ([4]); // 3
+                [12]() -> ([5]); // 4
+                [15]([4]) -> ([4]); // 5
+                [15]([5]) -> ([5]); // 6
+                [8]([0], [3], [4], [5]) { fallthrough([6], [7]) 15([8]) }; // 7
+                [13]() -> (); // 8
+                [7]([7]) -> ([9]); // 9
+                [6]([9]) -> ([10]); // 10
+                [5]([10]) -> ([11]); // 11
+                [16]([6]) -> ([6]); // 12
+                [17]([11]) -> ([11]); // 13
+                return([6], [11]); // 14
+                [13]() -> (); // 15
+                [4]() -> ([12]); // 16
+                [14]() -> ([13]); // 17
+                [18]([13]) -> ([13]); // 18
+                [3]([12], [13]) -> ([14]); // 19
+                [2]() -> ([15]); // 20
+                [1]([15], [14]) -> ([16]); // 21
+                [0]([16]) -> ([17]); // 22
+                [16]([8]) -> ([8]); // 23
+                [17]([17]) -> ([17]); // 24
+                return([8], [17]); // 25
+
+                [0]@0([0]: [0]) -> ([0], [9]);
+        "#,
+            )
+            .map_err(|e| e.to_string())
+            .unwrap();
+
+        let result = run_sierra_program(&program, &[]).return_value;
 
         assert_eq!(
             result,
@@ -2419,12 +2704,12 @@ mod test {
             mod felt252_span_from_tuple {
                 pub extern fn span_from_tuple<T>(struct_like: Box<@T>) -> @Array<felt252> nopanic;
             }
-
             fn run_test() -> Array<felt252> {
                 let span = felt252_span_from_tuple::span_from_tuple(BoxTrait::new(@(10, 20, 30)));
                 span.clone()
             }
         );
+
         let result = run_program(&program, "run_test", &[]).return_value;
 
         assert_eq!(
@@ -2448,7 +2733,6 @@ mod test {
                     struct_like: Box<@T>
                 ) -> @Array<(felt252, felt252, felt252)> nopanic;
             }
-
             fn run_test() {
                 let multi_tuple = ((10, 20, 30), (40, 50, 60), (70, 80, 90));
                 let span = tuple_span_from_tuple::span_from_tuple(BoxTrait::new(@multi_tuple));
@@ -2457,6 +2741,7 @@ mod test {
                 assert!(*span[2] == (70, 80, 90));
             }
         );
+
         let result = run_program(&program, "run_test", &[]).return_value;
 
         assert_eq!(result, jit_enum!(0, jit_struct!(jit_struct!())));
@@ -2464,57 +2749,146 @@ mod test {
 
     #[test]
     fn seq_append1() {
-        let program = load_cairo!(
-            use array::ArrayTrait;
+        // use array::ArrayTrait;
+        // fn run_test() -> Array<u32> {
+        //     let mut data = ArrayTrait::new();
+        //     data.append(1);
+        //     data
+        // }
+        let program = ProgramParser::new()
+            .parse(
+                r#"
+                type [1] = Array<[0]> [storable: true, drop: true, dup: false, zero_sized: false];
+                type [2] = Const<[0], 1> [storable: false, drop: false, dup: false, zero_sized: false];
+                type [0] = u32 [storable: true, drop: true, dup: true, zero_sized: false];
 
-            fn run_test() -> Array<u32> {
-                let mut data = ArrayTrait::new();
-                data.append(1);
-                data
-            }
-        );
+                libfunc [1] = array_new<[0]>;
+                libfunc [3] = const_as_immediate<[2]>;
+                libfunc [4] = store_temp<[0]>;
+                libfunc [0] = array_append<[0]>;
+                libfunc [5] = store_temp<[1]>;
+
+                [1]() -> ([0]); // 0
+                [3]() -> ([1]); // 1
+                [4]([1]) -> ([1]); // 2
+                [0]([0], [1]) -> ([2]); // 3
+                [5]([2]) -> ([2]); // 4
+                return([2]); // 5
+
+                [0]@0() -> ([1]);
+        "#,
+            )
+            .map_err(|e| e.to_string())
+            .unwrap();
 
         assert_eq!(
-            run_program(&program, "run_test", &[]).return_value,
+            run_sierra_program(&program, &[]).return_value,
             Value::from([1u32]),
         );
     }
 
     #[test]
     fn seq_append2() {
-        let program = load_cairo!(
-            use array::ArrayTrait;
+        // use array::ArrayTrait;
+        // fn run_test() -> Array<u32> {
+        //     let mut data = ArrayTrait::new();
+        //     data.append(1);
+        //     data.append(2);
+        //     data
+        // }
+        let program = ProgramParser::new()
+            .parse(
+                r#"
+                type [1] = Array<[0]> [storable: true, drop: true, dup: false, zero_sized: false];
+                type [3] = Const<[0], 2> [storable: false, drop: false, dup: false, zero_sized: false];
+                type [2] = Const<[0], 1> [storable: false, drop: false, dup: false, zero_sized: false];
+                type [0] = u32 [storable: true, drop: true, dup: true, zero_sized: false];
 
-            fn run_test() -> Array<u32> {
-                let mut data = ArrayTrait::new();
-                data.append(1);
-                data.append(2);
-                data
-            }
-        );
+                libfunc [1] = array_new<[0]>;
+                libfunc [3] = const_as_immediate<[2]>;
+                libfunc [5] = store_temp<[0]>;
+                libfunc [0] = array_append<[0]>;
+                libfunc [4] = const_as_immediate<[3]>;
+                libfunc [6] = store_temp<[1]>;
+
+                [1]() -> ([0]); // 0
+                [3]() -> ([1]); // 1
+                [5]([1]) -> ([1]); // 2
+                [0]([0], [1]) -> ([2]); // 3
+                [4]() -> ([3]); // 4
+                [5]([3]) -> ([3]); // 5
+                [0]([2], [3]) -> ([4]); // 6
+                [6]([4]) -> ([4]); // 7
+                return([4]); // 8
+
+                [0]@0() -> ([1]);
+        "#,
+            )
+            .map_err(|e| e.to_string())
+            .unwrap();
 
         assert_eq!(
-            run_program(&program, "run_test", &[]).return_value,
+            run_sierra_program(&program, &[]).return_value,
             Value::from([1u32, 2u32]),
         );
     }
 
     #[test]
     fn seq_append2_popf1() {
-        let program = load_cairo!(
-            use array::ArrayTrait;
+        // use array::ArrayTrait;
+        // fn run_test() -> Array<u32> {
+        //     let mut data = ArrayTrait::new();
+        //     data.append(1);
+        //     data.append(2);
+        //     let _ = data.pop_front();
+        //     data
+        // }
+        let program = ProgramParser::new()
+            .parse(
+                r#"
+                type [1] = Array<[0]> [storable: true, drop: true, dup: false, zero_sized: false];
+                type [2] = Box<[0]> [storable: true, drop: true, dup: true, zero_sized: false];
+                type [4] = Const<[0], 2> [storable: false, drop: false, dup: false, zero_sized: false];
+                type [3] = Const<[0], 1> [storable: false, drop: false, dup: false, zero_sized: false];
+                type [0] = u32 [storable: true, drop: true, dup: true, zero_sized: false];
 
-            fn run_test() -> Array<u32> {
-                let mut data = ArrayTrait::new();
-                data.append(1);
-                data.append(2);
-                let _ = data.pop_front();
-                data
-            }
-        );
+                libfunc [3] = array_new<[0]>;
+                libfunc [5] = const_as_immediate<[3]>;
+                libfunc [9] = store_temp<[0]>;
+                libfunc [2] = array_append<[0]>;
+                libfunc [6] = const_as_immediate<[4]>;
+                libfunc [10] = store_temp<[1]>;
+                libfunc [1] = array_pop_front<[0]>;
+                libfunc [7] = branch_align;
+                libfunc [0] = unbox<[0]>;
+                libfunc [8] = drop<[0]>;
+
+                [3]() -> ([0]); // 0
+                [5]() -> ([1]); // 1
+                [9]([1]) -> ([1]); // 2
+                [2]([0], [1]) -> ([2]); // 3
+                [6]() -> ([3]); // 4
+                [9]([3]) -> ([3]); // 5
+                [2]([2], [3]) -> ([4]); // 6
+                [10]([4]) -> ([4]); // 7
+                [1]([4]) { fallthrough([5], [6]) 14([7]) }; // 8
+                [7]() -> (); // 9
+                [0]([6]) -> ([8]); // 10
+                [8]([8]) -> (); // 11
+                [10]([5]) -> ([5]); // 12
+                return([5]); // 13
+                [7]() -> (); // 14
+                [10]([7]) -> ([7]); // 15
+                return([7]); // 16
+
+                [0]@0() -> ([1]);
+        "#,
+            )
+            .map_err(|e| e.to_string())
+            .unwrap();
 
         assert_eq!(
-            run_program(&program, "run_test", &[]).return_value,
+            run_sierra_program(&program, &[]).return_value,
             Value::from([2u32]),
         );
     }
@@ -2523,7 +2897,6 @@ mod test {
     fn seq_append2_popb1() {
         let program = load_cairo!(
             use array::ArrayTrait;
-
             fn run_test() -> Span<u32> {
                 let mut data = ArrayTrait::new();
                 data.append(1);
@@ -2542,20 +2915,62 @@ mod test {
 
     #[test]
     fn seq_append1_popf1_append1() {
-        let program = load_cairo!(
-            use array::ArrayTrait;
+        // use array::ArrayTrait;
+        // fn run_test() -> Array<u32> {
+        //     let mut data = ArrayTrait::new();
+        //     data.append(1);
+        //     let _ = data.pop_front();
+        //     data.append(2);
+        //     data
+        // }
+        let program = ProgramParser::new()
+            .parse(
+                r#"
+                type [1] = Array<[0]> [storable: true, drop: true, dup: false, zero_sized: false];
+                type [4] = Const<[0], 2> [storable: false, drop: false, dup: false, zero_sized: false];
+                type [2] = Box<[0]> [storable: true, drop: true, dup: true, zero_sized: false];
+                type [3] = Const<[0], 1> [storable: false, drop: false, dup: false, zero_sized: false];
+                type [0] = u32 [storable: true, drop: true, dup: true, zero_sized: false];
 
-            fn run_test() -> Array<u32> {
-                let mut data = ArrayTrait::new();
-                data.append(1);
-                let _ = data.pop_front();
-                data.append(2);
-                data
-            }
-        );
+                libfunc [3] = array_new<[0]>;
+                libfunc [5] = const_as_immediate<[3]>;
+                libfunc [10] = store_temp<[0]>;
+                libfunc [0] = array_append<[0]>;
+                libfunc [11] = store_temp<[1]>;
+                libfunc [2] = array_pop_front<[0]>;
+                libfunc [6] = branch_align;
+                libfunc [1] = unbox<[0]>;
+                libfunc [7] = drop<[0]>;
+                libfunc [8] = jump;
+                libfunc [9] = const_as_immediate<[4]>;
+
+                [3]() -> ([0]); // 0
+                [5]() -> ([1]); // 1
+                [10]([1]) -> ([1]); // 2
+                [0]([0], [1]) -> ([2]); // 3
+                [11]([2]) -> ([2]); // 4
+                [2]([2]) { fallthrough([3], [4]) 11([5]) }; // 5
+                [6]() -> (); // 6
+                [1]([4]) -> ([6]); // 7
+                [7]([6]) -> (); // 8
+                [11]([3]) -> ([7]); // 9
+                [8]() { 13() }; // 10
+                [6]() -> (); // 11
+                [11]([5]) -> ([7]); // 12
+                [9]() -> ([8]); // 13
+                [10]([8]) -> ([8]); // 14
+                [0]([7], [8]) -> ([9]); // 15
+                [11]([9]) -> ([9]); // 16
+                return([9]); // 17
+
+                [0]@0() -> ([1]);
+        "#,
+            )
+            .map_err(|e| e.to_string())
+            .unwrap();
 
         assert_eq!(
-            run_program(&program, "run_test", &[]).return_value,
+            run_sierra_program(&program, &[]).return_value,
             Value::from([2u32]),
         );
     }
@@ -2564,7 +2979,6 @@ mod test {
     fn seq_append1_first() {
         let program = load_cairo!(
             use array::ArrayTrait;
-
             fn run_test() -> u32 {
                 let mut data = ArrayTrait::new();
                 data.append(1);
@@ -2589,7 +3003,6 @@ mod test {
     fn seq_append2_first() {
         let program = load_cairo!(
             use array::ArrayTrait;
-
             fn run_test() -> u32 {
                 let mut data = ArrayTrait::new();
                 data.append(1);
@@ -2615,7 +3028,6 @@ mod test {
     fn seq_append2_popf1_first() {
         let program = load_cairo!(
             use array::ArrayTrait;
-
             fn run_test() -> u32 {
                 let mut data = ArrayTrait::new();
                 data.append(1);
@@ -2642,7 +3054,6 @@ mod test {
     fn seq_append2_popb1_last() {
         let program = load_cairo!(
             use array::ArrayTrait;
-
             fn run_test() -> u32 {
                 let mut data = ArrayTrait::new();
                 data.append(1);
@@ -2671,7 +3082,6 @@ mod test {
     fn seq_append1_popf1_append1_first() {
         let program = load_cairo!(
             use array::ArrayTrait;
-
             fn run_test() -> u32 {
                 let mut data = ArrayTrait::new();
                 data.append(1);
@@ -2720,7 +3130,6 @@ mod test {
     fn array_pop_back_state() {
         let program = load_cairo!(
             use array::ArrayTrait;
-
             fn run_test() -> Span<u32> {
                 let mut numbers = ArrayTrait::new();
                 numbers.append(1_u32);
@@ -2740,15 +3149,39 @@ mod test {
     #[test]
     fn array_empty_span() {
         // Tests snapshot_take on a empty array.
-        let program = load_cairo!(
-            fn run_test() -> Span<u32> {
-                let x = ArrayTrait::new();
-                x.span()
-            }
-        );
+        // fn run_test() -> Span<u32> {
+        //     let x = ArrayTrait::new();
+        //     x.span()
+        // }
+        let program = ProgramParser::new()
+            .parse(
+                r#"
+                type [1] = Array<[0]> [storable: true, drop: true, dup: false, zero_sized: false];
+                type [2] = Snapshot<[1]> [storable: true, drop: true, dup: true, zero_sized: false];
+                type [3] = Struct<ut@core::array::Span::<core::integer::u32>, [2]> [storable: true, drop: true, dup: true, zero_sized: false];
+                type [0] = u32 [storable: true, drop: true, dup: true, zero_sized: false];
+
+                libfunc [1] = array_new<[0]>;
+                libfunc [3] = snapshot_take<[1]>;
+                libfunc [4] = drop<[1]>;
+                libfunc [0] = struct_construct<[3]>;
+                libfunc [5] = store_temp<[3]>;
+
+                [1]() -> ([0]); // 0
+                [3]([0]) -> ([1], [2]); // 1
+                [4]([1]) -> (); // 2
+                [0]([2]) -> ([3]); // 3
+                [5]([3]) -> ([3]); // 4
+                return([3]); // 5
+
+                [0]@0() -> ([3]);
+        "#,
+            )
+            .map_err(|e| e.to_string())
+            .unwrap();
 
         assert_eq!(
-            run_program(&program, "run_test", &[]).return_value,
+            run_sierra_program(&program, &[]).return_value,
             jit_struct!(Value::Array(vec![])),
         );
     }
@@ -2762,7 +3195,6 @@ mod test {
                 let x = self.pop_back();
                 x
             }
-
             fn run_test() -> Option<@u64> {
                 let mut data = array![2].span();
                 let x = pop_elem(data);
@@ -2785,7 +3217,6 @@ mod test {
                 let x = self.pop_back();
                 x
             }
-
             fn run_test() -> Array<u64> {
                 let mut data = array![1, 2];
                 let _x = pop_elem(data.span());
@@ -2801,18 +3232,71 @@ mod test {
 
     #[test]
     fn tuple_from_span() {
-        let program = load_cairo! {
-            use core::array::{tuple_from_span, FixedSizedArrayInfoImpl};
+        // use core::array::{tuple_from_span, FixedSizedArrayInfoImpl};
+        // fn run_test(x: Array<felt252>) -> [felt252; 3] {
+        //     (*tuple_from_span::<[felt252; 3], FixedSizedArrayInfoImpl<felt252, 3>>(@x).unwrap()).unbox()
+        // }
+        let program = ProgramParser::new()
+            .parse(
+                r#"
+                type [1] = Array<[0]> [storable: true, drop: true, dup: false, zero_sized: false];
+                type [6] = Struct<ut@core::panics::Panic> [storable: true, drop: true, dup: true, zero_sized: true];
+                type [7] = Struct<ut@Tuple, [6], [1]> [storable: true, drop: true, dup: false, zero_sized: false];
+                type [9] = Const<[0], 29721761890975875353235833581453094220424382983267374> [storable: false, drop: false, dup: false, zero_sized: false];
+                type [0] = felt252 [storable: true, drop: true, dup: true, zero_sized: false];
+                type [3] = Struct<ut@Tuple, [0], [0], [0]> [storable: true, drop: true, dup: true, zero_sized: false];
+                type [5] = Struct<ut@Tuple, [3]> [storable: true, drop: true, dup: true, zero_sized: false];
+                type [8] = Enum<ut@core::panics::PanicResult::<([core::felt252; 3],)>, [5], [7]> [storable: true, drop: true, dup: false, zero_sized: false];
+                type [4] = Box<[3]> [storable: true, drop: true, dup: true, zero_sized: false];
+                type [2] = Snapshot<[1]> [storable: true, drop: true, dup: true, zero_sized: false];
 
-            fn run_test(x: Array<felt252>) -> [felt252; 3] {
-                (*tuple_from_span::<[felt252; 3], FixedSizedArrayInfoImpl<felt252, 3>>(@x).unwrap()).unbox()
-            }
-        };
+                libfunc [9] = snapshot_take<[1]>;
+                libfunc [10] = drop<[1]>;
+                libfunc [8] = tuple_from_span<[3]>;
+                libfunc [11] = branch_align;
+                libfunc [12] = rename<[4]>;
+                libfunc [7] = unbox<[3]>;
+                libfunc [6] = struct_construct<[5]>;
+                libfunc [5] = enum_init<[8], 0>;
+                libfunc [14] = store_temp<[8]>;
+                libfunc [4] = array_new<[0]>;
+                libfunc [13] = const_as_immediate<[9]>;
+                libfunc [15] = store_temp<[0]>;
+                libfunc [3] = array_append<[0]>;
+                libfunc [2] = struct_construct<[6]>;
+                libfunc [1] = struct_construct<[7]>;
+                libfunc [0] = enum_init<[8], 1>;
+
+                [9]([0]) -> ([1], [2]); // 0
+                [10]([1]) -> (); // 1
+                [8]([2]) { fallthrough([3]) 10() }; // 2
+                [11]() -> (); // 3
+                [12]([3]) -> ([4]); // 4
+                [7]([4]) -> ([5]); // 5
+                [6]([5]) -> ([6]); // 6
+                [5]([6]) -> ([7]); // 7
+                [14]([7]) -> ([7]); // 8
+                return([7]); // 9
+                [11]() -> (); // 10
+                [4]() -> ([8]); // 11
+                [13]() -> ([9]); // 12
+                [15]([9]) -> ([9]); // 13
+                [3]([8], [9]) -> ([10]); // 14
+                [2]() -> ([11]); // 15
+                [1]([11], [10]) -> ([12]); // 16
+                [0]([12]) -> ([13]); // 17
+                [14]([13]) -> ([13]); // 18
+                return([13]); // 19
+
+                [0]@0([0]: [1]) -> ([8]);
+        "#,
+            )
+            .map_err(|e| e.to_string())
+            .unwrap();
 
         assert_eq!(
-            run_program(
+            run_sierra_program(
                 &program,
-                "run_test",
                 &[Value::Array(vec![
                     Value::Felt252(1.into()),
                     Value::Felt252(2.into()),
@@ -2840,18 +3324,52 @@ mod test {
 
     #[test]
     fn tuple_from_span_failed() {
-        let program = load_cairo! {
-            use core::array::{tuple_from_span, FixedSizedArrayInfoImpl};
+        // use core::array::{tuple_from_span, FixedSizedArrayInfoImpl};
+        // fn run_test(x: Array<felt252>) -> Option<@Box<[core::felt252; 3]>> {
+        //     tuple_from_span::<[felt252; 3], FixedSizedArrayInfoImpl<felt252, 3>>(@x)
+        // }
+        let program = ProgramParser::new()
+            .parse(
+                r#"
+                type [1] = Array<[0]> [storable: true, drop: true, dup: false, zero_sized: false];
+                type [5] = Struct<ut@Tuple> [storable: true, drop: true, dup: true, zero_sized: true];
+                type [0] = felt252 [storable: true, drop: true, dup: true, zero_sized: false];
+                type [4] = Box<[3]> [storable: true, drop: true, dup: true, zero_sized: false];
+                type [6] = Enum<ut@core::option::Option::<@core::box::Box::<[core::felt252; 3]>>, [4], [5]> [storable: true, drop: true, dup: true, zero_sized: false];
+                type [3] = Struct<ut@Tuple, [0], [0], [0]> [storable: true, drop: true, dup: true, zero_sized: false];
+                type [2] = Snapshot<[1]> [storable: true, drop: true, dup: true, zero_sized: false];
 
-            fn run_test(x: Array<felt252>) -> Option<@Box<[core::felt252; 3]>> {
-                tuple_from_span::<[felt252; 3], FixedSizedArrayInfoImpl<felt252, 3>>(@x)
-            }
-        };
+                libfunc [4] = snapshot_take<[1]>;
+                libfunc [5] = drop<[1]>;
+                libfunc [3] = tuple_from_span<[3]>;
+                libfunc [6] = branch_align;
+                libfunc [2] = enum_init<[6], 0>;
+                libfunc [7] = store_temp<[6]>;
+                libfunc [1] = struct_construct<[5]>;
+                libfunc [0] = enum_init<[6], 1>;
+
+                [4]([0]) -> ([1], [2]); // 0
+                [5]([1]) -> (); // 1
+                [3]([2]) { fallthrough([3]) 7() }; // 2
+                [6]() -> (); // 3
+                [2]([3]) -> ([4]); // 4
+                [7]([4]) -> ([4]); // 5
+                return([4]); // 6
+                [6]() -> (); // 7
+                [1]() -> ([5]); // 8
+                [0]([5]) -> ([6]); // 9
+                [7]([6]) -> ([6]); // 10
+                return([6]); // 11
+
+                [0]@0([0]: [1]) -> ([6]);
+        "#,
+            )
+            .map_err(|e| e.to_string())
+            .unwrap();
 
         assert_eq!(
-            run_program(
+            run_sierra_program(
                 &program,
-                "run_test",
                 &[Value::Array(vec![
                     Value::Felt252(1.into()),
                     Value::Felt252(2.into()),
@@ -2864,16 +3382,21 @@ mod test {
 
     #[test]
     fn snapshot_multi_pop_front() {
+        // use array::ArrayTrait;
+        // fn run_test() -> (Span<felt252>, @Box<[felt252; 3]>) {
+        //     let mut numbers = array![1, 2, 3, 4, 5, 6].span();
+        //     let popped = numbers.multi_pop_front::<3>().unwrap();
+        //     (numbers, popped)
+        // }
         let program = load_cairo!(
             use array::ArrayTrait;
-
             fn run_test() -> (Span<felt252>, @Box<[felt252; 3]>) {
                 let mut numbers = array![1, 2, 3, 4, 5, 6].span();
                 let popped = numbers.multi_pop_front::<3>().unwrap();
-
                 (numbers, popped)
             }
         );
+
         let result = run_program(&program, "run_test", &[]).return_value;
 
         assert_eq!(
@@ -2906,13 +3429,10 @@ mod test {
     fn snapshot_failed_multi_pop_front() {
         let program = load_cairo!(
             use array::ArrayTrait;
-
             fn run_test() -> Span<felt252> {
                 let mut numbers = array![1, 2].span();
-
                 // should fail (return none)
                 assert!(numbers.multi_pop_front::<3>().is_none());
-
                 numbers
             }
         );
@@ -2939,7 +3459,6 @@ mod test {
     fn snapshot_multi_pop_back() {
         let program = load_cairo!(
             use array::ArrayTrait;
-
             fn run_test() -> (Span<felt252>, @Box<[felt252; 3]>) {
                 let mut numbers = array![1, 2, 3, 4, 5, 6].span();
                 let popped = numbers.multi_pop_back::<3>().unwrap();
@@ -2947,6 +3466,7 @@ mod test {
                 (numbers, popped)
             }
         );
+
         let result = run_program(&program, "run_test", &[]).return_value;
 
         assert_eq!(
@@ -2979,17 +3499,13 @@ mod test {
     fn snapshot_failed_multi_pop_back() {
         let program = load_cairo!(
             use array::ArrayTrait;
-
             fn run_test() -> Span<felt252> {
                 let mut numbers = array![1, 2].span();
-
                 // should fail (return none)
                 assert!(numbers.multi_pop_back::<3>().is_none());
-
                 numbers
             }
         );
-
         let result = run_program(&program, "run_test", &[]).return_value;
 
         assert_eq!(
@@ -3012,15 +3528,14 @@ mod test {
     fn snapshot_multi_pop_back_front() {
         let program = load_cairo!(
             use array::ArrayTrait;
-
             fn run_test() -> (Span<felt252>, @Box<[felt252; 2]>, @Box<[felt252; 2]>) {
                 let mut numbers = array![1, 2, 3, 4, 5, 6].span();
                 let popped_front = numbers.multi_pop_front::<2>().unwrap();
                 let popped_back = numbers.multi_pop_back::<2>().unwrap();
-
                 (numbers, popped_front, popped_back)
             }
         );
+
         let result = run_program(&program, "run_test", &[]).return_value;
 
         assert_eq!(
@@ -3049,16 +3564,15 @@ mod test {
     /// Test to ensure that the returned element in `array_get` does NOT get dropped.
     #[test]
     fn array_get_avoid_dropping_element() {
-        let program = load_cairo! {
+        let program = load_cairo!(
             use core::{array::{array_append, array_at, array_new}, box::{into_box, unbox}};
-
             fn run_test() -> @Box<felt252> {
                 let mut x: Array<Box<felt252>> = array_new();
                 array_append(ref x, into_box(42));
-
                 unbox(array_at(@x, 0))
             }
-        };
+        );
+
         let result = run_program(&program, "run_test", &[]).return_value;
 
         assert_eq!(result, jit_enum!(0, jit_struct!(Value::Felt252(42.into()))));

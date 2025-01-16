@@ -390,16 +390,15 @@ pub fn build_upcast<'ctx, 'this>(
 #[cfg(test)]
 mod test {
     use crate::{
-        utils::test::{jit_enum, jit_struct, load_cairo, run_program_assert_output},
+        utils::test::{jit_enum, jit_struct, load_cairo, run_program},
         values::Value,
     };
     use cairo_lang_sierra::program::Program;
     use lazy_static::lazy_static;
 
     lazy_static! {
-        static ref DOWNCAST: (String, Program) = load_cairo! {
+        static ref DOWNCAST: (String, Program) = load_cairo!(
             use core::integer::downcast;
-
             fn run_test(
                 v8: u8, v16: u16, v32: u32, v64: u64, v128: u128
             ) -> (
@@ -417,10 +416,30 @@ mod test {
                     (downcast(v128),),
                 )
             }
-        };
-        static ref UPCAST: (String, Program) = load_cairo! {
-            use core::integer::upcast;
+        );
 
+        // use core::integer::upcast;
+        // fn run_test(
+        //     v8: u8, v16: u16, v32: u32, v64: u64, v128: u128, v248: bytes31
+        // ) -> (
+        //     (u8,),
+        //     (u16, u16),
+        //     (u32, u32, u32),
+        //     (u64, u64, u64, u64),
+        //     (u128, u128, u128, u128, u128),
+        //     (bytes31, bytes31, bytes31, bytes31, bytes31, bytes31)
+        // ) {
+        //     (
+        //         (upcast(v8),),
+        //         (upcast(v8), upcast(v16)),
+        //         (upcast(v8), upcast(v16), upcast(v32)),
+        //         (upcast(v8), upcast(v16), upcast(v32), upcast(v64)),
+        //         (upcast(v8), upcast(v16), upcast(v32), upcast(v64), upcast(v128)),
+        //         (upcast(v8), upcast(v16), upcast(v32), upcast(v64), upcast(v128), upcast(v248)),
+        //     )
+        // }
+        static ref UPCAST: (String, Program) = load_cairo!(
+            use core::integer::upcast;
             fn run_test(
                 v8: u8, v16: u16, v32: u32, v64: u64, v128: u128, v248: bytes31
             ) -> (
@@ -440,12 +459,12 @@ mod test {
                     (upcast(v8), upcast(v16), upcast(v32), upcast(v64), upcast(v128), upcast(v248)),
                 )
             }
-        };
+        );
     }
 
     #[test]
     fn downcast() {
-        run_program_assert_output(
+        let return_value = run_program(
             &DOWNCAST,
             "run_test",
             &[
@@ -455,6 +474,10 @@ mod test {
                 u64::MAX.into(),
                 u128::MAX.into(),
             ],
+        )
+        .return_value;
+
+        assert_eq!(
             jit_struct!(
                 jit_struct!(
                     jit_enum!(1, jit_struct!()),
@@ -477,12 +500,13 @@ mod test {
                 jit_struct!(jit_enum!(1, jit_struct!()), jit_enum!(1, jit_struct!())),
                 jit_struct!(jit_enum!(1, jit_struct!())),
             ),
+            return_value
         );
     }
 
     #[test]
     fn upcast() {
-        run_program_assert_output(
+        let return_value = run_program(
             &UPCAST,
             "run_test",
             &[
@@ -493,6 +517,10 @@ mod test {
                 u128::MAX.into(),
                 Value::Bytes31([0xFF; 31]),
             ],
+        )
+        .return_value;
+
+        assert_eq!(
             jit_struct!(
                 jit_struct!(u8::MAX.into()),
                 jit_struct!((u8::MAX as u16).into(), u16::MAX.into()),
@@ -683,6 +711,7 @@ mod test {
                     Value::Bytes31([u8::MAX; 31]),
                 ),
             ),
+            return_value
         );
     }
 }

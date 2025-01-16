@@ -163,23 +163,69 @@ pub fn build_squash<'ctx, 'this>(
 
 #[cfg(test)]
 mod test {
+    use cairo_lang_sierra::ProgramParser;
+
     use crate::{
-        utils::test::{jit_dict, jit_enum, jit_struct, load_cairo, run_program_assert_output},
+        utils::test::{
+            jit_dict, jit_enum, jit_struct, load_cairo, run_program, run_sierra_program,
+        },
         values::Value,
     };
 
     #[test]
     fn run_dict_new() {
-        let program = load_cairo!(
-            use traits::Default;
-            use dict::Felt252DictTrait;
+        // use traits::Default;
+        // use dict::Felt252DictTrait;
+        // fn run_test() {
+        //     let mut _dict: Felt252Dict<u32> = Default::default();
+        // }
+        let program = ProgramParser::new().parse(r#"
+            type [1] = SegmentArena [storable: true, drop: false, dup: false, zero_sized: false];
+            type [6] = Struct<ut@Tuple> [storable: true, drop: true, dup: true, zero_sized: true];
+            type [5] = SquashedFelt252Dict<[3]> [storable: true, drop: true, dup: false, zero_sized: false];
+            type [2] = GasBuiltin [storable: true, drop: false, dup: false, zero_sized: false];
+            type [0] = RangeCheck [storable: true, drop: false, dup: false, zero_sized: false];
+            type [3] = u32 [storable: true, drop: true, dup: true, zero_sized: false];
+            type [4] = Felt252Dict<[3]> [storable: true, drop: false, dup: false, zero_sized: false];
 
-            fn run_test() {
-                let mut _dict: Felt252Dict<u32> = Default::default();
-            }
-        );
+            libfunc [3] = disable_ap_tracking;
+            libfunc [8] = felt252_dict_new<[3]>;
+            libfunc [4] = store_temp<[0]>;
+            libfunc [5] = store_temp<[1]>;
+            libfunc [6] = store_temp<[2]>;
+            libfunc [10] = store_temp<[4]>;
+            libfunc [0] = function_call<user@[0]>;
+            libfunc [9] = drop<[5]>;
+            libfunc [1] = felt252_dict_squash<[3]>;
+            libfunc [7] = store_temp<[5]>;
 
-        run_program_assert_output(&program, "run_test", &[], jit_struct!());
+            [3]() -> (); // 0
+            [8]([1]) -> ([3], [4]); // 1
+            [4]([0]) -> ([0]); // 2
+            [5]([3]) -> ([3]); // 3
+            [6]([2]) -> ([2]); // 4
+            [10]([4]) -> ([4]); // 5
+            [0]([0], [3], [2], [4]) -> ([5], [6], [7], [8]); // 6
+            [9]([8]) -> (); // 7
+            [4]([5]) -> ([5]); // 8
+            [5]([6]) -> ([6]); // 9
+            [6]([7]) -> ([7]); // 10
+            return([5], [6], [7]); // 11
+            [3]() -> (); // 12
+            [1]([0], [2], [1], [3]) -> ([4], [5], [6], [7]); // 13
+            [4]([4]) -> ([4]); // 14
+            [5]([6]) -> ([6]); // 15
+            [6]([5]) -> ([5]); // 16
+            [7]([7]) -> ([7]); // 17
+            return([4], [6], [5], [7]); // 18
+
+            [1]@0([0]: [0], [1]: [1], [2]: [2]) -> ([0], [1], [2]);
+            [0]@12([0]: [0], [1]: [1], [2]: [2], [3]: [4]) -> ([0], [1], [2], [5]);
+        "#).map_err(|e| e.to_string()).unwrap();
+
+        let return_value = run_sierra_program(&program, &[]).return_value;
+
+        assert_eq!(jit_struct!(), return_value)
     }
 
     #[test]
@@ -194,7 +240,9 @@ mod test {
             }
         );
 
-        run_program_assert_output(&program, "run_test", &[], 1u32.into());
+        let return_value = run_program(&program, "run_test", &[]).return_value;
+
+        assert_eq!(Value::from(1u32), return_value);
     }
 
     #[test]
@@ -202,7 +250,6 @@ mod test {
         let program = load_cairo!(
             use traits::Default;
             use dict::Felt252DictTrait;
-
             fn run_test() -> Felt252Dict<u32> {
                 let mut dict: Felt252Dict<u32> = Default::default();
                 dict.insert(1, 2_u32);
@@ -214,10 +261,9 @@ mod test {
             }
         );
 
-        run_program_assert_output(
-            &program,
-            "run_test",
-            &[],
+        let return_value = run_program(&program, "run_test", &[]).return_value;
+
+        assert_eq!(
             jit_dict!(
                 1 => 2u32,
                 2 => 3u32,
@@ -225,23 +271,31 @@ mod test {
                 4 => 5u32,
                 5 => 6u32,
             ),
+            return_value
         );
     }
 
     #[test]
     fn run_dict_deserialize() {
-        let program = load_cairo!(
-            use traits::Default;
-            use dict::Felt252DictTrait;
+        // use traits::Default;
+        // use dict::Felt252DictTrait;
+        // fn run_test(mut dict: Felt252Dict<u32>) -> Felt252Dict<u32> {
+        //     dict
+        // }
+        let program = ProgramParser::new().parse(r#"
+            type [1] = Felt252Dict<[0]> [storable: true, drop: false, dup: false, zero_sized: false];
+            type [0] = u32 [storable: true, drop: true, dup: true, zero_sized: false];
 
-            fn run_test(mut dict: Felt252Dict<u32>) -> Felt252Dict<u32> {
-                dict
-            }
-        );
+            libfunc [0] = store_temp<[1]>;
 
-        run_program_assert_output(
+            [0]([0]) -> ([0]); // 0
+            return([0]); // 1
+
+            [0]@0([0]: [1]) -> ([1]);
+        "#).map_err(|e| e.to_string()).unwrap();
+
+        let return_value = run_sierra_program(
             &program,
-            "run_test",
             &[jit_dict!(
                 1 => 2u32,
                 2 => 3u32,
@@ -249,6 +303,10 @@ mod test {
                 4 => 5u32,
                 5 => 6u32,
             )],
+        )
+        .return_value;
+
+        assert_eq!(
             jit_dict!(
                 1 => 2u32,
                 2 => 3u32,
@@ -256,23 +314,38 @@ mod test {
                 4 => 5u32,
                 5 => 6u32,
             ),
+            return_value
         );
     }
 
     #[test]
     fn run_dict_deserialize2() {
-        let program = load_cairo!(
-            use traits::Default;
-            use dict::Felt252DictTrait;
+        // use traits::Default;
+        // use dict::Felt252DictTrait;
+        // fn run_test(mut dict: Felt252Dict<u32>) -> (felt252, Felt252Dict<u32>) {
+        //     (0, dict)
+        // }
+        let program = ProgramParser::new().parse(r#"
+            type [2] = felt252 [storable: true, drop: true, dup: true, zero_sized: false];
+            type [1] = Felt252Dict<[0]> [storable: true, drop: false, dup: false, zero_sized: false];
+            type [3] = Struct<ut@Tuple, [2], [1]> [storable: true, drop: false, dup: false, zero_sized: false];
+            type [0] = u32 [storable: true, drop: true, dup: true, zero_sized: false];
+            type [4] = Const<[2], 0> [storable: false, drop: false, dup: false, zero_sized: false];
 
-            fn run_test(mut dict: Felt252Dict<u32>) -> (felt252, Felt252Dict<u32>) {
-                (0, dict)
-            }
-        );
+            libfunc [1] = const_as_immediate<[4]>;
+            libfunc [0] = struct_construct<[3]>;
+            libfunc [2] = store_temp<[3]>;
 
-        run_program_assert_output(
+            [1]() -> ([1]); // 0
+            [0]([1], [0]) -> ([2]); // 1
+            [2]([2]) -> ([2]); // 2
+            return([2]); // 3
+
+            [0]@0([0]: [1]) -> ([3]);
+        "#).map_err(|e| e.to_string()).unwrap();
+
+        let return_value = run_sierra_program(
             &program,
-            "run_test",
             &[jit_dict!(
                 1 => 2u32,
                 2 => 3u32,
@@ -280,6 +353,10 @@ mod test {
                 4 => 5u32,
                 5 => 6u32,
             )],
+        )
+        .return_value;
+
+        assert_eq!(
             jit_struct!(
                 Value::Felt252(0.into()),
                 jit_dict!(
@@ -290,65 +367,195 @@ mod test {
                     5 => 6u32,
                 )
             ),
+            return_value
         );
     }
 
     #[test]
     fn run_dict_deserialize_struct() {
-        let program = load_cairo! {
-            use core::{dict::Felt252DictTrait, nullable::Nullable};
+        // use core::{dict::Felt252DictTrait, nullable::Nullable};
+        // fn run_test() -> Felt252Dict<Nullable<(u32, u64, u128)>> {
+        //     let mut x: Felt252Dict<Nullable<(u32, u64, u128)>> = Default::default();
+        //     x.insert(0, NullableTrait::new((1_u32, 2_u64, 3_u128)));
+        //     x.insert(1, NullableTrait::new((2_u32, 3_u64, 4_u128)));
+        //     x.insert(2, NullableTrait::new((3_u32, 4_u64, 5_u128)));
+        //     x
+        // }
+        let program = ProgramParser::new().parse(r#"
+            type [0] = SegmentArena [storable: true, drop: false, dup: false, zero_sized: false];
+            type [24] = Const<[8], 2> [storable: false, drop: false, dup: false, zero_sized: false];
+            type [23] = Const<[4], [20], [21], [22]> [storable: false, drop: false, dup: false, zero_sized: false];
+            type [19] = Const<[8], 1> [storable: false, drop: false, dup: false, zero_sized: false];
+            type [22] = Const<[3], 5> [storable: false, drop: false, dup: false, zero_sized: false];
+            type [21] = Const<[2], 4> [storable: false, drop: false, dup: false, zero_sized: false];
+            type [3] = u128 [storable: true, drop: true, dup: true, zero_sized: false];
+            type [2] = u64 [storable: true, drop: true, dup: true, zero_sized: false];
+            type [20] = Const<[1], 3> [storable: false, drop: false, dup: false, zero_sized: false];
+            type [18] = Const<[4], [15], [16], [17]> [storable: false, drop: false, dup: false, zero_sized: false];
+            type [1] = u32 [storable: true, drop: true, dup: true, zero_sized: false];
+            type [17] = Const<[3], 4> [storable: false, drop: false, dup: false, zero_sized: false];
+            type [16] = Const<[2], 3> [storable: false, drop: false, dup: false, zero_sized: false];
+            type [15] = Const<[1], 2> [storable: false, drop: false, dup: false, zero_sized: false];
+            type [9] = Felt252DictEntry<[5]> [storable: true, drop: false, dup: false, zero_sized: false];
+            type [14] = Const<[8], 0> [storable: false, drop: false, dup: false, zero_sized: false];
+            type [8] = felt252 [storable: true, drop: true, dup: true, zero_sized: false];
+            type [4] = Struct<ut@Tuple, [1], [2], [3]> [storable: true, drop: true, dup: true, zero_sized: false];
+            type [13] = Const<[4], [10], [11], [12]> [storable: false, drop: false, dup: false, zero_sized: false];
+            type [7] = Box<[4]> [storable: true, drop: true, dup: true, zero_sized: false];
+            type [12] = Const<[3], 3> [storable: false, drop: false, dup: false, zero_sized: false];
+            type [11] = Const<[2], 2> [storable: false, drop: false, dup: false, zero_sized: false];
+            type [10] = Const<[1], 1> [storable: false, drop: false, dup: false, zero_sized: false];
+            type [5] = Nullable<[4]> [storable: true, drop: true, dup: true, zero_sized: false];
+            type [6] = Felt252Dict<[5]> [storable: true, drop: false, dup: false, zero_sized: false];
 
-            fn run_test() -> Felt252Dict<Nullable<(u32, u64, u128)>> {
-                let mut x: Felt252Dict<Nullable<(u32, u64, u128)>> = Default::default();
-                x.insert(0, NullableTrait::new((1_u32, 2_u64, 3_u128)));
-                x.insert(1, NullableTrait::new((2_u32, 3_u64, 4_u128)));
-                x.insert(2, NullableTrait::new((3_u32, 4_u64, 5_u128)));
-                x
-            }
-        };
+            libfunc [3] = felt252_dict_new<[5]>;
+            libfunc [5] = const_as_box<[13], 0>;
+            libfunc [2] = nullable_from_box<[4]>;
+            libfunc [6] = const_as_immediate<[14]>;
+            libfunc [12] = store_temp<[6]>;
+            libfunc [13] = store_temp<[8]>;
+            libfunc [1] = felt252_dict_entry_get<[5]>;
+            libfunc [7] = drop<[5]>;
+            libfunc [0] = felt252_dict_entry_finalize<[5]>;
+            libfunc [8] = const_as_box<[18], 0>;
+            libfunc [9] = const_as_immediate<[19]>;
+            libfunc [10] = const_as_box<[23], 0>;
+            libfunc [11] = const_as_immediate<[24]>;
+            libfunc [14] = store_temp<[0]>;
 
-        run_program_assert_output(
-            &program,
-            "run_test",
-            &[],
+            [3]([0]) -> ([1], [2]); // 0
+            [5]() -> ([3]); // 1
+            [2]([3]) -> ([4]); // 2
+            [6]() -> ([5]); // 3
+            [12]([2]) -> ([2]); // 4
+            [13]([5]) -> ([5]); // 5
+            [1]([2], [5]) -> ([6], [7]); // 6
+            [7]([7]) -> (); // 7
+            [0]([6], [4]) -> ([8]); // 8
+            [8]() -> ([9]); // 9
+            [2]([9]) -> ([10]); // 10
+            [9]() -> ([11]); // 11
+            [13]([11]) -> ([11]); // 12
+            [1]([8], [11]) -> ([12], [13]); // 13
+            [7]([13]) -> (); // 14
+            [0]([12], [10]) -> ([14]); // 15
+            [10]() -> ([15]); // 16
+            [2]([15]) -> ([16]); // 17
+            [11]() -> ([17]); // 18
+            [13]([17]) -> ([17]); // 19
+            [1]([14], [17]) -> ([18], [19]); // 20
+            [7]([19]) -> (); // 21
+            [0]([18], [16]) -> ([20]); // 22
+            [14]([1]) -> ([1]); // 23
+            [12]([20]) -> ([20]); // 24
+            return([1], [20]); // 25
+
+            [0]@0([0]: [0]) -> ([0], [6]);
+        "#).map_err(|e| e.to_string()).unwrap();
+
+        let return_value = run_sierra_program(&program, &[]).return_value;
+
+        assert_eq!(
             jit_dict!(
                 0 => jit_struct!(1u32.into(), 2u64.into(), 3u128.into()),
                 1 => jit_struct!(2u32.into(), 3u64.into(), 4u128.into()),
                 2 => jit_struct!(3u32.into(), 4u64.into(), 5u128.into()),
             ),
+            return_value
         );
     }
 
     #[test]
     fn run_dict_deserialize_enum() {
-        let program = load_cairo! {
-            use core::{dict::Felt252DictTrait, nullable::Nullable};
+        // use core::{dict::Felt252DictTrait, nullable::Nullable};
+        // #[derive(Drop)]
+        // enum MyEnum {
+        //     A: u32,
+        //     B: u64,
+        //     C: u128,
+        // }
+        // fn run_test() -> Felt252Dict<Nullable<MyEnum>> {
+        //     let mut x: Felt252Dict<Nullable<MyEnum>> = Default::default();
+        //     x.insert(0, NullableTrait::new(MyEnum::A(1)));
+        //     x.insert(1, NullableTrait::new(MyEnum::B(2)));
+        //     x.insert(2, NullableTrait::new(MyEnum::C(3)));
+        //     x
+        // }
+        let program = ProgramParser::new().parse(r#"
+            type [0] = SegmentArena [storable: true, drop: false, dup: false, zero_sized: false];
+            type [18] = Const<[8], 2> [storable: false, drop: false, dup: false, zero_sized: false];
+            type [17] = Const<[4], 2, [16]> [storable: false, drop: false, dup: false, zero_sized: false];
+            type [15] = Const<[8], 1> [storable: false, drop: false, dup: false, zero_sized: false];
+            type [16] = Const<[3], 3> [storable: false, drop: false, dup: false, zero_sized: false];
+            type [14] = Const<[4], 1, [13]> [storable: false, drop: false, dup: false, zero_sized: false];
+            type [3] = u128 [storable: true, drop: true, dup: true, zero_sized: false];
+            type [13] = Const<[2], 2> [storable: false, drop: false, dup: false, zero_sized: false];
+            type [9] = Felt252DictEntry<[5]> [storable: true, drop: false, dup: false, zero_sized: false];
+            type [2] = u64 [storable: true, drop: true, dup: true, zero_sized: false];
+            type [12] = Const<[8], 0> [storable: false, drop: false, dup: false, zero_sized: false];
+            type [8] = felt252 [storable: true, drop: true, dup: true, zero_sized: false];
+            type [1] = u32 [storable: true, drop: true, dup: true, zero_sized: false];
+            type [4] = Enum<ut@program::program::MyEnum, [1], [2], [3]> [storable: true, drop: true, dup: true, zero_sized: false];
+            type [11] = Const<[4], 0, [10]> [storable: false, drop: false, dup: false, zero_sized: false];
+            type [7] = Box<[4]> [storable: true, drop: true, dup: true, zero_sized: false];
+            type [10] = Const<[1], 1> [storable: false, drop: false, dup: false, zero_sized: false];
+            type [5] = Nullable<[4]> [storable: true, drop: true, dup: true, zero_sized: false];
+            type [6] = Felt252Dict<[5]> [storable: true, drop: false, dup: false, zero_sized: false];
 
-            #[derive(Drop)]
-            enum MyEnum {
-                A: u32,
-                B: u64,
-                C: u128,
-            }
+            libfunc [3] = felt252_dict_new<[5]>;
+            libfunc [5] = const_as_box<[11], 0>;
+            libfunc [2] = nullable_from_box<[4]>;
+            libfunc [6] = const_as_immediate<[12]>;
+            libfunc [12] = store_temp<[6]>;
+            libfunc [13] = store_temp<[8]>;
+            libfunc [1] = felt252_dict_entry_get<[5]>;
+            libfunc [7] = drop<[5]>;
+            libfunc [0] = felt252_dict_entry_finalize<[5]>;
+            libfunc [8] = const_as_box<[14], 0>;
+            libfunc [9] = const_as_immediate<[15]>;
+            libfunc [10] = const_as_box<[17], 0>;
+            libfunc [11] = const_as_immediate<[18]>;
+            libfunc [14] = store_temp<[0]>;
 
-            fn run_test() -> Felt252Dict<Nullable<MyEnum>> {
-                let mut x: Felt252Dict<Nullable<MyEnum>> = Default::default();
-                x.insert(0, NullableTrait::new(MyEnum::A(1)));
-                x.insert(1, NullableTrait::new(MyEnum::B(2)));
-                x.insert(2, NullableTrait::new(MyEnum::C(3)));
-                x
-            }
-        };
+            [3]([0]) -> ([1], [2]); // 0
+            [5]() -> ([3]); // 1
+            [2]([3]) -> ([4]); // 2
+            [6]() -> ([5]); // 3
+            [12]([2]) -> ([2]); // 4
+            [13]([5]) -> ([5]); // 5
+            [1]([2], [5]) -> ([6], [7]); // 6
+            [7]([7]) -> (); // 7
+            [0]([6], [4]) -> ([8]); // 8
+            [8]() -> ([9]); // 9
+            [2]([9]) -> ([10]); // 10
+            [9]() -> ([11]); // 11
+            [13]([11]) -> ([11]); // 12
+            [1]([8], [11]) -> ([12], [13]); // 13
+            [7]([13]) -> (); // 14
+            [0]([12], [10]) -> ([14]); // 15
+            [10]() -> ([15]); // 16
+            [2]([15]) -> ([16]); // 17
+            [11]() -> ([17]); // 18
+            [13]([17]) -> ([17]); // 19
+            [1]([14], [17]) -> ([18], [19]); // 20
+            [7]([19]) -> (); // 21
+            [0]([18], [16]) -> ([20]); // 22
+            [14]([1]) -> ([1]); // 23
+            [12]([20]) -> ([20]); // 24
+            return([1], [20]); // 25
 
-        run_program_assert_output(
-            &program,
-            "run_test",
-            &[],
+            [0]@0([0]: [0]) -> ([0], [6]);
+        "#).map_err(|e| e.to_string()).unwrap();
+
+        let return_value = run_sierra_program(&program, &[]).return_value;
+
+        assert_eq!(
             jit_dict!(
                 0 => jit_enum!(0, 1u32.into()),
                 1 => jit_enum!(1, 2u64.into()),
                 2 => jit_enum!(2, 3u128.into()),
             ),
+            return_value
         );
     }
 }

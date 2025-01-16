@@ -995,7 +995,7 @@ mod test {
     use crate::{
         utils::{
             felt252_str,
-            test::{jit_enum, jit_panic, jit_struct, load_cairo, run_program_assert_output},
+            test::{jit_enum, jit_panic, jit_struct, load_cairo, run_program},
         },
         values::Value,
     };
@@ -1045,14 +1045,11 @@ mod test {
                 circuit_sub, circuit_mul, circuit_inverse, EvalCircuitTrait, u384,
                 CircuitOutputsTrait, CircuitModulus, AddInputResultTrait, CircuitInputs,
             };
-
             fn main() -> u384 {
                 let in1 = CircuitElement::<CircuitInput<0>> {};
                 let in2 = CircuitElement::<CircuitInput<1>> {};
                 let add = circuit_add(in1, in2);
-
                 let modulus = TryInto::<_, CircuitModulus>::try_into([12, 12, 12, 12]).unwrap();
-
                 let outputs = (add,)
                     .new_inputs()
                     .next([3, 3, 3, 3])
@@ -1060,16 +1057,15 @@ mod test {
                     .done()
                     .eval(modulus)
                     .unwrap();
-
                 outputs.get_output(add)
             }
         );
 
-        run_program_assert_output(
-            &program,
-            "main",
-            &[],
+        let return_value = run_program(&program, "main", &[]).return_value;
+
+        assert_eq!(
             jit_enum!(0, jit_struct!(u384(["0x9", "0x9", "0x9", "0x9"]))),
+            return_value
         );
     }
 
@@ -1081,14 +1077,11 @@ mod test {
                 circuit_sub, circuit_mul, circuit_inverse, EvalCircuitTrait, u384,
                 CircuitOutputsTrait, CircuitModulus, AddInputResultTrait, CircuitInputs,
             };
-
             fn main() -> u384 {
                 let in1 = CircuitElement::<CircuitInput<0>> {};
                 let in2 = CircuitElement::<CircuitInput<1>> {};
                 let mul = circuit_sub(in1, in2);
-
                 let modulus = TryInto::<_, CircuitModulus>::try_into([12, 12, 12, 12]).unwrap();
-
                 let outputs = (mul,)
                     .new_inputs()
                     .next([6, 6, 6, 6])
@@ -1096,16 +1089,15 @@ mod test {
                     .done()
                     .eval(modulus)
                     .unwrap();
-
                 outputs.get_output(mul)
             }
         );
 
-        run_program_assert_output(
-            &program,
-            "main",
-            &[],
+        let return_value = run_program(&program, "main", &[]).return_value;
+
+        assert_eq!(
             jit_enum!(0, jit_struct!(u384(["0x3", "0x3", "0x3", "0x3"]))),
+            return_value
         );
     }
 
@@ -1117,14 +1109,11 @@ mod test {
                 circuit_sub, circuit_mul, circuit_inverse, EvalCircuitTrait, u384,
                 CircuitOutputsTrait, CircuitModulus, AddInputResultTrait, CircuitInputs,
             };
-
             fn main() -> u384 {
                 let in1 = CircuitElement::<CircuitInput<0>> {};
                 let in2 = CircuitElement::<CircuitInput<1>> {};
                 let mul = circuit_mul(in1, in2);
-
                 let modulus = TryInto::<_, CircuitModulus>::try_into([12, 12, 12, 12]).unwrap();
-
                 let outputs = (mul,)
                     .new_inputs()
                     .next([3, 0, 0, 0])
@@ -1132,16 +1121,15 @@ mod test {
                     .done()
                     .eval(modulus)
                     .unwrap();
-
                 outputs.get_output(mul)
             }
         );
 
-        run_program_assert_output(
-            &program,
-            "main",
-            &[],
+        let return_value = run_program(&program, "main", &[]).return_value;
+
+        assert_eq!(
             jit_enum!(0, jit_struct!(u384(["0x9", "0x9", "0x9", "0x9"]))),
+            return_value
         );
     }
 
@@ -1153,29 +1141,25 @@ mod test {
                 circuit_sub, circuit_mul, circuit_inverse, EvalCircuitTrait, u384,
                 CircuitOutputsTrait, CircuitModulus, AddInputResultTrait, CircuitInputs,
             };
-
             fn main() -> u384 {
                 let in1 = CircuitElement::<CircuitInput<0>> {};
                 let inv = circuit_inverse(in1);
-
                 let modulus = TryInto::<_, CircuitModulus>::try_into([11, 0, 0, 0]).unwrap();
-
                 let outputs = (inv,)
                     .new_inputs()
                     .next([2, 0, 0, 0])
                     .done()
                     .eval(modulus)
                     .unwrap();
-
                 outputs.get_output(inv)
             }
         );
 
-        run_program_assert_output(
-            &program,
-            "main",
-            &[],
+        let return_value = run_program(&program, "main", &[]).return_value;
+
+        assert_eq!(
             jit_enum!(0, jit_struct!(u384(["0x6", "0x0", "0x0", "0x0"]))),
+            return_value
         );
     }
 
@@ -1187,31 +1171,27 @@ mod test {
                 circuit_sub, circuit_mul, circuit_inverse, EvalCircuitTrait, u384,
                 CircuitOutputsTrait, CircuitModulus, AddInputResultTrait, CircuitInputs,
             };
-
             fn main() -> u384 {
                 let in1 = CircuitElement::<CircuitInput<0>> {};
                 let inv = circuit_inverse(in1);
-
                 let modulus = TryInto::<_, CircuitModulus>::try_into([12, 0, 0, 0]).unwrap();
-
                 let outputs = (inv,)
                     .new_inputs()
                     .next([3, 0, 0, 0])
                     .done()
                     .eval(modulus)
                     .unwrap();
-
                 outputs.get_output(inv)
             }
         );
 
-        run_program_assert_output(
-            &program,
-            "main",
-            &[],
+        let return_value = run_program(&program, "main", &[]).return_value;
+
+        assert_eq!(
             jit_panic!(felt252_str(
                 "30828113188794245257250221355944970489240709081949230"
             )),
+            return_value
         );
     }
 
@@ -1223,12 +1203,10 @@ mod test {
                 circuit_sub, circuit_mul, circuit_inverse, EvalCircuitTrait, u384,
                 CircuitOutputsTrait, CircuitModulus, AddInputResultTrait, CircuitInputs,
             };
-
             fn main() -> u384 {
                 let in1 = CircuitElement::<CircuitInput<0>> {};
                 let in2 = CircuitElement::<CircuitInput<1>> {};
                 let mul = circuit_mul(in1, in2);
-
                 let modulus = TryInto::<_, CircuitModulus>::try_into([
                     0xffffffffffffffffffffffff,
                     0xffffffffffffffffffffffff,
@@ -1236,7 +1214,6 @@ mod test {
                     0xffffffffffffffffffffffff,
                 ])
                 .unwrap();
-
                 let outputs = (mul,)
                     .new_inputs()
                     .next([0, 0, 0, 0xffffffffffffffffffffffff])
@@ -1244,31 +1221,55 @@ mod test {
                     .done()
                     .eval(modulus)
                     .unwrap();
-
                 outputs.get_output(mul)
             }
         );
 
-        run_program_assert_output(
-            &program,
-            "main",
-            &[],
+        let return_value = run_program(&program, "main", &[]).return_value;
+
+        assert_eq!(
             jit_enum!(
                 0,
                 jit_struct!(u384(["0xf", "0x0", "0x0", "0xfffffffffffffffffffffff0"]))
             ),
+            return_value
         );
     }
 
     #[test]
     fn run_full_circuit() {
+        // use core::circuit::{
+        //     RangeCheck96, AddMod, MulMod, u96, CircuitElement, CircuitInput, circuit_add,
+        //     circuit_sub, circuit_mul, circuit_inverse, EvalCircuitTrait, u384,
+        //     CircuitOutputsTrait, CircuitModulus, AddInputResultTrait, CircuitInputs,
+        // };
+        // fn main() -> u384 {
+        //     let in1 = CircuitElement::<CircuitInput<0>> {};
+        //     let in2 = CircuitElement::<CircuitInput<1>> {};
+        //     let add1 = circuit_add(in1, in2);
+        //     let mul1 = circuit_mul(add1, in1);
+        //     let mul2 = circuit_mul(mul1, add1);
+        //     let inv1 = circuit_inverse(mul2);
+        //     let sub1 = circuit_sub(inv1, in2);
+        //     let sub2 = circuit_sub(sub1, mul2);
+        //     let inv2 = circuit_inverse(sub2);
+        //     let add2 = circuit_add(inv2, inv2);
+        //     let modulus = TryInto::<_, CircuitModulus>::try_into([17, 14, 14, 14]).unwrap();
+        //     let outputs = (add2,)
+        //         .new_inputs()
+        //         .next([9, 2, 9, 3])
+        //         .next([5, 7, 0, 8])
+        //         .done()
+        //         .eval(modulus)
+        //         .unwrap();
+        //     outputs.get_output(add2)
+        // }
         let program = load_cairo!(
             use core::circuit::{
                 RangeCheck96, AddMod, MulMod, u96, CircuitElement, CircuitInput, circuit_add,
                 circuit_sub, circuit_mul, circuit_inverse, EvalCircuitTrait, u384,
                 CircuitOutputsTrait, CircuitModulus, AddInputResultTrait, CircuitInputs,
             };
-
             fn main() -> u384 {
                 let in1 = CircuitElement::<CircuitInput<0>> {};
                 let in2 = CircuitElement::<CircuitInput<1>> {};
@@ -1280,9 +1281,7 @@ mod test {
                 let sub2 = circuit_sub(sub1, mul2);
                 let inv2 = circuit_inverse(sub2);
                 let add2 = circuit_add(inv2, inv2);
-
                 let modulus = TryInto::<_, CircuitModulus>::try_into([17, 14, 14, 14]).unwrap();
-
                 let outputs = (add2,)
                     .new_inputs()
                     .next([9, 2, 9, 3])
@@ -1290,15 +1289,13 @@ mod test {
                     .done()
                     .eval(modulus)
                     .unwrap();
-
                 outputs.get_output(add2)
             }
         );
 
-        run_program_assert_output(
-            &program,
-            "main",
-            &[],
+        let return_value = run_program(&program, "main", &[]).return_value;
+
+        assert_eq!(
             jit_enum!(
                 0,
                 jit_struct!(u384([
@@ -1308,6 +1305,7 @@ mod test {
                     "0x7"
                 ]))
             ),
+            return_value
         );
     }
 }

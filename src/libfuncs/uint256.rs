@@ -950,10 +950,12 @@ pub fn build_u256_guarantee_inv_mod_n<'ctx, 'this>(
 #[cfg(test)]
 mod test {
     use crate::{
-        utils::test::{jit_enum, jit_panic, jit_struct, load_cairo, run_program_assert_output},
+        utils::test::{
+            jit_enum, jit_panic, jit_struct, load_cairo, run_program, run_sierra_program,
+        },
         values::Value,
     };
-    use cairo_lang_sierra::program::Program;
+    use cairo_lang_sierra::{program::Program, ProgramParser};
     use lazy_static::lazy_static;
     use num_bigint::BigUint;
     use num_traits::One;
@@ -961,40 +963,118 @@ mod test {
     use std::ops::Shl;
 
     lazy_static! {
-        static ref U256_IS_ZERO: (String, Program) = load_cairo! {
-            use zeroable::IsZeroResult;
+        // use zeroable::IsZeroResult;
+        // extern fn u256_is_zero(a: u256) -> IsZeroResult<u256> implicits() nopanic;
+        // fn run_test(value: u256) -> bool {
+        //     match u256_is_zero(value) {
+        //         IsZeroResult::Zero(_) => true,
+        //         IsZeroResult::NonZero(_) => false,
+        //     }
+        // }
+        static ref U256_IS_ZERO: Program = ProgramParser::new().parse(r#"
+            type [0] = u128 [storable: true, drop: true, dup: true, zero_sized: false];
+            type [1] = Struct<ut@core::integer::u256, [0], [0]> [storable: true, drop: true, dup: true, zero_sized: false];
+            type [3] = Struct<ut@Tuple> [storable: true, drop: true, dup: true, zero_sized: true];
+            type [4] = Enum<ut@core::bool, [3], [3]> [storable: true, drop: true, dup: true, zero_sized: false];
+            type [2] = NonZero<[1]> [storable: true, drop: true, dup: true, zero_sized: false];
 
-            extern fn u256_is_zero(a: u256) -> IsZeroResult<u256> implicits() nopanic;
+            libfunc [3] = u256_is_zero;
+            libfunc [4] = branch_align;
+            libfunc [1] = struct_construct<[3]>;
+            libfunc [2] = enum_init<[4], 1>;
+            libfunc [6] = store_temp<[4]>;
+            libfunc [5] = drop<[2]>;
+            libfunc [0] = enum_init<[4], 0>;
 
-            fn run_test(value: u256) -> bool {
-                match u256_is_zero(value) {
-                    IsZeroResult::Zero(_) => true,
-                    IsZeroResult::NonZero(_) => false,
-                }
-            }
-        };
-        static ref U256_SAFE_DIVMOD: (String, Program) = load_cairo! {
+            [3]([0]) { fallthrough() 6([1]) }; // 0
+            [4]() -> (); // 1
+            [1]() -> ([2]); // 2
+            [2]([2]) -> ([3]); // 3
+            [6]([3]) -> ([3]); // 4
+            return([3]); // 5
+            [4]() -> (); // 6
+            [5]([1]) -> (); // 7
+            [1]() -> ([4]); // 8
+            [0]([4]) -> ([5]); // 9
+            [6]([5]) -> ([5]); // 10
+            return([5]); // 11
+
+            [0]@0([0]: [1]) -> ([4]);
+        "#).map_err(|e| e.to_string()).unwrap();
+        static ref U256_SAFE_DIVMOD: (String, Program) = load_cairo!(
             fn run_test(lhs: u256, rhs: u256) -> (u256, u256) {
                 let q = lhs / rhs;
                 let r = lhs % rhs;
-
                 (q, r)
             }
-        };
-        static ref U256_SQRT: (String, Program) = load_cairo! {
-            use core::num::traits::Sqrt;
+        );
+        // use core::num::traits::Sqrt;
+        // fn run_test(value: u256) -> u128 {
+        //     value.sqrt()
+        // }
+        static ref U256_SQRT: Program = ProgramParser::new().parse(r#"
+            type [0] = RangeCheck [storable: true, drop: false, dup: false, zero_sized: false];
+            type [1] = u128 [storable: true, drop: true, dup: true, zero_sized: false];
+            type [2] = Struct<ut@core::integer::u256, [1], [1]> [storable: true, drop: true, dup: true, zero_sized: false];
 
-            fn run_test(value: u256) -> u128 {
-                value.sqrt()
-            }
-        };
-        static ref U256_INV_MOD_N: (String, Program) = load_cairo! {
-            use core::math::u256_inv_mod;
+            libfunc [0] = u256_sqrt;
+            libfunc [2] = store_temp<[0]>;
+            libfunc [3] = store_temp<[1]>;
 
-            fn run_test(a: u256, n: NonZero<u256>) -> Option<NonZero<u256>> {
-                u256_inv_mod(a, n)
-            }
-        };
+            [0]([0], [1]) -> ([2], [3]); // 0
+            [2]([2]) -> ([2]); // 1
+            [3]([3]) -> ([3]); // 2
+            return([2], [3]); // 3
+
+            [0]@0([0]: [0], [1]: [2]) -> ([0], [1]);
+        "#).map_err(|e| e.to_string()).unwrap();
+        // use core::math::u256_inv_mod;
+        // fn run_test(a: u256, n: NonZero<u256>) -> Option<NonZero<u256>> {
+        //     u256_inv_mod(a, n)
+        // }
+        static ref U256_INV_MOD_N: Program = ProgramParser::new().parse(r#"
+            type [0] = RangeCheck [storable: true, drop: false, dup: false, zero_sized: false];
+            type [5] = Struct<ut@Tuple> [storable: true, drop: true, dup: true, zero_sized: true];
+            type [1] = u128 [storable: true, drop: true, dup: true, zero_sized: false];
+            type [2] = Struct<ut@core::integer::u256, [1], [1]> [storable: true, drop: true, dup: true, zero_sized: false];
+            type [3] = NonZero<[2]> [storable: true, drop: true, dup: true, zero_sized: false];
+            type [6] = Enum<ut@core::option::Option::<core::zeroable::NonZero::<core::integer::u256>>, [3], [5]> [storable: true, drop: true, dup: true, zero_sized: false];
+            type [4] = U128MulGuarantee [storable: true, drop: false, dup: false, zero_sized: false];
+
+            libfunc [4] = u256_guarantee_inv_mod_n;
+            libfunc [5] = branch_align;
+            libfunc [2] = u128_mul_guarantee_verify;
+            libfunc [3] = enum_init<[6], 0>;
+            libfunc [6] = store_temp<[0]>;
+            libfunc [7] = store_temp<[6]>;
+            libfunc [1] = struct_construct<[5]>;
+            libfunc [0] = enum_init<[6], 1>;
+
+            [4]([0], [1], [2]) { fallthrough([3], [4], [5], [6], [7], [8], [9], [10], [11], [12]) 14([13], [14], [15]) }; // 0
+            [5]() -> (); // 1
+            [2]([3], [12]) -> ([16]); // 2
+            [2]([16], [11]) -> ([17]); // 3
+            [2]([17], [10]) -> ([18]); // 4
+            [2]([18], [9]) -> ([19]); // 5
+            [2]([19], [8]) -> ([20]); // 6
+            [2]([20], [7]) -> ([21]); // 7
+            [2]([21], [6]) -> ([22]); // 8
+            [2]([22], [5]) -> ([23]); // 9
+            [3]([4]) -> ([24]); // 10
+            [6]([23]) -> ([23]); // 11
+            [7]([24]) -> ([24]); // 12
+            return([23], [24]); // 13
+            [5]() -> (); // 14
+            [2]([13], [15]) -> ([25]); // 15
+            [2]([25], [14]) -> ([26]); // 16
+            [1]() -> ([27]); // 17
+            [0]([27]) -> ([28]); // 18
+            [6]([26]) -> ([26]); // 19
+            [7]([28]) -> ([28]); // 20
+            return([26], [28]); // 21
+
+            [0]@0([0]: [0], [1]: [2], [2]: [3]) -> ([0], [6]);
+        "#).map_err(|e| e.to_string()).unwrap();
     }
 
     fn u256(value: BigUint) -> Value {
@@ -1007,45 +1087,41 @@ mod test {
 
     #[test]
     fn u256_is_zero() {
-        run_program_assert_output(
-            &U256_IS_ZERO,
-            "run_test",
-            &[u256(0u32.into())],
-            jit_enum!(1, jit_struct!()),
-        );
-        run_program_assert_output(
-            &U256_IS_ZERO,
-            "run_test",
-            &[u256(1u32.into())],
-            jit_enum!(0, jit_struct!()),
-        );
-        run_program_assert_output(
-            &U256_IS_ZERO,
-            "run_test",
-            &[u256(BigUint::one() << 128u32)],
-            jit_enum!(0, jit_struct!()),
-        );
-        run_program_assert_output(
-            &U256_IS_ZERO,
-            "run_test",
-            &[u256((BigUint::one() << 128u32) + 1u32)],
-            jit_enum!(0, jit_struct!()),
-        );
+        let return_value = run_sierra_program(&U256_IS_ZERO, &[u256(0u32.into())]).return_value;
+
+        assert_eq!(jit_enum!(1, jit_struct!()), return_value);
+
+        let return_value = run_sierra_program(&U256_IS_ZERO, &[u256(1u32.into())]).return_value;
+
+        assert_eq!(jit_enum!(0, jit_struct!()), return_value);
+
+        let return_value =
+            run_sierra_program(&U256_IS_ZERO, &[u256(BigUint::one() << 128u32)]).return_value;
+
+        assert_eq!(jit_enum!(0, jit_struct!()), return_value);
+
+        let return_value =
+            run_sierra_program(&U256_IS_ZERO, &[u256((BigUint::one() << 128u32) + 1u32)])
+                .return_value;
+
+        assert_eq!(jit_enum!(0, jit_struct!()), return_value);
     }
 
     #[test]
     fn u256_safe_divmod() {
         #[track_caller]
         fn run(lhs: (u128, u128), rhs: (u128, u128), result: Value) {
-            run_program_assert_output(
+            let return_value = run_program(
                 &U256_SAFE_DIVMOD,
                 "run_test",
                 &[
                     jit_struct!(lhs.1.into(), lhs.0.into()),
                     jit_struct!(rhs.1.into(), rhs.0.into()),
                 ],
-                result,
             )
+            .return_value;
+
+            assert_eq!(result, return_value);
         }
 
         let u256_is_zero = Felt::from_bytes_be_slice(b"Division by 0");
@@ -1128,12 +1204,11 @@ mod test {
     fn u256_sqrt() {
         #[track_caller]
         fn run(value: (u128, u128), result: Value) {
-            run_program_assert_output(
-                &U256_SQRT,
-                "run_test",
-                &[jit_struct!(value.1.into(), value.0.into())],
-                result,
-            )
+            let return_value =
+                run_sierra_program(&U256_SQRT, &[jit_struct!(value.1.into(), value.0.into())])
+                    .return_value;
+
+            assert_eq!(result, return_value);
         }
 
         run((0u128, 0u128), 0u128.into());
@@ -1166,15 +1241,16 @@ mod test {
     fn u256_inv_mod_n() {
         #[track_caller]
         fn run(a: (u128, u128), n: (u128, u128), result: Value) {
-            run_program_assert_output(
+            let return_value = run_sierra_program(
                 &U256_INV_MOD_N,
-                "run_test",
                 &[
                     jit_struct!(a.0.into(), a.1.into()),
                     jit_struct!(n.0.into(), n.1.into()),
                 ],
-                result,
             )
+            .return_value;
+
+            assert_eq!(result, return_value);
         }
 
         let none = jit_enum!(1, jit_struct!());

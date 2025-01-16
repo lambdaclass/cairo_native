@@ -191,14 +191,18 @@ pub fn build_finalize<'ctx, 'this>(
 
 #[cfg(test)]
 mod test {
-    use crate::utils::test::{jit_dict, load_cairo, run_program_assert_output};
+    use cairo_lang_sierra::ProgramParser;
+
+    use crate::{
+        utils::test::{jit_dict, load_cairo, run_program, run_sierra_program},
+        Value,
+    };
 
     #[test]
     fn run_dict_insert() {
         let program = load_cairo!(
             use traits::Default;
             use dict::Felt252DictTrait;
-
             fn run_test() -> u32 {
                 let mut dict: Felt252Dict<u32> = Default::default();
                 dict.insert(2, 1_u32);
@@ -206,7 +210,9 @@ mod test {
             }
         );
 
-        run_program_assert_output(&program, "run_test", &[], 1u32.into());
+        let return_value = run_program(&program, "run_test", &[]).return_value;
+
+        assert_eq!(Value::from(1u32), return_value);
     }
 
     #[test]
@@ -214,7 +220,6 @@ mod test {
         let program = load_cairo!(
             use traits::Default;
             use dict::Felt252DictTrait;
-
             fn run_test() -> u64 {
                 let mut dict: Felt252Dict<u64> = Default::default();
                 dict.insert(200000000, 4_u64);
@@ -222,29 +227,63 @@ mod test {
             }
         );
 
-        run_program_assert_output(&program, "run_test", &[], 4u64.into());
+        let return_value = run_program(&program, "run_test", &[]).return_value;
+
+        assert_eq!(Value::from(4u64), return_value);
     }
 
     #[test]
     fn run_dict_insert_ret_dict() {
-        let program = load_cairo!(
-            use traits::Default;
-            use dict::Felt252DictTrait;
+        // use traits::Default;
+        // use dict::Felt252DictTrait;
+        // fn run_test() -> Felt252Dict<u32> {
+        //     let mut dict: Felt252Dict<u32> = Default::default();
+        //     dict.insert(2, 1_u32);
+        //     dict
+        // }
+        let program = ProgramParser::new().parse(r#"
+            type [0] = SegmentArena [storable: true, drop: false, dup: false, zero_sized: false];
+            type [6] = Const<[1], 1> [storable: false, drop: false, dup: false, zero_sized: false];
+            type [4] = Felt252DictEntry<[1]> [storable: true, drop: false, dup: false, zero_sized: false];
+            type [5] = Const<[3], 2> [storable: false, drop: false, dup: false, zero_sized: false];
+            type [3] = felt252 [storable: true, drop: true, dup: true, zero_sized: false];
+            type [1] = u32 [storable: true, drop: true, dup: true, zero_sized: false];
+            type [2] = Felt252Dict<[1]> [storable: true, drop: false, dup: false, zero_sized: false];
 
-            fn run_test() -> Felt252Dict<u32> {
-                let mut dict: Felt252Dict<u32> = Default::default();
-                dict.insert(2, 1_u32);
-                dict
-            }
-        );
+            libfunc [2] = felt252_dict_new<[1]>;
+            libfunc [4] = const_as_immediate<[5]>;
+            libfunc [7] = store_temp<[2]>;
+            libfunc [8] = store_temp<[3]>;
+            libfunc [1] = felt252_dict_entry_get<[1]>;
+            libfunc [5] = drop<[1]>;
+            libfunc [6] = const_as_immediate<[6]>;
+            libfunc [9] = store_temp<[1]>;
+            libfunc [0] = felt252_dict_entry_finalize<[1]>;
+            libfunc [10] = store_temp<[0]>;
 
-        run_program_assert_output(
-            &program,
-            "run_test",
-            &[],
+            [2]([0]) -> ([1], [2]); // 0
+            [4]() -> ([3]); // 1
+            [7]([2]) -> ([2]); // 2
+            [8]([3]) -> ([3]); // 3
+            [1]([2], [3]) -> ([4], [5]); // 4
+            [5]([5]) -> (); // 5
+            [6]() -> ([6]); // 6
+            [9]([6]) -> ([6]); // 7
+            [0]([4], [6]) -> ([7]); // 8
+            [10]([1]) -> ([1]); // 9
+            [7]([7]) -> ([7]); // 10
+            return([1], [7]); // 11
+
+            [0]@0([0]: [0]) -> ([0], [2]);
+        "#).map_err(|e| e.to_string()).unwrap();
+
+        let return_value = run_sierra_program(&program, &[]).return_value;
+
+        assert_eq!(
             jit_dict!(
                 2 => 1u32
             ),
+            return_value
         );
     }
 
@@ -253,7 +292,6 @@ mod test {
         let program = load_cairo!(
             use traits::Default;
             use dict::Felt252DictTrait;
-
             fn run_test() -> u32 {
                 let mut dict: Felt252Dict<u32> = Default::default();
                 dict.insert(2, 1_u32);
@@ -277,6 +315,8 @@ mod test {
             }
         );
 
-        run_program_assert_output(&program, "run_test", &[], 1345432_u32.into());
+        let return_value = run_program(&program, "run_test", &[]).return_value;
+
+        assert_eq!(Value::from(1345432_u32), return_value);
     }
 }
