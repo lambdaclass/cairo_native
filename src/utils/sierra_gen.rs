@@ -3,19 +3,20 @@
 use cairo_lang_sierra::{
     extensions::{
         branch_align::BranchAlignLibfunc,
+        core::CoreType,
         enm::{EnumInitLibfunc, EnumType},
         lib_func::{SierraApChange, SignatureSpecializationContext},
         structure::{StructConstructLibfunc, StructType},
         type_specialization_context::TypeSpecializationContext,
         types::TypeInfo,
-        GenericLibfunc, NamedLibfunc, NamedType,
+        ConcreteType, GenericLibfunc, GenericType, NamedLibfunc, NamedType,
     },
     ids::{
         ConcreteLibfuncId, ConcreteTypeId, FunctionId, GenericLibfuncId, GenericTypeId, UserTypeId,
         VarId,
     },
     program::{
-        BranchInfo, BranchTarget, ConcreteLibfuncLongId, ConcreteTypeLongId, Function,
+        BranchInfo, BranchTarget, ConcreteLibfuncLongId, DeclaredTypeInfo, Function,
         FunctionSignature, GenericArg, Invocation, LibfuncDeclaration, Param, Program, Statement,
         StatementIdx, TypeDeclaration,
     },
@@ -64,22 +65,22 @@ where
     }
 
     pub fn build_with_generic_id(
-        self,
+        mut self,
         generic_id: GenericLibfuncId,
         generic_args: impl Into<Vec<GenericArg>>,
     ) -> Program {
-        let context = SierraGeneratorWrapper(RefCell::new(self));
         let generic_args = generic_args.into();
 
         let libfunc = T::by_id(&generic_id).unwrap();
         let libfunc_signature = libfunc
-            .specialize_signature(&context, &generic_args)
+            .specialize_signature(
+                &SierraGeneratorWrapper(RefCell::new(&mut self)),
+                &generic_args,
+            )
             .unwrap();
 
-        let mut context = RefCell::into_inner(context.0);
-
         // Push the libfunc declaration.
-        let libfunc_id = context
+        let libfunc_id = self
             .push_libfunc_declaration(ConcreteLibfuncLongId {
                 generic_id,
                 generic_args: generic_args.to_vec(),
@@ -91,7 +92,7 @@ where
             .param_signatures
             .iter()
             .take_while(|param_signature| {
-                let long_id = &context
+                let long_id = &self
                     .program
                     .type_declarations
                     .iter()
@@ -133,26 +134,18 @@ where
                     _ => ResultVarType::Empty(Some(
                         packed_unit_type_id
                             .get_or_insert_with(|| {
-                                context
-                                    .push_type_declaration(ConcreteTypeLongId {
-                                        generic_id: StructType::ID,
-                                        generic_args: vec![GenericArg::UserType(
-                                            UserTypeId::from_string("Tuple"),
-                                        )],
-                                    })
-                                    .clone()
+                                self.push_type_declaration::<StructType>(&[GenericArg::UserType(
+                                    UserTypeId::from_string("Tuple"),
+                                )])
+                                .clone()
                             })
                             .clone(),
                     )),
                 },
                 1 => ResultVarType::Single(branch_signature.vars[num_builtins].ty.clone()),
                 _ => ResultVarType::Multi(
-                    context
-                        .push_type_declaration(ConcreteTypeLongId {
-                            generic_id: StructType::ID,
-                            generic_args: once(GenericArg::UserType(UserTypeId::from_string(
-                                "Tuple",
-                            )))
+                    self.push_type_declaration::<StructType>(
+                        once(GenericArg::UserType(UserTypeId::from_string("Tuple")))
                             .chain(
                                 branch_signature
                                     .vars
@@ -160,9 +153,9 @@ where
                                     .skip(num_builtins)
                                     .map(|var_info| GenericArg::Type(var_info.ty.clone())),
                             )
-                            .collect(),
-                        })
-                        .clone(),
+                            .collect::<Vec<_>>(),
+                    )
+                    .clone(),
                 ),
             });
         }
@@ -174,10 +167,9 @@ where
                 ResultVarType::Single(ty) => ty.clone(),
                 ResultVarType::Multi(ty) => ty.clone(),
             },
-            _ => context
-                .push_type_declaration(ConcreteTypeLongId {
-                    generic_id: EnumType::ID,
-                    generic_args: once(GenericArg::UserType(UserTypeId::from_string("Tuple")))
+            _ => self
+                .push_type_declaration::<EnumType>(
+                    once(GenericArg::UserType(UserTypeId::from_string("Tuple")))
                         .chain(return_types.iter().map(|ty| {
                             GenericArg::Type(match ty {
                                 ResultVarType::Empty(ty) => ty.clone().unwrap(),
@@ -185,13 +177,13 @@ where
                                 ResultVarType::Multi(ty) => ty.clone(),
                             })
                         }))
-                        .collect(),
-                })
+                        .collect::<Vec<_>>(),
+                )
                 .clone(),
         };
 
         // Generate function declaration.
-        context.program.funcs.push(Function {
+        self.program.funcs.push(Function {
             id: FunctionId::new(0),
             signature: FunctionSignature {
                 param_types: libfunc_signature
@@ -231,12 +223,11 @@ where
 
         let branch_align_libfunc = OnceCell::new();
         let construct_unit_libfunc = packed_unit_type_id.map(|ty| {
-            context
-                .push_libfunc_declaration(ConcreteLibfuncLongId {
-                    generic_id: GenericLibfuncId::from_string(StructConstructLibfunc::STR_ID),
-                    generic_args: vec![GenericArg::Type(ty)],
-                })
-                .clone()
+            self.push_libfunc_declaration(ConcreteLibfuncLongId {
+                generic_id: GenericLibfuncId::from_string(StructConstructLibfunc::STR_ID),
+                generic_args: vec![GenericArg::Type(ty)],
+            })
+            .clone()
         });
 
         for (branch_index, branch_signature) in
@@ -245,22 +236,20 @@ where
             let branch_target = match branch_index {
                 0 => BranchTarget::Fallthrough,
                 _ => {
-                    let statement_idx = StatementIdx(context.program.statements.len() + 1);
+                    let statement_idx = StatementIdx(self.program.statements.len() + 1);
                     let branch_align_libfunc_id = branch_align_libfunc
                         .get_or_init(|| {
-                            context
-                                .push_libfunc_declaration(ConcreteLibfuncLongId {
-                                    generic_id: GenericLibfuncId::from_string(
-                                        BranchAlignLibfunc::STR_ID,
-                                    ),
-                                    generic_args: Vec::new(),
-                                })
-                                .clone()
+                            self.push_libfunc_declaration(ConcreteLibfuncLongId {
+                                generic_id: GenericLibfuncId::from_string(
+                                    BranchAlignLibfunc::STR_ID,
+                                ),
+                                generic_args: Vec::new(),
+                            })
+                            .clone()
                         })
                         .clone();
 
-                    context
-                        .program
+                    self.program
                         .statements
                         .push(Statement::Invocation(Invocation {
                             libfunc_id: branch_align_libfunc_id,
@@ -278,8 +267,7 @@ where
             // Maybe pack values.
             match &return_types[branch_index] {
                 ResultVarType::Empty(Some(_)) => {
-                    context
-                        .program
+                    self.program
                         .statements
                         .push(Statement::Invocation(Invocation {
                             libfunc_id: construct_unit_libfunc.clone().unwrap(),
@@ -291,7 +279,7 @@ where
                         }));
                 }
                 ResultVarType::Multi(type_id) => {
-                    let construct_libfunc_id = context
+                    let construct_libfunc_id = self
                         .push_libfunc_declaration(ConcreteLibfuncLongId {
                             generic_id: GenericLibfuncId::from_string(
                                 StructConstructLibfunc::STR_ID,
@@ -300,8 +288,7 @@ where
                         })
                         .clone();
 
-                    context
-                        .program
+                    self.program
                         .statements
                         .push(Statement::Invocation(Invocation {
                             libfunc_id: construct_libfunc_id,
@@ -319,7 +306,7 @@ where
 
             // Maybe enum values.
             if libfunc_signature.branch_signatures.len() > 1 {
-                let enum_libfunc_id = context
+                let enum_libfunc_id = self
                     .push_libfunc_declaration(ConcreteLibfuncLongId {
                         generic_id: GenericLibfuncId::from_string(EnumInitLibfunc::STR_ID),
                         generic_args: vec![
@@ -329,8 +316,7 @@ where
                     })
                     .clone();
 
-                context
-                    .program
+                self.program
                     .statements
                     .push(Statement::Invocation(Invocation {
                         libfunc_id: enum_libfunc_id,
@@ -343,7 +329,7 @@ where
             }
 
             // Return.
-            context.program.statements.push(Statement::Return(
+            self.program.statements.push(Statement::Return(
                 (0..=num_builtins).map(|x| VarId::new(x as u64)).collect(),
             ));
 
@@ -359,21 +345,51 @@ where
             });
         }
 
-        context
-            .program
+        self.program
             .statements
             .insert(0, Statement::Invocation(libfunc_invocation));
 
-        context.program
+        self.program
     }
 
-    pub fn push_type_declaration(&mut self, long_id: ConcreteTypeLongId) -> &ConcreteTypeId {
+    pub fn push_type_declaration<U>(
+        &mut self,
+        generic_args: impl Into<Vec<GenericArg>>,
+    ) -> &ConcreteTypeId
+    where
+        U: NamedType,
+    {
+        self.push_type_declaration_with_generic_id::<U>(U::ID, generic_args)
+    }
+
+    pub fn push_type_declaration_with_generic_id<U>(
+        &mut self,
+        generic_id: GenericTypeId,
+        generic_args: impl Into<Vec<GenericArg>>,
+    ) -> &ConcreteTypeId
+    where
+        U: GenericType,
+    {
+        let generic_args = generic_args.into();
+
+        let type_info = U::by_id(&generic_id)
+            .unwrap()
+            .specialize(&SierraGeneratorWrapper(RefCell::new(self)), &generic_args)
+            .unwrap()
+            .info()
+            .clone();
+
         let id = ConcreteTypeId::new(self.program.type_declarations.len() as u64);
-        self.program.type_declarations.push(TypeDeclaration {
+        self.program.type_declarations.push(dbg!(TypeDeclaration {
             id,
-            long_id,
-            declared_type_info: None,
-        });
+            long_id: type_info.long_id,
+            declared_type_info: Some(DeclaredTypeInfo {
+                storable: type_info.storable,
+                droppable: type_info.droppable,
+                duplicatable: type_info.duplicatable,
+                zero_sized: type_info.zero_sized,
+            }),
+        }));
 
         &self.program.type_declarations.last().unwrap().id
     }
@@ -388,11 +404,11 @@ where
     }
 }
 
-struct SierraGeneratorWrapper<T>(RefCell<SierraGenerator<T>>)
+struct SierraGeneratorWrapper<'a, T>(RefCell<&'a mut SierraGenerator<T>>)
 where
     T: GenericLibfunc;
 
-impl<T> SignatureSpecializationContext for SierraGeneratorWrapper<T>
+impl<T> SignatureSpecializationContext for SierraGeneratorWrapper<'_, T>
 where
     T: GenericLibfunc,
 {
@@ -401,26 +417,12 @@ where
         id: GenericTypeId,
         generic_args: &[GenericArg],
     ) -> Option<ConcreteTypeId> {
-        let mut context = self.0.borrow_mut();
-
-        let long_id = ConcreteTypeLongId {
-            generic_id: id,
-            generic_args: generic_args.to_vec(),
-        };
-        assert!(!context
-            .program
-            .type_declarations
-            .iter()
-            .any(|type_declaration| type_declaration.long_id == long_id));
-
-        let id = ConcreteTypeId::new(context.program.type_declarations.len() as u64);
-        context.program.type_declarations.push(TypeDeclaration {
-            id: id.clone(),
-            long_id,
-            declared_type_info: None,
-        });
-
-        Some(id)
+        Some(
+            self.0
+                .borrow_mut()
+                .push_type_declaration_with_generic_id::<CoreType>(id, generic_args)
+                .clone(),
+        )
     }
 
     fn try_get_function_signature(&self, _function_id: &FunctionId) -> Option<FunctionSignature> {
@@ -436,12 +438,32 @@ where
     }
 }
 
-impl<T> TypeSpecializationContext for SierraGeneratorWrapper<T>
+impl<T> TypeSpecializationContext for SierraGeneratorWrapper<'_, T>
 where
     T: GenericLibfunc,
 {
-    fn try_get_type_info(&self, _id: ConcreteTypeId) -> Option<TypeInfo> {
-        todo!()
+    fn try_get_type_info(&self, id: ConcreteTypeId) -> Option<TypeInfo> {
+        self.0
+            .borrow()
+            .program
+            .type_declarations
+            .iter()
+            .find_map(|type_declaration| {
+                (type_declaration.id == id).then(|| {
+                    dbg!(
+                        &type_declaration.long_id,
+                        type_declaration.declared_type_info.as_ref()
+                    );
+                    let declared_type_info = type_declaration.declared_type_info.as_ref().unwrap();
+                    TypeInfo {
+                        long_id: type_declaration.long_id.clone(),
+                        storable: declared_type_info.storable,
+                        droppable: declared_type_info.droppable,
+                        duplicatable: declared_type_info.duplicatable,
+                        zero_sized: declared_type_info.zero_sized,
+                    }
+                })
+            })
     }
 }
 
@@ -457,9 +479,10 @@ mod test {
     use super::*;
     use cairo_lang_sierra::extensions::{
         array::ArrayNewLibfunc,
+        bounded_int::BoundedIntTrimLibfunc,
         int::{
             signed::{Sint8Traits, SintDiffLibfunc},
-            unsigned::{Uint64Traits, Uint8Type},
+            unsigned::{Uint32Type, Uint64Traits, Uint8Type},
             unsigned128::U128GuaranteeMulLibfunc,
             IntConstLibfunc,
         },
@@ -489,14 +512,24 @@ mod test {
         let program = {
             let mut generator = SierraGenerator::<ArrayNewLibfunc>::default();
 
-            let u8_type = generator
-                .push_type_declaration(ConcreteTypeLongId {
-                    generic_id: Uint8Type::ID,
-                    generic_args: Vec::new(),
-                })
-                .clone();
+            let u8_type = generator.push_type_declaration::<Uint8Type>(&[]).clone();
 
             generator.build(&[GenericArg::Type(u8_type)])
+        };
+        println!("{program}");
+    }
+
+    #[test]
+    fn sierra_generator_type_info() {
+        let program = {
+            let mut generator = SierraGenerator::<BoundedIntTrimLibfunc>::default();
+
+            let u32_type = generator.push_type_declaration::<Uint32Type>(&[]).clone();
+
+            generator.build(&[
+                GenericArg::Type(u32_type),
+                GenericArg::Value(u32::MAX.into()),
+            ])
         };
         println!("{program}");
     }
