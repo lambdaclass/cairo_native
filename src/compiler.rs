@@ -758,7 +758,7 @@ fn compile_func(
                                             }
                                         })
                                         .collect::<Result<Vec<_>, _>>()?,
-                                    None => todo!(),
+                                    None => native_panic!("should be Some always"),
                                 };
 
                                 block.append_operation(cf::cond_br(

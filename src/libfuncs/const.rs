@@ -284,7 +284,7 @@ pub fn build_const_type_value<'ctx, 'this>(
             }
             _ => Err(Error::ConstDataMismatch),
         },
-        _ => todo!("const for type {}", info.inner_ty),
+        _ => native_panic!("const for type {} not implemented", info.inner_ty),
     }
 }
 
