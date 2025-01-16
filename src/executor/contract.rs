@@ -436,13 +436,15 @@ impl AotContractExecutor {
         #[cfg(target_arch = "aarch64")]
         let mut ret_registers = [0; 4];
 
-        crate::utils::safe_runner::run_safely(|| unsafe {
-            invoke_trampoline(
-                function_ptr,
-                invoke_data.as_ptr().cast(),
-                invoke_data.len() >> 3,
-                ret_registers.as_mut_ptr(),
-            );
+        crate::utils::allocator::run_with_allocator(|| {
+            crate::utils::safe_runner::run_safely(|| unsafe {
+                invoke_trampoline(
+                    function_ptr,
+                    invoke_data.as_ptr().cast(),
+                    invoke_data.len() >> 3,
+                    ret_registers.as_mut_ptr(),
+                );
+            })
         })
         .map_err(Error::SafeRunner)?;
 
