@@ -52,6 +52,7 @@ pub fn setup_safe_runner() {
                         as usize,
                     sa_mask: MaybeUninit::<sigset_t>::zeroed().assume_init(),
                     sa_flags: SA_ONSTACK | SA_SIGINFO,
+                    #[cfg(target_os = "linux")]
                     sa_restorer: None,
                 },
                 null_mut(),
