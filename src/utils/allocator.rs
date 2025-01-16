@@ -9,6 +9,11 @@ thread_local! {
     static ALLOCATOR: UnsafeCell<ManagedAllocator> = UnsafeCell::new(ManagedAllocator::default());
 }
 
+// TODO: Replace `crate::utils::libc_free`, `crate::utils::libc_malloc`,
+//   `crate::utils::libc_realloc` with our implementation.
+// TODO: Merge runtime crate into library (after #1051).
+// TODO: Register runtime symbols (after #1051).
+
 pub fn register_runtime_symbols(find_symbol: impl Fn(&str) -> Option<*mut ()>) {
     if let Some(symbol) = find_symbol("cairo_native__alloc") {
         unsafe {
