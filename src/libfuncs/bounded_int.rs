@@ -57,7 +57,7 @@ pub fn build<'ctx, 'this>(
         BoundedIntConcreteLibfunc::Constrain(info) => {
             build_constrain(context, registry, entry, location, helper, metadata, info)
         }
-        BoundedIntConcreteLibfunc::Trim(info) => {
+        BoundedIntConcreteLibfunc::TrimMin(info) | BoundedIntConcreteLibfunc::TrimMax(info) => {
             build_trim(context, registry, entry, location, helper, metadata, info)
         }
         BoundedIntConcreteLibfunc::IsZero(info) => {
