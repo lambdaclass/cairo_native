@@ -281,7 +281,7 @@ pub fn layout(
             Ok(layout)
         }
         CircuitTypeConcrete::CircuitPartialOutputs(_) => {
-            native_panic!("CircuitPartialOutputs is noop for now");
+            Ok(Layout::new::<()>())
         }
     }
 }
