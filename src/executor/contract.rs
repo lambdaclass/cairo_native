@@ -119,20 +119,7 @@ pub enum BuiltinType {
 
 impl BuiltinType {
     pub const fn size_in_bytes(&self) -> usize {
-        match self {
-            BuiltinType::Bitwise => 8,
-            BuiltinType::EcOp => 8,
-            BuiltinType::RangeCheck => 8,
-            BuiltinType::SegmentArena => 8,
-            BuiltinType::Poseidon => 8,
-            BuiltinType::Pedersen => 8,
-            BuiltinType::RangeCheck96 => 8,
-            BuiltinType::CircuitAdd => 8,
-            BuiltinType::CircuitMul => 8,
-            BuiltinType::Gas => 16,
-            BuiltinType::System => 8,
-            BuiltinType::BuiltinCosts => 8,
-        }
+        size_of::<u64>()
     }
 }
 
@@ -279,8 +266,25 @@ impl AotContractExecutor {
     pub fn load(library_path: &Path) -> Result<Self> {
         let info_str = std::fs::read_to_string(library_path.with_extension("json"))?;
         let contract_info: NativeContractInfo = serde_json::from_str(&info_str)?;
+
+        let library = Arc::new(unsafe { Library::new(library_path)? });
+        unsafe {
+            let get_version = library
+                .get::<extern "C" fn(*mut u8, usize) -> usize>(b"cairo_native__get_version")?;
+
+            let mut version_buffer = [0u8; 16];
+            let version_len = get_version(version_buffer.as_mut_ptr(), version_buffer.len());
+
+            let target_version = env!("CARGO_PKG_VERSION");
+            assert_eq!(
+                &version_buffer[..version_len],
+                target_version.as_bytes(),
+                "aot-compiled contract version mismatch"
+            );
+        };
+
         Ok(Self {
-            library: Arc::new(unsafe { Library::new(library_path)? }),
+            library,
             path: library_path.to_path_buf(),
             is_temp_path: false,
             contract_info,
@@ -340,25 +344,29 @@ impl AotContractExecutor {
             Layout::from_size_align_unchecked(128 + builtins_size, 16)
         });
 
-        return_ptr.as_ptr().to_bytes(&mut invoke_data)?;
+        return_ptr
+            .as_ptr()
+            .to_bytes(&mut invoke_data, |_| unreachable!())?;
 
         let mut syscall_handler = StarknetSyscallHandlerCallbacks::new(&mut syscall_handler);
 
         for b in &self.contract_info.entry_points_info[&function_id.id].builtins {
             match b {
                 BuiltinType::Gas => {
-                    gas.to_bytes(&mut invoke_data)?;
+                    gas.to_bytes(&mut invoke_data, |_| unreachable!())?;
                 }
                 BuiltinType::BuiltinCosts => {
                     // todo: check if valid
-                    builtin_costs.as_ptr().to_bytes(&mut invoke_data)?;
+                    builtin_costs
+                        .as_ptr()
+                        .to_bytes(&mut invoke_data, |_| unreachable!())?;
                 }
                 BuiltinType::System => {
                     (&mut syscall_handler as *mut StarknetSyscallHandlerCallbacks<_>)
-                        .to_bytes(&mut invoke_data)?;
+                        .to_bytes(&mut invoke_data, |_| unreachable!())?;
                 }
                 _ => {
-                    0u64.to_bytes(&mut invoke_data)?;
+                    0u64.to_bytes(&mut invoke_data, |_| unreachable!())?;
                 }
             }
         }
@@ -386,15 +394,15 @@ impl AotContractExecutor {
             .try_into()
             .to_native_assert_error("number of arguments should fit into a u32")?;
 
-        ptr.to_bytes(&mut invoke_data)?;
+        ptr.to_bytes(&mut invoke_data, |_| unreachable!())?;
         if cfg!(target_arch = "aarch64") {
-            0u32.to_bytes(&mut invoke_data)?; // start
-            len.to_bytes(&mut invoke_data)?; // end
-            len.to_bytes(&mut invoke_data)?; // cap
+            0u32.to_bytes(&mut invoke_data, |_| unreachable!())?; // start
+            len.to_bytes(&mut invoke_data, |_| unreachable!())?; // end
+            len.to_bytes(&mut invoke_data, |_| unreachable!())?; // cap
         } else if cfg!(target_arch = "x86_64") {
-            (0u32 as u64).to_bytes(&mut invoke_data)?; // start
-            (len as u64).to_bytes(&mut invoke_data)?; // end
-            (len as u64).to_bytes(&mut invoke_data)?; // cap
+            (0u32 as u64).to_bytes(&mut invoke_data, |_| unreachable!())?; // start
+            (len as u64).to_bytes(&mut invoke_data, |_| unreachable!())?; // end
+            (len as u64).to_bytes(&mut invoke_data, |_| unreachable!())?; // cap
         } else {
             unreachable!("unsupported architecture");
         }
@@ -737,7 +745,6 @@ mod tests {
                     &mut StubSyscallHandler::default(),
                 )
                 .unwrap();
-
             assert_eq!(result.return_values, vec![Felt::from(n), Felt::from(n * 2)]);
             assert_eq!(result.remaining_gas, 18446744073709551615);
         });
@@ -807,9 +814,8 @@ mod tests {
                 &mut StubSyscallHandler::default(),
             )
             .unwrap();
-
         assert_eq!(result.return_values, vec![Felt::from(3628800)]);
-        assert_eq!(result.remaining_gas, 18446744073709538915);
+        assert_eq!(result.remaining_gas, 18446744073709537615);
     }
 
     #[rstest]
