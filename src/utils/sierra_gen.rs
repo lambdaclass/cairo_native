@@ -233,33 +233,32 @@ where
         for (branch_index, branch_signature) in
             libfunc_signature.branch_signatures.iter().enumerate()
         {
+            if libfunc_signature.branch_signatures.len() > 1 {
+                let branch_align_libfunc_id = branch_align_libfunc
+                    .get_or_init(|| {
+                        self.push_libfunc_declaration(ConcreteLibfuncLongId {
+                            generic_id: GenericLibfuncId::from_string(BranchAlignLibfunc::STR_ID),
+                            generic_args: Vec::new(),
+                        })
+                        .clone()
+                    })
+                    .clone();
+                self.program
+                    .statements
+                    .push(Statement::Invocation(Invocation {
+                        libfunc_id: branch_align_libfunc_id,
+                        args: Vec::new(),
+                        branches: vec![BranchInfo {
+                            target: BranchTarget::Fallthrough,
+                            results: Vec::new(),
+                        }],
+                    }));
+            }
+
             let branch_target = match branch_index {
                 0 => BranchTarget::Fallthrough,
                 _ => {
                     let statement_idx = StatementIdx(self.program.statements.len() + 1);
-                    let branch_align_libfunc_id = branch_align_libfunc
-                        .get_or_init(|| {
-                            self.push_libfunc_declaration(ConcreteLibfuncLongId {
-                                generic_id: GenericLibfuncId::from_string(
-                                    BranchAlignLibfunc::STR_ID,
-                                ),
-                                generic_args: Vec::new(),
-                            })
-                            .clone()
-                        })
-                        .clone();
-
-                    self.program
-                        .statements
-                        .push(Statement::Invocation(Invocation {
-                            libfunc_id: branch_align_libfunc_id,
-                            args: Vec::new(),
-                            branches: vec![BranchInfo {
-                                target: BranchTarget::Fallthrough,
-                                results: Vec::new(),
-                            }],
-                        }));
-
                     BranchTarget::Statement(statement_idx)
                 }
             };
@@ -380,7 +379,7 @@ where
             .clone();
 
         let id = ConcreteTypeId::new(self.program.type_declarations.len() as u64);
-        self.program.type_declarations.push(dbg!(TypeDeclaration {
+        self.program.type_declarations.push(TypeDeclaration {
             id,
             long_id: type_info.long_id,
             declared_type_info: Some(DeclaredTypeInfo {
@@ -389,7 +388,7 @@ where
                 duplicatable: type_info.duplicatable,
                 zero_sized: type_info.zero_sized,
             }),
-        }));
+        });
 
         &self.program.type_declarations.last().unwrap().id
     }
@@ -450,10 +449,6 @@ where
             .iter()
             .find_map(|type_declaration| {
                 (type_declaration.id == id).then(|| {
-                    dbg!(
-                        &type_declaration.long_id,
-                        type_declaration.declared_type_info.as_ref()
-                    );
                     let declared_type_info = type_declaration.declared_type_info.as_ref().unwrap();
                     TypeInfo {
                         long_id: type_declaration.long_id.clone(),
@@ -480,12 +475,14 @@ mod test {
     use cairo_lang_sierra::extensions::{
         array::ArrayNewLibfunc,
         bounded_int::BoundedIntTrimLibfunc,
+        bytes31::Bytes31FromFelt252Trait,
         int::{
             signed::{Sint8Traits, SintDiffLibfunc},
             unsigned::{Uint32Type, Uint64Traits, Uint8Type},
             unsigned128::U128GuaranteeMulLibfunc,
             IntConstLibfunc,
         },
+        try_from_felt252::TryFromFelt252Libfunc,
     };
 
     #[test]
@@ -531,6 +528,13 @@ mod test {
                 GenericArg::Value(u32::MAX.into()),
             ])
         };
+        println!("{program}");
+    }
+
+    #[test]
+    fn sierra_generator_branch_align() {
+        let program =
+            SierraGenerator::<TryFromFelt252Libfunc<Bytes31FromFelt252Trait>>::default().build(&[]);
         println!("{program}");
     }
 }
