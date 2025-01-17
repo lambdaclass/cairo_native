@@ -637,7 +637,7 @@ fn build_square_root<'ctx, 'this>(
             CoreTypeConcrete::Uint32(_) => (32, 16),
             CoreTypeConcrete::Uint64(_) => (64, 32),
             CoreTypeConcrete::Uint128(_) => (128, 64),
-            _ => native_panic!("unhandled type in int square root"),
+            _ => native_panic!("invalid value type in int square root"),
         };
 
     let k1 = entry.const_int(context, location, 1, input_bits)?;
