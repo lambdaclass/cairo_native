@@ -3064,7 +3064,38 @@
 <a href="#3063" id="3063">3063</a>
 <a href="#3064" id="3064">3064</a>
 <a href="#3065" id="3065">3065</a>
-<a href="#3066" id="3066">3066</a></pre></div><pre class="rust"><code><span class="doccomment">//! # Array libfuncs
+<a href="#3066" id="3066">3066</a>
+<a href="#3067" id="3067">3067</a>
+<a href="#3068" id="3068">3068</a>
+<a href="#3069" id="3069">3069</a>
+<a href="#3070" id="3070">3070</a>
+<a href="#3071" id="3071">3071</a>
+<a href="#3072" id="3072">3072</a>
+<a href="#3073" id="3073">3073</a>
+<a href="#3074" id="3074">3074</a>
+<a href="#3075" id="3075">3075</a>
+<a href="#3076" id="3076">3076</a>
+<a href="#3077" id="3077">3077</a>
+<a href="#3078" id="3078">3078</a>
+<a href="#3079" id="3079">3079</a>
+<a href="#3080" id="3080">3080</a>
+<a href="#3081" id="3081">3081</a>
+<a href="#3082" id="3082">3082</a>
+<a href="#3083" id="3083">3083</a>
+<a href="#3084" id="3084">3084</a>
+<a href="#3085" id="3085">3085</a>
+<a href="#3086" id="3086">3086</a>
+<a href="#3087" id="3087">3087</a>
+<a href="#3088" id="3088">3088</a>
+<a href="#3089" id="3089">3089</a>
+<a href="#3090" id="3090">3090</a>
+<a href="#3091" id="3091">3091</a>
+<a href="#3092" id="3092">3092</a>
+<a href="#3093" id="3093">3093</a>
+<a href="#3094" id="3094">3094</a>
+<a href="#3095" id="3095">3095</a>
+<a href="#3096" id="3096">3096</a>
+<a href="#3097" id="3097">3097</a></pre></div><pre class="rust"><code><span class="doccomment">//! # Array libfuncs
 
 </span><span class="kw">use </span><span class="kw">super</span>::LibfuncHelper;
 <span class="kw">use crate</span>::{
@@ -4228,8 +4259,9 @@
                     <span class="kw">let </span>data_ptr = <span class="kw">if </span>REVERSE {
                         array_ptr
                     } <span class="kw">else </span>{
+                        <span class="kw">let </span>offset = block.addi(array_start, extract_len_value, location)<span class="question-mark">?</span>;
                         <span class="kw">let </span>offset = block.append_op_result(arith::extui(
-                            extract_len_value,
+                            offset,
                             IntegerType::new(context, <span class="number">64</span>).into(),
                             location,
                         ))<span class="question-mark">?</span>;
@@ -6128,6 +6160,36 @@
         <span class="kw">let </span>result = run_program(<span class="kw-2">&amp;</span>program, <span class="string">"run_test"</span>, <span class="kw-2">&amp;</span>[]).return_value;
 
         <span class="macro">assert_eq!</span>(result, <span class="macro">jit_enum!</span>(<span class="number">0</span>, <span class="macro">jit_struct!</span>(Value::Felt252(<span class="number">42</span>.into()))));
+    }
+
+    <span class="attr">#[test]
+    </span><span class="kw">fn </span>array_snapshot_pop_front_clone_offset() {
+        <span class="kw">let </span>program = <span class="macro">load_cairo!</span> {
+            <span class="kw">fn </span>run_test() -&gt; Span&lt;felt252&gt; {
+                <span class="kw">let </span>data = <span class="macro">array!</span>[<span class="number">7</span>, <span class="number">3</span>, <span class="number">4</span>, <span class="number">193827</span>];
+                <span class="kw">let </span><span class="kw-2">mut </span>data = data.span();
+
+                assert(<span class="kw-2">*</span>data.pop_front().unwrap() == <span class="number">7</span>, <span class="number">0</span>);
+                <span class="kw">let </span>data2 = data.clone();
+
+                assert(<span class="kw-2">*</span>data.pop_front().unwrap() == <span class="number">3</span>, <span class="number">1</span>);
+
+                drop(data2);
+                data
+            }
+        };
+        <span class="kw">let </span>result = run_program(<span class="kw-2">&amp;</span>program, <span class="string">"run_test"</span>, <span class="kw-2">&amp;</span>[]).return_value;
+
+        <span class="macro">assert_eq!</span>(
+            result,
+            <span class="macro">jit_enum!</span>(
+                <span class="number">0</span>,
+                <span class="macro">jit_struct!</span>(<span class="macro">jit_struct!</span>(Value::Array(<span class="macro">vec!</span>[
+                    Value::Felt252(<span class="number">4</span>.into()),
+                    Value::Felt252(<span class="number">193827</span>.into()),
+                ])))
+            ),
+        );
     }
 }
 </code></pre></div></section></main></body></html>
