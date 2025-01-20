@@ -57,7 +57,7 @@ pub fn build<'ctx, 'this>(
         BoundedIntConcreteLibfunc::Constrain(info) => {
             build_constrain(context, registry, entry, location, helper, metadata, info)
         }
-        BoundedIntConcreteLibfunc::Trim(info) => {
+        BoundedIntConcreteLibfunc::TrimMin(info) | BoundedIntConcreteLibfunc::TrimMax(info) => {
             build_trim(context, registry, entry, location, helper, metadata, info)
         }
         BoundedIntConcreteLibfunc::IsZero(info) => {
@@ -830,7 +830,7 @@ mod test {
             use core::internal::{OptionRev, bounded_int::BoundedInt};
             use core::internal::bounded_int;
             fn main() -> BoundedInt<-128, 126> {
-                let num = match bounded_int::trim::<i8, 0x7f>(1) {
+                let num = match bounded_int::trim_max::<i8>(1) {
                     OptionRev::Some(n) => n,
                     OptionRev::None => 0,
                 };
@@ -861,7 +861,7 @@ mod test {
             use core::internal::{OptionRev, bounded_int::BoundedInt};
             use core::internal::bounded_int;
             fn main() -> BoundedInt<-127, 127> {
-                let num = match bounded_int::trim::<i8, -0x80>(1) {
+                let num = match bounded_int::trim_min::<i8>(1) {
                     OptionRev::Some(n) => n,
                     OptionRev::None => 1,
                 };
@@ -892,7 +892,7 @@ mod test {
             use core::internal::{OptionRev, bounded_int::BoundedInt};
             use core::internal::bounded_int;
             fn main() -> BoundedInt<0, 4294967294> {
-                let num = match bounded_int::trim::<u32, 0xffffffff>(0xfffffffe) {
+                let num = match bounded_int::trim_max::<u32>(0xfffffffe) {
                     OptionRev::Some(n) => n,
                     OptionRev::None => 0,
                 };
@@ -923,7 +923,7 @@ mod test {
             use core::internal::{OptionRev, bounded_int::BoundedInt};
             use core::internal::bounded_int;
             fn main() -> BoundedInt<-32767, 32767> {
-                let num = match bounded_int::trim::<i16, -0x8000>(-0x8000) {
+                let num = match bounded_int::trim_min::<i16>(-0x8000) {
                     OptionRev::Some(n) => n,
                     OptionRev::None => 0,
                 };
