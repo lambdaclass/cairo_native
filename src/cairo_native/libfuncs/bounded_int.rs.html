@@ -1007,7 +1007,7 @@
         BoundedIntConcreteLibfunc::Constrain(info) =&gt; {
             build_constrain(context, registry, entry, location, helper, metadata, info)
         }
-        BoundedIntConcreteLibfunc::Trim(info) =&gt; {
+        BoundedIntConcreteLibfunc::TrimMin(info) | BoundedIntConcreteLibfunc::TrimMax(info) =&gt; {
             build_trim(context, registry, entry, location, helper, metadata, info)
         }
         BoundedIntConcreteLibfunc::IsZero(info) =&gt; {
@@ -1780,7 +1780,7 @@
             <span class="kw">use </span>core::internal::{OptionRev, bounded_int::BoundedInt};
             <span class="kw">use </span>core::internal::bounded_int;
             <span class="kw">fn </span>main() -&gt; BoundedInt&lt;-<span class="number">128</span>, <span class="number">126</span>&gt; {
-                <span class="kw">let </span>num = <span class="kw">match </span>bounded_int::trim::&lt;i8, <span class="number">0x7f</span>&gt;(<span class="number">1</span>) {
+                <span class="kw">let </span>num = <span class="kw">match </span>bounded_int::trim_max::&lt;i8&gt;(<span class="number">1</span>) {
                     OptionRev::Some(n) =&gt; n,
                     OptionRev::None =&gt; <span class="number">0</span>,
                 };
@@ -1811,7 +1811,7 @@
             <span class="kw">use </span>core::internal::{OptionRev, bounded_int::BoundedInt};
             <span class="kw">use </span>core::internal::bounded_int;
             <span class="kw">fn </span>main() -&gt; BoundedInt&lt;-<span class="number">127</span>, <span class="number">127</span>&gt; {
-                <span class="kw">let </span>num = <span class="kw">match </span>bounded_int::trim::&lt;i8, -<span class="number">0x80</span>&gt;(<span class="number">1</span>) {
+                <span class="kw">let </span>num = <span class="kw">match </span>bounded_int::trim_min::&lt;i8&gt;(<span class="number">1</span>) {
                     OptionRev::Some(n) =&gt; n,
                     OptionRev::None =&gt; <span class="number">1</span>,
                 };
@@ -1842,7 +1842,7 @@
             <span class="kw">use </span>core::internal::{OptionRev, bounded_int::BoundedInt};
             <span class="kw">use </span>core::internal::bounded_int;
             <span class="kw">fn </span>main() -&gt; BoundedInt&lt;<span class="number">0</span>, <span class="number">4294967294</span>&gt; {
-                <span class="kw">let </span>num = <span class="kw">match </span>bounded_int::trim::&lt;u32, <span class="number">0xffffffff</span>&gt;(<span class="number">0xfffffffe</span>) {
+                <span class="kw">let </span>num = <span class="kw">match </span>bounded_int::trim_max::&lt;u32&gt;(<span class="number">0xfffffffe</span>) {
                     OptionRev::Some(n) =&gt; n,
                     OptionRev::None =&gt; <span class="number">0</span>,
                 };
@@ -1873,7 +1873,7 @@
             <span class="kw">use </span>core::internal::{OptionRev, bounded_int::BoundedInt};
             <span class="kw">use </span>core::internal::bounded_int;
             <span class="kw">fn </span>main() -&gt; BoundedInt&lt;-<span class="number">32767</span>, <span class="number">32767</span>&gt; {
-                <span class="kw">let </span>num = <span class="kw">match </span>bounded_int::trim::&lt;i16, -<span class="number">0x8000</span>&gt;(-<span class="number">0x8000</span>) {
+                <span class="kw">let </span>num = <span class="kw">match </span>bounded_int::trim_min::&lt;i16&gt;(-<span class="number">0x8000</span>) {
                     OptionRev::Some(n) =&gt; n,
                     OptionRev::None =&gt; <span class="number">0</span>,
                 };

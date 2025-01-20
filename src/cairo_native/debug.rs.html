@@ -416,7 +416,8 @@
 <a href="#415" id="415">415</a>
 <a href="#416" id="416">416</a>
 <a href="#417" id="417">417</a>
-<a href="#418" id="418">418</a></pre></div><pre class="rust"><code><span class="kw">use </span>cairo_lang_sierra::extensions::{
+<a href="#418" id="418">418</a>
+<a href="#419" id="419">419</a></pre></div><pre class="rust"><code><span class="kw">use </span>cairo_lang_sierra::extensions::{
     array::ArrayConcreteLibfunc,
     boolean::BoolConcreteLibfunc,
     bounded_int::BoundedIntConcreteLibfunc,
@@ -826,7 +827,8 @@
             BoundedIntConcreteLibfunc::Constrain(<span class="kw">_</span>) =&gt; <span class="string">"bounded_int_constrain"</span>,
             BoundedIntConcreteLibfunc::IsZero(<span class="kw">_</span>) =&gt; <span class="string">"bounded_int_is_zero"</span>,
             BoundedIntConcreteLibfunc::WrapNonZero(<span class="kw">_</span>) =&gt; <span class="string">"bounded_int_wrap_non_zero"</span>,
-            BoundedIntConcreteLibfunc::Trim(<span class="kw">_</span>) =&gt; <span class="string">"bounded_int_trim"</span>,
+            BoundedIntConcreteLibfunc::TrimMin(<span class="kw">_</span>) =&gt; <span class="string">"bounded_int_trim_min"</span>,
+            BoundedIntConcreteLibfunc::TrimMax(<span class="kw">_</span>) =&gt; <span class="string">"bounded_int_trim_max"</span>,
         },
         CoreConcreteLibfunc::IntRange(selector) =&gt; <span class="kw">match </span>selector {
             IntRangeConcreteLibfunc::TryNew(<span class="kw">_</span>) =&gt; <span class="string">"int_range_try_new"</span>,
