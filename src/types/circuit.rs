@@ -280,8 +280,6 @@ pub fn layout(
 
             Ok(layout)
         }
-        CircuitTypeConcrete::CircuitPartialOutputs(_) => {
-            Ok(Layout::new::<()>())
-        }
+        CircuitTypeConcrete::CircuitPartialOutputs(_) => Ok(Layout::new::<()>()),
     }
 }
