@@ -1162,8 +1162,9 @@ fn build_pop<'ctx, 'this, const CONSUME: bool, const REVERSE: bool>(
                     let data_ptr = if REVERSE {
                         array_ptr
                     } else {
+                        let offset = block.addi(array_start, extract_len_value, location)?;
                         let offset = block.append_op_result(arith::extui(
-                            extract_len_value,
+                            offset,
                             IntegerType::new(context, 64).into(),
                             location,
                         ))?;
