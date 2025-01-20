@@ -6,7 +6,6 @@ use super::WithSelf;
 use crate::{
     error::{Result, SierraAssertError},
     metadata::MetadataStorage,
-    native_panic,
     utils::{get_integer_layout, layout_repeat},
 };
 use cairo_lang_sierra::{
