@@ -1144,7 +1144,7 @@ dependencies = [
 
 [[package]]
 name = "cairo-native"
-version = "0.2.8"
+version = "0.2.9"
 dependencies = [
  "anyhow",
  "aquamarine",
@@ -1207,7 +1207,7 @@ dependencies = [
 
 [[package]]
 name = "cairo-native-runtime"
-version = "0.2.8"
+version = "0.2.9"
 dependencies = [
  "cairo-lang-sierra-gas",
  "itertools 0.14.0",
