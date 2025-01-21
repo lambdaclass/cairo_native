@@ -191,19 +191,20 @@ jobs:
         run: |
           ./scripts/cmp_state_dumps.sh | tee output
 
+      - name: Upload Compare Results
+        uses: actions/upload-artifact@v4
+        if: ${{ always() }}
+        with:
+          name: output-result
+          path: output
+
       - name: Prepare env vars
         if: ${{ always() }}
         run: |
           # Save workflow url
           REPO_URL="${{ github.server_url }}/${{ github.repository }}"
           echo "WORKFLOW_URL=$REPO_URL/actions/runs/${{ github.run_id }}" | tee -a $GITHUB_ENV
-
-          # Save output
-          {
-            echo 'OUTPUT<<EOF'
-            cat output
-            echo EOF
-          } >> "$GITHUB_ENV"
+          echo "COMPARISON_RESULT=$REPO_URL/actions/runs/${{ github.run_id }}/artifacts/${{ steps.upload_compare_results.outputs.artifact-id }}" | tee -a $GITHUB_ENV
 
       - name: Create Issue
         if: ${{ failure() }}
