@@ -84,8 +84,8 @@ use melior::{
         },
         operation::OperationBuilder,
         r#type::{FunctionType, IntegerType, MemRefType},
-        Attribute, AttributeLike, Block, BlockRef, Identifier, Location, Module, Region, Type,
-        Value,
+        Attribute, AttributeLike, Block, BlockLike, BlockRef, Identifier, Location, Module, Region,
+        Type, Value,
     },
     Context,
 };

@@ -31,7 +31,7 @@ use melior::{
     },
     ir::{
         attribute::IntegerAttribute, operation::OperationBuilder, r#type::IntegerType, Block,
-        Location, Region, ValueLike,
+        BlockLike, Location, Region, ValueLike,
     },
     Context,
 };
