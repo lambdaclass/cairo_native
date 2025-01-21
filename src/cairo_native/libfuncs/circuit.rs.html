@@ -1311,7 +1311,8 @@
 <a href="#1310" id="1310">1310</a>
 <a href="#1311" id="1311">1311</a>
 <a href="#1312" id="1312">1312</a>
-<a href="#1313" id="1313">1313</a></pre></div><pre class="rust"><code><span class="doccomment">//! # Circuit libfuncs
+<a href="#1313" id="1313">1313</a>
+<a href="#1314" id="1314">1314</a></pre></div><pre class="rust"><code><span class="doccomment">//! # Circuit libfuncs
 
 </span><span class="kw">use super</span>::{increment_builtin_counter_by, LibfuncHelper};
 <span class="kw">use crate</span>::{
@@ -1339,7 +1340,8 @@
         cf, llvm,
     },
     ir::{
-        attribute::DenseI32ArrayAttribute, r#type::IntegerType, Block, Location, Value, ValueLike,
+        attribute::DenseI32ArrayAttribute, r#type::IntegerType, Block, BlockLike, Location, Value,
+        ValueLike,
     },
     Context,
 };

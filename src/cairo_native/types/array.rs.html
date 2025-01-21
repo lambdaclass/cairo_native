@@ -440,7 +440,10 @@
 <a href="#439" id="439">439</a>
 <a href="#440" id="440">440</a>
 <a href="#441" id="441">441</a>
-<a href="#442" id="442">442</a></pre></div><pre class="rust"><code><span class="doccomment">//! # Array type
+<a href="#442" id="442">442</a>
+<a href="#443" id="443">443</a>
+<a href="#444" id="444">444</a>
+<a href="#445" id="445">445</a></pre></div><pre class="rust"><code><span class="doccomment">//! # Array type
 //!
 //! An array type is a dynamically allocated list of items.
 //!
@@ -480,12 +483,15 @@
     },
     program_registry::ProgramRegistry,
 };
-<span class="kw">use </span>melior::dialect::{arith::CmpiPredicate, func, scf};
 <span class="kw">use </span>melior::ir::Region;
 <span class="kw">use </span>melior::{
     dialect::{arith, llvm},
     ir::{r#type::IntegerType, Block, Location, Module, Type},
     Context,
+};
+<span class="kw">use </span>melior::{
+    dialect::{arith::CmpiPredicate, func, scf},
+    ir::BlockLike,
 };
 
 <span class="doccomment">/// Build the MLIR type.

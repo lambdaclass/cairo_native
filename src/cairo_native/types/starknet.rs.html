@@ -246,7 +246,10 @@
 <a href="#245" id="245">245</a>
 <a href="#246" id="246">246</a>
 <a href="#247" id="247">247</a>
-<a href="#248" id="248">248</a></pre></div><pre class="rust"><code><span class="doccomment">//! # Starknet types
+<a href="#248" id="248">248</a>
+<a href="#249" id="249">249</a>
+<a href="#250" id="250">250</a>
+<a href="#251" id="251">251</a></pre></div><pre class="rust"><code><span class="doccomment">//! # Starknet types
 //!
 //! ## ClassHash
 //! Type for Starknet class hash, a value in the range [0, 2 ** 251).
@@ -288,7 +291,10 @@
 };
 <span class="kw">use </span>melior::{
     dialect::{func, llvm, ods},
-    ir::{attribute::IntegerAttribute, r#type::IntegerType, Block, Location, Module, Region, Type},
+    ir::{
+        attribute::IntegerAttribute, r#type::IntegerType, Block, BlockLike, Location, Module,
+        Region, Type,
+    },
     Context,
 };
 

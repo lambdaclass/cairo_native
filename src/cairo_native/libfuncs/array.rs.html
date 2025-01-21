@@ -3095,7 +3095,8 @@
 <a href="#3094" id="3094">3094</a>
 <a href="#3095" id="3095">3095</a>
 <a href="#3096" id="3096">3096</a>
-<a href="#3097" id="3097">3097</a></pre></div><pre class="rust"><code><span class="doccomment">//! # Array libfuncs
+<a href="#3097" id="3097">3097</a>
+<a href="#3098" id="3098">3098</a></pre></div><pre class="rust"><code><span class="doccomment">//! # Array libfuncs
 
 </span><span class="kw">use </span><span class="kw">super</span>::LibfuncHelper;
 <span class="kw">use crate</span>::{
@@ -3121,7 +3122,8 @@
         cf, llvm, ods, scf,
     },
     ir::{
-        attribute::IntegerAttribute, r#type::IntegerType, Block, Location, Region, Value, ValueLike,
+        attribute::IntegerAttribute, r#type::IntegerType, Block, BlockLike, Location, Region,
+        Value, ValueLike,
     },
     Context,
 };
