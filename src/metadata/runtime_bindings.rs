@@ -13,7 +13,7 @@ use melior::{
     ir::{
         attribute::{FlatSymbolRefAttribute, StringAttribute, TypeAttribute},
         r#type::{FunctionType, IntegerType},
-        Attribute, Block, Identifier, Location, Module, OperationRef, Region, Value,
+        Attribute, Block, BlockLike, Identifier, Location, Module, OperationRef, Region, Value,
     },
     Context,
 };

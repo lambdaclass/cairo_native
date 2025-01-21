@@ -70,7 +70,7 @@ itertools = "0.13.0"
 lazy_static = "1.5"
 libc = "0.2"
 llvm-sys = "191.0.0"
-melior = { version = "0.20.2", features = ["ods-dialects", "helpers"] }
+melior = { version = "0.21.0", features = ["ods-dialects", "helpers"] }
 mlir-sys = { version = "0.4.1" }
 num-bigint = "0.4.6"
 num-traits = "0.2"

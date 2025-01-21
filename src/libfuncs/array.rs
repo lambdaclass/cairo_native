@@ -24,7 +24,8 @@ use melior::{
         cf, llvm, ods, scf,
     },
     ir::{
-        attribute::IntegerAttribute, r#type::IntegerType, Block, Location, Region, Value, ValueLike,
+        attribute::IntegerAttribute, r#type::IntegerType, Block, BlockLike, Location, Region,
+        Value, ValueLike,
     },
     Context,
 };

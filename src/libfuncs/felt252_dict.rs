@@ -20,7 +20,7 @@ use cairo_lang_sierra::{
 };
 use melior::{
     dialect::{llvm, ods},
-    ir::{Block, Location},
+    ir::{Block, BlockLike, Location},
     Context,
 };
 
