@@ -14,7 +14,7 @@ use melior::{
         attribute::{FlatSymbolRefAttribute, StringAttribute, TypeAttribute},
         operation::OperationBuilder,
         r#type::IntegerType,
-        Attribute, Block, Location, Module, OperationRef, Region, Value,
+        Attribute, Block, BlockLike, Location, Module, OperationRef, Region, Value,
     },
     Context,
 };

@@ -24,7 +24,7 @@ use cairo_lang_sierra::{
 };
 use melior::{
     dialect::llvm::{self, r#type::pointer},
-    ir::{Block, Location, Value},
+    ir::{Block, BlockLike, Location, Value},
     Context,
 };
 use num_bigint::Sign;

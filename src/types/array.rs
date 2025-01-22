@@ -38,12 +38,15 @@ use cairo_lang_sierra::{
     },
     program_registry::ProgramRegistry,
 };
-use melior::dialect::{arith::CmpiPredicate, func, scf};
 use melior::ir::Region;
 use melior::{
     dialect::{arith, llvm},
     ir::{r#type::IntegerType, Block, Location, Module, Type},
     Context,
+};
+use melior::{
+    dialect::{arith::CmpiPredicate, func, scf},
+    ir::BlockLike,
 };
 
 /// Build the MLIR type.
