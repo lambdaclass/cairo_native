@@ -162,39 +162,49 @@ pub fn build_from_felt252<'ctx, 'this>(
 
 #[cfg(test)]
 mod test {
-    use crate::utils::test::{
-        jit_enum, jit_panic, jit_struct, load_cairo, run_program_assert_output,
-    };
-    use cairo_lang_sierra::program::Program;
+    use crate::utils::{sierra_gen::SierraGenerator, test::{
+        jit_enum, jit_panic, jit_struct, load_cairo, run_program_assert_output, run_sierra_program,
+    }};
+    use cairo_lang_sierra::{extensions::{bytes31::{Bytes31FromFelt252Trait, Bytes31ToFelt252Libfunc, Bytes31Type}, try_from_felt252::TryFromFelt252Libfunc}, program::{GenericArg, Program}};
     use lazy_static::lazy_static;
     use starknet_types_core::felt::Felt;
 
     lazy_static! {
         // TODO: Test `bytes31_const` once the compiler supports it.
-        static ref BYTES31_ROUNDTRIP: (String, Program) = load_cairo! {
-            use core::bytes_31::{bytes31_try_from_felt252, bytes31_to_felt252};
+        static ref BYTES31_TRY_FROM_FELT: Program = {
+            let mut generator = SierraGenerator::<TryFromFelt252Libfunc<Bytes31FromFelt252Trait>>::default();
 
-            fn run_test(value: felt252) -> felt252 {
-                let a: bytes31 = bytes31_try_from_felt252(value).unwrap();
-                bytes31_to_felt252(a)
-            }
+            let bytes31_ty = generator.push_type_declaration::<Bytes31Type>(&[]).clone();
+
+            generator.build(&[GenericArg::Type(bytes31_ty)])
         };
+        static ref BYTES31_TO_FELT: Program = {
+            let mut generator = SierraGenerator::<TryFromFelt252Libfunc<Bytes31FromFelt252Trait>>::default();
+
+            let bytes31_ty = generator.push_type_declaration::<Bytes31Type>(&[]).clone();
+
+            generator.build(&[GenericArg::Type(bytes31_ty)])
+        };
+        // load_cairo! {
+        //     use core::bytes_31::{bytes31_try_from_felt252, bytes31_to_felt252};
+
+        //     fn run_test(value: felt252) -> felt252 {
+        //         let a: bytes31 = bytes31_try_from_felt252(value).unwrap();
+        //         bytes31_to_felt252(a)
+        //     }
+        // };
     }
 
     #[test]
     fn bytes31_roundtrip() {
-        run_program_assert_output(
-            &BYTES31_ROUNDTRIP,
-            "run_test",
-            &[Felt::from(2).into()],
-            jit_enum!(0, jit_struct!(Felt::from(2).into())),
-        );
+        let result = run_sierra_program(&BYTES31_TRY_FROM_FELT, &[Felt::from(2).into()]).return_value;
+        let result = run_sierra_program(&BYTES31_TO_FELT, &[result]).return_value;
 
-        run_program_assert_output(
-            &BYTES31_ROUNDTRIP,
-            "run_test",
-            &[Felt::MAX.into()],
-            jit_panic!(Felt::from_bytes_be_slice(b"Option::unwrap failed.")),
-        );
+        assert_eq!(jit_enum!(0, jit_struct!(Felt::from(2).into())), result);
+
+        let result = run_sierra_program(&BYTES31_TRY_FROM_FELT, &[Felt::MAX.into()]).return_value;
+        let result = run_sierra_program(&BYTES31_TO_FELT, &[result]).return_value;
+
+        assert_eq!(jit_panic!(Felt::from_bytes_be_slice(b"Option::unwrap failed.")), result);
     }
 }

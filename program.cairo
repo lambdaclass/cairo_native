@@ -1,12 +1,8 @@
 use core::box::BoxTrait;
-
-struct Hello {
-    x: i32,
+enum MyEnum {
+    A: felt252,
 }
-
-fn run_test() -> Hello {
-    let x = BoxTrait::new(Hello {
-        x: -2
-    });
+fn run_test() -> MyEnum {
+    let x = BoxTrait::new(MyEnum::A(1234));
     x.unbox()
 }
