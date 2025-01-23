@@ -90,6 +90,12 @@ jobs:
           path: sequencer
           ref: replay
 
+      - name: Cache RPC Calls
+        uses: actions/cache@v4
+        with:
+          path: starknet-replay/rpc_cache
+          key: cache-${{matrix.block}}
+
       # Install dependencies
       - uses: ./cairo_native/.github/actions/install-linux-deps
       - name: Setup rust env
@@ -97,8 +103,9 @@ jobs:
       - name: Retreive cached dependecies
         uses: Swatinem/rust-cache@v2
         with:
-          workspaces: "starknet-replay -> target"
-          cache-directories: "cairo_native"
+          workspaces: |
+            starknet-replay
+            cairo_native
 
       - name: Build Cairo Native Runtime Library
         shell: bash
@@ -184,19 +191,20 @@ jobs:
         run: |
           ./scripts/cmp_state_dumps.sh | tee output
 
+      - name: Upload Compare Results
+        uses: actions/upload-artifact@v4
+        if: ${{ always() }}
+        with:
+          name: output-result
+          path: output
+
       - name: Prepare env vars
         if: ${{ always() }}
         run: |
           # Save workflow url
           REPO_URL="${{ github.server_url }}/${{ github.repository }}"
           echo "WORKFLOW_URL=$REPO_URL/actions/runs/${{ github.run_id }}" | tee -a $GITHUB_ENV
-
-          # Save output
-          {
-            echo 'OUTPUT<<EOF'
-            cat output
-            echo EOF
-          } >> "$GITHUB_ENV"
+          echo "COMPARISON_RESULT=$REPO_URL/actions/runs/${{ github.run_id }}/artifacts/${{ steps.upload_compare_results.outputs.artifact-id }}" | tee -a $GITHUB_ENV
 
       - name: Create Issue
         if: ${{ failure() }}

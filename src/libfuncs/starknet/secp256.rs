@@ -18,7 +18,7 @@ use melior::{
     dialect::llvm::{self, LoadStoreOptions},
     ir::{
         attribute::DenseI32ArrayAttribute, operation::OperationBuilder, r#type::IntegerType, Block,
-        Location,
+        BlockLike, Location,
     },
     Context,
 };

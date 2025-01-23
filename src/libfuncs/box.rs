@@ -22,7 +22,7 @@ use melior::{
         llvm::{self, r#type::pointer, LoadStoreOptions},
         ods,
     },
-    ir::{attribute::IntegerAttribute, r#type::IntegerType, Block, Location},
+    ir::{attribute::IntegerAttribute, r#type::IntegerType, Block, BlockLike, Location},
     Context,
 };
 

@@ -18,7 +18,7 @@ use cairo_lang_sierra::{
 };
 use melior::{
     dialect::ods,
-    ir::{r#type::IntegerType, Block, Location},
+    ir::{r#type::IntegerType, Block, BlockLike, Location},
     Context,
 };
 

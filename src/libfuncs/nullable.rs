@@ -16,7 +16,7 @@ use melior::{
     dialect::{cf, llvm::r#type::pointer, ods},
     ir::{
         attribute::IntegerAttribute, operation::OperationBuilder, r#type::IntegerType, Block,
-        Identifier, Location,
+        BlockLike, Identifier, Location,
     },
     Context,
 };

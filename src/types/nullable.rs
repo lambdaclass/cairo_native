@@ -23,7 +23,7 @@ use cairo_lang_sierra::{
 };
 use melior::{
     dialect::{cf, func},
-    ir::Region,
+    ir::{BlockLike, Region},
 };
 use melior::{
     dialect::{llvm, ods},
