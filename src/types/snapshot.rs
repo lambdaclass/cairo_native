@@ -30,7 +30,7 @@ use cairo_lang_sierra::{
 };
 use melior::{
     dialect::func,
-    ir::{Block, Location, Module, Region, Type},
+    ir::{Block, BlockLike, Location, Module, Region, Type},
     Context,
 };
 

@@ -19,7 +19,7 @@ use melior::{
     ir::{
         attribute::{IntegerAttribute, TypeAttribute},
         r#type::IntegerType,
-        Block, Location,
+        Block, BlockLike, Location,
     },
     Context,
 };

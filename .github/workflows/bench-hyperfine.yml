@@ -238,11 +238,16 @@ jobs:
     - name: Print tables
       run: |
         {
-          echo "${bold}Benchmark results Main vs HEAD.${normal}"
+          echo "## **Benchmark results Main vs HEAD.**"
           for f in bench-results-base/*.md; do
+            echo "### Base"
             echo
             cat $f
+            echo
+            echo "### Head"
+            echo
             cat bench-results-head/$(basename $f)
+            echo
           done
         } | tee -a comment_body.md
 

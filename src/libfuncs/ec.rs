@@ -20,7 +20,7 @@ use melior::{
         arith::{self, CmpiPredicate},
         llvm,
     },
-    ir::{operation::OperationBuilder, r#type::IntegerType, Block, Location},
+    ir::{operation::OperationBuilder, r#type::IntegerType, Block, BlockLike, Location},
     Context,
 };
 
