@@ -332,30 +332,35 @@ pub fn build_is_zero<'ctx, 'this>(
 #[cfg(test)]
 pub mod test {
     use crate::{
-        utils::test::{load_cairo, run_program},
+        utils::{
+            sierra_gen::SierraGenerator,
+            test::{load_cairo, run_program, run_sierra_program},
+        },
         values::Value,
     };
-    use cairo_lang_sierra::program::Program;
+    use cairo_lang_sierra::{
+        extensions::felt252::Felt252BinaryOperationWithVarLibfunc, program::Program,
+    };
     use lazy_static::lazy_static;
     use starknet_types_core::felt::Felt;
 
     lazy_static! {
-        static ref FELT252_ADD: (String, Program) = load_cairo! {
-            fn run_test(lhs: felt252, rhs: felt252) -> felt252 {
-                lhs + rhs
-            }
+        static ref FELT252_ADD: Program = {
+            let generator = SierraGenerator::<Felt252BinaryOperationWithVarLibfunc>::default();
+
+            generator.build_with_generic_id("felt252_add".into(), &[])
         };
 
-        static ref FELT252_SUB: (String, Program) = load_cairo! {
-            fn run_test(lhs: felt252, rhs: felt252) -> felt252 {
-                lhs - rhs
-            }
+        static ref FELT252_SUB: Program = {
+            let generator = SierraGenerator::<Felt252BinaryOperationWithVarLibfunc>::default();
+
+            generator.build_with_generic_id("felt252_sub".into(), &[])
         };
 
-        static ref FELT252_MUL: (String, Program) = load_cairo! {
-            fn run_test(lhs: felt252, rhs: felt252) -> felt252 {
-                lhs * rhs
-            }
+        static ref FELT252_MUL: Program = {
+            let generator = SierraGenerator::<Felt252BinaryOperationWithVarLibfunc>::default();
+
+            generator.build_with_generic_id("felt252_mul".into(), &[])
         };
 
         static ref FELT252_DIV: (String, Program) = load_cairo! {
@@ -399,12 +404,8 @@ pub mod test {
     #[test]
     fn felt252_add() {
         fn r(lhs: Felt, rhs: Felt) -> Felt {
-            match run_program(
-                &FELT252_ADD,
-                "run_test",
-                &[Value::Felt252(lhs), Value::Felt252(rhs)],
-            )
-            .return_value
+            match run_sierra_program(&FELT252_ADD, &[Value::Felt252(lhs), Value::Felt252(rhs)])
+                .return_value
             {
                 Value::Felt252(x) => x,
                 _ => panic!("invalid return type"),
@@ -437,12 +438,8 @@ pub mod test {
     #[test]
     fn felt252_sub() {
         fn r(lhs: Felt, rhs: Felt) -> Felt {
-            match run_program(
-                &FELT252_SUB,
-                "run_test",
-                &[Value::Felt252(lhs), Value::Felt252(rhs)],
-            )
-            .return_value
+            match run_sierra_program(&FELT252_SUB, &[Value::Felt252(lhs), Value::Felt252(rhs)])
+                .return_value
             {
                 Value::Felt252(x) => x,
                 _ => panic!("invalid return type"),
@@ -473,12 +470,8 @@ pub mod test {
     #[test]
     fn felt252_mul() {
         fn r(lhs: Felt, rhs: Felt) -> Felt {
-            match run_program(
-                &FELT252_MUL,
-                "run_test",
-                &[Value::Felt252(lhs), Value::Felt252(rhs)],
-            )
-            .return_value
+            match run_sierra_program(&FELT252_MUL, &[Value::Felt252(lhs), Value::Felt252(rhs)])
+                .return_value
             {
                 Value::Felt252(x) => x,
                 _ => panic!("invalid return type"),

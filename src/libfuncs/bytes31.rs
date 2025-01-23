@@ -162,10 +162,20 @@ pub fn build_from_felt252<'ctx, 'this>(
 
 #[cfg(test)]
 mod test {
-    use crate::utils::{sierra_gen::SierraGenerator, test::{
-        jit_enum, jit_panic, jit_struct, load_cairo, run_program_assert_output, run_sierra_program,
-    }};
-    use cairo_lang_sierra::{extensions::{bytes31::{Bytes31FromFelt252Trait, Bytes31ToFelt252Libfunc, Bytes31Type}, try_from_felt252::TryFromFelt252Libfunc}, program::{GenericArg, Program}};
+    use crate::utils::{
+        sierra_gen::SierraGenerator,
+        test::{
+            jit_enum, jit_panic, jit_struct, load_cairo, run_program_assert_output,
+            run_sierra_program,
+        },
+    };
+    use cairo_lang_sierra::{
+        extensions::{
+            bytes31::{Bytes31FromFelt252Trait, Bytes31ToFelt252Libfunc, Bytes31Type},
+            try_from_felt252::TryFromFelt252Libfunc,
+        },
+        program::{GenericArg, Program},
+    };
     use lazy_static::lazy_static;
     use starknet_types_core::felt::Felt;
 
@@ -197,7 +207,8 @@ mod test {
 
     #[test]
     fn bytes31_roundtrip() {
-        let result = run_sierra_program(&BYTES31_TRY_FROM_FELT, &[Felt::from(2).into()]).return_value;
+        let result =
+            run_sierra_program(&BYTES31_TRY_FROM_FELT, &[Felt::from(2).into()]).return_value;
         let result = run_sierra_program(&BYTES31_TO_FELT, &[result]).return_value;
 
         assert_eq!(jit_enum!(0, jit_struct!(Felt::from(2).into())), result);
@@ -205,6 +216,9 @@ mod test {
         let result = run_sierra_program(&BYTES31_TRY_FROM_FELT, &[Felt::MAX.into()]).return_value;
         let result = run_sierra_program(&BYTES31_TO_FELT, &[result]).return_value;
 
-        assert_eq!(jit_panic!(Felt::from_bytes_be_slice(b"Option::unwrap failed.")), result);
+        assert_eq!(
+            jit_panic!(Felt::from_bytes_be_slice(b"Option::unwrap failed.")),
+            result
+        );
     }
 }
