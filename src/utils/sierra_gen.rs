@@ -522,7 +522,7 @@ mod test {
     #[test]
     fn sierra_generator_type_info() {
         let program = {
-            let mut generator = SierraGenerator::<BoundedIntTrimLibfunc>::default();
+            let mut generator = SierraGenerator::<BoundedIntTrimLibfunc<true>>::default();
 
             let u32_type = generator.push_type_declaration::<Uint32Type>(&[]).clone();
 

@@ -209,10 +209,15 @@ pub fn build_bool_to_felt252<'ctx, 'this>(
 
 #[cfg(test)]
 mod test {
-    use cairo_lang_sierra::extensions::boolean::{BoolAndLibfunc, BoolNotLibfunc, BoolOrLibfunc, BoolToFelt252Libfunc, BoolXorLibfunc};
+    use cairo_lang_sierra::extensions::boolean::{
+        BoolAndLibfunc, BoolNotLibfunc, BoolOrLibfunc, BoolToFelt252Libfunc, BoolXorLibfunc,
+    };
 
     use crate::{
-        utils::{sierra_gen::SierraGenerator, test::{jit_enum, jit_struct, load_cairo, run_program, run_sierra_program}},
+        utils::{
+            sierra_gen::SierraGenerator,
+            test::{jit_enum, jit_struct, load_cairo, run_program, run_sierra_program},
+        },
         values::Value,
     };
 
