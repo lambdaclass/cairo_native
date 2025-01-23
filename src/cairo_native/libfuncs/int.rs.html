@@ -2122,10 +2122,12 @@
 <a href="#2121" id="2121">2121</a>
 <a href="#2122" id="2122">2122</a>
 <a href="#2123" id="2123">2123</a>
-<a href="#2124" id="2124">2124</a></pre></div><pre class="rust"><code><span class="kw">use super</span>::{BlockExt, LibfuncHelper};
+<a href="#2124" id="2124">2124</a>
+<a href="#2125" id="2125">2125</a></pre></div><pre class="rust"><code><span class="kw">use super</span>::{BlockExt, LibfuncHelper};
 <span class="kw">use crate</span>::{
     error::Result,
     metadata::MetadataStorage,
+    native_panic,
     types::TypeBuilder,
     utils::{ProgramRegistryExt, PRIME},
 };
@@ -2760,7 +2762,7 @@
             CoreTypeConcrete::Uint32(<span class="kw">_</span>) =&gt; (<span class="number">32</span>, <span class="number">16</span>),
             CoreTypeConcrete::Uint64(<span class="kw">_</span>) =&gt; (<span class="number">64</span>, <span class="number">32</span>),
             CoreTypeConcrete::Uint128(<span class="kw">_</span>) =&gt; (<span class="number">128</span>, <span class="number">64</span>),
-            <span class="kw">_ </span>=&gt; <span class="macro">unreachable!</span>(),
+            <span class="kw">_ </span>=&gt; <span class="macro">native_panic!</span>(<span class="string">"invalid value type in int square root"</span>),
         };
 
     <span class="kw">let </span>k1 = entry.const_int(context, location, <span class="number">1</span>, input_bits)<span class="question-mark">?</span>;

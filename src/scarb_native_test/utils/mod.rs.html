@@ -580,7 +580,10 @@
 <a href="#579" id="579">579</a>
 <a href="#580" id="580">580</a>
 <a href="#581" id="581">581</a>
-<a href="#582" id="582">582</a></pre></div><pre class="rust"><code><span class="attr">#![cfg(feature = <span class="string">"build-cli"</span>)]
+<a href="#582" id="582">582</a>
+<a href="#583" id="583">583</a>
+<a href="#584" id="584">584</a>
+<a href="#585" id="585">585</a></pre></div><pre class="rust"><code><span class="attr">#![cfg(feature = <span class="string">"build-cli"</span>)]
 #![allow(dead_code)]
 
 </span><span class="kw">use </span>anyhow::bail;
@@ -716,7 +719,10 @@
                     felts
                 }
             } <span class="kw">else </span>{
-                <span class="macro">todo!</span>()
+                <span class="comment">// Assume its a regular enum.
+                </span><span class="kw">let </span><span class="kw-2">mut </span>felts = <span class="macro">vec!</span>[(<span class="kw-2">*</span>tag).into()];
+                felts.extend(jitvalue_to_felt(value));
+                felts
             }
         }
         Value::Felt252Dict { value, .. } =&gt; {

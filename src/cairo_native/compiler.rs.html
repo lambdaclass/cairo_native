@@ -2157,7 +2157,7 @@
                                             }
                                         })
                                         .collect::&lt;<span class="prelude-ty">Result</span>&lt;Vec&lt;<span class="kw">_</span>&gt;, <span class="kw">_</span>&gt;&gt;()<span class="question-mark">?</span>,
-                                    <span class="prelude-val">None </span>=&gt; <span class="macro">todo!</span>(),
+                                    <span class="prelude-val">None </span>=&gt; <span class="macro">native_panic!</span>(<span class="string">"not yet implemented"</span>),
                                 };
 
                                 block.append_operation(cf::cond_br(

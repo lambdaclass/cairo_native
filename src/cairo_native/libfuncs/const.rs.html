@@ -333,8 +333,7 @@
 <a href="#332" id="332">332</a>
 <a href="#333" id="333">333</a>
 <a href="#334" id="334">334</a>
-<a href="#335" id="335">335</a>
-<a href="#336" id="336">336</a></pre></div><pre class="rust"><code><span class="doccomment">//! # Const libfuncs
+<a href="#335" id="335">335</a></pre></div><pre class="rust"><code><span class="doccomment">//! # Const libfuncs
 
 </span><span class="kw">use </span><span class="kw">super</span>::LibfuncHelper;
 <span class="kw">use crate</span>::{
@@ -605,23 +604,22 @@
 
             entry.const_int_from_type(context, location, value, inner_ty)
         }
-        CoreTypeConcrete::StarkNet(starnet_type) =&gt; <span class="kw">match </span>starnet_type {
-            StarkNetTypeConcrete::ClassHash(<span class="kw">_</span>) | StarkNetTypeConcrete::ContractAddress(<span class="kw">_</span>) =&gt; {
-                <span class="kw">let </span>value = <span class="kw">match </span><span class="kw-2">&amp;</span>info.inner_data.as_slice() {
-                    [GenericArg::Value(value)] =&gt; value.clone(),
-                    <span class="kw">_ </span>=&gt; <span class="kw">return </span><span class="prelude-val">Err</span>(Error::ConstDataMismatch),
-                };
+        CoreTypeConcrete::StarkNet(
+            StarkNetTypeConcrete::ClassHash(<span class="kw">_</span>) | StarkNetTypeConcrete::ContractAddress(<span class="kw">_</span>),
+        ) =&gt; {
+            <span class="kw">let </span>value = <span class="kw">match </span><span class="kw-2">&amp;</span>info.inner_data.as_slice() {
+                [GenericArg::Value(value)] =&gt; value.clone(),
+                <span class="kw">_ </span>=&gt; <span class="kw">return </span><span class="prelude-val">Err</span>(Error::ConstDataMismatch),
+            };
 
-                <span class="kw">let </span>(sign, value) = value.into_parts();
-                <span class="kw">let </span>value = <span class="kw">match </span>sign {
-                    Sign::Minus =&gt; PRIME.clone() - value,
-                    <span class="kw">_ </span>=&gt; value,
-                };
+            <span class="kw">let </span>(sign, value) = value.into_parts();
+            <span class="kw">let </span>value = <span class="kw">match </span>sign {
+                Sign::Minus =&gt; PRIME.clone() - value,
+                <span class="kw">_ </span>=&gt; value,
+            };
 
-                entry.const_int_from_type(context, location, value, inner_ty)
-            }
-            <span class="kw">_ </span>=&gt; <span class="macro">native_panic!</span>(<span class="string">"const for type {} not implemented"</span>, info.inner_ty),
-        },
+            entry.const_int_from_type(context, location, value, inner_ty)
+        }
         CoreTypeConcrete::Uint8(<span class="kw">_</span>)
         | CoreTypeConcrete::Uint16(<span class="kw">_</span>)
         | CoreTypeConcrete::Uint32(<span class="kw">_</span>)
@@ -638,7 +636,7 @@
             }
             <span class="kw">_ </span>=&gt; <span class="prelude-val">Err</span>(Error::ConstDataMismatch),
         },
-        <span class="kw">_ </span>=&gt; <span class="macro">todo!</span>(<span class="string">"const for type {}"</span>, info.inner_ty),
+        <span class="kw">_ </span>=&gt; <span class="macro">native_panic!</span>(<span class="string">"const for type {} not implemented"</span>, info.inner_ty),
     }
 }
 
