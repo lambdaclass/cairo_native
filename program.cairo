@@ -1,3 +1,7 @@
-fn run_test(lhs: felt252, rhs: felt252) -> felt252 {
-    lhs + rhs
+use traits::Default;
+use dict::Felt252DictTrait;
+fn run_test() -> u32 {
+    let mut dict: Felt252Dict<u32> = Default::default();
+    dict.insert(2, 1_u32);
+    dict.get(2)
 }

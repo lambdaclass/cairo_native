@@ -233,32 +233,34 @@ where
         for (branch_index, branch_signature) in
             libfunc_signature.branch_signatures.iter().enumerate()
         {
+            let branch_align_libfunc_id = branch_align_libfunc
+                .get_or_init(|| {
+                    self.push_libfunc_declaration(ConcreteLibfuncLongId {
+                        generic_id: GenericLibfuncId::from_string(BranchAlignLibfunc::STR_ID),
+                        generic_args: Vec::new(),
+                    })
+                    .clone()
+                })
+                .clone();
+            let align_statement = Statement::Invocation(Invocation {
+                libfunc_id: branch_align_libfunc_id,
+                args: Vec::new(),
+                branches: vec![BranchInfo {
+                    target: BranchTarget::Fallthrough,
+                    results: Vec::new(),
+                }],
+            });
+
             let branch_target = match branch_index {
-                0 => BranchTarget::Fallthrough,
+                0 => {
+                    self.program.statements.push(align_statement);
+
+                    BranchTarget::Fallthrough
+                }
                 _ => {
                     let statement_idx = StatementIdx(self.program.statements.len() + 1);
-                    let branch_align_libfunc_id = branch_align_libfunc
-                        .get_or_init(|| {
-                            self.push_libfunc_declaration(ConcreteLibfuncLongId {
-                                generic_id: GenericLibfuncId::from_string(
-                                    BranchAlignLibfunc::STR_ID,
-                                ),
-                                generic_args: Vec::new(),
-                            })
-                            .clone()
-                        })
-                        .clone();
 
-                    self.program
-                        .statements
-                        .push(Statement::Invocation(Invocation {
-                            libfunc_id: branch_align_libfunc_id,
-                            args: Vec::new(),
-                            branches: vec![BranchInfo {
-                                target: BranchTarget::Fallthrough,
-                                results: Vec::new(),
-                            }],
-                        }));
+                    self.program.statements.push(align_statement);
 
                     BranchTarget::Statement(statement_idx)
                 }

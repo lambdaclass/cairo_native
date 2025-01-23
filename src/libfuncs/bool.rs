@@ -216,7 +216,7 @@ mod test {
     use crate::{
         utils::{
             sierra_gen::SierraGenerator,
-            test::{jit_enum, jit_struct, load_cairo, run_program, run_sierra_program},
+            test::{jit_enum, jit_struct, run_sierra_program},
         },
         values::Value,
     };
