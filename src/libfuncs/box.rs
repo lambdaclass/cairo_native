@@ -152,67 +152,110 @@ pub fn build_unbox<'ctx, 'this>(
 
 #[cfg(test)]
 mod test {
+    use cairo_lang_sierra::{
+        extensions::{
+            boxing::{IntoBoxLibfunc, UnboxLibfunc},
+            enm::EnumType,
+            felt252::Felt252Type,
+            int::unsigned::Uint32Type,
+        },
+        ids::UserTypeId,
+        program::GenericArg,
+    };
+
     use crate::{
-        utils::test::{load_cairo, run_program_assert_output},
+        utils::{
+            sierra_gen::SierraGenerator,
+            test::{
+                jit_enum, load_cairo, run_program_assert_output, run_sierra_program,
+            },
+        },
         values::Value,
     };
 
     #[test]
     fn run_box_unbox() {
-        let program = load_cairo! {
-            use box::BoxTrait;
-            use box::BoxImpl;
+        let program_into_box = {
+            let mut sierra_generator = SierraGenerator::<IntoBoxLibfunc>::default();
+            let u32_type = sierra_generator
+                .push_type_declaration::<Uint32Type>(&[])
+                .clone();
 
-            fn run_test() -> u32 {
-                let x: u32 = 2_u32;
-                let box_x: Box<u32> = BoxTrait::new(x);
-                box_x.unbox()
-            }
+            sierra_generator.build(&[GenericArg::Type(u32_type)])
+        };
+        let program_unbox = {
+            let mut sierra_generator = SierraGenerator::<UnboxLibfunc>::default();
+            let u32_type = sierra_generator
+                .push_type_declaration::<Uint32Type>(&[])
+                .clone();
+
+            sierra_generator.build(&[GenericArg::Type(u32_type)])
         };
 
-        run_program_assert_output(&program, "run_test", &[], Value::Uint32(2));
+        let result = run_sierra_program(&program_into_box, &[Value::Uint32(2)]).return_value;
+        let result = run_sierra_program(&program_unbox, &[result]).return_value;
+
+        assert_eq!(Value::Uint32(2), result);
     }
 
     #[test]
     fn run_box() {
-        let program = load_cairo! {
-            use box::BoxTrait;
-            use box::BoxImpl;
+        let program_into_box = {
+            let mut sierra_generator = SierraGenerator::<IntoBoxLibfunc>::default();
+            let u32_type = sierra_generator
+                .push_type_declaration::<Uint32Type>(&[])
+                .clone();
 
-            fn run_test() -> Box<u32>  {
-                let x: u32 = 2_u32;
-                let box_x: Box<u32> = BoxTrait::new(x);
-                box_x
-            }
+            sierra_generator.build(&[GenericArg::Type(u32_type)])
         };
+        let result = run_sierra_program(&program_into_box, &[Value::Uint32(2)]).return_value;
 
-        run_program_assert_output(&program, "run_test", &[], Value::Uint32(2));
+        assert_eq!(Value::Uint32(2), result);
     }
 
     #[test]
     fn box_unbox_stack_allocated_enum_single() {
-        let program = load_cairo! {
-            use core::box::BoxTrait;
+        let program_into_box = {
+            let mut sierra_generator = SierraGenerator::<IntoBoxLibfunc>::default();
+            let felt_ty = sierra_generator
+                .push_type_declaration::<Felt252Type>(&[])
+                .clone();
+            let enum_type = sierra_generator
+                .push_type_declaration::<EnumType>(&[
+                    GenericArg::UserType(UserTypeId::from_string("Enum")),
+                    GenericArg::Type(felt_ty),
+                ])
+                .clone();
 
-            enum MyEnum {
-                A: felt252,
-            }
+            sierra_generator.build(&[GenericArg::Type(enum_type)])
+        };
+        let program_unbox = {
+            let mut sierra_generator = SierraGenerator::<UnboxLibfunc>::default();
 
-            fn run_test() -> MyEnum {
-                let x = BoxTrait::new(MyEnum::A(1234));
-                x.unbox()
-            }
+            let felt_ty = sierra_generator
+                .push_type_declaration::<Felt252Type>(&[])
+                .clone();
+            let enum_type = sierra_generator
+                .push_type_declaration::<EnumType>(&[
+                    GenericArg::UserType(UserTypeId::from_string("Enum")),
+                    GenericArg::Type(felt_ty),
+                ])
+                .clone();
+
+            sierra_generator.build(&[GenericArg::Type(enum_type)])
         };
 
-        run_program_assert_output(
-            &program,
-            "run_test",
-            &[],
-            Value::Enum {
-                tag: 0,
-                value: Box::new(Value::Felt252(1234.into())),
-                debug_name: None,
-            },
+        let result = run_sierra_program(
+            &program_into_box,
+            &[jit_enum!(0, Value::Felt252(1234.into()))],
+        )
+        .return_value;
+
+        let result = run_sierra_program(&program_unbox, &[result]).return_value;
+
+        assert_eq!(
+            jit_enum!(0, Value::Felt252(1234.into())),
+            result
         );
     }
 

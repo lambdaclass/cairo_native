@@ -34,6 +34,7 @@ mod block_ext;
 pub mod mem_tracing;
 mod program_registry_ext;
 mod range_ext;
+pub mod sierra_gen;
 
 #[cfg(target_os = "macos")]
 pub const SHARED_LIBRARY_EXT: &str = "dylib";
@@ -697,6 +698,30 @@ pub mod test {
             .iter()
             .find(|x| x.id.debug_name.as_deref() == Some(&entry_point))
             .expect("Test program entry point not found.")
+            .id;
+
+        let context = NativeContext::new();
+
+        let module = context
+            .compile(program, false, Some(Default::default()))
+            .expect("Could not compile test program to MLIR.");
+
+        let executor = JitNativeExecutor::from_native_module(module, OptLevel::Less).unwrap();
+        executor
+            .invoke_dynamic_with_syscall_handler(
+                entry_point_id,
+                args,
+                Some(u64::MAX),
+                &mut StubSyscallHandler::default(),
+            )
+            .unwrap()
+    }
+
+    pub fn run_sierra_program(program: &Program, args: &[Value]) -> ExecutionResult {
+        let entry_point_id = &program
+            .funcs
+            .first()
+            .expect("program entry point not found.")
             .id;
 
         let context = NativeContext::new();
