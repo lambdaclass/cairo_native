@@ -950,10 +950,19 @@ pub fn build_u256_guarantee_inv_mod_n<'ctx, 'this>(
 #[cfg(test)]
 mod test {
     use crate::{
-        utils::test::{jit_enum, jit_panic, jit_struct, load_cairo, run_program_assert_output},
+        utils::{
+            sierra_gen::SierraGenerator,
+            test::{jit_enum, jit_panic, jit_struct, run_sierra_program},
+        },
         values::Value,
     };
-    use cairo_lang_sierra::program::Program;
+    use cairo_lang_sierra::{
+        extensions::int::unsigned256::{
+            Uint256DivmodLibfunc, Uint256InvModNLibfunc, Uint256IsZeroLibfunc,
+            Uint256SquareRootLibfunc,
+        },
+        program::Program,
+    };
     use lazy_static::lazy_static;
     use num_bigint::BigUint;
     use num_traits::One;
@@ -961,40 +970,60 @@ mod test {
     use std::ops::Shl;
 
     lazy_static! {
-        static ref U256_IS_ZERO: (String, Program) = load_cairo! {
-            use zeroable::IsZeroResult;
+        static ref U256_IS_ZERO: Program = {
+            let generator = SierraGenerator::<Uint256IsZeroLibfunc>::default();
 
-            extern fn u256_is_zero(a: u256) -> IsZeroResult<u256> implicits() nopanic;
-
-            fn run_test(value: u256) -> bool {
-                match u256_is_zero(value) {
-                    IsZeroResult::Zero(_) => true,
-                    IsZeroResult::NonZero(_) => false,
-                }
-            }
+            generator.build(&[])
         };
-        static ref U256_SAFE_DIVMOD: (String, Program) = load_cairo! {
-            fn run_test(lhs: u256, rhs: u256) -> (u256, u256) {
-                let q = lhs / rhs;
-                let r = lhs % rhs;
+        // load_cairo! {
+        //     use zeroable::IsZeroResult;
 
-                (q, r)
-            }
-        };
-        static ref U256_SQRT: (String, Program) = load_cairo! {
-            use core::num::traits::Sqrt;
+        //     extern fn u256_is_zero(a: u256) -> IsZeroResult<u256> implicits() nopanic;
 
-            fn run_test(value: u256) -> u128 {
-                value.sqrt()
-            }
-        };
-        static ref U256_INV_MOD_N: (String, Program) = load_cairo! {
-            use core::math::u256_inv_mod;
+        //     fn run_test(value: u256) -> bool {
+        //         match u256_is_zero(value) {
+        //             IsZeroResult::Zero(_) => true,
+        //             IsZeroResult::NonZero(_) => false,
+        //         }
+        //     }
+        // };
+        static ref U256_SAFE_DIVMOD: Program = {
+            let generator = SierraGenerator::<Uint256DivmodLibfunc>::default();
 
-            fn run_test(a: u256, n: NonZero<u256>) -> Option<NonZero<u256>> {
-                u256_inv_mod(a, n)
-            }
+            generator.build(&[])
         };
+        // load_cairo! {
+        //     fn run_test(lhs: u256, rhs: u256) -> (u256, u256) {
+        //         let q = lhs / rhs;
+        //         let r = lhs % rhs;
+
+        //         (q, r)
+        //     }
+        // };
+        static ref U256_SQRT: Program = {
+            let generator = SierraGenerator::<Uint256SquareRootLibfunc>::default();
+
+            generator.build(&[])
+        };
+        // load_cairo! {
+        //     use core::num::traits::Sqrt;
+
+        //     fn run_test(value: u256) -> u128 {
+        //         value.sqrt()
+        //     }
+        // };
+        static ref U256_INV_MOD_N: Program = {
+            let generator = SierraGenerator::<Uint256InvModNLibfunc>::default();
+
+            generator.build(&[])
+        };
+        // load_cairo! {
+        //     use core::math::u256_inv_mod;
+
+        //     fn run_test(a: u256, n: NonZero<u256>) -> Option<NonZero<u256>> {
+        //         u256_inv_mod(a, n)
+        //     }
+        // };
     }
 
     fn u256(value: BigUint) -> Value {
@@ -1007,45 +1036,42 @@ mod test {
 
     #[test]
     fn u256_is_zero() {
-        run_program_assert_output(
-            &U256_IS_ZERO,
-            "run_test",
-            &[u256(0u32.into())],
-            jit_enum!(1, jit_struct!()),
-        );
-        run_program_assert_output(
-            &U256_IS_ZERO,
-            "run_test",
-            &[u256(1u32.into())],
-            jit_enum!(0, jit_struct!()),
-        );
-        run_program_assert_output(
-            &U256_IS_ZERO,
-            "run_test",
-            &[u256(BigUint::one() << 128u32)],
-            jit_enum!(0, jit_struct!()),
-        );
-        run_program_assert_output(
-            &U256_IS_ZERO,
-            "run_test",
-            &[u256((BigUint::one() << 128u32) + 1u32)],
-            jit_enum!(0, jit_struct!()),
+        let result = run_sierra_program(&U256_IS_ZERO, &[u256(0u32.into())]).return_value;
+
+        assert_eq!(jit_enum!(0, jit_struct!()), result);
+
+        let result = run_sierra_program(&U256_IS_ZERO, &[u256(1u32.into())]).return_value;
+
+        assert_eq!(jit_enum!(1, u256(1u32.into())), result);
+
+        let result =
+            run_sierra_program(&U256_IS_ZERO, &[u256(BigUint::one() << 128u32)]).return_value;
+
+        assert_eq!(jit_enum!(1, u256(BigUint::one() << 128u32)), result);
+
+        let result = run_sierra_program(&U256_IS_ZERO, &[u256((BigUint::one() << 128u32) + 1u32)])
+            .return_value;
+
+        assert_eq!(
+            jit_enum!(1, u256((BigUint::one() << 128u32) + 1u32)),
+            result
         );
     }
 
     #[test]
     fn u256_safe_divmod() {
         #[track_caller]
-        fn run(lhs: (u128, u128), rhs: (u128, u128), result: Value) {
-            run_program_assert_output(
+        fn run(lhs: (u128, u128), rhs: (u128, u128), expected: Value) {
+            let result = run_sierra_program(
                 &U256_SAFE_DIVMOD,
-                "run_test",
                 &[
                     jit_struct!(lhs.1.into(), lhs.0.into()),
                     jit_struct!(rhs.1.into(), rhs.0.into()),
                 ],
-                result,
             )
+            .return_value;
+
+            assert_eq!(expected, result);
         }
 
         let u256_is_zero = Felt::from_bytes_be_slice(b"Division by 0");
@@ -1127,13 +1153,12 @@ mod test {
     #[test]
     fn u256_sqrt() {
         #[track_caller]
-        fn run(value: (u128, u128), result: Value) {
-            run_program_assert_output(
-                &U256_SQRT,
-                "run_test",
-                &[jit_struct!(value.1.into(), value.0.into())],
-                result,
-            )
+        fn run(value: (u128, u128), expected: Value) {
+            let result =
+                run_sierra_program(&U256_SQRT, &[jit_struct!(value.1.into(), value.0.into())])
+                    .return_value;
+
+            assert_eq!(expected, result);
         }
 
         run((0u128, 0u128), 0u128.into());
@@ -1165,16 +1190,17 @@ mod test {
     #[test]
     fn u256_inv_mod_n() {
         #[track_caller]
-        fn run(a: (u128, u128), n: (u128, u128), result: Value) {
-            run_program_assert_output(
+        fn run(a: (u128, u128), n: (u128, u128), expected: Value) {
+            let result = run_sierra_program(
                 &U256_INV_MOD_N,
-                "run_test",
                 &[
                     jit_struct!(a.0.into(), a.1.into()),
                     jit_struct!(n.0.into(), n.1.into()),
                 ],
-                result,
             )
+            .return_value;
+
+            assert_eq!(expected, result);
         }
 
         let none = jit_enum!(1, jit_struct!());

@@ -176,6 +176,16 @@ impl Value {
     ) -> Result<NonNull<()>, Error> {
         let ty = registry.get_type(type_id)?;
 
+        match ty {
+            CoreTypeConcrete::Box(info)
+            | CoreTypeConcrete::NonZero(info)
+            | CoreTypeConcrete::Nullable(info)
+            | CoreTypeConcrete::Snapshot(info) => {
+                return self.to_ptr(arena, registry, &info.ty, find_dict_overrides);
+            }
+            _ => {}
+        }
+
         Ok(unsafe {
             match self {
                 Self::Felt252(value) => {
