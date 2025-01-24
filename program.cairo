@@ -1,5 +1,6 @@
-use starknet::class_hash::{class_hash_const, ClassHash};
+fn run_test(lhs: u256, rhs: u256) -> (u256, u256) {
+         let q = lhs / rhs;
+         let r = lhs % rhs;
 
-fn run_program() -> ClassHash {
-    class_hash_const::<0>()
-}
+         (q, r)
+     }
