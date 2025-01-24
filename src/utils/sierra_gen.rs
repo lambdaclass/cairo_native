@@ -258,7 +258,7 @@ where
             let branch_target = match branch_index {
                 0 => BranchTarget::Fallthrough,
                 _ => {
-                    let statement_idx = StatementIdx(self.program.statements.len() + 1);
+                    let statement_idx = StatementIdx(self.program.statements.len());
                     BranchTarget::Statement(statement_idx)
                 }
             };
