@@ -163,7 +163,6 @@ pub unsafe extern "C" fn cairo_native__libfunc__hades_permutation(
 #[derive(Debug)]
 pub struct FeltDict {
     pub mappings: HashMap<[u8; 32], usize>,
-
     pub layout: Layout,
     pub elements: *mut (),
 
