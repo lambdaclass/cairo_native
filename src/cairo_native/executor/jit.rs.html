@@ -200,16 +200,12 @@
 <a href="#199" id="199">199</a>
 <a href="#200" id="200">200</a>
 <a href="#201" id="201">201</a>
-<a href="#202" id="202">202</a>
-<a href="#203" id="203">203</a>
-<a href="#204" id="204">204</a>
-<a href="#205" id="205">205</a>
-<a href="#206" id="206">206</a>
-<a href="#207" id="207">207</a>
-<a href="#208" id="208">208</a></pre></div><pre class="rust"><code><span class="kw">use crate</span>::{
+<a href="#202" id="202">202</a></pre></div><pre class="rust"><code><span class="kw">use crate</span>::{
     error::Error,
     execution_result::{ContractExecutionResult, ExecutionResult},
-    metadata::{felt252_dict::Felt252DictOverrides, gas::GasMetadata},
+    metadata::{
+        felt252_dict::Felt252DictOverrides, gas::GasMetadata, runtime_bindings::setup_runtime,
+    },
     module::NativeModule,
     starknet::{DummySyscallHandler, StarknetSyscallHandler},
     utils::{create_engine, generate_function_name},
@@ -261,13 +257,17 @@
             <span class="kw-2">mut </span>metadata,
         } = native_module;
 
-        <span class="prelude-val">Ok</span>(<span class="self">Self </span>{
+        <span class="kw">let </span>executor = <span class="self">Self </span>{
             engine: create_engine(<span class="kw-2">&amp;</span>module, <span class="kw-2">&amp;</span>metadata, opt_level),
             module,
             registry,
             gas_metadata: metadata.remove().ok_or(Error::MissingMetadata)<span class="question-mark">?</span>,
             dict_overrides: metadata.remove().unwrap_or_default(),
-        })
+        };
+
+        setup_runtime(|name| executor.find_symbol_ptr(name));
+
+        <span class="prelude-val">Ok</span>(executor)
     }
 
     <span class="kw">pub const fn </span>program_registry(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; <span class="kw-2">&amp;</span>ProgramRegistry&lt;CoreType, CoreLibfunc&gt; {
@@ -290,13 +290,9 @@
             .get_initial_available_gas(function_id, gas)
             .map_err(<span class="kw">crate</span>::error::Error::GasMetadataError)<span class="question-mark">?</span>;
 
-        <span class="kw">let </span>set_builtin_costs_fnptr: <span class="kw">extern </span><span class="string">"C" </span><span class="kw">fn</span>(<span class="kw-2">*const </span>u64) -&gt; <span class="kw-2">*const </span>u64 =
-            <span class="kw">unsafe </span>{ std::mem::transmute(<span class="self">self</span>.engine.lookup(<span class="string">"cairo_native__set_costs_builtin"</span>)) };
-
         <span class="kw">super</span>::invoke_dynamic(
             <span class="kw-2">&amp;</span><span class="self">self</span>.registry,
             <span class="self">self</span>.find_function_ptr(function_id),
-            set_builtin_costs_fnptr,
             <span class="self">self</span>.extract_signature(function_id)<span class="question-mark">?</span>,
             args,
             available_gas,
@@ -318,13 +314,9 @@
             .get_initial_available_gas(function_id, gas)
             .map_err(<span class="kw">crate</span>::error::Error::GasMetadataError)<span class="question-mark">?</span>;
 
-        <span class="kw">let </span>set_builtin_costs_fnptr: <span class="kw">extern </span><span class="string">"C" </span><span class="kw">fn</span>(<span class="kw-2">*const </span>u64) -&gt; <span class="kw-2">*const </span>u64 =
-            <span class="kw">unsafe </span>{ std::mem::transmute(<span class="self">self</span>.engine.lookup(<span class="string">"cairo_native__set_costs_builtin"</span>)) };
-
         <span class="kw">super</span>::invoke_dynamic(
             <span class="kw-2">&amp;</span><span class="self">self</span>.registry,
             <span class="self">self</span>.find_function_ptr(function_id),
-            set_builtin_costs_fnptr,
             <span class="self">self</span>.extract_signature(function_id)<span class="question-mark">?</span>,
             args,
             available_gas,
@@ -345,13 +337,9 @@
             .get_initial_available_gas(function_id, gas)
             .map_err(<span class="kw">crate</span>::error::Error::GasMetadataError)<span class="question-mark">?</span>;
 
-        <span class="kw">let </span>set_builtin_costs_fnptr: <span class="kw">extern </span><span class="string">"C" </span><span class="kw">fn</span>(<span class="kw-2">*const </span>u64) -&gt; <span class="kw-2">*const </span>u64 =
-            <span class="kw">unsafe </span>{ std::mem::transmute(<span class="self">self</span>.engine.lookup(<span class="string">"cairo_native__set_costs_builtin"</span>)) };
-
         ContractExecutionResult::from_execution_result(<span class="kw">super</span>::invoke_dynamic(
             <span class="kw-2">&amp;</span><span class="self">self</span>.registry,
             <span class="self">self</span>.find_function_ptr(function_id),
-            set_builtin_costs_fnptr,
             <span class="self">self</span>.extract_signature(function_id)<span class="question-mark">?</span>,
             <span class="kw-2">&amp;</span>[Value::Struct {
                 fields: <span class="macro">vec!</span>[Value::Array(

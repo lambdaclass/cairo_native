@@ -842,20 +842,7 @@
 <a href="#841" id="841">841</a>
 <a href="#842" id="842">842</a>
 <a href="#843" id="843">843</a>
-<a href="#844" id="844">844</a>
-<a href="#845" id="845">845</a>
-<a href="#846" id="846">846</a>
-<a href="#847" id="847">847</a>
-<a href="#848" id="848">848</a>
-<a href="#849" id="849">849</a>
-<a href="#850" id="850">850</a>
-<a href="#851" id="851">851</a>
-<a href="#852" id="852">852</a>
-<a href="#853" id="853">853</a>
-<a href="#854" id="854">854</a>
-<a href="#855" id="855">855</a>
-<a href="#856" id="856">856</a>
-<a href="#857" id="857">857</a></pre></div><pre class="rust"><code><span class="doccomment">//! A specialized executor for Starknet contracts, avoiding the overhead of storing the sierra program registry and
+<a href="#844" id="844">844</a></pre></div><pre class="rust"><code><span class="doccomment">//! A specialized executor for Starknet contracts, avoiding the overhead of storing the sierra program registry and
 //! enabling efficient serialization of the program/data once compiled.
 //!
 //! This executor heavily relies on the stability of the contract entry point argument order.
@@ -894,7 +881,7 @@
     error::{panic::ToNativeAssertError, Error, <span class="prelude-ty">Result</span>},
     execution_result::{BuiltinStats, ContractExecutionResult},
     executor::invoke_trampoline,
-    metadata::gas::MetadataComputationConfig,
+    metadata::{gas::MetadataComputationConfig, runtime_bindings::setup_runtime},
     module::NativeModule,
     native_panic,
     starknet::{handler::StarknetSyscallHandlerCallbacks, StarknetSyscallHandler},
@@ -1092,7 +1079,7 @@
         <span class="kw">let </span>object_data = <span class="kw">crate</span>::module_to_object(<span class="kw-2">&amp;</span>module, opt_level)<span class="question-mark">?</span>;
         <span class="kw">crate</span>::object_to_shared_lib(<span class="kw-2">&amp;</span>object_data, <span class="kw-2">&amp;</span>library_path)<span class="question-mark">?</span>;
 
-        <span class="prelude-val">Ok</span>(<span class="self">Self </span>{
+        <span class="kw">let </span>executor = <span class="self">Self </span>{
             library: Arc::new(<span class="kw">unsafe </span>{ Library::new(<span class="kw-2">&amp;</span>library_path)<span class="question-mark">? </span>}),
             path: library_path,
             is_temp_path: <span class="bool-val">true</span>,
@@ -1101,7 +1088,11 @@
                 entry_points_info: infos,
                 entry_point_selector_to_id,
             },
-        })
+        };
+
+        setup_runtime(|name| executor.find_symbol_ptr(name));
+
+        <span class="prelude-val">Ok</span>(executor)
     }
 
     <span class="doccomment">/// Save the library to the desired path, alongside it is saved also a json file with additional info.
@@ -1125,27 +1116,14 @@
         <span class="kw">let </span>contract_info: NativeContractInfo = serde_json::from_str(<span class="kw-2">&amp;</span>info_str)<span class="question-mark">?</span>;
 
         <span class="kw">let </span>library = Arc::new(<span class="kw">unsafe </span>{ Library::new(library_path)<span class="question-mark">? </span>});
-        <span class="kw">unsafe </span>{
-            <span class="kw">let </span>get_version = library
-                .get::&lt;<span class="kw">extern </span><span class="string">"C" </span><span class="kw">fn</span>(<span class="kw-2">*mut </span>u8, usize) -&gt; usize&gt;(<span class="string">b"cairo_native__get_version"</span>)<span class="question-mark">?</span>;
-
-            <span class="kw">let </span><span class="kw-2">mut </span>version_buffer = [<span class="number">0u8</span>; <span class="number">16</span>];
-            <span class="kw">let </span>version_len = get_version(version_buffer.as_mut_ptr(), version_buffer.len());
-
-            <span class="kw">let </span>target_version = <span class="macro">env!</span>(<span class="string">"CARGO_PKG_VERSION"</span>);
-            <span class="macro">assert_eq!</span>(
-                <span class="kw-2">&amp;</span>version_buffer[..version_len],
-                target_version.as_bytes(),
-                <span class="string">"aot-compiled contract version mismatch"
-            </span>);
-        };
-
-        <span class="prelude-val">Ok</span>(<span class="self">Self </span>{
+        <span class="kw">let </span>executor = <span class="self">Self </span>{
             library,
             path: library_path.to_path_buf(),
             is_temp_path: <span class="bool-val">false</span>,
             contract_info,
-        })
+        };
+        setup_runtime(|name| executor.find_symbol_ptr(name));
+        <span class="prelude-val">Ok</span>(executor)
     }
 
     <span class="doccomment">/// Runs the entry point by the given selector.
@@ -1179,14 +1157,10 @@
         <span class="kw">let </span>function_ptr = <span class="self">self</span>.find_function_ptr(<span class="kw-2">&amp;</span>function_id, <span class="bool-val">true</span>)<span class="question-mark">?</span>;
 
         <span class="kw">let </span>builtin_costs: [u64; <span class="number">7</span>] = builtin_costs.unwrap_or_default().into();
-        <span class="kw">let </span>set_costs_builtin = <span class="kw">unsafe </span>{
-            <span class="self">self</span>.library
-                .get::&lt;<span class="kw">extern </span><span class="string">"C" </span><span class="kw">fn</span>(<span class="kw-2">*const </span>u64) -&gt; <span class="kw-2">*const </span>u64&gt;(
-                    <span class="string">b"cairo_native__set_costs_builtin"</span>,
-                )<span class="question-mark">?
-        </span>};
+
         <span class="comment">// We may be inside a recursive contract, save the possible saved builtin costs to restore it after our call.
-        </span><span class="kw">let </span>old_builtincosts_ptr = set_costs_builtin(builtin_costs.as_ptr());
+        </span><span class="kw">let </span>old_builtincosts_ptr =
+            cairo_native_runtime::cairo_native__set_costs_builtin(builtin_costs.as_ptr());
 
         <span class="comment">//  it can vary from contract to contract thats why we need to store/ load it.
         </span><span class="kw">let </span>builtins_size: usize = <span class="self">self</span>.contract_info.entry_points_info[<span class="kw-2">&amp;</span>function_id.id]
@@ -1428,7 +1402,7 @@
         </span>};
 
         <span class="comment">// Restore the original builtin costs pointer.
-        </span>set_costs_builtin(old_builtincosts_ptr);
+        </span>cairo_native_runtime::cairo_native__set_costs_builtin(old_builtincosts_ptr);
 
         <span class="attr">#[cfg(feature = <span class="string">"with-mem-tracing"</span>)]
         </span><span class="kw">crate</span>::utils::mem_tracing::report_stats();

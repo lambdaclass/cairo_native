@@ -1,1 +1,1 @@
-window.SIDEBAR_ITEMS = {"struct":["RuntimeBindingsMeta"]};
+window.SIDEBAR_ITEMS = {"fn":["setup_runtime"],"struct":["RuntimeBindingsMeta"]};

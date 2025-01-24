@@ -782,7 +782,8 @@
 <a href="#781" id="781">781</a>
 <a href="#782" id="782">782</a>
 <a href="#783" id="783">783</a>
-<a href="#784" id="784">784</a></pre></div><pre class="rust"><code><span class="doccomment">//! # Executors
+<a href="#784" id="784">784</a>
+<a href="#785" id="785">785</a></pre></div><pre class="rust"><code><span class="doccomment">//! # Executors
 //!
 //! This module provides methods to execute the programs, either via JIT or compiled ahead
 //! of time. It also provides a cache to avoid recompiling previously compiled programs.
@@ -851,7 +852,6 @@
 </span><span class="kw">fn </span>invoke_dynamic(
     registry: <span class="kw-2">&amp;</span>ProgramRegistry&lt;CoreType, CoreLibfunc&gt;,
     function_ptr: <span class="kw-2">*const </span>c_void,
-    set_builtin_costs_fnptr: <span class="kw">extern </span><span class="string">"C" </span><span class="kw">fn</span>(<span class="kw-2">*const </span>u64) -&gt; <span class="kw-2">*const </span>u64,
     function_signature: <span class="kw-2">&amp;</span>FunctionSignature,
     args: <span class="kw-2">&amp;</span>[Value],
     gas: u64,
@@ -940,7 +940,8 @@
     // deref it, it will be a copy on the stack, so you will get the ptr of the value in the stack.
     </span><span class="kw">let </span>builtin_costs: <span class="kw-2">*mut </span>[u64; <span class="number">7</span>] = Box::into_raw(Box::new(builtin_costs_stack));
     <span class="comment">// We may be inside a recursive contract, save the possible saved builtin costs to restore it after our call.
-    </span><span class="kw">let </span>old_builtincosts_ptr = set_builtin_costs_fnptr(builtin_costs.cast());
+    </span><span class="kw">let </span>old_builtincosts_ptr =
+        cairo_native_runtime::cairo_native__set_costs_builtin(builtin_costs.cast());
 
     <span class="comment">// Generate argument list.
     </span><span class="kw">let </span><span class="kw-2">mut </span>iter = args.iter();
@@ -1122,7 +1123,8 @@
         });
 
     <span class="comment">// Restore the old ptr and get back our builtincost box and free it.
-    </span><span class="kw">let </span>our_builtincosts_ptr = set_builtin_costs_fnptr(old_builtincosts_ptr);
+    </span><span class="kw">let </span>our_builtincosts_ptr =
+        cairo_native_runtime::cairo_native__set_costs_builtin(old_builtincosts_ptr);
 
     <span class="kw">if </span>!our_builtincosts_ptr.is_null() &amp;&amp; old_builtincosts_ptr.is_aligned() {
         <span class="kw">unsafe </span>{
