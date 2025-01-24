@@ -573,6 +573,13 @@ pub mod test {
                 debug_name: None,
             }
         };
+        ( $tag:expr, $value:expr, $dbg_name:expr ) => {
+            crate::values::Value::Enum {
+                tag: $tag,
+                value: Box::new($value),
+                debug_name: Some($dbg_name),
+            }
+        };
     }
     macro_rules! jit_dict {
         ( $($key:expr $(=>)+ $value:expr),* $(,)? ) => {
