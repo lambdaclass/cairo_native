@@ -258,7 +258,7 @@ where
             let branch_target = match branch_index {
                 0 => BranchTarget::Fallthrough,
                 _ => {
-                    let statement_idx = StatementIdx(self.program.statements.len() + 1);
+                    let statement_idx = StatementIdx(self.program.statements.len());
                     BranchTarget::Statement(statement_idx)
                 }
             };
@@ -519,7 +519,7 @@ mod test {
     #[test]
     fn sierra_generator_type_info() {
         let program = {
-            let mut generator = SierraGenerator::<BoundedIntTrimLibfunc>::default();
+            let mut generator = SierraGenerator::<BoundedIntTrimLibfunc<true>>::default();
 
             let u32_type = generator.push_type_declaration::<Uint32Type>(&[]).clone();
 
