@@ -192,6 +192,7 @@ jobs:
           ./scripts/cmp_state_dumps.sh | tee output
 
       - name: Upload Compare Results
+        id: upload_compare_results
         uses: actions/upload-artifact@v4
         if: ${{ always() }}
         with:
