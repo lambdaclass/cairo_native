@@ -37,7 +37,7 @@ use crate::{
     error::{panic::ToNativeAssertError, Error, Result},
     execution_result::{BuiltinStats, ContractExecutionResult},
     executor::invoke_trampoline,
-    metadata::gas::MetadataComputationConfig,
+    metadata::{gas::MetadataComputationConfig, runtime_bindings::setup_runtime},
     module::NativeModule,
     native_panic,
     starknet::{handler::StarknetSyscallHandlerCallbacks, StarknetSyscallHandler},
@@ -235,7 +235,7 @@ impl AotContractExecutor {
         let object_data = crate::module_to_object(&module, opt_level)?;
         crate::object_to_shared_lib(&object_data, &library_path)?;
 
-        Ok(Self {
+        let executor = Self {
             library: Arc::new(unsafe { Library::new(&library_path)? }),
             path: library_path,
             is_temp_path: true,
@@ -244,7 +244,11 @@ impl AotContractExecutor {
                 entry_points_info: infos,
                 entry_point_selector_to_id,
             },
-        })
+        };
+
+        setup_runtime(|name| executor.find_symbol_ptr(name));
+
+        Ok(executor)
     }
 
     /// Save the library to the desired path, alongside it is saved also a json file with additional info.
@@ -268,27 +272,14 @@ impl AotContractExecutor {
         let contract_info: NativeContractInfo = serde_json::from_str(&info_str)?;
 
         let library = Arc::new(unsafe { Library::new(library_path)? });
-        unsafe {
-            let get_version = library
-                .get::<extern "C" fn(*mut u8, usize) -> usize>(b"cairo_native__get_version")?;
-
-            let mut version_buffer = [0u8; 16];
-            let version_len = get_version(version_buffer.as_mut_ptr(), version_buffer.len());
-
-            let target_version = env!("CARGO_PKG_VERSION");
-            assert_eq!(
-                &version_buffer[..version_len],
-                target_version.as_bytes(),
-                "aot-compiled contract version mismatch"
-            );
-        };
-
-        Ok(Self {
+        let executor = Self {
             library,
             path: library_path.to_path_buf(),
             is_temp_path: false,
             contract_info,
-        })
+        };
+        setup_runtime(|name| executor.find_symbol_ptr(name));
+        Ok(executor)
     }
 
     /// Runs the entry point by the given selector.
@@ -322,14 +313,10 @@ impl AotContractExecutor {
         let function_ptr = self.find_function_ptr(&function_id, true)?;
 
         let builtin_costs: [u64; 7] = builtin_costs.unwrap_or_default().into();
-        let set_costs_builtin = unsafe {
-            self.library
-                .get::<extern "C" fn(*const u64) -> *const u64>(
-                    b"cairo_native__set_costs_builtin",
-                )?
-        };
+
         // We may be inside a recursive contract, save the possible saved builtin costs to restore it after our call.
-        let old_builtincosts_ptr = set_costs_builtin(builtin_costs.as_ptr());
+        let old_builtincosts_ptr =
+            cairo_native_runtime::cairo_native__set_costs_builtin(builtin_costs.as_ptr());
 
         //  it can vary from contract to contract thats why we need to store/ load it.
         let builtins_size: usize = self.contract_info.entry_points_info[&function_id.id]
@@ -571,7 +558,7 @@ impl AotContractExecutor {
         };
 
         // Restore the original builtin costs pointer.
-        set_costs_builtin(old_builtincosts_ptr);
+        cairo_native_runtime::cairo_native__set_costs_builtin(old_builtincosts_ptr);
 
         #[cfg(feature = "with-mem-tracing")]
         crate::utils::mem_tracing::report_stats();
