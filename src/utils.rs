@@ -30,10 +30,12 @@ use std::{
 };
 use thiserror::Error;
 
+pub mod allocator;
 mod block_ext;
 pub mod mem_tracing;
 mod program_registry_ext;
 mod range_ext;
+pub mod safe_runner;
 
 #[cfg(target_os = "macos")]
 pub const SHARED_LIBRARY_EXT: &str = "dylib";
