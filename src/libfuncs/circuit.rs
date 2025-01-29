@@ -705,7 +705,8 @@ fn build_failure_guarantee_verify<'ctx, 'this>(
     let mul_mod = entry.arg(1)?;
     let rc = increment_builtin_counter_by(context, entry, location, rc, 2 + VALUE_SIZE)?;
 
-    let mul_mod = increment_builtin_counter_by(context, entry, location, mul_mod, MOD_BUILTIN_INSTANCE_SIZE)?;
+    let mul_mod =
+        increment_builtin_counter_by(context, entry, location, mul_mod, MOD_BUILTIN_INSTANCE_SIZE)?;
 
     let guarantee_type_id = &info.branch_signatures()[0].vars[2].ty;
     let guarantee_type = registry.build_type(context, helper, metadata, guarantee_type_id)?;
