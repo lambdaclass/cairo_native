@@ -12,7 +12,7 @@ use cairo_lang_sierra::{
     extensions::{
         circuit::{
             self, CircuitConcreteLibfunc, CircuitTypeConcrete, ConcreteGetOutputLibFunc,
-            ConcreteU96LimbsLessThanGuaranteeVerifyLibfunc,
+            ConcreteU96LimbsLessThanGuaranteeVerifyLibfunc, MOD_BUILTIN_INSTANCE_SIZE, VALUE_SIZE,
         },
         core::{CoreLibfunc, CoreType, CoreTypeConcrete},
         lib_func::{SignatureAndTypeConcreteLibfunc, SignatureOnlyConcreteLibfunc},
@@ -377,7 +377,7 @@ fn build_eval<'ctx, 'this>(
         entry,
         location,
         add_mod,
-        circuit_info.add_offsets.len() * 4,
+        circuit_info.add_offsets.len() * MOD_BUILTIN_INSTANCE_SIZE,
     )?;
 
     let ([ok_block, err_block], gates) = build_gate_evaluation(
@@ -397,7 +397,7 @@ fn build_eval<'ctx, 'this>(
             ok_block,
             location,
             mul_mod,
-            circuit_info.mul_offsets.len() * 4,
+            circuit_info.mul_offsets.len() * MOD_BUILTIN_INSTANCE_SIZE,
         )?;
 
         // Build output struct
@@ -701,9 +701,9 @@ fn build_failure_guarantee_verify<'ctx, 'this>(
 ) -> Result<()> {
     let rc = entry.arg(0)?;
     let mul_mod = entry.arg(1)?;
-    let rc = increment_builtin_counter_by(context, entry, location, rc, 4)?;
+    let rc = increment_builtin_counter_by(context, entry, location, rc, 2 + VALUE_SIZE)?;
 
-    let mul_mod = increment_builtin_counter_by(context, entry, location, mul_mod, 4)?;
+    let mul_mod = increment_builtin_counter_by(context, entry, location, mul_mod, MOD_BUILTIN_INSTANCE_SIZE)?;
 
     let guarantee_type_id = &info.branch_signatures()[0].vars[2].ty;
     let guarantee_type = registry.build_type(context, helper, metadata, guarantee_type_id)?;
