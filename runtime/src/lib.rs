@@ -854,12 +854,10 @@ pub mod trace_dump {
         }
     }
 
-    #[no_mangle]
     pub extern "C" fn get_trace_dump_ptr() -> *const Mutex<HashMap<u64, TraceDump>> {
         &*TRACE_DUMP as *const _
     }
 
-    #[no_mangle]
     pub unsafe extern "C" fn cairo_native__trace_dump__state(
         trace_id: u64,
         var_id: u64,
@@ -880,7 +878,6 @@ pub mod trace_dump {
         trace_dump.state.insert(VarId::new(var_id), value);
     }
 
-    #[no_mangle]
     pub unsafe extern "C" fn cairo_native__trace_dump__push(trace_id: u64, statement_idx: u64) {
         let mut trace_dump = TRACE_DUMP.lock().unwrap();
         let trace_dump = trace_dump.get_mut(&trace_id).unwrap();
