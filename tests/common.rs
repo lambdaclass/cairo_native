@@ -271,7 +271,7 @@ pub fn run_vm_program(
 /// Runs the contract on the cairo-vm
 pub fn run_vm_contract(
     cairo_contract: &ContractClass,
-    entrypoint: usize,
+    selector: &BigUint,
     args: &[Felt],
 ) -> Vec<Felt> {
     let args = args
@@ -292,12 +292,13 @@ pub fn run_vm_contract(
     let mut runner = CairoRunner::new(&program, LayoutName::all_cairo, None, false, false)
         .expect("failed to build runner");
 
-    let program_builtins = contract
+    let entrypoint = contract
         .entry_points_by_type
         .external
         .iter()
-        .find(|e| e.offset == entrypoint)
-        .expect("given entrypoint index should exist")
+        .find(|e| e.selector == *selector)
+        .expect("given entrypoint index should exist");
+    let program_builtins = entrypoint
         .builtins
         .iter()
         .map(|s| BuiltinName::from_str(s).expect("invalid builtin name"))
@@ -365,7 +366,7 @@ pub fn run_vm_contract(
         Cairo1HintProcessor::new(&contract.hints, RunResources::default(), false);
     runner
         .run_from_entrypoint(
-            entrypoint,
+            entrypoint.offset,
             &entrypoint_args,
             true,
             Some(runner.get_program().data_len() + program_extra_data.len()),
