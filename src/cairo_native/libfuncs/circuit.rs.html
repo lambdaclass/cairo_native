@@ -1312,7 +1312,12 @@
 <a href="#1311" id="1311">1311</a>
 <a href="#1312" id="1312">1312</a>
 <a href="#1313" id="1313">1313</a>
-<a href="#1314" id="1314">1314</a></pre></div><pre class="rust"><code><span class="doccomment">//! # Circuit libfuncs
+<a href="#1314" id="1314">1314</a>
+<a href="#1315" id="1315">1315</a>
+<a href="#1316" id="1316">1316</a>
+<a href="#1317" id="1317">1317</a></pre></div><pre class="rust"><code><span class="doccomment">//! # Circuit libfuncs
+//!
+//! Relevant casm code: https://github.com/starkware-libs/cairo/blob/v2.10.0-rc.1/crates/cairo-lang-sierra-to-casm/src/invocations/circuit.rs
 
 </span><span class="kw">use super</span>::{increment_builtin_counter_by, LibfuncHelper};
 <span class="kw">use crate</span>::{
@@ -1326,7 +1331,7 @@
     extensions::{
         circuit::{
             <span class="self">self</span>, CircuitConcreteLibfunc, CircuitTypeConcrete, ConcreteGetOutputLibFunc,
-            ConcreteU96LimbsLessThanGuaranteeVerifyLibfunc,
+            ConcreteU96LimbsLessThanGuaranteeVerifyLibfunc, MOD_BUILTIN_INSTANCE_SIZE, VALUE_SIZE,
         },
         core::{CoreLibfunc, CoreType, CoreTypeConcrete},
         lib_func::{SignatureAndTypeConcreteLibfunc, SignatureOnlyConcreteLibfunc},
@@ -1691,7 +1696,7 @@
         entry,
         location,
         add_mod,
-        circuit_info.add_offsets.len() * <span class="number">4</span>,
+        circuit_info.add_offsets.len() * MOD_BUILTIN_INSTANCE_SIZE,
     )<span class="question-mark">?</span>;
 
     <span class="kw">let </span>([ok_block, err_block], gates) = build_gate_evaluation(
@@ -1711,7 +1716,7 @@
             ok_block,
             location,
             mul_mod,
-            circuit_info.mul_offsets.len() * <span class="number">4</span>,
+            circuit_info.mul_offsets.len() * MOD_BUILTIN_INSTANCE_SIZE,
         )<span class="question-mark">?</span>;
 
         <span class="comment">// Build output struct
@@ -2015,9 +2020,10 @@
 ) -&gt; <span class="prelude-ty">Result</span>&lt;()&gt; {
     <span class="kw">let </span>rc = entry.arg(<span class="number">0</span>)<span class="question-mark">?</span>;
     <span class="kw">let </span>mul_mod = entry.arg(<span class="number">1</span>)<span class="question-mark">?</span>;
-    <span class="kw">let </span>rc = increment_builtin_counter_by(context, entry, location, rc, <span class="number">4</span>)<span class="question-mark">?</span>;
+    <span class="kw">let </span>rc = increment_builtin_counter_by(context, entry, location, rc, <span class="number">2 </span>+ VALUE_SIZE)<span class="question-mark">?</span>;
 
-    <span class="kw">let </span>mul_mod = increment_builtin_counter_by(context, entry, location, mul_mod, <span class="number">4</span>)<span class="question-mark">?</span>;
+    <span class="kw">let </span>mul_mod =
+        increment_builtin_counter_by(context, entry, location, mul_mod, MOD_BUILTIN_INSTANCE_SIZE)<span class="question-mark">?</span>;
 
     <span class="kw">let </span>guarantee_type_id = <span class="kw-2">&amp;</span>info.branch_signatures()[<span class="number">0</span>].vars[<span class="number">2</span>].ty;
     <span class="kw">let </span>guarantee_type = registry.build_type(context, helper, metadata, guarantee_type_id)<span class="question-mark">?</span>;
