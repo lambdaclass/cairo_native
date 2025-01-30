@@ -1111,7 +1111,10 @@ pub mod trace_dump {
 
             // TODO:
             CoreTypeConcrete::Coupon(_) => todo!("CoreTypeConcrete::Coupon"),
-            CoreTypeConcrete::Circuit(_) => todo!("CoreTypeConcrete::Circuit"),
+            CoreTypeConcrete::Circuit(_) => {
+                println!("CoreTypeConcrete::Circuit trace dump not implemented");
+                Value::Unit
+            }
             CoreTypeConcrete::Const(_) => todo!("CoreTypeConcrete::Const"),
             CoreTypeConcrete::Sint8(_) => Value::I8(value_ptr.cast().read()),
             CoreTypeConcrete::Sint16(_) => todo!("CoreTypeConcrete::Sint16"),
