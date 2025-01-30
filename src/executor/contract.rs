@@ -137,7 +137,8 @@ impl AotContractExecutor {
             .keep()
             .to_native_assert_error("can only fail on windows")?;
 
-        let executor = Self::new_into(program, entry_points, output_path, opt_level)?.unwrap();
+        let executor = Self::new_into(program, entry_points, output_path, opt_level)?
+            .to_native_assert_error("temporary contract path collision")?;
 
         fs::remove_file(&executor.path)?;
         fs::remove_file(executor.path.with_extension("json"))?;
@@ -199,7 +200,7 @@ impl AotContractExecutor {
             let function_id = x.function_idx as u64;
             let function = registry
                 .get_function(&FunctionId::new(function_id))
-                .unwrap();
+                .to_native_assert_error("unreachable")?;
 
             let builtins = function
                 .params
@@ -226,19 +227,19 @@ impl AotContractExecutor {
                     CoreTypeConcrete::StarkNet(StarkNetTypeConcrete::System(_)) => {
                         BuiltinType::System
                     }
-                    _ => unreachable!(),
+                    _ => unreachable!("not a builtin"),
                 })
                 .collect();
 
-            (
+            Ok((
                 Felt::from(&x.selector),
                 EntryPointInfo {
                     function_id: x.function_idx as u64,
                     builtins,
                 },
-            )
+            ))
         })
-        .collect::<BTreeMap<_, _>>();
+        .collect::<Result<BTreeMap<_, _>>>()?;
 
         // Build the shared library.
         let object_data = crate::module_to_object(&module, opt_level)?;
