@@ -6,10 +6,7 @@ use cairo_lang_runner::short_string::as_cairo_short_string;
 use cairo_native::{
     context::NativeContext,
     executor::{AotNativeExecutor, JitNativeExecutor},
-    metadata::{
-        gas::{GasMetadata, MetadataComputationConfig},
-        trace_dump,
-    },
+    metadata::gas::{GasMetadata, MetadataComputationConfig},
     starknet_stub::StubSyscallHandler,
 };
 use clap::{Parser, ValueEnum};
@@ -87,6 +84,16 @@ fn main() -> anyhow::Result<()> {
         RunMode::Aot => {
             let executor =
                 AotNativeExecutor::from_native_module(native_module, args.opt_level.into())?;
+
+            #[cfg(feature = "with-trace-dump")]
+            {
+                use cairo_native::metadata::trace_dump::TraceBinding;
+                if let Some(trace_id) = executor.find_symbol_ptr(TraceBinding::TraceId.symbol()) {
+                    let trace_id = trace_id.cast::<u64>();
+                    unsafe { *trace_id = 0 };
+                }
+            }
+
             Box::new(move |function_id, args, gas, syscall_handler| {
                 executor.invoke_dynamic_with_syscall_handler(
                     function_id,
@@ -172,12 +179,6 @@ fn main() -> anyhow::Result<()> {
 
     #[cfg(feature = "with-trace-dump")]
     if let Some(trace_output) = args.trace_output {
-        assert_eq!(
-            args.run_mode,
-            RunMode::Jit,
-            "AOT trace dump for programs is not yet supported"
-        );
-
         let traces = cairo_native_runtime::trace_dump::TRACE_DUMP.lock().unwrap();
         assert_eq!(traces.len(), 1);
 
