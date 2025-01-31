@@ -10,7 +10,7 @@ use cairo_native::{
     starknet_stub::StubSyscallHandler,
 };
 use clap::{Parser, ValueEnum};
-use std::path::PathBuf;
+use std::{fs::File, path::PathBuf};
 use tracing_subscriber::{EnvFilter, FmtSubscriber};
 use utils::{find_function, result_to_runresult};
 
@@ -48,6 +48,10 @@ struct Args {
     #[cfg(feature = "with-trace-dump")]
     #[arg(long)]
     trace_output: Option<PathBuf>,
+
+    #[cfg(feature = "with-trace-dump")]
+    #[arg(long)]
+    sierra_output: Option<PathBuf>,
 }
 
 fn main() -> anyhow::Result<()> {
@@ -72,6 +76,13 @@ fn main() -> anyhow::Result<()> {
         },
     )?
     .program;
+
+    #[cfg(feature = "with-trace-dump")]
+    if let Some(sierra_output) = args.sierra_output {
+        use std::io::Write;
+        let mut file = File::create(sierra_output).unwrap();
+        write!(file, "{}", &sierra_program).unwrap();
+    }
 
     let native_context = NativeContext::new();
 
