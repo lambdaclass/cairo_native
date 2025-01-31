@@ -90,8 +90,9 @@ jobs:
           path: sequencer
           ref: replay
 
-      - name: Cache RPC Calls
-        uses: actions/cache@v4
+      - name: Restore RPC Calls
+        id: restore-rpc-calls
+        uses: actions/cache/restore@v4
         with:
           path: starknet-replay/rpc_cache
           key: cache-${{matrix.block}}
@@ -103,16 +104,7 @@ jobs:
       - name: Retreive cached dependecies
         uses: Swatinem/rust-cache@v2
         with:
-          workspaces: |
-            starknet-replay
-            cairo_native
-
-      - name: Build Cairo Native Runtime Library
-        shell: bash
-        run: |
-          cd ../cairo_native
-          make runtime
-          echo "CAIRO_NATIVE_RUNTIME_LIBRARY=$(pwd)/libcairo_native_runtime.a" > $GITHUB_ENV
+          workspaces: starknet-replay
 
       - name: Patch replay dependencies
         run: |
@@ -159,6 +151,13 @@ jobs:
         with:
           name: dump-${{matrix.block}}-${{matrix.runner}}
           path: starknet-replay/state_dumps/${{matrix.runner}}
+
+      - name: Save RPC Calls
+        uses: actions/cache/save@v4
+        if: ${{ always() && matrix.runner == 'vm' }}
+        with:
+          path: starknet-replay/rpc_cache
+          key: ${{ steps.restore-rpc-calls.outputs.cache-primary-key }}
 
   compare:
     needs: [run]
