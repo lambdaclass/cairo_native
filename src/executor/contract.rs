@@ -615,7 +615,9 @@ impl Drop for AotContractExecutor {
 mod tests {
     use super::*;
     use crate::{starknet_stub::StubSyscallHandler, utils::test::load_starknet_contract};
-    use cairo_lang_starknet_classes::contract_class::ContractClass;
+    use cairo_lang_starknet_classes::contract_class::{
+        version_id_from_serialized_sierra_program, ContractClass,
+    };
     use rayon::iter::ParallelBridge;
     use rstest::*;
 
@@ -708,10 +710,13 @@ mod tests {
     ) {
         use rayon::iter::ParallelIterator;
 
+        let (sierra_version, _) =
+            version_id_from_serialized_sierra_program(&starknet_program.sierra_program).unwrap();
         let executor = Arc::new(
             AotContractExecutor::new(
                 &starknet_program.extract_sierra_program().unwrap(),
                 &starknet_program.entry_points_by_type,
+                sierra_version,
                 optlevel,
             )
             .unwrap(),
@@ -745,9 +750,12 @@ mod tests {
     #[case(OptLevel::None)]
     #[case(OptLevel::Default)]
     fn test_contract_executor(starknet_program: ContractClass, #[case] optlevel: OptLevel) {
+        let (sierra_version, _) =
+            version_id_from_serialized_sierra_program(&starknet_program.sierra_program).unwrap();
         let executor = AotContractExecutor::new(
             &starknet_program.extract_sierra_program().unwrap(),
             &starknet_program.entry_points_by_type,
+            sierra_version,
             optlevel,
         )
         .unwrap();
@@ -780,9 +788,13 @@ mod tests {
         starknet_program_factorial: ContractClass,
         #[case] optlevel: OptLevel,
     ) {
+        let (sierra_version, _) =
+            version_id_from_serialized_sierra_program(&starknet_program_factorial.sierra_program)
+                .unwrap();
         let executor = AotContractExecutor::new(
             &starknet_program_factorial.extract_sierra_program().unwrap(),
             &starknet_program_factorial.entry_points_by_type,
+            sierra_version,
             optlevel,
         )
         .unwrap();
@@ -816,9 +828,13 @@ mod tests {
         starknet_program_empty: ContractClass,
         #[case] optlevel: OptLevel,
     ) {
+        let (sierra_version, _) =
+            version_id_from_serialized_sierra_program(&starknet_program_empty.sierra_program)
+                .unwrap();
         let executor = AotContractExecutor::new(
             &starknet_program_empty.extract_sierra_program().unwrap(),
             &starknet_program_empty.entry_points_by_type,
+            sierra_version,
             optlevel,
         )
         .unwrap();
