@@ -798,16 +798,17 @@ pub mod trace_dump {
     use cairo_lang_sierra::{
         extensions::{
             bounded_int::BoundedIntConcreteType,
+            circuit::CircuitTypeConcrete,
             core::{CoreLibfunc, CoreType, CoreTypeConcrete},
             starknet::{secp256::Secp256PointTypeConcrete, StarkNetTypeConcrete},
         },
         ids::{ConcreteTypeId, VarId},
-        program::StatementIdx,
+        program::{GenericArg, StatementIdx},
         program_registry::ProgramRegistry,
     };
     use cairo_lang_utils::ordered_hash_map::OrderedHashMap;
     use itertools::Itertools;
-    use num_bigint::BigInt;
+    use num_bigint::{BigInt, BigUint};
     use num_traits::One;
     use sierra_emu::{
         starknet::{
@@ -1111,10 +1112,128 @@ pub mod trace_dump {
 
             // TODO:
             CoreTypeConcrete::Coupon(_) => todo!("CoreTypeConcrete::Coupon"),
-            CoreTypeConcrete::Circuit(_) => {
-                println!("CoreTypeConcrete::Circuit trace dump not implemented");
-                Value::Unit
-            }
+            CoreTypeConcrete::Circuit(circuit) => match circuit {
+                CircuitTypeConcrete::AddMod(_) => Value::Unit,
+                CircuitTypeConcrete::MulMod(_) => Value::Unit,
+                CircuitTypeConcrete::AddModGate(_) => Value::Unit,
+                CircuitTypeConcrete::Circuit(_) => Value::Unit,
+                CircuitTypeConcrete::CircuitData(info) => {
+                    let Some(GenericArg::Type(circuit_type_id)) =
+                        info.info.long_id.generic_args.first()
+                    else {
+                        panic!("generic arg should be a type");
+                    };
+                    let CoreTypeConcrete::Circuit(CircuitTypeConcrete::Circuit(circuit)) =
+                        registry.get_type(circuit_type_id).unwrap()
+                    else {
+                        panic!("generic arg should be a Circuit");
+                    };
+
+                    let u384_layout = Layout::from_size_align(48, 16).unwrap();
+
+                    let n_inputs = circuit.circuit_info.n_inputs;
+                    let mut values = Vec::with_capacity(n_inputs);
+
+                    let value_ptr = value_ptr.cast::<[u8; 48]>();
+
+                    for i in 0..n_inputs {
+                        let size = u384_layout.pad_to_align().size();
+                        let current_ptr = value_ptr.byte_add(size * i as usize);
+                        let current_value = current_ptr.as_ref();
+                        values.push(BigUint::from_bytes_le(current_value));
+                    }
+
+                    Value::Circuit(values)
+                }
+                CircuitTypeConcrete::CircuitOutputs(info) => {
+                    let Some(GenericArg::Type(circuit_type_id)) =
+                        info.info.long_id.generic_args.first()
+                    else {
+                        panic!("generic arg should be a type");
+                    };
+                    let CoreTypeConcrete::Circuit(CircuitTypeConcrete::Circuit(circuit)) =
+                        registry.get_type(circuit_type_id).unwrap()
+                    else {
+                        panic!("generic arg should be a Circuit");
+                    };
+
+                    let u384_layout = Layout::from_size_align(48, 16).unwrap();
+
+                    let n_outputs = circuit.circuit_info.values.len();
+                    let mut values = Vec::with_capacity(n_outputs);
+
+                    let value_ptr = value_ptr.cast::<[u8; 48]>();
+
+                    for i in 0..n_outputs {
+                        let size = u384_layout.pad_to_align().size();
+                        let current_ptr = value_ptr.byte_add(size * i as usize);
+                        let current_value = current_ptr.as_ref();
+                        values.push(BigUint::from_bytes_le(current_value));
+                    }
+
+                    Value::CircuitOutputs(values)
+                }
+                CircuitTypeConcrete::CircuitPartialOutputs(_) => {
+                    Value::ToDo("CircuitTypeConcrete::CircuitPartialOutputs".to_string())
+                }
+                CircuitTypeConcrete::CircuitDescriptor(_) => Value::Unit,
+                CircuitTypeConcrete::CircuitFailureGuarantee(_) => {
+                    Value::ToDo("CircuitTypeConcrete::CircuitFailureGuarantee".to_string())
+                }
+                CircuitTypeConcrete::CircuitInput(_) => {
+                    Value::ToDo("CircuitTypeConcrete::CircuitInput".to_string())
+                }
+                CircuitTypeConcrete::CircuitInputAccumulator(info) => {
+                    let Some(GenericArg::Type(circuit_type_id)) =
+                        info.info.long_id.generic_args.first()
+                    else {
+                        panic!("generic arg should be a type");
+                    };
+                    let CoreTypeConcrete::Circuit(CircuitTypeConcrete::Circuit(_)) =
+                        registry.get_type(circuit_type_id).unwrap()
+                    else {
+                        panic!("generic arg should be a Circuit");
+                    };
+
+                    let u64_layout = Layout::new::<u64>();
+                    let u384_layout = Layout::from_size_align(48, 16).unwrap();
+
+                    let length = unsafe { *value_ptr.cast::<u64>().as_ptr() };
+
+                    let (_, input_start_offset) = u64_layout.extend(u384_layout).unwrap();
+                    let start_ptr = value_ptr.byte_add(input_start_offset).cast::<[u8; 48]>();
+
+                    let mut values = Vec::with_capacity(length as usize);
+
+                    for i in 0..length {
+                        let size = u384_layout.pad_to_align().size();
+                        let current_ptr = start_ptr.byte_add(size * i as usize);
+                        let current_value = current_ptr.as_ref();
+                        values.push(BigUint::from_bytes_le(current_value));
+                    }
+
+                    Value::Circuit(values)
+                }
+                CircuitTypeConcrete::CircuitModulus(_) => {
+                    let value_ptr = value_ptr.cast::<[u8; 48]>();
+                    let value = unsafe { value_ptr.as_ref() };
+                    Value::CircuitModulus(BigUint::from_bytes_le(value))
+                }
+
+                CircuitTypeConcrete::InverseGate(_) => Value::Unit,
+                CircuitTypeConcrete::MulModGate(_) => Value::Unit,
+                CircuitTypeConcrete::SubModGate(_) => Value::Unit,
+                CircuitTypeConcrete::U96Guarantee(_) => {
+                    let value_ptr = value_ptr.cast::<[u8; 12]>();
+                    let value = unsafe { value_ptr.as_ref() };
+
+                    let mut array_value = [0u8; 16];
+                    array_value[..12].clone_from_slice(value);
+
+                    Value::U128(u128::from_le_bytes(array_value))
+                }
+                CircuitTypeConcrete::U96LimbsLessThanGuarantee(_) => Value::Unit,
+            },
             CoreTypeConcrete::Const(_) => todo!("CoreTypeConcrete::Const"),
             CoreTypeConcrete::Sint8(_) => Value::I8(value_ptr.cast().read()),
             CoreTypeConcrete::Sint16(_) => todo!("CoreTypeConcrete::Sint16"),
