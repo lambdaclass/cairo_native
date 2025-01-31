@@ -740,10 +740,10 @@ fn build_u96_limbs_less_than_guarantee_verify<'ctx, 'this>(
 
     let u96 = entry.append_op_result(llvm::undef(u96_type, location))?;
 
-    let kfalse = entry.const_int(context, location, 0, 64)?;
+    let ktrue = entry.const_int(context, location, 1, 64)?;
     entry.append_operation(helper.cond_br(
         context,
-        kfalse,
+        ktrue,
         [0, 1],
         [&[guarantee], &[u96]],
         location,
@@ -766,7 +766,7 @@ fn build_u96_single_limb_less_than_guarantee_verify<'ctx, 'this>(
 ) -> Result<()> {
     let u96_type_id = &info.branch_signatures()[0].vars[0].ty;
     let u96_type = registry.build_type(context, helper, metadata, u96_type_id)?;
-    let u96 = entry.append_op_result(llvm::undef(u96_type, location))?;
+    let u96 = entry.const_int_from_type(context, location, 0, u96_type)?;
 
     entry.append_operation(helper.br(0, &[u96], location));
 
