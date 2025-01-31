@@ -984,29 +984,6 @@ pub(crate) mod handler {
             };
         }
 
-        #[cfg(feature = "with-cheatcode")]
-        extern "C" fn wrap_cheatcode(
-            result_ptr: &mut ArrayAbi<Felt252Abi>,
-            ptr: &mut T,
-            selector: &Felt252Abi,
-            input: &ArrayAbi<Felt252Abi>,
-        ) {
-            let selector = Felt::from(selector);
-            let input_vec: Vec<_> = input.into();
-
-            unsafe {
-                Self::drop_mlir_array(input);
-            }
-
-            let result = ptr
-                .cheatcode(selector, &input_vec)
-                .into_iter()
-                .map(|x| Felt252Abi(x.to_bytes_le()))
-                .collect::<Vec<_>>();
-
-            *result_ptr = unsafe { Self::alloc_mlir_array(&result) };
-        }
-
         extern "C" fn wrap_get_execution_info(
             result_ptr: &mut SyscallResultAbi<NonNull<ExecutionInfoAbi>>,
             ptr: &mut T,
@@ -1699,6 +1676,29 @@ pub(crate) mod handler {
                 },
                 Err(e) => Self::wrap_error(&e),
             };
+        }
+
+        #[cfg(feature = "with-cheatcode")]
+        extern "C" fn wrap_cheatcode(
+            result_ptr: &mut ArrayAbi<Felt252Abi>,
+            ptr: &mut T,
+            selector: &Felt252Abi,
+            input: &ArrayAbi<Felt252Abi>,
+        ) {
+            let selector = Felt::from(selector);
+            let input_vec: Vec<_> = input.into();
+
+            unsafe {
+                Self::drop_mlir_array(input);
+            }
+
+            let result = ptr
+                .cheatcode(selector, &input_vec)
+                .into_iter()
+                .map(|x| Felt252Abi(x.to_bytes_le()))
+                .collect::<Vec<_>>();
+
+            *result_ptr = unsafe { Self::alloc_mlir_array(&result) };
         }
     }
 }

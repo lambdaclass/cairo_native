@@ -186,15 +186,18 @@ fn test_contract_cases(program_path: &str, args: &[u128]) {
         .entry_points_by_type
         .external
         .first()
-        .expect("contract should have at least one external entrypoint")
-        .function_idx;
+        .expect("contract should have at least one external entrypoint");
 
     let program = contract
         .extract_sierra_program()
         .expect("contract bytes should be a valid sierra program");
 
-    let native_result =
-        run_native_starknet_contract(&program, entrypoint, &args, DummySyscallHandler);
+    let native_result = run_native_starknet_contract(
+        &program,
+        entrypoint.function_idx,
+        &args,
+        DummySyscallHandler,
+    );
 
     assert!(
         !native_result.failure_flag,
@@ -203,7 +206,7 @@ fn test_contract_cases(program_path: &str, args: &[u128]) {
 
     let native_output = native_result.return_values;
 
-    let vm_output = run_vm_contract(&contract, entrypoint, &args);
+    let vm_output = run_vm_contract(&contract, &entrypoint.selector, &args);
 
     assert_eq_sorted!(vm_output, native_output);
 }

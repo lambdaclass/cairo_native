@@ -79,14 +79,6 @@ pub fn build_withdraw_gas<'ctx, 'this>(
 ) -> Result<()> {
     let range_check = super::increment_builtin_counter(context, entry, location, entry.arg(0)?)?;
     let current_gas = entry.arg(1)?;
-
-    let gas_cost = metadata
-        .get::<GasCost>()
-        .expect("withdraw_gas should always have a gas cost")
-        .clone();
-
-    let u64_type: melior::ir::Type = IntegerType::new(context, 64).into();
-
     let builtin_ptr = {
         let runtime = metadata
             .get_mut::<RuntimeBindingsMeta>()
@@ -96,6 +88,13 @@ pub fn build_withdraw_gas<'ctx, 'this>(
             .result(0)?
             .into()
     };
+
+    let gas_cost = metadata
+        .get::<GasCost>()
+        .expect("withdraw_gas should always have a gas cost")
+        .clone();
+
+    let u64_type: melior::ir::Type = IntegerType::new(context, 64).into();
 
     let mut total_gas_cost_value = entry.const_int_from_type(context, location, 0, u64_type)?;
 
@@ -239,7 +238,7 @@ pub fn build_builtin_withdraw_gas<'ctx, 'this>(
     entry: &'this Block<'ctx>,
     location: Location<'ctx>,
     helper: &LibfuncHelper<'ctx, 'this>,
-    metadata: &MetadataStorage,
+    metadata: &mut MetadataStorage,
     _info: &SignatureOnlyConcreteLibfunc,
 ) -> Result<()> {
     let range_check = super::increment_builtin_counter(context, entry, location, entry.arg(0)?)?;
@@ -248,7 +247,8 @@ pub fn build_builtin_withdraw_gas<'ctx, 'this>(
 
     let gas_cost = metadata
         .get::<GasCost>()
-        .expect("builtin_withdraw_gas should always have a gas cost");
+        .expect("builtin_withdraw_gas should always have a gas cost")
+        .clone();
 
     let u64_type: melior::ir::Type = IntegerType::new(context, 64).into();
 
