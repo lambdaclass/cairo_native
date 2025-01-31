@@ -32,7 +32,7 @@ jobs:
         with:
           repository: lambdaclass/starknet-replay
           path: starknet-replay
-          ref: 546457d800fd02f080888331aebecc15824bed91
+          ref: 313a19cce2e930cbd644606aa732b6408fcf2246
       # We need native to build the runtime
       - name: Checkout Native
         uses: actions/checkout@v4
@@ -43,7 +43,7 @@ jobs:
         with:
           repository: lambdaclass/sequencer
           path: sequencer
-          ref: 15d6452d162ad5e3538e673d1e4df5abcff9452f
+          ref: f9b0f034e55c63103c11248b59b7f85da6eaef65
 
       - name: Cache RPC Calls
         uses: actions/cache@v4
