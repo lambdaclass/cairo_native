@@ -2,6 +2,7 @@ pub mod alexandria;
 pub mod arrays;
 pub mod boolean;
 pub mod cases;
+pub mod circuit;
 pub mod compile_library;
 pub mod dict;
 pub mod ec;
