@@ -32,7 +32,7 @@ jobs:
         with:
           repository: lambdaclass/starknet-replay
           path: starknet-replay
-          ref: 2adc6038c8446e6f405f95820febffdc0e42a886
+          ref: 2ae05347583dab7c85c841a230ff08fe624e43fd
       # We need native to build the runtime
       - name: Checkout Native
         uses: actions/checkout@v4
