@@ -67,6 +67,7 @@ use serde::{Deserialize, Serialize};
 use starknet_types_core::felt::Felt;
 use std::{
     alloc::Layout,
+    cmp::Ordering,
     collections::{BTreeMap, HashSet},
     ffi::c_void,
     path::{Path, PathBuf},
@@ -153,7 +154,12 @@ impl AotContractExecutor {
             used_function_ids.insert(entry.function_idx as u64);
         }
 
-        let no_eq_solver = sierra_version.minor >= 4;
+        // true if sierra version is at least 1.4
+        let no_eq_solver = match sierra_version.major.cmp(&1) {
+            Ordering::Less => false,
+            Ordering::Equal => sierra_version.minor >= 4,
+            Ordering::Greater => true,
+        };
         let module = native_context.compile(
             sierra_program,
             true,
