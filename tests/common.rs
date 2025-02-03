@@ -29,7 +29,7 @@ use cairo_lang_starknet::{
 };
 use cairo_lang_starknet_classes::{
     casm_contract_class::{CasmContractClass, ENTRY_POINT_COST},
-    contract_class::ContractClass,
+    contract_class::{version_id_from_serialized_sierra_program, ContractClass},
 };
 use cairo_lang_utils::Upcast;
 use cairo_native::{
@@ -449,9 +449,12 @@ pub fn run_native_starknet_aot_contract(
     args: &[Felt],
     handler: impl StarknetSyscallHandler,
 ) -> ContractExecutionResult {
+    let (sierra_version, _) =
+        version_id_from_serialized_sierra_program(&contract.sierra_program).unwrap();
     let native_executor = AotContractExecutor::new(
         &contract.extract_sierra_program().unwrap(),
         &contract.entry_points_by_type,
+        sierra_version,
         Default::default(),
     )
     .unwrap();
