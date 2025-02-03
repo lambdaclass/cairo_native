@@ -66,7 +66,15 @@ use libloading::Library;
 use serde::{Deserialize, Serialize};
 use starknet_types_core::felt::Felt;
 use std::{
-    alloc::Layout, cmp::Ordering, collections::BTreeMap, ffi::c_void, fs::{self, File}, io, path::PathBuf, ptr::NonNull, sync::Arc
+    alloc::Layout,
+    cmp::Ordering,
+    collections::BTreeMap,
+    ffi::c_void,
+    fs::{self, File},
+    io,
+    path::PathBuf,
+    ptr::NonNull,
+    sync::Arc,
 };
 use tempfile::NamedTempFile;
 
@@ -132,8 +140,14 @@ impl AotContractExecutor {
             .keep()
             .to_native_assert_error("can only fail on windows")?;
 
-        let executor = Self::new_into(program, entry_points, sierra_version, output_path, opt_level)?
-            .to_native_assert_error("temporary contract path collision")?;
+        let executor = Self::new_into(
+            program,
+            entry_points,
+            sierra_version,
+            output_path,
+            opt_level,
+        )?
+        .to_native_assert_error("temporary contract path collision")?;
 
         fs::remove_file(&executor.path)?;
         fs::remove_file(executor.path.with_extension("json"))?;
