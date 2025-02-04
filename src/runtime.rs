@@ -24,7 +24,6 @@ use std::{
     os::fd::FromRawFd,
     ptr::{self, null, null_mut},
     rc::Rc,
-    slice,
 };
 use std::{ops::Mul, vec::IntoIter};
 
@@ -35,19 +34,6 @@ lazy_static! {
     .unwrap();
     pub static ref DICT_GAS_REFUND_PER_ACCESS: u64 =
         (DICT_SQUASH_UNIQUE_KEY_COST.cost() - DICT_SQUASH_REPEATED_ACCESS_COST.cost()) as u64;
-}
-
-#[allow(clippy::missing_safety_doc)]
-pub unsafe extern "C" fn cairo_native__get_version(target: *mut u8, length: usize) -> usize {
-    let version = env!("CARGO_PKG_VERSION");
-    assert!(length > version.len(), "version buffer not big enough");
-
-    let target = slice::from_raw_parts_mut(target, length);
-
-    target[..version.len()].copy_from_slice(version.as_bytes());
-    target[version.len()] = b'\0';
-
-    version.len()
 }
 
 /// Based on `cairo-lang-runner`'s implementation.
@@ -447,10 +433,10 @@ pub unsafe extern "C" fn cairo_native__libfunc__ec__ec_point_try_new_nz(
 /// definitely unsafe to use manually.
 pub unsafe extern "C" fn cairo_native__libfunc__ec__ec_state_init(state_ptr: &mut [[u8; 32]; 4]) {
     // https://github.com/starkware-libs/cairo/blob/aaad921bba52e729dc24ece07fab2edf09ccfa15/crates/cairo-lang-runner/src/casm_run/mod.rs#L1802
-    let mut rng = rand::thread_rng();
+    let mut rng = rand::rng();
     let (random_x, random_y) = loop {
         // Randominzing 31 bytes to make sure is in range.
-        let x_bytes: [u8; 31] = rng.gen();
+        let x_bytes: [u8; 31] = rng.random();
         let random_x = Felt::from_bytes_be_slice(&x_bytes);
         let random_y_squared = random_x * random_x * random_x + random_x + BETA;
         if let Some(random_y) = random_y_squared.sqrt() {
