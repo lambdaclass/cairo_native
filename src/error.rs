@@ -1,6 +1,5 @@
 //! Various error types used thorough the crate.
 use crate::metadata::gas::GasMetadataError;
-use crate::utils::safe_runner::SafeRunnerError;
 use cairo_lang_sierra::extensions::modules::utils::Range;
 use cairo_lang_sierra::{
     edit_state::EditStateError, ids::ConcreteTypeId, program_registry::ProgramRegistryError,
@@ -92,8 +91,9 @@ pub enum Error {
     #[error("Failed to parse a Cairo/Sierra program: {0}")]
     ProgramParser(String),
 
+    #[cfg(feature = "with-segfault-catcher")]
     #[error(transparent)]
-    SafeRunner(SafeRunnerError),
+    SafeRunner(crate::utils::safe_runner::SafeRunnerError),
 }
 
 impl Error {
