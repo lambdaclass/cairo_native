@@ -952,7 +952,7 @@ mod test {
     use crate::{
         utils::{
             sierra_gen::SierraGenerator,
-            test::{jit_enum, jit_panic, jit_struct, run_sierra_program},
+            test::{jit_enum, jit_struct, run_sierra_program},
         },
         values::Value,
     };
@@ -966,7 +966,6 @@ mod test {
     use lazy_static::lazy_static;
     use num_bigint::BigUint;
     use num_traits::One;
-    use starknet_types_core::felt::Felt;
     use std::ops::Shl;
 
     lazy_static! {
@@ -1074,10 +1073,12 @@ mod test {
             assert_eq!(expected, result);
         }
 
-        let u256_is_zero = Felt::from_bytes_be_slice(b"Division by 0");
         let max_value = 0xFFFFFFFF_FFFFFFFF_FFFFFFFF_FFFFFFFFu128;
-
-        run((0, 0), (0, 0), jit_panic!(u256_is_zero));
+        let none = jit_struct!(jit_struct!(
+            jit_struct!(Value::Null, Value::Null),
+            jit_struct!(Value::Null, Value::Null),
+        ));
+        run((0, 0), (0, 0), none.clone());
         run(
             (0, 0),
             (0, 1),
@@ -1101,7 +1102,7 @@ mod test {
             ),
         );
 
-        run((0, 1), (0, 0), jit_panic!(u256_is_zero));
+        run((0, 1), (0, 0), none.clone());
         run(
             (0, 1),
             (0, 1),
@@ -1124,7 +1125,7 @@ mod test {
                 ))
             ),
         );
-        run((max_value, max_value), (0, 0), jit_panic!(u256_is_zero));
+        run((max_value, max_value), (0, 0), none.clone());
 
         run(
             (max_value, max_value),
@@ -1203,7 +1204,7 @@ mod test {
             assert_eq!(expected, result);
         }
 
-        let none = jit_enum!(1, jit_struct!());
+        let none = jit_enum!(1, jit_struct!(Value::Null, Value::Null));
 
         // Not invertible.
         run((0, 0), (0, 0), none.clone());
