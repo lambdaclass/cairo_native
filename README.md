@@ -41,7 +41,7 @@ often so use it at your own risk. 🚧
 
 For versions under `1.0` `cargo` doesn't comply with
 [semver](https://semver.org/), so we advise to pin the version the version you
-use. This can be done by adding `cairo-native = "0.1.0"` to your Cargo.toml
+use. This can be done by adding `cairo-native = "0.3.0"` to your Cargo.toml
 
 ## Getting Started
 
@@ -83,7 +83,7 @@ If you decide to build from source, here are some indications:
 # The blob to download is called llvm-project-19.x.x.src.tar.xz
 
 # For example
-wget https://github.com/llvm/llvm-project/releases/download/llvmorg-19.1.5/llvm-project-19.1.5.src.tar.xz
+wget https://github.com/llvm/llvm-project/releases/download/llvmorg-19.1.7/llvm-project-19.1.7.src.tar.xz
 tar xf llvm-project-19.1.5.src.tar.xz
 
 cd llvm-project-19.1.5.src.tar
@@ -140,13 +140,12 @@ corelib is found, and then list available targets.
 ```bash
 % make
 LLVM is correctly set at /opt/homebrew/opt/llvm.
-./scripts/check-corelib-version.sh 2.6.4
+./scripts/check-corelib-version.sh 2.10.0-rc1
 Usage:
     deps:         Installs the necesary dependencies.
     build:        Builds the cairo-native library and binaries in release mode.
     build-native: Builds cairo-native with the target-cpu=native rust flag.
     build-dev:    Builds cairo-native under a development-optimized profile.
-    runtime:      Builds the runtime library required for AOT compilation.
     check:        Checks format and lints.
     test:         Runs all tests.
     proptest:     Runs property tests.
@@ -350,7 +349,7 @@ Options:
 
 ### Requirements
 - [hyperfine](https://github.com/sharkdp/hyperfine): `cargo install hyperfine`
-- [cairo 2.9.0-dev.0](https://github.com/starkware-libs/cairo)
+- [cairo 2.10.0-rc1](https://github.com/starkware-libs/cairo)
 - Cairo Corelibs
 - LLVM 19 with MLIR
 

@@ -279,8 +279,6 @@ pub fn layout(
 
             Ok(layout)
         }
-        CircuitTypeConcrete::CircuitPartialOutputs(_) => {
-            todo!("CircuitPartialOutputs is noop for now")
-        }
+        CircuitTypeConcrete::CircuitPartialOutputs(_) => Ok(Layout::new::<()>()),
     }
 }
