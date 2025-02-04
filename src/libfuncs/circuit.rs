@@ -821,6 +821,13 @@ fn build_get_output<'ctx, 'this>(
         llvm::r#type::array(build_u384_struct_type(context), n_gates as u32),
         0,
     )?;
+    let modulus_struct = entry.extract_value(
+        context,
+        location,
+        outputs,
+        build_u384_struct_type(context),
+        1,
+    )?;
     let output_struct = entry.extract_value(
         context,
         location,
@@ -829,9 +836,24 @@ fn build_get_output<'ctx, 'this>(
         output_idx,
     )?;
 
-    let guarantee_type_id = &info.branch_signatures()[0].vars[1].ty;
-    let guarantee_type = registry.build_type(context, helper, metadata, guarantee_type_id)?;
-    let guarantee = entry.append_op_result(llvm::undef(guarantee_type, location))?;
+    let guarantee = {
+        let guarantee_type_id = &info.branch_signatures()[0].vars[1].ty;
+
+        let u96_type = IntegerType::new(context, 96).into();
+        let output_array = struct_to_array(context, entry, location, output_struct, u96_type, 4)?;
+        let modulus_array = struct_to_array(context, entry, location, modulus_struct, u96_type, 4)?;
+
+        build_struct_value(
+            context,
+            registry,
+            entry,
+            location,
+            helper,
+            metadata,
+            guarantee_type_id,
+            &[output_array, modulus_array],
+        )?
+    };
 
     entry.append_operation(helper.br(0, &[output_struct, guarantee], location));
 
@@ -922,6 +944,31 @@ fn u384_integer_to_struct<'a>(
         location,
         struct_value,
         &[limb1, limb2, limb3, limb4],
+    )
+}
+
+fn struct_to_array<'ctx>(
+    context: &'ctx Context,
+    block: &'ctx Block<'ctx>,
+    location: Location<'ctx>,
+    r#struct: Value<'ctx, 'ctx>,
+    element_type: Type<'ctx>,
+    length: u32,
+) -> Result<Value<'ctx, 'ctx>> {
+    let mut values = Vec::with_capacity(length as usize);
+
+    for i in 0..length {
+        let value = block.extract_value(context, location, r#struct, element_type, i as usize)?;
+
+        values.push(value);
+    }
+
+    let array_type = llvm::r#type::array(element_type, length);
+    block.insert_values(
+        context,
+        location,
+        block.append_op_result(llvm::undef(array_type, location))?,
+        &values,
     )
 }
 

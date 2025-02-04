@@ -10,7 +10,7 @@ use crate::{
 };
 use cairo_lang_sierra::{
     extensions::{
-        circuit::CircuitTypeConcrete,
+        circuit::{CircuitTypeConcrete, ConcreteU96LimbsLessThanGuarantee},
         core::{CoreLibfunc, CoreType, CoreTypeConcrete},
         types::InfoOnlyConcreteType,
     },
@@ -57,10 +57,19 @@ pub fn build<'ctx>(
             metadata,
             WithSelf::new(selector.self_ty(), info),
         ),
+        CircuitTypeConcrete::U96LimbsLessThanGuarantee(info) => {
+            build_u96_limbs_less_than_guarantee(
+                context,
+                module,
+                registry,
+                metadata,
+                WithSelf::new(selector.self_ty(), info),
+            )
+        }
         // builtins
-        CircuitTypeConcrete::AddMod(_)
-        | CircuitTypeConcrete::U96LimbsLessThanGuarantee(_)
-        | CircuitTypeConcrete::MulMod(_) => Ok(IntegerType::new(context, 64).into()),
+        CircuitTypeConcrete::AddMod(_) | CircuitTypeConcrete::MulMod(_) => {
+            Ok(IntegerType::new(context, 64).into())
+        }
         // noops
         CircuitTypeConcrete::CircuitDescriptor(_)
         | CircuitTypeConcrete::CircuitFailureGuarantee(_)
@@ -152,6 +161,25 @@ pub fn build_circuit_outputs<'ctx>(
         &[
             llvm::r#type::array(build_u384_struct_type(context), n_gates as u32),
             build_u384_struct_type(context),
+        ],
+        false,
+    ))
+}
+
+pub fn build_u96_limbs_less_than_guarantee<'ctx>(
+    context: &'ctx Context,
+    _module: &Module<'ctx>,
+    _registry: &ProgramRegistry<CoreType, CoreLibfunc>,
+    _metadata: &mut MetadataStorage,
+    info: WithSelf<ConcreteU96LimbsLessThanGuarantee>,
+) -> Result<Type<'ctx>> {
+    let limbs = info.inner.limb_count;
+
+    Ok(llvm::r#type::r#struct(
+        context,
+        &[
+            llvm::r#type::array(IntegerType::new(context, 96).into(), limbs as u32),
+            llvm::r#type::array(IntegerType::new(context, 96).into(), limbs as u32),
         ],
         false,
     ))
