@@ -408,7 +408,8 @@ pub const fn libfunc_to_name(value: &CoreConcreteLibfunc) -> &'static str {
             BoundedIntConcreteLibfunc::Constrain(_) => "bounded_int_constrain",
             BoundedIntConcreteLibfunc::IsZero(_) => "bounded_int_is_zero",
             BoundedIntConcreteLibfunc::WrapNonZero(_) => "bounded_int_wrap_non_zero",
-            BoundedIntConcreteLibfunc::Trim(_) => "bounded_int_trim",
+            BoundedIntConcreteLibfunc::TrimMin(_) => "bounded_int_trim_min",
+            BoundedIntConcreteLibfunc::TrimMax(_) => "bounded_int_trim_max",
         },
         CoreConcreteLibfunc::IntRange(selector) => match selector {
             IntRangeConcreteLibfunc::TryNew(_) => "int_range_try_new",

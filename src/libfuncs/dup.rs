@@ -18,7 +18,7 @@ use cairo_lang_sierra::{
     program_registry::ProgramRegistry,
 };
 use melior::{
-    ir::{Block, Location},
+    ir::{Block, BlockLike, Location},
     Context,
 };
 

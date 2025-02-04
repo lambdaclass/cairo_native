@@ -37,9 +37,8 @@ use crate::{
     error::{panic::ToNativeAssertError, Error, Result},
     execution_result::{BuiltinStats, ContractExecutionResult},
     executor::invoke_trampoline,
-    metadata::gas::MetadataComputationConfig,
+    metadata::{gas::MetadataComputationConfig, runtime_bindings::setup_runtime},
     module::NativeModule,
-    native_panic,
     starknet::{handler::StarknetSyscallHandlerCallbacks, StarknetSyscallHandler},
     types::TypeBuilder,
     utils::{
@@ -52,22 +51,28 @@ use bumpalo::Bump;
 use cairo_lang_sierra::{
     extensions::{
         circuit::CircuitTypeConcrete, core::CoreTypeConcrete, gas::CostTokenType,
-        starknet::StarkNetTypeConcrete, ConcreteType,
+        starknet::StarkNetTypeConcrete,
     },
     ids::FunctionId,
     program::Program,
 };
-use cairo_lang_starknet_classes::casm_contract_class::ENTRY_POINT_COST;
 use cairo_lang_starknet_classes::contract_class::ContractEntryPoints;
+use cairo_lang_starknet_classes::{
+    casm_contract_class::ENTRY_POINT_COST, compiler_version::VersionId,
+};
 use educe::Educe;
+use itertools::chain;
 use libloading::Library;
 use serde::{Deserialize, Serialize};
 use starknet_types_core::felt::Felt;
 use std::{
     alloc::Layout,
-    collections::{BTreeMap, HashSet},
+    cmp::Ordering,
+    collections::BTreeMap,
     ffi::c_void,
-    path::{Path, PathBuf},
+    fs::{self, File},
+    io,
+    path::PathBuf,
     ptr::NonNull,
     sync::Arc,
 };
@@ -80,24 +85,23 @@ pub struct AotContractExecutor {
     #[educe(Debug(ignore))]
     library: Arc<Library>,
     path: PathBuf,
-    is_temp_path: bool,
     contract_info: NativeContractInfo,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq)]
 pub struct NativeContractInfo {
     pub version: ContractInfoVersion,
-    pub entry_points_info: BTreeMap<u64, EntryPointInfo>,
-    pub entry_point_selector_to_id: BTreeMap<Felt, u64>,
+    pub entry_points: BTreeMap<Felt, EntryPointInfo>,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq, PartialOrd, Ord)]
 pub enum ContractInfoVersion {
-    Version0,
+    V0,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq, PartialOrd, Ord)]
 pub struct EntryPointInfo {
+    pub function_id: u64,
     pub builtins: Vec<BuiltinType>,
 }
 
@@ -124,171 +128,175 @@ impl BuiltinType {
 }
 
 impl AotContractExecutor {
-    /// Create the executor from a sierra program with the given optimization level.
-    /// You can save the library on the desired location later using `save`.
-    /// If not saved, the path is treated as
-    /// a temporary file an deleted when dropped.
-    /// If you loaded a ContractExecutor using [`load`] then it will not be treated as a temp file.
+    /// Compile and load a program using a temporary shared library.
     pub fn new(
-        sierra_program: &Program,
+        program: &Program,
         entry_points: &ContractEntryPoints,
+        sierra_version: VersionId,
         opt_level: OptLevel,
     ) -> Result<Self> {
-        let native_context = NativeContext::new();
-
-        let mut entry_point_selector_to_id = BTreeMap::new();
-
-        let mut used_function_ids = HashSet::new();
-        for entry in entry_points
-            .constructor
-            .iter()
-            .chain(entry_points.external.iter())
-            .chain(entry_points.l1_handler.iter())
-        {
-            entry_point_selector_to_id
-                .insert(Felt::from(&entry.selector), entry.function_idx as u64);
-            used_function_ids.insert(entry.function_idx as u64);
-        }
-
-        let module = native_context.compile(
-            sierra_program,
-            true,
-            Some(MetadataComputationConfig {
-                function_set_costs: used_function_ids
-                    .iter()
-                    .map(|id| {
-                        (
-                            FunctionId::new(*id),
-                            [(CostTokenType::Const, ENTRY_POINT_COST)].into(),
-                        )
-                    })
-                    .collect(),
-                linear_gas_solver: true,
-                linear_ap_change_solver: true,
-            }),
-        )?;
-
-        let NativeModule {
-            module,
-            registry,
-            metadata: _,
-        } = module;
-
-        let mut infos = BTreeMap::new();
-
-        for x in &sierra_program.funcs {
-            // Avoid storing function info for methods that are not contract entry points.
-            if !used_function_ids.contains(&x.id.id) {
-                continue;
-            }
-
-            let mut builtins = Vec::new();
-
-            for p in &x.params {
-                let ty = registry.get_type(&p.ty)?;
-                if ty.is_builtin() {
-                    // Skip zero sized builtins
-                    if ty.is_zst(&registry)? {
-                        continue;
-                    }
-
-                    match ty {
-                        CoreTypeConcrete::Bitwise(_) => builtins.push(BuiltinType::Bitwise),
-                        CoreTypeConcrete::EcOp(_) => builtins.push(BuiltinType::EcOp),
-                        CoreTypeConcrete::RangeCheck(_) => builtins.push(BuiltinType::RangeCheck),
-                        CoreTypeConcrete::Pedersen(_) => builtins.push(BuiltinType::Pedersen),
-                        CoreTypeConcrete::Poseidon(_) => builtins.push(BuiltinType::Poseidon),
-                        CoreTypeConcrete::BuiltinCosts(_) => {
-                            builtins.push(BuiltinType::BuiltinCosts)
-                        }
-                        CoreTypeConcrete::SegmentArena(_) => {
-                            builtins.push(BuiltinType::SegmentArena)
-                        }
-                        CoreTypeConcrete::RangeCheck96(_) => {
-                            builtins.push(BuiltinType::RangeCheck96)
-                        }
-                        CoreTypeConcrete::Circuit(CircuitTypeConcrete::AddMod(_)) => {
-                            builtins.push(BuiltinType::CircuitAdd)
-                        }
-                        CoreTypeConcrete::Circuit(CircuitTypeConcrete::MulMod(_)) => {
-                            builtins.push(BuiltinType::CircuitMul)
-                        }
-                        CoreTypeConcrete::GasBuiltin(_) => builtins.push(BuiltinType::Gas),
-                        CoreTypeConcrete::StarkNet(StarkNetTypeConcrete::System(_)) => {
-                            builtins.push(BuiltinType::System)
-                        }
-                        _ => native_panic!("given type should be a builtin {:?}", ty.info()),
-                    }
-                } else {
-                    break;
-                }
-            }
-
-            infos.insert(x.id.id, EntryPointInfo { builtins });
-        }
-
-        let library_path = NamedTempFile::new()?
+        let output_path = NamedTempFile::new()?
             .into_temp_path()
             .keep()
             .to_native_assert_error("can only fail on windows")?;
 
-        let object_data = crate::module_to_object(&module, opt_level)?;
-        crate::object_to_shared_lib(&object_data, &library_path)?;
+        let executor = Self::new_into(
+            program,
+            entry_points,
+            sierra_version,
+            output_path,
+            opt_level,
+        )?
+        .to_native_assert_error("temporary contract path collision")?;
 
-        Ok(Self {
-            library: Arc::new(unsafe { Library::new(&library_path)? }),
-            path: library_path,
-            is_temp_path: true,
-            contract_info: NativeContractInfo {
-                version: ContractInfoVersion::Version0,
-                entry_points_info: infos,
-                entry_point_selector_to_id,
-            },
-        })
+        fs::remove_file(&executor.path)?;
+        fs::remove_file(executor.path.with_extension("json"))?;
+        Ok(executor)
     }
 
-    /// Save the library to the desired path, alongside it is saved also a json file with additional info.
-    pub fn save(&mut self, to: impl AsRef<Path>) -> Result<()> {
-        let to = to.as_ref();
-        std::fs::copy(&self.path, to)?;
-
-        let contract_info = serde_json::to_string(&self.contract_info)?;
-        let path = to.with_extension("json");
-        std::fs::write(path, contract_info)?;
-
-        self.path = to.to_path_buf();
-        self.is_temp_path = false;
-
-        Ok(())
-    }
-
-    /// Load the executor from an already compiled library with the additional info json file.
-    pub fn load(library_path: &Path) -> Result<Self> {
-        let info_str = std::fs::read_to_string(library_path.with_extension("json"))?;
-        let contract_info: NativeContractInfo = serde_json::from_str(&info_str)?;
-
-        let library = Arc::new(unsafe { Library::new(library_path)? });
-        unsafe {
-            let get_version = library
-                .get::<extern "C" fn(*mut u8, usize) -> usize>(b"cairo_native__get_version")?;
-
-            let mut version_buffer = [0u8; 16];
-            let version_len = get_version(version_buffer.as_mut_ptr(), version_buffer.len());
-
-            let target_version = env!("CARGO_PKG_VERSION");
-            assert_eq!(
-                &version_buffer[..version_len],
-                target_version.as_bytes(),
-                "aot-compiled contract version mismatch"
-            );
+    /// Compile and load a program into a shared library.
+    ///
+    /// This function uses a lockfile to support cache sharing between multiple processes. An
+    /// attempt to compile a program while the `output_path` is already locked will result in
+    /// `Ok(None)` being returned. When this happens, the user should wait until the lock is
+    /// released, at which point they can use `AotContractExecutor::from_path` to load it.
+    pub fn new_into(
+        program: &Program,
+        entry_points: &ContractEntryPoints,
+        sierra_version: VersionId,
+        output_path: impl Into<PathBuf>,
+        opt_level: OptLevel,
+    ) -> Result<Option<Self>> {
+        let output_path = output_path.into();
+        let lock_file = match LockFile::new(&output_path)? {
+            Some(x) => x,
+            None => return Ok(None),
         };
 
-        Ok(Self {
-            library,
-            path: library_path.to_path_buf(),
-            is_temp_path: false,
-            contract_info,
+        let context = NativeContext::new();
+
+        let no_eq_solver = match sierra_version.major.cmp(&1) {
+            Ordering::Less => false,
+            Ordering::Equal => sierra_version.minor >= 4,
+            Ordering::Greater => true,
+        };
+
+        // Compile the Sierra program.
+        let NativeModule {
+            module, registry, ..
+        } = context.compile(
+            program,
+            true,
+            Some(MetadataComputationConfig {
+                function_set_costs: chain!(
+                    entry_points.constructor.iter(),
+                    entry_points.external.iter(),
+                    entry_points.l1_handler.iter(),
+                )
+                .map(|x| {
+                    (
+                        FunctionId::new(x.function_idx as u64),
+                        [(CostTokenType::Const, ENTRY_POINT_COST)].into(),
+                    )
+                })
+                .collect(),
+                linear_gas_solver: no_eq_solver,
+                linear_ap_change_solver: no_eq_solver,
+            }),
+        )?;
+
+        // Generate mappings between the entry point's selectors and their function indexes.
+        let entry_point_mappings = chain!(
+            entry_points.constructor.iter(),
+            entry_points.external.iter(),
+            entry_points.l1_handler.iter(),
+        )
+        .map(|x| {
+            let function_id = x.function_idx as u64;
+            let function = registry
+                .get_function(&FunctionId::new(function_id))
+                .to_native_assert_error("unreachable")?;
+
+            let builtins = function
+                .params
+                .iter()
+                .map(|x| registry.get_type(&x.ty).unwrap())
+                .take_while(|ty| ty.is_builtin())
+                .filter(|ty| !ty.is_zst(&registry).unwrap())
+                .map(|ty| match ty {
+                    CoreTypeConcrete::Bitwise(_) => BuiltinType::Bitwise,
+                    CoreTypeConcrete::EcOp(_) => BuiltinType::EcOp,
+                    CoreTypeConcrete::RangeCheck(_) => BuiltinType::RangeCheck,
+                    CoreTypeConcrete::Pedersen(_) => BuiltinType::Pedersen,
+                    CoreTypeConcrete::Poseidon(_) => BuiltinType::Poseidon,
+                    CoreTypeConcrete::BuiltinCosts(_) => BuiltinType::BuiltinCosts,
+                    CoreTypeConcrete::SegmentArena(_) => BuiltinType::SegmentArena,
+                    CoreTypeConcrete::RangeCheck96(_) => BuiltinType::RangeCheck96,
+                    CoreTypeConcrete::Circuit(CircuitTypeConcrete::AddMod(_)) => {
+                        BuiltinType::CircuitAdd
+                    }
+                    CoreTypeConcrete::Circuit(CircuitTypeConcrete::MulMod(_)) => {
+                        BuiltinType::CircuitMul
+                    }
+                    CoreTypeConcrete::GasBuiltin(_) => BuiltinType::Gas,
+                    CoreTypeConcrete::StarkNet(StarkNetTypeConcrete::System(_)) => {
+                        BuiltinType::System
+                    }
+                    _ => unreachable!("not a builtin"),
+                })
+                .collect();
+
+            Ok((
+                Felt::from(&x.selector),
+                EntryPointInfo {
+                    function_id: x.function_idx as u64,
+                    builtins,
+                },
+            ))
         })
+        .collect::<Result<BTreeMap<_, _>>>()?;
+
+        // Build the shared library.
+        let object_data = crate::module_to_object(&module, opt_level)?;
+        crate::object_to_shared_lib(&object_data, &output_path)?;
+
+        // Write the contract info.
+        fs::write(
+            output_path.with_extension("json"),
+            serde_json::to_string(&NativeContractInfo {
+                version: ContractInfoVersion::V0,
+                entry_points: entry_point_mappings,
+            })?,
+        )?;
+
+        drop(lock_file);
+        Self::from_path(output_path)
+    }
+
+    /// Load a program from a shared library.
+    ///
+    /// This function will check for the existence of a lockfile. If found, it'll return `Ok(None)`.
+    /// When this happens, the user should wait until the lock is released, then try loading it
+    /// again.
+    pub fn from_path(path: impl Into<PathBuf>) -> Result<Option<Self>> {
+        let path = path.into();
+        if LockFile::exists(&path)? {
+            return Ok(None);
+        }
+
+        let library = Arc::new(unsafe { Library::new(&path)? });
+        let contract_info =
+            serde_json::from_str(&fs::read_to_string(path.with_extension("json"))?)?;
+
+        let executor = Self {
+            library,
+            path,
+            contract_info,
+        };
+
+        setup_runtime(|x| executor.find_symbol_ptr(x));
+
+        Ok(Some(executor))
     }
 
     /// Runs the entry point by the given selector.
@@ -312,27 +320,24 @@ impl AotContractExecutor {
         let mut invoke_data = Vec::<u8>::new();
 
         let function_id = FunctionId {
-            id: *self
+            id: self
                 .contract_info
-                .entry_point_selector_to_id
+                .entry_points
                 .get(&selector)
-                .ok_or(Error::SelectorNotFound)?,
+                .ok_or(Error::SelectorNotFound)?
+                .function_id,
             debug_name: None,
         };
         let function_ptr = self.find_function_ptr(&function_id, true)?;
 
         let builtin_costs: [u64; 7] = builtin_costs.unwrap_or_default().into();
-        let set_costs_builtin = unsafe {
-            self.library
-                .get::<extern "C" fn(*const u64) -> *const u64>(
-                    b"cairo_native__set_costs_builtin",
-                )?
-        };
+
         // We may be inside a recursive contract, save the possible saved builtin costs to restore it after our call.
-        let old_builtincosts_ptr = set_costs_builtin(builtin_costs.as_ptr());
+        let old_builtincosts_ptr =
+            crate::runtime::cairo_native__set_costs_builtin(builtin_costs.as_ptr());
 
         //  it can vary from contract to contract thats why we need to store/ load it.
-        let builtins_size: usize = self.contract_info.entry_points_info[&function_id.id]
+        let builtins_size: usize = self.contract_info.entry_points[&selector]
             .builtins
             .iter()
             .map(|x| x.size_in_bytes())
@@ -350,7 +355,7 @@ impl AotContractExecutor {
 
         let mut syscall_handler = StarknetSyscallHandlerCallbacks::new(&mut syscall_handler);
 
-        for b in &self.contract_info.entry_points_info[&function_id.id].builtins {
+        for b in &self.contract_info.entry_points[&selector].builtins {
             match b {
                 BuiltinType::Gas => {
                     gas.to_bytes(&mut invoke_data, |_| unreachable!())?;
@@ -463,7 +468,7 @@ impl AotContractExecutor {
 
         let return_ptr = &mut return_ptr.cast();
 
-        for b in &self.contract_info.entry_points_info[&function_id.id].builtins {
+        for b in &self.contract_info.entry_points[&selector].builtins {
             match b {
                 BuiltinType::Gas => {
                     remaining_gas = unsafe { *read_value::<u64>(return_ptr) };
@@ -572,7 +577,7 @@ impl AotContractExecutor {
         };
 
         // Restore the original builtin costs pointer.
-        set_costs_builtin(old_builtincosts_ptr);
+        crate::runtime::cairo_native__set_costs_builtin(old_builtincosts_ptr);
 
         #[cfg(feature = "with-mem-tracing")]
         crate::utils::mem_tracing::report_stats();
@@ -612,12 +617,32 @@ impl AotContractExecutor {
     }
 }
 
-impl Drop for AotContractExecutor {
-    fn drop(&mut self) {
-        if self.is_temp_path {
-            std::fs::remove_file(&self.path).ok();
-            std::fs::remove_file(self.path.with_extension("json")).ok();
+#[derive(Debug)]
+struct LockFile(PathBuf);
+
+impl LockFile {
+    pub fn new(path: impl Into<PathBuf>) -> io::Result<Option<Self>> {
+        let path: PathBuf = path.into();
+        let path = path.with_extension("lock");
+
+        match File::create_new(&path) {
+            Ok(_) => Ok(Some(Self(path))),
+            Err(e) if e.kind() == io::ErrorKind::AlreadyExists => Ok(None),
+            Err(e) => Err(e),
         }
+    }
+
+    pub fn exists(path: impl Into<PathBuf>) -> io::Result<bool> {
+        let path: PathBuf = path.into();
+        let path = path.with_extension("lock");
+
+        fs::exists(path)
+    }
+}
+
+impl Drop for LockFile {
+    fn drop(&mut self) {
+        fs::remove_file(&self.0).unwrap();
     }
 }
 
@@ -625,7 +650,9 @@ impl Drop for AotContractExecutor {
 mod tests {
     use super::*;
     use crate::{starknet_stub::StubSyscallHandler, utils::test::load_starknet_contract};
-    use cairo_lang_starknet_classes::contract_class::ContractClass;
+    use cairo_lang_starknet_classes::contract_class::{
+        version_id_from_serialized_sierra_program, ContractClass,
+    };
     use rayon::iter::ParallelBridge;
     use rstest::*;
 
@@ -718,10 +745,13 @@ mod tests {
     ) {
         use rayon::iter::ParallelIterator;
 
+        let (sierra_version, _) =
+            version_id_from_serialized_sierra_program(&starknet_program.sierra_program).unwrap();
         let executor = Arc::new(
             AotContractExecutor::new(
                 &starknet_program.extract_sierra_program().unwrap(),
                 &starknet_program.entry_points_by_type,
+                sierra_version,
                 optlevel,
             )
             .unwrap(),
@@ -755,9 +785,12 @@ mod tests {
     #[case(OptLevel::None)]
     #[case(OptLevel::Default)]
     fn test_contract_executor(starknet_program: ContractClass, #[case] optlevel: OptLevel) {
+        let (sierra_version, _) =
+            version_id_from_serialized_sierra_program(&starknet_program.sierra_program).unwrap();
         let executor = AotContractExecutor::new(
             &starknet_program.extract_sierra_program().unwrap(),
             &starknet_program.entry_points_by_type,
+            sierra_version,
             optlevel,
         )
         .unwrap();
@@ -790,9 +823,13 @@ mod tests {
         starknet_program_factorial: ContractClass,
         #[case] optlevel: OptLevel,
     ) {
+        let (sierra_version, _) =
+            version_id_from_serialized_sierra_program(&starknet_program_factorial.sierra_program)
+                .unwrap();
         let executor = AotContractExecutor::new(
             &starknet_program_factorial.extract_sierra_program().unwrap(),
             &starknet_program_factorial.entry_points_by_type,
+            sierra_version,
             optlevel,
         )
         .unwrap();
@@ -826,9 +863,13 @@ mod tests {
         starknet_program_empty: ContractClass,
         #[case] optlevel: OptLevel,
     ) {
+        let (sierra_version, _) =
+            version_id_from_serialized_sierra_program(&starknet_program_empty.sierra_program)
+                .unwrap();
         let executor = AotContractExecutor::new(
             &starknet_program_empty.extract_sierra_program().unwrap(),
             &starknet_program_empty.entry_points_by_type,
+            sierra_version,
             optlevel,
         )
         .unwrap();

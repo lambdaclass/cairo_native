@@ -32,8 +32,8 @@ jobs:
         with:
           repository: lambdaclass/starknet-replay
           path: starknet-replay
-          ref: 6738a2ba8786118d38eb94b209949bcb8285cce0
-      # We need native to build the runtime
+          ref: b4b7dbf1bb5313301515882d7e228616f3f70e48
+      # We need native to use the linux deps ci action
       - name: Checkout Native
         uses: actions/checkout@v4
         with:
@@ -43,7 +43,7 @@ jobs:
         with:
           repository: lambdaclass/sequencer
           path: sequencer
-          ref: ee977cc338f63f7bc34c01c21363b3a318bcac65
+          ref: 9487df3ada00d03bbd9fc39331c4ec1ac0994954
 
       - name: Cache RPC Calls
         uses: actions/cache@v4
@@ -54,19 +54,13 @@ jobs:
       # Install dependencies
       - uses: ./cairo_native/.github/actions/install-linux-deps
       - name: Setup rust env
-        uses: dtolnay/rust-toolchain@1.84.0
+        uses: dtolnay/rust-toolchain@1.84.1
       - name: Retreive cached dependecies
         uses: Swatinem/rust-cache@v2
         with:
-          workspaces: "starknet-replay -> target"
-          cache-directories: "cairo_native"
-
-      - name: Build Cairo Native Runtime Library
-        shell: bash
-        run: |
-          cd ../cairo_native
-          make runtime
-          echo "CAIRO_NATIVE_RUNTIME_LIBRARY=$(pwd)/libcairo_native_runtime.a" > $GITHUB_ENV
+          workspaces: |
+            starknet-replay
+            cairo_native
 
       - name: Patch replay dependencies
         run: |

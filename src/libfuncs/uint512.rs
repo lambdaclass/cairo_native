@@ -17,7 +17,7 @@ use cairo_lang_sierra::{
 };
 use melior::{
     dialect::{arith, llvm},
-    ir::{r#type::IntegerType, Block, Location, Value},
+    ir::{r#type::IntegerType, Block, BlockLike, Location, Value},
     Context,
 };
 

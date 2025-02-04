@@ -30,8 +30,8 @@ for vm_dump in state_dumps/vm/*/*.json; do
   block=${block_name//block/}
 
   if ! cmp -s \
-      <(sed '/"reverted": /d' "$native_dump") \
-      <(sed '/"reverted": /d' "$vm_dump")
+      <(sed '/"revert_error": /d' "$native_dump") \
+      <(sed '/"revert_error": /d' "$vm_dump")
   then
     echo "Diff at block $block, tx $tx"
     diffing=$((diffing+1))
