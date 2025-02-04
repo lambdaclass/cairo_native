@@ -32,8 +32,8 @@ jobs:
         with:
           repository: lambdaclass/starknet-replay
           path: starknet-replay
-          ref: 313a19cce2e930cbd644606aa732b6408fcf2246
-      # We need native to build the runtime
+          ref: 1ae1e41bfdc2f3844b39efe73c239ff1815d263d
+      # We need native to use the linux deps ci action
       - name: Checkout Native
         uses: actions/checkout@v4
         with:
@@ -43,7 +43,7 @@ jobs:
         with:
           repository: lambdaclass/sequencer
           path: sequencer
-          ref: f9b0f034e55c63103c11248b59b7f85da6eaef65
+          ref: a2c843e38de27736276f67e9f6111cd6ab2d762b
 
       - name: Cache RPC Calls
         uses: actions/cache@v4
@@ -61,13 +61,6 @@ jobs:
           workspaces: |
             starknet-replay
             cairo_native
-
-      - name: Build Cairo Native Runtime Library
-        shell: bash
-        run: |
-          cd ../cairo_native
-          make runtime
-          echo "CAIRO_NATIVE_RUNTIME_LIBRARY=$(pwd)/libcairo_native_runtime.a" > $GITHUB_ENV
 
       - name: Patch replay dependencies
         run: |
