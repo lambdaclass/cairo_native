@@ -285,9 +285,6 @@ impl StarknetSyscallHandler for SyscallHandler {
 }
 
 fn main() {
-    #[cfg(not(feature = "with-runtime"))]
-    compile_error!("This example requires the `with-runtime` feature to be active.");
-
     // Configure logging and error handling.
     tracing::subscriber::set_global_default(
         FmtSubscriber::builder()

@@ -334,7 +334,7 @@ impl AotContractExecutor {
 
         // We may be inside a recursive contract, save the possible saved builtin costs to restore it after our call.
         let old_builtincosts_ptr =
-            cairo_native_runtime::cairo_native__set_costs_builtin(builtin_costs.as_ptr());
+            crate::runtime::cairo_native__set_costs_builtin(builtin_costs.as_ptr());
 
         //  it can vary from contract to contract thats why we need to store/ load it.
         let builtins_size: usize = self.contract_info.entry_points[&selector]
@@ -576,7 +576,7 @@ impl AotContractExecutor {
         };
 
         // Restore the original builtin costs pointer.
-        cairo_native_runtime::cairo_native__set_costs_builtin(old_builtincosts_ptr);
+        crate::runtime::cairo_native__set_costs_builtin(old_builtincosts_ptr);
 
         #[cfg(feature = "with-mem-tracing")]
         crate::utils::mem_tracing::report_stats();

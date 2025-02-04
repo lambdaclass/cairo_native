@@ -156,7 +156,7 @@ fn invoke_dynamic(
     let builtin_costs: *mut [u64; 7] = Box::into_raw(Box::new(builtin_costs_stack));
     // We may be inside a recursive contract, save the possible saved builtin costs to restore it after our call.
     let old_builtincosts_ptr =
-        cairo_native_runtime::cairo_native__set_costs_builtin(builtin_costs.cast());
+        crate::runtime::cairo_native__set_costs_builtin(builtin_costs.cast());
 
     // Generate argument list.
     let mut iter = args.iter();
@@ -339,7 +339,7 @@ fn invoke_dynamic(
 
     // Restore the old ptr and get back our builtincost box and free it.
     let our_builtincosts_ptr =
-        cairo_native_runtime::cairo_native__set_costs_builtin(old_builtincosts_ptr);
+        crate::runtime::cairo_native__set_costs_builtin(old_builtincosts_ptr);
 
     if !our_builtincosts_ptr.is_null() && old_builtincosts_ptr.is_aligned() {
         unsafe {
