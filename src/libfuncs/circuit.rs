@@ -373,7 +373,6 @@ fn build_eval<'ctx, 'this>(
     // let zero = entry.argument(5)?;
     // let one = entry.argument(6)?;
 
-    // We multiply the amount of gates evaluated by 4 (the amount of u96s in each gate)
     let add_mod = increment_builtin_counter_by(
         context,
         entry,
@@ -402,6 +401,13 @@ fn build_eval<'ctx, 'this>(
             circuit_info.mul_offsets.len() * MOD_BUILTIN_INSTANCE_SIZE,
         )?;
 
+        let n_gates = circuit_info.values.len();
+        let gates_array = ok_block.append_op_result(llvm::undef(
+            llvm::r#type::array(IntegerType::new(context, 384).into(), n_gates as u32),
+            location,
+        ))?;
+        let gates_array = ok_block.insert_values(context, location, gates_array, &gates)?;
+
         // Build output struct
         let outputs_type_id = &info.branch_signatures()[0].vars[2].ty;
         let outputs = build_struct_value(
@@ -412,7 +418,7 @@ fn build_eval<'ctx, 'this>(
             helper,
             metadata,
             outputs_type_id,
-            &gates,
+            &[gates_array],
         )?;
 
         ok_block.append_operation(helper.br(0, &[add_mod, mul_mod, outputs], location));
@@ -798,10 +804,19 @@ fn build_get_output<'ctx, 'this>(
     let output_idx = output_offset_idx - circuit_info.n_inputs - 1;
 
     let outputs = entry.arg(0)?;
-    let output_integer = entry.extract_value(
+
+    let n_gates = circuit_info.values.len();
+    let output_gates = entry.extract_value(
         context,
         location,
         outputs,
+        llvm::r#type::array(IntegerType::new(context, 384).into(), n_gates as u32),
+        0,
+    )?;
+    let output_integer = entry.extract_value(
+        context,
+        location,
+        output_gates,
         IntegerType::new(context, 384).into(),
         output_idx,
     )?;

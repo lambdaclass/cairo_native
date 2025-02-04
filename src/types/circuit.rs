@@ -147,9 +147,13 @@ pub fn build_circuit_outputs<'ctx>(
 
     let n_gates = circuit.circuit_info.values.len();
 
-    Ok(llvm::r#type::array(
-        IntegerType::new(context, 384).into(),
-        n_gates as u32,
+    Ok(llvm::r#type::r#struct(
+        context,
+        &[
+            llvm::r#type::array(IntegerType::new(context, 384).into(), n_gates as u32),
+            llvm::r#type::array(IntegerType::new(context, 96).into(), 4),
+        ],
+        false,
     ))
 }
 
