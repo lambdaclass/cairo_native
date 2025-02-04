@@ -150,8 +150,8 @@ pub fn build_circuit_outputs<'ctx>(
     Ok(llvm::r#type::r#struct(
         context,
         &[
-            llvm::r#type::array(IntegerType::new(context, 384).into(), n_gates as u32),
-            llvm::r#type::array(IntegerType::new(context, 96).into(), 4),
+            llvm::r#type::array(build_u384_struct_type(context), n_gates as u32),
+            build_u384_struct_type(context),
         ],
         false,
     ))
@@ -285,4 +285,17 @@ pub fn layout(
         }
         CircuitTypeConcrete::CircuitPartialOutputs(_) => Ok(Layout::new::<()>()),
     }
+}
+
+pub fn build_u384_struct_type(context: &Context) -> Type<'_> {
+    llvm::r#type::r#struct(
+        context,
+        &[
+            IntegerType::new(context, 96).into(),
+            IntegerType::new(context, 96).into(),
+            IntegerType::new(context, 96).into(),
+            IntegerType::new(context, 96).into(),
+        ],
+        false,
+    )
 }

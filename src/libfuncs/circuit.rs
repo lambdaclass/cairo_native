@@ -7,7 +7,7 @@ use crate::{
     error::{Result, SierraAssertError},
     libfuncs::r#struct::build_struct_value,
     metadata::MetadataStorage,
-    types::TypeBuilder,
+    types::{circuit::build_u384_struct_type, TypeBuilder},
     utils::{get_integer_layout, layout_repeat, BlockExt, ProgramRegistryExt},
 };
 use cairo_lang_sierra::{
@@ -401,9 +401,15 @@ fn build_eval<'ctx, 'this>(
             circuit_info.mul_offsets.len() * MOD_BUILTIN_INSTANCE_SIZE,
         )?;
 
+        // convert circuit output from integer representation to struct representation
+        let gates = gates
+            .into_iter()
+            .map(|value| u384_integer_to_struct(context, ok_block, location, value))
+            .collect::<Result<Vec<_>>>()?;
+
         let n_gates = circuit_info.values.len();
         let gates_array = ok_block.append_op_result(llvm::undef(
-            llvm::r#type::array(IntegerType::new(context, 384).into(), n_gates as u32),
+            llvm::r#type::array(build_u384_struct_type(context), n_gates as u32),
             location,
         ))?;
         let gates_array = ok_block.insert_values(context, location, gates_array, &gates)?;
@@ -810,17 +816,16 @@ fn build_get_output<'ctx, 'this>(
         context,
         location,
         outputs,
-        llvm::r#type::array(IntegerType::new(context, 384).into(), n_gates as u32),
+        llvm::r#type::array(build_u384_struct_type(context), n_gates as u32),
         0,
     )?;
-    let output_integer = entry.extract_value(
+    let output_struct = entry.extract_value(
         context,
         location,
         output_gates,
-        IntegerType::new(context, 384).into(),
+        build_u384_struct_type(context),
         output_idx,
     )?;
-    let output_struct = u384_integer_to_struct(context, entry, location, output_integer)?;
 
     let guarantee_type_id = &info.branch_signatures()[0].vars[1].ty;
     let guarantee_type = registry.build_type(context, helper, metadata, guarantee_type_id)?;
@@ -907,16 +912,7 @@ fn u384_integer_to_struct<'a>(
         block.trunci(limb, u96_type, location)?
     };
 
-    let struct_type = llvm::r#type::r#struct(
-        context,
-        &[
-            IntegerType::new(context, 96).into(),
-            IntegerType::new(context, 96).into(),
-            IntegerType::new(context, 96).into(),
-            IntegerType::new(context, 96).into(),
-        ],
-        false,
-    );
+    let struct_type = build_u384_struct_type(context);
     let struct_value = block.append_op_result(llvm::undef(struct_type, location))?;
 
     block.insert_values(
