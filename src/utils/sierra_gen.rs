@@ -377,20 +377,28 @@ where
             .unwrap()
             .info()
             .clone();
+        let current_index = self
+            .program
+            .type_declarations
+            .iter()
+            .enumerate()
+            .find_map(|(idx, type_decl)| (type_decl.long_id == type_info.long_id).then_some(idx));
 
-        let id = ConcreteTypeId::new(self.program.type_declarations.len() as u64);
-        self.program.type_declarations.push(TypeDeclaration {
-            id,
-            long_id: type_info.long_id,
-            declared_type_info: Some(DeclaredTypeInfo {
-                storable: type_info.storable,
-                droppable: type_info.droppable,
-                duplicatable: type_info.duplicatable,
-                zero_sized: type_info.zero_sized,
-            }),
+        let current_index = current_index.unwrap_or_else(|| {
+            let idx = self.program.type_declarations.len();
+            self.program.type_declarations.push(TypeDeclaration {
+                id: ConcreteTypeId::new(idx as u64),
+                long_id: type_info.long_id,
+                declared_type_info: Some(DeclaredTypeInfo {
+                    storable: type_info.storable,
+                    droppable: type_info.droppable,
+                    duplicatable: type_info.duplicatable,
+                    zero_sized: type_info.zero_sized,
+                }),
+            });
+            idx
         });
-
-        &self.program.type_declarations.last().unwrap().id
+        &self.program.type_declarations[current_index].id
     }
 
     fn push_libfunc_declaration(&mut self, long_id: ConcreteLibfuncLongId) -> &ConcreteLibfuncId {
@@ -535,6 +543,21 @@ mod test {
     fn sierra_generator_branch_align() {
         let program =
             SierraGenerator::<TryFromFelt252Libfunc<Bytes31FromFelt252Trait>>::default().build(&[]);
+        println!("{program}");
+    }
+
+    #[test]
+    fn sierra_generator_type_generation() {
+        let mut generator =
+            SierraGenerator::<cairo_lang_sierra::extensions::array::ArrayGetLibfunc>::default();
+        let u32_ty = generator.push_type_declaration::<Uint32Type>(&[]).clone();
+        let array_ty = generator
+            .push_type_declaration::<cairo_lang_sierra::extensions::array::ArrayType>(&[
+                GenericArg::Type(u32_ty),
+            ])
+            .clone();
+
+        let program = generator.build(&[GenericArg::Type(array_ty)]);
         println!("{program}");
     }
 }
