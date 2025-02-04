@@ -414,6 +414,8 @@ fn build_eval<'ctx, 'this>(
         ))?;
         let gates_array = ok_block.insert_values(context, location, gates_array, &gates)?;
 
+        let modulus_struct = u384_integer_to_struct(context, ok_block, location, circuit_modulus)?;
+
         // Build output struct
         let outputs_type_id = &info.branch_signatures()[0].vars[2].ty;
         let outputs = build_struct_value(
@@ -424,7 +426,7 @@ fn build_eval<'ctx, 'this>(
             helper,
             metadata,
             outputs_type_id,
-            &[gates_array],
+            &[gates_array, modulus_struct],
         )?;
 
         ok_block.append_operation(helper.br(0, &[add_mod, mul_mod, outputs], location));
