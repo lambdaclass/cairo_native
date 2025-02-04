@@ -1,2 +1,2 @@
-window.ALL_CRATES = ["cairo_native","cairo_native_compile","cairo_native_dump","cairo_native_run","cairo_native_runtime","cairo_native_stress","cairo_native_test","scarb_native_dump","scarb_native_test"];
-//{"start":21,"fragment_lengths":[14,23,20,19,23,22,20,20,20]}
+window.ALL_CRATES = ["cairo_native","cairo_native_compile","cairo_native_dump","cairo_native_run","cairo_native_stress","cairo_native_test","scarb_native_dump","scarb_native_test"];
+//{"start":21,"fragment_lengths":[14,23,20,19,22,20,20,20]}
