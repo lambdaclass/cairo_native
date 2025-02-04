@@ -1160,10 +1160,13 @@ fn build_pop<'ctx, 'this, const CONSUME: bool, const REVERSE: bool>(
                         IntegerType::new(context, 8).into(),
                     )?;
 
-                    let data_ptr = if REVERSE {
-                        array_ptr
-                    } else {
-                        let offset = block.addi(array_start, extract_len_value, location)?;
+                    let data_ptr = {
+                        let offset = if REVERSE {
+                            array_start
+                        } else {
+                            block.addi(array_start, extract_len_value, location)?
+                        };
+
                         let offset = block.append_op_result(arith::extui(
                             offset,
                             IntegerType::new(context, 64).into(),
@@ -3117,6 +3120,36 @@ mod test {
                 jit_struct!(jit_struct!(Value::Array(vec![
                     Value::Felt252(4.into()),
                     Value::Felt252(193827.into()),
+                ])))
+            ),
+        );
+    }
+
+    #[test]
+    fn array_snapshot_pop_back_clone_offset() {
+        let program = load_cairo! {
+            fn run_test() -> Span<felt252> {
+                let data = array![7, 3, 4, 193827];
+                let mut data = data.span();
+
+                assert(*data.pop_front().unwrap() == 7, 0);
+                let data2 = data.clone();
+
+                assert(*data.pop_back().unwrap() == 193827, 1);
+
+                drop(data2);
+                data
+            }
+        };
+        let result = run_program(&program, "run_test", &[]).return_value;
+
+        assert_eq!(
+            result,
+            jit_enum!(
+                0,
+                jit_struct!(jit_struct!(Value::Array(vec![
+                    Value::Felt252(3.into()),
+                    Value::Felt252(4.into()),
                 ])))
             ),
         );

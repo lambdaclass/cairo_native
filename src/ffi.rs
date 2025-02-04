@@ -29,7 +29,6 @@ use melior::ir::{Module, Type, TypeLike};
 use mlir_sys::{mlirLLVMStructTypeGetElementType, mlirTranslateModuleToLLVMIR};
 use std::{
     borrow::Cow,
-    env,
     ffi::{CStr, CString},
     io::Write,
     mem::MaybeUninit,
@@ -243,22 +242,6 @@ pub fn object_to_shared_lib(object: &[u8], output_filename: &Path) -> Result<()>
         }
     }
 
-    let runtime_library_path = if let Ok(extra_dir) = std::env::var("CAIRO_NATIVE_RUNTIME_LIBRARY")
-    {
-        let path = Path::new(&extra_dir);
-        if path.is_absolute() {
-            extra_dir
-        } else {
-            let absolute_path = env::current_dir()?.join(path).canonicalize()?;
-            absolute_path
-                .to_str()
-                .to_native_assert_error("absolute path should not contain non-utf8 characters")?
-                .to_string()
-        }
-    } else {
-        String::from("libcairo_native_runtime.a")
-    };
-
     let args: Vec<Cow<'static, str>> = {
         #[cfg(target_os = "macos")]
         {
@@ -276,8 +259,6 @@ pub fn object_to_shared_lib(object: &[u8], output_filename: &Path) -> Result<()>
                 "-o".into(),
                 Cow::from(output_path),
                 "-lSystem".into(),
-                "-force_load".into(), // needed so `cairo_native__set_costs_builtin` is always available
-                Cow::from(runtime_library_path),
             ]);
 
             args
@@ -296,8 +277,6 @@ pub fn object_to_shared_lib(object: &[u8], output_filename: &Path) -> Result<()>
                 Cow::from(output_path),
                 "-lc".into(),
                 Cow::from(file_path),
-                "--whole-archive".into(), // needed so `cairo_native__set_costs_builtin` is always available
-                Cow::from(runtime_library_path),
             ]);
 
             args

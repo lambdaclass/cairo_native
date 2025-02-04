@@ -1,7 +1,9 @@
 use crate::{
     error::Error,
     execution_result::{ContractExecutionResult, ExecutionResult},
-    metadata::{felt252_dict::Felt252DictOverrides, gas::GasMetadata},
+    metadata::{
+        felt252_dict::Felt252DictOverrides, gas::GasMetadata, runtime_bindings::setup_runtime,
+    },
     module::NativeModule,
     starknet::{DummySyscallHandler, StarknetSyscallHandler},
     utils::{create_engine, generate_function_name},
@@ -53,13 +55,17 @@ impl<'m> JitNativeExecutor<'m> {
             mut metadata,
         } = native_module;
 
-        Ok(Self {
+        let executor = Self {
             engine: create_engine(&module, &metadata, opt_level),
             module,
             registry,
             gas_metadata: metadata.remove().ok_or(Error::MissingMetadata)?,
             dict_overrides: metadata.remove().unwrap_or_default(),
-        })
+        };
+
+        setup_runtime(|name| executor.find_symbol_ptr(name));
+
+        Ok(executor)
     }
 
     pub const fn program_registry(&self) -> &ProgramRegistry<CoreType, CoreLibfunc> {
@@ -82,13 +88,9 @@ impl<'m> JitNativeExecutor<'m> {
             .get_initial_available_gas(function_id, gas)
             .map_err(crate::error::Error::GasMetadataError)?;
 
-        let set_builtin_costs_fnptr: extern "C" fn(*const u64) -> *const u64 =
-            unsafe { std::mem::transmute(self.engine.lookup("cairo_native__set_costs_builtin")) };
-
         super::invoke_dynamic(
             &self.registry,
             self.find_function_ptr(function_id),
-            set_builtin_costs_fnptr,
             self.extract_signature(function_id)?,
             args,
             available_gas,
@@ -110,13 +112,9 @@ impl<'m> JitNativeExecutor<'m> {
             .get_initial_available_gas(function_id, gas)
             .map_err(crate::error::Error::GasMetadataError)?;
 
-        let set_builtin_costs_fnptr: extern "C" fn(*const u64) -> *const u64 =
-            unsafe { std::mem::transmute(self.engine.lookup("cairo_native__set_costs_builtin")) };
-
         super::invoke_dynamic(
             &self.registry,
             self.find_function_ptr(function_id),
-            set_builtin_costs_fnptr,
             self.extract_signature(function_id)?,
             args,
             available_gas,
@@ -137,13 +135,9 @@ impl<'m> JitNativeExecutor<'m> {
             .get_initial_available_gas(function_id, gas)
             .map_err(crate::error::Error::GasMetadataError)?;
 
-        let set_builtin_costs_fnptr: extern "C" fn(*const u64) -> *const u64 =
-            unsafe { std::mem::transmute(self.engine.lookup("cairo_native__set_costs_builtin")) };
-
         ContractExecutionResult::from_execution_result(super::invoke_dynamic(
             &self.registry,
             self.find_function_ptr(function_id),
-            set_builtin_costs_fnptr,
             self.extract_signature(function_id)?,
             &[Value::Struct {
                 fields: vec![Value::Array(
