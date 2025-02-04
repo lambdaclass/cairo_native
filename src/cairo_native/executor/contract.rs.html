@@ -868,7 +868,35 @@
 <a href="#867" id="867">867</a>
 <a href="#868" id="868">868</a>
 <a href="#869" id="869">869</a>
-<a href="#870" id="870">870</a></pre></div><pre class="rust"><code><span class="doccomment">//! A specialized executor for Starknet contracts, avoiding the overhead of storing the sierra program registry and
+<a href="#870" id="870">870</a>
+<a href="#871" id="871">871</a>
+<a href="#872" id="872">872</a>
+<a href="#873" id="873">873</a>
+<a href="#874" id="874">874</a>
+<a href="#875" id="875">875</a>
+<a href="#876" id="876">876</a>
+<a href="#877" id="877">877</a>
+<a href="#878" id="878">878</a>
+<a href="#879" id="879">879</a>
+<a href="#880" id="880">880</a>
+<a href="#881" id="881">881</a>
+<a href="#882" id="882">882</a>
+<a href="#883" id="883">883</a>
+<a href="#884" id="884">884</a>
+<a href="#885" id="885">885</a>
+<a href="#886" id="886">886</a>
+<a href="#887" id="887">887</a>
+<a href="#888" id="888">888</a>
+<a href="#889" id="889">889</a>
+<a href="#890" id="890">890</a>
+<a href="#891" id="891">891</a>
+<a href="#892" id="892">892</a>
+<a href="#893" id="893">893</a>
+<a href="#894" id="894">894</a>
+<a href="#895" id="895">895</a>
+<a href="#896" id="896">896</a>
+<a href="#897" id="897">897</a>
+<a href="#898" id="898">898</a></pre></div><pre class="rust"><code><span class="doccomment">//! A specialized executor for Starknet contracts, avoiding the overhead of storing the sierra program registry and
 //! enabling efficient serialization of the program/data once compiled.
 //!
 //! This executor heavily relies on the stability of the contract entry point argument order.
@@ -909,7 +937,6 @@
     executor::invoke_trampoline,
     metadata::{gas::MetadataComputationConfig, runtime_bindings::setup_runtime},
     module::NativeModule,
-    native_panic,
     starknet::{handler::StarknetSyscallHandlerCallbacks, StarknetSyscallHandler},
     types::TypeBuilder,
     utils::{
@@ -922,7 +949,7 @@
 <span class="kw">use </span>cairo_lang_sierra::{
     extensions::{
         circuit::CircuitTypeConcrete, core::CoreTypeConcrete, gas::CostTokenType,
-        starknet::StarkNetTypeConcrete, ConcreteType,
+        starknet::StarkNetTypeConcrete,
     },
     ids::FunctionId,
     program::Program,
@@ -932,15 +959,18 @@
     casm_contract_class::ENTRY_POINT_COST, compiler_version::VersionId,
 };
 <span class="kw">use </span>educe::Educe;
+<span class="kw">use </span>itertools::chain;
 <span class="kw">use </span>libloading::Library;
 <span class="kw">use </span>serde::{Deserialize, Serialize};
 <span class="kw">use </span>starknet_types_core::felt::Felt;
 <span class="kw">use </span>std::{
     alloc::Layout,
     cmp::Ordering,
-    collections::{BTreeMap, HashSet},
+    collections::BTreeMap,
     ffi::c_void,
-    path::{Path, PathBuf},
+    fs::{<span class="self">self</span>, File},
+    io,
+    path::PathBuf,
     ptr::NonNull,
     sync::Arc,
 };
@@ -953,24 +983,23 @@
     <span class="attr">#[educe(Debug(ignore))]
     </span>library: Arc&lt;Library&gt;,
     path: PathBuf,
-    is_temp_path: bool,
     contract_info: NativeContractInfo,
 }
 
 <span class="attr">#[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq)]
 </span><span class="kw">pub struct </span>NativeContractInfo {
     <span class="kw">pub </span>version: ContractInfoVersion,
-    <span class="kw">pub </span>entry_points_info: BTreeMap&lt;u64, EntryPointInfo&gt;,
-    <span class="kw">pub </span>entry_point_selector_to_id: BTreeMap&lt;Felt, u64&gt;,
+    <span class="kw">pub </span>entry_points: BTreeMap&lt;Felt, EntryPointInfo&gt;,
 }
 
 <span class="attr">#[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq, PartialOrd, Ord)]
 </span><span class="kw">pub enum </span>ContractInfoVersion {
-    Version0,
+    V0,
 }
 
 <span class="attr">#[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq, PartialOrd, Ord)]
 </span><span class="kw">pub struct </span>EntryPointInfo {
+    <span class="kw">pub </span>function_id: u64,
     <span class="kw">pub </span>builtins: Vec&lt;BuiltinType&gt;,
 }
 
@@ -997,169 +1026,175 @@
 }
 
 <span class="kw">impl </span>AotContractExecutor {
-    <span class="doccomment">/// Create the executor from a sierra program with the given optimization level.
-    /// You can save the library on the desired location later using `save`.
-    /// If not saved, the path is treated as
-    /// a temporary file an deleted when dropped.
-    /// If you loaded a ContractExecutor using [`load`] then it will not be treated as a temp file.
+    <span class="doccomment">/// Compile and load a program using a temporary shared library.
     </span><span class="kw">pub fn </span>new(
-        sierra_program: <span class="kw-2">&amp;</span>Program,
+        program: <span class="kw-2">&amp;</span>Program,
         entry_points: <span class="kw-2">&amp;</span>ContractEntryPoints,
         sierra_version: VersionId,
         opt_level: OptLevel,
     ) -&gt; <span class="prelude-ty">Result</span>&lt;<span class="self">Self</span>&gt; {
-        <span class="kw">let </span>native_context = NativeContext::new();
+        <span class="kw">let </span>output_path = NamedTempFile::new()<span class="question-mark">?
+            </span>.into_temp_path()
+            .keep()
+            .to_native_assert_error(<span class="string">"can only fail on windows"</span>)<span class="question-mark">?</span>;
 
-        <span class="kw">let </span><span class="kw-2">mut </span>entry_point_selector_to_id = BTreeMap::new();
+        <span class="kw">let </span>executor = <span class="self">Self</span>::new_into(
+            program,
+            entry_points,
+            sierra_version,
+            output_path,
+            opt_level,
+        )<span class="question-mark">?
+        </span>.to_native_assert_error(<span class="string">"temporary contract path collision"</span>)<span class="question-mark">?</span>;
 
-        <span class="kw">let </span><span class="kw-2">mut </span>used_function_ids = HashSet::new();
-        <span class="kw">for </span>entry <span class="kw">in </span>entry_points
-            .constructor
-            .iter()
-            .chain(entry_points.external.iter())
-            .chain(entry_points.l1_handler.iter())
-        {
-            entry_point_selector_to_id
-                .insert(Felt::from(<span class="kw-2">&amp;</span>entry.selector), entry.function_idx <span class="kw">as </span>u64);
-            used_function_ids.insert(entry.function_idx <span class="kw">as </span>u64);
-        }
+        fs::remove_file(<span class="kw-2">&amp;</span>executor.path)<span class="question-mark">?</span>;
+        fs::remove_file(executor.path.with_extension(<span class="string">"json"</span>))<span class="question-mark">?</span>;
+        <span class="prelude-val">Ok</span>(executor)
+    }
 
-        <span class="comment">// true if sierra version is at least 1.4
-        </span><span class="kw">let </span>no_eq_solver = <span class="kw">match </span>sierra_version.major.cmp(<span class="kw-2">&amp;</span><span class="number">1</span>) {
+    <span class="doccomment">/// Compile and load a program into a shared library.
+    ///
+    /// This function uses a lockfile to support cache sharing between multiple processes. An
+    /// attempt to compile a program while the `output_path` is already locked will result in
+    /// `Ok(None)` being returned. When this happens, the user should wait until the lock is
+    /// released, at which point they can use `AotContractExecutor::from_path` to load it.
+    </span><span class="kw">pub fn </span>new_into(
+        program: <span class="kw-2">&amp;</span>Program,
+        entry_points: <span class="kw-2">&amp;</span>ContractEntryPoints,
+        sierra_version: VersionId,
+        output_path: <span class="kw">impl </span>Into&lt;PathBuf&gt;,
+        opt_level: OptLevel,
+    ) -&gt; <span class="prelude-ty">Result</span>&lt;<span class="prelude-ty">Option</span>&lt;<span class="self">Self</span>&gt;&gt; {
+        <span class="kw">let </span>output_path = output_path.into();
+        <span class="kw">let </span>lock_file = <span class="kw">match </span>LockFile::new(<span class="kw-2">&amp;</span>output_path)<span class="question-mark">? </span>{
+            <span class="prelude-val">Some</span>(x) =&gt; x,
+            <span class="prelude-val">None </span>=&gt; <span class="kw">return </span><span class="prelude-val">Ok</span>(<span class="prelude-val">None</span>),
+        };
+
+        <span class="kw">let </span>context = NativeContext::new();
+
+        <span class="kw">let </span>no_eq_solver = <span class="kw">match </span>sierra_version.major.cmp(<span class="kw-2">&amp;</span><span class="number">1</span>) {
             Ordering::Less =&gt; <span class="bool-val">false</span>,
             Ordering::Equal =&gt; sierra_version.minor &gt;= <span class="number">4</span>,
             Ordering::Greater =&gt; <span class="bool-val">true</span>,
         };
-        <span class="kw">let </span>module = native_context.compile(
-            sierra_program,
+
+        <span class="comment">// Compile the Sierra program.
+        </span><span class="kw">let </span>NativeModule {
+            module, registry, ..
+        } = context.compile(
+            program,
             <span class="bool-val">true</span>,
             <span class="prelude-val">Some</span>(MetadataComputationConfig {
-                function_set_costs: used_function_ids
-                    .iter()
-                    .map(|id| {
-                        (
-                            FunctionId::new(<span class="kw-2">*</span>id),
-                            [(CostTokenType::Const, ENTRY_POINT_COST)].into(),
-                        )
-                    })
-                    .collect(),
+                function_set_costs: <span class="macro">chain!</span>(
+                    entry_points.constructor.iter(),
+                    entry_points.external.iter(),
+                    entry_points.l1_handler.iter(),
+                )
+                .map(|x| {
+                    (
+                        FunctionId::new(x.function_idx <span class="kw">as </span>u64),
+                        [(CostTokenType::Const, ENTRY_POINT_COST)].into(),
+                    )
+                })
+                .collect(),
                 linear_gas_solver: no_eq_solver,
                 linear_ap_change_solver: no_eq_solver,
             }),
         )<span class="question-mark">?</span>;
 
-        <span class="kw">let </span>NativeModule {
-            module,
-            registry,
-            metadata: <span class="kw">_</span>,
-        } = module;
+        <span class="comment">// Generate mappings between the entry point's selectors and their function indexes.
+        </span><span class="kw">let </span>entry_point_mappings = <span class="macro">chain!</span>(
+            entry_points.constructor.iter(),
+            entry_points.external.iter(),
+            entry_points.l1_handler.iter(),
+        )
+        .map(|x| {
+            <span class="kw">let </span>function_id = x.function_idx <span class="kw">as </span>u64;
+            <span class="kw">let </span>function = registry
+                .get_function(<span class="kw-2">&amp;</span>FunctionId::new(function_id))
+                .to_native_assert_error(<span class="string">"unreachable"</span>)<span class="question-mark">?</span>;
 
-        <span class="kw">let </span><span class="kw-2">mut </span>infos = BTreeMap::new();
-
-        <span class="kw">for </span>x <span class="kw">in </span><span class="kw-2">&amp;</span>sierra_program.funcs {
-            <span class="comment">// Avoid storing function info for methods that are not contract entry points.
-            </span><span class="kw">if </span>!used_function_ids.contains(<span class="kw-2">&amp;</span>x.id.id) {
-                <span class="kw">continue</span>;
-            }
-
-            <span class="kw">let </span><span class="kw-2">mut </span>builtins = Vec::new();
-
-            <span class="kw">for </span>p <span class="kw">in </span><span class="kw-2">&amp;</span>x.params {
-                <span class="kw">let </span>ty = registry.get_type(<span class="kw-2">&amp;</span>p.ty)<span class="question-mark">?</span>;
-                <span class="kw">if </span>ty.is_builtin() {
-                    <span class="comment">// Skip zero sized builtins
-                    </span><span class="kw">if </span>ty.is_zst(<span class="kw-2">&amp;</span>registry)<span class="question-mark">? </span>{
-                        <span class="kw">continue</span>;
+            <span class="kw">let </span>builtins = function
+                .params
+                .iter()
+                .map(|x| registry.get_type(<span class="kw-2">&amp;</span>x.ty).unwrap())
+                .take_while(|ty| ty.is_builtin())
+                .filter(|ty| !ty.is_zst(<span class="kw-2">&amp;</span>registry).unwrap())
+                .map(|ty| <span class="kw">match </span>ty {
+                    CoreTypeConcrete::Bitwise(<span class="kw">_</span>) =&gt; BuiltinType::Bitwise,
+                    CoreTypeConcrete::EcOp(<span class="kw">_</span>) =&gt; BuiltinType::EcOp,
+                    CoreTypeConcrete::RangeCheck(<span class="kw">_</span>) =&gt; BuiltinType::RangeCheck,
+                    CoreTypeConcrete::Pedersen(<span class="kw">_</span>) =&gt; BuiltinType::Pedersen,
+                    CoreTypeConcrete::Poseidon(<span class="kw">_</span>) =&gt; BuiltinType::Poseidon,
+                    CoreTypeConcrete::BuiltinCosts(<span class="kw">_</span>) =&gt; BuiltinType::BuiltinCosts,
+                    CoreTypeConcrete::SegmentArena(<span class="kw">_</span>) =&gt; BuiltinType::SegmentArena,
+                    CoreTypeConcrete::RangeCheck96(<span class="kw">_</span>) =&gt; BuiltinType::RangeCheck96,
+                    CoreTypeConcrete::Circuit(CircuitTypeConcrete::AddMod(<span class="kw">_</span>)) =&gt; {
+                        BuiltinType::CircuitAdd
                     }
-
-                    <span class="kw">match </span>ty {
-                        CoreTypeConcrete::Bitwise(<span class="kw">_</span>) =&gt; builtins.push(BuiltinType::Bitwise),
-                        CoreTypeConcrete::EcOp(<span class="kw">_</span>) =&gt; builtins.push(BuiltinType::EcOp),
-                        CoreTypeConcrete::RangeCheck(<span class="kw">_</span>) =&gt; builtins.push(BuiltinType::RangeCheck),
-                        CoreTypeConcrete::Pedersen(<span class="kw">_</span>) =&gt; builtins.push(BuiltinType::Pedersen),
-                        CoreTypeConcrete::Poseidon(<span class="kw">_</span>) =&gt; builtins.push(BuiltinType::Poseidon),
-                        CoreTypeConcrete::BuiltinCosts(<span class="kw">_</span>) =&gt; {
-                            builtins.push(BuiltinType::BuiltinCosts)
-                        }
-                        CoreTypeConcrete::SegmentArena(<span class="kw">_</span>) =&gt; {
-                            builtins.push(BuiltinType::SegmentArena)
-                        }
-                        CoreTypeConcrete::RangeCheck96(<span class="kw">_</span>) =&gt; {
-                            builtins.push(BuiltinType::RangeCheck96)
-                        }
-                        CoreTypeConcrete::Circuit(CircuitTypeConcrete::AddMod(<span class="kw">_</span>)) =&gt; {
-                            builtins.push(BuiltinType::CircuitAdd)
-                        }
-                        CoreTypeConcrete::Circuit(CircuitTypeConcrete::MulMod(<span class="kw">_</span>)) =&gt; {
-                            builtins.push(BuiltinType::CircuitMul)
-                        }
-                        CoreTypeConcrete::GasBuiltin(<span class="kw">_</span>) =&gt; builtins.push(BuiltinType::Gas),
-                        CoreTypeConcrete::StarkNet(StarkNetTypeConcrete::System(<span class="kw">_</span>)) =&gt; {
-                            builtins.push(BuiltinType::System)
-                        }
-                        <span class="kw">_ </span>=&gt; <span class="macro">native_panic!</span>(<span class="string">"given type should be a builtin {:?}"</span>, ty.info()),
+                    CoreTypeConcrete::Circuit(CircuitTypeConcrete::MulMod(<span class="kw">_</span>)) =&gt; {
+                        BuiltinType::CircuitMul
                     }
-                } <span class="kw">else </span>{
-                    <span class="kw">break</span>;
-                }
-            }
+                    CoreTypeConcrete::GasBuiltin(<span class="kw">_</span>) =&gt; BuiltinType::Gas,
+                    CoreTypeConcrete::StarkNet(StarkNetTypeConcrete::System(<span class="kw">_</span>)) =&gt; {
+                        BuiltinType::System
+                    }
+                    <span class="kw">_ </span>=&gt; <span class="macro">unreachable!</span>(<span class="string">"not a builtin"</span>),
+                })
+                .collect();
 
-            infos.insert(x.id.id, EntryPointInfo { builtins });
+            <span class="prelude-val">Ok</span>((
+                Felt::from(<span class="kw-2">&amp;</span>x.selector),
+                EntryPointInfo {
+                    function_id: x.function_idx <span class="kw">as </span>u64,
+                    builtins,
+                },
+            ))
+        })
+        .collect::&lt;<span class="prelude-ty">Result</span>&lt;BTreeMap&lt;<span class="kw">_</span>, <span class="kw">_</span>&gt;&gt;&gt;()<span class="question-mark">?</span>;
+
+        <span class="comment">// Build the shared library.
+        </span><span class="kw">let </span>object_data = <span class="kw">crate</span>::module_to_object(<span class="kw-2">&amp;</span>module, opt_level)<span class="question-mark">?</span>;
+        <span class="kw">crate</span>::object_to_shared_lib(<span class="kw-2">&amp;</span>object_data, <span class="kw-2">&amp;</span>output_path)<span class="question-mark">?</span>;
+
+        <span class="comment">// Write the contract info.
+        </span>fs::write(
+            output_path.with_extension(<span class="string">"json"</span>),
+            serde_json::to_string(<span class="kw-2">&amp;</span>NativeContractInfo {
+                version: ContractInfoVersion::V0,
+                entry_points: entry_point_mappings,
+            })<span class="question-mark">?</span>,
+        )<span class="question-mark">?</span>;
+
+        drop(lock_file);
+        <span class="self">Self</span>::from_path(output_path)
+    }
+
+    <span class="doccomment">/// Load a program from a shared library.
+    ///
+    /// This function will check for the existence of a lockfile. If found, it'll return `Ok(None)`.
+    /// When this happens, the user should wait until the lock is released, then try loading it
+    /// again.
+    </span><span class="kw">pub fn </span>from_path(path: <span class="kw">impl </span>Into&lt;PathBuf&gt;) -&gt; <span class="prelude-ty">Result</span>&lt;<span class="prelude-ty">Option</span>&lt;<span class="self">Self</span>&gt;&gt; {
+        <span class="kw">let </span>path = path.into();
+        <span class="kw">if </span>LockFile::exists(<span class="kw-2">&amp;</span>path)<span class="question-mark">? </span>{
+            <span class="kw">return </span><span class="prelude-val">Ok</span>(<span class="prelude-val">None</span>);
         }
 
-        <span class="kw">let </span>library_path = NamedTempFile::new()<span class="question-mark">?
-            </span>.into_temp_path()
-            .keep()
-            .to_native_assert_error(<span class="string">"can only fail on windows"</span>)<span class="question-mark">?</span>;
+        <span class="kw">let </span>library = Arc::new(<span class="kw">unsafe </span>{ Library::new(<span class="kw-2">&amp;</span>path)<span class="question-mark">? </span>});
+        <span class="kw">let </span>contract_info =
+            serde_json::from_str(<span class="kw-2">&amp;</span>fs::read_to_string(path.with_extension(<span class="string">"json"</span>))<span class="question-mark">?</span>)<span class="question-mark">?</span>;
 
-        <span class="kw">let </span>object_data = <span class="kw">crate</span>::module_to_object(<span class="kw-2">&amp;</span>module, opt_level)<span class="question-mark">?</span>;
-        <span class="kw">crate</span>::object_to_shared_lib(<span class="kw-2">&amp;</span>object_data, <span class="kw-2">&amp;</span>library_path)<span class="question-mark">?</span>;
-
-        <span class="kw">let </span>executor = <span class="self">Self </span>{
-            library: Arc::new(<span class="kw">unsafe </span>{ Library::new(<span class="kw-2">&amp;</span>library_path)<span class="question-mark">? </span>}),
-            path: library_path,
-            is_temp_path: <span class="bool-val">true</span>,
-            contract_info: NativeContractInfo {
-                version: ContractInfoVersion::Version0,
-                entry_points_info: infos,
-                entry_point_selector_to_id,
-            },
-        };
-
-        setup_runtime(|name| executor.find_symbol_ptr(name));
-
-        <span class="prelude-val">Ok</span>(executor)
-    }
-
-    <span class="doccomment">/// Save the library to the desired path, alongside it is saved also a json file with additional info.
-    </span><span class="kw">pub fn </span>save(<span class="kw-2">&amp;mut </span><span class="self">self</span>, to: <span class="kw">impl </span>AsRef&lt;Path&gt;) -&gt; <span class="prelude-ty">Result</span>&lt;()&gt; {
-        <span class="kw">let </span>to = to.as_ref();
-        std::fs::copy(<span class="kw-2">&amp;</span><span class="self">self</span>.path, to)<span class="question-mark">?</span>;
-
-        <span class="kw">let </span>contract_info = serde_json::to_string(<span class="kw-2">&amp;</span><span class="self">self</span>.contract_info)<span class="question-mark">?</span>;
-        <span class="kw">let </span>path = to.with_extension(<span class="string">"json"</span>);
-        std::fs::write(path, contract_info)<span class="question-mark">?</span>;
-
-        <span class="self">self</span>.path = to.to_path_buf();
-        <span class="self">self</span>.is_temp_path = <span class="bool-val">false</span>;
-
-        <span class="prelude-val">Ok</span>(())
-    }
-
-    <span class="doccomment">/// Load the executor from an already compiled library with the additional info json file.
-    </span><span class="kw">pub fn </span>load(library_path: <span class="kw-2">&amp;</span>Path) -&gt; <span class="prelude-ty">Result</span>&lt;<span class="self">Self</span>&gt; {
-        <span class="kw">let </span>info_str = std::fs::read_to_string(library_path.with_extension(<span class="string">"json"</span>))<span class="question-mark">?</span>;
-        <span class="kw">let </span>contract_info: NativeContractInfo = serde_json::from_str(<span class="kw-2">&amp;</span>info_str)<span class="question-mark">?</span>;
-
-        <span class="kw">let </span>library = Arc::new(<span class="kw">unsafe </span>{ Library::new(library_path)<span class="question-mark">? </span>});
         <span class="kw">let </span>executor = <span class="self">Self </span>{
             library,
-            path: library_path.to_path_buf(),
-            is_temp_path: <span class="bool-val">false</span>,
+            path,
             contract_info,
         };
-        setup_runtime(|name| executor.find_symbol_ptr(name));
-        <span class="prelude-val">Ok</span>(executor)
+
+        setup_runtime(|x| executor.find_symbol_ptr(x));
+
+        <span class="prelude-val">Ok</span>(<span class="prelude-val">Some</span>(executor))
     }
 
     <span class="doccomment">/// Runs the entry point by the given selector.
@@ -1183,11 +1218,12 @@
         <span class="kw">let </span><span class="kw-2">mut </span>invoke_data = Vec::&lt;u8&gt;::new();
 
         <span class="kw">let </span>function_id = FunctionId {
-            id: <span class="kw-2">*</span><span class="self">self
+            id: <span class="self">self
                 </span>.contract_info
-                .entry_point_selector_to_id
+                .entry_points
                 .get(<span class="kw-2">&amp;</span>selector)
-                .ok_or(Error::SelectorNotFound)<span class="question-mark">?</span>,
+                .ok_or(Error::SelectorNotFound)<span class="question-mark">?
+                </span>.function_id,
             debug_name: <span class="prelude-val">None</span>,
         };
         <span class="kw">let </span>function_ptr = <span class="self">self</span>.find_function_ptr(<span class="kw-2">&amp;</span>function_id, <span class="bool-val">true</span>)<span class="question-mark">?</span>;
@@ -1199,7 +1235,7 @@
             <span class="kw">crate</span>::runtime::cairo_native__set_costs_builtin(builtin_costs.as_ptr());
 
         <span class="comment">//  it can vary from contract to contract thats why we need to store/ load it.
-        </span><span class="kw">let </span>builtins_size: usize = <span class="self">self</span>.contract_info.entry_points_info[<span class="kw-2">&amp;</span>function_id.id]
+        </span><span class="kw">let </span>builtins_size: usize = <span class="self">self</span>.contract_info.entry_points[<span class="kw-2">&amp;</span>selector]
             .builtins
             .iter()
             .map(|x| x.size_in_bytes())
@@ -1217,7 +1253,7 @@
 
         <span class="kw">let </span><span class="kw-2">mut </span>syscall_handler = StarknetSyscallHandlerCallbacks::new(<span class="kw-2">&amp;mut </span>syscall_handler);
 
-        <span class="kw">for </span>b <span class="kw">in </span><span class="kw-2">&amp;</span><span class="self">self</span>.contract_info.entry_points_info[<span class="kw-2">&amp;</span>function_id.id].builtins {
+        <span class="kw">for </span>b <span class="kw">in </span><span class="kw-2">&amp;</span><span class="self">self</span>.contract_info.entry_points[<span class="kw-2">&amp;</span>selector].builtins {
             <span class="kw">match </span>b {
                 BuiltinType::Gas =&gt; {
                     gas.to_bytes(<span class="kw-2">&amp;mut </span>invoke_data, |<span class="kw">_</span>| <span class="macro">unreachable!</span>())<span class="question-mark">?</span>;
@@ -1329,7 +1365,7 @@
 
         <span class="kw">let </span>return_ptr = <span class="kw-2">&amp;mut </span>return_ptr.cast();
 
-        <span class="kw">for </span>b <span class="kw">in </span><span class="kw-2">&amp;</span><span class="self">self</span>.contract_info.entry_points_info[<span class="kw-2">&amp;</span>function_id.id].builtins {
+        <span class="kw">for </span>b <span class="kw">in </span><span class="kw-2">&amp;</span><span class="self">self</span>.contract_info.entry_points[<span class="kw-2">&amp;</span>selector].builtins {
             <span class="kw">match </span>b {
                 BuiltinType::Gas =&gt; {
                     remaining_gas = <span class="kw">unsafe </span>{ <span class="kw-2">*</span>read_value::&lt;u64&gt;(return_ptr) };
@@ -1478,12 +1514,32 @@
     }
 }
 
-<span class="kw">impl </span>Drop <span class="kw">for </span>AotContractExecutor {
-    <span class="kw">fn </span>drop(<span class="kw-2">&amp;mut </span><span class="self">self</span>) {
-        <span class="kw">if </span><span class="self">self</span>.is_temp_path {
-            std::fs::remove_file(<span class="kw-2">&amp;</span><span class="self">self</span>.path).ok();
-            std::fs::remove_file(<span class="self">self</span>.path.with_extension(<span class="string">"json"</span>)).ok();
+<span class="attr">#[derive(Debug)]
+</span><span class="kw">struct </span>LockFile(PathBuf);
+
+<span class="kw">impl </span>LockFile {
+    <span class="kw">pub fn </span>new(path: <span class="kw">impl </span>Into&lt;PathBuf&gt;) -&gt; io::Result&lt;<span class="prelude-ty">Option</span>&lt;<span class="self">Self</span>&gt;&gt; {
+        <span class="kw">let </span>path: PathBuf = path.into();
+        <span class="kw">let </span>path = path.with_extension(<span class="string">"lock"</span>);
+
+        <span class="kw">match </span>File::create_new(<span class="kw-2">&amp;</span>path) {
+            <span class="prelude-val">Ok</span>(<span class="kw">_</span>) =&gt; <span class="prelude-val">Ok</span>(<span class="prelude-val">Some</span>(<span class="self">Self</span>(path))),
+            <span class="prelude-val">Err</span>(e) <span class="kw">if </span>e.kind() == io::ErrorKind::AlreadyExists =&gt; <span class="prelude-val">Ok</span>(<span class="prelude-val">None</span>),
+            <span class="prelude-val">Err</span>(e) =&gt; <span class="prelude-val">Err</span>(e),
         }
+    }
+
+    <span class="kw">pub fn </span>exists(path: <span class="kw">impl </span>Into&lt;PathBuf&gt;) -&gt; io::Result&lt;bool&gt; {
+        <span class="kw">let </span>path: PathBuf = path.into();
+        <span class="kw">let </span>path = path.with_extension(<span class="string">"lock"</span>);
+
+        fs::exists(path)
+    }
+}
+
+<span class="kw">impl </span>Drop <span class="kw">for </span>LockFile {
+    <span class="kw">fn </span>drop(<span class="kw-2">&amp;mut </span><span class="self">self</span>) {
+        fs::remove_file(<span class="kw-2">&amp;</span><span class="self">self</span>.<span class="number">0</span>).unwrap();
     }
 }
 

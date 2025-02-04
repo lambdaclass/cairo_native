@@ -452,14 +452,6 @@
 ) -&gt; <span class="prelude-ty">Result</span>&lt;()&gt; {
     <span class="kw">let </span>range_check = <span class="kw">super</span>::increment_builtin_counter(context, entry, location, entry.arg(<span class="number">0</span>)<span class="question-mark">?</span>)<span class="question-mark">?</span>;
     <span class="kw">let </span>current_gas = entry.arg(<span class="number">1</span>)<span class="question-mark">?</span>;
-
-    <span class="kw">let </span>gas_cost = metadata
-        .get::&lt;GasCost&gt;()
-        .expect(<span class="string">"withdraw_gas should always have a gas cost"</span>)
-        .clone();
-
-    <span class="kw">let </span>u64_type: melior::ir::Type = IntegerType::new(context, <span class="number">64</span>).into();
-
     <span class="kw">let </span>builtin_ptr = {
         <span class="kw">let </span>runtime = metadata
             .get_mut::&lt;RuntimeBindingsMeta&gt;()
@@ -469,6 +461,13 @@
             </span>.result(<span class="number">0</span>)<span class="question-mark">?
             </span>.into()
     };
+
+    <span class="kw">let </span>gas_cost = metadata
+        .get::&lt;GasCost&gt;()
+        .expect(<span class="string">"withdraw_gas should always have a gas cost"</span>)
+        .clone();
+
+    <span class="kw">let </span>u64_type: melior::ir::Type = IntegerType::new(context, <span class="number">64</span>).into();
 
     <span class="kw">let </span><span class="kw-2">mut </span>total_gas_cost_value = entry.const_int_from_type(context, location, <span class="number">0</span>, u64_type)<span class="question-mark">?</span>;
 
@@ -612,7 +611,7 @@
     entry: <span class="kw-2">&amp;</span><span class="lifetime">'this </span>Block&lt;<span class="lifetime">'ctx</span>&gt;,
     location: Location&lt;<span class="lifetime">'ctx</span>&gt;,
     helper: <span class="kw-2">&amp;</span>LibfuncHelper&lt;<span class="lifetime">'ctx</span>, <span class="lifetime">'this</span>&gt;,
-    metadata: <span class="kw-2">&amp;</span>MetadataStorage,
+    metadata: <span class="kw-2">&amp;mut </span>MetadataStorage,
     _info: <span class="kw-2">&amp;</span>SignatureOnlyConcreteLibfunc,
 ) -&gt; <span class="prelude-ty">Result</span>&lt;()&gt; {
     <span class="kw">let </span>range_check = <span class="kw">super</span>::increment_builtin_counter(context, entry, location, entry.arg(<span class="number">0</span>)<span class="question-mark">?</span>)<span class="question-mark">?</span>;
@@ -621,7 +620,8 @@
 
     <span class="kw">let </span>gas_cost = metadata
         .get::&lt;GasCost&gt;()
-        .expect(<span class="string">"builtin_withdraw_gas should always have a gas cost"</span>);
+        .expect(<span class="string">"builtin_withdraw_gas should always have a gas cost"</span>)
+        .clone();
 
     <span class="kw">let </span>u64_type: melior::ir::Type = IntegerType::new(context, <span class="number">64</span>).into();
 
