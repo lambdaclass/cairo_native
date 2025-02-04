@@ -73,42 +73,41 @@ impl RuntimeBinding {
     const fn function_ptr(self) -> *const () {
         match self {
             RuntimeBinding::DebugPrint => {
-                cairo_native_runtime::cairo_native__libfunc__debug__print as *const ()
+                crate::runtime::cairo_native__libfunc__debug__print as *const ()
             }
             RuntimeBinding::Pedersen => {
-                cairo_native_runtime::cairo_native__libfunc__pedersen as *const ()
+                crate::runtime::cairo_native__libfunc__pedersen as *const ()
             }
             RuntimeBinding::HadesPermutation => {
-                cairo_native_runtime::cairo_native__libfunc__hades_permutation as *const ()
+                crate::runtime::cairo_native__libfunc__hades_permutation as *const ()
             }
             RuntimeBinding::EcStateTryFinalizeNz => {
-                cairo_native_runtime::cairo_native__libfunc__ec__ec_state_try_finalize_nz
-                    as *const ()
+                crate::runtime::cairo_native__libfunc__ec__ec_state_try_finalize_nz as *const ()
             }
             RuntimeBinding::EcStateAddMul => {
-                cairo_native_runtime::cairo_native__libfunc__ec__ec_state_add_mul as *const ()
+                crate::runtime::cairo_native__libfunc__ec__ec_state_add_mul as *const ()
             }
             RuntimeBinding::EcStateInit => {
-                cairo_native_runtime::cairo_native__libfunc__ec__ec_state_init as *const ()
+                crate::runtime::cairo_native__libfunc__ec__ec_state_init as *const ()
             }
             RuntimeBinding::EcStateAdd => {
-                cairo_native_runtime::cairo_native__libfunc__ec__ec_state_add as *const ()
+                crate::runtime::cairo_native__libfunc__ec__ec_state_add as *const ()
             }
             RuntimeBinding::EcPointTryNewNz => {
-                cairo_native_runtime::cairo_native__libfunc__ec__ec_point_try_new_nz as *const ()
+                crate::runtime::cairo_native__libfunc__ec__ec_point_try_new_nz as *const ()
             }
             RuntimeBinding::EcPointFromXNz => {
-                cairo_native_runtime::cairo_native__libfunc__ec__ec_point_from_x_nz as *const ()
+                crate::runtime::cairo_native__libfunc__ec__ec_point_from_x_nz as *const ()
             }
-            RuntimeBinding::DictNew => cairo_native_runtime::cairo_native__dict_new as *const (),
-            RuntimeBinding::DictGet => cairo_native_runtime::cairo_native__dict_get as *const (),
+            RuntimeBinding::DictNew => crate::runtime::cairo_native__dict_new as *const (),
+            RuntimeBinding::DictGet => crate::runtime::cairo_native__dict_get as *const (),
             RuntimeBinding::DictGasRefund => {
-                cairo_native_runtime::cairo_native__dict_gas_refund as *const ()
+                crate::runtime::cairo_native__dict_gas_refund as *const ()
             }
-            RuntimeBinding::DictDrop => cairo_native_runtime::cairo_native__dict_drop as *const (),
-            RuntimeBinding::DictDup => cairo_native_runtime::cairo_native__dict_dup as *const (),
+            RuntimeBinding::DictDrop => crate::runtime::cairo_native__dict_drop as *const (),
+            RuntimeBinding::DictDup => crate::runtime::cairo_native__dict_dup as *const (),
             RuntimeBinding::GetGasBuiltin => {
-                cairo_native_runtime::cairo_native__get_costs_builtin as *const ()
+                crate::runtime::cairo_native__get_costs_builtin as *const ()
             }
             #[cfg(feature = "with-cheatcode")]
             RuntimeBinding::VtableCheatcode => {
