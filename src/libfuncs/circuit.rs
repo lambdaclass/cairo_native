@@ -1073,7 +1073,7 @@ fn build_euclidean_algorithm<'ctx, 'this>(
     Ok(end_block)
 }
 
-/// Extracts values from indexes `from` - `to` (exclusive) and building a new value of type `result_type`
+/// Extracts values from indexes `from` - `to` (exclusive) and builds a new value of type `result_type`
 ///
 /// Can be used with arrays, or structs with multiple elements of a single type.
 #[allow(clippy::too_many_arguments)]
