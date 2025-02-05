@@ -7,93 +7,61 @@ permissions:
 on:
   push:
     tags:
-      - "v*.*.*"
+      - v[0-9]+.*
 
 jobs:
-  release-linux:
+  create-release:
     runs-on: ubuntu-24.04
-    env:
-        MLIR_SYS_190_PREFIX: /usr/lib/llvm-19/
-        LLVM_SYS_191_PREFIX: /usr/lib/llvm-19/
-        TABLEGEN_190_PREFIX: /usr/lib/llvm-19/
     steps:
       - name: Checkout
         uses: actions/checkout@v4
-      - name: free HDD space
-        run: |
-          # deleting space
-          sudo rm -rf /usr/share/dotnet/
-          sudo rm -rf /usr/local/lib/android
-      - name: Setup rust env
-        uses: dtolnay/rust-toolchain@1.84.0
-      - name: Retreive cached dependecies
-        uses: Swatinem/rust-cache@v2
-      - name: add llvm deb repository
-        uses: myci-actions/add-deb-repo@11
+      - uses: taiki-e/create-gh-release-action@v1
         with:
-          repo: deb http://apt.llvm.org/jammy/ llvm-toolchain-jammy-19 main
-          repo-name: llvm-repo
-          keys-asc: https://apt.llvm.org/llvm-snapshot.gpg.key
-      - name: Install LLVM
-        run: sudo apt-get install llvm-19 llvm-19-dev llvm-19-runtime clang-19 clang-tools-19 lld-19 libpolly-19-dev libmlir-19-dev mlir-19-tools
-      - name: Install deps
-        run: make deps
-      - name: build release
-        run: make build
-      - name: Compress into a tar file
-        run: cd target/release && tar -cJvf ../cairo-native-x86_64.tar.xz cairo-native-test \
-          cairo-native-compile cairo-native-dump cairo-native-run libcairo_native_runtime.a && cd ..
-      - uses: actions/upload-artifact@v4
-        with:
-          name: linux-build
-          path: cairo-native-x86_64.tar.xz
+          # (Required) GitHub token for creating GitHub Releases.
+          token: ${{ secrets.GITHUB_TOKEN }}
 
-  release-macos:
-    runs-on: macos-14
-    env:
-      CARGO_TERM_COLOR: always
-      LIBRARY_PATH: /opt/homebrew/lib
-      MLIR_SYS_190_PREFIX: /opt/homebrew/opt/llvm@19
-      LLVM_SYS_191_PREFIX: /opt/homebrew/opt/llvm@19
-      TABLEGEN_190_PREFIX: /opt/homebrew/opt/llvm@19
-      RUST_LOG: cairo_native=debug,cairo_native_test=debug
+  upload-assets:
+    needs: create-release
+    strategy:
+      matrix:
+        include:
+          - target: x86_64-unknown-linux-gnu
+            os: ubuntu-24.04
+            env:
+              MLIR_SYS_190_PREFIX: /usr/lib/llvm-19/
+              LLVM_SYS_191_PREFIX: /usr/lib/llvm-19/
+              TABLEGEN_190_PREFIX: /usr/lib/llvm-19/
+          - target: x86_64-apple-darwin
+            os: macos-14
+            env:
+              MLIR_SYS_190_PREFIX: /opt/homebrew/opt/llvm@19
+              LLVM_SYS_191_PREFIX: /opt/homebrew/opt/llvm@19
+              TABLEGEN_190_PREFIX: /opt/homebrew/opt/llvm@19
+    runs-on: ${{ matrix.os }}
     steps:
       - uses: actions/checkout@v4
-      - name: Rustup toolchain install
-        uses: dtolnay/rust-toolchain@1.84.0
-        with:
-          components: clippy
-      - name: Rust `$PATH` workaround.
-        run: echo "$HOME/.cargo/bin" >> $GITHUB_PATH
       - name: Install deps
-        run: make deps
-      - name: Build release
-        run: make build
-      - name: Compress into a tar file
-        run: cd target/release && tar -cJvf ../cairo-native-aarch64.tar.xz cairo-native-test \
-          cairo-native-compile cairo-native-dump cairo-native-run libcairo_native_runtime.a && cd ..
-      - uses: actions/upload-artifact@v4
+        # deps-ci-linux does nothing on macos so it works
+        run: make deps && make deps-ci-linux
+      - uses: taiki-e/upload-rust-binary-action@v1
         with:
-          name: macos-build
-          path: cairo-native-aarch64.tar.xz
-
-  release:
-    runs-on: ubuntu-24.04
-    needs: [release-macos, release-linux]
-    steps:
-      - name: Checkout
-        uses: actions/checkout@v4
-      - name: Download linux
-        uses: actions/download-artifact@v4
-        with:
-          name: linux-build
-      - name: Download macos
-        uses: actions/download-artifact@v4
-        with:
-          name: macos-build
-      - name: Release on GitHub
-        uses: softprops/action-gh-release@v2
-        with:
-          files: |
-            cairo-native-aarch64.tar.xz
-            cairo-native-x86_64.tar.xz
+          # (required) Comma-separated list of binary names (non-extension portion of filename) to build and upload.
+          # Note that glob pattern is not supported yet.
+          bin: cairo-native-compile,cairo-native-dump,cairo-native-run,cairo-native-stress,cairo-native-test
+          # (optional) Target triple, default is host triple.
+          # This is optional but it is recommended that this always be set to
+          # clarify which target you are building for if macOS is included in
+          # the matrix because GitHub Actions changed the default architecture
+          # of macos-latest since macos-14.
+          target: ${{ matrix.target }}
+          # (optional) On which platform to distribute the `.tar.gz` file.
+          # [default value: unix]
+          # [possible values: all, unix, windows, none]
+          tar: unix
+          # (optional) On which platform to distribute the `.zip` file.
+          # [default value: windows]
+          # [possible values: all, unix, windows, none]
+          zip: windows
+          archive: cairo-native-$target
+          # (required) GitHub token for uploading assets to GitHub Releases.
+          token: ${{ secrets.GITHUB_TOKEN }}
