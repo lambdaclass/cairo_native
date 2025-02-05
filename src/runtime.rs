@@ -1,5 +1,6 @@
 #![allow(non_snake_case)]
 
+use crate::utils::BuiltinCosts;
 use cairo_lang_sierra_gas::core_libfunc_cost::{
     DICT_SQUASH_REPEATED_ACCESS_COST, DICT_SQUASH_UNIQUE_KEY_COST,
 };
@@ -22,7 +23,7 @@ use std::{
     io::Write,
     mem::{forget, ManuallyDrop},
     os::fd::FromRawFd,
-    ptr::{self, null, null_mut},
+    ptr,
     rc::Rc,
 };
 use std::{ops::Mul, vec::IntoIter};
@@ -162,7 +163,7 @@ impl Clone for FeltDict {
 
             layout: self.layout,
             elements: if self.mappings.is_empty() {
-                null_mut()
+                ptr::null_mut()
             } else {
                 unsafe {
                     alloc(Layout::from_size_align_unchecked(
@@ -255,7 +256,7 @@ pub unsafe extern "C" fn cairo_native__dict_new(
         mappings: HashMap::default(),
 
         layout: Layout::from_size_align_unchecked(size as usize, align as usize),
-        elements: null_mut(),
+        elements: ptr::null_mut(),
 
         dup_fn,
         drop_fn,
@@ -578,27 +579,24 @@ pub unsafe extern "C" fn cairo_native__libfunc__ec__ec_state_try_finalize_nz(
 }
 
 thread_local! {
-    // We can use cell because a ptr is copy.
-    static BUILTIN_COSTS: Cell<*const u64> = const {
-        Cell::new(null())
+    pub(crate) static BUILTIN_COSTS: Cell<BuiltinCosts> = const {
+        // These default values shouldn't be accessible, they will be overriden before entering
+        // compiled code.
+        Cell::new(BuiltinCosts {
+            r#const: 0,
+            pedersen: 0,
+            bitwise: 0,
+            ecop: 0,
+            poseidon: 0,
+            add_mod: 0,
+            mul_mod: 0,
+        })
     };
 }
 
-/// Store the gas builtin in the internal thread local. Returns the old pointer, to restore it after execution.
-/// Not a runtime metadata method, it should be called before the program is executed.
-pub extern "C" fn cairo_native__set_costs_builtin(ptr: *const u64) -> *const u64 {
-    let old = BUILTIN_COSTS.get();
-    BUILTIN_COSTS.set(ptr);
-    old
-}
-
 /// Get the gas builtin from the internal thread local.
-pub extern "C" fn cairo_native__get_costs_builtin() -> *const u64 {
-    if BUILTIN_COSTS.get().is_null() {
-        // We shouldn't panic here, but we can print a big message.
-        eprintln!("BUILTIN_COSTS POINTER IS NULL!");
-    }
-    BUILTIN_COSTS.get()
+pub extern "C" fn cairo_native__get_costs_builtin() -> *const [u64; 7] {
+    BUILTIN_COSTS.with(|x| x.as_ptr()) as *const [u64; 7]
 }
 
 // Utility methods for the print runtime function
@@ -878,7 +876,7 @@ mod tests {
         };
 
         let key = Felt::ONE.to_bytes_le();
-        let mut ptr = null_mut::<u64>();
+        let mut ptr = ptr::null_mut::<u64>();
 
         assert_eq!(
             unsafe { cairo_native__dict_get(dict, &key, (&raw mut ptr).cast()) },
