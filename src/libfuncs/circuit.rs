@@ -70,6 +70,9 @@ pub fn build<'ctx, 'this>(
             signature,
             ..
         })
+        | CircuitConcreteLibfunc::U96SingleLimbLessThanGuaranteeVerify(
+            SignatureOnlyConcreteLibfunc { signature, .. },
+        )
         | CircuitConcreteLibfunc::U96GuaranteeVerify(SignatureOnlyConcreteLibfunc { signature }) => {
             super::build_noop::<1, true>(
                 context,
@@ -83,11 +86,6 @@ pub fn build<'ctx, 'this>(
         }
         CircuitConcreteLibfunc::U96LimbsLessThanGuaranteeVerify(info) => {
             build_u96_limbs_less_than_guarantee_verify(
-                context, registry, entry, location, helper, metadata, info,
-            )
-        }
-        CircuitConcreteLibfunc::U96SingleLimbLessThanGuaranteeVerify(info) => {
-            build_u96_single_limb_less_than_guarantee_verify(
                 context, registry, entry, location, helper, metadata, info,
             )
         }
@@ -818,27 +816,6 @@ fn build_u96_limbs_less_than_guarantee_verify<'ctx, 'this>(
 
         next_block.append_operation(helper.br(0, &[new_guarantee], location));
     }
-
-    Ok(())
-}
-
-/// Generate MLIR operations for the `u96_single_limb_less_than_guarantee_verify` libfunc.
-/// NOOP
-#[allow(clippy::too_many_arguments)]
-fn build_u96_single_limb_less_than_guarantee_verify<'ctx, 'this>(
-    context: &'ctx Context,
-    registry: &ProgramRegistry<CoreType, CoreLibfunc>,
-    entry: &'this Block<'ctx>,
-    location: Location<'ctx>,
-    helper: &LibfuncHelper<'ctx, 'this>,
-    metadata: &mut MetadataStorage,
-    info: &SignatureOnlyConcreteLibfunc,
-) -> Result<()> {
-    let u96_type_id = &info.branch_signatures()[0].vars[0].ty;
-    let u96_type = registry.build_type(context, helper, metadata, u96_type_id)?;
-    let u96 = entry.const_int_from_type(context, location, 0, u96_type)?;
-
-    entry.append_operation(helper.br(0, &[u96], location));
 
     Ok(())
 }
