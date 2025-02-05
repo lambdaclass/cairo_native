@@ -749,14 +749,17 @@ fn build_u96_limbs_less_than_guarantee_verify<'ctx, 'this>(
     let u96_type = IntegerType::new(context, 96).into();
     let limb_struct_type = llvm::r#type::r#struct(context, &vec![u96_type; limb_count], false);
 
+    // extract gate and modulus from input value
     let gate = entry.extract_value(context, location, guarantee, limb_struct_type, 0)?;
     let modulus = entry.extract_value(context, location, guarantee, limb_struct_type, 1)?;
-    let gate_high_limb = entry.extract_value(context, location, gate, u96_type, limb_count - 1)?;
-    let modulus_high_limb =
+
+    // extract last limb from gate and modulus
+    let gate_last_limb = entry.extract_value(context, location, gate, u96_type, limb_count - 1)?;
+    let modulus_last_limb =
         entry.extract_value(context, location, modulus, u96_type, limb_count - 1)?;
 
-    let diff = entry.append_op_result(arith::subi(modulus_high_limb, gate_high_limb, location))?;
-
+    // calcualte diff between limbs
+    let diff = entry.append_op_result(arith::subi(modulus_last_limb, gate_last_limb, location))?;
     let k0 = entry.const_int_from_type(context, location, 0, u96_type)?;
     let has_diff = entry.cmpi(context, CmpiPredicate::Ne, diff, k0, location)?;
 
@@ -773,10 +776,11 @@ fn build_u96_limbs_less_than_guarantee_verify<'ctx, 'this>(
     ));
 
     {
+        // if there is diff, return it
         diff_block.append_operation(helper.br(1, &[diff], location));
     }
     {
-        // build new guarantee, skipping last limb
+        // if there is no diff, build a new guarantee, skipping last limb
         let new_limb_struct_type =
             llvm::r#type::r#struct(context, &vec![u96_type; limb_count - 1], false);
         let new_gate = build_array_slice(
