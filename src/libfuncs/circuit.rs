@@ -28,8 +28,8 @@ use melior::{
         cf, llvm,
     },
     ir::{
-        attribute::DenseI32ArrayAttribute, r#type::IntegerType, Block, BlockLike, Location, Value,
-        ValueLike,
+        attribute::DenseI32ArrayAttribute, r#type::IntegerType, Block, BlockLike, Location, Type,
+        Value, ValueLike,
     },
     Context,
 };
@@ -733,7 +733,6 @@ fn build_failure_guarantee_verify<'ctx, 'this>(
 }
 
 /// Generate MLIR operations for the `u96_limbs_less_than_guarantee_verify` libfunc.
-/// NOOP
 #[allow(clippy::too_many_arguments)]
 fn build_u96_limbs_less_than_guarantee_verify<'ctx, 'this>(
     context: &'ctx Context,
@@ -744,24 +743,78 @@ fn build_u96_limbs_less_than_guarantee_verify<'ctx, 'this>(
     metadata: &mut MetadataStorage,
     info: &ConcreteU96LimbsLessThanGuaranteeVerifyLibfunc,
 ) -> Result<()> {
-    let guarantee_type_id = &info.branch_signatures()[0].vars[0].ty;
-    let guarantee_type = registry.build_type(context, helper, metadata, guarantee_type_id)?;
+    let guarantee = entry.arg(0)?;
+    let limb_count = info.limb_count;
 
-    let guarantee = entry.append_op_result(llvm::undef(guarantee_type, location))?;
+    let u96_type = IntegerType::new(context, 96).into();
+    let array_type = llvm::r#type::array(u96_type, limb_count as u32);
 
-    let u96_type_id = &info.branch_signatures()[1].vars[0].ty;
-    let u96_type = registry.build_type(context, helper, metadata, u96_type_id)?;
+    let gate = entry.extract_value(context, location, guarantee, array_type, 0)?;
+    let modulus = entry.extract_value(context, location, guarantee, array_type, 1)?;
+    let gate_high_limb = entry.extract_value(context, location, gate, u96_type, limb_count - 1)?;
+    let modulus_high_limb =
+        entry.extract_value(context, location, modulus, u96_type, limb_count - 1)?;
 
-    let u96 = entry.append_op_result(llvm::undef(u96_type, location))?;
+    let diff = entry.append_op_result(arith::subi(modulus_high_limb, gate_high_limb, location))?;
 
-    let ktrue = entry.const_int(context, location, 1, 64)?;
-    entry.append_operation(helper.cond_br(
+    let k0 = entry.const_int_from_type(context, location, 0, u96_type)?;
+    let has_diff = entry.cmpi(context, CmpiPredicate::Ne, diff, k0, location)?;
+
+    let diff_block = helper.append_block(Block::new(&[]));
+    let next_block = helper.append_block(Block::new(&[]));
+    entry.append_operation(cf::cond_br(
         context,
-        ktrue,
-        [0, 1],
-        [&[guarantee], &[u96]],
+        has_diff,
+        &diff_block,
+        &next_block,
+        &[],
+        &[],
         location,
     ));
+
+    {
+        diff_block.append_operation(helper.br(1, &[diff], location));
+    }
+    {
+        // build new guarantee, skipping last limb
+        let mut gate_other_limbs = Vec::with_capacity(limb_count - 1);
+        let mut modulus_other_limbs = Vec::with_capacity(limb_count - 1);
+        for idx in 0..limb_count - 1 {
+            let gate_limb = next_block.extract_value(context, location, gate, u96_type, idx)?;
+            let modulus_limb =
+                next_block.extract_value(context, location, modulus, u96_type, idx)?;
+
+            gate_other_limbs.push(gate_limb);
+            modulus_other_limbs.push(modulus_limb);
+        }
+        let new_array_type = llvm::r#type::array(u96_type, limb_count as u32 - 1);
+        let new_gate = next_block.insert_values(
+            context,
+            location,
+            next_block.append_op_result(llvm::undef(new_array_type, location))?,
+            &gate_other_limbs,
+        )?;
+        let new_modulus = next_block.insert_values(
+            context,
+            location,
+            next_block.append_op_result(llvm::undef(new_array_type, location))?,
+            &modulus_other_limbs,
+        )?;
+
+        let guarantee_type_id = &info.branch_signatures()[0].vars[0].ty;
+        let new_guarantee = build_struct_value(
+            context,
+            registry,
+            next_block,
+            location,
+            helper,
+            metadata,
+            guarantee_type_id,
+            &[new_gate, new_modulus],
+        )?;
+
+        next_block.append_operation(helper.br(0, &[new_guarantee], location));
+    }
 
     Ok(())
 }
