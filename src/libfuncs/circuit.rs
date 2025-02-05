@@ -777,28 +777,26 @@ fn build_u96_limbs_less_than_guarantee_verify<'ctx, 'this>(
     }
     {
         // build new guarantee, skipping last limb
-        let mut gate_other_limbs = Vec::with_capacity(limb_count - 1);
-        let mut modulus_other_limbs = Vec::with_capacity(limb_count - 1);
-        for idx in 0..limb_count - 1 {
-            let gate_limb = next_block.extract_value(context, location, gate, u96_type, idx)?;
-            let modulus_limb =
-                next_block.extract_value(context, location, modulus, u96_type, idx)?;
-
-            gate_other_limbs.push(gate_limb);
-            modulus_other_limbs.push(modulus_limb);
-        }
         let new_array_type = llvm::r#type::array(u96_type, limb_count as u32 - 1);
-        let new_gate = next_block.insert_values(
+        let new_gate = build_array_slice(
             context,
+            next_block,
             location,
-            next_block.append_op_result(llvm::undef(new_array_type, location))?,
-            &gate_other_limbs,
+            gate,
+            u96_type,
+            new_array_type,
+            0,
+            limb_count - 1,
         )?;
-        let new_modulus = next_block.insert_values(
+        let new_modulus = build_array_slice(
             context,
+            next_block,
             location,
-            next_block.append_op_result(llvm::undef(new_array_type, location))?,
-            &modulus_other_limbs,
+            modulus,
+            u96_type,
+            new_array_type,
+            0,
+            limb_count - 1,
         )?;
 
         let guarantee_type_id = &info.branch_signatures()[0].vars[0].ty;
@@ -1104,6 +1102,34 @@ fn build_euclidean_algorithm<'ctx, 'this>(
     ));
 
     Ok(end_block)
+}
+
+/// Extracts values from indexes `from` - `to` (exclusive) and building a new value of type `result_type`
+///
+/// Can be used with arrays, or structs with multiple elements of a single type.
+fn build_array_slice<'ctx>(
+    context: &'ctx Context,
+    block: &'ctx Block<'ctx>,
+    location: Location<'ctx>,
+    aggregate: Value<'ctx, 'ctx>,
+    element_type: Type<'ctx>,
+    result_type: Type<'ctx>,
+    from: usize,
+    to: usize,
+) -> Result<Value<'ctx, 'ctx>> {
+    let mut values = Vec::with_capacity(to - from);
+
+    for i in from..to {
+        let value = block.extract_value(context, location, aggregate, element_type, i)?;
+        values.push(value);
+    }
+
+    block.insert_values(
+        context,
+        location,
+        block.append_op_result(llvm::undef(result_type, location))?,
+        &values,
+    )
 }
 
 #[cfg(test)]
