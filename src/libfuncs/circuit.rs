@@ -747,10 +747,10 @@ fn build_u96_limbs_less_than_guarantee_verify<'ctx, 'this>(
     let limb_count = info.limb_count;
 
     let u96_type = IntegerType::new(context, 96).into();
-    let array_type = llvm::r#type::array(u96_type, limb_count as u32);
+    let limb_struct_type = llvm::r#type::r#struct(context, &vec![u96_type; limb_count], false);
 
-    let gate = entry.extract_value(context, location, guarantee, array_type, 0)?;
-    let modulus = entry.extract_value(context, location, guarantee, array_type, 1)?;
+    let gate = entry.extract_value(context, location, guarantee, limb_struct_type, 0)?;
+    let modulus = entry.extract_value(context, location, guarantee, limb_struct_type, 1)?;
     let gate_high_limb = entry.extract_value(context, location, gate, u96_type, limb_count - 1)?;
     let modulus_high_limb =
         entry.extract_value(context, location, modulus, u96_type, limb_count - 1)?;
@@ -765,8 +765,8 @@ fn build_u96_limbs_less_than_guarantee_verify<'ctx, 'this>(
     entry.append_operation(cf::cond_br(
         context,
         has_diff,
-        &diff_block,
-        &next_block,
+        diff_block,
+        next_block,
         &[],
         &[],
         location,
@@ -777,14 +777,15 @@ fn build_u96_limbs_less_than_guarantee_verify<'ctx, 'this>(
     }
     {
         // build new guarantee, skipping last limb
-        let new_array_type = llvm::r#type::array(u96_type, limb_count as u32 - 1);
+        let new_limb_struct_type =
+            llvm::r#type::r#struct(context, &vec![u96_type; limb_count - 1], false);
         let new_gate = build_array_slice(
             context,
             next_block,
             location,
             gate,
             u96_type,
-            new_array_type,
+            new_limb_struct_type,
             0,
             limb_count - 1,
         )?;
@@ -794,7 +795,7 @@ fn build_u96_limbs_less_than_guarantee_verify<'ctx, 'this>(
             location,
             modulus,
             u96_type,
-            new_array_type,
+            new_limb_struct_type,
             0,
             limb_count - 1,
         )?;
@@ -887,24 +888,17 @@ fn build_get_output<'ctx, 'this>(
         output_idx,
     )?;
 
-    let guarantee = {
-        let guarantee_type_id = &info.branch_signatures()[0].vars[1].ty;
-
-        let u96_type = IntegerType::new(context, 96).into();
-        let output_array = struct_to_array(context, entry, location, output_struct, u96_type, 4)?;
-        let modulus_array = struct_to_array(context, entry, location, modulus_struct, u96_type, 4)?;
-
-        build_struct_value(
-            context,
-            registry,
-            entry,
-            location,
-            helper,
-            metadata,
-            guarantee_type_id,
-            &[output_array, modulus_array],
-        )?
-    };
+    let guarantee_type_id = &info.branch_signatures()[0].vars[1].ty;
+    let guarantee = build_struct_value(
+        context,
+        registry,
+        entry,
+        location,
+        helper,
+        metadata,
+        guarantee_type_id,
+        &[output_struct, modulus_struct],
+    )?;
 
     entry.append_operation(helper.br(0, &[output_struct, guarantee], location));
 
@@ -998,31 +992,6 @@ fn u384_integer_to_struct<'a>(
     )
 }
 
-fn struct_to_array<'ctx>(
-    context: &'ctx Context,
-    block: &'ctx Block<'ctx>,
-    location: Location<'ctx>,
-    r#struct: Value<'ctx, 'ctx>,
-    element_type: Type<'ctx>,
-    length: u32,
-) -> Result<Value<'ctx, 'ctx>> {
-    let mut values = Vec::with_capacity(length as usize);
-
-    for i in 0..length {
-        let value = block.extract_value(context, location, r#struct, element_type, i as usize)?;
-
-        values.push(value);
-    }
-
-    let array_type = llvm::r#type::array(element_type, length);
-    block.insert_values(
-        context,
-        location,
-        block.append_op_result(llvm::undef(array_type, location))?,
-        &values,
-    )
-}
-
 /// The extended euclidean algorithm calculates the greatest common divisor (gcd) of two integers a and b,
 /// as well as the bezout coefficients x and y such that ax+by=gcd(a,b)
 /// if gcd(a,b) = 1, then x is the modular multiplicative inverse of a modulo b.
@@ -1107,6 +1076,7 @@ fn build_euclidean_algorithm<'ctx, 'this>(
 /// Extracts values from indexes `from` - `to` (exclusive) and building a new value of type `result_type`
 ///
 /// Can be used with arrays, or structs with multiple elements of a single type.
+#[allow(clippy::too_many_arguments)]
 fn build_array_slice<'ctx>(
     context: &'ctx Context,
     block: &'ctx Block<'ctx>,

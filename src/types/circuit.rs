@@ -175,12 +175,12 @@ pub fn build_u96_limbs_less_than_guarantee<'ctx>(
 ) -> Result<Type<'ctx>> {
     let limbs = info.inner.limb_count;
 
+    let u96_type = IntegerType::new(context, 96).into();
+    let limb_struct_type = llvm::r#type::r#struct(context, &vec![u96_type; limbs], false);
+
     Ok(llvm::r#type::r#struct(
         context,
-        &[
-            llvm::r#type::array(IntegerType::new(context, 96).into(), limbs as u32),
-            llvm::r#type::array(IntegerType::new(context, 96).into(), limbs as u32),
-        ],
+        &[limb_struct_type, limb_struct_type],
         false,
     ))
 }
