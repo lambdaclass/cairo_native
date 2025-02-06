@@ -1315,7 +1315,97 @@
 <a href="#1314" id="1314">1314</a>
 <a href="#1315" id="1315">1315</a>
 <a href="#1316" id="1316">1316</a>
-<a href="#1317" id="1317">1317</a></pre></div><pre class="rust"><code><span class="doccomment">//! # Circuit libfuncs
+<a href="#1317" id="1317">1317</a>
+<a href="#1318" id="1318">1318</a>
+<a href="#1319" id="1319">1319</a>
+<a href="#1320" id="1320">1320</a>
+<a href="#1321" id="1321">1321</a>
+<a href="#1322" id="1322">1322</a>
+<a href="#1323" id="1323">1323</a>
+<a href="#1324" id="1324">1324</a>
+<a href="#1325" id="1325">1325</a>
+<a href="#1326" id="1326">1326</a>
+<a href="#1327" id="1327">1327</a>
+<a href="#1328" id="1328">1328</a>
+<a href="#1329" id="1329">1329</a>
+<a href="#1330" id="1330">1330</a>
+<a href="#1331" id="1331">1331</a>
+<a href="#1332" id="1332">1332</a>
+<a href="#1333" id="1333">1333</a>
+<a href="#1334" id="1334">1334</a>
+<a href="#1335" id="1335">1335</a>
+<a href="#1336" id="1336">1336</a>
+<a href="#1337" id="1337">1337</a>
+<a href="#1338" id="1338">1338</a>
+<a href="#1339" id="1339">1339</a>
+<a href="#1340" id="1340">1340</a>
+<a href="#1341" id="1341">1341</a>
+<a href="#1342" id="1342">1342</a>
+<a href="#1343" id="1343">1343</a>
+<a href="#1344" id="1344">1344</a>
+<a href="#1345" id="1345">1345</a>
+<a href="#1346" id="1346">1346</a>
+<a href="#1347" id="1347">1347</a>
+<a href="#1348" id="1348">1348</a>
+<a href="#1349" id="1349">1349</a>
+<a href="#1350" id="1350">1350</a>
+<a href="#1351" id="1351">1351</a>
+<a href="#1352" id="1352">1352</a>
+<a href="#1353" id="1353">1353</a>
+<a href="#1354" id="1354">1354</a>
+<a href="#1355" id="1355">1355</a>
+<a href="#1356" id="1356">1356</a>
+<a href="#1357" id="1357">1357</a>
+<a href="#1358" id="1358">1358</a>
+<a href="#1359" id="1359">1359</a>
+<a href="#1360" id="1360">1360</a>
+<a href="#1361" id="1361">1361</a>
+<a href="#1362" id="1362">1362</a>
+<a href="#1363" id="1363">1363</a>
+<a href="#1364" id="1364">1364</a>
+<a href="#1365" id="1365">1365</a>
+<a href="#1366" id="1366">1366</a>
+<a href="#1367" id="1367">1367</a>
+<a href="#1368" id="1368">1368</a>
+<a href="#1369" id="1369">1369</a>
+<a href="#1370" id="1370">1370</a>
+<a href="#1371" id="1371">1371</a>
+<a href="#1372" id="1372">1372</a>
+<a href="#1373" id="1373">1373</a>
+<a href="#1374" id="1374">1374</a>
+<a href="#1375" id="1375">1375</a>
+<a href="#1376" id="1376">1376</a>
+<a href="#1377" id="1377">1377</a>
+<a href="#1378" id="1378">1378</a>
+<a href="#1379" id="1379">1379</a>
+<a href="#1380" id="1380">1380</a>
+<a href="#1381" id="1381">1381</a>
+<a href="#1382" id="1382">1382</a>
+<a href="#1383" id="1383">1383</a>
+<a href="#1384" id="1384">1384</a>
+<a href="#1385" id="1385">1385</a>
+<a href="#1386" id="1386">1386</a>
+<a href="#1387" id="1387">1387</a>
+<a href="#1388" id="1388">1388</a>
+<a href="#1389" id="1389">1389</a>
+<a href="#1390" id="1390">1390</a>
+<a href="#1391" id="1391">1391</a>
+<a href="#1392" id="1392">1392</a>
+<a href="#1393" id="1393">1393</a>
+<a href="#1394" id="1394">1394</a>
+<a href="#1395" id="1395">1395</a>
+<a href="#1396" id="1396">1396</a>
+<a href="#1397" id="1397">1397</a>
+<a href="#1398" id="1398">1398</a>
+<a href="#1399" id="1399">1399</a>
+<a href="#1400" id="1400">1400</a>
+<a href="#1401" id="1401">1401</a>
+<a href="#1402" id="1402">1402</a>
+<a href="#1403" id="1403">1403</a>
+<a href="#1404" id="1404">1404</a>
+<a href="#1405" id="1405">1405</a>
+<a href="#1406" id="1406">1406</a>
+<a href="#1407" id="1407">1407</a></pre></div><pre class="rust"><code><span class="doccomment">//! # Circuit libfuncs
 //!
 //! Relevant casm code: https://github.com/starkware-libs/cairo/blob/v2.10.0-rc.1/crates/cairo-lang-sierra-to-casm/src/invocations/circuit.rs
 
@@ -1324,7 +1414,7 @@
     error::{<span class="prelude-ty">Result</span>, SierraAssertError},
     libfuncs::r#struct::build_struct_value,
     metadata::MetadataStorage,
-    types::TypeBuilder,
+    types::{circuit::build_u384_struct_type, TypeBuilder},
     utils::{get_integer_layout, layout_repeat, BlockExt, ProgramRegistryExt},
 };
 <span class="kw">use </span>cairo_lang_sierra::{
@@ -1345,8 +1435,8 @@
         cf, llvm,
     },
     ir::{
-        attribute::DenseI32ArrayAttribute, r#type::IntegerType, Block, BlockLike, Location, Value,
-        ValueLike,
+        attribute::DenseI32ArrayAttribute, r#type::IntegerType, Block, BlockLike, Location, Type,
+        Value, ValueLike,
     },
     Context,
 };
@@ -1387,6 +1477,9 @@
             signature,
             ..
         })
+        | CircuitConcreteLibfunc::U96SingleLimbLessThanGuaranteeVerify(
+            SignatureOnlyConcreteLibfunc { signature, .. },
+        )
         | CircuitConcreteLibfunc::U96GuaranteeVerify(SignatureOnlyConcreteLibfunc { signature }) =&gt; {
             <span class="kw">super</span>::build_noop::&lt;<span class="number">1</span>, <span class="bool-val">true</span>&gt;(
                 context,
@@ -1400,11 +1493,6 @@
         }
         CircuitConcreteLibfunc::U96LimbsLessThanGuaranteeVerify(info) =&gt; {
             build_u96_limbs_less_than_guarantee_verify(
-                context, registry, entry, location, helper, metadata, info,
-            )
-        }
-        CircuitConcreteLibfunc::U96SingleLimbLessThanGuaranteeVerify(info) =&gt; {
-            build_u96_single_limb_less_than_guarantee_verify(
                 context, registry, entry, location, helper, metadata, info,
             )
         }
@@ -1690,7 +1778,6 @@
     // let zero = entry.argument(5)?;
     // let one = entry.argument(6)?;
 
-    // We multiply the amount of gates evaluated by 4 (the amount of u96s in each gate)
     </span><span class="kw">let </span>add_mod = increment_builtin_counter_by(
         context,
         entry,
@@ -1719,6 +1806,21 @@
             circuit_info.mul_offsets.len() * MOD_BUILTIN_INSTANCE_SIZE,
         )<span class="question-mark">?</span>;
 
+        <span class="comment">// convert circuit output from integer representation to struct representation
+        </span><span class="kw">let </span>gates = gates
+            .into_iter()
+            .map(|value| u384_integer_to_struct(context, ok_block, location, value))
+            .collect::&lt;<span class="prelude-ty">Result</span>&lt;Vec&lt;<span class="kw">_</span>&gt;&gt;&gt;()<span class="question-mark">?</span>;
+
+        <span class="kw">let </span>n_gates = circuit_info.values.len();
+        <span class="kw">let </span>gates_array = ok_block.append_op_result(llvm::undef(
+            llvm::r#type::array(build_u384_struct_type(context), n_gates <span class="kw">as </span>u32),
+            location,
+        ))<span class="question-mark">?</span>;
+        <span class="kw">let </span>gates_array = ok_block.insert_values(context, location, gates_array, <span class="kw-2">&amp;</span>gates)<span class="question-mark">?</span>;
+
+        <span class="kw">let </span>modulus_struct = u384_integer_to_struct(context, ok_block, location, circuit_modulus)<span class="question-mark">?</span>;
+
         <span class="comment">// Build output struct
         </span><span class="kw">let </span>outputs_type_id = <span class="kw-2">&amp;</span>info.branch_signatures()[<span class="number">0</span>].vars[<span class="number">2</span>].ty;
         <span class="kw">let </span>outputs = build_struct_value(
@@ -1729,7 +1831,7 @@
             helper,
             metadata,
             outputs_type_id,
-            <span class="kw-2">&amp;</span>gates,
+            <span class="kw-2">&amp;</span>[gates_array, modulus_struct],
         )<span class="question-mark">?</span>;
 
         ok_block.append_operation(helper.br(<span class="number">0</span>, <span class="kw-2">&amp;</span>[add_mod, mul_mod, outputs], location));
@@ -2036,7 +2138,6 @@
 }
 
 <span class="doccomment">/// Generate MLIR operations for the `u96_limbs_less_than_guarantee_verify` libfunc.
-/// NOOP
 </span><span class="attr">#[allow(clippy::too_many_arguments)]
 </span><span class="kw">fn </span>build_u96_limbs_less_than_guarantee_verify&lt;<span class="lifetime">'ctx</span>, <span class="lifetime">'this</span>&gt;(
     context: <span class="kw-2">&amp;</span><span class="lifetime">'ctx </span>Context,
@@ -2047,45 +2148,81 @@
     metadata: <span class="kw-2">&amp;mut </span>MetadataStorage,
     info: <span class="kw-2">&amp;</span>ConcreteU96LimbsLessThanGuaranteeVerifyLibfunc,
 ) -&gt; <span class="prelude-ty">Result</span>&lt;()&gt; {
-    <span class="kw">let </span>guarantee_type_id = <span class="kw-2">&amp;</span>info.branch_signatures()[<span class="number">0</span>].vars[<span class="number">0</span>].ty;
-    <span class="kw">let </span>guarantee_type = registry.build_type(context, helper, metadata, guarantee_type_id)<span class="question-mark">?</span>;
+    <span class="kw">let </span>guarantee = entry.arg(<span class="number">0</span>)<span class="question-mark">?</span>;
+    <span class="kw">let </span>limb_count = info.limb_count;
 
-    <span class="kw">let </span>guarantee = entry.append_op_result(llvm::undef(guarantee_type, location))<span class="question-mark">?</span>;
+    <span class="kw">let </span>u96_type = IntegerType::new(context, <span class="number">96</span>).into();
+    <span class="kw">let </span>limb_struct_type = llvm::r#type::r#struct(context, <span class="kw-2">&amp;</span><span class="macro">vec!</span>[u96_type; limb_count], <span class="bool-val">false</span>);
 
-    <span class="kw">let </span>u96_type_id = <span class="kw-2">&amp;</span>info.branch_signatures()[<span class="number">1</span>].vars[<span class="number">0</span>].ty;
-    <span class="kw">let </span>u96_type = registry.build_type(context, helper, metadata, u96_type_id)<span class="question-mark">?</span>;
+    <span class="comment">// extract gate and modulus from input value
+    </span><span class="kw">let </span>gate = entry.extract_value(context, location, guarantee, limb_struct_type, <span class="number">0</span>)<span class="question-mark">?</span>;
+    <span class="kw">let </span>modulus = entry.extract_value(context, location, guarantee, limb_struct_type, <span class="number">1</span>)<span class="question-mark">?</span>;
 
-    <span class="kw">let </span>u96 = entry.append_op_result(llvm::undef(u96_type, location))<span class="question-mark">?</span>;
+    <span class="comment">// extract last limb from gate and modulus
+    </span><span class="kw">let </span>gate_last_limb = entry.extract_value(context, location, gate, u96_type, limb_count - <span class="number">1</span>)<span class="question-mark">?</span>;
+    <span class="kw">let </span>modulus_last_limb =
+        entry.extract_value(context, location, modulus, u96_type, limb_count - <span class="number">1</span>)<span class="question-mark">?</span>;
 
-    <span class="kw">let </span>kfalse = entry.const_int(context, location, <span class="number">0</span>, <span class="number">64</span>)<span class="question-mark">?</span>;
-    entry.append_operation(helper.cond_br(
+    <span class="comment">// calcualte diff between limbs
+    </span><span class="kw">let </span>diff = entry.append_op_result(arith::subi(modulus_last_limb, gate_last_limb, location))<span class="question-mark">?</span>;
+    <span class="kw">let </span>k0 = entry.const_int_from_type(context, location, <span class="number">0</span>, u96_type)<span class="question-mark">?</span>;
+    <span class="kw">let </span>has_diff = entry.cmpi(context, CmpiPredicate::Ne, diff, k0, location)<span class="question-mark">?</span>;
+
+    <span class="kw">let </span>diff_block = helper.append_block(Block::new(<span class="kw-2">&amp;</span>[]));
+    <span class="kw">let </span>next_block = helper.append_block(Block::new(<span class="kw-2">&amp;</span>[]));
+    entry.append_operation(cf::cond_br(
         context,
-        kfalse,
-        [<span class="number">0</span>, <span class="number">1</span>],
-        [<span class="kw-2">&amp;</span>[guarantee], <span class="kw-2">&amp;</span>[u96]],
+        has_diff,
+        diff_block,
+        next_block,
+        <span class="kw-2">&amp;</span>[],
+        <span class="kw-2">&amp;</span>[],
         location,
     ));
 
-    <span class="prelude-val">Ok</span>(())
-}
+    {
+        <span class="comment">// if there is diff, return it
+        </span>diff_block.append_operation(helper.br(<span class="number">1</span>, <span class="kw-2">&amp;</span>[diff], location));
+    }
+    {
+        <span class="comment">// if there is no diff, build a new guarantee, skipping last limb
+        </span><span class="kw">let </span>new_limb_struct_type =
+            llvm::r#type::r#struct(context, <span class="kw-2">&amp;</span><span class="macro">vec!</span>[u96_type; limb_count - <span class="number">1</span>], <span class="bool-val">false</span>);
+        <span class="kw">let </span>new_gate = build_array_slice(
+            context,
+            next_block,
+            location,
+            gate,
+            u96_type,
+            new_limb_struct_type,
+            <span class="number">0</span>,
+            limb_count - <span class="number">1</span>,
+        )<span class="question-mark">?</span>;
+        <span class="kw">let </span>new_modulus = build_array_slice(
+            context,
+            next_block,
+            location,
+            modulus,
+            u96_type,
+            new_limb_struct_type,
+            <span class="number">0</span>,
+            limb_count - <span class="number">1</span>,
+        )<span class="question-mark">?</span>;
 
-<span class="doccomment">/// Generate MLIR operations for the `u96_single_limb_less_than_guarantee_verify` libfunc.
-/// NOOP
-</span><span class="attr">#[allow(clippy::too_many_arguments)]
-</span><span class="kw">fn </span>build_u96_single_limb_less_than_guarantee_verify&lt;<span class="lifetime">'ctx</span>, <span class="lifetime">'this</span>&gt;(
-    context: <span class="kw-2">&amp;</span><span class="lifetime">'ctx </span>Context,
-    registry: <span class="kw-2">&amp;</span>ProgramRegistry&lt;CoreType, CoreLibfunc&gt;,
-    entry: <span class="kw-2">&amp;</span><span class="lifetime">'this </span>Block&lt;<span class="lifetime">'ctx</span>&gt;,
-    location: Location&lt;<span class="lifetime">'ctx</span>&gt;,
-    helper: <span class="kw-2">&amp;</span>LibfuncHelper&lt;<span class="lifetime">'ctx</span>, <span class="lifetime">'this</span>&gt;,
-    metadata: <span class="kw-2">&amp;mut </span>MetadataStorage,
-    info: <span class="kw-2">&amp;</span>SignatureOnlyConcreteLibfunc,
-) -&gt; <span class="prelude-ty">Result</span>&lt;()&gt; {
-    <span class="kw">let </span>u96_type_id = <span class="kw-2">&amp;</span>info.branch_signatures()[<span class="number">0</span>].vars[<span class="number">0</span>].ty;
-    <span class="kw">let </span>u96_type = registry.build_type(context, helper, metadata, u96_type_id)<span class="question-mark">?</span>;
-    <span class="kw">let </span>u96 = entry.append_op_result(llvm::undef(u96_type, location))<span class="question-mark">?</span>;
+        <span class="kw">let </span>guarantee_type_id = <span class="kw-2">&amp;</span>info.branch_signatures()[<span class="number">0</span>].vars[<span class="number">0</span>].ty;
+        <span class="kw">let </span>new_guarantee = build_struct_value(
+            context,
+            registry,
+            next_block,
+            location,
+            helper,
+            metadata,
+            guarantee_type_id,
+            <span class="kw-2">&amp;</span>[new_gate, new_modulus],
+        )<span class="question-mark">?</span>;
 
-    entry.append_operation(helper.br(<span class="number">0</span>, <span class="kw-2">&amp;</span>[u96], location));
+        next_block.append_operation(helper.br(<span class="number">0</span>, <span class="kw-2">&amp;</span>[new_guarantee], location));
+    }
 
     <span class="prelude-val">Ok</span>(())
 }
@@ -2115,18 +2252,41 @@
     <span class="kw">let </span>output_idx = output_offset_idx - circuit_info.n_inputs - <span class="number">1</span>;
 
     <span class="kw">let </span>outputs = entry.arg(<span class="number">0</span>)<span class="question-mark">?</span>;
-    <span class="kw">let </span>output_integer = entry.extract_value(
+
+    <span class="kw">let </span>n_gates = circuit_info.values.len();
+    <span class="kw">let </span>output_gates = entry.extract_value(
         context,
         location,
         outputs,
-        IntegerType::new(context, <span class="number">384</span>).into(),
+        llvm::r#type::array(build_u384_struct_type(context), n_gates <span class="kw">as </span>u32),
+        <span class="number">0</span>,
+    )<span class="question-mark">?</span>;
+    <span class="kw">let </span>modulus_struct = entry.extract_value(
+        context,
+        location,
+        outputs,
+        build_u384_struct_type(context),
+        <span class="number">1</span>,
+    )<span class="question-mark">?</span>;
+    <span class="kw">let </span>output_struct = entry.extract_value(
+        context,
+        location,
+        output_gates,
+        build_u384_struct_type(context),
         output_idx,
     )<span class="question-mark">?</span>;
-    <span class="kw">let </span>output_struct = u384_integer_to_struct(context, entry, location, output_integer)<span class="question-mark">?</span>;
 
     <span class="kw">let </span>guarantee_type_id = <span class="kw-2">&amp;</span>info.branch_signatures()[<span class="number">0</span>].vars[<span class="number">1</span>].ty;
-    <span class="kw">let </span>guarantee_type = registry.build_type(context, helper, metadata, guarantee_type_id)<span class="question-mark">?</span>;
-    <span class="kw">let </span>guarantee = entry.append_op_result(llvm::undef(guarantee_type, location))<span class="question-mark">?</span>;
+    <span class="kw">let </span>guarantee = build_struct_value(
+        context,
+        registry,
+        entry,
+        location,
+        helper,
+        metadata,
+        guarantee_type_id,
+        <span class="kw-2">&amp;</span>[output_struct, modulus_struct],
+    )<span class="question-mark">?</span>;
 
     entry.append_operation(helper.br(<span class="number">0</span>, <span class="kw-2">&amp;</span>[output_struct, guarantee], location));
 
@@ -2209,16 +2369,7 @@
         block.trunci(limb, u96_type, location)<span class="question-mark">?
     </span>};
 
-    <span class="kw">let </span>struct_type = llvm::r#type::r#struct(
-        context,
-        <span class="kw-2">&amp;</span>[
-            IntegerType::new(context, <span class="number">96</span>).into(),
-            IntegerType::new(context, <span class="number">96</span>).into(),
-            IntegerType::new(context, <span class="number">96</span>).into(),
-            IntegerType::new(context, <span class="number">96</span>).into(),
-        ],
-        <span class="bool-val">false</span>,
-    );
+    <span class="kw">let </span>struct_type = build_u384_struct_type(context);
     <span class="kw">let </span>struct_value = block.append_op_result(llvm::undef(struct_type, location))<span class="question-mark">?</span>;
 
     block.insert_values(
@@ -2308,6 +2459,35 @@
     ));
 
     <span class="prelude-val">Ok</span>(end_block)
+}
+
+<span class="doccomment">/// Extracts values from indexes `from` - `to` (exclusive) and builds a new value of type `result_type`
+///
+/// Can be used with arrays, or structs with multiple elements of a single type.
+</span><span class="attr">#[allow(clippy::too_many_arguments)]
+</span><span class="kw">fn </span>build_array_slice&lt;<span class="lifetime">'ctx</span>&gt;(
+    context: <span class="kw-2">&amp;</span><span class="lifetime">'ctx </span>Context,
+    block: <span class="kw-2">&amp;</span><span class="lifetime">'ctx </span>Block&lt;<span class="lifetime">'ctx</span>&gt;,
+    location: Location&lt;<span class="lifetime">'ctx</span>&gt;,
+    aggregate: Value&lt;<span class="lifetime">'ctx</span>, <span class="lifetime">'ctx</span>&gt;,
+    element_type: Type&lt;<span class="lifetime">'ctx</span>&gt;,
+    result_type: Type&lt;<span class="lifetime">'ctx</span>&gt;,
+    from: usize,
+    to: usize,
+) -&gt; <span class="prelude-ty">Result</span>&lt;Value&lt;<span class="lifetime">'ctx</span>, <span class="lifetime">'ctx</span>&gt;&gt; {
+    <span class="kw">let </span><span class="kw-2">mut </span>values = Vec::with_capacity(to - from);
+
+    <span class="kw">for </span>i <span class="kw">in </span>from..to {
+        <span class="kw">let </span>value = block.extract_value(context, location, aggregate, element_type, i)<span class="question-mark">?</span>;
+        values.push(value);
+    }
+
+    block.insert_values(
+        context,
+        location,
+        block.append_op_result(llvm::undef(result_type, location))<span class="question-mark">?</span>,
+        <span class="kw-2">&amp;</span>values,
+    )
 }
 
 <span class="attr">#[cfg(test)]
