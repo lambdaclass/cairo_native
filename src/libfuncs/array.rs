@@ -2085,9 +2085,7 @@ mod test {
     use cairo_lang_sierra::{
         extensions::{
             array::{
-                ArrayAppendLibfunc, ArrayGetLibfunc, ArrayLenLibfunc, ArrayNewLibfunc,
-                ArrayPopFrontLibfunc, ArraySliceLibfunc, ArraySnapshotMultiPopBackLibfunc,
-                ArraySnapshotMultiPopFrontLibfunc, ArraySnapshotPopBackLibfunc,
+                ArrayAppendLibfunc, ArrayGetLibfunc, ArrayLenLibfunc, ArrayNewLibfunc, ArrayPopFrontConsumeLibfunc, ArrayPopFrontLibfunc, ArraySliceLibfunc, ArraySnapshotMultiPopBackLibfunc, ArraySnapshotMultiPopFrontLibfunc, ArraySnapshotPopBackLibfunc
             },
             felt252::Felt252Type,
             int::unsigned::Uint32Type,
@@ -2328,22 +2326,18 @@ mod test {
 
     #[test]
     fn run_pop_front_consume() {
-        let program = load_cairo!(
-            use array::ArrayTrait;
+        let program_pop = {
+            let mut generator = SierraGenerator::<ArrayPopFrontConsumeLibfunc>::default();
 
-            fn run_test() -> u32 {
-                let mut numbers = ArrayTrait::new();
-                numbers.append(4_u32);
-                numbers.append(3_u32);
-                match numbers.pop_front_consume() {
-                    Option::Some((_, x)) => x,
-                    Option::None(()) => 0_u32,
-                }
-            }
-        );
-        let result = run_program(&program, "run_test", &[]).return_value;
+            let u32_ty = generator.push_type_declaration::<Uint32Type>(&[]).clone();
+            
+            generator.build(&[GenericArg::Type(u32_ty)])
+        };
+        let array = [4u32, 3u32].into();
+        
+        let result = run_sierra_program(&program_pop,  &[array]).return_value;
 
-        assert_eq!(result, 4u32.into());
+        assert_eq!(result, jit_enum!(0, 4u32.into()));
     }
 
     #[test]
