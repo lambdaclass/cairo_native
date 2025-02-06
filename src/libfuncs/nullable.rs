@@ -205,6 +205,25 @@ mod test {
     }
 
     #[test]
+    fn match_nullable() {
+        let program_match = {
+            let mut generator = SierraGenerator::<MatchNullableLibfunc>::default();
+
+            let u8_ty = generator.push_type_declaration::<Uint8Type>(&[]).clone();
+
+            generator.build(&[GenericArg::Type(u8_ty)])
+        };
+
+        println!("{program_match}");
+
+        let result = run_sierra_program(&program_match, &[Value::Null]).return_value;
+        assert_eq!(result, jit_enum!(0, jit_struct!()));
+
+        let result = run_sierra_program(&program_match, &[1u8.into()]).return_value;
+        assert_eq!(result, jit_enum!(1, 1u8.into()));
+    }
+
+    #[test]
     fn match_snapshot_nullable_clone_bug() {
         let program = load_cairo! {
             use core::{NullableTrait, match_nullable, null, nullable::FromNullableResult};

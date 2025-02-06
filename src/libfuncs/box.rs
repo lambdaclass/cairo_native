@@ -152,10 +152,19 @@ pub fn build_unbox<'ctx, 'this>(
 
 #[cfg(test)]
 mod test {
-    use cairo_lang_sierra::{extensions::{boxing::{BoxLibfunc, IntoBoxLibfunc, UnboxLibfunc}, int::unsigned::Uint32Type}, program::GenericArg};
+    use cairo_lang_sierra::{
+        extensions::{
+            boxing::{IntoBoxLibfunc, UnboxLibfunc},
+            int::unsigned::Uint32Type,
+        },
+        program::GenericArg,
+    };
 
     use crate::{
-        utils::{sierra_gen::SierraGenerator, test::{load_cairo, run_program_assert_output, run_sierra_program}},
+        utils::{
+            sierra_gen::SierraGenerator,
+            test::{load_cairo, run_program_assert_output, run_sierra_program},
+        },
         values::Value,
     };
 
@@ -175,7 +184,7 @@ mod test {
 
             generator.build(&[GenericArg::Type(u32_ty)])
         };
-        
+
         let result = run_sierra_program(&program_box, &[Value::Uint32(2)]).return_value;
         let result = run_sierra_program(&program_unbox, &[result]).return_value;
 
