@@ -163,6 +163,8 @@ pub fn build_squash<'ctx, 'this>(
 
 #[cfg(test)]
 mod test {
+    use std::collections::HashMap;
+
     use cairo_lang_sierra::{
         extensions::{felt252_dict::Felt252DictNewLibfunc, int::unsigned::Uint32Type},
         program::GenericArg,
@@ -191,7 +193,12 @@ mod test {
 
         let result = run_sierra_program(&program, &[]).return_value;
 
-        assert_eq!(jit_struct!(), result);
+        let dict = Value::Felt252Dict {
+            value: HashMap::new(),
+            debug_name: None,
+        };
+
+        assert_eq!(result, dict);
     }
 
     #[test]
