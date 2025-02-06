@@ -96,7 +96,7 @@ jobs:
     runs-on: ubuntu-24.04
     steps:
       - name: Cache binary
-        uses: actions/cache@v3
+        uses: actions/cache@v4.2.0
         id: cache-binary
         with:
           path: bin/cairo-native-run-${{ matrix.branch }}
