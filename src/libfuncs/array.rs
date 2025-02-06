@@ -2088,6 +2088,7 @@ mod test {
                 ArrayAppendLibfunc, ArrayGetLibfunc, ArrayLenLibfunc, ArrayNewLibfunc,
                 ArrayPopFrontLibfunc, ArraySliceLibfunc, ArraySnapshotMultiPopBackLibfunc,
                 ArraySnapshotMultiPopFrontLibfunc, ArraySnapshotPopBackLibfunc, ArrayType,
+                SpanFromTupleLibfunc,
             },
             felt252::Felt252Type,
             int::unsigned::Uint32Type,
@@ -3012,13 +3013,21 @@ mod test {
 
             generator.build(&[GenericArg::Type(struct_ty)])
         };
-        let array = [1, 2, 3, 4, 5, 6].into();
+        println!("{program_multi}");
+        let array = [
+            Value::Felt252(1.into()),
+            Value::Felt252(2.into()),
+            Value::Felt252(3.into()),
+            Value::Felt252(4.into()),
+            Value::Felt252(5.into()),
+            Value::Felt252(6.into()),
+        ]
+        .into();
 
         let result = run_sierra_program(&program_multi, &[array, Value::Uint32(3)]).return_value;
 
         assert_eq!(
             result,
-            // Panic result
             jit_enum!(
                 0,
                 jit_struct!(
@@ -3056,14 +3065,15 @@ mod test {
 
             generator.build(&[GenericArg::Type(struct_ty)])
         };
-        let array = [1, 2].into();
+        let array = Value::Array(vec![Value::Felt252(1.into()), Value::Felt252(2.into())]);
 
-        let result = run_sierra_program(&program_multi, &[array, Value::Uint32(3)]).return_value;
+        let result =
+            run_sierra_program(&program_multi, &[array.clone(), Value::Uint32(3)]).return_value;
 
         assert_eq!(
             result,
             // Panic result
-            jit_enum!(1, jit_struct!())
+            jit_enum!(1, array)
         );
     }
 
@@ -3085,7 +3095,15 @@ mod test {
             generator.build(&[GenericArg::Type(struct_ty)])
         };
 
-        let array = [1, 2, 3, 4, 5, 6].into();
+        let array = [
+            Value::Felt252(1.into()),
+            Value::Felt252(2.into()),
+            Value::Felt252(3.into()),
+            Value::Felt252(4.into()),
+            Value::Felt252(5.into()),
+            Value::Felt252(6.into()),
+        ]
+        .into();
 
         let result =
             run_sierra_program(&program_multi_back, &[array, Value::Uint32(3)]).return_value;
@@ -3115,34 +3133,30 @@ mod test {
 
     #[test]
     fn snapshot_failed_multi_pop_back() {
-        let program = load_cairo!(
-            use array::ArrayTrait;
+        let program_multi = {
+            let mut generator = SierraGenerator::<ArraySnapshotMultiPopBackLibfunc>::default();
 
-            fn run_test() -> Span<felt252> {
-                let mut numbers = array![1, 2].span();
+            let felt252_ty = generator.push_type_declaration::<Felt252Type>(&[]).clone();
+            let struct_ty = generator
+                .push_type_declaration::<StructType>(&[
+                    GenericArg::UserType(UserTypeId::from_string("Tuple")),
+                    GenericArg::Type(felt252_ty.clone()),
+                    GenericArg::Type(felt252_ty.clone()),
+                    GenericArg::Type(felt252_ty),
+                ])
+                .clone();
 
-                // should fail (return none)
-                assert!(numbers.multi_pop_back::<3>().is_none());
+            generator.build(&[GenericArg::Type(struct_ty)])
+        };
+        let array = Value::Array(vec![Value::Felt252(1.into()), Value::Felt252(2.into())]);
 
-                numbers
-            }
-        );
-
-        let result = run_program(&program, "run_test", &[]).return_value;
+        let result =
+            run_sierra_program(&program_multi, &[array.clone(), Value::Uint32(3)]).return_value;
 
         assert_eq!(
             result,
             // Panic result
-            jit_enum!(
-                0,
-                jit_struct!(
-                    // Span of original array
-                    jit_struct!(Value::Array(vec![
-                        Value::Felt252(1.into()),
-                        Value::Felt252(2.into()),
-                    ]),)
-                )
-            )
+            jit_enum!(1, array)
         );
     }
 
@@ -3155,7 +3169,6 @@ mod test {
             let struct_ty = generator
                 .push_type_declaration::<StructType>(&[
                     GenericArg::UserType(UserTypeId::from_string("Tuple")),
-                    GenericArg::Type(felt252_ty.clone()),
                     GenericArg::Type(felt252_ty.clone()),
                     GenericArg::Type(felt252_ty),
                 ])
@@ -3171,21 +3184,28 @@ mod test {
                 .push_type_declaration::<StructType>(&[
                     GenericArg::UserType(UserTypeId::from_string("Tuple")),
                     GenericArg::Type(felt252_ty.clone()),
-                    GenericArg::Type(felt252_ty.clone()),
                     GenericArg::Type(felt252_ty),
                 ])
                 .clone();
 
             generator.build(&[GenericArg::Type(struct_ty)])
         };
-        let array = [1, 2, 3, 4, 5, 6].into();
+        let array = [
+            Value::Felt252(1.into()),
+            Value::Felt252(2.into()),
+            Value::Felt252(3.into()),
+            Value::Felt252(4.into()),
+            Value::Felt252(5.into()),
+            Value::Felt252(6.into()),
+        ]
+        .into();
         let enum_res =
             run_sierra_program(&program_multi_front, &[array, Value::Uint32(2)]).return_value;
         let Value::Enum {
             tag: _,
             value,
             debug_name: _,
-        } = enum_res
+        } = enum_res.clone()
         else {
             panic!("should be an enum");
         };
@@ -3193,13 +3213,13 @@ mod test {
         let Value::Struct {
             fields,
             debug_name: _,
-        } = *value.clone()
+        } = *value
         else {
             panic!("should be a struct");
         };
 
         assert_eq!(
-            *value,
+            enum_res,
             // Panic result
             jit_enum!(
                 0,
