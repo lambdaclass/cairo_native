@@ -7,7 +7,7 @@ use crate::{
     error::{Result, SierraAssertError},
     libfuncs::r#struct::build_struct_value,
     metadata::MetadataStorage,
-    types::TypeBuilder,
+    types::{circuit::build_u384_struct_type, TypeBuilder},
     utils::{get_integer_layout, layout_repeat, BlockExt, ProgramRegistryExt},
 };
 use cairo_lang_sierra::{
@@ -28,8 +28,8 @@ use melior::{
         cf, llvm,
     },
     ir::{
-        attribute::DenseI32ArrayAttribute, r#type::IntegerType, Block, BlockLike, Location, Value,
-        ValueLike,
+        attribute::DenseI32ArrayAttribute, r#type::IntegerType, Block, BlockLike, Location, Type,
+        Value, ValueLike,
     },
     Context,
 };
@@ -70,6 +70,9 @@ pub fn build<'ctx, 'this>(
             signature,
             ..
         })
+        | CircuitConcreteLibfunc::U96SingleLimbLessThanGuaranteeVerify(
+            SignatureOnlyConcreteLibfunc { signature, .. },
+        )
         | CircuitConcreteLibfunc::U96GuaranteeVerify(SignatureOnlyConcreteLibfunc { signature }) => {
             super::build_noop::<1, true>(
                 context,
@@ -83,11 +86,6 @@ pub fn build<'ctx, 'this>(
         }
         CircuitConcreteLibfunc::U96LimbsLessThanGuaranteeVerify(info) => {
             build_u96_limbs_less_than_guarantee_verify(
-                context, registry, entry, location, helper, metadata, info,
-            )
-        }
-        CircuitConcreteLibfunc::U96SingleLimbLessThanGuaranteeVerify(info) => {
-            build_u96_single_limb_less_than_guarantee_verify(
                 context, registry, entry, location, helper, metadata, info,
             )
         }
@@ -373,7 +371,6 @@ fn build_eval<'ctx, 'this>(
     // let zero = entry.argument(5)?;
     // let one = entry.argument(6)?;
 
-    // We multiply the amount of gates evaluated by 4 (the amount of u96s in each gate)
     let add_mod = increment_builtin_counter_by(
         context,
         entry,
@@ -402,6 +399,21 @@ fn build_eval<'ctx, 'this>(
             circuit_info.mul_offsets.len() * MOD_BUILTIN_INSTANCE_SIZE,
         )?;
 
+        // convert circuit output from integer representation to struct representation
+        let gates = gates
+            .into_iter()
+            .map(|value| u384_integer_to_struct(context, ok_block, location, value))
+            .collect::<Result<Vec<_>>>()?;
+
+        let n_gates = circuit_info.values.len();
+        let gates_array = ok_block.append_op_result(llvm::undef(
+            llvm::r#type::array(build_u384_struct_type(context), n_gates as u32),
+            location,
+        ))?;
+        let gates_array = ok_block.insert_values(context, location, gates_array, &gates)?;
+
+        let modulus_struct = u384_integer_to_struct(context, ok_block, location, circuit_modulus)?;
+
         // Build output struct
         let outputs_type_id = &info.branch_signatures()[0].vars[2].ty;
         let outputs = build_struct_value(
@@ -412,7 +424,7 @@ fn build_eval<'ctx, 'this>(
             helper,
             metadata,
             outputs_type_id,
-            &gates,
+            &[gates_array, modulus_struct],
         )?;
 
         ok_block.append_operation(helper.br(0, &[add_mod, mul_mod, outputs], location));
@@ -719,7 +731,6 @@ fn build_failure_guarantee_verify<'ctx, 'this>(
 }
 
 /// Generate MLIR operations for the `u96_limbs_less_than_guarantee_verify` libfunc.
-/// NOOP
 #[allow(clippy::too_many_arguments)]
 fn build_u96_limbs_less_than_guarantee_verify<'ctx, 'this>(
     context: &'ctx Context,
@@ -730,45 +741,81 @@ fn build_u96_limbs_less_than_guarantee_verify<'ctx, 'this>(
     metadata: &mut MetadataStorage,
     info: &ConcreteU96LimbsLessThanGuaranteeVerifyLibfunc,
 ) -> Result<()> {
-    let guarantee_type_id = &info.branch_signatures()[0].vars[0].ty;
-    let guarantee_type = registry.build_type(context, helper, metadata, guarantee_type_id)?;
+    let guarantee = entry.arg(0)?;
+    let limb_count = info.limb_count;
 
-    let guarantee = entry.append_op_result(llvm::undef(guarantee_type, location))?;
+    let u96_type = IntegerType::new(context, 96).into();
+    let limb_struct_type = llvm::r#type::r#struct(context, &vec![u96_type; limb_count], false);
 
-    let u96_type_id = &info.branch_signatures()[1].vars[0].ty;
-    let u96_type = registry.build_type(context, helper, metadata, u96_type_id)?;
+    // extract gate and modulus from input value
+    let gate = entry.extract_value(context, location, guarantee, limb_struct_type, 0)?;
+    let modulus = entry.extract_value(context, location, guarantee, limb_struct_type, 1)?;
 
-    let u96 = entry.append_op_result(llvm::undef(u96_type, location))?;
+    // extract last limb from gate and modulus
+    let gate_last_limb = entry.extract_value(context, location, gate, u96_type, limb_count - 1)?;
+    let modulus_last_limb =
+        entry.extract_value(context, location, modulus, u96_type, limb_count - 1)?;
 
-    let kfalse = entry.const_int(context, location, 0, 64)?;
-    entry.append_operation(helper.cond_br(
+    // calcualte diff between limbs
+    let diff = entry.append_op_result(arith::subi(modulus_last_limb, gate_last_limb, location))?;
+    let k0 = entry.const_int_from_type(context, location, 0, u96_type)?;
+    let has_diff = entry.cmpi(context, CmpiPredicate::Ne, diff, k0, location)?;
+
+    let diff_block = helper.append_block(Block::new(&[]));
+    let next_block = helper.append_block(Block::new(&[]));
+    entry.append_operation(cf::cond_br(
         context,
-        kfalse,
-        [0, 1],
-        [&[guarantee], &[u96]],
+        has_diff,
+        diff_block,
+        next_block,
+        &[],
+        &[],
         location,
     ));
 
-    Ok(())
-}
+    {
+        // if there is diff, return it
+        diff_block.append_operation(helper.br(1, &[diff], location));
+    }
+    {
+        // if there is no diff, build a new guarantee, skipping last limb
+        let new_limb_struct_type =
+            llvm::r#type::r#struct(context, &vec![u96_type; limb_count - 1], false);
+        let new_gate = build_array_slice(
+            context,
+            next_block,
+            location,
+            gate,
+            u96_type,
+            new_limb_struct_type,
+            0,
+            limb_count - 1,
+        )?;
+        let new_modulus = build_array_slice(
+            context,
+            next_block,
+            location,
+            modulus,
+            u96_type,
+            new_limb_struct_type,
+            0,
+            limb_count - 1,
+        )?;
 
-/// Generate MLIR operations for the `u96_single_limb_less_than_guarantee_verify` libfunc.
-/// NOOP
-#[allow(clippy::too_many_arguments)]
-fn build_u96_single_limb_less_than_guarantee_verify<'ctx, 'this>(
-    context: &'ctx Context,
-    registry: &ProgramRegistry<CoreType, CoreLibfunc>,
-    entry: &'this Block<'ctx>,
-    location: Location<'ctx>,
-    helper: &LibfuncHelper<'ctx, 'this>,
-    metadata: &mut MetadataStorage,
-    info: &SignatureOnlyConcreteLibfunc,
-) -> Result<()> {
-    let u96_type_id = &info.branch_signatures()[0].vars[0].ty;
-    let u96_type = registry.build_type(context, helper, metadata, u96_type_id)?;
-    let u96 = entry.append_op_result(llvm::undef(u96_type, location))?;
+        let guarantee_type_id = &info.branch_signatures()[0].vars[0].ty;
+        let new_guarantee = build_struct_value(
+            context,
+            registry,
+            next_block,
+            location,
+            helper,
+            metadata,
+            guarantee_type_id,
+            &[new_gate, new_modulus],
+        )?;
 
-    entry.append_operation(helper.br(0, &[u96], location));
+        next_block.append_operation(helper.br(0, &[new_guarantee], location));
+    }
 
     Ok(())
 }
@@ -798,18 +845,41 @@ fn build_get_output<'ctx, 'this>(
     let output_idx = output_offset_idx - circuit_info.n_inputs - 1;
 
     let outputs = entry.arg(0)?;
-    let output_integer = entry.extract_value(
+
+    let n_gates = circuit_info.values.len();
+    let output_gates = entry.extract_value(
         context,
         location,
         outputs,
-        IntegerType::new(context, 384).into(),
+        llvm::r#type::array(build_u384_struct_type(context), n_gates as u32),
+        0,
+    )?;
+    let modulus_struct = entry.extract_value(
+        context,
+        location,
+        outputs,
+        build_u384_struct_type(context),
+        1,
+    )?;
+    let output_struct = entry.extract_value(
+        context,
+        location,
+        output_gates,
+        build_u384_struct_type(context),
         output_idx,
     )?;
-    let output_struct = u384_integer_to_struct(context, entry, location, output_integer)?;
 
     let guarantee_type_id = &info.branch_signatures()[0].vars[1].ty;
-    let guarantee_type = registry.build_type(context, helper, metadata, guarantee_type_id)?;
-    let guarantee = entry.append_op_result(llvm::undef(guarantee_type, location))?;
+    let guarantee = build_struct_value(
+        context,
+        registry,
+        entry,
+        location,
+        helper,
+        metadata,
+        guarantee_type_id,
+        &[output_struct, modulus_struct],
+    )?;
 
     entry.append_operation(helper.br(0, &[output_struct, guarantee], location));
 
@@ -892,16 +962,7 @@ fn u384_integer_to_struct<'a>(
         block.trunci(limb, u96_type, location)?
     };
 
-    let struct_type = llvm::r#type::r#struct(
-        context,
-        &[
-            IntegerType::new(context, 96).into(),
-            IntegerType::new(context, 96).into(),
-            IntegerType::new(context, 96).into(),
-            IntegerType::new(context, 96).into(),
-        ],
-        false,
-    );
+    let struct_type = build_u384_struct_type(context);
     let struct_value = block.append_op_result(llvm::undef(struct_type, location))?;
 
     block.insert_values(
@@ -991,6 +1052,35 @@ fn build_euclidean_algorithm<'ctx, 'this>(
     ));
 
     Ok(end_block)
+}
+
+/// Extracts values from indexes `from` - `to` (exclusive) and builds a new value of type `result_type`
+///
+/// Can be used with arrays, or structs with multiple elements of a single type.
+#[allow(clippy::too_many_arguments)]
+fn build_array_slice<'ctx>(
+    context: &'ctx Context,
+    block: &'ctx Block<'ctx>,
+    location: Location<'ctx>,
+    aggregate: Value<'ctx, 'ctx>,
+    element_type: Type<'ctx>,
+    result_type: Type<'ctx>,
+    from: usize,
+    to: usize,
+) -> Result<Value<'ctx, 'ctx>> {
+    let mut values = Vec::with_capacity(to - from);
+
+    for i in from..to {
+        let value = block.extract_value(context, location, aggregate, element_type, i)?;
+        values.push(value);
+    }
+
+    block.insert_values(
+        context,
+        location,
+        block.append_op_result(llvm::undef(result_type, location))?,
+        &values,
+    )
 }
 
 #[cfg(test)]

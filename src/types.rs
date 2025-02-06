@@ -35,7 +35,7 @@ mod bounded_int;
 mod r#box;
 mod builtin_costs;
 mod bytes31;
-mod circuit;
+pub mod circuit;
 mod coupon;
 mod ec_op;
 mod ec_point;
