@@ -2087,8 +2087,7 @@ mod test {
             array::{
                 ArrayAppendLibfunc, ArrayGetLibfunc, ArrayLenLibfunc, ArrayNewLibfunc,
                 ArrayPopFrontLibfunc, ArraySliceLibfunc, ArraySnapshotMultiPopBackLibfunc,
-                ArraySnapshotMultiPopFrontLibfunc, ArraySnapshotPopBackLibfunc, ArrayType,
-                SpanFromTupleLibfunc,
+                ArraySnapshotMultiPopFrontLibfunc, ArraySnapshotPopBackLibfunc,
             },
             felt252::Felt252Type,
             int::unsigned::Uint32Type,

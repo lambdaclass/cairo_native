@@ -974,55 +974,21 @@ mod test {
 
             generator.build(&[])
         };
-        // load_cairo! {
-        //     use zeroable::IsZeroResult;
-
-        //     extern fn u256_is_zero(a: u256) -> IsZeroResult<u256> implicits() nopanic;
-
-        //     fn run_test(value: u256) -> bool {
-        //         match u256_is_zero(value) {
-        //             IsZeroResult::Zero(_) => true,
-        //             IsZeroResult::NonZero(_) => false,
-        //         }
-        //     }
-        // };
         static ref U256_SAFE_DIVMOD: Program = {
             let generator = SierraGenerator::<Uint256DivmodLibfunc>::default();
 
             generator.build(&[])
         };
-        // load_cairo! {
-        //     fn run_test(lhs: u256, rhs: u256) -> (u256, u256) {
-        //         let q = lhs / rhs;
-        //         let r = lhs % rhs;
-
-        //         (q, r)
-        //     }
-        // };
         static ref U256_SQRT: Program = {
             let generator = SierraGenerator::<Uint256SquareRootLibfunc>::default();
 
             generator.build(&[])
         };
-        // load_cairo! {
-        //     use core::num::traits::Sqrt;
-
-        //     fn run_test(value: u256) -> u128 {
-        //         value.sqrt()
-        //     }
-        // };
         static ref U256_INV_MOD_N: Program = {
             let generator = SierraGenerator::<Uint256InvModNLibfunc>::default();
 
             generator.build(&[])
         };
-        // load_cairo! {
-        //     use core::math::u256_inv_mod;
-
-        //     fn run_test(a: u256, n: NonZero<u256>) -> Option<NonZero<u256>> {
-        //         u256_inv_mod(a, n)
-        //     }
-        // };
     }
 
     fn u256(value: BigUint) -> Value {
