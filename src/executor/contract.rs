@@ -256,9 +256,13 @@ impl AotContractExecutor {
         })
         .collect::<Result<BTreeMap<_, _>>>()?;
 
-        // Build the shared library.
+        // Build the shared library into a temporary path.
+        let temp_path = NamedTempFile::new()?
+            .into_temp_path()
+            .keep()
+            .to_native_assert_error("can only fail on windows")?;
         let object_data = crate::module_to_object(&module, opt_level)?;
-        crate::object_to_shared_lib(&object_data, &output_path)?;
+        crate::object_to_shared_lib(&object_data, &temp_path)?;
 
         // Write the contract info.
         fs::write(
@@ -268,6 +272,10 @@ impl AotContractExecutor {
                 entry_points: entry_point_mappings,
             })?,
         )?;
+
+        // Atomically move the built shared library to the correct path. This will avoid data races
+        // when loading contracts.
+        fs::rename(temp_path, &output_path)?;
 
         drop(lock_file);
         Self::from_path(output_path)
@@ -280,10 +288,9 @@ impl AotContractExecutor {
     /// again.
     pub fn from_path(path: impl Into<PathBuf>) -> Result<Option<Self>> {
         let path = path.into();
-        if LockFile::exists(&path)? {
-            return Ok(None);
-        }
 
+        // Note: Library should load first, otherwise there could theoretically be a race condition.
+        //   See the `new_into` function's code for details.
         let library = Arc::new(unsafe { Library::new(&path)? });
         let contract_info =
             serde_json::from_str(&fs::read_to_string(path.with_extension("json"))?)?;
@@ -629,13 +636,6 @@ impl LockFile {
             Err(e) if e.kind() == io::ErrorKind::AlreadyExists => Ok(None),
             Err(e) => Err(e),
         }
-    }
-
-    pub fn exists(path: impl Into<PathBuf>) -> io::Result<bool> {
-        let path: PathBuf = path.into();
-        let path = path.with_extension("lock");
-
-        fs::exists(path)
     }
 }
 
