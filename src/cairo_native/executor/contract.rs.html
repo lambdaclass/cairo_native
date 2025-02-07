@@ -1154,9 +1154,13 @@
         })
         .collect::&lt;<span class="prelude-ty">Result</span>&lt;BTreeMap&lt;<span class="kw">_</span>, <span class="kw">_</span>&gt;&gt;&gt;()<span class="question-mark">?</span>;
 
-        <span class="comment">// Build the shared library.
-        </span><span class="kw">let </span>object_data = <span class="kw">crate</span>::module_to_object(<span class="kw-2">&amp;</span>module, opt_level)<span class="question-mark">?</span>;
-        <span class="kw">crate</span>::object_to_shared_lib(<span class="kw-2">&amp;</span>object_data, <span class="kw-2">&amp;</span>output_path)<span class="question-mark">?</span>;
+        <span class="comment">// Build the shared library into a temporary path.
+        </span><span class="kw">let </span>temp_path = NamedTempFile::new()<span class="question-mark">?
+            </span>.into_temp_path()
+            .keep()
+            .to_native_assert_error(<span class="string">"can only fail on windows"</span>)<span class="question-mark">?</span>;
+        <span class="kw">let </span>object_data = <span class="kw">crate</span>::module_to_object(<span class="kw-2">&amp;</span>module, opt_level)<span class="question-mark">?</span>;
+        <span class="kw">crate</span>::object_to_shared_lib(<span class="kw-2">&amp;</span>object_data, <span class="kw-2">&amp;</span>temp_path)<span class="question-mark">?</span>;
 
         <span class="comment">// Write the contract info.
         </span>fs::write(
@@ -1166,6 +1170,10 @@
                 entry_points: entry_point_mappings,
             })<span class="question-mark">?</span>,
         )<span class="question-mark">?</span>;
+
+        <span class="comment">// Atomically move the built shared library to the correct path. This will avoid data races
+        // when loading contracts.
+        </span>fs::rename(temp_path, <span class="kw-2">&amp;</span>output_path)<span class="question-mark">?</span>;
 
         drop(lock_file);
         <span class="self">Self</span>::from_path(output_path)
@@ -1178,11 +1186,10 @@
     /// again.
     </span><span class="kw">pub fn </span>from_path(path: <span class="kw">impl </span>Into&lt;PathBuf&gt;) -&gt; <span class="prelude-ty">Result</span>&lt;<span class="prelude-ty">Option</span>&lt;<span class="self">Self</span>&gt;&gt; {
         <span class="kw">let </span>path = path.into();
-        <span class="kw">if </span>LockFile::exists(<span class="kw-2">&amp;</span>path)<span class="question-mark">? </span>{
-            <span class="kw">return </span><span class="prelude-val">Ok</span>(<span class="prelude-val">None</span>);
-        }
 
-        <span class="kw">let </span>library = Arc::new(<span class="kw">unsafe </span>{ Library::new(<span class="kw-2">&amp;</span>path)<span class="question-mark">? </span>});
+        <span class="comment">// Note: Library should load first, otherwise there could theoretically be a race condition.
+        //   See the `new_into` function's code for details.
+        </span><span class="kw">let </span>library = Arc::new(<span class="kw">unsafe </span>{ Library::new(<span class="kw-2">&amp;</span>path)<span class="question-mark">? </span>});
         <span class="kw">let </span>contract_info =
             serde_json::from_str(<span class="kw-2">&amp;</span>fs::read_to_string(path.with_extension(<span class="string">"json"</span>))<span class="question-mark">?</span>)<span class="question-mark">?</span>;
 
@@ -1527,13 +1534,6 @@
             <span class="prelude-val">Err</span>(e) <span class="kw">if </span>e.kind() == io::ErrorKind::AlreadyExists =&gt; <span class="prelude-val">Ok</span>(<span class="prelude-val">None</span>),
             <span class="prelude-val">Err</span>(e) =&gt; <span class="prelude-val">Err</span>(e),
         }
-    }
-
-    <span class="kw">pub fn </span>exists(path: <span class="kw">impl </span>Into&lt;PathBuf&gt;) -&gt; io::Result&lt;bool&gt; {
-        <span class="kw">let </span>path: PathBuf = path.into();
-        <span class="kw">let </span>path = path.with_extension(<span class="string">"lock"</span>);
-
-        fs::exists(path)
     }
 }
 
