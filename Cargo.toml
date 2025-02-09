@@ -37,6 +37,10 @@ required-features = ["scarb"]
 name = "scarb-native-dump"
 required-features = ["scarb"]
 
+[[bin]]
+name = "starknet-native-compile"
+required-features = ["build-cli"]
+
 [features]
 default = ["build-cli"]
 build-cli = [
