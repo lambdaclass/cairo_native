@@ -72,7 +72,7 @@ use std::{
     ffi::c_void,
     fs::{self, File},
     io,
-    path::PathBuf,
+    path::{Path, PathBuf},
     ptr::NonNull,
     sync::Arc,
 };
@@ -256,13 +256,10 @@ impl AotContractExecutor {
         })
         .collect::<Result<BTreeMap<_, _>>>()?;
 
-        // Build the shared library into a temporary path.
-        let temp_path = NamedTempFile::new()?
-            .into_temp_path()
-            .keep()
-            .to_native_assert_error("can only fail on windows")?;
         let object_data = crate::module_to_object(&module, opt_level)?;
-        crate::object_to_shared_lib(&object_data, &temp_path)?;
+
+        // Build the shared library into the lockfile, to avoid using a tmp file.
+        crate::object_to_shared_lib(&object_data, &lock_file.0)?;
 
         // Write the contract info.
         fs::write(
@@ -275,9 +272,8 @@ impl AotContractExecutor {
 
         // Atomically move the built shared library to the correct path. This will avoid data races
         // when loading contracts.
-        fs::rename(temp_path, &output_path)?;
+        lock_file.rename(&output_path)?;
 
-        drop(lock_file);
         Self::from_path(output_path)
     }
 
@@ -636,6 +632,15 @@ impl LockFile {
             Err(e) if e.kind() == io::ErrorKind::AlreadyExists => Ok(None),
             Err(e) => Err(e),
         }
+    }
+
+    pub fn rename(self, path: impl AsRef<Path>) -> io::Result<()> {
+        fs::rename(&self.0, path.as_ref())?;
+
+        // don't remove lockfile, as we just renamed it
+        std::mem::forget(self);
+
+        Ok(())
     }
 }
 
