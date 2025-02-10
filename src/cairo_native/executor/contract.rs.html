@@ -896,7 +896,12 @@
 <a href="#895" id="895">895</a>
 <a href="#896" id="896">896</a>
 <a href="#897" id="897">897</a>
-<a href="#898" id="898">898</a></pre></div><pre class="rust"><code><span class="doccomment">//! A specialized executor for Starknet contracts, avoiding the overhead of storing the sierra program registry and
+<a href="#898" id="898">898</a>
+<a href="#899" id="899">899</a>
+<a href="#900" id="900">900</a>
+<a href="#901" id="901">901</a>
+<a href="#902" id="902">902</a>
+<a href="#903" id="903">903</a></pre></div><pre class="rust"><code><span class="doccomment">//! A specialized executor for Starknet contracts, avoiding the overhead of storing the sierra program registry and
 //! enabling efficient serialization of the program/data once compiled.
 //!
 //! This executor heavily relies on the stability of the contract entry point argument order.
@@ -970,7 +975,7 @@
     ffi::c_void,
     fs::{<span class="self">self</span>, File},
     io,
-    path::PathBuf,
+    path::{Path, PathBuf},
     ptr::NonNull,
     sync::Arc,
 };
@@ -1154,13 +1159,10 @@
         })
         .collect::&lt;<span class="prelude-ty">Result</span>&lt;BTreeMap&lt;<span class="kw">_</span>, <span class="kw">_</span>&gt;&gt;&gt;()<span class="question-mark">?</span>;
 
-        <span class="comment">// Build the shared library into a temporary path.
-        </span><span class="kw">let </span>temp_path = NamedTempFile::new()<span class="question-mark">?
-            </span>.into_temp_path()
-            .keep()
-            .to_native_assert_error(<span class="string">"can only fail on windows"</span>)<span class="question-mark">?</span>;
         <span class="kw">let </span>object_data = <span class="kw">crate</span>::module_to_object(<span class="kw-2">&amp;</span>module, opt_level)<span class="question-mark">?</span>;
-        <span class="kw">crate</span>::object_to_shared_lib(<span class="kw-2">&amp;</span>object_data, <span class="kw-2">&amp;</span>temp_path)<span class="question-mark">?</span>;
+
+        <span class="comment">// Build the shared library into the lockfile, to avoid using a tmp file.
+        </span><span class="kw">crate</span>::object_to_shared_lib(<span class="kw-2">&amp;</span>object_data, <span class="kw-2">&amp;</span>lock_file.<span class="number">0</span>)<span class="question-mark">?</span>;
 
         <span class="comment">// Write the contract info.
         </span>fs::write(
@@ -1173,9 +1175,8 @@
 
         <span class="comment">// Atomically move the built shared library to the correct path. This will avoid data races
         // when loading contracts.
-        </span>fs::rename(temp_path, <span class="kw-2">&amp;</span>output_path)<span class="question-mark">?</span>;
+        </span>lock_file.rename(<span class="kw-2">&amp;</span>output_path)<span class="question-mark">?</span>;
 
-        drop(lock_file);
         <span class="self">Self</span>::from_path(output_path)
     }
 
@@ -1534,6 +1535,15 @@
             <span class="prelude-val">Err</span>(e) <span class="kw">if </span>e.kind() == io::ErrorKind::AlreadyExists =&gt; <span class="prelude-val">Ok</span>(<span class="prelude-val">None</span>),
             <span class="prelude-val">Err</span>(e) =&gt; <span class="prelude-val">Err</span>(e),
         }
+    }
+
+    <span class="kw">pub fn </span>rename(<span class="self">self</span>, path: <span class="kw">impl </span>AsRef&lt;Path&gt;) -&gt; io::Result&lt;()&gt; {
+        fs::rename(<span class="kw-2">&amp;</span><span class="self">self</span>.<span class="number">0</span>, path.as_ref())<span class="question-mark">?</span>;
+
+        <span class="comment">// don't remove lockfile, as we just renamed it
+        </span>std::mem::forget(<span class="self">self</span>);
+
+        <span class="prelude-val">Ok</span>(())
     }
 }
 
