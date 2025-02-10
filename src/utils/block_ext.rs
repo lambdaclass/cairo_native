@@ -12,7 +12,7 @@ use melior::{
             DenseI32ArrayAttribute, DenseI64ArrayAttribute, IntegerAttribute, TypeAttribute,
         },
         r#type::IntegerType,
-        Attribute, Block, Location, Operation, Type, Value, ValueLike,
+        Attribute, Block, BlockLike, Location, Operation, Type, Value, ValueLike,
     },
     Context,
 };

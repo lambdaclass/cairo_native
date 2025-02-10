@@ -35,6 +35,7 @@ mod block_ext;
 pub mod mem_tracing;
 mod program_registry_ext;
 mod range_ext;
+#[cfg(feature = "with-segfault-catcher")]
 pub mod safe_runner;
 
 #[cfg(target_os = "macos")]
@@ -54,7 +55,10 @@ pub static HALF_PRIME: LazyLock<BigUint> = LazyLock::new(|| {
         .expect("hardcoded half prime constant should be valid")
 });
 
+// Order matters, for the libfunc impl
+// https://github.com/starkware-libs/sequencer/blob/1b7252f8a30244d39614d7666aa113b81291808e/crates/blockifier/src/execution/entry_point_execution.rs#L208
 #[derive(Debug, Clone, Copy, Deserialize, Serialize)]
+#[repr(C)]
 pub struct BuiltinCosts {
     pub r#const: u64,
     pub pedersen: u64,
@@ -63,22 +67,6 @@ pub struct BuiltinCosts {
     pub poseidon: u64,
     pub add_mod: u64,
     pub mul_mod: u64,
-}
-
-impl From<BuiltinCosts> for [u64; 7] {
-    // Order matters, for the libfunc impl
-    // https://github.com/starkware-libs/sequencer/blob/1b7252f8a30244d39614d7666aa113b81291808e/crates/blockifier/src/execution/entry_point_execution.rs#L208
-    fn from(value: BuiltinCosts) -> Self {
-        [
-            value.r#const,
-            value.pedersen,
-            value.bitwise,
-            value.ecop,
-            value.poseidon,
-            value.add_mod,
-            value.mul_mod,
-        ]
-    }
 }
 
 impl Default for BuiltinCosts {
@@ -92,6 +80,30 @@ impl Default for BuiltinCosts {
             add_mod: token_gas_cost(CostTokenType::AddMod) as u64,
             mul_mod: token_gas_cost(CostTokenType::MulMod) as u64,
         }
+    }
+}
+
+impl crate::arch::AbiArgument for BuiltinCosts {
+    fn to_bytes(
+        &self,
+        buffer: &mut Vec<u8>,
+        find_dict_overrides: impl Copy
+            + Fn(
+                &cairo_lang_sierra::ids::ConcreteTypeId,
+            ) -> (
+                Option<extern "C" fn(*mut std::ffi::c_void, *mut std::ffi::c_void)>,
+                Option<extern "C" fn(*mut std::ffi::c_void)>,
+            ),
+    ) -> crate::error::Result<()> {
+        self.r#const.to_bytes(buffer, find_dict_overrides)?;
+        self.pedersen.to_bytes(buffer, find_dict_overrides)?;
+        self.bitwise.to_bytes(buffer, find_dict_overrides)?;
+        self.ecop.to_bytes(buffer, find_dict_overrides)?;
+        self.poseidon.to_bytes(buffer, find_dict_overrides)?;
+        self.add_mod.to_bytes(buffer, find_dict_overrides)?;
+        self.mul_mod.to_bytes(buffer, find_dict_overrides)?;
+
+        Ok(())
     }
 }
 
@@ -273,10 +285,6 @@ pub fn create_engine(
 ) -> ExecutionEngine {
     // Create the JIT engine.
     let engine = ExecutionEngine::new(module, opt_level.into(), &[], false);
-
-    #[cfg(feature = "with-runtime")]
-    register_runtime_symbols(&engine);
-
     #[cfg(feature = "with-debug-utils")]
     _metadata
         .get::<crate::metadata::debug_utils::DebugUtils>()
@@ -296,124 +304,6 @@ pub fn run_pass_manager(context: &Context, module: &mut Module) -> Result<(), Er
     pass_manager.add_pass(pass::conversion::create_scf_to_control_flow()); // needed because to_llvm doesn't include it.
     pass_manager.add_pass(pass::conversion::create_to_llvm());
     pass_manager.run(module)
-}
-
-#[cfg(feature = "with-runtime")]
-pub fn register_runtime_symbols(engine: &ExecutionEngine) {
-    use cairo_native_runtime::FeltDict;
-
-    unsafe {
-        engine.register_symbol(
-            "cairo_native__libfunc__debug__print",
-            cairo_native_runtime::cairo_native__libfunc__debug__print
-                as *const fn(i32, *const [u8; 32], usize) -> i32 as *mut (),
-        );
-
-        engine.register_symbol(
-            "cairo_native__libfunc__pedersen",
-            cairo_native_runtime::cairo_native__libfunc__pedersen
-                as *const fn(*mut u8, *mut u8, *mut u8) -> () as *mut (),
-        );
-
-        engine.register_symbol(
-            "cairo_native__libfunc__hades_permutation",
-            cairo_native_runtime::cairo_native__libfunc__hades_permutation
-                as *const fn(*mut u8, *mut u8, *mut u8) -> () as *mut (),
-        );
-
-        engine.register_symbol(
-            "cairo_native__libfunc__ec__ec_point_from_x_nz",
-            cairo_native_runtime::cairo_native__libfunc__ec__ec_point_from_x_nz
-                as *const fn(*mut [[u8; 32]; 2]) -> bool as *mut (),
-        );
-
-        engine.register_symbol(
-            "cairo_native__libfunc__ec__ec_state_add",
-            cairo_native_runtime::cairo_native__libfunc__ec__ec_state_add
-                as *const fn(*mut [[u8; 32]; 4], *const [[u8; 32]; 2]) -> bool
-                as *mut (),
-        );
-
-        engine.register_symbol(
-            "cairo_native__libfunc__ec__ec_state_init",
-            cairo_native_runtime::cairo_native__libfunc__ec__ec_state_init
-                as *const fn(*mut [[u8; 32]; 4]) as *mut (),
-        );
-
-        engine.register_symbol(
-            "cairo_native__libfunc__ec__ec_state_add_mul",
-            cairo_native_runtime::cairo_native__libfunc__ec__ec_state_add_mul
-                as *const fn(*mut [[u8; 32]; 4], *const [u8; 32], *const [[u8; 32]; 2]) -> bool
-                as *mut (),
-        );
-
-        engine.register_symbol(
-            "cairo_native__libfunc__ec__ec_state_try_finalize_nz",
-            cairo_native_runtime::cairo_native__libfunc__ec__ec_state_try_finalize_nz
-                as *const fn(*const [[u8; 32]; 2], *mut [[u8; 32]; 4]) -> bool
-                as *mut (),
-        );
-
-        engine.register_symbol(
-            "cairo_native__libfunc__ec__ec_point_try_new_nz",
-            cairo_native_runtime::cairo_native__libfunc__ec__ec_point_try_new_nz
-                as *const fn(*const [[u8; 32]; 2]) -> bool as *mut (),
-        );
-
-        engine.register_symbol(
-            "cairo_native__dict_new",
-            cairo_native_runtime::cairo_native__dict_new as *const fn() -> *mut FeltDict as *mut (),
-        );
-
-        engine.register_symbol(
-            "cairo_native__dict_drop",
-            cairo_native_runtime::cairo_native__dict_drop
-                as *const fn(*mut FeltDict, Option<extern "C" fn(*mut std::ffi::c_void)>) -> ()
-                as *mut (),
-        );
-
-        engine.register_symbol(
-            "cairo_native__dict_dup",
-            cairo_native_runtime::cairo_native__dict_dup
-                as *const fn(
-                    *mut FeltDict,
-                    extern "C" fn(*mut std::ffi::c_void) -> *mut std::ffi::c_void,
-                ) -> *mut FeltDict as *mut (),
-        );
-
-        engine.register_symbol(
-            "cairo_native__dict_get",
-            cairo_native_runtime::cairo_native__dict_get
-                as *const fn(*mut FeltDict, &[u8; 32]) -> *mut std::ffi::c_void
-                as *mut (),
-        );
-
-        engine.register_symbol(
-            "cairo_native__dict_gas_refund",
-            cairo_native_runtime::cairo_native__dict_gas_refund as *const fn(*const FeltDict) -> u64
-                as *mut (),
-        );
-
-        engine.register_symbol(
-            "cairo_native__set_costs_builtin",
-            cairo_native_runtime::cairo_native__set_costs_builtin as *const fn(*const u64) -> ()
-                as *mut (),
-        );
-
-        engine.register_symbol(
-            "cairo_native__get_costs_builtin",
-            cairo_native_runtime::cairo_native__get_costs_builtin as *const fn() -> *const u64
-                as *mut (),
-        );
-
-        #[cfg(feature = "with-cheatcode")]
-        {
-            engine.register_symbol(
-                "cairo_native__vtable_cheatcode",
-                crate::starknet::cairo_native__vtable_cheatcode as *mut (),
-            );
-        }
-    }
 }
 
 /// Return a type that calls a closure when formatted using [Debug](std::fmt::Debug).

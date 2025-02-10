@@ -19,7 +19,7 @@ use cairo_lang_sierra::{
 };
 use melior::{
     dialect::arith::{self, CmpiPredicate},
-    ir::{r#type::IntegerType, Block, Location, Value, ValueLike},
+    ir::{r#type::IntegerType, Block, BlockLike, Location, Value, ValueLike},
     Context,
 };
 use num_bigint::{BigInt, Sign};

@@ -1,12 +1,13 @@
 [package]
 name = "cairo-native"
-version = "0.2.8"
+version = "0.3.0"
 edition = "2021"
 license = "Apache-2.0"
-description = "A compiler to convert Cairo's intermediate representation Sierra code to MLIR."
+description = "A compiler to convert Cairo's IR Sierra code to MLIR and execute it."
 repository = "https://github.com/lambdaclass/cairo_native"
 readme = "README.md"
 keywords = ["starknet", "cairo", "compiler", "mlir"]
+categories = ["compilers"]
 
 # Explicitly set the resolver to the default for edition >= 2021
 # https://doc.rust-lang.org/edition-guide/rust-2021/default-cargo-resolver.html
@@ -37,7 +38,7 @@ name = "scarb-native-dump"
 required-features = ["scarb"]
 
 [features]
-default = ["build-cli", "with-runtime"]
+default = ["build-cli"]
 build-cli = [
     "dep:clap",
     "dep:tracing-subscriber",
@@ -49,7 +50,7 @@ scarb = ["build-cli", "dep:scarb-ui", "dep:scarb-metadata"]
 with-cheatcode = []
 with-debug-utils = []
 with-mem-tracing = []
-with-runtime = ["dep:cairo-native-runtime"]
+with-segfault-catcher = []
 
 # the aquamarine dep is only used in docs and cannot be detected as used by cargo udeps
 [package.metadata.cargo-udeps.ignore]
@@ -58,19 +59,19 @@ normal = ["aquamarine"]
 [dependencies]
 aquamarine = "0.6.0"
 bumpalo = "3.16.0"
-cairo-lang-compiler = "2.10.0-rc.0"
-cairo-lang-defs = "2.10.0-rc.0"
-cairo-lang-filesystem = "2.10.0-rc.0"
-cairo-lang-runner = "2.10.0-rc.0"
-cairo-lang-semantic = "2.10.0-rc.0"
-cairo-lang-sierra = "2.10.0-rc.0"
-cairo-lang-sierra-generator = "2.10.0-rc.0"
+cairo-lang-compiler = "2.10.0-rc.1"
+cairo-lang-defs = "2.10.0-rc.1"
+cairo-lang-filesystem = "2.10.0-rc.1"
+cairo-lang-runner = "2.10.0-rc.1"
+cairo-lang-semantic = "2.10.0-rc.1"
+cairo-lang-sierra = "2.10.0-rc.1"
+cairo-lang-sierra-generator = "2.10.0-rc.1"
 educe = "0.5.11" # can't update until https://github.com/magiclen/educe/issues/27
-itertools = "0.13.0"
+itertools = "0.14.0"
 lazy_static = "1.5"
 libc = "0.2"
 llvm-sys = "191.0.0"
-melior = { version = "0.20.2", features = ["ods-dialects", "helpers"] }
+melior = { version = "0.21.0", features = ["ods-dialects", "helpers"] }
 mlir-sys = { version = "0.4.1" }
 num-bigint = "0.4.6"
 num-traits = "0.2"
@@ -86,12 +87,11 @@ utf8_iter = "1.0.4"
 
 
 # CLI dependencies
-cairo-lang-sierra-ap-change = "2.10.0-rc.0"
-cairo-lang-sierra-gas = "2.10.0-rc.0"
-cairo-lang-starknet = "2.10.0-rc.0"
-cairo-lang-utils = "2.10.0-rc.0"
-cairo-lang-starknet-classes = "2.10.0-rc.0"
-cairo-native-runtime = { version = "0.2.8", path = "runtime", optional = true }
+cairo-lang-sierra-ap-change = "2.10.0-rc.1"
+cairo-lang-sierra-gas = "2.10.0-rc.1"
+cairo-lang-starknet = "2.10.0-rc.1"
+cairo-lang-utils = "2.10.0-rc.1"
+cairo-lang-starknet-classes = "2.10.0-rc.1"
 clap = { version = "4.5.23", features = ["derive"], optional = true }
 libloading = "0.8.6"
 tracing-subscriber = { version = "0.3.19", features = [
@@ -101,7 +101,7 @@ tracing-subscriber = { version = "0.3.19", features = [
 ], optional = true }
 serde = { version = "1.0", features = ["derive"] }
 anyhow = { version = "1.0", optional = true }
-cairo-lang-test-plugin = { version = "2.10.0-rc.0", optional = true }
+cairo-lang-test-plugin = { version = "2.10.0-rc.1", optional = true }
 colored = { version = "2.1.0", optional = true }
 # needed to interface with cairo-lang-*
 keccak = "0.1.5"
@@ -118,9 +118,13 @@ ark-ec = "0.5.0"
 ark-ff = "0.5.0"
 num-integer = "0.1.46"
 
+# Runtime functions
+rand = "0.9.0"
+starknet-curve = "0.5.1"
+
 [dev-dependencies]
 cairo-vm = { version = "2.0.0-rc3", features = ["cairo-1-hints"] }
-cairo-lang-semantic = { version = "2.10.0-rc.0", features = ["testing"] }
+cairo-lang-semantic = { version = "2.10.0-rc.1", features = ["testing"] }
 criterion = { version = "0.5.1", features = ["html_reports"] }
 lambdaworks-math = "0.11.0"
 pretty_assertions_sorted = "1.2.3"
@@ -166,6 +170,3 @@ harness = false
 [[bench]]
 name = "libfuncs"
 harness = false
-
-[workspace]
-members = ["runtime"]
