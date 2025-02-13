@@ -225,26 +225,26 @@ impl Value {
                         let elem_ty = registry.get_type(&info.ty)?;
                         let elem_layout = elem_ty.layout(registry)?.pad_to_align();
 
-                        let refcount_offset = get_integer_layout(32)
-                            .align_to(elem_layout.align())
-                            .unwrap()
-                            .pad_to_align()
-                            .size();
-                        let ptr = match elem_layout.size() * data.len() {
-                            0 => std::ptr::null_mut(),
-                            len => {
-                                let ptr: *mut () = libc_malloc(len + refcount_offset).cast();
-
-                                // Write reference count.
-                                ptr.cast::<u32>().write(1);
-
-                                ptr.byte_add(refcount_offset)
-                            }
-                        };
+                        let refcount_offset =
+                            crate::types::array::calc_data_prefix_offset(elem_layout);
                         let len: u32 = data
                             .len()
                             .try_into()
                             .map_err(|_| Error::IntegerConversion)?;
+                        let ptr: *mut () = match elem_layout.size() * data.len() {
+                            0 => std::ptr::null_mut(),
+                            data_len => {
+                                let ptr: *mut () = libc_malloc(data_len + refcount_offset).cast();
+
+                                // Write reference count.
+                                ptr.cast::<(u32, u32)>().write((1, len));
+
+                                // Make double pointer.
+                                let ptr_ptr: *mut *mut () = libc_malloc(8).cast();
+                                ptr_ptr.write(ptr.byte_add(refcount_offset));
+                                ptr_ptr.cast()
+                            }
+                        };
 
                         // Write the data.
                         for (idx, elem) in data.iter().enumerate() {
@@ -618,11 +618,7 @@ impl Value {
                     let data_ptr =
                         init_data_ptr.byte_add(elem_stride * start_offset_value as usize);
 
-                    let refcount_offset = get_integer_layout(32)
-                        .align_to(elem_layout.align())
-                        .unwrap()
-                        .pad_to_align()
-                        .size();
+                    let refcount_offset = crate::types::array::calc_data_prefix_offset(elem_layout);
                     let should_drop = if !init_data_ptr.is_null()
                         && init_data_ptr.byte_sub(refcount_offset).cast::<u32>().read() == 1
                     {

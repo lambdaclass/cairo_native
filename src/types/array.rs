@@ -48,6 +48,7 @@ use melior::{
     dialect::{arith::CmpiPredicate, func, scf},
     ir::BlockLike,
 };
+use std::alloc::Layout;
 
 /// Build the MLIR type.
 ///
@@ -112,11 +113,7 @@ fn build_dup<'ctx>(
     let value_ty = registry.build_type(context, module, metadata, info.self_ty())?;
 
     let elem_layout = registry.get_type(&info.ty)?.layout(registry)?;
-    let refcount_offset = get_integer_layout(32)
-        .align_to(elem_layout.align())
-        .unwrap()
-        .pad_to_align()
-        .size();
+    let refcount_offset = calc_data_prefix_offset(elem_layout);
 
     let region = Region::new();
     let entry = region.append_block(Block::new(&[(value_ty, location)]));
@@ -151,12 +148,18 @@ fn build_dup<'ctx>(
             let region = Region::new();
             let block = region.append_block(Block::new(&[]));
 
-            let array_ptr = block.extract_value(
+            let array_ptr_ptr = block.extract_value(
                 context,
                 location,
                 entry.argument(0)?.into(),
                 llvm::r#type::pointer(context, 0),
                 0,
+            )?;
+            let array_ptr = block.load(
+                context,
+                location,
+                array_ptr_ptr,
+                llvm::r#type::pointer(context, 0),
             )?;
 
             let refcount_ptr = block.gep(
@@ -166,12 +169,24 @@ fn build_dup<'ctx>(
                 &[GepIndex::Const(-(refcount_offset as i32))],
                 IntegerType::new(context, 8).into(),
             )?;
+            metadata
+                .get_mut::<crate::metadata::debug_utils::DebugUtils>()
+                .unwrap()
+                .debug_print(context, module, &block, "BEFORE", location)?;
+            metadata
+                .get_mut::<crate::metadata::debug_utils::DebugUtils>()
+                .unwrap()
+                .print_pointer(context, module, &block, refcount_ptr, location)?;
             let ref_count = block.load(
                 context,
                 location,
                 refcount_ptr,
                 IntegerType::new(context, 32).into(),
             )?;
+            metadata
+                .get_mut::<crate::metadata::debug_utils::DebugUtils>()
+                .unwrap()
+                .debug_print(context, module, &block, "AFTER", location)?;
 
             let k1 = block.const_int(context, location, 1, 32)?;
             let ref_count = block.append_op_result(arith::addi(ref_count, k1, location))?;
@@ -210,16 +225,12 @@ fn build_drop<'ctx>(
     let elem_stride = elem_ty.layout(registry)?.pad_to_align().size();
     let elem_ty = elem_ty.build(context, module, registry, metadata, &info.ty)?;
     let elem_layout = registry.get_type(&info.ty)?.layout(registry)?;
-    let refcount_offset = get_integer_layout(32)
-        .align_to(elem_layout.align())
-        .unwrap()
-        .pad_to_align()
-        .size();
+    let refcount_offset = calc_data_prefix_offset(elem_layout);
 
     let region = Region::new();
     let entry = region.append_block(Block::new(&[(value_ty, location)]));
 
-    let array_ptr = entry.extract_value(
+    let array_ptr_ptr = entry.extract_value(
         context,
         location,
         entry.argument(0)?.into(),
@@ -263,6 +274,12 @@ fn build_drop<'ctx>(
             let block = region.append_block(Block::new(&[]));
 
             // obtain the reference counter
+            let array_ptr = block.load(
+                context,
+                location,
+                array_ptr_ptr,
+                llvm::r#type::pointer(context, 0),
+            )?;
             let refcount_ptr = block.gep(
                 context,
                 location,
@@ -389,6 +406,12 @@ fn build_drop<'ctx>(
                         refcount_ptr,
                         location,
                     )?);
+                    block.append_operation(ReallocBindingsMeta::free(
+                        context,
+                        array_ptr_ptr,
+                        location,
+                    )?);
+
                     block.append_operation(scf::r#yield(&[], location));
                     region
                 },
@@ -403,6 +426,17 @@ fn build_drop<'ctx>(
 
     entry.append_operation(func::r#return(&[], location));
     Ok(region)
+}
+
+pub fn calc_data_prefix_offset(layout: Layout) -> usize {
+    get_integer_layout(32)
+        .extend(get_integer_layout(32))
+        .unwrap()
+        .0
+        .align_to(layout.align())
+        .unwrap()
+        .pad_to_align()
+        .size()
 }
 
 #[cfg(test)]
