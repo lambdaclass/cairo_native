@@ -8,7 +8,7 @@ pub type SyscallResult<T> = std::result::Result<T, Vec<Felt>>;
 #[repr(C)]
 #[derive(Debug)]
 pub struct ArrayAbi<T> {
-    pub ptr: *mut T,
+    pub ptr: *mut *mut T,
     pub since: u32,
     pub until: u32,
     pub capacity: u32,
@@ -23,7 +23,7 @@ impl From<&ArrayAbi<Felt252Abi>> for Vec<Felt> {
             let len = until_offset - since_offset;
             match len {
                 0 => &[],
-                _ => std::slice::from_raw_parts(value.ptr.add(since_offset), len),
+                _ => std::slice::from_raw_parts(value.ptr.read().add(since_offset), len),
             }
         }
         .iter()
@@ -540,11 +540,11 @@ impl StarknetSyscallHandler for DummySyscallHandler {
 // TODO: Move to the correct place or remove if unused.
 pub(crate) mod handler {
     use super::*;
-    use crate::utils::{get_integer_layout, libc_free, libc_malloc};
+    use crate::utils::{libc_free, libc_malloc};
     use std::{
         alloc::Layout,
         fmt::Debug,
-        mem::{self, size_of, ManuallyDrop, MaybeUninit},
+        mem::{size_of, ManuallyDrop, MaybeUninit},
         ptr::{null_mut, NonNull},
     };
 
@@ -908,11 +908,8 @@ pub(crate) mod handler {
                     capacity: 0,
                 },
                 _ => {
-                    let refcount_offset = get_integer_layout(32)
-                        .align_to(mem::align_of::<E>())
-                        .unwrap()
-                        .pad_to_align()
-                        .size();
+                    let refcount_offset =
+                        crate::types::array::calc_data_prefix_offset(Layout::new::<E>());
                     let ptr = libc_malloc(
                         Layout::array::<E>(data.len()).unwrap().size() + refcount_offset,
                     ) as *mut E;
@@ -925,8 +922,11 @@ pub(crate) mod handler {
                         ptr.add(i).write(val.clone());
                     }
 
+                    let ptr_ptr = libc_malloc(size_of::<*mut ()>()).cast::<*mut E>();
+                    ptr_ptr.write(ptr);
+
                     ArrayAbi {
-                        ptr,
+                        ptr: ptr_ptr,
                         since: 0,
                         until: len,
                         capacity: len,
@@ -940,15 +940,14 @@ pub(crate) mod handler {
                 return;
             }
 
-            let refcount_offset = get_integer_layout(32)
-                .align_to(mem::align_of::<E>())
-                .unwrap()
-                .pad_to_align()
-                .size();
+            let refcount_offset = crate::types::array::calc_data_prefix_offset(Layout::new::<E>());
 
-            let ptr = data.ptr.byte_sub(refcount_offset);
+            let ptr = data.ptr.read().byte_sub(refcount_offset);
             match ptr.cast::<u32>().read() {
-                1 => libc_free(ptr.cast()),
+                1 => {
+                    libc_free(ptr.cast());
+                    libc_free(data.ptr.cast());
+                }
                 n => ptr.cast::<u32>().write(n - 1),
             }
         }
@@ -1157,7 +1156,6 @@ pub(crate) mod handler {
             let contract_address_salt = Felt::from(contract_address_salt);
 
             let calldata_vec: Vec<_> = calldata.into();
-
             unsafe {
                 Self::drop_mlir_array(calldata);
             }
@@ -1217,7 +1215,6 @@ pub(crate) mod handler {
             let function_selector = Felt::from(function_selector);
 
             let calldata_vec: Vec<Felt> = calldata.into();
-
             unsafe {
                 Self::drop_mlir_array(calldata);
             }
@@ -1251,7 +1248,6 @@ pub(crate) mod handler {
             let entry_point_selector = Felt::from(entry_point_selector);
 
             let calldata_vec: Vec<Felt> = calldata.into();
-
             unsafe {
                 Self::drop_mlir_array(calldata);
             }
@@ -1325,14 +1321,10 @@ pub(crate) mod handler {
             data: &ArrayAbi<Felt252Abi>,
         ) {
             let keys_vec: Vec<_> = keys.into();
-
-            unsafe {
-                Self::drop_mlir_array(keys);
-            }
-
             let data_vec: Vec<_> = data.into();
 
             unsafe {
+                Self::drop_mlir_array(keys);
                 Self::drop_mlir_array(data);
             }
 
@@ -1389,7 +1381,7 @@ pub(crate) mod handler {
                 let len = until_offset - since_offset;
                 match len {
                     0 => &[],
-                    _ => std::slice::from_raw_parts(input.ptr.add(since_offset), len),
+                    _ => std::slice::from_raw_parts(input.ptr.read().add(since_offset), len),
                 }
             };
 
