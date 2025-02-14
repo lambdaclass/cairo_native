@@ -55,30 +55,24 @@ pub fn build<'ctx, 'this>(
         ArrayConcreteLibfunc::Append(info) => {
             build_append(context, registry, entry, location, helper, metadata, info)
         }
-        ArrayConcreteLibfunc::PopFront(info) => {
-            // build_pop::<false, false>(
-            //     context,
-            //     registry,
-            //     entry,
-            //     location,
-            //     helper,
-            //     metadata,
-            //     PopInfo::Single(info),
-            // )
-            todo!()
-        }
-        ArrayConcreteLibfunc::PopFrontConsume(info) => {
-            // build_pop::<true, false>(
-            //     context,
-            //     registry,
-            //     entry,
-            //     location,
-            //     helper,
-            //     metadata,
-            //     PopInfo::Single(info),
-            // )
-            todo!()
-        }
+        ArrayConcreteLibfunc::PopFront(info) => build_pop::<false, false>(
+            context,
+            registry,
+            entry,
+            location,
+            helper,
+            metadata,
+            PopInfo::Single(info),
+        ),
+        ArrayConcreteLibfunc::PopFrontConsume(info) => build_pop::<true, false>(
+            context,
+            registry,
+            entry,
+            location,
+            helper,
+            metadata,
+            PopInfo::Single(info),
+        ),
         ArrayConcreteLibfunc::Get(info) => {
             build_get(context, registry, entry, location, helper, metadata, info)
         }
@@ -89,54 +83,42 @@ pub fn build<'ctx, 'this>(
         ArrayConcreteLibfunc::Len(info) => {
             build_len(context, registry, entry, location, helper, metadata, info)
         }
-        ArrayConcreteLibfunc::SnapshotPopFront(info) => {
-            // build_pop::<false, false>(
-            //     context,
-            //     registry,
-            //     entry,
-            //     location,
-            //     helper,
-            //     metadata,
-            //     PopInfo::Single(info),
-            // )
-            todo!()
-        }
-        ArrayConcreteLibfunc::SnapshotPopBack(info) => {
-            // build_pop::<false, true>(
-            //     context,
-            //     registry,
-            //     entry,
-            //     location,
-            //     helper,
-            //     metadata,
-            //     PopInfo::Single(info),
-            // ),
-            todo!()
-        }
-        ArrayConcreteLibfunc::SnapshotMultiPopFront(info) => {
-            // build_pop::<false, false>(
-            //     context,
-            //     registry,
-            //     entry,
-            //     location,
-            //     helper,
-            //     metadata,
-            //     PopInfo::Multi(info),
-            // ),
-            todo!()
-        }
-        ArrayConcreteLibfunc::SnapshotMultiPopBack(info) => {
-            // build_pop::<false, true>(
-            //     context,
-            //     registry,
-            //     entry,
-            //     location,
-            //     helper,
-            //     metadata,
-            //     PopInfo::Multi(info),
-            // ),
-            todo!()
-        }
+        ArrayConcreteLibfunc::SnapshotPopFront(info) => build_pop::<false, false>(
+            context,
+            registry,
+            entry,
+            location,
+            helper,
+            metadata,
+            PopInfo::Single(info),
+        ),
+        ArrayConcreteLibfunc::SnapshotPopBack(info) => build_pop::<false, true>(
+            context,
+            registry,
+            entry,
+            location,
+            helper,
+            metadata,
+            PopInfo::Single(info),
+        ),
+        ArrayConcreteLibfunc::SnapshotMultiPopFront(info) => build_pop::<false, false>(
+            context,
+            registry,
+            entry,
+            location,
+            helper,
+            metadata,
+            PopInfo::Multi(info),
+        ),
+        ArrayConcreteLibfunc::SnapshotMultiPopBack(info) => build_pop::<false, true>(
+            context,
+            registry,
+            entry,
+            location,
+            helper,
+            metadata,
+            PopInfo::Multi(info),
+        ),
     }
 }
 
@@ -804,6 +786,8 @@ fn build_pop<'ctx, 'this, const CONSUME: bool, const REVERSE: bool>(
             )
         }
     };
+    let (elem_type, elem_layout) =
+        registry.build_type_with_layout(context, helper, metadata, elem_ty)?;
 
     let array_start = entry.extract_value(context, location, array_obj, len_ty, 1)?;
     let array_end = entry.extract_value(context, location, array_obj, len_ty, 2)?;
@@ -833,14 +817,14 @@ fn build_pop<'ctx, 'this, const CONSUME: bool, const REVERSE: bool>(
     {
         let mut branch_values = branch_values.clone();
 
-        // TODO: Get pointer of items to extract.
-        // TODO: Update bounds.
-        // TODO: Clone items to extract.
-
         let array_ptr_ptr = valid_block.extract_value(context, location, array_obj, ptr_ty, 0)?;
         let array_ptr = valid_block.load(context, location, array_ptr_ptr, ptr_ty)?;
 
-        let (array_obj, data_ptr) = if REVERSE {
+        let elem_stride =
+            valid_block.const_int(context, location, elem_layout.pad_to_align().size(), 64)?;
+
+        // Extract pointer and update bounds.
+        let (array_obj, source_ptr) = if REVERSE {
             let array_end = valid_block.append_op_result(arith::subi(
                 array_end,
                 extract_len_value,
@@ -848,13 +832,31 @@ fn build_pop<'ctx, 'this, const CONSUME: bool, const REVERSE: bool>(
             ))?;
             let array_obj = valid_block.insert_value(context, location, array_obj, array_end, 2)?;
 
-            // TODO: Compute data offset: elem_stride * array_end.
-            // TODO: GEP array_ptr.
+            // Compute data offset (elem_stride * array_end) and GEP.
+            let data_offset =
+                valid_block.extui(array_end, IntegerType::new(context, 64).into(), location)?;
+            let data_offset = valid_block.muli(elem_stride, data_offset, location)?;
+            let data_ptr = valid_block.gep(
+                context,
+                location,
+                array_ptr,
+                &[GepIndex::Value(data_offset)],
+                IntegerType::new(context, 8).into(),
+            )?;
 
             (array_obj, data_ptr)
         } else {
-            // TODO: Compute data offset: elem_stride * array_end.
-            // TODO: GEP array_ptr.
+            // Compute data offset (elem_stride * array_end) and GEP.
+            let data_offset =
+                valid_block.extui(array_start, IntegerType::new(context, 64).into(), location)?;
+            let data_offset = valid_block.muli(elem_stride, data_offset, location)?;
+            let data_ptr = valid_block.gep(
+                context,
+                location,
+                array_ptr,
+                &[GepIndex::Value(data_offset)],
+                IntegerType::new(context, 64).into(),
+            )?;
 
             let array_start = valid_block.append_op_result(arith::addi(
                 array_start,
@@ -867,8 +869,63 @@ fn build_pop<'ctx, 'this, const CONSUME: bool, const REVERSE: bool>(
             (array_obj, data_ptr)
         };
 
-        // TODO: Clone items out of the array.
-        // TODO: Branch out.
+        // Allocate output pointer.
+        let target_size = valid_block.const_int(
+            context,
+            location,
+            elem_layout.pad_to_align().size() * extract_len,
+            64,
+        )?;
+        let target_ptr = valid_block
+            .append_op_result(llvm::zero(llvm::r#type::pointer(context, 0), location))?;
+        let target_ptr = valid_block.append_op_result(ReallocBindingsMeta::realloc(
+            context,
+            target_ptr,
+            target_size,
+            location,
+        )?)?;
+
+        // Clone popped items.
+        match metadata.get::<DupOverridesMeta>() {
+            Some(dup_overrides_meta) if dup_overrides_meta.is_overriden(elem_ty) => {
+                for i in 0..extract_len {
+                    let source_ptr = valid_block.gep(
+                        context,
+                        location,
+                        source_ptr,
+                        &[GepIndex::Const(
+                            (elem_layout.pad_to_align().size() * i) as i32,
+                        )],
+                        IntegerType::new(context, 8).into(),
+                    )?;
+                    let target_ptr = valid_block.gep(
+                        context,
+                        location,
+                        target_ptr,
+                        &[GepIndex::Const(
+                            (elem_layout.pad_to_align().size() * i) as i32,
+                        )],
+                        IntegerType::new(context, 8).into(),
+                    )?;
+
+                    let value = valid_block.load(context, location, source_ptr, elem_type)?;
+                    let values = dup_overrides_meta.invoke_override(
+                        context,
+                        valid_block,
+                        location,
+                        elem_ty,
+                        value,
+                    )?;
+                    valid_block.store(context, location, source_ptr, values.0)?;
+                    valid_block.store(context, location, target_ptr, values.1)?;
+                }
+            }
+            _ => valid_block.memcpy(context, location, source_ptr, target_ptr, target_size),
+        }
+
+        branch_values.push(array_obj);
+        branch_values.push(target_ptr);
+        valid_block.append_operation(helper.br(0, &branch_values, location));
     }
 
     {
