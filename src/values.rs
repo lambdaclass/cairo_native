@@ -628,7 +628,8 @@ impl Value {
                         (false, null_mut())
                     } else {
                         let array_ptr = array_ptr_ptr.read();
-                        let ref_count = dbg!(array_ptr.byte_sub(refcount_offset))
+                        let ref_count = array_ptr
+                            .byte_sub(refcount_offset)
                             .cast::<u32>()
                             .as_mut()
                             .unwrap();
