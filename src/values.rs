@@ -624,8 +624,8 @@ impl Value {
                     let array_ptr_ptr = *ptr.cast::<*mut *mut ()>().as_ref();
 
                     let refcount_offset = crate::types::array::calc_data_prefix_offset(elem_layout);
-                    let (should_drop, array_ptr) = if array_ptr_ptr.is_null() {
-                        (false, null_mut())
+                    let array_value = if array_ptr_ptr.is_null() {
+                        Vec::new()
                     } else {
                         let array_ptr = array_ptr_ptr.read();
                         let ref_count = array_ptr
@@ -633,40 +633,76 @@ impl Value {
                             .cast::<u32>()
                             .as_mut()
                             .unwrap();
-                        *ref_count -= 1;
+                        if should_drop {
+                            *ref_count -= 1;
+                        }
 
-                        (*ref_count == 0, array_ptr)
+                        native_assert!(
+                            end_offset_value >= start_offset_value,
+                            "can't have an array with negative length"
+                        );
+                        let num_elems = (end_offset_value - start_offset_value) as usize;
+
+                        // Drop prefix elements.
+                        if should_drop {
+                            for i in 0..start_offset_value {
+                                let cur_elem_ptr =
+                                    NonNull::new(array_ptr.byte_add(elem_stride * i as usize))
+                                        .to_native_assert_error(
+                                            "tried to make a non-null ptr out of a null one",
+                                        )?;
+                                drop(Self::from_ptr(
+                                    cur_elem_ptr,
+                                    &info.ty,
+                                    registry,
+                                    should_drop,
+                                )?);
+                            }
+                        }
+
+                        let mut array_value = Vec::with_capacity(num_elems);
+                        for i in start_offset_value..end_offset_value {
+                            let cur_elem_ptr =
+                                NonNull::new(array_ptr.byte_add(elem_stride * i as usize))
+                                    .to_native_assert_error(
+                                        "tried to make a non-null ptr out of a null one",
+                                    )?;
+                            array_value.push(Self::from_ptr(
+                                cur_elem_ptr,
+                                &info.ty,
+                                registry,
+                                *ref_count == 0,
+                            )?);
+                        }
+
+                        // Drop suffix elements.
+                        if should_drop {
+                            let array_max_len = array_ptr
+                                .byte_sub(refcount_offset - size_of::<u32>())
+                                .cast::<u32>()
+                                .read();
+                            for i in end_offset_value..array_max_len {
+                                let cur_elem_ptr =
+                                    NonNull::new(array_ptr.byte_add(elem_stride * i as usize))
+                                        .to_native_assert_error(
+                                            "tried to make a non-null ptr out of a null one",
+                                        )?;
+                                drop(Self::from_ptr(
+                                    cur_elem_ptr,
+                                    &info.ty,
+                                    registry,
+                                    should_drop,
+                                )?);
+                            }
+                        }
+
+                        if *ref_count == 0 {
+                            libc_free(array_ptr.byte_sub(refcount_offset).cast());
+                            libc_free(array_ptr_ptr.cast());
+                        }
+
+                        array_value
                     };
-
-                    native_assert!(
-                        end_offset_value >= start_offset_value,
-                        "can't have an array with negative length"
-                    );
-                    let num_elems = (end_offset_value - start_offset_value) as usize;
-
-                    // TODO: Drop prefix elements.
-                    // TODO: Drop suffix elements.
-
-                    let mut array_value = Vec::with_capacity(num_elems);
-                    for i in start_offset_value..end_offset_value {
-                        // safe to create a NonNull because if the array has elements, the init_data_ptr can't be null.
-                        let cur_elem_ptr =
-                            NonNull::new(array_ptr.byte_add(elem_stride * i as usize))
-                                .to_native_assert_error(
-                                    "tried to make a non-null ptr out of a null one",
-                                )?;
-                        array_value.push(Self::from_ptr(
-                            cur_elem_ptr,
-                            &info.ty,
-                            registry,
-                            should_drop,
-                        )?);
-                    }
-
-                    if should_drop {
-                        libc_free(array_ptr.byte_sub(refcount_offset).cast());
-                        libc_free(array_ptr_ptr.cast());
-                    }
 
                     Self::Array(array_value)
                 }

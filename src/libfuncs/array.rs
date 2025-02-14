@@ -567,7 +567,7 @@ pub fn build_append<'ctx, 'this>(
                 context,
                 location,
                 array_ptr,
-                &[GepIndex::Const(4)],
+                &[GepIndex::Const(size_of::<u32>() as i32)],
                 IntegerType::new(context, 8).into(),
             )?;
             block.store(context, location, max_len_ptr, k0)?;
@@ -685,6 +685,7 @@ pub fn build_append<'ctx, 'this>(
     let array_ptr_ptr = entry.extract_value(context, location, array_obj, ptr_ty, 0)?;
     let array_ptr = entry.load(context, location, array_ptr_ptr, ptr_ty)?;
 
+    // Insert the value.
     let target_offset = entry.extract_value(context, location, array_obj, len_ty, 2)?;
     let target_offset = entry.extui(
         target_offset,
@@ -702,11 +703,24 @@ pub fn build_append<'ctx, 'this>(
 
     entry.store(context, location, target_ptr, entry.argument(1)?.into())?;
 
-    // TODO: Update max length.
+    // Update array.
     let k1 = entry.const_int_from_type(context, location, 1, len_ty)?;
     let array_end = entry.extract_value(context, location, array_obj, len_ty, 2)?;
     let array_end = entry.addi(array_end, k1, location)?;
     let array_obj = entry.insert_value(context, location, array_obj, array_end, 2)?;
+
+    // Update max length.
+    let max_len_ptr = entry.gep(
+        context,
+        location,
+        array_ptr,
+        &[GepIndex::Const(
+            -((crate::types::array::calc_data_prefix_offset(elem_layout) - size_of::<u32>())
+                as i32),
+        )],
+        IntegerType::new(context, 8).into(),
+    )?;
+    entry.store(context, location, max_len_ptr, array_end)?;
 
     entry.append_operation(helper.br(0, &[array_obj], location));
     Ok(())

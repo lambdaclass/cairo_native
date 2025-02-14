@@ -313,48 +313,35 @@ fn build_drop<'ctx>(
 
                     match metadata.get::<DropOverridesMeta>() {
                         Some(drop_overrides_meta) if drop_overrides_meta.is_overriden(&info.ty) => {
-                            let value_start = block.extract_value(
-                                context,
-                                location,
-                                entry.argument(0)?.into(),
-                                IntegerType::new(context, 32).into(),
-                                1,
-                            )?;
-                            let value_end = block.extract_value(
-                                context,
-                                location,
-                                entry.argument(0)?.into(),
-                                IntegerType::new(context, 32).into(),
-                                2,
-                            )?;
-
-                            let value_start = block.append_op_result(arith::extui(
-                                value_start,
-                                IntegerType::new(context, 64).into(),
-                                location,
-                            ))?;
-                            let value_end = block.append_op_result(arith::extui(
-                                value_end,
-                                IntegerType::new(context, 64).into(),
-                                location,
-                            ))?;
-
+                            let k0 = block.const_int(context, location, 0, 64)?;
                             let elem_stride =
                                 block.const_int(context, location, elem_stride, 64)?;
-                            let offset_start = block.append_op_result(arith::muli(
-                                value_start,
-                                elem_stride,
-                                location,
-                            ))?;
-                            let offset_end = block.append_op_result(arith::muli(
-                                value_end,
-                                elem_stride,
-                                location,
-                            ))?;
 
-                            // for each element in the aray, invoke its drop implementation
+                            let max_len_ptr = block.gep(
+                                context,
+                                location,
+                                array_ptr,
+                                &[GepIndex::Const(
+                                    -((refcount_offset - size_of::<u32>()) as i32),
+                                )],
+                                IntegerType::new(context, 8).into(),
+                            )?;
+                            let max_len = block.load(
+                                context,
+                                location,
+                                max_len_ptr,
+                                IntegerType::new(context, 32).into(),
+                            )?;
+                            let max_len = block.extui(
+                                max_len,
+                                IntegerType::new(context, 64).into(),
+                                location,
+                            )?;
+                            let offset_end = block.muli(max_len, elem_stride, location)?;
+
+                            // Drop each element in the array.
                             block.append_operation(scf::r#for(
-                                offset_start,
+                                k0,
                                 offset_end,
                                 elem_stride,
                                 {
