@@ -169,24 +169,12 @@ fn build_dup<'ctx>(
                 &[GepIndex::Const(-(refcount_offset as i32))],
                 IntegerType::new(context, 8).into(),
             )?;
-            metadata
-                .get_mut::<crate::metadata::debug_utils::DebugUtils>()
-                .unwrap()
-                .debug_print(context, module, &block, "BEFORE", location)?;
-            metadata
-                .get_mut::<crate::metadata::debug_utils::DebugUtils>()
-                .unwrap()
-                .print_pointer(context, module, &block, refcount_ptr, location)?;
             let ref_count = block.load(
                 context,
                 location,
                 refcount_ptr,
                 IntegerType::new(context, 32).into(),
             )?;
-            metadata
-                .get_mut::<crate::metadata::debug_utils::DebugUtils>()
-                .unwrap()
-                .debug_print(context, module, &block, "AFTER", location)?;
 
             let k1 = block.const_int(context, location, 1, 32)?;
             let ref_count = block.append_op_result(arith::addi(ref_count, k1, location))?;
