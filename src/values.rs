@@ -643,8 +643,8 @@ impl Value {
                         );
                         let num_elems = (end_offset_value - start_offset_value) as usize;
 
-                        // Drop prefix elements.
-                        if should_drop {
+                        if *ref_count == 0 {
+                            // Drop prefix elements.
                             for i in 0..start_offset_value {
                                 let cur_elem_ptr =
                                     NonNull::new(array_ptr.byte_add(elem_stride * i as usize))
@@ -675,8 +675,8 @@ impl Value {
                             )?);
                         }
 
-                        // Drop suffix elements.
-                        if should_drop {
+                        if *ref_count == 0 {
+                            // Drop suffix elements.
                             let array_max_len = array_ptr
                                 .byte_sub(refcount_offset - size_of::<u32>())
                                 .cast::<u32>()
@@ -694,9 +694,8 @@ impl Value {
                                     should_drop,
                                 )?);
                             }
-                        }
 
-                        if *ref_count == 0 {
+                            // Free array storage.
                             libc_free(array_ptr.byte_sub(refcount_offset).cast());
                             libc_free(array_ptr_ptr.cast());
                         }
