@@ -523,26 +523,18 @@ impl AotContractExecutor {
         let tag = *unsafe { enum_ptr.cast::<u8>().as_ref() } as usize;
         let tag = tag & 0x01; // Filter out bits that are not part of the enum's tag.
 
-        // Layout of both enum variants (both are arrays of felts).
         let value_layout = unsafe { Layout::from_size_align_unchecked(24, 8) };
-        let value_ptr = unsafe {
-            enum_ptr
-                .cast::<u8>()
-                .add(tag_layout.extend(value_layout)?.1)
-                .cast::<NonNull<()>>()
-                .read()
-        };
+        let mut value_ptr = unsafe { enum_ptr.byte_add(tag_layout.extend(value_layout)?.1).cast() };
 
-        let value_ptr = &mut value_ptr.cast();
-
-        let array_ptr_ptr = unsafe { *read_value::<*mut NonNull<()>>(value_ptr) };
-        let array_start = unsafe { *read_value::<u32>(value_ptr) };
-        let array_end = unsafe { *read_value::<u32>(value_ptr) };
-        let _array_capacity = unsafe { *read_value::<u32>(value_ptr) };
+        let array_ptr_ptr = unsafe { *read_value::<*mut NonNull<()>>(&mut value_ptr) };
+        let array_start = unsafe { *read_value::<u32>(&mut value_ptr) };
+        let array_end = unsafe { *read_value::<u32>(&mut value_ptr) };
+        let _array_capacity = unsafe { *read_value::<u32>(&mut value_ptr) };
 
         let mut array_value = Vec::with_capacity((array_end - array_start) as usize);
         if !array_ptr_ptr.is_null() {
-            let array_ptr = unsafe { array_ptr_ptr.read() };
+            let array_ptr = unsafe { dbg!(array_ptr_ptr).read() };
+            dbg!(array_ptr);
 
             let elem_stride = felt_layout.pad_to_align().size();
             for i in array_start..array_end {
