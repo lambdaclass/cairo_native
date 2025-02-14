@@ -76,8 +76,7 @@ pub fn build<'ctx, 'this>(
             build_get(context, registry, entry, location, helper, metadata, info)
         }
         ArrayConcreteLibfunc::Slice(info) => {
-            // build_slice(context, registry, entry, location, helper, metadata, info)
-            todo!()
+            build_slice(context, registry, entry, location, helper, metadata, info)
         }
         ArrayConcreteLibfunc::Len(info) => {
             build_len(context, registry, entry, location, helper, metadata, info)
@@ -1070,6 +1069,87 @@ pub fn build_get<'ctx, 'this>(
                 location,
                 &info.signature.param_signatures[1].ty,
                 entry.argument(1)?.into(),
+            )?;
+
+        error_block.append_operation(helper.br(1, &[range_check], location));
+    }
+
+    Ok(())
+}
+
+/// Generate MLIR operations for the `array_len` libfunc.
+pub fn build_slice<'ctx, 'this>(
+    context: &'ctx Context,
+    _registry: &ProgramRegistry<CoreType, CoreLibfunc>,
+    entry: &'this Block<'ctx>,
+    location: Location<'ctx>,
+    helper: &LibfuncHelper<'ctx, 'this>,
+    metadata: &mut MetadataStorage,
+    info: &SignatureAndTypeConcreteLibfunc,
+) -> Result<()> {
+    let len_ty = IntegerType::new(context, 32).into();
+
+    let range_check =
+        super::increment_builtin_counter(context, entry, location, entry.argument(0)?.into())?;
+
+    let array_obj = entry.argument(1)?.into();
+    let array_start = entry.extract_value(context, location, array_obj, len_ty, 1)?;
+    let array_end = entry.extract_value(context, location, array_obj, len_ty, 2)?;
+    let array_len = entry.append_op_result(arith::subi(array_end, array_start, location))?;
+
+    let slice_start = entry.argument(2)?.into();
+    let slice_len = entry.argument(3)?.into();
+    let slice_end = entry.append_op_result(arith::addi(slice_start, slice_len, location))?;
+
+    let slice_lhs_bound = entry.append_op_result(arith::cmpi(
+        context,
+        CmpiPredicate::Ule,
+        slice_start,
+        array_len,
+        location,
+    ))?;
+    let slice_rhs_bound = entry.append_op_result(arith::cmpi(
+        context,
+        CmpiPredicate::Ule,
+        slice_end,
+        array_len,
+        location,
+    ))?;
+    let slice_bounds =
+        entry.append_op_result(arith::andi(slice_lhs_bound, slice_rhs_bound, location))?;
+
+    let valid_block = helper.append_block(Block::new(&[]));
+    let error_block = helper.append_block(Block::new(&[]));
+    entry.append_operation(cf::cond_br(
+        context,
+        slice_bounds,
+        valid_block,
+        error_block,
+        &[],
+        &[],
+        location,
+    ));
+
+    {
+        let array_start = valid_block.addi(array_start, slice_start, location)?;
+        let array_end = valid_block.addi(array_start, slice_len, location)?;
+
+        let array_obj = valid_block.insert_value(context, location, array_obj, array_start, 1)?;
+        let array_obj = valid_block.insert_value(context, location, array_obj, array_end, 2)?;
+
+        valid_block.append_operation(helper.br(0, &[range_check, array_obj], location));
+    }
+
+    {
+        metadata
+            .get::<DropOverridesMeta>()
+            .ok_or(Error::MissingMetadata)?
+            .invoke_override(
+                context,
+                error_block,
+                location,
+                &info.signature.param_signatures[1].ty,
+                array_obj,
             )?;
 
         error_block.append_operation(helper.br(1, &[range_check], location));
@@ -2260,40 +2340,6 @@ mod test {
                     Value::Felt252(4.into()),
                 ])))
             ),
-        );
-    }
-
-    #[test]
-    fn asdf() {
-        let program = load_cairo! {
-            use array::ArrayTrait;
-
-            fn run_test() -> (u32, u32, u32, u32) {
-                let mut numbers = ArrayTrait::new();
-                numbers.append(4_u32);
-                numbers.append(3_u32);
-                numbers.append(2_u32);
-                numbers.append(1_u32);
-                (
-                    *numbers.at(0),
-                    *numbers.at(1),
-                    *numbers.at(2),
-                    *numbers.at(3),
-                )
-            }
-        };
-
-        let result = run_program(&program, "run_test", &[]);
-        assert_eq!(
-            result.return_value,
-            Value::Enum {
-                tag: 0,
-                value: Box::new(Value::Struct {
-                    fields: vec![Value::Uint32(3)],
-                    debug_name: None,
-                }),
-                debug_name: None,
-            },
         );
     }
 }
