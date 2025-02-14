@@ -647,12 +647,13 @@ impl Value {
                     // TODO: Drop suffix elements.
 
                     let mut array_value = Vec::with_capacity(num_elems);
-                    for i in 0..num_elems {
+                    for i in start_offset_value..end_offset_value {
                         // safe to create a NonNull because if the array has elements, the init_data_ptr can't be null.
-                        let cur_elem_ptr = NonNull::new(array_ptr.byte_add(elem_stride * i))
-                            .to_native_assert_error(
-                                "tried to make a non-null ptr out of a null one",
-                            )?;
+                        let cur_elem_ptr =
+                            NonNull::new(array_ptr.byte_add(elem_stride * i as usize))
+                                .to_native_assert_error(
+                                    "tried to make a non-null ptr out of a null one",
+                                )?;
                         array_value.push(Self::from_ptr(
                             cur_elem_ptr,
                             &info.ty,
