@@ -36,7 +36,7 @@ use crate::{
     context::NativeContext,
     error::{panic::ToNativeAssertError, Error, Result},
     execution_result::{BuiltinStats, ContractExecutionResult},
-    executor::invoke_trampoline,
+    executor::{invoke_trampoline, BuiltinCostsGuard},
     metadata::{gas::MetadataComputationConfig, runtime_bindings::setup_runtime},
     module::NativeModule,
     starknet::{handler::StarknetSyscallHandlerCallbacks, StarknetSyscallHandler},
@@ -333,11 +333,11 @@ impl AotContractExecutor {
         };
         let function_ptr = self.find_function_ptr(&function_id, true)?;
 
-        let builtin_costs: [u64; 7] = builtin_costs.unwrap_or_default().into();
-
+        // Initialize syscall handler and builtin costs.
         // We may be inside a recursive contract, save the possible saved builtin costs to restore it after our call.
-        let old_builtincosts_ptr =
-            crate::runtime::cairo_native__set_costs_builtin(builtin_costs.as_ptr());
+        let mut syscall_handler = StarknetSyscallHandlerCallbacks::new(&mut syscall_handler);
+        let builtin_costs = builtin_costs.unwrap_or_default();
+        let builtin_costs_guard = BuiltinCostsGuard::install(builtin_costs);
 
         //  it can vary from contract to contract thats why we need to store/ load it.
         let builtins_size: usize = self.contract_info.entry_points[&selector]
@@ -356,18 +356,13 @@ impl AotContractExecutor {
             .as_ptr()
             .to_bytes(&mut invoke_data, |_| unreachable!())?;
 
-        let mut syscall_handler = StarknetSyscallHandlerCallbacks::new(&mut syscall_handler);
-
         for b in &self.contract_info.entry_points[&selector].builtins {
             match b {
                 BuiltinType::Gas => {
                     gas.to_bytes(&mut invoke_data, |_| unreachable!())?;
                 }
                 BuiltinType::BuiltinCosts => {
-                    // todo: check if valid
-                    builtin_costs
-                        .as_ptr()
-                        .to_bytes(&mut invoke_data, |_| unreachable!())?;
+                    builtin_costs.to_bytes(&mut invoke_data, |_| unreachable!())?;
                 }
                 BuiltinType::System => {
                     (&mut syscall_handler as *mut StarknetSyscallHandlerCallbacks<_>)
@@ -444,14 +439,19 @@ impl AotContractExecutor {
         #[cfg(target_arch = "aarch64")]
         let mut ret_registers = [0; 4];
 
-        unsafe {
+        #[allow(unused_mut)]
+        let mut run_trampoline = || unsafe {
             invoke_trampoline(
                 function_ptr,
                 invoke_data.as_ptr().cast(),
                 invoke_data.len() >> 3,
                 ret_registers.as_mut_ptr(),
             );
-        }
+        };
+        #[cfg(feature = "with-segfault-catcher")]
+        crate::utils::safe_runner::run_safely(run_trampoline).map_err(Error::SafeRunner)?;
+        #[cfg(not(feature = "with-segfault-catcher"))]
+        run_trampoline();
 
         // Parse final gas.
         unsafe fn read_value<T>(ptr: &mut NonNull<()>) -> &T {
@@ -579,7 +579,7 @@ impl AotContractExecutor {
         };
 
         // Restore the original builtin costs pointer.
-        crate::runtime::cairo_native__set_costs_builtin(old_builtincosts_ptr);
+        drop(builtin_costs_guard);
 
         #[cfg(feature = "with-mem-tracing")]
         crate::utils::mem_tracing::report_stats();

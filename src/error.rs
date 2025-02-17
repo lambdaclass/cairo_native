@@ -90,6 +90,10 @@ pub enum Error {
 
     #[error("Failed to parse a Cairo/Sierra program: {0}")]
     ProgramParser(String),
+
+    #[cfg(feature = "with-segfault-catcher")]
+    #[error(transparent)]
+    SafeRunner(crate::utils::safe_runner::SafeRunnerError),
 }
 
 impl Error {
