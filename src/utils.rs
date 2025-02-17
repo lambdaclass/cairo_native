@@ -34,6 +34,8 @@ mod block_ext;
 pub mod mem_tracing;
 mod program_registry_ext;
 mod range_ext;
+#[cfg(feature = "with-segfault-catcher")]
+pub mod safe_runner;
 
 #[cfg(target_os = "macos")]
 pub const SHARED_LIBRARY_EXT: &str = "dylib";
@@ -52,7 +54,10 @@ pub static HALF_PRIME: LazyLock<BigUint> = LazyLock::new(|| {
         .expect("hardcoded half prime constant should be valid")
 });
 
+// Order matters, for the libfunc impl
+// https://github.com/starkware-libs/sequencer/blob/1b7252f8a30244d39614d7666aa113b81291808e/crates/blockifier/src/execution/entry_point_execution.rs#L208
 #[derive(Debug, Clone, Copy, Deserialize, Serialize)]
+#[repr(C)]
 pub struct BuiltinCosts {
     pub r#const: u64,
     pub pedersen: u64,
@@ -61,22 +66,6 @@ pub struct BuiltinCosts {
     pub poseidon: u64,
     pub add_mod: u64,
     pub mul_mod: u64,
-}
-
-impl From<BuiltinCosts> for [u64; 7] {
-    // Order matters, for the libfunc impl
-    // https://github.com/starkware-libs/sequencer/blob/1b7252f8a30244d39614d7666aa113b81291808e/crates/blockifier/src/execution/entry_point_execution.rs#L208
-    fn from(value: BuiltinCosts) -> Self {
-        [
-            value.r#const,
-            value.pedersen,
-            value.bitwise,
-            value.ecop,
-            value.poseidon,
-            value.add_mod,
-            value.mul_mod,
-        ]
-    }
 }
 
 impl Default for BuiltinCosts {
@@ -90,6 +79,30 @@ impl Default for BuiltinCosts {
             add_mod: token_gas_cost(CostTokenType::AddMod) as u64,
             mul_mod: token_gas_cost(CostTokenType::MulMod) as u64,
         }
+    }
+}
+
+impl crate::arch::AbiArgument for BuiltinCosts {
+    fn to_bytes(
+        &self,
+        buffer: &mut Vec<u8>,
+        find_dict_overrides: impl Copy
+            + Fn(
+                &cairo_lang_sierra::ids::ConcreteTypeId,
+            ) -> (
+                Option<extern "C" fn(*mut std::ffi::c_void, *mut std::ffi::c_void)>,
+                Option<extern "C" fn(*mut std::ffi::c_void)>,
+            ),
+    ) -> crate::error::Result<()> {
+        self.r#const.to_bytes(buffer, find_dict_overrides)?;
+        self.pedersen.to_bytes(buffer, find_dict_overrides)?;
+        self.bitwise.to_bytes(buffer, find_dict_overrides)?;
+        self.ecop.to_bytes(buffer, find_dict_overrides)?;
+        self.poseidon.to_bytes(buffer, find_dict_overrides)?;
+        self.add_mod.to_bytes(buffer, find_dict_overrides)?;
+        self.mul_mod.to_bytes(buffer, find_dict_overrides)?;
+
+        Ok(())
     }
 }
 
