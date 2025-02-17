@@ -989,11 +989,10 @@
 <a href="#988" id="988">988</a>
 <a href="#989" id="989">989</a>
 <a href="#990" id="990">990</a>
-<a href="#991" id="991">991</a>
-<a href="#992" id="992">992</a>
-<a href="#993" id="993">993</a></pre></div><pre class="rust"><code><span class="attr">#![allow(non_snake_case)]
+<a href="#991" id="991">991</a></pre></div><pre class="rust"><code><span class="attr">#![allow(non_snake_case)]
 
-</span><span class="kw">use </span>cairo_lang_sierra_gas::core_libfunc_cost::{
+</span><span class="kw">use </span><span class="kw">crate</span>::utils::BuiltinCosts;
+<span class="kw">use </span>cairo_lang_sierra_gas::core_libfunc_cost::{
     DICT_SQUASH_REPEATED_ACCESS_COST, DICT_SQUASH_UNIQUE_KEY_COST,
 };
 <span class="kw">use </span>itertools::Itertools;
@@ -1015,7 +1014,7 @@
     io::Write,
     mem::{forget, ManuallyDrop},
     os::fd::FromRawFd,
-    ptr::{<span class="self">self</span>, null, null_mut},
+    ptr,
     rc::Rc,
 };
 <span class="kw">use </span>std::{ops::Mul, vec::IntoIter};
@@ -1155,7 +1154,7 @@
 
             layout: <span class="self">self</span>.layout,
             elements: <span class="kw">if </span><span class="self">self</span>.mappings.is_empty() {
-                null_mut()
+                ptr::null_mut()
             } <span class="kw">else </span>{
                 <span class="kw">unsafe </span>{
                     alloc(Layout::from_size_align_unchecked(
@@ -1248,7 +1247,7 @@
         mappings: HashMap::default(),
 
         layout: Layout::from_size_align_unchecked(size <span class="kw">as </span>usize, align <span class="kw">as </span>usize),
-        elements: null_mut(),
+        elements: ptr::null_mut(),
 
         dup_fn,
         drop_fn,
@@ -1571,27 +1570,24 @@
 }
 
 <span class="macro">thread_local!</span> {
-    <span class="comment">// We can use cell because a ptr is copy.
-    </span><span class="kw">static </span>BUILTIN_COSTS: Cell&lt;<span class="kw-2">*const </span>u64&gt; = <span class="kw">const </span>{
-        Cell::new(null())
+    <span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">static </span>BUILTIN_COSTS: Cell&lt;BuiltinCosts&gt; = <span class="kw">const </span>{
+        <span class="comment">// These default values shouldn't be accessible, they will be overriden before entering
+        // compiled code.
+        </span>Cell::new(BuiltinCosts {
+            r#const: <span class="number">0</span>,
+            pedersen: <span class="number">0</span>,
+            bitwise: <span class="number">0</span>,
+            ecop: <span class="number">0</span>,
+            poseidon: <span class="number">0</span>,
+            add_mod: <span class="number">0</span>,
+            mul_mod: <span class="number">0</span>,
+        })
     };
 }
 
-<span class="doccomment">/// Store the gas builtin in the internal thread local. Returns the old pointer, to restore it after execution.
-/// Not a runtime metadata method, it should be called before the program is executed.
-</span><span class="kw">pub extern </span><span class="string">"C" </span><span class="kw">fn </span>cairo_native__set_costs_builtin(ptr: <span class="kw-2">*const </span>u64) -&gt; <span class="kw-2">*const </span>u64 {
-    <span class="kw">let </span>old = BUILTIN_COSTS.get();
-    BUILTIN_COSTS.set(ptr);
-    old
-}
-
 <span class="doccomment">/// Get the gas builtin from the internal thread local.
-</span><span class="kw">pub extern </span><span class="string">"C" </span><span class="kw">fn </span>cairo_native__get_costs_builtin() -&gt; <span class="kw-2">*const </span>u64 {
-    <span class="kw">if </span>BUILTIN_COSTS.get().is_null() {
-        <span class="comment">// We shouldn't panic here, but we can print a big message.
-        </span><span class="macro">eprintln!</span>(<span class="string">"BUILTIN_COSTS POINTER IS NULL!"</span>);
-    }
-    BUILTIN_COSTS.get()
+</span><span class="kw">pub extern </span><span class="string">"C" </span><span class="kw">fn </span>cairo_native__get_costs_builtin() -&gt; <span class="kw-2">*const </span>[u64; <span class="number">7</span>] {
+    BUILTIN_COSTS.with(|x| x.as_ptr()) <span class="kw">as </span><span class="kw-2">*const </span>[u64; <span class="number">7</span>]
 }
 
 <span class="comment">// Utility methods for the print runtime function
@@ -1871,7 +1867,7 @@
         };
 
         <span class="kw">let </span>key = Felt::ONE.to_bytes_le();
-        <span class="kw">let </span><span class="kw-2">mut </span>ptr = null_mut::&lt;u64&gt;();
+        <span class="kw">let </span><span class="kw-2">mut </span>ptr = ptr::null_mut::&lt;u64&gt;();
 
         <span class="macro">assert_eq!</span>(
             <span class="kw">unsafe </span>{ cairo_native__dict_get(dict, <span class="kw-2">&amp;</span>key, (<span class="kw-2">&amp;</span>raw <span class="kw-2">mut </span>ptr).cast()) },

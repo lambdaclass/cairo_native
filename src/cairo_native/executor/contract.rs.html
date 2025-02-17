@@ -939,7 +939,7 @@
     context::NativeContext,
     error::{panic::ToNativeAssertError, Error, <span class="prelude-ty">Result</span>},
     execution_result::{BuiltinStats, ContractExecutionResult},
-    executor::invoke_trampoline,
+    executor::{invoke_trampoline, BuiltinCostsGuard},
     metadata::{gas::MetadataComputationConfig, runtime_bindings::setup_runtime},
     module::NativeModule,
     starknet::{handler::StarknetSyscallHandlerCallbacks, StarknetSyscallHandler},
@@ -1236,11 +1236,11 @@
         };
         <span class="kw">let </span>function_ptr = <span class="self">self</span>.find_function_ptr(<span class="kw-2">&amp;</span>function_id, <span class="bool-val">true</span>)<span class="question-mark">?</span>;
 
-        <span class="kw">let </span>builtin_costs: [u64; <span class="number">7</span>] = builtin_costs.unwrap_or_default().into();
-
-        <span class="comment">// We may be inside a recursive contract, save the possible saved builtin costs to restore it after our call.
-        </span><span class="kw">let </span>old_builtincosts_ptr =
-            <span class="kw">crate</span>::runtime::cairo_native__set_costs_builtin(builtin_costs.as_ptr());
+        <span class="comment">// Initialize syscall handler and builtin costs.
+        // We may be inside a recursive contract, save the possible saved builtin costs to restore it after our call.
+        </span><span class="kw">let </span><span class="kw-2">mut </span>syscall_handler = StarknetSyscallHandlerCallbacks::new(<span class="kw-2">&amp;mut </span>syscall_handler);
+        <span class="kw">let </span>builtin_costs = builtin_costs.unwrap_or_default();
+        <span class="kw">let </span>builtin_costs_guard = BuiltinCostsGuard::install(builtin_costs);
 
         <span class="comment">//  it can vary from contract to contract thats why we need to store/ load it.
         </span><span class="kw">let </span>builtins_size: usize = <span class="self">self</span>.contract_info.entry_points[<span class="kw-2">&amp;</span>selector]
@@ -1259,18 +1259,13 @@
             .as_ptr()
             .to_bytes(<span class="kw-2">&amp;mut </span>invoke_data, |<span class="kw">_</span>| <span class="macro">unreachable!</span>())<span class="question-mark">?</span>;
 
-        <span class="kw">let </span><span class="kw-2">mut </span>syscall_handler = StarknetSyscallHandlerCallbacks::new(<span class="kw-2">&amp;mut </span>syscall_handler);
-
         <span class="kw">for </span>b <span class="kw">in </span><span class="kw-2">&amp;</span><span class="self">self</span>.contract_info.entry_points[<span class="kw-2">&amp;</span>selector].builtins {
             <span class="kw">match </span>b {
                 BuiltinType::Gas =&gt; {
                     gas.to_bytes(<span class="kw-2">&amp;mut </span>invoke_data, |<span class="kw">_</span>| <span class="macro">unreachable!</span>())<span class="question-mark">?</span>;
                 }
                 BuiltinType::BuiltinCosts =&gt; {
-                    <span class="comment">// todo: check if valid
-                    </span>builtin_costs
-                        .as_ptr()
-                        .to_bytes(<span class="kw-2">&amp;mut </span>invoke_data, |<span class="kw">_</span>| <span class="macro">unreachable!</span>())<span class="question-mark">?</span>;
+                    builtin_costs.to_bytes(<span class="kw-2">&amp;mut </span>invoke_data, |<span class="kw">_</span>| <span class="macro">unreachable!</span>())<span class="question-mark">?</span>;
                 }
                 BuiltinType::System =&gt; {
                     (<span class="kw-2">&amp;mut </span>syscall_handler <span class="kw">as </span><span class="kw-2">*mut </span>StarknetSyscallHandlerCallbacks&lt;<span class="kw">_</span>&gt;)
@@ -1347,14 +1342,19 @@
         <span class="attr">#[cfg(target_arch = <span class="string">"aarch64"</span>)]
         </span><span class="kw">let </span><span class="kw-2">mut </span>ret_registers = [<span class="number">0</span>; <span class="number">4</span>];
 
-        <span class="kw">unsafe </span>{
+        <span class="attr">#[allow(unused_mut)]
+        </span><span class="kw">let </span><span class="kw-2">mut </span>run_trampoline = || <span class="kw">unsafe </span>{
             invoke_trampoline(
                 function_ptr,
                 invoke_data.as_ptr().cast(),
                 invoke_data.len() &gt;&gt; <span class="number">3</span>,
                 ret_registers.as_mut_ptr(),
             );
-        }
+        };
+        <span class="attr">#[cfg(feature = <span class="string">"with-segfault-catcher"</span>)]
+        </span><span class="kw">crate</span>::utils::safe_runner::run_safely(run_trampoline).map_err(Error::SafeRunner)<span class="question-mark">?</span>;
+        <span class="attr">#[cfg(not(feature = <span class="string">"with-segfault-catcher"</span>))]
+        </span>run_trampoline();
 
         <span class="comment">// Parse final gas.
         </span><span class="kw">unsafe fn </span>read_value&lt;T&gt;(ptr: <span class="kw-2">&amp;mut </span>NonNull&lt;()&gt;) -&gt; <span class="kw-2">&amp;</span>T {
@@ -1482,7 +1482,7 @@
         </span>};
 
         <span class="comment">// Restore the original builtin costs pointer.
-        </span><span class="kw">crate</span>::runtime::cairo_native__set_costs_builtin(old_builtincosts_ptr);
+        </span>drop(builtin_costs_guard);
 
         <span class="attr">#[cfg(feature = <span class="string">"with-mem-tracing"</span>)]
         </span><span class="kw">crate</span>::utils::mem_tracing::report_stats();

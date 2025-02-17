@@ -1004,7 +1004,20 @@
 <a href="#1003" id="1003">1003</a>
 <a href="#1004" id="1004">1004</a>
 <a href="#1005" id="1005">1005</a>
-<a href="#1006" id="1006">1006</a></pre></div><pre class="rust"><code><span class="doccomment">//! # Various utilities
+<a href="#1006" id="1006">1006</a>
+<a href="#1007" id="1007">1007</a>
+<a href="#1008" id="1008">1008</a>
+<a href="#1009" id="1009">1009</a>
+<a href="#1010" id="1010">1010</a>
+<a href="#1011" id="1011">1011</a>
+<a href="#1012" id="1012">1012</a>
+<a href="#1013" id="1013">1013</a>
+<a href="#1014" id="1014">1014</a>
+<a href="#1015" id="1015">1015</a>
+<a href="#1016" id="1016">1016</a>
+<a href="#1017" id="1017">1017</a>
+<a href="#1018" id="1018">1018</a>
+<a href="#1019" id="1019">1019</a></pre></div><pre class="rust"><code><span class="doccomment">//! # Various utilities
 
 </span><span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">use </span><span class="self">self</span>::{
     block_ext::{BlockExt, GepIndex},
@@ -1040,6 +1053,8 @@
 <span class="kw">pub mod </span>mem_tracing;
 <span class="kw">mod </span>program_registry_ext;
 <span class="kw">mod </span>range_ext;
+<span class="attr">#[cfg(feature = <span class="string">"with-segfault-catcher"</span>)]
+</span><span class="kw">pub mod </span>safe_runner;
 
 <span class="attr">#[cfg(target_os = <span class="string">"macos"</span>)]
 </span><span class="kw">pub const </span>SHARED_LIBRARY_EXT: <span class="kw-2">&amp;</span>str = <span class="string">"dylib"</span>;
@@ -1058,7 +1073,10 @@
         .expect(<span class="string">"hardcoded half prime constant should be valid"</span>)
 });
 
-<span class="attr">#[derive(Debug, Clone, Copy, Deserialize, Serialize)]
+<span class="comment">// Order matters, for the libfunc impl
+// https://github.com/starkware-libs/sequencer/blob/1b7252f8a30244d39614d7666aa113b81291808e/crates/blockifier/src/execution/entry_point_execution.rs#L208
+</span><span class="attr">#[derive(Debug, Clone, Copy, Deserialize, Serialize)]
+#[repr(C)]
 </span><span class="kw">pub struct </span>BuiltinCosts {
     <span class="kw">pub </span>r#const: u64,
     <span class="kw">pub </span>pedersen: u64,
@@ -1067,22 +1085,6 @@
     <span class="kw">pub </span>poseidon: u64,
     <span class="kw">pub </span>add_mod: u64,
     <span class="kw">pub </span>mul_mod: u64,
-}
-
-<span class="kw">impl </span>From&lt;BuiltinCosts&gt; <span class="kw">for </span>[u64; <span class="number">7</span>] {
-    <span class="comment">// Order matters, for the libfunc impl
-    // https://github.com/starkware-libs/sequencer/blob/1b7252f8a30244d39614d7666aa113b81291808e/crates/blockifier/src/execution/entry_point_execution.rs#L208
-    </span><span class="kw">fn </span>from(value: BuiltinCosts) -&gt; <span class="self">Self </span>{
-        [
-            value.r#const,
-            value.pedersen,
-            value.bitwise,
-            value.ecop,
-            value.poseidon,
-            value.add_mod,
-            value.mul_mod,
-        ]
-    }
 }
 
 <span class="kw">impl </span>Default <span class="kw">for </span>BuiltinCosts {
@@ -1096,6 +1098,30 @@
             add_mod: token_gas_cost(CostTokenType::AddMod) <span class="kw">as </span>u64,
             mul_mod: token_gas_cost(CostTokenType::MulMod) <span class="kw">as </span>u64,
         }
+    }
+}
+
+<span class="kw">impl </span><span class="kw">crate</span>::arch::AbiArgument <span class="kw">for </span>BuiltinCosts {
+    <span class="kw">fn </span>to_bytes(
+        <span class="kw-2">&amp;</span><span class="self">self</span>,
+        buffer: <span class="kw-2">&amp;mut </span>Vec&lt;u8&gt;,
+        find_dict_overrides: <span class="kw">impl </span>Copy
+            + Fn(
+                <span class="kw-2">&amp;</span>cairo_lang_sierra::ids::ConcreteTypeId,
+            ) -&gt; (
+                <span class="prelude-ty">Option</span>&lt;<span class="kw">extern </span><span class="string">"C" </span><span class="kw">fn</span>(<span class="kw-2">*mut </span>std::ffi::c_void, <span class="kw-2">*mut </span>std::ffi::c_void)&gt;,
+                <span class="prelude-ty">Option</span>&lt;<span class="kw">extern </span><span class="string">"C" </span><span class="kw">fn</span>(<span class="kw-2">*mut </span>std::ffi::c_void)&gt;,
+            ),
+    ) -&gt; <span class="kw">crate</span>::error::Result&lt;()&gt; {
+        <span class="self">self</span>.r#const.to_bytes(buffer, find_dict_overrides)<span class="question-mark">?</span>;
+        <span class="self">self</span>.pedersen.to_bytes(buffer, find_dict_overrides)<span class="question-mark">?</span>;
+        <span class="self">self</span>.bitwise.to_bytes(buffer, find_dict_overrides)<span class="question-mark">?</span>;
+        <span class="self">self</span>.ecop.to_bytes(buffer, find_dict_overrides)<span class="question-mark">?</span>;
+        <span class="self">self</span>.poseidon.to_bytes(buffer, find_dict_overrides)<span class="question-mark">?</span>;
+        <span class="self">self</span>.add_mod.to_bytes(buffer, find_dict_overrides)<span class="question-mark">?</span>;
+        <span class="self">self</span>.mul_mod.to_bytes(buffer, find_dict_overrides)<span class="question-mark">?</span>;
+
+        <span class="prelude-val">Ok</span>(())
     }
 }
 

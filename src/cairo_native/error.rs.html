@@ -253,7 +253,11 @@
 <a href="#252" id="252">252</a>
 <a href="#253" id="253">253</a>
 <a href="#254" id="254">254</a>
-<a href="#255" id="255">255</a></pre></div><pre class="rust"><code><span class="doccomment">//! Various error types used thorough the crate.
+<a href="#255" id="255">255</a>
+<a href="#256" id="256">256</a>
+<a href="#257" id="257">257</a>
+<a href="#258" id="258">258</a>
+<a href="#259" id="259">259</a></pre></div><pre class="rust"><code><span class="doccomment">//! Various error types used thorough the crate.
 </span><span class="kw">use </span><span class="kw">crate</span>::metadata::gas::GasMetadataError;
 <span class="kw">use </span>cairo_lang_sierra::extensions::modules::utils::Range;
 <span class="kw">use </span>cairo_lang_sierra::{
@@ -345,6 +349,10 @@
 
     <span class="attr">#[error(<span class="string">"Failed to parse a Cairo/Sierra program: {0}"</span>)]
     </span>ProgramParser(String),
+
+    <span class="attr">#[cfg(feature = <span class="string">"with-segfault-catcher"</span>)]
+    #[error(transparent)]
+    </span>SafeRunner(<span class="kw">crate</span>::utils::safe_runner::SafeRunnerError),
 }
 
 <span class="kw">impl </span>Error {

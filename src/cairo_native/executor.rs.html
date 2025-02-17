@@ -783,7 +783,30 @@
 <a href="#782" id="782">782</a>
 <a href="#783" id="783">783</a>
 <a href="#784" id="784">784</a>
-<a href="#785" id="785">785</a></pre></div><pre class="rust"><code><span class="doccomment">//! # Executors
+<a href="#785" id="785">785</a>
+<a href="#786" id="786">786</a>
+<a href="#787" id="787">787</a>
+<a href="#788" id="788">788</a>
+<a href="#789" id="789">789</a>
+<a href="#790" id="790">790</a>
+<a href="#791" id="791">791</a>
+<a href="#792" id="792">792</a>
+<a href="#793" id="793">793</a>
+<a href="#794" id="794">794</a>
+<a href="#795" id="795">795</a>
+<a href="#796" id="796">796</a>
+<a href="#797" id="797">797</a>
+<a href="#798" id="798">798</a>
+<a href="#799" id="799">799</a>
+<a href="#800" id="800">800</a>
+<a href="#801" id="801">801</a>
+<a href="#802" id="802">802</a>
+<a href="#803" id="803">803</a>
+<a href="#804" id="804">804</a>
+<a href="#805" id="805">805</a>
+<a href="#806" id="806">806</a>
+<a href="#807" id="807">807</a>
+<a href="#808" id="808">808</a></pre></div><pre class="rust"><code><span class="doccomment">//! # Executors
 //!
 //! This module provides methods to execute the programs, either via JIT or compiled ahead
 //! of time. It also provides a cache to avoid recompiling previously compiled programs.
@@ -794,6 +817,7 @@
     error::{panic::ToNativeAssertError, Error},
     execution_result::{BuiltinStats, ExecutionResult},
     native_panic,
+    runtime::BUILTIN_COSTS,
     starknet::{handler::StarknetSyscallHandlerCallbacks, StarknetSyscallHandler},
     types::TypeBuilder,
     utils::{libc_free, BuiltinCosts, RangeExt},
@@ -925,23 +949,13 @@
         .map(|syscall_handler| StarknetSyscallHandlerCallbacks::new(syscall_handler));
     <span class="comment">// We only care for the previous syscall handler if we actually modify it
     </span><span class="attr">#[cfg(feature = <span class="string">"with-cheatcode"</span>)]
-    </span><span class="kw">let </span>previous_syscall_handler = syscall_handler.as_mut().map(|syscall_handler| {
-        <span class="kw">let </span>previous_syscall_handler = <span class="kw">crate</span>::starknet::SYSCALL_HANDLER_VTABLE.get();
-        <span class="kw">let </span>syscall_handler_ptr = <span class="macro">std::ptr::addr_of!</span>(<span class="kw-2">*</span>syscall_handler) <span class="kw">as </span><span class="kw-2">*mut </span>();
-        <span class="kw">crate</span>::starknet::SYSCALL_HANDLER_VTABLE.set(syscall_handler_ptr);
+    </span><span class="kw">let </span>syscall_handler_guard = syscall_handler
+        .as_mut()
+        .map(|syscall_handler| SyscallHandlerGuard::install(syscall_handler <span class="kw">as </span><span class="kw-2">*mut </span><span class="kw">_</span>));
 
-        previous_syscall_handler
-    });
-
-    <span class="comment">// Order matters, for the libfunc impl
-    </span><span class="kw">let </span>builtin_costs_stack: [u64; <span class="number">7</span>] = BuiltinCosts::default().into();
-    <span class="comment">// Note: the ptr into a slice is valid, it can be used with cast()
-    // Care should be taken if you dereference it and take the .as_ptr() of the slice, since when you
-    // deref it, it will be a copy on the stack, so you will get the ptr of the value in the stack.
-    </span><span class="kw">let </span>builtin_costs: <span class="kw-2">*mut </span>[u64; <span class="number">7</span>] = Box::into_raw(Box::new(builtin_costs_stack));
     <span class="comment">// We may be inside a recursive contract, save the possible saved builtin costs to restore it after our call.
-    </span><span class="kw">let </span>old_builtincosts_ptr =
-        <span class="kw">crate</span>::runtime::cairo_native__set_costs_builtin(builtin_costs.cast());
+    </span><span class="kw">let </span>builtin_costs = BuiltinCosts::default();
+    <span class="kw">let </span>builtin_costs_guard = BuiltinCostsGuard::install(builtin_costs);
 
     <span class="comment">// Generate argument list.
     </span><span class="kw">let </span><span class="kw-2">mut </span>iter = args.iter();
@@ -1008,21 +1022,24 @@
     <span class="attr">#[cfg(target_arch = <span class="string">"aarch64"</span>)]
     </span><span class="kw">let </span><span class="kw-2">mut </span>ret_registers = [<span class="number">0</span>; <span class="number">4</span>];
 
-    <span class="kw">unsafe </span>{
+    <span class="attr">#[allow(unused_mut)]
+    </span><span class="kw">let </span><span class="kw-2">mut </span>run_trampoline = || <span class="kw">unsafe </span>{
         invoke_trampoline(
             function_ptr,
             invoke_data.as_ptr().cast(),
             invoke_data.len() &gt;&gt; <span class="number">3</span>,
             ret_registers.as_mut_ptr(),
         );
-    }
+    };
+    <span class="attr">#[cfg(feature = <span class="string">"with-segfault-catcher"</span>)]
+    </span><span class="kw">crate</span>::utils::safe_runner::run_safely(run_trampoline).map_err(Error::SafeRunner)<span class="question-mark">?</span>;
+    <span class="attr">#[cfg(not(feature = <span class="string">"with-segfault-catcher"</span>))]
+    </span>run_trampoline();
 
-    <span class="comment">// If the syscall handler was changed, then reset the previous one.
-    // It's only necessary to restore the pointer if it's been modified i.e. if previous_syscall_handler is Some(...)
+    <span class="comment">// Restore the previous syscall handler and builtin costs.
     </span><span class="attr">#[cfg(feature = <span class="string">"with-cheatcode"</span>)]
-    </span><span class="kw">if let </span><span class="prelude-val">Some</span>(previous_syscall_handler) = previous_syscall_handler {
-        <span class="kw">crate</span>::starknet::SYSCALL_HANDLER_VTABLE.set(previous_syscall_handler);
-    }
+    </span>drop(syscall_handler_guard);
+    drop(builtin_costs_guard);
 
     <span class="comment">// Parse final gas.
     </span><span class="kw">unsafe fn </span>read_value&lt;T&gt;(ptr: <span class="kw-2">&amp;mut </span>NonNull&lt;()&gt;) -&gt; <span class="kw-2">&amp;</span>T {
@@ -1122,16 +1139,6 @@
             debug_name: <span class="prelude-val">None</span>,
         });
 
-    <span class="comment">// Restore the old ptr and get back our builtincost box and free it.
-    </span><span class="kw">let </span>our_builtincosts_ptr =
-        <span class="kw">crate</span>::runtime::cairo_native__set_costs_builtin(old_builtincosts_ptr);
-
-    <span class="kw">if </span>!our_builtincosts_ptr.is_null() &amp;&amp; old_builtincosts_ptr.is_aligned() {
-        <span class="kw">unsafe </span>{
-            <span class="kw">let _ </span>= Box::&lt;[u64; <span class="number">7</span>]&gt;::from_raw(our_builtincosts_ptr.cast_mut().cast());
-        };
-    }
-
     <span class="attr">#[cfg(feature = <span class="string">"with-mem-tracing"</span>)]
     </span><span class="kw">crate</span>::utils::mem_tracing::report_stats();
 
@@ -1140,6 +1147,45 @@
         return_value,
         builtin_stats,
     })
+}
+
+<span class="attr">#[cfg(feature = <span class="string">"with-cheatcode"</span>)]
+#[derive(Debug)]
+</span><span class="kw">struct </span>SyscallHandlerGuard(<span class="kw-2">*mut </span>());
+
+<span class="attr">#[cfg(feature = <span class="string">"with-cheatcode"</span>)]
+</span><span class="kw">impl </span>SyscallHandlerGuard {
+    <span class="comment">// NOTE: It is the caller's responsibility to ensure that the syscall handler is alive until the
+    //   guard is dropped.
+    </span><span class="kw">pub fn </span>install&lt;T&gt;(value: <span class="kw-2">*mut </span>T) -&gt; <span class="self">Self </span>{
+        <span class="kw">let </span>previous_value = <span class="kw">crate</span>::starknet::SYSCALL_HANDLER_VTABLE.get();
+        <span class="kw">let </span>syscall_handler_ptr = value <span class="kw">as </span><span class="kw-2">*mut </span>();
+        <span class="kw">crate</span>::starknet::SYSCALL_HANDLER_VTABLE.set(syscall_handler_ptr);
+
+        <span class="self">Self</span>(previous_value)
+    }
+}
+
+<span class="attr">#[cfg(feature = <span class="string">"with-cheatcode"</span>)]
+</span><span class="kw">impl </span>Drop <span class="kw">for </span>SyscallHandlerGuard {
+    <span class="kw">fn </span>drop(<span class="kw-2">&amp;mut </span><span class="self">self</span>) {
+        <span class="kw">crate</span>::starknet::SYSCALL_HANDLER_VTABLE.set(<span class="self">self</span>.<span class="number">0</span>);
+    }
+}
+
+<span class="attr">#[derive(Debug)]
+</span><span class="kw">struct </span>BuiltinCostsGuard(BuiltinCosts);
+
+<span class="kw">impl </span>BuiltinCostsGuard {
+    <span class="kw">pub fn </span>install(value: BuiltinCosts) -&gt; <span class="self">Self </span>{
+        <span class="self">Self</span>(BUILTIN_COSTS.replace(value))
+    }
+}
+
+<span class="kw">impl </span>Drop <span class="kw">for </span>BuiltinCostsGuard {
+    <span class="kw">fn </span>drop(<span class="kw-2">&amp;mut </span><span class="self">self</span>) {
+        BUILTIN_COSTS.set(<span class="self">self</span>.<span class="number">0</span>);
+    }
 }
 
 <span class="doccomment">/// Parses the result by reading from the return ptr the given type.
