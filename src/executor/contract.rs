@@ -72,7 +72,7 @@ use std::{
     ffi::c_void,
     fs::{self, File},
     io,
-    path::PathBuf,
+    path::{Path, PathBuf},
     ptr::NonNull,
     sync::Arc,
 };
@@ -256,9 +256,10 @@ impl AotContractExecutor {
         })
         .collect::<Result<BTreeMap<_, _>>>()?;
 
-        // Build the shared library.
         let object_data = crate::module_to_object(&module, opt_level)?;
-        crate::object_to_shared_lib(&object_data, &output_path)?;
+
+        // Build the shared library into the lockfile, to avoid using a tmp file.
+        crate::object_to_shared_lib(&object_data, &lock_file.0)?;
 
         // Write the contract info.
         fs::write(
@@ -269,7 +270,10 @@ impl AotContractExecutor {
             })?,
         )?;
 
-        drop(lock_file);
+        // Atomically move the built shared library to the correct path. This will avoid data races
+        // when loading contracts.
+        lock_file.rename(&output_path)?;
+
         Self::from_path(output_path)
     }
 
@@ -280,10 +284,9 @@ impl AotContractExecutor {
     /// again.
     pub fn from_path(path: impl Into<PathBuf>) -> Result<Option<Self>> {
         let path = path.into();
-        if LockFile::exists(&path)? {
-            return Ok(None);
-        }
 
+        // Note: Library should load first, otherwise there could theoretically be a race condition.
+        //   See the `new_into` function's code for details.
         let library = Arc::new(unsafe { Library::new(&path)? });
         let contract_info =
             serde_json::from_str(&fs::read_to_string(path.with_extension("json"))?)?;
@@ -635,11 +638,13 @@ impl LockFile {
         }
     }
 
-    pub fn exists(path: impl Into<PathBuf>) -> io::Result<bool> {
-        let path: PathBuf = path.into();
-        let path = path.with_extension("lock");
+    pub fn rename(self, path: impl AsRef<Path>) -> io::Result<()> {
+        fs::rename(&self.0, path.as_ref())?;
 
-        fs::exists(path)
+        // don't remove lockfile, as we just renamed it
+        std::mem::forget(self);
+
+        Ok(())
     }
 }
 

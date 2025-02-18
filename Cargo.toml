@@ -1,6 +1,6 @@
 [package]
 name = "cairo-native"
-version = "0.3.0"
+version = "0.3.1"
 edition = "2021"
 license = "Apache-2.0"
 description = "A compiler to convert Cairo's IR Sierra code to MLIR and execute it."
@@ -36,6 +36,10 @@ required-features = ["scarb"]
 [[bin]]
 name = "scarb-native-dump"
 required-features = ["scarb"]
+
+[[bin]]
+name = "starknet-native-compile"
+required-features = ["build-cli"]
 
 [features]
 default = ["build-cli"]

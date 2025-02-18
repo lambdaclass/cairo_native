@@ -92,7 +92,7 @@ jobs:
 
       - name: Restore RPC Calls
         id: restore-rpc-calls
-        uses: actions/cache/restore@v4
+        uses: actions/cache/restore@v4.2.0
         with:
           path: starknet-replay/rpc_cache
           key: cache-${{matrix.block}}
@@ -153,7 +153,7 @@ jobs:
           path: starknet-replay/state_dumps/${{matrix.runner}}
 
       - name: Save RPC Calls
-        uses: actions/cache/save@v4
+        uses: actions/cache/save@v4.2.0
         if: ${{ always() && matrix.runner == 'vm' }}
         with:
           path: starknet-replay/rpc_cache
