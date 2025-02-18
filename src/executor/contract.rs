@@ -354,7 +354,7 @@ impl AotContractExecutor {
         let felt_layout = get_integer_layout(252).pad_to_align();
         let refcount_offset = get_integer_layout(32)
             .align_to(felt_layout.align())
-            .unwrap()
+            .to_native_assert_error("32 bit integer should be alignable to felt align")?
             .pad_to_align()
             .size();
 
