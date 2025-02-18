@@ -74,7 +74,7 @@ proptest: check-llvm needs-cairo2
 
 .PHONY: test-cli
 test-ci: check-llvm needs-cairo2 build-alexandria
-	RUST_TEST_THREADS=1 cargo test --profile ci --features=scarb,with-cheatcode,with-debug-utils
+	cargo test --profile ci --features=scarb,with-cheatcode,with-debug-utils
 
 .PHONY: proptest-cli
 proptest-ci: check-llvm needs-cairo2
