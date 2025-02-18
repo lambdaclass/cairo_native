@@ -665,7 +665,7 @@ impl LockFile {
 
 impl Drop for LockFile {
     fn drop(&mut self) {
-        fs::remove_file(&self.0).unwrap();
+        let _ = fs::remove_file(&self.0);
     }
 }
 
