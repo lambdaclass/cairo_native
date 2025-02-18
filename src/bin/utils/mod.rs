@@ -134,7 +134,10 @@ fn jitvalue_to_felt(value: &Value) -> Vec<Felt> {
                     felts
                 }
             } else {
-                todo!()
+                // Assume its a regular enum.
+                let mut felts = vec![(*tag).into()];
+                felts.extend(jitvalue_to_felt(value));
+                felts
             }
         }
         Value::Felt252Dict { value, .. } => {

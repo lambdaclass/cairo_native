@@ -12,7 +12,7 @@ use melior::{
     dialect::llvm,
     ir::{
         attribute::{FlatSymbolRefAttribute, StringAttribute, TypeAttribute},
-        Attribute, Block, Identifier, Location, Module, Region,
+        Attribute, Block, BlockLike, Identifier, Location, Module, Region,
     },
     Context,
 };

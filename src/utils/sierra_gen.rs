@@ -482,7 +482,7 @@ mod test {
     use super::*;
     use cairo_lang_sierra::extensions::{
         array::ArrayNewLibfunc,
-        bounded_int::BoundedIntTrimLibfunc,
+        bounded_int::BoundedIntIsZeroLibfunc,
         bytes31::Bytes31FromFelt252Trait,
         int::{
             signed::{Sint8Traits, SintDiffLibfunc},
@@ -527,14 +527,11 @@ mod test {
     #[test]
     fn sierra_generator_type_info() {
         let program = {
-            let mut generator = SierraGenerator::<BoundedIntTrimLibfunc>::default();
+            let mut generator = SierraGenerator::<BoundedIntIsZeroLibfunc>::default();
 
             let u32_type = generator.push_type_declaration::<Uint32Type>(&[]).clone();
 
-            generator.build(&[
-                GenericArg::Type(u32_type),
-                GenericArg::Value(u32::MAX.into()),
-            ])
+            generator.build(&[GenericArg::Type(u32_type)])
         };
         println!("{program}");
     }

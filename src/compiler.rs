@@ -84,8 +84,8 @@ use melior::{
         },
         operation::OperationBuilder,
         r#type::{FunctionType, IntegerType, MemRefType},
-        Attribute, AttributeLike, Block, BlockRef, Identifier, Location, Module, Region, Type,
-        Value,
+        Attribute, AttributeLike, Block, BlockLike, BlockRef, Identifier, Location, Module, Region,
+        Type, Value,
     },
     Context,
 };
@@ -602,7 +602,11 @@ fn compile_func(
                         &helper,
                         metadata,
                     )?;
-                    assert!(block.terminator().is_some());
+                    assert!(
+                        block.terminator().is_some(),
+                        "libfunc {} had no terminator",
+                        libfunc_name
+                    );
 
                     if let Some(tailrec_meta) = metadata.remove::<TailRecursionMeta>() {
                         if let Some(return_block) = tailrec_meta.return_target() {
@@ -758,7 +762,7 @@ fn compile_func(
                                             }
                                         })
                                         .collect::<Result<Vec<_>, _>>()?,
-                                    None => todo!(),
+                                    None => native_panic!("not yet implemented"),
                                 };
 
                                 block.append_operation(cf::cond_br(

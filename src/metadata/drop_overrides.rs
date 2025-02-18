@@ -35,7 +35,7 @@ use melior::{
     ir::{
         attribute::{FlatSymbolRefAttribute, StringAttribute, TypeAttribute},
         r#type::FunctionType,
-        Attribute, Block, Identifier, Location, Module, Region, Value,
+        Attribute, Block, BlockLike, Identifier, Location, Module, Region, Value,
     },
     Context,
 };

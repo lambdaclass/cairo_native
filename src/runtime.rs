@@ -1,5 +1,6 @@
 #![allow(non_snake_case)]
 
+use crate::utils::BuiltinCosts;
 use cairo_lang_sierra_gas::core_libfunc_cost::{
     DICT_SQUASH_REPEATED_ACCESS_COST, DICT_SQUASH_UNIQUE_KEY_COST,
 };
@@ -22,9 +23,8 @@ use std::{
     io::Write,
     mem::{forget, ManuallyDrop},
     os::fd::FromRawFd,
-    ptr::{self, null, null_mut},
+    ptr,
     rc::Rc,
-    slice,
 };
 use std::{ops::Mul, vec::IntoIter};
 
@@ -37,20 +37,6 @@ lazy_static! {
         (DICT_SQUASH_UNIQUE_KEY_COST.cost() - DICT_SQUASH_REPEATED_ACCESS_COST.cost()) as u64;
 }
 
-#[no_mangle]
-#[allow(clippy::missing_safety_doc)]
-pub unsafe extern "C" fn cairo_native__get_version(target: *mut u8, length: usize) -> usize {
-    let version = env!("CARGO_PKG_VERSION");
-    assert!(length > version.len(), "version buffer not big enough");
-
-    let target = slice::from_raw_parts_mut(target, length);
-
-    target[..version.len()].copy_from_slice(version.as_bytes());
-    target[version.len()] = b'\0';
-
-    version.len()
-}
-
 /// Based on `cairo-lang-runner`'s implementation.
 ///
 /// Source: <https://github.com/starkware-libs/cairo/blob/main/crates/cairo-lang-runner/src/casm_run/mod.rs#L1946-L1948>
@@ -59,7 +45,6 @@ pub unsafe extern "C" fn cairo_native__get_version(target: *mut u8, length: usiz
 ///
 /// This function is intended to be called from MLIR, deals with pointers, and is therefore
 /// definitely unsafe to use manually.
-#[no_mangle]
 pub unsafe extern "C" fn cairo_native__libfunc__debug__print(
     target_fd: i32,
     data: *const [u8; 32],
@@ -99,7 +84,6 @@ pub unsafe extern "C" fn cairo_native__libfunc__debug__print(
 ///
 /// This function is intended to be called from MLIR, deals with pointers, and is therefore
 /// definitely unsafe to use manually.
-#[no_mangle]
 pub unsafe extern "C" fn cairo_native__libfunc__pedersen(
     dst: &mut [u8; 32],
     lhs: &[u8; 32],
@@ -133,7 +117,6 @@ pub unsafe extern "C" fn cairo_native__libfunc__pedersen(
 ///
 /// This function is intended to be called from MLIR, deals with pointers, and is therefore
 /// definitely unsafe to use manually.
-#[no_mangle]
 pub unsafe extern "C" fn cairo_native__libfunc__hades_permutation(
     op0: &mut [u8; 32],
     op1: &mut [u8; 32],
@@ -180,7 +163,7 @@ impl Clone for FeltDict {
 
             layout: self.layout,
             elements: if self.mappings.is_empty() {
-                null_mut()
+                ptr::null_mut()
             } else {
                 unsafe {
                     alloc(Layout::from_size_align_unchecked(
@@ -263,7 +246,6 @@ impl Drop for FeltDict {
 ///
 /// This function is intended to be called from MLIR, deals with pointers, and is therefore
 /// definitely unsafe to use manually.
-#[no_mangle]
 pub unsafe extern "C" fn cairo_native__dict_new(
     size: u64,
     align: u64,
@@ -274,7 +256,7 @@ pub unsafe extern "C" fn cairo_native__dict_new(
         mappings: HashMap::default(),
 
         layout: Layout::from_size_align_unchecked(size as usize, align as usize),
-        elements: null_mut(),
+        elements: ptr::null_mut(),
 
         dup_fn,
         drop_fn,
@@ -292,7 +274,6 @@ pub unsafe extern "C" fn cairo_native__dict_new(
 // Note: Using `Option<extern "C" fn(*mut c_void)>` is ffi-safe thanks to Option's null
 //   pointer optimization. Check out
 //   https://doc.rust-lang.org/nomicon/ffi.html#the-nullable-pointer-optimization for more info.
-#[no_mangle]
 pub unsafe extern "C" fn cairo_native__dict_drop(ptr: *const FeltDict) {
     drop(Rc::from_raw(ptr));
 }
@@ -303,7 +284,6 @@ pub unsafe extern "C" fn cairo_native__dict_drop(ptr: *const FeltDict) {
 ///
 /// This function is intended to be called from MLIR, deals with pointers, and is therefore
 /// definitely unsafe to use manually.
-#[no_mangle]
 pub unsafe extern "C" fn cairo_native__dict_dup(dict_ptr: *const FeltDict) -> *const FeltDict {
     let old_dict = Rc::from_raw(dict_ptr);
     let new_dict = Rc::clone(&old_dict);
@@ -322,7 +302,6 @@ pub unsafe extern "C" fn cairo_native__dict_dup(dict_ptr: *const FeltDict) -> *c
 ///
 /// This function is intended to be called from MLIR, deals with pointers, and is therefore
 /// definitely unsafe to use manually.
-#[no_mangle]
 pub unsafe extern "C" fn cairo_native__dict_get(
     dict: *const FeltDict,
     key: &[u8; 32],
@@ -372,7 +351,6 @@ pub unsafe extern "C" fn cairo_native__dict_get(
 ///
 /// This function is intended to be called from MLIR, deals with pointers, and is therefore
 /// definitely unsafe to use manually.
-#[no_mangle]
 pub unsafe extern "C" fn cairo_native__dict_gas_refund(ptr: *const FeltDict) -> u64 {
     let dict = Rc::from_raw(ptr);
     let amount =
@@ -392,7 +370,6 @@ pub unsafe extern "C" fn cairo_native__dict_gas_refund(ptr: *const FeltDict) -> 
 ///
 /// This function is intended to be called from MLIR, deals with pointers, and is therefore
 /// definitely unsafe to use manually.
-#[no_mangle]
 pub unsafe extern "C" fn cairo_native__libfunc__ec__ec_point_from_x_nz(
     point_ptr: &mut [[u8; 32]; 2],
 ) -> bool {
@@ -430,7 +407,6 @@ pub unsafe extern "C" fn cairo_native__libfunc__ec__ec_point_from_x_nz(
 ///
 /// This function is intended to be called from MLIR, deals with pointers, and is therefore
 /// definitely unsafe to use manually.
-#[no_mangle]
 pub unsafe extern "C" fn cairo_native__libfunc__ec__ec_point_try_new_nz(
     point_ptr: &mut [[u8; 32]; 2],
 ) -> bool {
@@ -456,13 +432,12 @@ pub unsafe extern "C" fn cairo_native__libfunc__ec__ec_point_try_new_nz(
 ///
 /// This function is intended to be called from MLIR, deals with pointers, and is therefore
 /// definitely unsafe to use manually.
-#[no_mangle]
 pub unsafe extern "C" fn cairo_native__libfunc__ec__ec_state_init(state_ptr: &mut [[u8; 32]; 4]) {
     // https://github.com/starkware-libs/cairo/blob/aaad921bba52e729dc24ece07fab2edf09ccfa15/crates/cairo-lang-runner/src/casm_run/mod.rs#L1802
-    let mut rng = rand::thread_rng();
+    let mut rng = rand::rng();
     let (random_x, random_y) = loop {
         // Randominzing 31 bytes to make sure is in range.
-        let x_bytes: [u8; 31] = rng.gen();
+        let x_bytes: [u8; 31] = rng.random();
         let random_x = Felt::from_bytes_be_slice(&x_bytes);
         let random_y_squared = random_x * random_x * random_x + random_x + BETA;
         if let Some(random_y) = random_y_squared.sqrt() {
@@ -489,7 +464,6 @@ pub unsafe extern "C" fn cairo_native__libfunc__ec__ec_state_init(state_ptr: &mu
 ///
 /// This function is intended to be called from MLIR, deals with pointers, and is therefore
 /// definitely unsafe to use manually.
-#[no_mangle]
 pub unsafe extern "C" fn cairo_native__libfunc__ec__ec_state_add(
     state_ptr: &mut [[u8; 32]; 4],
     point_ptr: &[[u8; 32]; 2],
@@ -528,7 +502,6 @@ pub unsafe extern "C" fn cairo_native__libfunc__ec__ec_state_add(
 ///
 /// This function is intended to be called from MLIR, deals with pointers, and is therefore
 /// definitely unsafe to use manually.
-#[no_mangle]
 pub unsafe extern "C" fn cairo_native__libfunc__ec__ec_state_add_mul(
     state_ptr: &mut [[u8; 32]; 4],
     scalar_ptr: &[u8; 32],
@@ -572,7 +545,6 @@ pub unsafe extern "C" fn cairo_native__libfunc__ec__ec_state_add_mul(
 ///
 /// This function is intended to be called from MLIR, deals with pointers, and is therefore
 /// definitely unsafe to use manually.
-#[no_mangle]
 pub unsafe extern "C" fn cairo_native__libfunc__ec__ec_state_try_finalize_nz(
     point_ptr: &mut [[u8; 32]; 2],
     state_ptr: &[[u8; 32]; 4],
@@ -607,29 +579,24 @@ pub unsafe extern "C" fn cairo_native__libfunc__ec__ec_state_try_finalize_nz(
 }
 
 thread_local! {
-    // We can use cell because a ptr is copy.
-    static BUILTIN_COSTS: Cell<*const u64> = const {
-        Cell::new(null())
+    pub(crate) static BUILTIN_COSTS: Cell<BuiltinCosts> = const {
+        // These default values shouldn't be accessible, they will be overriden before entering
+        // compiled code.
+        Cell::new(BuiltinCosts {
+            r#const: 0,
+            pedersen: 0,
+            bitwise: 0,
+            ecop: 0,
+            poseidon: 0,
+            add_mod: 0,
+            mul_mod: 0,
+        })
     };
 }
 
-/// Store the gas builtin in the internal thread local. Returns the old pointer, to restore it after execution.
-/// Not a runtime metadata method, it should be called before the program is executed.
-#[no_mangle]
-pub extern "C" fn cairo_native__set_costs_builtin(ptr: *const u64) -> *const u64 {
-    let old = BUILTIN_COSTS.get();
-    BUILTIN_COSTS.set(ptr);
-    old
-}
-
 /// Get the gas builtin from the internal thread local.
-#[no_mangle]
-pub extern "C" fn cairo_native__get_costs_builtin() -> *const u64 {
-    if BUILTIN_COSTS.get().is_null() {
-        // We shouldn't panic here, but we can print a big message.
-        eprintln!("BUILTIN_COSTS POINTER IS NULL!");
-    }
-    BUILTIN_COSTS.get()
+pub extern "C" fn cairo_native__get_costs_builtin() -> *const [u64; 7] {
+    BUILTIN_COSTS.with(|x| x.as_ptr()) as *const [u64; 7]
 }
 
 // Utility methods for the print runtime function
@@ -909,7 +876,7 @@ mod tests {
         };
 
         let key = Felt::ONE.to_bytes_le();
-        let mut ptr = null_mut::<u64>();
+        let mut ptr = ptr::null_mut::<u64>();
 
         assert_eq!(
             unsafe { cairo_native__dict_get(dict, &key, (&raw mut ptr).cast()) },
