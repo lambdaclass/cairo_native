@@ -73,7 +73,7 @@ use std::{
     fs::{self, File},
     io,
     path::{Path, PathBuf},
-    ptr::NonNull,
+    ptr::{self, NonNull},
     sync::Arc,
 };
 use tempfile::NamedTempFile;
@@ -410,10 +410,14 @@ impl AotContractExecutor {
         }
 
         // Make double pointer.
-        let array_ptr_ptr = unsafe {
-            let array_ptr_ptr = libc_malloc(size_of::<*mut ()>()).cast::<*mut ()>();
-            array_ptr_ptr.write(array_ptr);
-            array_ptr_ptr
+        let array_ptr_ptr = if array_ptr.is_null() {
+            ptr::null_mut()
+        } else {
+            unsafe {
+                let array_ptr_ptr = libc_malloc(size_of::<*mut ()>()).cast::<*mut ()>();
+                array_ptr_ptr.write(array_ptr);
+                array_ptr_ptr
+            }
         };
 
         array_ptr_ptr.to_bytes(&mut invoke_data, |_| unreachable!())?;
@@ -533,8 +537,7 @@ impl AotContractExecutor {
 
         let mut array_value = Vec::with_capacity((array_end - array_start) as usize);
         if !array_ptr_ptr.is_null() {
-            let array_ptr = unsafe { dbg!(array_ptr_ptr).read() };
-            dbg!(array_ptr);
+            let array_ptr = unsafe { array_ptr_ptr.read() };
 
             let elem_stride = felt_layout.pad_to_align().size();
             for i in array_start..array_end {
