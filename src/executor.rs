@@ -9,6 +9,7 @@ use crate::{
     error::{panic::ToNativeAssertError, Error},
     execution_result::{BuiltinStats, ExecutionResult},
     native_panic,
+    runtime::BUILTIN_COSTS,
     starknet::{handler::StarknetSyscallHandlerCallbacks, StarknetSyscallHandler},
     types::TypeBuilder,
     utils::{libc_free, BuiltinCosts, RangeExt},
@@ -67,7 +68,6 @@ extern "C" {
 fn invoke_dynamic(
     registry: &ProgramRegistry<CoreType, CoreLibfunc>,
     function_ptr: *const c_void,
-    set_builtin_costs_fnptr: extern "C" fn(*const u64) -> *const u64,
     function_signature: &FunctionSignature,
     args: &[Value],
     gas: u64,
@@ -141,22 +141,13 @@ fn invoke_dynamic(
         .map(|syscall_handler| StarknetSyscallHandlerCallbacks::new(syscall_handler));
     // We only care for the previous syscall handler if we actually modify it
     #[cfg(feature = "with-cheatcode")]
-    let previous_syscall_handler = syscall_handler.as_mut().map(|syscall_handler| {
-        let previous_syscall_handler = crate::starknet::SYSCALL_HANDLER_VTABLE.get();
-        let syscall_handler_ptr = std::ptr::addr_of!(*syscall_handler) as *mut ();
-        crate::starknet::SYSCALL_HANDLER_VTABLE.set(syscall_handler_ptr);
+    let syscall_handler_guard = syscall_handler
+        .as_mut()
+        .map(|syscall_handler| SyscallHandlerGuard::install(syscall_handler as *mut _));
 
-        previous_syscall_handler
-    });
-
-    // Order matters, for the libfunc impl
-    let builtin_costs_stack: [u64; 7] = BuiltinCosts::default().into();
-    // Note: the ptr into a slice is valid, it can be used with cast()
-    // Care should be taken if you dereference it and take the .as_ptr() of the slice, since when you
-    // deref it, it will be a copy on the stack, so you will get the ptr of the value in the stack.
-    let builtin_costs: *mut [u64; 7] = Box::into_raw(Box::new(builtin_costs_stack));
     // We may be inside a recursive contract, save the possible saved builtin costs to restore it after our call.
-    let old_builtincosts_ptr = set_builtin_costs_fnptr(builtin_costs.cast());
+    let builtin_costs = BuiltinCosts::default();
+    let builtin_costs_guard = BuiltinCostsGuard::install(builtin_costs);
 
     // Generate argument list.
     let mut iter = args.iter();
@@ -223,21 +214,24 @@ fn invoke_dynamic(
     #[cfg(target_arch = "aarch64")]
     let mut ret_registers = [0; 4];
 
-    unsafe {
+    #[allow(unused_mut)]
+    let mut run_trampoline = || unsafe {
         invoke_trampoline(
             function_ptr,
             invoke_data.as_ptr().cast(),
             invoke_data.len() >> 3,
             ret_registers.as_mut_ptr(),
         );
-    }
+    };
+    #[cfg(feature = "with-segfault-catcher")]
+    crate::utils::safe_runner::run_safely(run_trampoline).map_err(Error::SafeRunner)?;
+    #[cfg(not(feature = "with-segfault-catcher"))]
+    run_trampoline();
 
-    // If the syscall handler was changed, then reset the previous one.
-    // It's only necessary to restore the pointer if it's been modified i.e. if previous_syscall_handler is Some(...)
+    // Restore the previous syscall handler and builtin costs.
     #[cfg(feature = "with-cheatcode")]
-    if let Some(previous_syscall_handler) = previous_syscall_handler {
-        crate::starknet::SYSCALL_HANDLER_VTABLE.set(previous_syscall_handler);
-    }
+    drop(syscall_handler_guard);
+    drop(builtin_costs_guard);
 
     // Parse final gas.
     unsafe fn read_value<T>(ptr: &mut NonNull<()>) -> &T {
@@ -337,15 +331,6 @@ fn invoke_dynamic(
             debug_name: None,
         });
 
-    // Restore the old ptr and get back our builtincost box and free it.
-    let our_builtincosts_ptr = set_builtin_costs_fnptr(old_builtincosts_ptr);
-
-    if !our_builtincosts_ptr.is_null() && old_builtincosts_ptr.is_aligned() {
-        unsafe {
-            let _ = Box::<[u64; 7]>::from_raw(our_builtincosts_ptr.cast_mut().cast());
-        };
-    }
-
     #[cfg(feature = "with-mem-tracing")]
     crate::utils::mem_tracing::report_stats();
 
@@ -354,6 +339,45 @@ fn invoke_dynamic(
         return_value,
         builtin_stats,
     })
+}
+
+#[cfg(feature = "with-cheatcode")]
+#[derive(Debug)]
+struct SyscallHandlerGuard(*mut ());
+
+#[cfg(feature = "with-cheatcode")]
+impl SyscallHandlerGuard {
+    // NOTE: It is the caller's responsibility to ensure that the syscall handler is alive until the
+    //   guard is dropped.
+    pub fn install<T>(value: *mut T) -> Self {
+        let previous_value = crate::starknet::SYSCALL_HANDLER_VTABLE.get();
+        let syscall_handler_ptr = value as *mut ();
+        crate::starknet::SYSCALL_HANDLER_VTABLE.set(syscall_handler_ptr);
+
+        Self(previous_value)
+    }
+}
+
+#[cfg(feature = "with-cheatcode")]
+impl Drop for SyscallHandlerGuard {
+    fn drop(&mut self) {
+        crate::starknet::SYSCALL_HANDLER_VTABLE.set(self.0);
+    }
+}
+
+#[derive(Debug)]
+struct BuiltinCostsGuard(BuiltinCosts);
+
+impl BuiltinCostsGuard {
+    pub fn install(value: BuiltinCosts) -> Self {
+        Self(BUILTIN_COSTS.replace(value))
+    }
+}
+
+impl Drop for BuiltinCostsGuard {
+    fn drop(&mut self) {
+        BUILTIN_COSTS.set(self.0);
+    }
 }
 
 /// Parses the result by reading from the return ptr the given type.
@@ -635,9 +659,9 @@ fn parse_result(
         | CoreTypeConcrete::StarkNet(_)
         | CoreTypeConcrete::Uint128MulGuarantee(_)
         | CoreTypeConcrete::Circuit(_)
-        | CoreTypeConcrete::RangeCheck96(_) => todo!(),
+        | CoreTypeConcrete::RangeCheck96(_) => native_panic!("not yet implemented as results"),
         // 2.9.0
-        CoreTypeConcrete::IntRange(_) => todo!(),
+        CoreTypeConcrete::IntRange(_) => native_panic!("not yet implemented as results"),
     }
 }
 

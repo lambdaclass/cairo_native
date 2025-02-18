@@ -21,7 +21,7 @@ use melior::{
         arith::{self, CmpiPredicate},
         cf,
     },
-    ir::{Attribute, Block, Location, Value},
+    ir::{Attribute, Block, BlockLike, Location, Value},
     Context,
 };
 use num_bigint::BigUint;

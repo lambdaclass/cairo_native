@@ -23,7 +23,7 @@ use melior::{
         attribute::{DenseI32ArrayAttribute, FlatSymbolRefAttribute},
         operation::OperationBuilder,
         r#type::IntegerType,
-        Attribute, Block, Identifier, Location, Type, Value,
+        Attribute, Block, BlockLike, Identifier, Location, Type, Value,
     },
     Context,
 };

@@ -2,6 +2,7 @@ use super::{BlockExt, LibfuncHelper};
 use crate::{
     error::Result,
     metadata::MetadataStorage,
+    native_panic,
     types::TypeBuilder,
     utils::{ProgramRegistryExt, PRIME},
 };
@@ -30,7 +31,7 @@ use melior::{
     },
     ir::{
         attribute::IntegerAttribute, operation::OperationBuilder, r#type::IntegerType, Block,
-        Location, Region, ValueLike,
+        BlockLike, Location, Region, ValueLike,
     },
     Context,
 };
@@ -629,7 +630,7 @@ fn build_square_root<'ctx, 'this>(
             CoreTypeConcrete::Uint32(_) => (32, 16),
             CoreTypeConcrete::Uint64(_) => (64, 32),
             CoreTypeConcrete::Uint128(_) => (128, 64),
-            _ => unreachable!(),
+            _ => native_panic!("invalid value type in int square root"),
         };
 
     let k1 = entry.const_int(context, location, 1, input_bits)?;

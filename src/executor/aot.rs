@@ -1,7 +1,9 @@
 use crate::{
     error::Error,
     execution_result::{ContractExecutionResult, ExecutionResult},
-    metadata::{felt252_dict::Felt252DictOverrides, gas::GasMetadata},
+    metadata::{
+        felt252_dict::Felt252DictOverrides, gas::GasMetadata, runtime_bindings::setup_runtime,
+    },
     module::NativeModule,
     starknet::{DummySyscallHandler, StarknetSyscallHandler},
     utils::generate_function_name,
@@ -37,18 +39,22 @@ unsafe impl Send for AotNativeExecutor {}
 unsafe impl Sync for AotNativeExecutor {}
 
 impl AotNativeExecutor {
-    pub const fn new(
+    pub fn new(
         library: Library,
         registry: ProgramRegistry<CoreType, CoreLibfunc>,
         gas_metadata: GasMetadata,
         dict_overrides: Felt252DictOverrides,
     ) -> Self {
-        Self {
+        let executor = Self {
             library,
             registry,
             gas_metadata,
             dict_overrides,
-        }
+        };
+
+        setup_runtime(|name| executor.find_symbol_ptr(name));
+
+        executor
     }
 
     /// Utility to convert a [`NativeModule`] into an [`AotNativeExecutor`].
@@ -67,12 +73,12 @@ impl AotNativeExecutor {
         let object_data = crate::module_to_object(&module, opt_level)?;
         crate::object_to_shared_lib(&object_data, &library_path)?;
 
-        Ok(Self {
-            library: unsafe { Library::new(&library_path)? },
+        Ok(Self::new(
+            unsafe { Library::new(&library_path)? },
             registry,
-            gas_metadata: metadata.remove().ok_or(Error::MissingMetadata)?,
-            dict_overrides: metadata.remove().unwrap_or_default(),
-        })
+            metadata.remove().ok_or(Error::MissingMetadata)?,
+            metadata.remove().unwrap_or_default(),
+        ))
     }
 
     pub fn invoke_dynamic(
@@ -86,21 +92,9 @@ impl AotNativeExecutor {
             .get_initial_available_gas(function_id, gas)
             .map_err(crate::error::Error::GasMetadataError)?;
 
-        let set_costs_builtin: extern "C" fn(*const u64) -> *const u64 = unsafe {
-            std::mem::transmute(
-                self.library
-                    .get::<extern "C" fn(*const u64) -> *const u64>(
-                        b"cairo_native__set_costs_builtin",
-                    )?
-                    .into_raw()
-                    .into_raw(),
-            )
-        };
-
         super::invoke_dynamic(
             &self.registry,
             self.find_function_ptr(function_id)?,
-            set_costs_builtin,
             self.extract_signature(function_id)?,
             args,
             available_gas,
@@ -121,21 +115,9 @@ impl AotNativeExecutor {
             .get_initial_available_gas(function_id, gas)
             .map_err(crate::error::Error::GasMetadataError)?;
 
-        let set_costs_builtin: extern "C" fn(*const u64) -> *const u64 = unsafe {
-            std::mem::transmute(
-                self.library
-                    .get::<extern "C" fn(*const u64) -> *const u64>(
-                        b"cairo_native__set_costs_builtin",
-                    )?
-                    .into_raw()
-                    .into_raw(),
-            )
-        };
-
         super::invoke_dynamic(
             &self.registry,
             self.find_function_ptr(function_id)?,
-            set_costs_builtin,
             self.extract_signature(function_id)?,
             args,
             available_gas,
@@ -156,21 +138,9 @@ impl AotNativeExecutor {
             .get_initial_available_gas(function_id, gas)
             .map_err(crate::error::Error::GasMetadataError)?;
 
-        let set_costs_builtin: extern "C" fn(*const u64) -> *const u64 = unsafe {
-            std::mem::transmute(
-                self.library
-                    .get::<extern "C" fn(*const u64) -> *const u64>(
-                        b"cairo_native__set_costs_builtin",
-                    )?
-                    .into_raw()
-                    .into_raw(),
-            )
-        };
-
         ContractExecutionResult::from_execution_result(super::invoke_dynamic(
             &self.registry,
             self.find_function_ptr(function_id)?,
-            set_costs_builtin,
             self.extract_signature(function_id)?,
             &[Value::Struct {
                 fields: vec![Value::Array(

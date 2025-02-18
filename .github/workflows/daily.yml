@@ -51,8 +51,8 @@ jobs:
           - 900700
           - 900800
           - 900900
-          - 1000000
-          - 1001000
+          - 1000400
+          - 1000500
           - 1002000
           - 1003000
           - 1004000
@@ -90,22 +90,21 @@ jobs:
           path: sequencer
           ref: replay
 
+      - name: Restore RPC Calls
+        id: restore-rpc-calls
+        uses: actions/cache/restore@v4.2.0
+        with:
+          path: starknet-replay/rpc_cache
+          key: cache-${{matrix.block}}
+
       # Install dependencies
       - uses: ./cairo_native/.github/actions/install-linux-deps
       - name: Setup rust env
-        uses: dtolnay/rust-toolchain@1.84.0
+        uses: dtolnay/rust-toolchain@1.84.1
       - name: Retreive cached dependecies
         uses: Swatinem/rust-cache@v2
         with:
-          workspaces: "starknet-replay -> target"
-          cache-directories: "cairo_native"
-
-      - name: Build Cairo Native Runtime Library
-        shell: bash
-        run: |
-          cd ../cairo_native
-          make runtime
-          echo "CAIRO_NATIVE_RUNTIME_LIBRARY=$(pwd)/libcairo_native_runtime.a" > $GITHUB_ENV
+          workspaces: starknet-replay
 
       - name: Patch replay dependencies
         run: |
@@ -130,10 +129,6 @@ jobs:
           new_path='"..\/cairo_native"'
           sed -i'' -r "s/^cairo-native = .*/cairo-native.path = $new_path/" Cargo.toml
 
-          # Update native submodule
-          git rm crates/blockifier/cairo_native
-          ln -s ../../../cairo_native/ crates/blockifier/cairo_native
-
           git diff
 
       - name: Run with Native
@@ -156,6 +151,13 @@ jobs:
         with:
           name: dump-${{matrix.block}}-${{matrix.runner}}
           path: starknet-replay/state_dumps/${{matrix.runner}}
+
+      - name: Save RPC Calls
+        uses: actions/cache/save@v4.2.0
+        if: ${{ always() && matrix.runner == 'vm' }}
+        with:
+          path: starknet-replay/rpc_cache
+          key: ${{ steps.restore-rpc-calls.outputs.cache-primary-key }}
 
   compare:
     needs: [run]
@@ -188,19 +190,21 @@ jobs:
         run: |
           ./scripts/cmp_state_dumps.sh | tee output
 
+      - name: Upload Compare Results
+        id: upload_compare_results
+        uses: actions/upload-artifact@v4
+        if: ${{ always() }}
+        with:
+          name: output-result
+          path: output
+
       - name: Prepare env vars
         if: ${{ always() }}
         run: |
           # Save workflow url
           REPO_URL="${{ github.server_url }}/${{ github.repository }}"
           echo "WORKFLOW_URL=$REPO_URL/actions/runs/${{ github.run_id }}" | tee -a $GITHUB_ENV
-
-          # Save output
-          {
-            echo 'OUTPUT<<EOF'
-            cat output
-            echo EOF
-          } >> "$GITHUB_ENV"
+          echo "COMPARISON_RESULT=$REPO_URL/actions/runs/${{ github.run_id }}/artifacts/${{ steps.upload_compare_results.outputs.artifact-id }}" | tee -a $GITHUB_ENV
 
       - name: Create Issue
         if: ${{ failure() }}

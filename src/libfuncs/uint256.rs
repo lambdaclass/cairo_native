@@ -20,7 +20,7 @@ use melior::{
         attribute::{DenseI64ArrayAttribute, IntegerAttribute},
         operation::OperationBuilder,
         r#type::IntegerType,
-        Block, Location, Region, Value,
+        Block, BlockLike, Location, Region, Value,
     },
     Context,
 };

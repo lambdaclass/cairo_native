@@ -25,7 +25,7 @@ use cairo_lang_sierra::{
 };
 use melior::{
     dialect::{arith, cf},
-    ir::{Block, BlockRef, Location, Module, Region, Value},
+    ir::{Block, BlockLike, BlockRef, Location, Module, Region, Value},
     Context,
 };
 use num_bigint::BigInt;

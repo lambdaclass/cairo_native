@@ -25,7 +25,7 @@ use melior::{
     },
     ir::{
         attribute::DenseI64ArrayAttribute, operation::OperationBuilder, r#type::IntegerType,
-        Attribute, Block, Location, Type, ValueLike,
+        Attribute, Block, BlockLike, Location, Type, ValueLike,
     },
     Context,
 };

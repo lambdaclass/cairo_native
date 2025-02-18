@@ -97,7 +97,7 @@ use melior::{
         attribute::{FlatSymbolRefAttribute, IntegerAttribute, StringAttribute, TypeAttribute},
         operation::OperationBuilder,
         r#type::{FunctionType, IntegerType},
-        Block, Identifier, Location, Module, Region, Value,
+        Block, BlockLike, Identifier, Location, Module, Region, Value,
     },
     Context, ExecutionEngine,
 };

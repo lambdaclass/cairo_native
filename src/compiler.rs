@@ -84,8 +84,8 @@ use melior::{
         },
         operation::OperationBuilder,
         r#type::{FunctionType, IntegerType, MemRefType},
-        Attribute, AttributeLike, Block, BlockRef, Identifier, Location, Module, Region, Type,
-        Value,
+        Attribute, AttributeLike, Block, BlockLike, BlockRef, Identifier, Location, Module, Region,
+        Type, Value,
     },
     Context,
 };
@@ -621,7 +621,11 @@ fn compile_func(
                         &helper,
                         metadata,
                     )?;
-                    assert!(block.terminator().is_some());
+                    assert!(
+                        block.terminator().is_some(),
+                        "libfunc {} had no terminator",
+                        libfunc_name
+                    );
 
                     #[cfg(feature = "with-profiler")]
                     if let Some((profiler_meta, _, _)) = helper.profiler.take() {
@@ -782,7 +786,7 @@ fn compile_func(
                                             }
                                         })
                                         .collect::<Result<Vec<_>, _>>()?,
-                                    None => todo!(),
+                                    None => native_panic!("not yet implemented"),
                                 };
 
                                 block.append_operation(cf::cond_br(
