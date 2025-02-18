@@ -914,10 +914,11 @@ pub(crate) mod handler {
                         Layout::array::<E>(data.len()).unwrap().size() + refcount_offset,
                     ) as *mut E;
 
+                    let len: u32 = data.len().try_into().unwrap();
                     ptr.cast::<u32>().write(1);
+                    ptr.byte_add(size_of::<u32>()).cast::<u32>().write(len);
                     let ptr = ptr.byte_add(refcount_offset);
 
-                    let len: u32 = data.len().try_into().unwrap();
                     for (i, val) in data.iter().enumerate() {
                         ptr.add(i).write(val.clone());
                     }
