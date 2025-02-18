@@ -1,6 +1,6 @@
 //! # Circuit libfuncs
 //!
-//! Relevant casm code: https://github.com/starkware-libs/cairo/blob/v2.10.0-rc.1/crates/cairo-lang-sierra-to-casm/src/invocations/circuit.rs
+//! Relevant casm code: https://github.com/starkware-libs/cairo/blob/v2.10.0/crates/cairo-lang-sierra-to-casm/src/invocations/circuit.rs
 
 use super::{increment_builtin_counter_by, LibfuncHelper};
 use crate::{
