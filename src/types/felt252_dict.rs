@@ -202,7 +202,6 @@ mod test {
 
                 @dict
             }
-
         };
         let program2 = load_cairo! {
             fn run_test() -> Felt252Dict<Nullable<Array<u32>>> {
@@ -211,8 +210,8 @@ mod test {
 
                 dict
             }
-
         };
+
         let result1 = run_program(&program, "run_test", &[]).return_value;
         let result2 = run_program(&program2, "run_test", &[]).return_value;
 

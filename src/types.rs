@@ -29,7 +29,7 @@ use num_bigint::{BigInt, Sign};
 use num_traits::{Bounded, One};
 use std::{alloc::Layout, error::Error, ops::Deref, sync::OnceLock};
 
-mod array;
+pub mod array;
 mod bitwise;
 mod bounded_int;
 mod r#box;
