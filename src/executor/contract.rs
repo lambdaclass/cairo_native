@@ -36,7 +36,7 @@ use crate::{
     context::NativeContext,
     error::{panic::ToNativeAssertError, Error, Result},
     execution_result::{BuiltinStats, ContractExecutionResult},
-    executor::invoke_trampoline,
+    executor::{invoke_trampoline, BuiltinCostsGuard},
     metadata::{gas::MetadataComputationConfig, runtime_bindings::setup_runtime},
     module::NativeModule,
     starknet::{handler::StarknetSyscallHandlerCallbacks, StarknetSyscallHandler},
@@ -72,7 +72,7 @@ use std::{
     ffi::c_void,
     fs::{self, File},
     io,
-    path::PathBuf,
+    path::{Path, PathBuf},
     ptr::NonNull,
     sync::Arc,
 };
@@ -256,9 +256,10 @@ impl AotContractExecutor {
         })
         .collect::<Result<BTreeMap<_, _>>>()?;
 
-        // Build the shared library.
         let object_data = crate::module_to_object(&module, opt_level)?;
-        crate::object_to_shared_lib(&object_data, &output_path)?;
+
+        // Build the shared library into the lockfile, to avoid using a tmp file.
+        crate::object_to_shared_lib(&object_data, &lock_file.0)?;
 
         // Write the contract info.
         fs::write(
@@ -269,7 +270,10 @@ impl AotContractExecutor {
             })?,
         )?;
 
-        drop(lock_file);
+        // Atomically move the built shared library to the correct path. This will avoid data races
+        // when loading contracts.
+        lock_file.rename(&output_path)?;
+
         Self::from_path(output_path)
     }
 
@@ -280,10 +284,9 @@ impl AotContractExecutor {
     /// again.
     pub fn from_path(path: impl Into<PathBuf>) -> Result<Option<Self>> {
         let path = path.into();
-        if LockFile::exists(&path)? {
-            return Ok(None);
-        }
 
+        // Note: Library should load first, otherwise there could theoretically be a race condition.
+        //   See the `new_into` function's code for details.
         let library = Arc::new(unsafe { Library::new(&path)? });
         let contract_info =
             serde_json::from_str(&fs::read_to_string(path.with_extension("json"))?)?;
@@ -330,11 +333,11 @@ impl AotContractExecutor {
         };
         let function_ptr = self.find_function_ptr(&function_id, true)?;
 
-        let builtin_costs: [u64; 7] = builtin_costs.unwrap_or_default().into();
-
+        // Initialize syscall handler and builtin costs.
         // We may be inside a recursive contract, save the possible saved builtin costs to restore it after our call.
-        let old_builtincosts_ptr =
-            crate::runtime::cairo_native__set_costs_builtin(builtin_costs.as_ptr());
+        let mut syscall_handler = StarknetSyscallHandlerCallbacks::new(&mut syscall_handler);
+        let builtin_costs = builtin_costs.unwrap_or_default();
+        let builtin_costs_guard = BuiltinCostsGuard::install(builtin_costs);
 
         //  it can vary from contract to contract thats why we need to store/ load it.
         let builtins_size: usize = self.contract_info.entry_points[&selector]
@@ -353,18 +356,13 @@ impl AotContractExecutor {
             .as_ptr()
             .to_bytes(&mut invoke_data, |_| unreachable!())?;
 
-        let mut syscall_handler = StarknetSyscallHandlerCallbacks::new(&mut syscall_handler);
-
         for b in &self.contract_info.entry_points[&selector].builtins {
             match b {
                 BuiltinType::Gas => {
                     gas.to_bytes(&mut invoke_data, |_| unreachable!())?;
                 }
                 BuiltinType::BuiltinCosts => {
-                    // todo: check if valid
-                    builtin_costs
-                        .as_ptr()
-                        .to_bytes(&mut invoke_data, |_| unreachable!())?;
+                    builtin_costs.to_bytes(&mut invoke_data, |_| unreachable!())?;
                 }
                 BuiltinType::System => {
                     (&mut syscall_handler as *mut StarknetSyscallHandlerCallbacks<_>)
@@ -441,14 +439,19 @@ impl AotContractExecutor {
         #[cfg(target_arch = "aarch64")]
         let mut ret_registers = [0; 4];
 
-        unsafe {
+        #[allow(unused_mut)]
+        let mut run_trampoline = || unsafe {
             invoke_trampoline(
                 function_ptr,
                 invoke_data.as_ptr().cast(),
                 invoke_data.len() >> 3,
                 ret_registers.as_mut_ptr(),
             );
-        }
+        };
+        #[cfg(feature = "with-segfault-catcher")]
+        crate::utils::safe_runner::run_safely(run_trampoline).map_err(Error::SafeRunner)?;
+        #[cfg(not(feature = "with-segfault-catcher"))]
+        run_trampoline();
 
         // Parse final gas.
         unsafe fn read_value<T>(ptr: &mut NonNull<()>) -> &T {
@@ -576,7 +579,7 @@ impl AotContractExecutor {
         };
 
         // Restore the original builtin costs pointer.
-        crate::runtime::cairo_native__set_costs_builtin(old_builtincosts_ptr);
+        drop(builtin_costs_guard);
 
         #[cfg(feature = "with-mem-tracing")]
         crate::utils::mem_tracing::report_stats();
@@ -631,11 +634,13 @@ impl LockFile {
         }
     }
 
-    pub fn exists(path: impl Into<PathBuf>) -> io::Result<bool> {
-        let path: PathBuf = path.into();
-        let path = path.with_extension("lock");
+    pub fn rename(self, path: impl AsRef<Path>) -> io::Result<()> {
+        fs::rename(&self.0, path.as_ref())?;
 
-        fs::exists(path)
+        // don't remove lockfile, as we just renamed it
+        std::mem::forget(self);
+
+        Ok(())
     }
 }
 
