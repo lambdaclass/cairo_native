@@ -1,12 +1,13 @@
 [package]
 name = "cairo-native"
-version = "0.2.9"
+version = "0.3.1"
 edition = "2021"
 license = "Apache-2.0"
-description = "A compiler to convert Cairo's intermediate representation Sierra code to MLIR."
+description = "A compiler to convert Cairo's IR Sierra code to MLIR and execute it."
 repository = "https://github.com/lambdaclass/cairo_native"
 readme = "README.md"
 keywords = ["starknet", "cairo", "compiler", "mlir"]
+categories = ["compilers"]
 
 # Explicitly set the resolver to the default for edition >= 2021
 # https://doc.rust-lang.org/edition-guide/rust-2021/default-cargo-resolver.html
@@ -36,8 +37,12 @@ required-features = ["scarb"]
 name = "scarb-native-dump"
 required-features = ["scarb"]
 
+[[bin]]
+name = "starknet-native-compile"
+required-features = ["build-cli"]
+
 [features]
-default = ["build-cli", "with-runtime"]
+default = ["build-cli"]
 build-cli = [
     "dep:clap",
     "dep:tracing-subscriber",
@@ -49,8 +54,8 @@ scarb = ["build-cli", "dep:scarb-ui", "dep:scarb-metadata"]
 with-cheatcode = []
 with-debug-utils = []
 with-mem-tracing = []
-with-runtime = ["dep:cairo-native-runtime"]
-with-trace-dump = ["cairo-native-runtime/with-trace-dump"]
+with-segfault-catcher = []
+with-trace-dump = []
 
 # the aquamarine dep is only used in docs and cannot be detected as used by cargo udeps
 [package.metadata.cargo-udeps.ignore]
@@ -67,7 +72,7 @@ cairo-lang-semantic = "2.10.0-rc.1"
 cairo-lang-sierra = "2.10.0-rc.1"
 cairo-lang-sierra-generator = "2.10.0-rc.1"
 educe = "0.5.11" # can't update until https://github.com/magiclen/educe/issues/27
-itertools = "0.13.0"
+itertools = "0.14.0"
 lazy_static = "1.5"
 libc = "0.2"
 llvm-sys = "191.0.0"
@@ -92,7 +97,6 @@ cairo-lang-sierra-gas = "2.10.0-rc.1"
 cairo-lang-starknet = "2.10.0-rc.1"
 cairo-lang-utils = "2.10.0-rc.1"
 cairo-lang-starknet-classes = "2.10.0-rc.1"
-cairo-native-runtime = { version = "0.2.9", path = "runtime", optional = true }
 clap = { version = "4.5.23", features = ["derive"], optional = true }
 libloading = "0.8.6"
 tracing-subscriber = { version = "0.3.19", features = [
@@ -118,6 +122,10 @@ ark-secp256r1 = "0.5.0"
 ark-ec = "0.5.0"
 ark-ff = "0.5.0"
 num-integer = "0.1.46"
+
+# Runtime functions
+rand = "0.9.0"
+starknet-curve = "0.5.1"
 
 [dev-dependencies]
 cairo-vm = { version = "2.0.0-rc3", features = ["cairo-1-hints"] }
@@ -167,6 +175,3 @@ harness = false
 [[bench]]
 name = "libfuncs"
 harness = false
-
-[workspace]
-members = ["runtime"]

@@ -100,7 +100,6 @@ use std::{
     collections::{hash_map::Entry, BTreeMap, HashMap, HashSet},
     ops::Deref,
 };
-use tracing::debug;
 
 /// The [BlockStorage] type is used to map each statement into its own entry block (on the right),
 /// and its landing block (on the left) if required.
@@ -628,7 +627,11 @@ fn compile_func(
                         &helper,
                         metadata,
                     )?;
-                    assert!(block.terminator().is_some());
+                    assert!(
+                        block.terminator().is_some(),
+                        "libfunc {} had no terminator",
+                        libfunc_name
+                    );
 
                     if let Some(tailrec_meta) = metadata.remove::<TailRecursionMeta>() {
                         if let Some(return_block) = tailrec_meta.return_target() {
@@ -835,7 +838,7 @@ fn compile_func(
                     }
 
                     // Store the return value in the return pointer, if there's one.
-                    if has_return_ptr == Some(true) {
+                    if Some(true) == has_return_ptr {
                         let (_ret_type_id, ret_type_info) = return_type_infos[0];
                         let ret_layout = ret_type_info.layout(registry)?;
 
@@ -1290,7 +1293,7 @@ where
                 );
             }
             StatementCompileResult::Deferred => {
-                debug!("Statement {statement_idx}'s compilation has been deferred.");
+                tracing::trace!("Statement {statement_idx}'s compilation has been deferred.");
 
                 visited.remove(&statement_idx);
                 queue.insert(0, (statement_idx, state));
