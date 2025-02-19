@@ -196,7 +196,7 @@ fn main() -> anyhow::Result<()> {
         assert_eq!(traces.len(), 1);
 
         let trace_dump = traces.values().next().unwrap();
-        serde_json::to_writer(
+        serde_json::to_writer_pretty(
             std::fs::File::create(trace_output).unwrap(),
             &trace_dump.trace,
         )
