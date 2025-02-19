@@ -811,7 +811,7 @@ pub mod trace_dump {
         sync::{LazyLock, Mutex},
     };
 
-    use crate::FeltDict;
+    use super::FeltDict;
 
     pub static TRACE_DUMP: LazyLock<Mutex<HashMap<u64, TraceDump>>> =
         LazyLock::new(|| Mutex::new(HashMap::new()));
@@ -1158,14 +1158,14 @@ pub mod trace_dump {
                     Value::CircuitOutputs(values)
                 }
                 CircuitTypeConcrete::CircuitPartialOutputs(_) => {
-                    Value::ToDo("CircuitTypeConcrete::CircuitPartialOutputs".to_string())
+                    todo!("CircuitTypeConcrete::CircuitPartialOutputs")
                 }
                 CircuitTypeConcrete::CircuitDescriptor(_) => Value::Unit,
                 CircuitTypeConcrete::CircuitFailureGuarantee(_) => {
-                    Value::ToDo("CircuitTypeConcrete::CircuitFailureGuarantee".to_string())
+                    todo!("CircuitTypeConcrete::CircuitFailureGuarantee")
                 }
                 CircuitTypeConcrete::CircuitInput(_) => {
-                    Value::ToDo("CircuitTypeConcrete::CircuitInput".to_string())
+                    todo!("CircuitTypeConcrete::CircuitInput")
                 }
                 CircuitTypeConcrete::CircuitInputAccumulator(info) => {
                     let Some(GenericArg::Type(circuit_type_id)) =

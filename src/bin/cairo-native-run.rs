@@ -141,8 +141,8 @@ fn main() -> anyhow::Result<()> {
     #[cfg(feature = "with-trace-dump")]
     {
         use cairo_lang_sierra::program_registry::ProgramRegistry;
+        use cairo_native::runtime::trace_dump::{TraceDump, TRACE_DUMP};
         use cairo_native::types::TypeBuilder;
-        use cairo_native_runtime::trace_dump::{TraceDump, TRACE_DUMP};
 
         TRACE_DUMP.lock().unwrap().insert(
             0,
@@ -190,7 +190,9 @@ fn main() -> anyhow::Result<()> {
 
     #[cfg(feature = "with-trace-dump")]
     if let Some(trace_output) = args.trace_output {
-        let traces = cairo_native_runtime::trace_dump::TRACE_DUMP.lock().unwrap();
+        let traces = cairo_native::runtime::trace_dump::TRACE_DUMP
+            .lock()
+            .unwrap();
         assert_eq!(traces.len(), 1);
 
         let trace_dump = traces.values().next().unwrap();

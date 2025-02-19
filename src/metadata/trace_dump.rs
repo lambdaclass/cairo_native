@@ -2,6 +2,7 @@
 
 use crate::{
     error::{Error, Result},
+    runtime,
     utils::BlockExt,
 };
 use cairo_lang_sierra::{
@@ -39,11 +40,9 @@ impl TraceBinding {
     const fn function_ptr(self) -> *const () {
         match self {
             TraceBinding::State => {
-                cairo_native_runtime::trace_dump::cairo_native__trace_dump__state as *const ()
+                runtime::trace_dump::cairo_native__trace_dump__state as *const ()
             }
-            TraceBinding::Push => {
-                cairo_native_runtime::trace_dump::cairo_native__trace_dump__push as *const ()
-            }
+            TraceBinding::Push => runtime::trace_dump::cairo_native__trace_dump__push as *const (),
             // it has no function pointer, as its a global constant
             TraceBinding::TraceId => ptr::null(),
         }
