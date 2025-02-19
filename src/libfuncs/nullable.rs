@@ -191,17 +191,11 @@ mod test {
         let result = run_sierra_program(&program_from_box, &[4u8.into()]).return_value;
         let result = run_sierra_program(&program_match, &[result]).return_value;
 
-        assert_eq!(
-            jit_enum!(1, 4u8.into(), "Enum<ut@Tuple, [3], [2]>".to_string()),
-            result
-        );
+        assert_eq!(jit_enum!(1, 4u8.into()), result);
 
         let result = run_sierra_program(&program_match, &[Value::Null]).return_value;
 
-        assert_eq!(
-            jit_enum!(0, jit_struct!(), "Enum<ut@Tuple, [3], [2]>".to_string()),
-            result
-        );
+        assert_eq!(jit_enum!(0, jit_struct!()), result);
     }
 
     #[test]

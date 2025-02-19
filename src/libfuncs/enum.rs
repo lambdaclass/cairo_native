@@ -656,62 +656,27 @@ mod test {
         )
         .return_value;
 
-        assert_eq!(
-            jit_enum!(
-                0,
-                Felt::from(5678).into(),
-                "Enum<ut@MyEnum, [0], [1], [2], [3], [4]>".to_string()
-            ),
-            result
-        );
+        assert_eq!(jit_enum!(0, Felt::from(5678).into()), result);
 
         let result = run_sierra_program(&ENUM_INIT.lock().unwrap()(1), &[90u8.into()]).return_value;
 
-        assert_eq!(
-            jit_enum!(
-                1,
-                Value::Uint8(90u8),
-                "Enum<ut@MyEnum, [0], [1], [2], [3], [4]>".to_string()
-            ),
-            result
-        );
+        assert_eq!(jit_enum!(1, Value::Uint8(90u8)), result);
 
         let result =
             run_sierra_program(&ENUM_INIT.lock().unwrap()(2), &[9012u16.into()]).return_value;
 
-        assert_eq!(
-            jit_enum!(
-                2,
-                Value::Uint16(9012u16),
-                "Enum<ut@MyEnum, [0], [1], [2], [3], [4]>".to_string()
-            ),
-            result
-        );
+        assert_eq!(jit_enum!(2, Value::Uint16(9012u16)), result);
 
         let result =
             run_sierra_program(&ENUM_INIT.lock().unwrap()(3), &[34567890u32.into()]).return_value;
 
-        assert_eq!(
-            jit_enum!(
-                3,
-                Value::Uint32(34567890u32),
-                "Enum<ut@MyEnum, [0], [1], [2], [3], [4]>".to_string()
-            ),
-            result
-        );
+        assert_eq!(jit_enum!(3, Value::Uint32(34567890u32)), result);
 
         let result =
             run_sierra_program(&ENUM_INIT.lock().unwrap()(4), &[1234567890123456u64.into()])
                 .return_value;
 
-        assert_eq!(
-            jit_enum!(
-                4,
-                Value::Uint64(1234567890123456u64),
-                "Enum<ut@MyEnum, [0], [1], [2], [3], [4]>".to_string()
-            ),
-            result
-        );
+        assert_eq!(jit_enum!(4, Value::Uint64(1234567890123456u64)), result);
     }
 
     #[test]

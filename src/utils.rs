@@ -34,9 +34,9 @@ mod block_ext;
 pub mod mem_tracing;
 mod program_registry_ext;
 mod range_ext;
-pub mod sierra_gen;
 #[cfg(feature = "with-segfault-catcher")]
 pub mod safe_runner;
+pub mod sierra_gen;
 
 #[cfg(target_os = "macos")]
 pub const SHARED_LIBRARY_EXT: &str = "dylib";
@@ -462,13 +462,6 @@ pub mod test {
                 tag: $tag,
                 value: Box::new($value),
                 debug_name: None,
-            }
-        };
-        ( $tag:expr, $value:expr, $dbg_name:expr ) => {
-            crate::values::Value::Enum {
-                tag: $tag,
-                value: Box::new($value),
-                debug_name: Some($dbg_name),
             }
         };
     }
