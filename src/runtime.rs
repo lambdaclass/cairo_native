@@ -1122,7 +1122,7 @@ pub mod trace_dump {
 
                     for i in 0..n_inputs {
                         let size = u384_layout.pad_to_align().size();
-                        let current_ptr = value_ptr.byte_add(size * i as usize);
+                        let current_ptr = value_ptr.byte_add(size * i);
                         let current_value = current_ptr.as_ref();
                         values.push(BigUint::from_bytes_le(current_value));
                     }
@@ -1150,7 +1150,7 @@ pub mod trace_dump {
 
                     for i in 0..n_outputs {
                         let size = u384_layout.pad_to_align().size();
-                        let current_ptr = value_ptr.byte_add(size * i as usize);
+                        let current_ptr = value_ptr.byte_add(size * i);
                         let current_value = current_ptr.as_ref();
                         values.push(BigUint::from_bytes_le(current_value));
                     }
@@ -1286,7 +1286,7 @@ pub mod trace_dump {
                         (k, v)
                     })
                     .collect::<HashMap<Felt, Value>>();
-                let key = Felt::from_bytes_le(&value.key);
+                let key = Felt::from_bytes_le(value.key);
 
                 Value::FeltDictEntry {
                     ty: info.ty.clone(),
