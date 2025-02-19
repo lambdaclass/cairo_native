@@ -59,7 +59,7 @@ use crate::{
 };
 use bumpalo::Bump;
 use cairo_lang_sierra::{
-    edit_state,
+    edit_state::{self, put_results},
     extensions::{
         core::{CoreConcreteLibfunc, CoreLibfunc, CoreType},
         ConcreteLibfunc,
@@ -385,45 +385,43 @@ fn compile_func(
     let pre_entry_block =
         region.insert_block_before(entry_block, Block::new(&pre_entry_block_args));
 
-    let initial_state =
-        edit_state::put_results(OrderedHashMap::<_, (&ConcreteTypeId, Value)>::default(), {
-            let mut values = Vec::new();
+    let initial_state = put_results(OrderedHashMap::<_, (&ConcreteTypeId, Value)>::default(), {
+        let mut values = Vec::new();
 
-            let mut count = 0;
-            for param in &function.params {
-                let type_info = registry.get_type(&param.ty)?;
-                let location = Location::new(
-                    context,
-                    "program.sierra",
-                    sierra_stmt_start_offset + function.entry_point.0,
-                    0,
-                );
+        let mut count = 0;
+        for param in &function.params {
+            let type_info = registry.get_type(&param.ty)?;
+            let location = Location::new(
+                context,
+                "program.sierra",
+                sierra_stmt_start_offset + function.entry_point.0,
+                0,
+            );
 
-                values.push((
-                    &param.id,
-                    (
-                        &param.ty,
-                        if type_info.is_builtin() && type_info.is_zst(registry)? {
-                            pre_entry_block
-                                .append_operation(llvm::undef(
-                                    type_info
-                                        .build(context, module, registry, metadata, &param.ty)?,
-                                    location,
-                                ))
-                                .result(0)?
-                                .into()
-                        } else {
-                            let value = entry_block.argument(count)?.into();
-                            count += 1;
+            values.push((
+                &param.id,
+                (
+                    &param.ty,
+                    if type_info.is_builtin() && type_info.is_zst(registry)? {
+                        pre_entry_block
+                            .append_operation(llvm::undef(
+                                type_info.build(context, module, registry, metadata, &param.ty)?,
+                                location,
+                            ))
+                            .result(0)?
+                            .into()
+                    } else {
+                        let value = entry_block.argument(count)?.into();
+                        count += 1;
 
-                            value
-                        },
-                    ),
-                ));
-            }
+                        value
+                    },
+                ),
+            ));
+        }
 
-            values.into_iter()
-        })?;
+        values.into_iter()
+    })?;
 
     tracing::trace!("Implementing the entry block.");
     entry_block.append_operation(cf::br(
