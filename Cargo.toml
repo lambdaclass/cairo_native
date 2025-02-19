@@ -1,6 +1,6 @@
 [package]
 name = "cairo-native"
-version = "0.3.0"
+version = "0.3.1"
 edition = "2021"
 license = "Apache-2.0"
 description = "A compiler to convert Cairo's IR Sierra code to MLIR and execute it."
@@ -37,6 +37,10 @@ required-features = ["scarb"]
 name = "scarb-native-dump"
 required-features = ["scarb"]
 
+[[bin]]
+name = "starknet-native-compile"
+required-features = ["build-cli"]
+
 [features]
 default = ["build-cli"]
 build-cli = [
@@ -50,6 +54,7 @@ scarb = ["build-cli", "dep:scarb-ui", "dep:scarb-metadata"]
 with-cheatcode = []
 with-debug-utils = []
 with-mem-tracing = []
+with-segfault-catcher = []
 
 # the aquamarine dep is only used in docs and cannot be detected as used by cargo udeps
 [package.metadata.cargo-udeps.ignore]

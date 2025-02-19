@@ -46,7 +46,7 @@ jobs:
           ref: 9487df3ada00d03bbd9fc39331c4ec1ac0994954
 
       - name: Cache RPC Calls
-        uses: actions/cache@v4
+        uses: actions/cache@v4.2.0
         with:
           path: starknet-replay/rpc_cache
           key: cache-${{matrix.block}}-${{matrix.runner}}

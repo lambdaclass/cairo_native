@@ -96,7 +96,7 @@ jobs:
     runs-on: ubuntu-24.04
     steps:
       - name: Cache binary
-        uses: actions/cache@v3
+        uses: actions/cache@v4.2.0
         id: cache-binary
         with:
           path: bin/cairo-native-run-${{ matrix.branch }}
@@ -177,7 +177,7 @@ jobs:
           tool: hyperfine@1.16
 
       - name: Fetch ${{ matrix.branch }} binary
-        uses: actions/cache/restore@v3
+        uses: actions/cache/restore@v4.2.0
         with:
           path: bin/cairo-native-run-${{ matrix.branch }}
           key: binary-${{ github.event.pull_request[matrix.branch].sha }}
