@@ -398,26 +398,22 @@ fn compile_func(
                 0,
             );
 
-            values.push((
-                &param.id,
-                (
-                    &param.ty,
-                    if type_info.is_builtin() && type_info.is_zst(registry)? {
-                        pre_entry_block
-                            .append_operation(llvm::undef(
-                                type_info.build(context, module, registry, metadata, &param.ty)?,
-                                location,
-                            ))
-                            .result(0)?
-                            .into()
-                    } else {
-                        let value = entry_block.argument(count)?.into();
-                        count += 1;
+            let value = if type_info.is_builtin() && type_info.is_zst(registry)? {
+                pre_entry_block
+                    .append_operation(llvm::undef(
+                        type_info.build(context, module, registry, metadata, &param.ty)?,
+                        location,
+                    ))
+                    .result(0)?
+                    .into()
+            } else {
+                let value = entry_block.argument(count)?.into();
+                count += 1;
 
-                        value
-                    },
-                ),
-            ));
+                value
+            };
+
+            values.push((&param.id, (&param.ty, value)));
         }
 
         values.into_iter()
