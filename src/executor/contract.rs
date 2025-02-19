@@ -83,7 +83,7 @@ use tempfile::NamedTempFile;
 #[educe(Debug)]
 pub struct AotContractExecutor {
     #[educe(Debug(ignore))]
-    pub library: Arc<Library>,
+    library: Arc<Library>,
     path: PathBuf,
     contract_info: NativeContractInfo,
 }

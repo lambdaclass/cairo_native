@@ -16,7 +16,7 @@ use utils::{find_function, result_to_runresult};
 
 mod utils;
 
-#[derive(Clone, Copy, Debug, Eq, Hash, PartialEq, ValueEnum)]
+#[derive(Clone, Debug, ValueEnum)]
 enum RunMode {
     Aot,
     Jit,
