@@ -231,7 +231,6 @@ fn invoke_dynamic(
             ret_registers.as_mut_ptr(),
         );
     }
-
     // If the syscall handler was changed, then reset the previous one.
     // It's only necessary to restore the pointer if it's been modified i.e. if previous_syscall_handler is Some(...)
     #[cfg(feature = "with-cheatcode")]
