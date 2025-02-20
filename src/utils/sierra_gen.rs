@@ -370,7 +370,7 @@ where
         U: GenericType,
     {
         let generic_args = generic_args.into();
-
+        dbg!(&generic_args);
         let type_info = U::by_id(&generic_id)
             .unwrap()
             .specialize(&SierraGeneratorWrapper(RefCell::new(self)), &generic_args)

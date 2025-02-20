@@ -749,7 +749,7 @@ mod test {
         let result = run_sierra_program(&UPCAST_U32_U64, &[u32::MAX.into()]).return_value;
         assert_eq!(result, (u32::MAX as u64).into());
         let result = run_sierra_program(&UPCAST_U32_U32, &[u32::MAX.into()]).return_value;
-        assert_eq!(result, (u32::MAX as u32).into());
+        assert_eq!(result, u32::MAX.into());
         let result = run_sierra_program(&UPCAST_U16_U128, &[u16::MAX.into()]).return_value;
         assert_eq!(result, (u16::MAX as u128).into());
         let result = run_sierra_program(&UPCAST_U16_U64, &[u16::MAX.into()]).return_value;
@@ -767,7 +767,7 @@ mod test {
         let result = run_sierra_program(&UPCAST_U8_U16, &[u8::MAX.into()]).return_value;
         assert_eq!(result, (u8::MAX as u16).into());
         let result = run_sierra_program(&UPCAST_U8_U8, &[u8::MAX.into()]).return_value;
-        assert_eq!(result, (u8::MAX as u8).into());
+        assert_eq!(result, u8::MAX.into());
         let result =
             run_sierra_program(&UPCAST_BYTES31_BYTES31, &[Value::Bytes31([0xFF; 31])]).return_value;
         assert_eq!(result, Value::Bytes31([0xFF; 31]));
