@@ -1415,44 +1415,44 @@ mod test {
 
     #[test]
     fn test_eval_circuit_sierra() {
-        let program = {
-            let mut generator = SierraGenerator::<EvalCircuitLibFunc>::default();
+        let program =
+            {
+                let mut generator = SierraGenerator::<EvalCircuitLibFunc>::default();
 
-            let circuit_input_1_ty = generator
-                .push_type_declaration::<CircuitInput>(&[GenericArg::Value(BigInt::from_slice(
-                    Sign::Minus,
-                    &[9, 2, 9, 3],
-                ))])
-                .clone();
-            let circuit_input_2_ty = generator
-                .push_type_declaration::<CircuitInput>(&[GenericArg::Value(
-                    BigInt::from_slice(Sign::Plus, &[5, 7, 0, 8]),
-                )])
-                .clone();
-            let add_mod_gate_ty = generator
-                .push_type_declaration::<AddModGate>(&[
-                    GenericArg::Type(circuit_input_1_ty.clone()),
-                    GenericArg::Type(circuit_input_2_ty.clone()),
-                ])
-                .clone();
-            let mul_mod_gate_ty = generator
-                .push_type_declaration::<MulModGate>(&[
-                    GenericArg::Type(add_mod_gate_ty),
-                    GenericArg::Type(circuit_input_2_ty.clone()),
-                ])
-                .clone();
-            let inv_gate_ty = generator
-                .push_type_declaration::<InverseGate>(&[GenericArg::Type(mul_mod_gate_ty)])
-                .clone();
-            let sub_gate_ty = generator
-                .push_type_declaration::<SubModGate>(&[
-                    GenericArg::Type(inv_gate_ty),
-                    GenericArg::Type(circuit_input_1_ty),
-                ])
-                .clone();
+                let circuit_input_1_ty = generator
+                    .push_type_declaration::<CircuitInput>(&[GenericArg::Value(
+                        BigInt::from_slice(Sign::Minus, &[9, 2, 9, 3]),
+                    )])
+                    .clone();
+                let circuit_input_2_ty = generator
+                    .push_type_declaration::<CircuitInput>(&[GenericArg::Value(
+                        BigInt::from_slice(Sign::Plus, &[5, 7, 0, 8]),
+                    )])
+                    .clone();
+                let add_mod_gate_ty = generator
+                    .push_type_declaration::<AddModGate>(&[
+                        GenericArg::Type(circuit_input_1_ty.clone()),
+                        GenericArg::Type(circuit_input_2_ty.clone()),
+                    ])
+                    .clone();
+                let mul_mod_gate_ty = generator
+                    .push_type_declaration::<MulModGate>(&[
+                        GenericArg::Type(add_mod_gate_ty),
+                        GenericArg::Type(circuit_input_2_ty.clone()),
+                    ])
+                    .clone();
+                let inv_gate_ty = generator
+                    .push_type_declaration::<InverseGate>(&[GenericArg::Type(mul_mod_gate_ty)])
+                    .clone();
+                let sub_gate_ty = generator
+                    .push_type_declaration::<SubModGate>(&[
+                        GenericArg::Type(inv_gate_ty),
+                        GenericArg::Type(circuit_input_1_ty),
+                    ])
+                    .clone();
 
-            generator.build(&[GenericArg::Type(sub_gate_ty)])
-        };
+                generator.build(&[GenericArg::Type(sub_gate_ty)])
+            };
 
         println!("{program}");
     }
