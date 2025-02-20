@@ -1040,79 +1040,80 @@ mod test {
         }
 
         let max_value = 0xFFFFFFFF_FFFFFFFF_FFFFFFFF_FFFFFFFFu128;
-        let none = jit_struct!(jit_struct!(
-            jit_struct!(Value::Null, Value::Null),
-            jit_struct!(Value::Null, Value::Null),
-        ));
-        run((0, 0), (0, 0), none.clone());
+        let struct_result = |val, rem| jit_struct!(val, rem, Value::Null);
+
         run(
             (0, 0),
-            (0, 1),
-            jit_enum!(
-                0,
-                jit_struct!(jit_struct!(
-                    jit_struct!(0u128.into(), 0u128.into()),
-                    jit_struct!(0u128.into(), 0u128.into()),
-                ))
+            (0, 0),
+            struct_result(
+                jit_struct!(0u128.into(), 0u128.into()),
+                jit_struct!(0u128.into(), 0u128.into()),
             ),
         );
         run(
             (0, 0),
+            (0, 1),
+            struct_result(
+                jit_struct!(0u128.into(), 0u128.into()),
+                jit_struct!(0u128.into(), 0u128.into()),
+            ),
+        );
+        run(
+            (0, 0),
             (max_value, max_value),
-            jit_enum!(
-                0,
-                jit_struct!(jit_struct!(
-                    jit_struct!(0u128.into(), 0u128.into()),
-                    jit_struct!(0u128.into(), 0u128.into()),
-                ))
+            struct_result(
+                jit_struct!(0u128.into(), 0u128.into()),
+                jit_struct!(0u128.into(), 0u128.into()),
             ),
         );
 
-        run((0, 1), (0, 0), none.clone());
+        run(
+            (0, 1),
+            (0, 0),
+            struct_result(
+                jit_struct!(0u128.into(), 0u128.into()),
+                jit_struct!(1u128.into(), 0u128.into()),
+            ),
+        );
         run(
             (0, 1),
             (0, 1),
-            jit_enum!(
-                0,
-                jit_struct!(jit_struct!(
-                    jit_struct!(1u128.into(), 0u128.into()),
-                    jit_struct!(0u128.into(), 0u128.into()),
-                ))
+            struct_result(
+                jit_struct!(1u128.into(), 0u128.into()),
+                jit_struct!(0u128.into(), 0u128.into()),
             ),
         );
         run(
             (0, 1),
             (max_value, max_value),
-            jit_enum!(
-                0,
-                jit_struct!(jit_struct!(
-                    jit_struct!(0u128.into(), 0u128.into()),
-                    jit_struct!(1u128.into(), 0u128.into()),
-                ))
+            struct_result(
+                jit_struct!(0u128.into(), 0u128.into()),
+                jit_struct!(1u128.into(), 0u128.into()),
             ),
         );
-        run((max_value, max_value), (0, 0), none.clone());
+        run(
+            (max_value, max_value),
+            (0, 0),
+            struct_result(
+                jit_struct!(0u128.into(), 0u128.into()),
+                jit_struct!(max_value.into(), max_value.into()),
+            ),
+        );
 
         run(
             (max_value, max_value),
             (0, 1),
-            jit_enum!(
-                0,
-                jit_struct!(jit_struct!(
-                    jit_struct!(max_value.into(), max_value.into()),
-                    jit_struct!(0u128.into(), 0u128.into()),
-                ))
+            struct_result(
+                jit_struct!(max_value.into(), max_value.into()),
+                jit_struct!(0u128.into(), 0u128.into()),
             ),
         );
         run(
             (max_value, max_value),
             (max_value, max_value),
-            jit_enum!(
-                0,
-                jit_struct!(jit_struct!(
-                    jit_struct!(1u128.into(), 0u128.into()),
-                    jit_struct!(0u128.into(), 0u128.into()),
-                ))
+            struct_result(
+                jit_struct!(1u128.into(), 0u128.into()),
+                jit_struct!(0u128.into(), 0u128.into()),
             ),
         );
     }
@@ -1170,6 +1171,20 @@ mod test {
             assert_eq!(expected, result);
         }
 
+        let struct_ok_result = |lo, hi| {
+            jit_struct!(
+                lo,
+                hi,
+                Value::Null,
+                Value::Null,
+                Value::Null,
+                Value::Null,
+                Value::Null,
+                Value::Null,
+                Value::Null,
+                Value::Null,
+            )
+        };
         let none = jit_enum!(1, jit_struct!(Value::Null, Value::Null));
 
         // Not invertible.
@@ -1208,27 +1223,27 @@ mod test {
         run(
             (5, 0),
             (24, 0),
-            jit_enum!(0, jit_struct!(5u128.into(), 0u128.into())),
+            jit_enum!(0, struct_ok_result(5u128.into(), 0u128.into())),
         );
         run(
             (29, 0),
             (24, 0),
-            jit_enum!(0, jit_struct!(5u128.into(), 0u128.into())),
+            jit_enum!(0, struct_ok_result(5u128.into(), 0u128.into())),
         );
         run(
             (1, 0),
             (24, 0),
-            jit_enum!(0, jit_struct!(1u128.into(), 0u128.into())),
+            jit_enum!(0, struct_ok_result(1u128.into(), 0u128.into())),
         );
         run(
             (1, 0),
             (5, 0),
-            jit_enum!(0, jit_struct!(1u128.into(), 0u128.into())),
+            jit_enum!(0, struct_ok_result(1u128.into(), 0u128.into())),
         );
         run(
             (2, 0),
             (5, 0),
-            jit_enum!(0, jit_struct!(3u128.into(), 0u128.into())),
+            jit_enum!(0, struct_ok_result(3u128.into(), 0u128.into())),
         );
     }
 }

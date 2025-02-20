@@ -70,7 +70,6 @@ where
         generic_args: impl Into<Vec<GenericArg>>,
     ) -> Program {
         let generic_args = generic_args.into();
-
         let libfunc = T::by_id(&generic_id).unwrap();
         let libfunc_signature = libfunc
             .specialize_signature(
