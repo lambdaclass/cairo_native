@@ -1084,7 +1084,6 @@ pub mod trace_dump {
 
             // Builtins and other unit types:
             CoreTypeConcrete::Bitwise(_)
-            | CoreTypeConcrete::BuiltinCosts(_)
             | CoreTypeConcrete::EcOp(_)
             | CoreTypeConcrete::Pedersen(_)
             | CoreTypeConcrete::Poseidon(_)
@@ -1093,6 +1092,19 @@ pub mod trace_dump {
             | CoreTypeConcrete::SegmentArena(_)
             | CoreTypeConcrete::StarkNet(StarkNetTypeConcrete::System(_))
             | CoreTypeConcrete::Uint128MulGuarantee(_) => Value::Unit,
+
+            CoreTypeConcrete::BuiltinCosts(_) => {
+                let builtin_costs = value_ptr.cast::<&[u64; 7]>().read();
+                Value::BuiltinCosts(sierra_emu::BuiltinCosts {
+                    r#const: builtin_costs[0],
+                    pedersen: builtin_costs[1],
+                    bitwise: builtin_costs[2],
+                    ecop: builtin_costs[3],
+                    poseidon: builtin_costs[4],
+                    add_mod: builtin_costs[5],
+                    mul_mod: builtin_costs[6],
+                })
+            }
 
             // TODO:
             CoreTypeConcrete::Coupon(_) => todo!("CoreTypeConcrete::Coupon"),
