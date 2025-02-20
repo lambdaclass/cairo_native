@@ -1017,7 +1017,8 @@
 <a href="#1016" id="1016">1016</a>
 <a href="#1017" id="1017">1017</a>
 <a href="#1018" id="1018">1018</a>
-<a href="#1019" id="1019">1019</a></pre></div><pre class="rust"><code><span class="doccomment">//! # Various utilities
+<a href="#1019" id="1019">1019</a>
+<a href="#1020" id="1020">1020</a></pre></div><pre class="rust"><code><span class="doccomment">//! # Various utilities
 
 </span><span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">use </span><span class="self">self</span>::{
     block_ext::{BlockExt, GepIndex},
@@ -1055,6 +1056,7 @@
 <span class="kw">mod </span>range_ext;
 <span class="attr">#[cfg(feature = <span class="string">"with-segfault-catcher"</span>)]
 </span><span class="kw">pub mod </span>safe_runner;
+<span class="kw">pub mod </span>sierra_gen;
 
 <span class="attr">#[cfg(target_os = <span class="string">"macos"</span>)]
 </span><span class="kw">pub const </span>SHARED_LIBRARY_EXT: <span class="kw-2">&amp;</span>str = <span class="string">"dylib"</span>;
