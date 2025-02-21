@@ -166,7 +166,10 @@ mod test {
     use std::collections::HashMap;
 
     use cairo_lang_sierra::{
-        extensions::{felt252_dict::Felt252DictNewLibfunc, int::unsigned::Uint32Type},
+        extensions::{
+            felt252_dict::{Felt252DictNewLibfunc, Felt252DictSquashLibfunc},
+            int::unsigned::{Uint32Type, Uint64Type},
+        },
         program::GenericArg,
     };
 
@@ -245,6 +248,24 @@ mod test {
                 5 => 6u32,
             ),
         );
+    }
+
+    #[test]
+    fn run_dict_squash() {
+        let program = {
+            let mut generator = SierraGenerator::<Felt252DictSquashLibfunc>::default();
+
+            let u64_ty = generator.push_type_declaration::<Uint64Type>(&[]).clone();
+
+            generator.build(&[GenericArg::Type(u64_ty)])
+        };
+
+        let dict = Value::Felt252Dict {
+            value: HashMap::new(),
+            debug_name: None,
+        };
+
+        run_sierra_program(&program, &[dict]);
     }
 
     #[test]
