@@ -1171,10 +1171,10 @@ mod test {
             assert_eq!(expected, result);
         }
 
-        let struct_ok_result = |lo, hi| {
+        // garantees are represented as Value::Null
+        let struct_ok_result = |value| {
             jit_struct!(
-                lo,
-                hi,
+                value,
                 Value::Null,
                 Value::Null,
                 Value::Null,
@@ -1223,27 +1223,27 @@ mod test {
         run(
             (5, 0),
             (24, 0),
-            jit_enum!(0, struct_ok_result(5u128.into(), 0u128.into())),
+            jit_enum!(0, struct_ok_result(jit_struct!(5u128.into(), 0u128.into()))),
         );
         run(
             (29, 0),
             (24, 0),
-            jit_enum!(0, struct_ok_result(5u128.into(), 0u128.into())),
+            jit_enum!(0, struct_ok_result(jit_struct!(5u128.into(), 0u128.into()))),
         );
         run(
             (1, 0),
             (24, 0),
-            jit_enum!(0, struct_ok_result(1u128.into(), 0u128.into())),
+            jit_enum!(0, struct_ok_result(jit_struct!(1u128.into(), 0u128.into()))),
         );
         run(
             (1, 0),
             (5, 0),
-            jit_enum!(0, struct_ok_result(1u128.into(), 0u128.into())),
+            jit_enum!(0, struct_ok_result(jit_struct!(1u128.into(), 0u128.into()))),
         );
         run(
             (2, 0),
             (5, 0),
-            jit_enum!(0, struct_ok_result(3u128.into(), 0u128.into())),
+            jit_enum!(0, struct_ok_result(jit_struct!(3u128.into(), 0u128.into()))),
         );
     }
 }
