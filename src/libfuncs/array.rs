@@ -1091,7 +1091,7 @@ pub fn build_get<'ctx, 'this>(
     Ok(())
 }
 
-/// Generate MLIR operations for the `array_len` libfunc.
+/// Generate MLIR operations for the `array_slice` libfunc.
 pub fn build_slice<'ctx, 'this>(
     context: &'ctx Context,
     _registry: &ProgramRegistry<CoreType, CoreLibfunc>,
