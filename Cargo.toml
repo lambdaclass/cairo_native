@@ -128,7 +128,7 @@ rand = "0.9.0"
 starknet-curve = "0.5.1"
 
 # trace dump
-sierra-emu = { git = "https://github.com/lambdaclass/sierra-emu", rev = "d82044b6c21d9d53d9b931bc35360c168374ff50", optional = true}
+sierra-emu = { git = "https://github.com/lambdaclass/sierra-emu", branch = "main", optional = true}
 
 [dev-dependencies]
 cairo-vm = { version = "2.0.0-rc3", features = ["cairo-1-hints"] }
