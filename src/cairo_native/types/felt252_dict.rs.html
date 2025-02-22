@@ -387,8 +387,7 @@
 <a href="#386" id="386">386</a>
 <a href="#387" id="387">387</a>
 <a href="#388" id="388">388</a>
-<a href="#389" id="389">389</a>
-<a href="#390" id="390">390</a></pre></div><pre class="rust"><code><span class="doccomment">//! # `Felt` dictionary type
+<a href="#389" id="389">389</a></pre></div><pre class="rust"><code><span class="doccomment">//! # `Felt` dictionary type
 //!
 //! A key value storage for values whose type implement Copy. The key is always a felt.
 //!
@@ -592,7 +591,6 @@
 
                 @dict
             }
-
         };
         <span class="kw">let </span>program2 = <span class="macro">load_cairo!</span> {
             <span class="kw">fn </span>run_test() -&gt; Felt252Dict&lt;Nullable&lt;Array&lt;u32&gt;&gt;&gt; {
@@ -601,8 +599,8 @@
 
                 dict
             }
-
         };
+
         <span class="kw">let </span>result1 = run_program(<span class="kw-2">&amp;</span>program, <span class="string">"run_test"</span>, <span class="kw-2">&amp;</span>[]).return_value;
         <span class="kw">let </span>result2 = run_program(<span class="kw-2">&amp;</span>program2, <span class="string">"run_test"</span>, <span class="kw-2">&amp;</span>[]).return_value;
 

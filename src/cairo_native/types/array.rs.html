@@ -443,7 +443,16 @@
 <a href="#442" id="442">442</a>
 <a href="#443" id="443">443</a>
 <a href="#444" id="444">444</a>
-<a href="#445" id="445">445</a></pre></div><pre class="rust"><code><span class="doccomment">//! # Array type
+<a href="#445" id="445">445</a>
+<a href="#446" id="446">446</a>
+<a href="#447" id="447">447</a>
+<a href="#448" id="448">448</a>
+<a href="#449" id="449">449</a>
+<a href="#450" id="450">450</a>
+<a href="#451" id="451">451</a>
+<a href="#452" id="452">452</a>
+<a href="#453" id="453">453</a>
+<a href="#454" id="454">454</a></pre></div><pre class="rust"><code><span class="doccomment">//! # Array type
 //!
 //! An array type is a dynamically allocated list of items.
 //!
@@ -493,6 +502,7 @@
     dialect::{arith::CmpiPredicate, func, scf},
     ir::BlockLike,
 };
+<span class="kw">use </span>std::alloc::Layout;
 
 <span class="doccomment">/// Build the MLIR type.
 ///
@@ -557,11 +567,7 @@
     <span class="kw">let </span>value_ty = registry.build_type(context, module, metadata, info.self_ty())<span class="question-mark">?</span>;
 
     <span class="kw">let </span>elem_layout = registry.get_type(<span class="kw-2">&amp;</span>info.ty)<span class="question-mark">?</span>.layout(registry)<span class="question-mark">?</span>;
-    <span class="kw">let </span>refcount_offset = get_integer_layout(<span class="number">32</span>)
-        .align_to(elem_layout.align())
-        .unwrap()
-        .pad_to_align()
-        .size();
+    <span class="kw">let </span>refcount_offset = calc_data_prefix_offset(elem_layout);
 
     <span class="kw">let </span>region = Region::new();
     <span class="kw">let </span>entry = region.append_block(Block::new(<span class="kw-2">&amp;</span>[(value_ty, location)]));
@@ -596,12 +602,18 @@
             <span class="kw">let </span>region = Region::new();
             <span class="kw">let </span>block = region.append_block(Block::new(<span class="kw-2">&amp;</span>[]));
 
-            <span class="kw">let </span>array_ptr = block.extract_value(
+            <span class="kw">let </span>array_ptr_ptr = block.extract_value(
                 context,
                 location,
                 entry.argument(<span class="number">0</span>)<span class="question-mark">?</span>.into(),
                 llvm::r#type::pointer(context, <span class="number">0</span>),
                 <span class="number">0</span>,
+            )<span class="question-mark">?</span>;
+            <span class="kw">let </span>array_ptr = block.load(
+                context,
+                location,
+                array_ptr_ptr,
+                llvm::r#type::pointer(context, <span class="number">0</span>),
             )<span class="question-mark">?</span>;
 
             <span class="kw">let </span>refcount_ptr = block.gep(
@@ -655,16 +667,12 @@
     <span class="kw">let </span>elem_stride = elem_ty.layout(registry)<span class="question-mark">?</span>.pad_to_align().size();
     <span class="kw">let </span>elem_ty = elem_ty.build(context, module, registry, metadata, <span class="kw-2">&amp;</span>info.ty)<span class="question-mark">?</span>;
     <span class="kw">let </span>elem_layout = registry.get_type(<span class="kw-2">&amp;</span>info.ty)<span class="question-mark">?</span>.layout(registry)<span class="question-mark">?</span>;
-    <span class="kw">let </span>refcount_offset = get_integer_layout(<span class="number">32</span>)
-        .align_to(elem_layout.align())
-        .unwrap()
-        .pad_to_align()
-        .size();
+    <span class="kw">let </span>refcount_offset = calc_data_prefix_offset(elem_layout);
 
     <span class="kw">let </span>region = Region::new();
     <span class="kw">let </span>entry = region.append_block(Block::new(<span class="kw-2">&amp;</span>[(value_ty, location)]));
 
-    <span class="kw">let </span>array_ptr = entry.extract_value(
+    <span class="kw">let </span>array_ptr_ptr = entry.extract_value(
         context,
         location,
         entry.argument(<span class="number">0</span>)<span class="question-mark">?</span>.into(),
@@ -708,7 +716,13 @@
             <span class="kw">let </span>block = region.append_block(Block::new(<span class="kw-2">&amp;</span>[]));
 
             <span class="comment">// obtain the reference counter
-            </span><span class="kw">let </span>refcount_ptr = block.gep(
+            </span><span class="kw">let </span>array_ptr = block.load(
+                context,
+                location,
+                array_ptr_ptr,
+                llvm::r#type::pointer(context, <span class="number">0</span>),
+            )<span class="question-mark">?</span>;
+            <span class="kw">let </span>refcount_ptr = block.gep(
                 context,
                 location,
                 array_ptr,
@@ -753,48 +767,35 @@
 
                     <span class="kw">match </span>metadata.get::&lt;DropOverridesMeta&gt;() {
                         <span class="prelude-val">Some</span>(drop_overrides_meta) <span class="kw">if </span>drop_overrides_meta.is_overriden(<span class="kw-2">&amp;</span>info.ty) =&gt; {
-                            <span class="kw">let </span>value_start = block.extract_value(
-                                context,
-                                location,
-                                entry.argument(<span class="number">0</span>)<span class="question-mark">?</span>.into(),
-                                IntegerType::new(context, <span class="number">32</span>).into(),
-                                <span class="number">1</span>,
-                            )<span class="question-mark">?</span>;
-                            <span class="kw">let </span>value_end = block.extract_value(
-                                context,
-                                location,
-                                entry.argument(<span class="number">0</span>)<span class="question-mark">?</span>.into(),
-                                IntegerType::new(context, <span class="number">32</span>).into(),
-                                <span class="number">2</span>,
-                            )<span class="question-mark">?</span>;
-
-                            <span class="kw">let </span>value_start = block.append_op_result(arith::extui(
-                                value_start,
-                                IntegerType::new(context, <span class="number">64</span>).into(),
-                                location,
-                            ))<span class="question-mark">?</span>;
-                            <span class="kw">let </span>value_end = block.append_op_result(arith::extui(
-                                value_end,
-                                IntegerType::new(context, <span class="number">64</span>).into(),
-                                location,
-                            ))<span class="question-mark">?</span>;
-
+                            <span class="kw">let </span>k0 = block.const_int(context, location, <span class="number">0</span>, <span class="number">64</span>)<span class="question-mark">?</span>;
                             <span class="kw">let </span>elem_stride =
                                 block.const_int(context, location, elem_stride, <span class="number">64</span>)<span class="question-mark">?</span>;
-                            <span class="kw">let </span>offset_start = block.append_op_result(arith::muli(
-                                value_start,
-                                elem_stride,
-                                location,
-                            ))<span class="question-mark">?</span>;
-                            <span class="kw">let </span>offset_end = block.append_op_result(arith::muli(
-                                value_end,
-                                elem_stride,
-                                location,
-                            ))<span class="question-mark">?</span>;
 
-                            <span class="comment">// for each element in the aray, invoke its drop implementation
+                            <span class="kw">let </span>max_len_ptr = block.gep(
+                                context,
+                                location,
+                                array_ptr,
+                                <span class="kw-2">&amp;</span>[GepIndex::Const(
+                                    -((refcount_offset - size_of::&lt;u32&gt;()) <span class="kw">as </span>i32),
+                                )],
+                                IntegerType::new(context, <span class="number">8</span>).into(),
+                            )<span class="question-mark">?</span>;
+                            <span class="kw">let </span>max_len = block.load(
+                                context,
+                                location,
+                                max_len_ptr,
+                                IntegerType::new(context, <span class="number">32</span>).into(),
+                            )<span class="question-mark">?</span>;
+                            <span class="kw">let </span>max_len = block.extui(
+                                max_len,
+                                IntegerType::new(context, <span class="number">64</span>).into(),
+                                location,
+                            )<span class="question-mark">?</span>;
+                            <span class="kw">let </span>offset_end = block.muli(max_len, elem_stride, location)<span class="question-mark">?</span>;
+
+                            <span class="comment">// Drop each element in the array.
                             </span>block.append_operation(scf::r#for(
-                                offset_start,
+                                k0,
                                 offset_end,
                                 elem_stride,
                                 {
@@ -834,6 +835,12 @@
                         refcount_ptr,
                         location,
                     )<span class="question-mark">?</span>);
+                    block.append_operation(ReallocBindingsMeta::free(
+                        context,
+                        array_ptr_ptr,
+                        location,
+                    )<span class="question-mark">?</span>);
+
                     block.append_operation(scf::r#yield(<span class="kw-2">&amp;</span>[], location));
                     region
                 },
@@ -848,6 +855,17 @@
 
     entry.append_operation(func::r#return(<span class="kw-2">&amp;</span>[], location));
     <span class="prelude-val">Ok</span>(region)
+}
+
+<span class="kw">pub fn </span>calc_data_prefix_offset(layout: Layout) -&gt; usize {
+    get_integer_layout(<span class="number">32</span>)
+        .extend(get_integer_layout(<span class="number">32</span>))
+        .unwrap()
+        .<span class="number">0
+        </span>.align_to(layout.align())
+        .unwrap()
+        .pad_to_align()
+        .size()
 }
 
 <span class="attr">#[cfg(test)]

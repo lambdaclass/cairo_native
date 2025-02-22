@@ -1723,14 +1723,7 @@
 <a href="#1722" id="1722">1722</a>
 <a href="#1723" id="1723">1723</a>
 <a href="#1724" id="1724">1724</a>
-<a href="#1725" id="1725">1725</a>
-<a href="#1726" id="1726">1726</a>
-<a href="#1727" id="1727">1727</a>
-<a href="#1728" id="1728">1728</a>
-<a href="#1729" id="1729">1729</a>
-<a href="#1730" id="1730">1730</a>
-<a href="#1731" id="1731">1731</a>
-<a href="#1732" id="1732">1732</a></pre></div><pre class="rust"><code><span class="doccomment">//! Starknet related code for `cairo_native`
+<a href="#1725" id="1725">1725</a></pre></div><pre class="rust"><code><span class="doccomment">//! Starknet related code for `cairo_native`
 
 </span><span class="kw">use </span>serde::{Deserialize, Serialize};
 <span class="kw">use </span>starknet_types_core::felt::Felt;
@@ -1740,7 +1733,7 @@
 <span class="attr">#[repr(C)]
 #[derive(Debug)]
 </span><span class="kw">pub struct </span>ArrayAbi&lt;T&gt; {
-    <span class="kw">pub </span>ptr: <span class="kw-2">*mut </span>T,
+    <span class="kw">pub </span>ptr: <span class="kw-2">*mut *mut </span>T,
     <span class="kw">pub </span>since: u32,
     <span class="kw">pub </span>until: u32,
     <span class="kw">pub </span>capacity: u32,
@@ -1755,7 +1748,7 @@
             <span class="kw">let </span>len = until_offset - since_offset;
             <span class="kw">match </span>len {
                 <span class="number">0 </span>=&gt; <span class="kw-2">&amp;</span>[],
-                <span class="kw">_ </span>=&gt; std::slice::from_raw_parts(value.ptr.add(since_offset), len),
+                <span class="kw">_ </span>=&gt; std::slice::from_raw_parts(value.ptr.read().add(since_offset), len),
             }
         }
         .iter()
@@ -2272,11 +2265,11 @@
 <span class="comment">// TODO: Move to the correct place or remove if unused.
 </span><span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">mod </span>handler {
     <span class="kw">use super</span>::<span class="kw-2">*</span>;
-    <span class="kw">use </span><span class="kw">crate</span>::utils::{get_integer_layout, libc_free, libc_malloc};
+    <span class="kw">use </span><span class="kw">crate</span>::utils::{libc_free, libc_malloc};
     <span class="kw">use </span>std::{
         alloc::Layout,
         fmt::Debug,
-        mem::{<span class="self">self</span>, size_of, ManuallyDrop, MaybeUninit},
+        mem::{size_of, ManuallyDrop, MaybeUninit},
         ptr::{null_mut, NonNull},
     };
 
@@ -2640,25 +2633,26 @@
                     capacity: <span class="number">0</span>,
                 },
                 <span class="kw">_ </span>=&gt; {
-                    <span class="kw">let </span>refcount_offset = get_integer_layout(<span class="number">32</span>)
-                        .align_to(mem::align_of::&lt;E&gt;())
-                        .unwrap()
-                        .pad_to_align()
-                        .size();
+                    <span class="kw">let </span>refcount_offset =
+                        <span class="kw">crate</span>::types::array::calc_data_prefix_offset(Layout::new::&lt;E&gt;());
                     <span class="kw">let </span>ptr = libc_malloc(
                         Layout::array::&lt;E&gt;(data.len()).unwrap().size() + refcount_offset,
                     ) <span class="kw">as </span><span class="kw-2">*mut </span>E;
 
+                    <span class="kw">let </span>len: u32 = data.len().try_into().unwrap();
                     ptr.cast::&lt;u32&gt;().write(<span class="number">1</span>);
+                    ptr.byte_add(size_of::&lt;u32&gt;()).cast::&lt;u32&gt;().write(len);
                     <span class="kw">let </span>ptr = ptr.byte_add(refcount_offset);
 
-                    <span class="kw">let </span>len: u32 = data.len().try_into().unwrap();
                     <span class="kw">for </span>(i, val) <span class="kw">in </span>data.iter().enumerate() {
                         ptr.add(i).write(val.clone());
                     }
 
+                    <span class="kw">let </span>ptr_ptr = libc_malloc(size_of::&lt;<span class="kw-2">*mut </span>()&gt;()).cast::&lt;<span class="kw-2">*mut </span>E&gt;();
+                    ptr_ptr.write(ptr);
+
                     ArrayAbi {
-                        ptr,
+                        ptr: ptr_ptr,
                         since: <span class="number">0</span>,
                         until: len,
                         capacity: len,
@@ -2672,15 +2666,14 @@
                 <span class="kw">return</span>;
             }
 
-            <span class="kw">let </span>refcount_offset = get_integer_layout(<span class="number">32</span>)
-                .align_to(mem::align_of::&lt;E&gt;())
-                .unwrap()
-                .pad_to_align()
-                .size();
+            <span class="kw">let </span>refcount_offset = <span class="kw">crate</span>::types::array::calc_data_prefix_offset(Layout::new::&lt;E&gt;());
 
-            <span class="kw">let </span>ptr = data.ptr.byte_sub(refcount_offset);
+            <span class="kw">let </span>ptr = data.ptr.read().byte_sub(refcount_offset);
             <span class="kw">match </span>ptr.cast::&lt;u32&gt;().read() {
-                <span class="number">1 </span>=&gt; libc_free(ptr.cast()),
+                <span class="number">1 </span>=&gt; {
+                    libc_free(ptr.cast());
+                    libc_free(data.ptr.cast());
+                }
                 n =&gt; ptr.cast::&lt;u32&gt;().write(n - <span class="number">1</span>),
             }
         }
@@ -2889,7 +2882,6 @@
             <span class="kw">let </span>contract_address_salt = Felt::from(contract_address_salt);
 
             <span class="kw">let </span>calldata_vec: Vec&lt;<span class="kw">_</span>&gt; = calldata.into();
-
             <span class="kw">unsafe </span>{
                 <span class="self">Self</span>::drop_mlir_array(calldata);
             }
@@ -2949,7 +2941,6 @@
             <span class="kw">let </span>function_selector = Felt::from(function_selector);
 
             <span class="kw">let </span>calldata_vec: Vec&lt;Felt&gt; = calldata.into();
-
             <span class="kw">unsafe </span>{
                 <span class="self">Self</span>::drop_mlir_array(calldata);
             }
@@ -2983,7 +2974,6 @@
             <span class="kw">let </span>entry_point_selector = Felt::from(entry_point_selector);
 
             <span class="kw">let </span>calldata_vec: Vec&lt;Felt&gt; = calldata.into();
-
             <span class="kw">unsafe </span>{
                 <span class="self">Self</span>::drop_mlir_array(calldata);
             }
@@ -3057,14 +3047,10 @@
             data: <span class="kw-2">&amp;</span>ArrayAbi&lt;Felt252Abi&gt;,
         ) {
             <span class="kw">let </span>keys_vec: Vec&lt;<span class="kw">_</span>&gt; = keys.into();
-
-            <span class="kw">unsafe </span>{
-                <span class="self">Self</span>::drop_mlir_array(keys);
-            }
-
             <span class="kw">let </span>data_vec: Vec&lt;<span class="kw">_</span>&gt; = data.into();
 
             <span class="kw">unsafe </span>{
+                <span class="self">Self</span>::drop_mlir_array(keys);
                 <span class="self">Self</span>::drop_mlir_array(data);
             }
 
@@ -3121,7 +3107,7 @@
                 <span class="kw">let </span>len = until_offset - since_offset;
                 <span class="kw">match </span>len {
                     <span class="number">0 </span>=&gt; <span class="kw-2">&amp;</span>[],
-                    <span class="kw">_ </span>=&gt; std::slice::from_raw_parts(input.ptr.add(since_offset), len),
+                    <span class="kw">_ </span>=&gt; std::slice::from_raw_parts(input.ptr.read().add(since_offset), len),
                 }
             };
 

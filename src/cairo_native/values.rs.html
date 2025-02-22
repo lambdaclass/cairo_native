@@ -1915,7 +1915,45 @@
 <a href="#1914" id="1914">1914</a>
 <a href="#1915" id="1915">1915</a>
 <a href="#1916" id="1916">1916</a>
-<a href="#1917" id="1917">1917</a></pre></div><pre class="rust"><code><span class="doccomment">//! # Params and return values de/serialization
+<a href="#1917" id="1917">1917</a>
+<a href="#1918" id="1918">1918</a>
+<a href="#1919" id="1919">1919</a>
+<a href="#1920" id="1920">1920</a>
+<a href="#1921" id="1921">1921</a>
+<a href="#1922" id="1922">1922</a>
+<a href="#1923" id="1923">1923</a>
+<a href="#1924" id="1924">1924</a>
+<a href="#1925" id="1925">1925</a>
+<a href="#1926" id="1926">1926</a>
+<a href="#1927" id="1927">1927</a>
+<a href="#1928" id="1928">1928</a>
+<a href="#1929" id="1929">1929</a>
+<a href="#1930" id="1930">1930</a>
+<a href="#1931" id="1931">1931</a>
+<a href="#1932" id="1932">1932</a>
+<a href="#1933" id="1933">1933</a>
+<a href="#1934" id="1934">1934</a>
+<a href="#1935" id="1935">1935</a>
+<a href="#1936" id="1936">1936</a>
+<a href="#1937" id="1937">1937</a>
+<a href="#1938" id="1938">1938</a>
+<a href="#1939" id="1939">1939</a>
+<a href="#1940" id="1940">1940</a>
+<a href="#1941" id="1941">1941</a>
+<a href="#1942" id="1942">1942</a>
+<a href="#1943" id="1943">1943</a>
+<a href="#1944" id="1944">1944</a>
+<a href="#1945" id="1945">1945</a>
+<a href="#1946" id="1946">1946</a>
+<a href="#1947" id="1947">1947</a>
+<a href="#1948" id="1948">1948</a>
+<a href="#1949" id="1949">1949</a>
+<a href="#1950" id="1950">1950</a>
+<a href="#1951" id="1951">1951</a>
+<a href="#1952" id="1952">1952</a>
+<a href="#1953" id="1953">1953</a>
+<a href="#1954" id="1954">1954</a>
+<a href="#1955" id="1955">1955</a></pre></div><pre class="rust"><code><span class="doccomment">//! # Params and return values de/serialization
 //!
 //! A Rusty interface to provide parameters to cairo-native entry point calls.
 
@@ -2142,26 +2180,24 @@
                         <span class="kw">let </span>elem_ty = registry.get_type(<span class="kw-2">&amp;</span>info.ty)<span class="question-mark">?</span>;
                         <span class="kw">let </span>elem_layout = elem_ty.layout(registry)<span class="question-mark">?</span>.pad_to_align();
 
-                        <span class="kw">let </span>refcount_offset = get_integer_layout(<span class="number">32</span>)
-                            .align_to(elem_layout.align())
-                            .unwrap()
-                            .pad_to_align()
-                            .size();
-                        <span class="kw">let </span>ptr = <span class="kw">match </span>elem_layout.size() * data.len() {
-                            <span class="number">0 </span>=&gt; std::ptr::null_mut(),
-                            len =&gt; {
-                                <span class="kw">let </span>ptr: <span class="kw-2">*mut </span>() = libc_malloc(len + refcount_offset).cast();
-
-                                <span class="comment">// Write reference count.
-                                </span>ptr.cast::&lt;u32&gt;().write(<span class="number">1</span>);
-
-                                ptr.byte_add(refcount_offset)
-                            }
-                        };
+                        <span class="kw">let </span>refcount_offset =
+                            <span class="kw">crate</span>::types::array::calc_data_prefix_offset(elem_layout);
                         <span class="kw">let </span>len: u32 = data
                             .len()
                             .try_into()
                             .map_err(|<span class="kw">_</span>| Error::IntegerConversion)<span class="question-mark">?</span>;
+                        <span class="kw">let </span>ptr: <span class="kw-2">*mut </span>() = <span class="kw">match </span>len {
+                            <span class="number">0 </span>=&gt; std::ptr::null_mut(),
+                            <span class="kw">_ </span>=&gt; {
+                                <span class="kw">let </span>ptr: <span class="kw-2">*mut </span>() =
+                                    libc_malloc(elem_layout.size() * data.len() + refcount_offset)
+                                        .cast();
+
+                                <span class="comment">// Write reference count.
+                                </span>ptr.cast::&lt;(u32, u32)&gt;().write((<span class="number">1</span>, len));
+                                ptr.byte_add(refcount_offset).cast()
+                            }
+                        };
 
                         <span class="comment">// Write the data.
                         </span><span class="kw">for </span>(idx, elem) <span class="kw">in </span>data.iter().enumerate() {
@@ -2174,6 +2210,15 @@
                                 elem_layout.size(),
                             );
                         }
+
+                        <span class="comment">// Make double pointer.
+                        </span><span class="kw">let </span>ptr_ptr = <span class="kw">if </span>ptr.is_null() {
+                            null_mut()
+                        } <span class="kw">else </span>{
+                            <span class="kw">let </span>ptr_ptr: <span class="kw-2">*mut *mut </span>() = libc_malloc(<span class="number">8</span>).cast();
+                            ptr_ptr.write(ptr);
+                            ptr_ptr
+                        };
 
                         <span class="kw">let </span>target = arena
                             .alloc_layout(
@@ -2188,7 +2233,7 @@
                             )
                             .as_ptr();
 
-                        <span class="kw-2">*</span>target.cast::&lt;<span class="kw-2">*mut </span>()&gt;() = ptr;
+                        <span class="kw-2">*</span>target.cast::&lt;<span class="kw-2">*mut </span>()&gt;() = ptr_ptr.cast();
 
                         <span class="kw">let </span>(layout, offset) =
                             Layout::new::&lt;<span class="kw-2">*mut </span>NonNull&lt;()&gt;&gt;().extend(Layout::new::&lt;u32&gt;())<span class="question-mark">?</span>;
@@ -2531,56 +2576,87 @@
                         .as_ref();
 
                     <span class="comment">// This pointer can be null if the array is empty.
-                    </span><span class="kw">let </span>init_data_ptr = <span class="kw-2">*</span>ptr.cast::&lt;<span class="kw-2">*mut </span>()&gt;().as_ref();
-                    <span class="kw">let </span>data_ptr =
-                        init_data_ptr.byte_add(elem_stride * start_offset_value <span class="kw">as </span>usize);
+                    </span><span class="kw">let </span>array_ptr_ptr = <span class="kw-2">*</span>ptr.cast::&lt;<span class="kw-2">*mut *mut </span>()&gt;().as_ref();
 
-                    <span class="kw">let </span>refcount_offset = get_integer_layout(<span class="number">32</span>)
-                        .align_to(elem_layout.align())
-                        .unwrap()
-                        .pad_to_align()
-                        .size();
-                    <span class="kw">let </span>should_drop = <span class="kw">if </span>!init_data_ptr.is_null()
-                        &amp;&amp; init_data_ptr.byte_sub(refcount_offset).cast::&lt;u32&gt;().read() == <span class="number">1
-                    </span>{
-                        should_drop
+                    <span class="kw">let </span>refcount_offset = <span class="kw">crate</span>::types::array::calc_data_prefix_offset(elem_layout);
+                    <span class="kw">let </span>array_value = <span class="kw">if </span>array_ptr_ptr.is_null() {
+                        Vec::new()
                     } <span class="kw">else </span>{
-                        <span class="kw">if </span>!init_data_ptr.is_null() &amp;&amp; should_drop {
-                            <span class="kw-2">*</span>init_data_ptr
-                                .byte_sub(refcount_offset)
-                                .cast::&lt;u32&gt;()
-                                .as_mut()
-                                .unwrap() -= <span class="number">1</span>;
+                        <span class="kw">let </span>array_ptr = array_ptr_ptr.read();
+                        <span class="kw">let </span>ref_count = array_ptr
+                            .byte_sub(refcount_offset)
+                            .cast::&lt;u32&gt;()
+                            .as_mut()
+                            .unwrap();
+                        <span class="kw">if </span>should_drop {
+                            <span class="kw-2">*</span>ref_count -= <span class="number">1</span>;
                         }
 
-                        <span class="bool-val">false
-                    </span>};
+                        <span class="macro">native_assert!</span>(
+                            end_offset_value &gt;= start_offset_value,
+                            <span class="string">"can't have an array with negative length"
+                        </span>);
+                        <span class="kw">let </span>num_elems = (end_offset_value - start_offset_value) <span class="kw">as </span>usize;
 
-                    <span class="macro">native_assert!</span>(
-                        end_offset_value &gt;= start_offset_value,
-                        <span class="string">"can't have an array with negative length"
-                    </span>);
-                    <span class="kw">let </span>num_elems = (end_offset_value - start_offset_value) <span class="kw">as </span>usize;
-                    <span class="kw">let </span><span class="kw-2">mut </span>array_value = Vec::with_capacity(num_elems);
+                        <span class="kw">if </span><span class="kw-2">*</span>ref_count == <span class="number">0 </span>{
+                            <span class="comment">// Drop prefix elements.
+                            </span><span class="kw">for </span>i <span class="kw">in </span><span class="number">0</span>..start_offset_value {
+                                <span class="kw">let </span>cur_elem_ptr =
+                                    NonNull::new(array_ptr.byte_add(elem_stride * i <span class="kw">as </span>usize))
+                                        .to_native_assert_error(
+                                            <span class="string">"tried to make a non-null ptr out of a null one"</span>,
+                                        )<span class="question-mark">?</span>;
+                                drop(<span class="self">Self</span>::from_ptr(
+                                    cur_elem_ptr,
+                                    <span class="kw-2">&amp;</span>info.ty,
+                                    registry,
+                                    should_drop,
+                                )<span class="question-mark">?</span>);
+                            }
+                        }
 
-                    <span class="kw">for </span>i <span class="kw">in </span><span class="number">0</span>..num_elems {
-                        <span class="comment">// safe to create a NonNull because if the array has elements, the init_data_ptr can't be null.
-                        </span><span class="kw">let </span>cur_elem_ptr = NonNull::new(data_ptr.byte_add(elem_stride * i))
-                            .to_native_assert_error(
-                                <span class="string">"tried to make a non-null ptr out of a null one"</span>,
-                            )<span class="question-mark">?</span>;
+                        <span class="kw">let </span><span class="kw-2">mut </span>array_value = Vec::with_capacity(num_elems);
+                        <span class="kw">for </span>i <span class="kw">in </span>start_offset_value..end_offset_value {
+                            <span class="kw">let </span>cur_elem_ptr =
+                                NonNull::new(array_ptr.byte_add(elem_stride * i <span class="kw">as </span>usize))
+                                    .to_native_assert_error(
+                                        <span class="string">"tried to make a non-null ptr out of a null one"</span>,
+                                    )<span class="question-mark">?</span>;
+                            array_value.push(<span class="self">Self</span>::from_ptr(
+                                cur_elem_ptr,
+                                <span class="kw-2">&amp;</span>info.ty,
+                                registry,
+                                <span class="kw-2">*</span>ref_count == <span class="number">0</span>,
+                            )<span class="question-mark">?</span>);
+                        }
 
-                        array_value.push(<span class="self">Self</span>::from_ptr(
-                            cur_elem_ptr,
-                            <span class="kw-2">&amp;</span>info.ty,
-                            registry,
-                            should_drop,
-                        )<span class="question-mark">?</span>);
-                    }
+                        <span class="kw">if </span><span class="kw-2">*</span>ref_count == <span class="number">0 </span>{
+                            <span class="comment">// Drop suffix elements.
+                            </span><span class="kw">let </span>array_max_len = array_ptr
+                                .byte_sub(refcount_offset - size_of::&lt;u32&gt;())
+                                .cast::&lt;u32&gt;()
+                                .read();
+                            <span class="kw">for </span>i <span class="kw">in </span>end_offset_value..array_max_len {
+                                <span class="kw">let </span>cur_elem_ptr =
+                                    NonNull::new(array_ptr.byte_add(elem_stride * i <span class="kw">as </span>usize))
+                                        .to_native_assert_error(
+                                            <span class="string">"tried to make a non-null ptr out of a null one"</span>,
+                                        )<span class="question-mark">?</span>;
+                                drop(<span class="self">Self</span>::from_ptr(
+                                    cur_elem_ptr,
+                                    <span class="kw-2">&amp;</span>info.ty,
+                                    registry,
+                                    should_drop,
+                                )<span class="question-mark">?</span>);
+                            }
 
-                    <span class="kw">if </span>should_drop &amp;&amp; !init_data_ptr.is_null() {
-                        libc_free(init_data_ptr.byte_sub(refcount_offset).cast());
-                    }
+                            <span class="comment">// Free array storage.
+                            </span>libc_free(array_ptr.byte_sub(refcount_offset).cast());
+                            libc_free(array_ptr_ptr.cast());
+                        }
+
+                        array_value
+                    };
 
                     <span class="self">Self</span>::Array(array_value)
                 }
