@@ -27,19 +27,17 @@ jobs:
         include:
           - target: x86_64-unknown-linux-gnu
             os: ubuntu-24.04
-            env:
-              MLIR_SYS_190_PREFIX: /usr/lib/llvm-19/
-              LLVM_SYS_191_PREFIX: /usr/lib/llvm-19/
-              TABLEGEN_190_PREFIX: /usr/lib/llvm-19/
+            dep_base_dir: /usr/lib/llvm-19
           - target: x86_64-apple-darwin
             os: macos-14
-            env:
-              MLIR_SYS_190_PREFIX: /opt/homebrew/opt/llvm@19
-              LLVM_SYS_191_PREFIX: /opt/homebrew/opt/llvm@19
-              TABLEGEN_190_PREFIX: /opt/homebrew/opt/llvm@19
+            dep_base_dir: /opt/homebrew/opt/llvm@19
     runs-on: ${{ matrix.os }}
     steps:
       - uses: actions/checkout@v4
+      - name: Set env
+        run: echo "MLIR_SYS_190_PREFIX=${{ matrix.dep_base_dir }}" >> $GITHUB_ENV && \
+          echo "LLVM_SYS_191_PREFIX=${{ matrix.dep_base_dir }}" >> $GITHUB_ENV && \
+          echo "TABLEGEN_190_PREFIX=${{ matrix.dep_base_dir }}" >> $GITHUB_ENV
       - name: Install deps
         # deps-ci-linux does nothing on macos so it works
         run: make deps && make deps-ci-linux
@@ -47,7 +45,7 @@ jobs:
         with:
           # (required) Comma-separated list of binary names (non-extension portion of filename) to build and upload.
           # Note that glob pattern is not supported yet.
-          bin: cairo-native-compile,cairo-native-dump,cairo-native-run,cairo-native-stress,cairo-native-test
+          bin: cairo-native-compile,cairo-native-dump,cairo-native-run,cairo-native-stress,cairo-native-test,starknet-native-compile
           # (optional) Target triple, default is host triple.
           # This is optional but it is recommended that this always be set to
           # clarify which target you are building for if macOS is included in
