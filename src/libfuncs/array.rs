@@ -1368,63 +1368,44 @@ mod test {
 
     #[test]
     fn run_len() {
-        let program_append = {
-            let mut generator = SierraGenerator::<ArrayAppendLibfunc>::default();
-
-            let u32_ty = generator.push_type_declaration::<Uint32Type>(&[]).clone();
-
-            generator.build(&[GenericArg::Type(u32_ty)])
-        };
         let program_len = {
             let mut generator = SierraGenerator::<ArrayLenLibfunc>::default();
             let u32_ty = generator.push_type_declaration::<Uint32Type>(&[]).clone();
 
             generator.build(&[GenericArg::Type(u32_ty)])
         };
+        let array = vec![4, 3, 2].into();
 
-        let result = run_sierra_program(&program_append, &[Value::Array(vec![]), Value::Uint32(4)])
-            .return_value;
-        let result = run_sierra_program(&program_append, &[result, Value::Uint32(3)]).return_value;
-        let result = run_sierra_program(&program_append, &[result, Value::Uint32(2)]).return_value;
-        let result = run_sierra_program(&program_len, &[result]).return_value;
+        let result = run_sierra_program(&program_len, &[array]).return_value;
 
         assert_eq!(result, 3u32.into());
     }
 
     #[test]
     fn run_get() {
-        let program_append = {
-            let mut generator = SierraGenerator::<ArrayAppendLibfunc>::default();
-
-            let u32_ty = generator.push_type_declaration::<Uint32Type>(&[]).clone();
-
-            generator.build(&[GenericArg::Type(u32_ty)])
-        };
         let program_get = {
             let mut generator = SierraGenerator::<ArrayGetLibfunc>::default();
             let u32_ty = generator.push_type_declaration::<Uint32Type>(&[]).clone();
 
             generator.build(&[GenericArg::Type(u32_ty)])
         };
-
-        let result = run_sierra_program(&program_append, &[Value::Array(vec![]), Value::Uint32(4)])
-            .return_value;
-        let result = run_sierra_program(&program_append, &[result, Value::Uint32(3)]).return_value;
-        let result = run_sierra_program(&program_append, &[result, Value::Uint32(2)]).return_value;
-        let final_array =
-            run_sierra_program(&program_append, &[result, Value::Uint32(1)]).return_value;
+        let array = Value::Array(vec![
+            Value::Uint32(4),
+            Value::Uint32(3),
+            Value::Uint32(2),
+            Value::Uint32(1),
+        ]);
 
         let result =
-            run_sierra_program(&program_get, &[final_array.clone(), Value::Uint32(0)]).return_value;
+            run_sierra_program(&program_get, &[array.clone(), Value::Uint32(0)]).return_value;
         assert_eq!(result, jit_enum!(0, 4u32.into()));
         let result =
-            run_sierra_program(&program_get, &[final_array.clone(), Value::Uint32(1)]).return_value;
+            run_sierra_program(&program_get, &[array.clone(), Value::Uint32(1)]).return_value;
         assert_eq!(result, jit_enum!(0, 3u32.into()));
         let result =
-            run_sierra_program(&program_get, &[final_array.clone(), Value::Uint32(2)]).return_value;
+            run_sierra_program(&program_get, &[array.clone(), Value::Uint32(2)]).return_value;
         assert_eq!(result, jit_enum!(0, 2u32.into()));
-        let result =
-            run_sierra_program(&program_get, &[final_array, Value::Uint32(3)]).return_value;
+        let result = run_sierra_program(&program_get, &[array, Value::Uint32(3)]).return_value;
         assert_eq!(result, jit_enum!(0, 1u32.into()));
     }
 
@@ -1443,45 +1424,42 @@ mod test {
 
             generator.build(&[GenericArg::Type(u32_ty)])
         };
+        let array = Value::Array(vec![
+            Value::Uint32(4),
+            Value::Uint32(3),
+            Value::Uint32(2),
+            Value::Uint32(2),
+            Value::Uint32(2),
+            Value::Uint32(2),
+            Value::Uint32(2),
+            Value::Uint32(2),
+            Value::Uint32(2),
+            Value::Uint32(2),
+            Value::Uint32(2),
+            Value::Uint32(2),
+            Value::Uint32(2),
+            Value::Uint32(2),
+            Value::Uint32(2),
+            Value::Uint32(17),
+            Value::Uint32(17),
+            Value::Uint32(18),
+            Value::Uint32(19),
+            Value::Uint32(20),
+            Value::Uint32(21),
+            Value::Uint32(22),
+            Value::Uint32(23),
+        ]);
 
-        let result = run_sierra_program(&program_append, &[Value::Array(vec![]), Value::Uint32(4)])
-            .return_value;
-        let result = run_sierra_program(&program_append, &[result, Value::Uint32(3)]).return_value;
-        let result = run_sierra_program(&program_append, &[result, Value::Uint32(2)]).return_value;
-        let result = run_sierra_program(&program_append, &[result, Value::Uint32(2)]).return_value;
-        let result = run_sierra_program(&program_append, &[result, Value::Uint32(2)]).return_value;
-        let result = run_sierra_program(&program_append, &[result, Value::Uint32(2)]).return_value;
-        let result = run_sierra_program(&program_append, &[result, Value::Uint32(2)]).return_value;
-        let result = run_sierra_program(&program_append, &[result, Value::Uint32(2)]).return_value;
-        let result = run_sierra_program(&program_append, &[result, Value::Uint32(2)]).return_value;
-        let result = run_sierra_program(&program_append, &[result, Value::Uint32(2)]).return_value;
-        let result = run_sierra_program(&program_append, &[result, Value::Uint32(2)]).return_value;
-        let result = run_sierra_program(&program_append, &[result, Value::Uint32(2)]).return_value;
-        let result = run_sierra_program(&program_append, &[result, Value::Uint32(2)]).return_value;
-        let result = run_sierra_program(&program_append, &[result, Value::Uint32(2)]).return_value;
-        let result = run_sierra_program(&program_append, &[result, Value::Uint32(2)]).return_value;
-        let result = run_sierra_program(&program_append, &[result, Value::Uint32(2)]).return_value;
-        let result = run_sierra_program(&program_append, &[result, Value::Uint32(17)]).return_value;
-        let result = run_sierra_program(&program_append, &[result, Value::Uint32(17)]).return_value;
-        let result = run_sierra_program(&program_append, &[result, Value::Uint32(18)]).return_value;
-        let result = run_sierra_program(&program_append, &[result, Value::Uint32(19)]).return_value;
-        let result = run_sierra_program(&program_append, &[result, Value::Uint32(20)]).return_value;
-        let result = run_sierra_program(&program_append, &[result, Value::Uint32(21)]).return_value;
-        let result = run_sierra_program(&program_append, &[result, Value::Uint32(22)]).return_value;
-        let final_array =
-            run_sierra_program(&program_append, &[result, Value::Uint32(23)]).return_value;
-
-        let result = run_sierra_program(&program_get, &[final_array.clone(), Value::Uint32(20)])
-            .return_value;
-        assert_eq!(result, jit_enum!(0, 20u32.into()));
-        let result = run_sierra_program(&program_get, &[final_array.clone(), Value::Uint32(21)])
-            .return_value;
-        assert_eq!(result, jit_enum!(0, 21u32.into()));
-        let result = run_sierra_program(&program_get, &[final_array.clone(), Value::Uint32(22)])
-            .return_value;
-        assert_eq!(result, jit_enum!(0, 22u32.into()));
         let result =
-            run_sierra_program(&program_get, &[final_array, Value::Uint32(23)]).return_value;
+            run_sierra_program(&program_get, &[array.clone(), Value::Uint32(20)]).return_value;
+        assert_eq!(result, jit_enum!(0, 20u32.into()));
+        let result =
+            run_sierra_program(&program_get, &[array.clone(), Value::Uint32(21)]).return_value;
+        assert_eq!(result, jit_enum!(0, 21u32.into()));
+        let result =
+            run_sierra_program(&program_get, &[array.clone(), Value::Uint32(22)]).return_value;
+        assert_eq!(result, jit_enum!(0, 22u32.into()));
+        let result = run_sierra_program(&program_get, &[array, Value::Uint32(23)]).return_value;
         assert_eq!(result, jit_enum!(0, 23u32.into()));
     }
 
