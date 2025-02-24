@@ -895,7 +895,7 @@ mod test {
 
             generator.build(&[GenericArg::Type(u32_ty)])
         };
-        println!("{program_trim}");
+        
         let Value::Enum {
             tag: 1,
             value,

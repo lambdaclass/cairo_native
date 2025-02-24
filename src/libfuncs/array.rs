@@ -1411,13 +1411,6 @@ mod test {
 
     #[test]
     fn run_get_big() {
-        let program_append = {
-            let mut generator = SierraGenerator::<ArrayAppendLibfunc>::default();
-
-            let u32_ty = generator.push_type_declaration::<Uint32Type>(&[]).clone();
-
-            generator.build(&[GenericArg::Type(u32_ty)])
-        };
         let program_get = {
             let mut generator = SierraGenerator::<ArrayGetLibfunc>::default();
             let u32_ty = generator.push_type_declaration::<Uint32Type>(&[]).clone();
