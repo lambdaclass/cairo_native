@@ -516,12 +516,17 @@ impl Value {
                             );
                         }
 
-                        let felt_dict_entry = arena.alloc(FeltDictEntry {
+                        let ptr =
+                            arena.alloc_layout(Layout::new::<FeltDictEntry>()).as_ptr() as *mut _;
+
+                        let felt_dict_entry = FeltDictEntry {
                             dict: Rc::into_raw(Rc::new(felt_dict)),
                             entry_key: entry_key.to_bytes_le(),
-                        });
+                        };
 
-                        NonNull::new_unchecked( as *mut ())
+                        std::ptr::write(ptr, felt_dict_entry);
+
+                        NonNull::new_unchecked(ptr as *mut ())
                     } else {
                         Err(Error::UnexpectedValue(format!(
                             "expected value of type {:?} but got a felt dict entry",
@@ -970,11 +975,13 @@ impl Value {
                     }
                 }
                 CoreTypeConcrete::Felt252DictEntry(_) => {
-                    let dict = Rc::from_raw(ptr.cast::<*const FeltDictEntry>().read());
+                    println!("from ptr");
+                    let dict_entry = Rc::from_raw(ptr.cast::<*const FeltDictEntry>().read());
+                    let dict = Rc::from_raw(dict_entry.dict);
 
-                    let mut map = HashMap::with_capacity(dict.dict.);
+                    let mut map = HashMap::with_capacity(dict.mappings.len());
 
-                    for (&key, &index) in *dict.dict.mappings.iter() {
+                    for (&key, &index) in dict.mappings.iter() {
                         let mut key = key;
 
                         key[31] &= 0x0F;
@@ -984,26 +991,32 @@ impl Value {
                         map.insert(
                             key,
                             Self::from_ptr(
-                                Self::from_ptr(
-                                    dict.dict
-                                        .elements
-                                        .byte_add(dict.dict.layout.pad_to_align().size() * index),
-                                    type_id,
-                                    registry,
-                                    should_drop,
+                                NonNull::new(
+                                    dict.elements
+                                        .byte_add(dict.layout.pad_to_align().size() * index),
                                 )
                                 .to_native_assert_error(
                                     "tried to make a non-null ptr out of a null one",
-                                )?
-                                .cast(),
+                                )?,
                                 type_id,
                                 registry,
                                 should_drop,
-                            ),
+                            )?,
                         );
                     }
 
-                    todo!()
+                    let entry_key = Felt::from_bytes_le(&dict_entry.entry_key);
+
+                    if should_drop {
+                        drop(dict);
+                    } else {
+                        forget(dict);
+                    }
+
+                    Value::Felt252DictEntry {
+                        dict: map,
+                        entry_key,
+                    }
                 }
                 // CoreTypeConcrete::Felt252DictEntry(_) => {
                 //     native_panic!("unimplemented: should be impossible to return")

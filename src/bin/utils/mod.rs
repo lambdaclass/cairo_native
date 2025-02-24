@@ -149,6 +149,18 @@ fn jitvalue_to_felt(value: &Value) -> Vec<Felt> {
 
             felts
         }
+        Value::Felt252DictEntry { dict, entry_key } => {
+            println!("felt");
+            for (key, value) in dict {
+                felts.push(*key);
+                let felt = jitvalue_to_felt(value);
+                felts.extend(felt);
+            }
+
+            felts.push(*entry_key);
+
+            felts
+        }
         Value::Uint8(x) => vec![(*x).into()],
         Value::Uint16(x) => vec![(*x).into()],
         Value::Uint32(x) => vec![(*x).into()],

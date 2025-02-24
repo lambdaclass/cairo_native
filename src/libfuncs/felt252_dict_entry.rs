@@ -191,7 +191,20 @@ pub fn build_finalize<'ctx, 'this>(
 
 #[cfg(test)]
 mod test {
-    use crate::utils::test::{jit_dict, load_cairo, run_program_assert_output};
+    use std::collections::HashMap;
+
+    use cairo_lang_sierra::{
+        extensions::{felt252_dict::Felt252DictEntryFinalizeLibfunc, int::unsigned::Uint32Type},
+        program::GenericArg,
+    };
+
+    use crate::{
+        utils::{
+            sierra_gen::SierraGenerator,
+            test::{jit_dict, load_cairo, run_program_assert_output, run_sierra_program},
+        },
+        Value,
+    };
 
     #[test]
     fn run_dict_insert_big() {
@@ -211,24 +224,36 @@ mod test {
 
     #[test]
     fn run_dict_insert_ret_dict() {
-        let program = load_cairo!(
-            use traits::Default;
-            use dict::Felt252DictTrait;
+        let program = {
+            let mut geneator = SierraGenerator::<Felt252DictEntryFinalizeLibfunc>::default();
 
-            fn run_test() -> Felt252Dict<u32> {
-                let mut dict: Felt252Dict<u32> = Default::default();
-                dict.insert(2, 1_u32);
-                dict
-            }
-        );
+            let u32_ty = geneator.push_type_declaration::<Uint32Type>(&[]).clone();
 
-        run_program_assert_output(
-            &program,
-            "run_test",
-            &[],
+            geneator.build(&[GenericArg::Type(u32_ty)])
+        };
+        // load_cairo!(
+        //     use traits::Default;
+        //     use dict::Felt252DictTrait;
+
+        //     fn run_test() -> Felt252Dict<u32> {
+        //         let mut dict: Felt252Dict<u32> = Default::default();
+        //         dict.insert(2, 1_u32);
+        //         dict
+        //     }
+        // );
+
+        let dict = Value::Felt252DictEntry {
+            dict: HashMap::new(),
+            entry_key: 2.into(),
+        };
+
+        let result = run_sierra_program(&program, &[dict, Value::Uint32(1)]).return_value;
+
+        assert_eq!(
             jit_dict!(
                 2 => 1u32
             ),
+            result
         );
     }
 
