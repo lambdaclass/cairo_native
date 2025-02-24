@@ -1433,6 +1433,7 @@ mod test {
             Value::Uint32(2),
             Value::Uint32(2),
             Value::Uint32(2),
+            Value::Uint32(2),
             Value::Uint32(17),
             Value::Uint32(17),
             Value::Uint32(18),
