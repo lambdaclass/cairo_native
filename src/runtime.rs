@@ -811,6 +811,8 @@ pub mod trace_dump {
         sync::{LazyLock, Mutex},
     };
 
+    use crate::starknet::ArrayAbi;
+
     use super::FeltDict;
 
     pub static TRACE_DUMP: LazyLock<Mutex<HashMap<u64, TraceDump>>> =
@@ -978,33 +980,25 @@ pub mod trace_dump {
                 get_layout,
             ),
             CoreTypeConcrete::Array(info) => {
-                let layout = Layout::new::<()>();
-                let (array_ptr, layout) = {
-                    let (layout, offset) = layout.extend(Layout::new::<*mut ()>()).unwrap();
-                    (value_ptr.byte_add(offset).cast::<*mut ()>().read(), layout)
-                };
-                let (array_begin, layout) = {
-                    let (layout, offset) = layout.extend(Layout::new::<u32>()).unwrap();
-                    (value_ptr.byte_add(offset).cast::<u32>().read(), layout)
-                };
-                let (array_end, _) = {
-                    let (layout, offset) = layout.extend(Layout::new::<u32>()).unwrap();
-                    (value_ptr.byte_add(offset).cast::<u32>().read(), layout)
-                };
+                let array = value_ptr.cast::<ArrayAbi<()>>().read();
 
                 let layout =
                     get_layout(registry.get_type(&info.ty).unwrap(), registry).pad_to_align();
 
-                let mut data = Vec::with_capacity((array_end - array_begin) as usize);
-                for index in array_begin..array_end {
-                    let index = index as usize;
+                let mut data = Vec::with_capacity((array.until - array.since) as usize);
 
-                    data.push(read_value_ptr(
-                        registry,
-                        &info.ty,
-                        NonNull::new(array_ptr.byte_add(layout.size() * index)).unwrap(),
-                        get_layout,
-                    ));
+                if !array.ptr.is_null() {
+                    let data_ptr = array.ptr.read();
+                    for index in (array.since)..array.until {
+                        let index = index as usize;
+
+                        data.push(read_value_ptr(
+                            registry,
+                            &info.ty,
+                            NonNull::new(data_ptr.byte_add(layout.size() * index)).unwrap(),
+                            get_layout,
+                        ));
+                    }
                 }
 
                 Value::Array {
