@@ -566,7 +566,6 @@ mod test {
 
     #[test]
     fn ec_point_is_zero() {
-        println!("{}", EC_POINT_IS_ZERO.clone());
         let r = |x, y| run_sierra_program(&EC_POINT_IS_ZERO, &[Value::EcPoint(x, y)]).return_value;
 
         assert_eq!(r(0.into(), 0.into()), jit_enum!(0, jit_struct!()));

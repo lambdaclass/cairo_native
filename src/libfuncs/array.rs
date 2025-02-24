@@ -2084,7 +2084,7 @@ mod test {
 
             generator.build(&[GenericArg::Type(array_ty)])
         };
-        println!("{program_span}");
+
         let result = run_sierra_program(&program_span, &[Value::Array(vec![])]).return_value;
 
         assert_eq!(

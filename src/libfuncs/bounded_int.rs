@@ -845,7 +845,6 @@ mod test {
 
             generator.build(&[GenericArg::Type(i8_ty)])
         };
-        println!("{program_trim}");
         let Value::Enum {
             tag: 1,
             value,
@@ -870,7 +869,6 @@ mod test {
 
             generator.build(&[GenericArg::Type(i8_ty)])
         };
-        println!("{program_trim}");
         let Value::Enum {
             tag: 1,
             value,
@@ -895,7 +893,7 @@ mod test {
 
             generator.build(&[GenericArg::Type(u32_ty)])
         };
-        
+
         let Value::Enum {
             tag: 1,
             value,
@@ -920,7 +918,7 @@ mod test {
 
             generator.build(&[GenericArg::Type(i16_ty)])
         };
-        println!("{program_trim}");
+
         let Value::Enum {
             tag: 0,
             value,

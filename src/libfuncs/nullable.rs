@@ -208,8 +208,6 @@ mod test {
             generator.build(&[GenericArg::Type(u8_ty)])
         };
 
-        println!("{program_match}");
-
         let result = run_sierra_program(&program_match, &[Value::Null]).return_value;
         assert_eq!(result, jit_enum!(0, jit_struct!()));
 
