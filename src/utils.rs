@@ -176,7 +176,7 @@ pub fn get_integer_layout(width: u32) -> Layout {
     } else {
         // According to the docs this should never return an error.
         Layout::from_size_align((width as usize).next_multiple_of(8) >> 3, 16)
-            .expect("only fails if size is greater than ISIZE::MAX")
+            .expect("only fails if size is greater than approximately ISIZE::MAX")
     }
 }
 
