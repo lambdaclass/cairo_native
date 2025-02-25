@@ -145,13 +145,7 @@ pub fn build_enum_value<'ctx, 'this>(
             let tag_val = entry
                 .append_operation(arith::constant(
                     context,
-                    IntegerAttribute::new(
-                        tag_ty,
-                        variant_index
-                            .try_into()
-                            .expect("couldnt convert index to i64"),
-                    )
-                    .into(),
+                    IntegerAttribute::new(tag_ty, variant_index.try_into()?).into(),
                     location,
                 ))
                 .result(0)?
@@ -425,7 +419,7 @@ pub fn build_snapshot_match<'ctx, 'this>(
         .get::<EnumSnapshotVariantsMeta>()
         .ok_or(Error::MissingMetadata)?
         .get_variants(&info.param_signatures()[0].ty)
-        .expect("enum should always have variants")
+        .to_native_assert_error("enum should always have variants")?
         .clone();
     match variant_ids.len() {
         0 => {
