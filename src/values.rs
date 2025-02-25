@@ -517,8 +517,8 @@ impl Value {
                         }
 
                         let ptr =
-                            arena.alloc_layout(Layout::new::<FeltDictEntry>()).as_ptr() as *mut _;
-
+                            arena.alloc_layout(Layout::new::<FeltDictEntry>()).as_ptr() as *mut FeltDictEntry;
+                                              
                         let felt_dict_entry = FeltDictEntry {
                             dict: Rc::into_raw(Rc::new(felt_dict)),
                             entry_key: entry_key.to_bytes_le(),
@@ -526,7 +526,7 @@ impl Value {
 
                         std::ptr::write(ptr, felt_dict_entry);
 
-                        NonNull::new_unchecked(ptr as *mut ())
+                        NonNull::new_unchecked(ptr).cast()
                     } else {
                         Err(Error::UnexpectedValue(format!(
                             "expected value of type {:?} but got a felt dict entry",

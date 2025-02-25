@@ -157,7 +157,7 @@ pub struct FeltDict {
 }
 
 #[derive(Debug)]
-
+#[repr(C)]
 pub struct FeltDictEntry {
     pub dict: *const FeltDict,
     pub entry_key: [u8; 32],

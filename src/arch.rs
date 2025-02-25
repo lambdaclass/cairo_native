@@ -1,7 +1,6 @@
 use crate::{
     error::Result,
     native_panic,
-    runtime::{FeltDict, FeltDictEntry},
     starknet::{ArrayAbi, Secp256k1Point, Secp256r1Point},
     types::TypeBuilder,
     utils::libc_malloc,

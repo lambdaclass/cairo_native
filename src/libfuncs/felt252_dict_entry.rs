@@ -184,7 +184,6 @@ pub fn build_finalize<'ctx, 'this>(
     )?;
 
     entry.store(context, location, value_ptr, new_value)?;
-
     entry.append_operation(helper.br(0, &[dict_ptr], location));
     Ok(())
 }
@@ -231,16 +230,6 @@ mod test {
 
             geneator.build(&[GenericArg::Type(u32_ty)])
         };
-        // load_cairo!(
-        //     use traits::Default;
-        //     use dict::Felt252DictTrait;
-
-        //     fn run_test() -> Felt252Dict<u32> {
-        //         let mut dict: Felt252Dict<u32> = Default::default();
-        //         dict.insert(2, 1_u32);
-        //         dict
-        //     }
-        // );
 
         let dict = Value::Felt252DictEntry {
             dict: HashMap::new(),
