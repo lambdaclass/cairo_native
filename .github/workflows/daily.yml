@@ -95,7 +95,9 @@ jobs:
         uses: actions/cache/restore@v4.2.0
         with:
           path: starknet-replay/rpc_cache
-          key: cache-${{matrix.block}}
+          key: cache-${{matrix.block}}-${{ github.run_id }}
+          restore-keys: |
+            cache-${{matrix.block}}
 
       # Install dependencies
       - uses: ./cairo_native/.github/actions/install-linux-deps
