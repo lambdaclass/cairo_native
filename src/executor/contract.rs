@@ -39,8 +39,7 @@ use crate::{
     executor::{invoke_trampoline, BuiltinCostsGuard},
     metadata::{gas::MetadataComputationConfig, runtime_bindings::setup_runtime},
     module::NativeModule,
-    native_assert,
-    native_panic,
+    native_assert, native_panic,
     starknet::{handler::StarknetSyscallHandlerCallbacks, StarknetSyscallHandler},
     types::TypeBuilder,
     utils::{
