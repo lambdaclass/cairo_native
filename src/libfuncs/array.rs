@@ -1061,7 +1061,7 @@ pub fn build_get<'ctx, 'this>(
         // Drop the input array.
         metadata
             .get::<DropOverridesMeta>()
-            .unwrap()
+            .to_native_assert_error("drop overrides metadata should be available")?
             .invoke_override(
                 context,
                 valid_block,

@@ -2,7 +2,7 @@
 
 use super::LibfuncHelper;
 use crate::{
-    error::Result,
+    error::{panic::ToNativeAssertError, Result},
     metadata::{
         felt252_dict::Felt252DictOverrides, runtime_bindings::RuntimeBindingsMeta, MetadataStorage,
     },
@@ -112,7 +112,7 @@ pub fn build_new<'ctx, 'this>(
 
     let runtime_bindings = metadata
         .get_mut::<RuntimeBindingsMeta>()
-        .expect("Runtime library not available.");
+        .to_native_assert_error("runtime library should be available")?;
     let dict_ptr = runtime_bindings.dict_new(
         context,
         helper,
@@ -143,7 +143,7 @@ pub fn build_squash<'ctx, 'this>(
 
     let runtime_bindings = metadata
         .get_mut::<RuntimeBindingsMeta>()
-        .expect("Runtime library not available.");
+        .to_native_assert_error("runtime library should be available")?;
 
     let gas_refund = runtime_bindings
         .dict_gas_refund(context, helper, entry, dict_ptr, location)?

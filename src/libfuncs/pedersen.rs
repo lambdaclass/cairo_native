@@ -3,7 +3,7 @@
 
 use super::LibfuncHelper;
 use crate::{
-    error::Result,
+    error::{panic::ToNativeAssertError, Result},
     metadata::{runtime_bindings::RuntimeBindingsMeta, MetadataStorage},
     utils::{get_integer_layout, BlockExt, ProgramRegistryExt},
 };
@@ -49,7 +49,7 @@ pub fn build_pedersen<'ctx>(
 ) -> Result<()> {
     metadata
         .get_mut::<RuntimeBindingsMeta>()
-        .expect("Runtime library not available.");
+        .to_native_assert_error("runtime library should be available")?;
 
     let pedersen_builtin =
         super::increment_builtin_counter(context, entry, location, entry.arg(0)?)?;
@@ -83,7 +83,7 @@ pub fn build_pedersen<'ctx>(
 
     let runtime_bindings = metadata
         .get_mut::<RuntimeBindingsMeta>()
-        .expect("Runtime library not available.");
+        .to_native_assert_error("runtime library should be available")?;
 
     runtime_bindings
         .libfunc_pedersen(context, helper, entry, dst_ptr, lhs_ptr, rhs_ptr, location)?;
