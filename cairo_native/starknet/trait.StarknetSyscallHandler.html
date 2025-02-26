@@ -1,260 +1,260 @@
-<!DOCTYPE html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1.0"><meta name="generator" content="rustdoc"><meta name="description" content="API documentation for the Rust `StarknetSyscallHandler` trait in crate `cairo_native`."><title>StarknetSyscallHandler in cairo_native::starknet - Rust</title><script>if(window.location.protocol!=="file:")document.head.insertAdjacentHTML("beforeend","SourceSerif4-Regular-6b053e98.ttf.woff2,FiraSans-Regular-0fe48ade.woff2,FiraSans-Medium-e1aa3f0a.woff2,SourceCodePro-Regular-8badfe75.ttf.woff2,SourceCodePro-Semibold-aa29a496.ttf.woff2".split(",").map(f=>`<link rel="preload" as="font" type="font/woff2" crossorigin href="../../static.files/${f}">`).join(""))</script><link rel="stylesheet" href="../../static.files/normalize-9960930a.css"><link rel="stylesheet" href="../../static.files/rustdoc-42caa33d.css"><meta name="rustdoc-vars" data-root-path="../../" data-static-root-path="../../static.files/" data-current-crate="cairo_native" data-themes="" data-resource-suffix="" data-rustdoc-version="1.84.1 (e71f9a9a9 2025-01-27)" data-channel="1.84.1" data-search-js="search-92e6798f.js" data-settings-js="settings-0f613d39.js" ><script src="../../static.files/storage-59e33391.js"></script><script defer src="sidebar-items.js"></script><script defer src="../../static.files/main-5f194d8c.js"></script><noscript><link rel="stylesheet" href="../../static.files/noscript-893ab5e7.css"></noscript><link rel="alternate icon" type="image/png" href="../../static.files/favicon-32x32-6580c154.png"><link rel="icon" type="image/svg+xml" href="../../static.files/favicon-044be391.svg"></head><body class="rustdoc trait"><!--[if lte IE 11]><div class="warning">This old browser is unsupported and will most likely display funky things.</div><![endif]--><nav class="mobile-topbar"><button class="sidebar-menu-toggle" title="show sidebar"></button></nav><nav class="sidebar"><div class="sidebar-crate"><h2><a href="../../cairo_native/index.html">cairo_<wbr>native</a><span class="version">0.3.2</span></h2></div><div class="sidebar-elems"><section id="rustdoc-toc"><h2 class="location"><a href="#">Starknet<wbr>Syscall<wbr>Handler</a></h2><h3><a href="#required-methods">Required Methods</a></h3><ul class="block"><li><a href="#tymethod.call_contract" title="call_contract">call_contract</a></li><li><a href="#tymethod.deploy" title="deploy">deploy</a></li><li><a href="#tymethod.emit_event" title="emit_event">emit_event</a></li><li><a href="#tymethod.get_block_hash" title="get_block_hash">get_block_hash</a></li><li><a href="#tymethod.get_class_hash_at" title="get_class_hash_at">get_class_hash_at</a></li><li><a href="#tymethod.get_execution_info" title="get_execution_info">get_execution_info</a></li><li><a href="#tymethod.get_execution_info_v2" title="get_execution_info_v2">get_execution_info_v2</a></li><li><a href="#tymethod.keccak" title="keccak">keccak</a></li><li><a href="#tymethod.library_call" title="library_call">library_call</a></li><li><a href="#tymethod.replace_class" title="replace_class">replace_class</a></li><li><a href="#tymethod.secp256k1_add" title="secp256k1_add">secp256k1_add</a></li><li><a href="#tymethod.secp256k1_get_point_from_x" title="secp256k1_get_point_from_x">secp256k1_get_point_from_x</a></li><li><a href="#tymethod.secp256k1_get_xy" title="secp256k1_get_xy">secp256k1_get_xy</a></li><li><a href="#tymethod.secp256k1_mul" title="secp256k1_mul">secp256k1_mul</a></li><li><a href="#tymethod.secp256k1_new" title="secp256k1_new">secp256k1_new</a></li><li><a href="#tymethod.secp256r1_add" title="secp256r1_add">secp256r1_add</a></li><li><a href="#tymethod.secp256r1_get_point_from_x" title="secp256r1_get_point_from_x">secp256r1_get_point_from_x</a></li><li><a href="#tymethod.secp256r1_get_xy" title="secp256r1_get_xy">secp256r1_get_xy</a></li><li><a href="#tymethod.secp256r1_mul" title="secp256r1_mul">secp256r1_mul</a></li><li><a href="#tymethod.secp256r1_new" title="secp256r1_new">secp256r1_new</a></li><li><a href="#tymethod.send_message_to_l1" title="send_message_to_l1">send_message_to_l1</a></li><li><a href="#tymethod.sha256_process_block" title="sha256_process_block">sha256_process_block</a></li><li><a href="#tymethod.storage_read" title="storage_read">storage_read</a></li><li><a href="#tymethod.storage_write" title="storage_write">storage_write</a></li></ul><h3><a href="#provided-methods">Provided Methods</a></h3><ul class="block"><li><a href="#method.cheatcode" title="cheatcode">cheatcode</a></li></ul><h3><a href="#implementors">Implementors</a></h3></section><div id="rustdoc-modnav"><h2><a href="index.html">In cairo_<wbr>native::<wbr>starknet</a></h2></div></div></nav><div class="sidebar-resizer"></div><main><div class="width-limiter"><rustdoc-search></rustdoc-search><section id="main-content" class="content"><div class="main-heading"><span class="rustdoc-breadcrumbs"><a href="../index.html">cairo_native</a>::<wbr><a href="index.html">starknet</a></span><h1>Trait <span class="trait">StarknetSyscallHandler</span><button id="copy-path" title="Copy item path to clipboard">Copy item path</button></h1><rustdoc-toolbar></rustdoc-toolbar><span class="sub-heading"><a class="src" href="../../src/cairo_native/starknet.rs.html#184-334">Source</a> </span></div><pre class="rust item-decl"><code>pub trait StarknetSyscallHandler {
+<!DOCTYPE html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1.0"><meta name="generator" content="rustdoc"><meta name="description" content="API documentation for the Rust `StarknetSyscallHandler` trait in crate `cairo_native`."><title>StarknetSyscallHandler in cairo_native::starknet - Rust</title><script>if(window.location.protocol!=="file:")document.head.insertAdjacentHTML("beforeend","SourceSerif4-Regular-6b053e98.ttf.woff2,FiraSans-Regular-0fe48ade.woff2,FiraSans-Medium-e1aa3f0a.woff2,SourceCodePro-Regular-8badfe75.ttf.woff2,SourceCodePro-Semibold-aa29a496.ttf.woff2".split(",").map(f=>`<link rel="preload" as="font" type="font/woff2" crossorigin href="../../static.files/${f}">`).join(""))</script><link rel="stylesheet" href="../../static.files/normalize-9960930a.css"><link rel="stylesheet" href="../../static.files/rustdoc-46132b98.css"><meta name="rustdoc-vars" data-root-path="../../" data-static-root-path="../../static.files/" data-current-crate="cairo_native" data-themes="" data-resource-suffix="" data-rustdoc-version="1.85.0 (4d91de4e4 2025-02-17)" data-channel="1.85.0" data-search-js="search-75f5ac3e.js" data-settings-js="settings-0f613d39.js" ><script src="../../static.files/storage-59e33391.js"></script><script defer src="sidebar-items.js"></script><script defer src="../../static.files/main-5f194d8c.js"></script><noscript><link rel="stylesheet" href="../../static.files/noscript-893ab5e7.css"></noscript><link rel="alternate icon" type="image/png" href="../../static.files/favicon-32x32-6580c154.png"><link rel="icon" type="image/svg+xml" href="../../static.files/favicon-044be391.svg"></head><body class="rustdoc trait"><!--[if lte IE 11]><div class="warning">This old browser is unsupported and will most likely display funky things.</div><![endif]--><nav class="mobile-topbar"><button class="sidebar-menu-toggle" title="show sidebar"></button></nav><nav class="sidebar"><div class="sidebar-crate"><h2><a href="../../cairo_native/index.html">cairo_<wbr>native</a><span class="version">0.3.2</span></h2></div><div class="sidebar-elems"><section id="rustdoc-toc"><h2 class="location"><a href="#">Starknet<wbr>Syscall<wbr>Handler</a></h2><h3><a href="#required-methods">Required Methods</a></h3><ul class="block"><li><a href="#tymethod.call_contract" title="call_contract">call_contract</a></li><li><a href="#tymethod.deploy" title="deploy">deploy</a></li><li><a href="#tymethod.emit_event" title="emit_event">emit_event</a></li><li><a href="#tymethod.get_block_hash" title="get_block_hash">get_block_hash</a></li><li><a href="#tymethod.get_class_hash_at" title="get_class_hash_at">get_class_hash_at</a></li><li><a href="#tymethod.get_execution_info" title="get_execution_info">get_execution_info</a></li><li><a href="#tymethod.get_execution_info_v2" title="get_execution_info_v2">get_execution_info_v2</a></li><li><a href="#tymethod.keccak" title="keccak">keccak</a></li><li><a href="#tymethod.library_call" title="library_call">library_call</a></li><li><a href="#tymethod.replace_class" title="replace_class">replace_class</a></li><li><a href="#tymethod.secp256k1_add" title="secp256k1_add">secp256k1_add</a></li><li><a href="#tymethod.secp256k1_get_point_from_x" title="secp256k1_get_point_from_x">secp256k1_get_point_from_x</a></li><li><a href="#tymethod.secp256k1_get_xy" title="secp256k1_get_xy">secp256k1_get_xy</a></li><li><a href="#tymethod.secp256k1_mul" title="secp256k1_mul">secp256k1_mul</a></li><li><a href="#tymethod.secp256k1_new" title="secp256k1_new">secp256k1_new</a></li><li><a href="#tymethod.secp256r1_add" title="secp256r1_add">secp256r1_add</a></li><li><a href="#tymethod.secp256r1_get_point_from_x" title="secp256r1_get_point_from_x">secp256r1_get_point_from_x</a></li><li><a href="#tymethod.secp256r1_get_xy" title="secp256r1_get_xy">secp256r1_get_xy</a></li><li><a href="#tymethod.secp256r1_mul" title="secp256r1_mul">secp256r1_mul</a></li><li><a href="#tymethod.secp256r1_new" title="secp256r1_new">secp256r1_new</a></li><li><a href="#tymethod.send_message_to_l1" title="send_message_to_l1">send_message_to_l1</a></li><li><a href="#tymethod.sha256_process_block" title="sha256_process_block">sha256_process_block</a></li><li><a href="#tymethod.storage_read" title="storage_read">storage_read</a></li><li><a href="#tymethod.storage_write" title="storage_write">storage_write</a></li></ul><h3><a href="#provided-methods">Provided Methods</a></h3><ul class="block"><li><a href="#method.cheatcode" title="cheatcode">cheatcode</a></li></ul><h3><a href="#implementors">Implementors</a></h3></section><div id="rustdoc-modnav"><h2><a href="index.html">In cairo_<wbr>native::<wbr>starknet</a></h2></div></div></nav><div class="sidebar-resizer"></div><main><div class="width-limiter"><rustdoc-search></rustdoc-search><section id="main-content" class="content"><div class="main-heading"><span class="rustdoc-breadcrumbs"><a href="../index.html">cairo_native</a>::<wbr><a href="index.html">starknet</a></span><h1>Trait <span class="trait">StarknetSyscallHandler</span><button id="copy-path" title="Copy item path to clipboard">Copy item path</button></h1><rustdoc-toolbar></rustdoc-toolbar><span class="sub-heading"><a class="src" href="../../src/cairo_native/starknet.rs.html#184-334">Source</a> </span></div><pre class="rust item-decl"><code>pub trait StarknetSyscallHandler {
 <details class="toggle type-contents-toggle"><summary class="hideme"><span>Show 25 methods</span></summary>    // Required methods
     fn <a href="#tymethod.get_block_hash" class="fn">get_block_hash</a>(
         &amp;mut self,
-        block_number: <a class="primitive" href="https://doc.rust-lang.org/1.84.1/std/primitive.u64.html">u64</a>,
-        remaining_gas: &amp;mut <a class="primitive" href="https://doc.rust-lang.org/1.84.1/std/primitive.u64.html">u64</a>,
+        block_number: <a class="primitive" href="https://doc.rust-lang.org/1.85.0/std/primitive.u64.html">u64</a>,
+        remaining_gas: &amp;mut <a class="primitive" href="https://doc.rust-lang.org/1.85.0/std/primitive.u64.html">u64</a>,
     ) -&gt; <a class="type" href="type.SyscallResult.html" title="type cairo_native::starknet::SyscallResult">SyscallResult</a>&lt;Felt&gt;;
 <span class="item-spacer"></span>    fn <a href="#tymethod.get_execution_info" class="fn">get_execution_info</a>(
         &amp;mut self,
-        remaining_gas: &amp;mut <a class="primitive" href="https://doc.rust-lang.org/1.84.1/std/primitive.u64.html">u64</a>,
+        remaining_gas: &amp;mut <a class="primitive" href="https://doc.rust-lang.org/1.85.0/std/primitive.u64.html">u64</a>,
     ) -&gt; <a class="type" href="type.SyscallResult.html" title="type cairo_native::starknet::SyscallResult">SyscallResult</a>&lt;<a class="struct" href="struct.ExecutionInfo.html" title="struct cairo_native::starknet::ExecutionInfo">ExecutionInfo</a>&gt;;
 <span class="item-spacer"></span>    fn <a href="#tymethod.get_execution_info_v2" class="fn">get_execution_info_v2</a>(
         &amp;mut self,
-        remaining_gas: &amp;mut <a class="primitive" href="https://doc.rust-lang.org/1.84.1/std/primitive.u64.html">u64</a>,
+        remaining_gas: &amp;mut <a class="primitive" href="https://doc.rust-lang.org/1.85.0/std/primitive.u64.html">u64</a>,
     ) -&gt; <a class="type" href="type.SyscallResult.html" title="type cairo_native::starknet::SyscallResult">SyscallResult</a>&lt;<a class="struct" href="struct.ExecutionInfoV2.html" title="struct cairo_native::starknet::ExecutionInfoV2">ExecutionInfoV2</a>&gt;;
 <span class="item-spacer"></span>    fn <a href="#tymethod.deploy" class="fn">deploy</a>(
         &amp;mut self,
         class_hash: Felt,
         contract_address_salt: Felt,
         calldata: &amp;[Felt],
-        deploy_from_zero: <a class="primitive" href="https://doc.rust-lang.org/1.84.1/std/primitive.bool.html">bool</a>,
-        remaining_gas: &amp;mut <a class="primitive" href="https://doc.rust-lang.org/1.84.1/std/primitive.u64.html">u64</a>,
-    ) -&gt; <a class="type" href="type.SyscallResult.html" title="type cairo_native::starknet::SyscallResult">SyscallResult</a>&lt;(Felt, <a class="struct" href="https://doc.rust-lang.org/1.84.1/alloc/vec/struct.Vec.html" title="struct alloc::vec::Vec">Vec</a>&lt;Felt&gt;)&gt;;
+        deploy_from_zero: <a class="primitive" href="https://doc.rust-lang.org/1.85.0/std/primitive.bool.html">bool</a>,
+        remaining_gas: &amp;mut <a class="primitive" href="https://doc.rust-lang.org/1.85.0/std/primitive.u64.html">u64</a>,
+    ) -&gt; <a class="type" href="type.SyscallResult.html" title="type cairo_native::starknet::SyscallResult">SyscallResult</a>&lt;(Felt, <a class="struct" href="https://doc.rust-lang.org/1.85.0/alloc/vec/struct.Vec.html" title="struct alloc::vec::Vec">Vec</a>&lt;Felt&gt;)&gt;;
 <span class="item-spacer"></span>    fn <a href="#tymethod.replace_class" class="fn">replace_class</a>(
         &amp;mut self,
         class_hash: Felt,
-        remaining_gas: &amp;mut <a class="primitive" href="https://doc.rust-lang.org/1.84.1/std/primitive.u64.html">u64</a>,
-    ) -&gt; <a class="type" href="type.SyscallResult.html" title="type cairo_native::starknet::SyscallResult">SyscallResult</a>&lt;<a class="primitive" href="https://doc.rust-lang.org/1.84.1/std/primitive.unit.html">()</a>&gt;;
+        remaining_gas: &amp;mut <a class="primitive" href="https://doc.rust-lang.org/1.85.0/std/primitive.u64.html">u64</a>,
+    ) -&gt; <a class="type" href="type.SyscallResult.html" title="type cairo_native::starknet::SyscallResult">SyscallResult</a>&lt;<a class="primitive" href="https://doc.rust-lang.org/1.85.0/std/primitive.unit.html">()</a>&gt;;
 <span class="item-spacer"></span>    fn <a href="#tymethod.library_call" class="fn">library_call</a>(
         &amp;mut self,
         class_hash: Felt,
         function_selector: Felt,
         calldata: &amp;[Felt],
-        remaining_gas: &amp;mut <a class="primitive" href="https://doc.rust-lang.org/1.84.1/std/primitive.u64.html">u64</a>,
-    ) -&gt; <a class="type" href="type.SyscallResult.html" title="type cairo_native::starknet::SyscallResult">SyscallResult</a>&lt;<a class="struct" href="https://doc.rust-lang.org/1.84.1/alloc/vec/struct.Vec.html" title="struct alloc::vec::Vec">Vec</a>&lt;Felt&gt;&gt;;
+        remaining_gas: &amp;mut <a class="primitive" href="https://doc.rust-lang.org/1.85.0/std/primitive.u64.html">u64</a>,
+    ) -&gt; <a class="type" href="type.SyscallResult.html" title="type cairo_native::starknet::SyscallResult">SyscallResult</a>&lt;<a class="struct" href="https://doc.rust-lang.org/1.85.0/alloc/vec/struct.Vec.html" title="struct alloc::vec::Vec">Vec</a>&lt;Felt&gt;&gt;;
 <span class="item-spacer"></span>    fn <a href="#tymethod.call_contract" class="fn">call_contract</a>(
         &amp;mut self,
         address: Felt,
         entry_point_selector: Felt,
         calldata: &amp;[Felt],
-        remaining_gas: &amp;mut <a class="primitive" href="https://doc.rust-lang.org/1.84.1/std/primitive.u64.html">u64</a>,
-    ) -&gt; <a class="type" href="type.SyscallResult.html" title="type cairo_native::starknet::SyscallResult">SyscallResult</a>&lt;<a class="struct" href="https://doc.rust-lang.org/1.84.1/alloc/vec/struct.Vec.html" title="struct alloc::vec::Vec">Vec</a>&lt;Felt&gt;&gt;;
+        remaining_gas: &amp;mut <a class="primitive" href="https://doc.rust-lang.org/1.85.0/std/primitive.u64.html">u64</a>,
+    ) -&gt; <a class="type" href="type.SyscallResult.html" title="type cairo_native::starknet::SyscallResult">SyscallResult</a>&lt;<a class="struct" href="https://doc.rust-lang.org/1.85.0/alloc/vec/struct.Vec.html" title="struct alloc::vec::Vec">Vec</a>&lt;Felt&gt;&gt;;
 <span class="item-spacer"></span>    fn <a href="#tymethod.storage_read" class="fn">storage_read</a>(
         &amp;mut self,
-        address_domain: <a class="primitive" href="https://doc.rust-lang.org/1.84.1/std/primitive.u32.html">u32</a>,
+        address_domain: <a class="primitive" href="https://doc.rust-lang.org/1.85.0/std/primitive.u32.html">u32</a>,
         address: Felt,
-        remaining_gas: &amp;mut <a class="primitive" href="https://doc.rust-lang.org/1.84.1/std/primitive.u64.html">u64</a>,
+        remaining_gas: &amp;mut <a class="primitive" href="https://doc.rust-lang.org/1.85.0/std/primitive.u64.html">u64</a>,
     ) -&gt; <a class="type" href="type.SyscallResult.html" title="type cairo_native::starknet::SyscallResult">SyscallResult</a>&lt;Felt&gt;;
 <span class="item-spacer"></span>    fn <a href="#tymethod.storage_write" class="fn">storage_write</a>(
         &amp;mut self,
-        address_domain: <a class="primitive" href="https://doc.rust-lang.org/1.84.1/std/primitive.u32.html">u32</a>,
+        address_domain: <a class="primitive" href="https://doc.rust-lang.org/1.85.0/std/primitive.u32.html">u32</a>,
         address: Felt,
         value: Felt,
-        remaining_gas: &amp;mut <a class="primitive" href="https://doc.rust-lang.org/1.84.1/std/primitive.u64.html">u64</a>,
-    ) -&gt; <a class="type" href="type.SyscallResult.html" title="type cairo_native::starknet::SyscallResult">SyscallResult</a>&lt;<a class="primitive" href="https://doc.rust-lang.org/1.84.1/std/primitive.unit.html">()</a>&gt;;
+        remaining_gas: &amp;mut <a class="primitive" href="https://doc.rust-lang.org/1.85.0/std/primitive.u64.html">u64</a>,
+    ) -&gt; <a class="type" href="type.SyscallResult.html" title="type cairo_native::starknet::SyscallResult">SyscallResult</a>&lt;<a class="primitive" href="https://doc.rust-lang.org/1.85.0/std/primitive.unit.html">()</a>&gt;;
 <span class="item-spacer"></span>    fn <a href="#tymethod.emit_event" class="fn">emit_event</a>(
         &amp;mut self,
         keys: &amp;[Felt],
         data: &amp;[Felt],
-        remaining_gas: &amp;mut <a class="primitive" href="https://doc.rust-lang.org/1.84.1/std/primitive.u64.html">u64</a>,
-    ) -&gt; <a class="type" href="type.SyscallResult.html" title="type cairo_native::starknet::SyscallResult">SyscallResult</a>&lt;<a class="primitive" href="https://doc.rust-lang.org/1.84.1/std/primitive.unit.html">()</a>&gt;;
+        remaining_gas: &amp;mut <a class="primitive" href="https://doc.rust-lang.org/1.85.0/std/primitive.u64.html">u64</a>,
+    ) -&gt; <a class="type" href="type.SyscallResult.html" title="type cairo_native::starknet::SyscallResult">SyscallResult</a>&lt;<a class="primitive" href="https://doc.rust-lang.org/1.85.0/std/primitive.unit.html">()</a>&gt;;
 <span class="item-spacer"></span>    fn <a href="#tymethod.send_message_to_l1" class="fn">send_message_to_l1</a>(
         &amp;mut self,
         to_address: Felt,
         payload: &amp;[Felt],
-        remaining_gas: &amp;mut <a class="primitive" href="https://doc.rust-lang.org/1.84.1/std/primitive.u64.html">u64</a>,
-    ) -&gt; <a class="type" href="type.SyscallResult.html" title="type cairo_native::starknet::SyscallResult">SyscallResult</a>&lt;<a class="primitive" href="https://doc.rust-lang.org/1.84.1/std/primitive.unit.html">()</a>&gt;;
+        remaining_gas: &amp;mut <a class="primitive" href="https://doc.rust-lang.org/1.85.0/std/primitive.u64.html">u64</a>,
+    ) -&gt; <a class="type" href="type.SyscallResult.html" title="type cairo_native::starknet::SyscallResult">SyscallResult</a>&lt;<a class="primitive" href="https://doc.rust-lang.org/1.85.0/std/primitive.unit.html">()</a>&gt;;
 <span class="item-spacer"></span>    fn <a href="#tymethod.keccak" class="fn">keccak</a>(
         &amp;mut self,
-        input: &amp;[<a class="primitive" href="https://doc.rust-lang.org/1.84.1/std/primitive.u64.html">u64</a>],
-        remaining_gas: &amp;mut <a class="primitive" href="https://doc.rust-lang.org/1.84.1/std/primitive.u64.html">u64</a>,
+        input: &amp;[<a class="primitive" href="https://doc.rust-lang.org/1.85.0/std/primitive.u64.html">u64</a>],
+        remaining_gas: &amp;mut <a class="primitive" href="https://doc.rust-lang.org/1.85.0/std/primitive.u64.html">u64</a>,
     ) -&gt; <a class="type" href="type.SyscallResult.html" title="type cairo_native::starknet::SyscallResult">SyscallResult</a>&lt;<a class="struct" href="struct.U256.html" title="struct cairo_native::starknet::U256">U256</a>&gt;;
 <span class="item-spacer"></span>    fn <a href="#tymethod.secp256k1_new" class="fn">secp256k1_new</a>(
         &amp;mut self,
         x: <a class="struct" href="struct.U256.html" title="struct cairo_native::starknet::U256">U256</a>,
         y: <a class="struct" href="struct.U256.html" title="struct cairo_native::starknet::U256">U256</a>,
-        remaining_gas: &amp;mut <a class="primitive" href="https://doc.rust-lang.org/1.84.1/std/primitive.u64.html">u64</a>,
-    ) -&gt; <a class="type" href="type.SyscallResult.html" title="type cairo_native::starknet::SyscallResult">SyscallResult</a>&lt;<a class="enum" href="https://doc.rust-lang.org/1.84.1/core/option/enum.Option.html" title="enum core::option::Option">Option</a>&lt;<a class="struct" href="struct.Secp256k1Point.html" title="struct cairo_native::starknet::Secp256k1Point">Secp256k1Point</a>&gt;&gt;;
+        remaining_gas: &amp;mut <a class="primitive" href="https://doc.rust-lang.org/1.85.0/std/primitive.u64.html">u64</a>,
+    ) -&gt; <a class="type" href="type.SyscallResult.html" title="type cairo_native::starknet::SyscallResult">SyscallResult</a>&lt;<a class="enum" href="https://doc.rust-lang.org/1.85.0/core/option/enum.Option.html" title="enum core::option::Option">Option</a>&lt;<a class="struct" href="struct.Secp256k1Point.html" title="struct cairo_native::starknet::Secp256k1Point">Secp256k1Point</a>&gt;&gt;;
 <span class="item-spacer"></span>    fn <a href="#tymethod.secp256k1_add" class="fn">secp256k1_add</a>(
         &amp;mut self,
         p0: <a class="struct" href="struct.Secp256k1Point.html" title="struct cairo_native::starknet::Secp256k1Point">Secp256k1Point</a>,
         p1: <a class="struct" href="struct.Secp256k1Point.html" title="struct cairo_native::starknet::Secp256k1Point">Secp256k1Point</a>,
-        remaining_gas: &amp;mut <a class="primitive" href="https://doc.rust-lang.org/1.84.1/std/primitive.u64.html">u64</a>,
+        remaining_gas: &amp;mut <a class="primitive" href="https://doc.rust-lang.org/1.85.0/std/primitive.u64.html">u64</a>,
     ) -&gt; <a class="type" href="type.SyscallResult.html" title="type cairo_native::starknet::SyscallResult">SyscallResult</a>&lt;<a class="struct" href="struct.Secp256k1Point.html" title="struct cairo_native::starknet::Secp256k1Point">Secp256k1Point</a>&gt;;
 <span class="item-spacer"></span>    fn <a href="#tymethod.secp256k1_mul" class="fn">secp256k1_mul</a>(
         &amp;mut self,
         p: <a class="struct" href="struct.Secp256k1Point.html" title="struct cairo_native::starknet::Secp256k1Point">Secp256k1Point</a>,
         m: <a class="struct" href="struct.U256.html" title="struct cairo_native::starknet::U256">U256</a>,
-        remaining_gas: &amp;mut <a class="primitive" href="https://doc.rust-lang.org/1.84.1/std/primitive.u64.html">u64</a>,
+        remaining_gas: &amp;mut <a class="primitive" href="https://doc.rust-lang.org/1.85.0/std/primitive.u64.html">u64</a>,
     ) -&gt; <a class="type" href="type.SyscallResult.html" title="type cairo_native::starknet::SyscallResult">SyscallResult</a>&lt;<a class="struct" href="struct.Secp256k1Point.html" title="struct cairo_native::starknet::Secp256k1Point">Secp256k1Point</a>&gt;;
 <span class="item-spacer"></span>    fn <a href="#tymethod.secp256k1_get_point_from_x" class="fn">secp256k1_get_point_from_x</a>(
         &amp;mut self,
         x: <a class="struct" href="struct.U256.html" title="struct cairo_native::starknet::U256">U256</a>,
-        y_parity: <a class="primitive" href="https://doc.rust-lang.org/1.84.1/std/primitive.bool.html">bool</a>,
-        remaining_gas: &amp;mut <a class="primitive" href="https://doc.rust-lang.org/1.84.1/std/primitive.u64.html">u64</a>,
-    ) -&gt; <a class="type" href="type.SyscallResult.html" title="type cairo_native::starknet::SyscallResult">SyscallResult</a>&lt;<a class="enum" href="https://doc.rust-lang.org/1.84.1/core/option/enum.Option.html" title="enum core::option::Option">Option</a>&lt;<a class="struct" href="struct.Secp256k1Point.html" title="struct cairo_native::starknet::Secp256k1Point">Secp256k1Point</a>&gt;&gt;;
+        y_parity: <a class="primitive" href="https://doc.rust-lang.org/1.85.0/std/primitive.bool.html">bool</a>,
+        remaining_gas: &amp;mut <a class="primitive" href="https://doc.rust-lang.org/1.85.0/std/primitive.u64.html">u64</a>,
+    ) -&gt; <a class="type" href="type.SyscallResult.html" title="type cairo_native::starknet::SyscallResult">SyscallResult</a>&lt;<a class="enum" href="https://doc.rust-lang.org/1.85.0/core/option/enum.Option.html" title="enum core::option::Option">Option</a>&lt;<a class="struct" href="struct.Secp256k1Point.html" title="struct cairo_native::starknet::Secp256k1Point">Secp256k1Point</a>&gt;&gt;;
 <span class="item-spacer"></span>    fn <a href="#tymethod.secp256k1_get_xy" class="fn">secp256k1_get_xy</a>(
         &amp;mut self,
         p: <a class="struct" href="struct.Secp256k1Point.html" title="struct cairo_native::starknet::Secp256k1Point">Secp256k1Point</a>,
-        remaining_gas: &amp;mut <a class="primitive" href="https://doc.rust-lang.org/1.84.1/std/primitive.u64.html">u64</a>,
+        remaining_gas: &amp;mut <a class="primitive" href="https://doc.rust-lang.org/1.85.0/std/primitive.u64.html">u64</a>,
     ) -&gt; <a class="type" href="type.SyscallResult.html" title="type cairo_native::starknet::SyscallResult">SyscallResult</a>&lt;(<a class="struct" href="struct.U256.html" title="struct cairo_native::starknet::U256">U256</a>, <a class="struct" href="struct.U256.html" title="struct cairo_native::starknet::U256">U256</a>)&gt;;
 <span class="item-spacer"></span>    fn <a href="#tymethod.secp256r1_new" class="fn">secp256r1_new</a>(
         &amp;mut self,
         x: <a class="struct" href="struct.U256.html" title="struct cairo_native::starknet::U256">U256</a>,
         y: <a class="struct" href="struct.U256.html" title="struct cairo_native::starknet::U256">U256</a>,
-        remaining_gas: &amp;mut <a class="primitive" href="https://doc.rust-lang.org/1.84.1/std/primitive.u64.html">u64</a>,
-    ) -&gt; <a class="type" href="type.SyscallResult.html" title="type cairo_native::starknet::SyscallResult">SyscallResult</a>&lt;<a class="enum" href="https://doc.rust-lang.org/1.84.1/core/option/enum.Option.html" title="enum core::option::Option">Option</a>&lt;<a class="struct" href="struct.Secp256r1Point.html" title="struct cairo_native::starknet::Secp256r1Point">Secp256r1Point</a>&gt;&gt;;
+        remaining_gas: &amp;mut <a class="primitive" href="https://doc.rust-lang.org/1.85.0/std/primitive.u64.html">u64</a>,
+    ) -&gt; <a class="type" href="type.SyscallResult.html" title="type cairo_native::starknet::SyscallResult">SyscallResult</a>&lt;<a class="enum" href="https://doc.rust-lang.org/1.85.0/core/option/enum.Option.html" title="enum core::option::Option">Option</a>&lt;<a class="struct" href="struct.Secp256r1Point.html" title="struct cairo_native::starknet::Secp256r1Point">Secp256r1Point</a>&gt;&gt;;
 <span class="item-spacer"></span>    fn <a href="#tymethod.secp256r1_add" class="fn">secp256r1_add</a>(
         &amp;mut self,
         p0: <a class="struct" href="struct.Secp256r1Point.html" title="struct cairo_native::starknet::Secp256r1Point">Secp256r1Point</a>,
         p1: <a class="struct" href="struct.Secp256r1Point.html" title="struct cairo_native::starknet::Secp256r1Point">Secp256r1Point</a>,
-        remaining_gas: &amp;mut <a class="primitive" href="https://doc.rust-lang.org/1.84.1/std/primitive.u64.html">u64</a>,
+        remaining_gas: &amp;mut <a class="primitive" href="https://doc.rust-lang.org/1.85.0/std/primitive.u64.html">u64</a>,
     ) -&gt; <a class="type" href="type.SyscallResult.html" title="type cairo_native::starknet::SyscallResult">SyscallResult</a>&lt;<a class="struct" href="struct.Secp256r1Point.html" title="struct cairo_native::starknet::Secp256r1Point">Secp256r1Point</a>&gt;;
 <span class="item-spacer"></span>    fn <a href="#tymethod.secp256r1_mul" class="fn">secp256r1_mul</a>(
         &amp;mut self,
         p: <a class="struct" href="struct.Secp256r1Point.html" title="struct cairo_native::starknet::Secp256r1Point">Secp256r1Point</a>,
         m: <a class="struct" href="struct.U256.html" title="struct cairo_native::starknet::U256">U256</a>,
-        remaining_gas: &amp;mut <a class="primitive" href="https://doc.rust-lang.org/1.84.1/std/primitive.u64.html">u64</a>,
+        remaining_gas: &amp;mut <a class="primitive" href="https://doc.rust-lang.org/1.85.0/std/primitive.u64.html">u64</a>,
     ) -&gt; <a class="type" href="type.SyscallResult.html" title="type cairo_native::starknet::SyscallResult">SyscallResult</a>&lt;<a class="struct" href="struct.Secp256r1Point.html" title="struct cairo_native::starknet::Secp256r1Point">Secp256r1Point</a>&gt;;
 <span class="item-spacer"></span>    fn <a href="#tymethod.secp256r1_get_point_from_x" class="fn">secp256r1_get_point_from_x</a>(
         &amp;mut self,
         x: <a class="struct" href="struct.U256.html" title="struct cairo_native::starknet::U256">U256</a>,
-        y_parity: <a class="primitive" href="https://doc.rust-lang.org/1.84.1/std/primitive.bool.html">bool</a>,
-        remaining_gas: &amp;mut <a class="primitive" href="https://doc.rust-lang.org/1.84.1/std/primitive.u64.html">u64</a>,
-    ) -&gt; <a class="type" href="type.SyscallResult.html" title="type cairo_native::starknet::SyscallResult">SyscallResult</a>&lt;<a class="enum" href="https://doc.rust-lang.org/1.84.1/core/option/enum.Option.html" title="enum core::option::Option">Option</a>&lt;<a class="struct" href="struct.Secp256r1Point.html" title="struct cairo_native::starknet::Secp256r1Point">Secp256r1Point</a>&gt;&gt;;
+        y_parity: <a class="primitive" href="https://doc.rust-lang.org/1.85.0/std/primitive.bool.html">bool</a>,
+        remaining_gas: &amp;mut <a class="primitive" href="https://doc.rust-lang.org/1.85.0/std/primitive.u64.html">u64</a>,
+    ) -&gt; <a class="type" href="type.SyscallResult.html" title="type cairo_native::starknet::SyscallResult">SyscallResult</a>&lt;<a class="enum" href="https://doc.rust-lang.org/1.85.0/core/option/enum.Option.html" title="enum core::option::Option">Option</a>&lt;<a class="struct" href="struct.Secp256r1Point.html" title="struct cairo_native::starknet::Secp256r1Point">Secp256r1Point</a>&gt;&gt;;
 <span class="item-spacer"></span>    fn <a href="#tymethod.secp256r1_get_xy" class="fn">secp256r1_get_xy</a>(
         &amp;mut self,
         p: <a class="struct" href="struct.Secp256r1Point.html" title="struct cairo_native::starknet::Secp256r1Point">Secp256r1Point</a>,
-        remaining_gas: &amp;mut <a class="primitive" href="https://doc.rust-lang.org/1.84.1/std/primitive.u64.html">u64</a>,
+        remaining_gas: &amp;mut <a class="primitive" href="https://doc.rust-lang.org/1.85.0/std/primitive.u64.html">u64</a>,
     ) -&gt; <a class="type" href="type.SyscallResult.html" title="type cairo_native::starknet::SyscallResult">SyscallResult</a>&lt;(<a class="struct" href="struct.U256.html" title="struct cairo_native::starknet::U256">U256</a>, <a class="struct" href="struct.U256.html" title="struct cairo_native::starknet::U256">U256</a>)&gt;;
 <span class="item-spacer"></span>    fn <a href="#tymethod.sha256_process_block" class="fn">sha256_process_block</a>(
         &amp;mut self,
-        state: &amp;mut [<a class="primitive" href="https://doc.rust-lang.org/1.84.1/std/primitive.u32.html">u32</a>; <a class="primitive" href="https://doc.rust-lang.org/1.84.1/std/primitive.array.html">8</a>],
-        block: &amp;[<a class="primitive" href="https://doc.rust-lang.org/1.84.1/std/primitive.u32.html">u32</a>; <a class="primitive" href="https://doc.rust-lang.org/1.84.1/std/primitive.array.html">16</a>],
-        remaining_gas: &amp;mut <a class="primitive" href="https://doc.rust-lang.org/1.84.1/std/primitive.u64.html">u64</a>,
-    ) -&gt; <a class="type" href="type.SyscallResult.html" title="type cairo_native::starknet::SyscallResult">SyscallResult</a>&lt;<a class="primitive" href="https://doc.rust-lang.org/1.84.1/std/primitive.unit.html">()</a>&gt;;
+        state: &amp;mut [<a class="primitive" href="https://doc.rust-lang.org/1.85.0/std/primitive.u32.html">u32</a>; <a class="primitive" href="https://doc.rust-lang.org/1.85.0/std/primitive.array.html">8</a>],
+        block: &amp;[<a class="primitive" href="https://doc.rust-lang.org/1.85.0/std/primitive.u32.html">u32</a>; <a class="primitive" href="https://doc.rust-lang.org/1.85.0/std/primitive.array.html">16</a>],
+        remaining_gas: &amp;mut <a class="primitive" href="https://doc.rust-lang.org/1.85.0/std/primitive.u64.html">u64</a>,
+    ) -&gt; <a class="type" href="type.SyscallResult.html" title="type cairo_native::starknet::SyscallResult">SyscallResult</a>&lt;<a class="primitive" href="https://doc.rust-lang.org/1.85.0/std/primitive.unit.html">()</a>&gt;;
 <span class="item-spacer"></span>    fn <a href="#tymethod.get_class_hash_at" class="fn">get_class_hash_at</a>(
         &amp;mut self,
         contract_address: Felt,
-        remaining_gas: &amp;mut <a class="primitive" href="https://doc.rust-lang.org/1.84.1/std/primitive.u64.html">u64</a>,
+        remaining_gas: &amp;mut <a class="primitive" href="https://doc.rust-lang.org/1.85.0/std/primitive.u64.html">u64</a>,
     ) -&gt; <a class="type" href="type.SyscallResult.html" title="type cairo_native::starknet::SyscallResult">SyscallResult</a>&lt;Felt&gt;;
 
     // Provided method
-    fn <a href="#method.cheatcode" class="fn">cheatcode</a>(&amp;mut self, _selector: Felt, _input: &amp;[Felt]) -&gt; <a class="struct" href="https://doc.rust-lang.org/1.84.1/alloc/vec/struct.Vec.html" title="struct alloc::vec::Vec">Vec</a>&lt;Felt&gt; { ... }
+    fn <a href="#method.cheatcode" class="fn">cheatcode</a>(&amp;mut self, _selector: Felt, _input: &amp;[Felt]) -&gt; <a class="struct" href="https://doc.rust-lang.org/1.85.0/alloc/vec/struct.Vec.html" title="struct alloc::vec::Vec">Vec</a>&lt;Felt&gt; { ... }
 </details>}</code></pre><h2 id="required-methods" class="section-header">Required Methods<a href="#required-methods" class="anchor">§</a></h2><div class="methods"><section id="tymethod.get_block_hash" class="method"><a class="src rightside" href="../../src/cairo_native/starknet.rs.html#185-186">Source</a><h4 class="code-header">fn <a href="#tymethod.get_block_hash" class="fn">get_block_hash</a>(
     &amp;mut self,
-    block_number: <a class="primitive" href="https://doc.rust-lang.org/1.84.1/std/primitive.u64.html">u64</a>,
-    remaining_gas: &amp;mut <a class="primitive" href="https://doc.rust-lang.org/1.84.1/std/primitive.u64.html">u64</a>,
+    block_number: <a class="primitive" href="https://doc.rust-lang.org/1.85.0/std/primitive.u64.html">u64</a>,
+    remaining_gas: &amp;mut <a class="primitive" href="https://doc.rust-lang.org/1.85.0/std/primitive.u64.html">u64</a>,
 ) -&gt; <a class="type" href="type.SyscallResult.html" title="type cairo_native::starknet::SyscallResult">SyscallResult</a>&lt;Felt&gt;</h4></section><section id="tymethod.get_execution_info" class="method"><a class="src rightside" href="../../src/cairo_native/starknet.rs.html#188">Source</a><h4 class="code-header">fn <a href="#tymethod.get_execution_info" class="fn">get_execution_info</a>(
     &amp;mut self,
-    remaining_gas: &amp;mut <a class="primitive" href="https://doc.rust-lang.org/1.84.1/std/primitive.u64.html">u64</a>,
+    remaining_gas: &amp;mut <a class="primitive" href="https://doc.rust-lang.org/1.85.0/std/primitive.u64.html">u64</a>,
 ) -&gt; <a class="type" href="type.SyscallResult.html" title="type cairo_native::starknet::SyscallResult">SyscallResult</a>&lt;<a class="struct" href="struct.ExecutionInfo.html" title="struct cairo_native::starknet::ExecutionInfo">ExecutionInfo</a>&gt;</h4></section><section id="tymethod.get_execution_info_v2" class="method"><a class="src rightside" href="../../src/cairo_native/starknet.rs.html#190">Source</a><h4 class="code-header">fn <a href="#tymethod.get_execution_info_v2" class="fn">get_execution_info_v2</a>(
     &amp;mut self,
-    remaining_gas: &amp;mut <a class="primitive" href="https://doc.rust-lang.org/1.84.1/std/primitive.u64.html">u64</a>,
+    remaining_gas: &amp;mut <a class="primitive" href="https://doc.rust-lang.org/1.85.0/std/primitive.u64.html">u64</a>,
 ) -&gt; <a class="type" href="type.SyscallResult.html" title="type cairo_native::starknet::SyscallResult">SyscallResult</a>&lt;<a class="struct" href="struct.ExecutionInfoV2.html" title="struct cairo_native::starknet::ExecutionInfoV2">ExecutionInfoV2</a>&gt;</h4></section><section id="tymethod.deploy" class="method"><a class="src rightside" href="../../src/cairo_native/starknet.rs.html#192-199">Source</a><h4 class="code-header">fn <a href="#tymethod.deploy" class="fn">deploy</a>(
     &amp;mut self,
     class_hash: Felt,
     contract_address_salt: Felt,
     calldata: &amp;[Felt],
-    deploy_from_zero: <a class="primitive" href="https://doc.rust-lang.org/1.84.1/std/primitive.bool.html">bool</a>,
-    remaining_gas: &amp;mut <a class="primitive" href="https://doc.rust-lang.org/1.84.1/std/primitive.u64.html">u64</a>,
-) -&gt; <a class="type" href="type.SyscallResult.html" title="type cairo_native::starknet::SyscallResult">SyscallResult</a>&lt;(Felt, <a class="struct" href="https://doc.rust-lang.org/1.84.1/alloc/vec/struct.Vec.html" title="struct alloc::vec::Vec">Vec</a>&lt;Felt&gt;)&gt;</h4></section><section id="tymethod.replace_class" class="method"><a class="src rightside" href="../../src/cairo_native/starknet.rs.html#200">Source</a><h4 class="code-header">fn <a href="#tymethod.replace_class" class="fn">replace_class</a>(
+    deploy_from_zero: <a class="primitive" href="https://doc.rust-lang.org/1.85.0/std/primitive.bool.html">bool</a>,
+    remaining_gas: &amp;mut <a class="primitive" href="https://doc.rust-lang.org/1.85.0/std/primitive.u64.html">u64</a>,
+) -&gt; <a class="type" href="type.SyscallResult.html" title="type cairo_native::starknet::SyscallResult">SyscallResult</a>&lt;(Felt, <a class="struct" href="https://doc.rust-lang.org/1.85.0/alloc/vec/struct.Vec.html" title="struct alloc::vec::Vec">Vec</a>&lt;Felt&gt;)&gt;</h4></section><section id="tymethod.replace_class" class="method"><a class="src rightside" href="../../src/cairo_native/starknet.rs.html#200">Source</a><h4 class="code-header">fn <a href="#tymethod.replace_class" class="fn">replace_class</a>(
     &amp;mut self,
     class_hash: Felt,
-    remaining_gas: &amp;mut <a class="primitive" href="https://doc.rust-lang.org/1.84.1/std/primitive.u64.html">u64</a>,
-) -&gt; <a class="type" href="type.SyscallResult.html" title="type cairo_native::starknet::SyscallResult">SyscallResult</a>&lt;<a class="primitive" href="https://doc.rust-lang.org/1.84.1/std/primitive.unit.html">()</a>&gt;</h4></section><section id="tymethod.library_call" class="method"><a class="src rightside" href="../../src/cairo_native/starknet.rs.html#202-208">Source</a><h4 class="code-header">fn <a href="#tymethod.library_call" class="fn">library_call</a>(
+    remaining_gas: &amp;mut <a class="primitive" href="https://doc.rust-lang.org/1.85.0/std/primitive.u64.html">u64</a>,
+) -&gt; <a class="type" href="type.SyscallResult.html" title="type cairo_native::starknet::SyscallResult">SyscallResult</a>&lt;<a class="primitive" href="https://doc.rust-lang.org/1.85.0/std/primitive.unit.html">()</a>&gt;</h4></section><section id="tymethod.library_call" class="method"><a class="src rightside" href="../../src/cairo_native/starknet.rs.html#202-208">Source</a><h4 class="code-header">fn <a href="#tymethod.library_call" class="fn">library_call</a>(
     &amp;mut self,
     class_hash: Felt,
     function_selector: Felt,
     calldata: &amp;[Felt],
-    remaining_gas: &amp;mut <a class="primitive" href="https://doc.rust-lang.org/1.84.1/std/primitive.u64.html">u64</a>,
-) -&gt; <a class="type" href="type.SyscallResult.html" title="type cairo_native::starknet::SyscallResult">SyscallResult</a>&lt;<a class="struct" href="https://doc.rust-lang.org/1.84.1/alloc/vec/struct.Vec.html" title="struct alloc::vec::Vec">Vec</a>&lt;Felt&gt;&gt;</h4></section><section id="tymethod.call_contract" class="method"><a class="src rightside" href="../../src/cairo_native/starknet.rs.html#210-216">Source</a><h4 class="code-header">fn <a href="#tymethod.call_contract" class="fn">call_contract</a>(
+    remaining_gas: &amp;mut <a class="primitive" href="https://doc.rust-lang.org/1.85.0/std/primitive.u64.html">u64</a>,
+) -&gt; <a class="type" href="type.SyscallResult.html" title="type cairo_native::starknet::SyscallResult">SyscallResult</a>&lt;<a class="struct" href="https://doc.rust-lang.org/1.85.0/alloc/vec/struct.Vec.html" title="struct alloc::vec::Vec">Vec</a>&lt;Felt&gt;&gt;</h4></section><section id="tymethod.call_contract" class="method"><a class="src rightside" href="../../src/cairo_native/starknet.rs.html#210-216">Source</a><h4 class="code-header">fn <a href="#tymethod.call_contract" class="fn">call_contract</a>(
     &amp;mut self,
     address: Felt,
     entry_point_selector: Felt,
     calldata: &amp;[Felt],
-    remaining_gas: &amp;mut <a class="primitive" href="https://doc.rust-lang.org/1.84.1/std/primitive.u64.html">u64</a>,
-) -&gt; <a class="type" href="type.SyscallResult.html" title="type cairo_native::starknet::SyscallResult">SyscallResult</a>&lt;<a class="struct" href="https://doc.rust-lang.org/1.84.1/alloc/vec/struct.Vec.html" title="struct alloc::vec::Vec">Vec</a>&lt;Felt&gt;&gt;</h4></section><section id="tymethod.storage_read" class="method"><a class="src rightside" href="../../src/cairo_native/starknet.rs.html#218-223">Source</a><h4 class="code-header">fn <a href="#tymethod.storage_read" class="fn">storage_read</a>(
+    remaining_gas: &amp;mut <a class="primitive" href="https://doc.rust-lang.org/1.85.0/std/primitive.u64.html">u64</a>,
+) -&gt; <a class="type" href="type.SyscallResult.html" title="type cairo_native::starknet::SyscallResult">SyscallResult</a>&lt;<a class="struct" href="https://doc.rust-lang.org/1.85.0/alloc/vec/struct.Vec.html" title="struct alloc::vec::Vec">Vec</a>&lt;Felt&gt;&gt;</h4></section><section id="tymethod.storage_read" class="method"><a class="src rightside" href="../../src/cairo_native/starknet.rs.html#218-223">Source</a><h4 class="code-header">fn <a href="#tymethod.storage_read" class="fn">storage_read</a>(
     &amp;mut self,
-    address_domain: <a class="primitive" href="https://doc.rust-lang.org/1.84.1/std/primitive.u32.html">u32</a>,
+    address_domain: <a class="primitive" href="https://doc.rust-lang.org/1.85.0/std/primitive.u32.html">u32</a>,
     address: Felt,
-    remaining_gas: &amp;mut <a class="primitive" href="https://doc.rust-lang.org/1.84.1/std/primitive.u64.html">u64</a>,
+    remaining_gas: &amp;mut <a class="primitive" href="https://doc.rust-lang.org/1.85.0/std/primitive.u64.html">u64</a>,
 ) -&gt; <a class="type" href="type.SyscallResult.html" title="type cairo_native::starknet::SyscallResult">SyscallResult</a>&lt;Felt&gt;</h4></section><section id="tymethod.storage_write" class="method"><a class="src rightside" href="../../src/cairo_native/starknet.rs.html#225-231">Source</a><h4 class="code-header">fn <a href="#tymethod.storage_write" class="fn">storage_write</a>(
     &amp;mut self,
-    address_domain: <a class="primitive" href="https://doc.rust-lang.org/1.84.1/std/primitive.u32.html">u32</a>,
+    address_domain: <a class="primitive" href="https://doc.rust-lang.org/1.85.0/std/primitive.u32.html">u32</a>,
     address: Felt,
     value: Felt,
-    remaining_gas: &amp;mut <a class="primitive" href="https://doc.rust-lang.org/1.84.1/std/primitive.u64.html">u64</a>,
-) -&gt; <a class="type" href="type.SyscallResult.html" title="type cairo_native::starknet::SyscallResult">SyscallResult</a>&lt;<a class="primitive" href="https://doc.rust-lang.org/1.84.1/std/primitive.unit.html">()</a>&gt;</h4></section><section id="tymethod.emit_event" class="method"><a class="src rightside" href="../../src/cairo_native/starknet.rs.html#233-238">Source</a><h4 class="code-header">fn <a href="#tymethod.emit_event" class="fn">emit_event</a>(
+    remaining_gas: &amp;mut <a class="primitive" href="https://doc.rust-lang.org/1.85.0/std/primitive.u64.html">u64</a>,
+) -&gt; <a class="type" href="type.SyscallResult.html" title="type cairo_native::starknet::SyscallResult">SyscallResult</a>&lt;<a class="primitive" href="https://doc.rust-lang.org/1.85.0/std/primitive.unit.html">()</a>&gt;</h4></section><section id="tymethod.emit_event" class="method"><a class="src rightside" href="../../src/cairo_native/starknet.rs.html#233-238">Source</a><h4 class="code-header">fn <a href="#tymethod.emit_event" class="fn">emit_event</a>(
     &amp;mut self,
     keys: &amp;[Felt],
     data: &amp;[Felt],
-    remaining_gas: &amp;mut <a class="primitive" href="https://doc.rust-lang.org/1.84.1/std/primitive.u64.html">u64</a>,
-) -&gt; <a class="type" href="type.SyscallResult.html" title="type cairo_native::starknet::SyscallResult">SyscallResult</a>&lt;<a class="primitive" href="https://doc.rust-lang.org/1.84.1/std/primitive.unit.html">()</a>&gt;</h4></section><section id="tymethod.send_message_to_l1" class="method"><a class="src rightside" href="../../src/cairo_native/starknet.rs.html#240-245">Source</a><h4 class="code-header">fn <a href="#tymethod.send_message_to_l1" class="fn">send_message_to_l1</a>(
+    remaining_gas: &amp;mut <a class="primitive" href="https://doc.rust-lang.org/1.85.0/std/primitive.u64.html">u64</a>,
+) -&gt; <a class="type" href="type.SyscallResult.html" title="type cairo_native::starknet::SyscallResult">SyscallResult</a>&lt;<a class="primitive" href="https://doc.rust-lang.org/1.85.0/std/primitive.unit.html">()</a>&gt;</h4></section><section id="tymethod.send_message_to_l1" class="method"><a class="src rightside" href="../../src/cairo_native/starknet.rs.html#240-245">Source</a><h4 class="code-header">fn <a href="#tymethod.send_message_to_l1" class="fn">send_message_to_l1</a>(
     &amp;mut self,
     to_address: Felt,
     payload: &amp;[Felt],
-    remaining_gas: &amp;mut <a class="primitive" href="https://doc.rust-lang.org/1.84.1/std/primitive.u64.html">u64</a>,
-) -&gt; <a class="type" href="type.SyscallResult.html" title="type cairo_native::starknet::SyscallResult">SyscallResult</a>&lt;<a class="primitive" href="https://doc.rust-lang.org/1.84.1/std/primitive.unit.html">()</a>&gt;</h4></section><section id="tymethod.keccak" class="method"><a class="src rightside" href="../../src/cairo_native/starknet.rs.html#247">Source</a><h4 class="code-header">fn <a href="#tymethod.keccak" class="fn">keccak</a>(
+    remaining_gas: &amp;mut <a class="primitive" href="https://doc.rust-lang.org/1.85.0/std/primitive.u64.html">u64</a>,
+) -&gt; <a class="type" href="type.SyscallResult.html" title="type cairo_native::starknet::SyscallResult">SyscallResult</a>&lt;<a class="primitive" href="https://doc.rust-lang.org/1.85.0/std/primitive.unit.html">()</a>&gt;</h4></section><section id="tymethod.keccak" class="method"><a class="src rightside" href="../../src/cairo_native/starknet.rs.html#247">Source</a><h4 class="code-header">fn <a href="#tymethod.keccak" class="fn">keccak</a>(
     &amp;mut self,
-    input: &amp;[<a class="primitive" href="https://doc.rust-lang.org/1.84.1/std/primitive.u64.html">u64</a>],
-    remaining_gas: &amp;mut <a class="primitive" href="https://doc.rust-lang.org/1.84.1/std/primitive.u64.html">u64</a>,
+    input: &amp;[<a class="primitive" href="https://doc.rust-lang.org/1.85.0/std/primitive.u64.html">u64</a>],
+    remaining_gas: &amp;mut <a class="primitive" href="https://doc.rust-lang.org/1.85.0/std/primitive.u64.html">u64</a>,
 ) -&gt; <a class="type" href="type.SyscallResult.html" title="type cairo_native::starknet::SyscallResult">SyscallResult</a>&lt;<a class="struct" href="struct.U256.html" title="struct cairo_native::starknet::U256">U256</a>&gt;</h4></section><section id="tymethod.secp256k1_new" class="method"><a class="src rightside" href="../../src/cairo_native/starknet.rs.html#249-254">Source</a><h4 class="code-header">fn <a href="#tymethod.secp256k1_new" class="fn">secp256k1_new</a>(
     &amp;mut self,
     x: <a class="struct" href="struct.U256.html" title="struct cairo_native::starknet::U256">U256</a>,
     y: <a class="struct" href="struct.U256.html" title="struct cairo_native::starknet::U256">U256</a>,
-    remaining_gas: &amp;mut <a class="primitive" href="https://doc.rust-lang.org/1.84.1/std/primitive.u64.html">u64</a>,
-) -&gt; <a class="type" href="type.SyscallResult.html" title="type cairo_native::starknet::SyscallResult">SyscallResult</a>&lt;<a class="enum" href="https://doc.rust-lang.org/1.84.1/core/option/enum.Option.html" title="enum core::option::Option">Option</a>&lt;<a class="struct" href="struct.Secp256k1Point.html" title="struct cairo_native::starknet::Secp256k1Point">Secp256k1Point</a>&gt;&gt;</h4></section><section id="tymethod.secp256k1_add" class="method"><a class="src rightside" href="../../src/cairo_native/starknet.rs.html#256-261">Source</a><h4 class="code-header">fn <a href="#tymethod.secp256k1_add" class="fn">secp256k1_add</a>(
+    remaining_gas: &amp;mut <a class="primitive" href="https://doc.rust-lang.org/1.85.0/std/primitive.u64.html">u64</a>,
+) -&gt; <a class="type" href="type.SyscallResult.html" title="type cairo_native::starknet::SyscallResult">SyscallResult</a>&lt;<a class="enum" href="https://doc.rust-lang.org/1.85.0/core/option/enum.Option.html" title="enum core::option::Option">Option</a>&lt;<a class="struct" href="struct.Secp256k1Point.html" title="struct cairo_native::starknet::Secp256k1Point">Secp256k1Point</a>&gt;&gt;</h4></section><section id="tymethod.secp256k1_add" class="method"><a class="src rightside" href="../../src/cairo_native/starknet.rs.html#256-261">Source</a><h4 class="code-header">fn <a href="#tymethod.secp256k1_add" class="fn">secp256k1_add</a>(
     &amp;mut self,
     p0: <a class="struct" href="struct.Secp256k1Point.html" title="struct cairo_native::starknet::Secp256k1Point">Secp256k1Point</a>,
     p1: <a class="struct" href="struct.Secp256k1Point.html" title="struct cairo_native::starknet::Secp256k1Point">Secp256k1Point</a>,
-    remaining_gas: &amp;mut <a class="primitive" href="https://doc.rust-lang.org/1.84.1/std/primitive.u64.html">u64</a>,
+    remaining_gas: &amp;mut <a class="primitive" href="https://doc.rust-lang.org/1.85.0/std/primitive.u64.html">u64</a>,
 ) -&gt; <a class="type" href="type.SyscallResult.html" title="type cairo_native::starknet::SyscallResult">SyscallResult</a>&lt;<a class="struct" href="struct.Secp256k1Point.html" title="struct cairo_native::starknet::Secp256k1Point">Secp256k1Point</a>&gt;</h4></section><section id="tymethod.secp256k1_mul" class="method"><a class="src rightside" href="../../src/cairo_native/starknet.rs.html#263-268">Source</a><h4 class="code-header">fn <a href="#tymethod.secp256k1_mul" class="fn">secp256k1_mul</a>(
     &amp;mut self,
     p: <a class="struct" href="struct.Secp256k1Point.html" title="struct cairo_native::starknet::Secp256k1Point">Secp256k1Point</a>,
     m: <a class="struct" href="struct.U256.html" title="struct cairo_native::starknet::U256">U256</a>,
-    remaining_gas: &amp;mut <a class="primitive" href="https://doc.rust-lang.org/1.84.1/std/primitive.u64.html">u64</a>,
+    remaining_gas: &amp;mut <a class="primitive" href="https://doc.rust-lang.org/1.85.0/std/primitive.u64.html">u64</a>,
 ) -&gt; <a class="type" href="type.SyscallResult.html" title="type cairo_native::starknet::SyscallResult">SyscallResult</a>&lt;<a class="struct" href="struct.Secp256k1Point.html" title="struct cairo_native::starknet::Secp256k1Point">Secp256k1Point</a>&gt;</h4></section><section id="tymethod.secp256k1_get_point_from_x" class="method"><a class="src rightside" href="../../src/cairo_native/starknet.rs.html#270-275">Source</a><h4 class="code-header">fn <a href="#tymethod.secp256k1_get_point_from_x" class="fn">secp256k1_get_point_from_x</a>(
     &amp;mut self,
     x: <a class="struct" href="struct.U256.html" title="struct cairo_native::starknet::U256">U256</a>,
-    y_parity: <a class="primitive" href="https://doc.rust-lang.org/1.84.1/std/primitive.bool.html">bool</a>,
-    remaining_gas: &amp;mut <a class="primitive" href="https://doc.rust-lang.org/1.84.1/std/primitive.u64.html">u64</a>,
-) -&gt; <a class="type" href="type.SyscallResult.html" title="type cairo_native::starknet::SyscallResult">SyscallResult</a>&lt;<a class="enum" href="https://doc.rust-lang.org/1.84.1/core/option/enum.Option.html" title="enum core::option::Option">Option</a>&lt;<a class="struct" href="struct.Secp256k1Point.html" title="struct cairo_native::starknet::Secp256k1Point">Secp256k1Point</a>&gt;&gt;</h4></section><section id="tymethod.secp256k1_get_xy" class="method"><a class="src rightside" href="../../src/cairo_native/starknet.rs.html#277-281">Source</a><h4 class="code-header">fn <a href="#tymethod.secp256k1_get_xy" class="fn">secp256k1_get_xy</a>(
+    y_parity: <a class="primitive" href="https://doc.rust-lang.org/1.85.0/std/primitive.bool.html">bool</a>,
+    remaining_gas: &amp;mut <a class="primitive" href="https://doc.rust-lang.org/1.85.0/std/primitive.u64.html">u64</a>,
+) -&gt; <a class="type" href="type.SyscallResult.html" title="type cairo_native::starknet::SyscallResult">SyscallResult</a>&lt;<a class="enum" href="https://doc.rust-lang.org/1.85.0/core/option/enum.Option.html" title="enum core::option::Option">Option</a>&lt;<a class="struct" href="struct.Secp256k1Point.html" title="struct cairo_native::starknet::Secp256k1Point">Secp256k1Point</a>&gt;&gt;</h4></section><section id="tymethod.secp256k1_get_xy" class="method"><a class="src rightside" href="../../src/cairo_native/starknet.rs.html#277-281">Source</a><h4 class="code-header">fn <a href="#tymethod.secp256k1_get_xy" class="fn">secp256k1_get_xy</a>(
     &amp;mut self,
     p: <a class="struct" href="struct.Secp256k1Point.html" title="struct cairo_native::starknet::Secp256k1Point">Secp256k1Point</a>,
-    remaining_gas: &amp;mut <a class="primitive" href="https://doc.rust-lang.org/1.84.1/std/primitive.u64.html">u64</a>,
+    remaining_gas: &amp;mut <a class="primitive" href="https://doc.rust-lang.org/1.85.0/std/primitive.u64.html">u64</a>,
 ) -&gt; <a class="type" href="type.SyscallResult.html" title="type cairo_native::starknet::SyscallResult">SyscallResult</a>&lt;(<a class="struct" href="struct.U256.html" title="struct cairo_native::starknet::U256">U256</a>, <a class="struct" href="struct.U256.html" title="struct cairo_native::starknet::U256">U256</a>)&gt;</h4></section><section id="tymethod.secp256r1_new" class="method"><a class="src rightside" href="../../src/cairo_native/starknet.rs.html#283-288">Source</a><h4 class="code-header">fn <a href="#tymethod.secp256r1_new" class="fn">secp256r1_new</a>(
     &amp;mut self,
     x: <a class="struct" href="struct.U256.html" title="struct cairo_native::starknet::U256">U256</a>,
     y: <a class="struct" href="struct.U256.html" title="struct cairo_native::starknet::U256">U256</a>,
-    remaining_gas: &amp;mut <a class="primitive" href="https://doc.rust-lang.org/1.84.1/std/primitive.u64.html">u64</a>,
-) -&gt; <a class="type" href="type.SyscallResult.html" title="type cairo_native::starknet::SyscallResult">SyscallResult</a>&lt;<a class="enum" href="https://doc.rust-lang.org/1.84.1/core/option/enum.Option.html" title="enum core::option::Option">Option</a>&lt;<a class="struct" href="struct.Secp256r1Point.html" title="struct cairo_native::starknet::Secp256r1Point">Secp256r1Point</a>&gt;&gt;</h4></section><section id="tymethod.secp256r1_add" class="method"><a class="src rightside" href="../../src/cairo_native/starknet.rs.html#290-295">Source</a><h4 class="code-header">fn <a href="#tymethod.secp256r1_add" class="fn">secp256r1_add</a>(
+    remaining_gas: &amp;mut <a class="primitive" href="https://doc.rust-lang.org/1.85.0/std/primitive.u64.html">u64</a>,
+) -&gt; <a class="type" href="type.SyscallResult.html" title="type cairo_native::starknet::SyscallResult">SyscallResult</a>&lt;<a class="enum" href="https://doc.rust-lang.org/1.85.0/core/option/enum.Option.html" title="enum core::option::Option">Option</a>&lt;<a class="struct" href="struct.Secp256r1Point.html" title="struct cairo_native::starknet::Secp256r1Point">Secp256r1Point</a>&gt;&gt;</h4></section><section id="tymethod.secp256r1_add" class="method"><a class="src rightside" href="../../src/cairo_native/starknet.rs.html#290-295">Source</a><h4 class="code-header">fn <a href="#tymethod.secp256r1_add" class="fn">secp256r1_add</a>(
     &amp;mut self,
     p0: <a class="struct" href="struct.Secp256r1Point.html" title="struct cairo_native::starknet::Secp256r1Point">Secp256r1Point</a>,
     p1: <a class="struct" href="struct.Secp256r1Point.html" title="struct cairo_native::starknet::Secp256r1Point">Secp256r1Point</a>,
-    remaining_gas: &amp;mut <a class="primitive" href="https://doc.rust-lang.org/1.84.1/std/primitive.u64.html">u64</a>,
+    remaining_gas: &amp;mut <a class="primitive" href="https://doc.rust-lang.org/1.85.0/std/primitive.u64.html">u64</a>,
 ) -&gt; <a class="type" href="type.SyscallResult.html" title="type cairo_native::starknet::SyscallResult">SyscallResult</a>&lt;<a class="struct" href="struct.Secp256r1Point.html" title="struct cairo_native::starknet::Secp256r1Point">Secp256r1Point</a>&gt;</h4></section><section id="tymethod.secp256r1_mul" class="method"><a class="src rightside" href="../../src/cairo_native/starknet.rs.html#297-302">Source</a><h4 class="code-header">fn <a href="#tymethod.secp256r1_mul" class="fn">secp256r1_mul</a>(
     &amp;mut self,
     p: <a class="struct" href="struct.Secp256r1Point.html" title="struct cairo_native::starknet::Secp256r1Point">Secp256r1Point</a>,
     m: <a class="struct" href="struct.U256.html" title="struct cairo_native::starknet::U256">U256</a>,
-    remaining_gas: &amp;mut <a class="primitive" href="https://doc.rust-lang.org/1.84.1/std/primitive.u64.html">u64</a>,
+    remaining_gas: &amp;mut <a class="primitive" href="https://doc.rust-lang.org/1.85.0/std/primitive.u64.html">u64</a>,
 ) -&gt; <a class="type" href="type.SyscallResult.html" title="type cairo_native::starknet::SyscallResult">SyscallResult</a>&lt;<a class="struct" href="struct.Secp256r1Point.html" title="struct cairo_native::starknet::Secp256r1Point">Secp256r1Point</a>&gt;</h4></section><section id="tymethod.secp256r1_get_point_from_x" class="method"><a class="src rightside" href="../../src/cairo_native/starknet.rs.html#304-309">Source</a><h4 class="code-header">fn <a href="#tymethod.secp256r1_get_point_from_x" class="fn">secp256r1_get_point_from_x</a>(
     &amp;mut self,
     x: <a class="struct" href="struct.U256.html" title="struct cairo_native::starknet::U256">U256</a>,
-    y_parity: <a class="primitive" href="https://doc.rust-lang.org/1.84.1/std/primitive.bool.html">bool</a>,
-    remaining_gas: &amp;mut <a class="primitive" href="https://doc.rust-lang.org/1.84.1/std/primitive.u64.html">u64</a>,
-) -&gt; <a class="type" href="type.SyscallResult.html" title="type cairo_native::starknet::SyscallResult">SyscallResult</a>&lt;<a class="enum" href="https://doc.rust-lang.org/1.84.1/core/option/enum.Option.html" title="enum core::option::Option">Option</a>&lt;<a class="struct" href="struct.Secp256r1Point.html" title="struct cairo_native::starknet::Secp256r1Point">Secp256r1Point</a>&gt;&gt;</h4></section><section id="tymethod.secp256r1_get_xy" class="method"><a class="src rightside" href="../../src/cairo_native/starknet.rs.html#311-315">Source</a><h4 class="code-header">fn <a href="#tymethod.secp256r1_get_xy" class="fn">secp256r1_get_xy</a>(
+    y_parity: <a class="primitive" href="https://doc.rust-lang.org/1.85.0/std/primitive.bool.html">bool</a>,
+    remaining_gas: &amp;mut <a class="primitive" href="https://doc.rust-lang.org/1.85.0/std/primitive.u64.html">u64</a>,
+) -&gt; <a class="type" href="type.SyscallResult.html" title="type cairo_native::starknet::SyscallResult">SyscallResult</a>&lt;<a class="enum" href="https://doc.rust-lang.org/1.85.0/core/option/enum.Option.html" title="enum core::option::Option">Option</a>&lt;<a class="struct" href="struct.Secp256r1Point.html" title="struct cairo_native::starknet::Secp256r1Point">Secp256r1Point</a>&gt;&gt;</h4></section><section id="tymethod.secp256r1_get_xy" class="method"><a class="src rightside" href="../../src/cairo_native/starknet.rs.html#311-315">Source</a><h4 class="code-header">fn <a href="#tymethod.secp256r1_get_xy" class="fn">secp256r1_get_xy</a>(
     &amp;mut self,
     p: <a class="struct" href="struct.Secp256r1Point.html" title="struct cairo_native::starknet::Secp256r1Point">Secp256r1Point</a>,
-    remaining_gas: &amp;mut <a class="primitive" href="https://doc.rust-lang.org/1.84.1/std/primitive.u64.html">u64</a>,
+    remaining_gas: &amp;mut <a class="primitive" href="https://doc.rust-lang.org/1.85.0/std/primitive.u64.html">u64</a>,
 ) -&gt; <a class="type" href="type.SyscallResult.html" title="type cairo_native::starknet::SyscallResult">SyscallResult</a>&lt;(<a class="struct" href="struct.U256.html" title="struct cairo_native::starknet::U256">U256</a>, <a class="struct" href="struct.U256.html" title="struct cairo_native::starknet::U256">U256</a>)&gt;</h4></section><section id="tymethod.sha256_process_block" class="method"><a class="src rightside" href="../../src/cairo_native/starknet.rs.html#317-322">Source</a><h4 class="code-header">fn <a href="#tymethod.sha256_process_block" class="fn">sha256_process_block</a>(
     &amp;mut self,
-    state: &amp;mut [<a class="primitive" href="https://doc.rust-lang.org/1.84.1/std/primitive.u32.html">u32</a>; <a class="primitive" href="https://doc.rust-lang.org/1.84.1/std/primitive.array.html">8</a>],
-    block: &amp;[<a class="primitive" href="https://doc.rust-lang.org/1.84.1/std/primitive.u32.html">u32</a>; <a class="primitive" href="https://doc.rust-lang.org/1.84.1/std/primitive.array.html">16</a>],
-    remaining_gas: &amp;mut <a class="primitive" href="https://doc.rust-lang.org/1.84.1/std/primitive.u64.html">u64</a>,
-) -&gt; <a class="type" href="type.SyscallResult.html" title="type cairo_native::starknet::SyscallResult">SyscallResult</a>&lt;<a class="primitive" href="https://doc.rust-lang.org/1.84.1/std/primitive.unit.html">()</a>&gt;</h4></section><section id="tymethod.get_class_hash_at" class="method"><a class="src rightside" href="../../src/cairo_native/starknet.rs.html#324-328">Source</a><h4 class="code-header">fn <a href="#tymethod.get_class_hash_at" class="fn">get_class_hash_at</a>(
+    state: &amp;mut [<a class="primitive" href="https://doc.rust-lang.org/1.85.0/std/primitive.u32.html">u32</a>; <a class="primitive" href="https://doc.rust-lang.org/1.85.0/std/primitive.array.html">8</a>],
+    block: &amp;[<a class="primitive" href="https://doc.rust-lang.org/1.85.0/std/primitive.u32.html">u32</a>; <a class="primitive" href="https://doc.rust-lang.org/1.85.0/std/primitive.array.html">16</a>],
+    remaining_gas: &amp;mut <a class="primitive" href="https://doc.rust-lang.org/1.85.0/std/primitive.u64.html">u64</a>,
+) -&gt; <a class="type" href="type.SyscallResult.html" title="type cairo_native::starknet::SyscallResult">SyscallResult</a>&lt;<a class="primitive" href="https://doc.rust-lang.org/1.85.0/std/primitive.unit.html">()</a>&gt;</h4></section><section id="tymethod.get_class_hash_at" class="method"><a class="src rightside" href="../../src/cairo_native/starknet.rs.html#324-328">Source</a><h4 class="code-header">fn <a href="#tymethod.get_class_hash_at" class="fn">get_class_hash_at</a>(
     &amp;mut self,
     contract_address: Felt,
-    remaining_gas: &amp;mut <a class="primitive" href="https://doc.rust-lang.org/1.84.1/std/primitive.u64.html">u64</a>,
-) -&gt; <a class="type" href="type.SyscallResult.html" title="type cairo_native::starknet::SyscallResult">SyscallResult</a>&lt;Felt&gt;</h4></section></div><h2 id="provided-methods" class="section-header">Provided Methods<a href="#provided-methods" class="anchor">§</a></h2><div class="methods"><section id="method.cheatcode" class="method"><a class="src rightside" href="../../src/cairo_native/starknet.rs.html#331-333">Source</a><h4 class="code-header">fn <a href="#method.cheatcode" class="fn">cheatcode</a>(&amp;mut self, _selector: Felt, _input: &amp;[Felt]) -&gt; <a class="struct" href="https://doc.rust-lang.org/1.84.1/alloc/vec/struct.Vec.html" title="struct alloc::vec::Vec">Vec</a>&lt;Felt&gt;</h4></section></div><h2 id="implementors" class="section-header">Implementors<a href="#implementors" class="anchor">§</a></h2><div id="implementors-list"><section id="impl-StarknetSyscallHandler-for-%26mut+StubSyscallHandler" class="impl"><a class="src rightside" href="../../src/cairo_native/starknet_stub.rs.html#266-658">Source</a><a href="#impl-StarknetSyscallHandler-for-%26mut+StubSyscallHandler" class="anchor">§</a><h3 class="code-header">impl <a class="trait" href="trait.StarknetSyscallHandler.html" title="trait cairo_native::starknet::StarknetSyscallHandler">StarknetSyscallHandler</a> for &amp;mut <a class="struct" href="../starknet_stub/struct.StubSyscallHandler.html" title="struct cairo_native::starknet_stub::StubSyscallHandler">StubSyscallHandler</a></h3></section><section id="impl-StarknetSyscallHandler-for-DummySyscallHandler" class="impl"><a class="src rightside" href="../../src/cairo_native/starknet.rs.html#338-538">Source</a><a href="#impl-StarknetSyscallHandler-for-DummySyscallHandler" class="anchor">§</a><h3 class="code-header">impl <a class="trait" href="trait.StarknetSyscallHandler.html" title="trait cairo_native::starknet::StarknetSyscallHandler">StarknetSyscallHandler</a> for <a class="struct" href="struct.DummySyscallHandler.html" title="struct cairo_native::starknet::DummySyscallHandler">DummySyscallHandler</a></h3></section></div><script src="../../trait.impl/cairo_native/starknet/trait.StarknetSyscallHandler.js" async></script></section></div></main></body></html>
+    remaining_gas: &amp;mut <a class="primitive" href="https://doc.rust-lang.org/1.85.0/std/primitive.u64.html">u64</a>,
+) -&gt; <a class="type" href="type.SyscallResult.html" title="type cairo_native::starknet::SyscallResult">SyscallResult</a>&lt;Felt&gt;</h4></section></div><h2 id="provided-methods" class="section-header">Provided Methods<a href="#provided-methods" class="anchor">§</a></h2><div class="methods"><section id="method.cheatcode" class="method"><a class="src rightside" href="../../src/cairo_native/starknet.rs.html#331-333">Source</a><h4 class="code-header">fn <a href="#method.cheatcode" class="fn">cheatcode</a>(&amp;mut self, _selector: Felt, _input: &amp;[Felt]) -&gt; <a class="struct" href="https://doc.rust-lang.org/1.85.0/alloc/vec/struct.Vec.html" title="struct alloc::vec::Vec">Vec</a>&lt;Felt&gt;</h4></section></div><h2 id="implementors" class="section-header">Implementors<a href="#implementors" class="anchor">§</a></h2><div id="implementors-list"><section id="impl-StarknetSyscallHandler-for-%26mut+StubSyscallHandler" class="impl"><a class="src rightside" href="../../src/cairo_native/starknet_stub.rs.html#266-658">Source</a><a href="#impl-StarknetSyscallHandler-for-%26mut+StubSyscallHandler" class="anchor">§</a><h3 class="code-header">impl <a class="trait" href="trait.StarknetSyscallHandler.html" title="trait cairo_native::starknet::StarknetSyscallHandler">StarknetSyscallHandler</a> for &amp;mut <a class="struct" href="../starknet_stub/struct.StubSyscallHandler.html" title="struct cairo_native::starknet_stub::StubSyscallHandler">StubSyscallHandler</a></h3></section><section id="impl-StarknetSyscallHandler-for-DummySyscallHandler" class="impl"><a class="src rightside" href="../../src/cairo_native/starknet.rs.html#338-538">Source</a><a href="#impl-StarknetSyscallHandler-for-DummySyscallHandler" class="anchor">§</a><h3 class="code-header">impl <a class="trait" href="trait.StarknetSyscallHandler.html" title="trait cairo_native::starknet::StarknetSyscallHandler">StarknetSyscallHandler</a> for <a class="struct" href="struct.DummySyscallHandler.html" title="struct cairo_native::starknet::DummySyscallHandler">DummySyscallHandler</a></h3></section></div><script src="../../trait.impl/cairo_native/starknet/trait.StarknetSyscallHandler.js" async></script></section></div></main></body></html>
