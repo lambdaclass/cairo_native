@@ -925,7 +925,7 @@ mod test {
             debug_name: _,
         } = run_sierra_program(&program_trim, &[Value::Sint16(-0x8000)]).return_value
         else {
-            panic!("should be OptionRev::Some");
+            panic!("should be OptionRev::None");
         };
 
         assert_eq!(*value, jit_struct!());
