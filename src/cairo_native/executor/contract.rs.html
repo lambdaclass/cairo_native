@@ -894,7 +894,26 @@
 <a href="#893" id="893">893</a>
 <a href="#894" id="894">894</a>
 <a href="#895" id="895">895</a>
-<a href="#896" id="896">896</a></pre></div><pre class="rust"><code><span class="doccomment">//! A specialized executor for Starknet contracts, avoiding the overhead of storing the sierra program registry and
+<a href="#896" id="896">896</a>
+<a href="#897" id="897">897</a>
+<a href="#898" id="898">898</a>
+<a href="#899" id="899">899</a>
+<a href="#900" id="900">900</a>
+<a href="#901" id="901">901</a>
+<a href="#902" id="902">902</a>
+<a href="#903" id="903">903</a>
+<a href="#904" id="904">904</a>
+<a href="#905" id="905">905</a>
+<a href="#906" id="906">906</a>
+<a href="#907" id="907">907</a>
+<a href="#908" id="908">908</a>
+<a href="#909" id="909">909</a>
+<a href="#910" id="910">910</a>
+<a href="#911" id="911">911</a>
+<a href="#912" id="912">912</a>
+<a href="#913" id="913">913</a>
+<a href="#914" id="914">914</a>
+<a href="#915" id="915">915</a></pre></div><pre class="rust"><code><span class="doccomment">//! A specialized executor for Starknet contracts, avoiding the overhead of storing the sierra program registry and
 //! enabling efficient serialization of the program/data once compiled.
 //!
 //! This executor heavily relies on the stability of the contract entry point argument order.
@@ -935,6 +954,7 @@
     executor::{invoke_trampoline, BuiltinCostsGuard},
     metadata::{gas::MetadataComputationConfig, runtime_bindings::setup_runtime},
     module::NativeModule,
+    native_panic,
     starknet::{handler::StarknetSyscallHandlerCallbacks, StarknetSyscallHandler},
     types::TypeBuilder,
     utils::{
@@ -946,18 +966,21 @@
 <span class="kw">use </span>bumpalo::Bump;
 <span class="kw">use </span>cairo_lang_sierra::{
     extensions::{
-        circuit::CircuitTypeConcrete, core::CoreTypeConcrete, gas::CostTokenType,
+        circuit::CircuitTypeConcrete,
+        core::{CoreLibfunc, CoreType, CoreTypeConcrete},
+        gas::CostTokenType,
         starknet::StarkNetTypeConcrete,
     },
     ids::FunctionId,
-    program::Program,
+    program::{GenFunction, Program, StatementIdx},
+    program_registry::ProgramRegistry,
 };
 <span class="kw">use </span>cairo_lang_starknet_classes::contract_class::ContractEntryPoints;
 <span class="kw">use </span>cairo_lang_starknet_classes::{
     casm_contract_class::ENTRY_POINT_COST, compiler_version::VersionId,
 };
 <span class="kw">use </span>educe::Educe;
-<span class="kw">use </span>itertools::chain;
+<span class="kw">use </span>itertools::{chain, Itertools};
 <span class="kw">use </span>libloading::Library;
 <span class="kw">use </span>serde::{Deserialize, Serialize};
 <span class="kw">use </span>starknet_types_core::felt::Felt;
@@ -1113,34 +1136,7 @@
                 .get_function(<span class="kw-2">&amp;</span>FunctionId::new(function_id))
                 .to_native_assert_error(<span class="string">"unreachable"</span>)<span class="question-mark">?</span>;
 
-            <span class="kw">let </span>builtins = function
-                .params
-                .iter()
-                .map(|x| registry.get_type(<span class="kw-2">&amp;</span>x.ty).unwrap())
-                .take_while(|ty| ty.is_builtin())
-                .filter(|ty| !ty.is_zst(<span class="kw-2">&amp;</span>registry).unwrap())
-                .map(|ty| <span class="kw">match </span>ty {
-                    CoreTypeConcrete::Bitwise(<span class="kw">_</span>) =&gt; BuiltinType::Bitwise,
-                    CoreTypeConcrete::EcOp(<span class="kw">_</span>) =&gt; BuiltinType::EcOp,
-                    CoreTypeConcrete::RangeCheck(<span class="kw">_</span>) =&gt; BuiltinType::RangeCheck,
-                    CoreTypeConcrete::Pedersen(<span class="kw">_</span>) =&gt; BuiltinType::Pedersen,
-                    CoreTypeConcrete::Poseidon(<span class="kw">_</span>) =&gt; BuiltinType::Poseidon,
-                    CoreTypeConcrete::BuiltinCosts(<span class="kw">_</span>) =&gt; BuiltinType::BuiltinCosts,
-                    CoreTypeConcrete::SegmentArena(<span class="kw">_</span>) =&gt; BuiltinType::SegmentArena,
-                    CoreTypeConcrete::RangeCheck96(<span class="kw">_</span>) =&gt; BuiltinType::RangeCheck96,
-                    CoreTypeConcrete::Circuit(CircuitTypeConcrete::AddMod(<span class="kw">_</span>)) =&gt; {
-                        BuiltinType::CircuitAdd
-                    }
-                    CoreTypeConcrete::Circuit(CircuitTypeConcrete::MulMod(<span class="kw">_</span>)) =&gt; {
-                        BuiltinType::CircuitMul
-                    }
-                    CoreTypeConcrete::GasBuiltin(<span class="kw">_</span>) =&gt; BuiltinType::Gas,
-                    CoreTypeConcrete::StarkNet(StarkNetTypeConcrete::System(<span class="kw">_</span>)) =&gt; {
-                        BuiltinType::System
-                    }
-                    <span class="kw">_ </span>=&gt; <span class="macro">unreachable!</span>(<span class="string">"not a builtin"</span>),
-                })
-                .collect();
+            <span class="kw">let </span>builtins = find_entrypoint_builtins(function, <span class="kw-2">&amp;</span>registry)<span class="question-mark">?</span>;
 
             <span class="prelude-val">Ok</span>((
                 Felt::from(<span class="kw-2">&amp;</span>x.selector),
@@ -1508,6 +1504,48 @@
     }
 }
 
+<span class="kw">fn </span>find_entrypoint_builtins(
+    function: <span class="kw-2">&amp;</span>GenFunction&lt;StatementIdx&gt;,
+    registry: <span class="kw-2">&amp;</span>ProgramRegistry&lt;CoreType, CoreLibfunc&gt;,
+) -&gt; <span class="prelude-ty">Result</span>&lt;Vec&lt;BuiltinType&gt;&gt; {
+    <span class="kw">let </span>param_type_infos = function
+        .params
+        .iter()
+        .map(|x| -&gt; <span class="prelude-ty">Result</span>&lt;<span class="kw">_</span>&gt; {
+            <span class="kw">let </span>ty = registry.get_type(<span class="kw-2">&amp;</span>x.ty)<span class="question-mark">?</span>;
+            <span class="kw">let </span>is_zst = ty.is_zst(registry)<span class="question-mark">?</span>;
+            <span class="prelude-val">Ok</span>((ty, is_zst))
+        })
+        .try_collect::&lt;<span class="kw">_</span>, Vec&lt;<span class="kw">_</span>&gt;, <span class="kw">_</span>&gt;()<span class="question-mark">?</span>;
+
+    param_type_infos
+        .iter()
+        .take_while(|(ty, <span class="kw">_</span>)| ty.is_builtin())
+        .filter(|(<span class="kw">_</span>, is_zst)| !is_zst)
+        .map(|(ty, <span class="kw">_</span>)| -&gt; <span class="prelude-ty">Result</span>&lt;<span class="kw">_</span>&gt; {
+            <span class="prelude-val">Ok</span>(<span class="kw">match </span>ty {
+                CoreTypeConcrete::Bitwise(<span class="kw">_</span>) =&gt; BuiltinType::Bitwise,
+                CoreTypeConcrete::EcOp(<span class="kw">_</span>) =&gt; BuiltinType::EcOp,
+                CoreTypeConcrete::RangeCheck(<span class="kw">_</span>) =&gt; BuiltinType::RangeCheck,
+                CoreTypeConcrete::Pedersen(<span class="kw">_</span>) =&gt; BuiltinType::Pedersen,
+                CoreTypeConcrete::Poseidon(<span class="kw">_</span>) =&gt; BuiltinType::Poseidon,
+                CoreTypeConcrete::BuiltinCosts(<span class="kw">_</span>) =&gt; BuiltinType::BuiltinCosts,
+                CoreTypeConcrete::SegmentArena(<span class="kw">_</span>) =&gt; BuiltinType::SegmentArena,
+                CoreTypeConcrete::RangeCheck96(<span class="kw">_</span>) =&gt; BuiltinType::RangeCheck96,
+                CoreTypeConcrete::Circuit(CircuitTypeConcrete::AddMod(<span class="kw">_</span>)) =&gt; {
+                    BuiltinType::CircuitAdd
+                }
+                CoreTypeConcrete::Circuit(CircuitTypeConcrete::MulMod(<span class="kw">_</span>)) =&gt; {
+                    BuiltinType::CircuitMul
+                }
+                CoreTypeConcrete::GasBuiltin(<span class="kw">_</span>) =&gt; BuiltinType::Gas,
+                CoreTypeConcrete::StarkNet(StarkNetTypeConcrete::System(<span class="kw">_</span>)) =&gt; BuiltinType::System,
+                <span class="kw">_ </span>=&gt; <span class="macro">native_panic!</span>(<span class="string">"unknown builtin type for function {}"</span>, function),
+            })
+        })
+        .try_collect()
+}
+
 <span class="attr">#[derive(Debug)]
 </span><span class="kw">struct </span>LockFile(PathBuf);
 
@@ -1535,7 +1573,7 @@
 
 <span class="kw">impl </span>Drop <span class="kw">for </span>LockFile {
     <span class="kw">fn </span>drop(<span class="kw-2">&amp;mut </span><span class="self">self</span>) {
-        fs::remove_file(<span class="kw-2">&amp;</span><span class="self">self</span>.<span class="number">0</span>).unwrap();
+        <span class="kw">let _ </span>= fs::remove_file(<span class="kw-2">&amp;</span><span class="self">self</span>.<span class="number">0</span>);
     }
 }
 

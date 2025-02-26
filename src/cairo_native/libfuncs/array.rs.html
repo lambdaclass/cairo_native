@@ -3305,8 +3305,8 @@
         <span class="kw">if </span>CONSUME {
             metadata
                 .get::&lt;DropOverridesMeta&gt;()
-                .unwrap()
-                .invoke_override(context, error_block, location, self_ty, array_obj)<span class="question-mark">?</span>;
+                .to_native_assert_error(<span class="string">"drop overrides meta should exist"</span>)<span class="question-mark">?
+                </span>.invoke_override(context, error_block, location, self_ty, array_obj)<span class="question-mark">?</span>;
         } <span class="kw">else </span>{
             branch_values.push(array_obj);
         }
@@ -3435,8 +3435,8 @@
     {
         metadata
             .get::&lt;DropOverridesMeta&gt;()
-            .unwrap()
-            .invoke_override(
+            .to_native_assert_error(<span class="string">"drop overrides meta should exist"</span>)<span class="question-mark">?
+            </span>.invoke_override(
                 context,
                 error_block,
                 location,
@@ -3551,8 +3551,8 @@
 
     metadata
         .get::&lt;DropOverridesMeta&gt;()
-        .unwrap()
-        .invoke_override(
+        .to_native_assert_error(<span class="string">"drop overrides meta should exist"</span>)<span class="question-mark">?
+        </span>.invoke_override(
             context,
             entry,
             location,
