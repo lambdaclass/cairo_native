@@ -406,10 +406,10 @@ fn build_drop<'ctx>(
 pub fn calc_data_prefix_offset(layout: Layout) -> usize {
     get_integer_layout(32)
         .extend(get_integer_layout(32))
-        .expect("creating a layout of two i32 will never fail")
+        .expect("creating a layout of two i32 should never fail")
         .0
         .align_to(layout.align())
-        .expect("only fails if size is greater than approximately ISIZE::MAX")
+        .expect("layout size rounded up to the next multiple of layout alignment should never be greater than ISIZE::MAX")
         .pad_to_align()
         .size()
 }
