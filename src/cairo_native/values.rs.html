@@ -2587,7 +2587,7 @@
                             .byte_sub(refcount_offset)
                             .cast::&lt;u32&gt;()
                             .as_mut()
-                            .unwrap();
+                            .to_native_assert_error(<span class="string">"array data pointer should not be null"</span>)<span class="question-mark">?</span>;
                         <span class="kw">if </span>should_drop {
                             <span class="kw-2">*</span>ref_count -= <span class="number">1</span>;
                         }
