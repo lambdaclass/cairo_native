@@ -2122,8 +2122,7 @@
 <a href="#2121" id="2121">2121</a>
 <a href="#2122" id="2122">2122</a>
 <a href="#2123" id="2123">2123</a>
-<a href="#2124" id="2124">2124</a>
-<a href="#2125" id="2125">2125</a></pre></div><pre class="rust"><code><span class="kw">use super</span>::{BlockExt, LibfuncHelper};
+<a href="#2124" id="2124">2124</a></pre></div><pre class="rust"><code><span class="kw">use super</span>::{BlockExt, LibfuncHelper};
 <span class="kw">use crate</span>::{
     error::Result,
     metadata::MetadataStorage,
@@ -3005,9 +3004,8 @@
 
     <span class="kw">let </span>ext_fn = <span class="kw">if </span>registry
         .get_type(<span class="kw-2">&amp;</span>info.signature.param_signatures[<span class="number">0</span>].ty)<span class="question-mark">?
-        </span>.integer_range(registry)
-        .unwrap()
-        .lower
+        </span>.integer_range(registry)<span class="question-mark">?
+        </span>.lower
         .is_zero()
     {
         BlockExt::extui

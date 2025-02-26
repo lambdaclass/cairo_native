@@ -3420,8 +3420,8 @@
         <span class="comment">// Drop the input array.
         </span>metadata
             .get::&lt;DropOverridesMeta&gt;()
-            .unwrap()
-            .invoke_override(
+            .to_native_assert_error(<span class="string">"drop overrides metadata should be available"</span>)<span class="question-mark">?
+            </span>.invoke_override(
                 context,
                 valid_block,
                 location,

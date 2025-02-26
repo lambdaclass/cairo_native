@@ -860,10 +860,10 @@
 <span class="kw">pub fn </span>calc_data_prefix_offset(layout: Layout) -&gt; usize {
     get_integer_layout(<span class="number">32</span>)
         .extend(get_integer_layout(<span class="number">32</span>))
-        .unwrap()
+        .expect(<span class="string">"creating a layout of two i32 should never fail"</span>)
         .<span class="number">0
         </span>.align_to(layout.align())
-        .unwrap()
+        .expect(<span class="string">"layout size rounded up to the next multiple of layout alignment should never be greater than ISIZE::MAX"</span>)
         .pad_to_align()
         .size()
 }

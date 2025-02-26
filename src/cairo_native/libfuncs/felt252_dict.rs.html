@@ -356,7 +356,7 @@
 
 </span><span class="kw">use </span><span class="kw">super</span>::LibfuncHelper;
 <span class="kw">use crate</span>::{
-    error::Result,
+    error::{panic::ToNativeAssertError, <span class="prelude-ty">Result</span>},
     metadata::{
         felt252_dict::Felt252DictOverrides, runtime_bindings::RuntimeBindingsMeta, MetadataStorage,
     },
@@ -466,7 +466,7 @@
 
     <span class="kw">let </span>runtime_bindings = metadata
         .get_mut::&lt;RuntimeBindingsMeta&gt;()
-        .expect(<span class="string">"Runtime library not available."</span>);
+        .to_native_assert_error(<span class="string">"runtime library should be available"</span>)<span class="question-mark">?</span>;
     <span class="kw">let </span>dict_ptr = runtime_bindings.dict_new(
         context,
         helper,
@@ -497,7 +497,7 @@
 
     <span class="kw">let </span>runtime_bindings = metadata
         .get_mut::&lt;RuntimeBindingsMeta&gt;()
-        .expect(<span class="string">"Runtime library not available."</span>);
+        .to_native_assert_error(<span class="string">"runtime library should be available"</span>)<span class="question-mark">?</span>;
 
     <span class="kw">let </span>gas_refund = runtime_bindings
         .dict_gas_refund(context, helper, entry, dict_ptr, location)<span class="question-mark">?

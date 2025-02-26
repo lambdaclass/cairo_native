@@ -128,7 +128,7 @@
 
 </span><span class="kw">use </span><span class="kw">super</span>::LibfuncHelper;
 <span class="kw">use crate</span>::{
-    error::Result,
+    error::{panic::ToNativeAssertError, <span class="prelude-ty">Result</span>},
     metadata::{runtime_bindings::RuntimeBindingsMeta, MetadataStorage},
     utils::{get_integer_layout, BlockExt, ProgramRegistryExt},
 };
@@ -174,7 +174,7 @@
 ) -&gt; <span class="prelude-ty">Result</span>&lt;()&gt; {
     metadata
         .get_mut::&lt;RuntimeBindingsMeta&gt;()
-        .expect(<span class="string">"Runtime library not available."</span>);
+        .to_native_assert_error(<span class="string">"runtime library should be available"</span>)<span class="question-mark">?</span>;
 
     <span class="kw">let </span>pedersen_builtin =
         <span class="kw">super</span>::increment_builtin_counter(context, entry, location, entry.arg(<span class="number">0</span>)<span class="question-mark">?</span>)<span class="question-mark">?</span>;
@@ -208,7 +208,7 @@
 
     <span class="kw">let </span>runtime_bindings = metadata
         .get_mut::&lt;RuntimeBindingsMeta&gt;()
-        .expect(<span class="string">"Runtime library not available."</span>);
+        .to_native_assert_error(<span class="string">"runtime library should be available"</span>)<span class="question-mark">?</span>;
 
     runtime_bindings
         .libfunc_pedersen(context, helper, entry, dst_ptr, lhs_ptr, rhs_ptr, location)<span class="question-mark">?</span>;

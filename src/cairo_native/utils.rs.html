@@ -1196,7 +1196,7 @@
     } <span class="kw">else </span>{
         <span class="comment">// According to the docs this should never return an error.
         </span>Layout::from_size_align((width <span class="kw">as </span>usize).next_multiple_of(<span class="number">8</span>) &gt;&gt; <span class="number">3</span>, <span class="number">16</span>)
-            .expect(<span class="string">"only fails if size is greater than ISIZE::MAX"</span>)
+            .expect(<span class="string">"layout size rounded up to the next multiple of 16 should never be greater than ISIZE::MAX"</span>)
     }
 }
 

@@ -375,7 +375,7 @@
 
 </span><span class="kw">use </span><span class="kw">super</span>::LibfuncHelper;
 <span class="kw">use crate</span>::{
-    error::{Error, <span class="prelude-ty">Result</span>},
+    error::{panic::ToNativeAssertError, Error, <span class="prelude-ty">Result</span>},
     metadata::{gas::GasCost, runtime_bindings::RuntimeBindingsMeta, MetadataStorage},
     native_panic,
     utils::{BlockExt, GepIndex},
@@ -464,8 +464,8 @@
 
     <span class="kw">let </span>gas_cost = metadata
         .get::&lt;GasCost&gt;()
-        .expect(<span class="string">"withdraw_gas should always have a gas cost"</span>)
-        .clone();
+        .to_native_assert_error(<span class="string">"withdraw_gas should always have a gas cost"</span>)<span class="question-mark">?
+        </span>.clone();
 
     <span class="kw">let </span>u64_type: melior::ir::Type = IntegerType::new(context, <span class="number">64</span>).into();
 
@@ -545,8 +545,8 @@
 
     <span class="kw">let </span>gas_cost = metadata
         .get::&lt;GasCost&gt;()
-        .expect(<span class="string">"redeposit_gas should always have a gas cost"</span>)
-        .clone();
+        .to_native_assert_error(<span class="string">"redeposit_gas should always have a gas cost"</span>)<span class="question-mark">?
+        </span>.clone();
 
     <span class="kw">let </span>u64_type: melior::ir::Type = IntegerType::new(context, <span class="number">64</span>).into();
 
@@ -620,8 +620,8 @@
 
     <span class="kw">let </span>gas_cost = metadata
         .get::&lt;GasCost&gt;()
-        .expect(<span class="string">"builtin_withdraw_gas should always have a gas cost"</span>)
-        .clone();
+        .to_native_assert_error(<span class="string">"builtin_withdraw_gas should always have a gas cost"</span>)<span class="question-mark">?
+        </span>.clone();
 
     <span class="kw">let </span>u64_type: melior::ir::Type = IntegerType::new(context, <span class="number">64</span>).into();
 

@@ -651,13 +651,7 @@
 <a href="#650" id="650">650</a>
 <a href="#651" id="651">651</a>
 <a href="#652" id="652">652</a>
-<a href="#653" id="653">653</a>
-<a href="#654" id="654">654</a>
-<a href="#655" id="655">655</a>
-<a href="#656" id="656">656</a>
-<a href="#657" id="657">657</a>
-<a href="#658" id="658">658</a>
-<a href="#659" id="659">659</a></pre></div><pre class="rust"><code><span class="doccomment">//! # Enum-related libfuncs
+<a href="#653" id="653">653</a></pre></div><pre class="rust"><code><span class="doccomment">//! # Enum-related libfuncs
 //!
 //! Check out [the enum type](crate::types::enum) for more information on enum layouts.
 
@@ -804,13 +798,7 @@
             <span class="kw">let </span>tag_val = entry
                 .append_operation(arith::constant(
                     context,
-                    IntegerAttribute::new(
-                        tag_ty,
-                        variant_index
-                            .try_into()
-                            .expect(<span class="string">"couldnt convert index to i64"</span>),
-                    )
-                    .into(),
+                    IntegerAttribute::new(tag_ty, variant_index.try_into()<span class="question-mark">?</span>).into(),
                     location,
                 ))
                 .result(<span class="number">0</span>)<span class="question-mark">?
@@ -1084,8 +1072,8 @@
         .get::&lt;EnumSnapshotVariantsMeta&gt;()
         .ok_or(Error::MissingMetadata)<span class="question-mark">?
         </span>.get_variants(<span class="kw-2">&amp;</span>info.param_signatures()[<span class="number">0</span>].ty)
-        .expect(<span class="string">"enum should always have variants"</span>)
-        .clone();
+        .to_native_assert_error(<span class="string">"enum should always have variants"</span>)<span class="question-mark">?
+        </span>.clone();
     <span class="kw">match </span>variant_ids.len() {
         <span class="number">0 </span>=&gt; {
             <span class="comment">// The Cairo compiler will generate an enum match for enums without variants, so this

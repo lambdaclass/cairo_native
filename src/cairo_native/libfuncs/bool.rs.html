@@ -379,7 +379,7 @@
 
 </span><span class="kw">use </span><span class="kw">super</span>::LibfuncHelper;
 <span class="kw">use crate</span>::{
-    error::Result,
+    error::{panic::ToNativeAssertError, <span class="prelude-ty">Result</span>},
     metadata::MetadataStorage,
     types::TypeBuilder,
     utils::{BlockExt, ProgramRegistryExt},
@@ -471,8 +471,8 @@
     <span class="kw">let </span>enum_ty = registry.get_type(<span class="kw-2">&amp;</span>info.param_signatures()[<span class="number">0</span>].ty)<span class="question-mark">?</span>;
     <span class="kw">let </span>tag_bits = enum_ty
         .variants()
-        .expect(<span class="string">"bool is a enum and has variants"</span>)
-        .len()
+        .to_native_assert_error(<span class="string">"bool is a enum and has variants"</span>)<span class="question-mark">?
+        </span>.len()
         .next_power_of_two()
         .trailing_zeros();
     <span class="kw">let </span>tag_ty = IntegerType::new(context, tag_bits).into();
@@ -520,8 +520,8 @@
     <span class="kw">let </span>enum_ty = registry.get_type(<span class="kw-2">&amp;</span>info.param_signatures()[<span class="number">0</span>].ty)<span class="question-mark">?</span>;
     <span class="kw">let </span>tag_bits = enum_ty
         .variants()
-        .expect(<span class="string">"bool is a enum and has variants"</span>)
-        .len()
+        .to_native_assert_error(<span class="string">"bool is a enum and has variants"</span>)<span class="question-mark">?
+        </span>.len()
         .next_power_of_two()
         .trailing_zeros();
     <span class="kw">let </span>tag_ty = IntegerType::new(context, tag_bits).into();
@@ -569,8 +569,8 @@
 
     <span class="kw">let </span>tag_bits = enum_ty
         .variants()
-        .expect(<span class="string">"bool is a enum and has variants"</span>)
-        .len()
+        .to_native_assert_error(<span class="string">"bool is a enum and has variants"</span>)<span class="question-mark">?
+        </span>.len()
         .next_power_of_two()
         .trailing_zeros();
     <span class="kw">let </span>tag_ty = IntegerType::new(context, tag_bits).into();

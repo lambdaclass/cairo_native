@@ -138,7 +138,7 @@
 
 </span><span class="kw">use </span><span class="kw">super</span>::LibfuncHelper;
 <span class="kw">use crate</span>::{
-    error::{Error, <span class="prelude-ty">Result</span>},
+    error::{panic::ToNativeAssertError, Error, <span class="prelude-ty">Result</span>},
     metadata::{
         drop_overrides::DropOverridesMeta, runtime_bindings::RuntimeBindingsMeta, MetadataStorage,
     },
@@ -209,7 +209,7 @@
 
     <span class="kw">let </span>runtime_bindings = metadata
         .get_mut::&lt;RuntimeBindingsMeta&gt;()
-        .expect(<span class="string">"Runtime library not available."</span>);
+        .to_native_assert_error(<span class="string">"runtime library should be available"</span>)<span class="question-mark">?</span>;
 
     <span class="kw">let </span>values_len = entry.append_op_result(arith::subi(values_end, values_start, location))<span class="question-mark">?</span>;
 
