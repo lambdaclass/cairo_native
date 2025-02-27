@@ -1482,20 +1482,12 @@ mod test {
 
         let array = [4, 3].into();
         // pop_front -> enum( struct( [array, poped_value] ) )
-        let Value::Enum {
-            tag: _,
-            value,
-            debug_name: _,
-        } = run_sierra_program(&program_pop, &[array]).return_value
+        let Value::Enum { value, .. } = run_sierra_program(&program_pop, &[array]).return_value
         else {
             panic!("pop_front should return an enum");
         };
         // pop_front success path returns an struct the a vector: [rem_array, popped_value]
-        let Value::Struct {
-            fields,
-            debug_name: _,
-        } = *value
-        else {
+        let Value::Struct { fields, .. } = *value else {
             panic!("enum should contain an struct");
         };
         let result = run_sierra_program(&program_append, &[fields[0].clone(), Value::Uint32(1)])
@@ -1559,60 +1551,35 @@ mod test {
         };
 
         let array = [4u32, 3u32, 1u32].into();
-        let Value::Enum {
-            tag: _,
-            value,
-            debug_name: _,
-        } = run_sierra_program(&program_pop, &[array]).return_value
+        let Value::Enum { value, .. } = run_sierra_program(&program_pop, &[array]).return_value
         else {
             panic!("pop_front should return an enum");
         };
-        let Value::Struct {
-            fields,
-            debug_name: _,
-        } = *value
-        else {
+        let Value::Struct { fields, .. } = *value else {
             panic!("enum should contain an struct");
         };
         assert_eq!(fields[1], 1u32.into());
-        let Value::Enum {
-            tag: _,
-            value,
-            debug_name: _,
-        } = run_sierra_program(&program_pop, &[fields[0].clone()]).return_value
+        let Value::Enum { value, .. } =
+            run_sierra_program(&program_pop, &[fields[0].clone()]).return_value
         else {
             panic!("pop_front should return an enum");
         };
         // pop_front success path returns an struct the a vector: [rem_array, popped_value]
-        let Value::Struct {
-            fields,
-            debug_name: _,
-        } = *value
-        else {
+        let Value::Struct { fields, .. } = *value else {
             panic!("enum should contain an struct");
         };
         assert_eq!(fields[1], 3u32.into());
-        let Value::Enum {
-            tag: _,
-            value,
-            debug_name: _,
-        } = run_sierra_program(&program_pop, &[fields[0].clone()]).return_value
+        let Value::Enum { value, .. } =
+            run_sierra_program(&program_pop, &[fields[0].clone()]).return_value
         else {
             panic!("pop_front should return an enum");
         };
-        let Value::Struct {
-            fields,
-            debug_name: _,
-        } = *value
-        else {
+        let Value::Struct { fields, .. } = *value else {
             panic!("enum should contain an struct");
         };
         assert_eq!(fields[1], 4u32.into());
-        let Value::Enum {
-            tag: _,
-            value,
-            debug_name: _,
-        } = run_sierra_program(&program_pop, &[fields[0].clone()]).return_value
+        let Value::Enum { value, .. } =
+            run_sierra_program(&program_pop, &[fields[0].clone()]).return_value
         else {
             panic!("pop_front should return an enum");
         };
@@ -1638,12 +1605,9 @@ mod test {
 
         let array = [4, 3, 1].into();
 
-        let Value::Enum {
-            tag: _,
-            value,
-            debug_name: _,
-        } = run_sierra_program(&program_slice, &[array, Value::Uint32(1), Value::Uint32(2)])
-            .return_value
+        let Value::Enum { value, .. } =
+            run_sierra_program(&program_slice, &[array, Value::Uint32(1), Value::Uint32(2)])
+                .return_value
         else {
             panic!("enum should contain an array")
         };
@@ -1664,12 +1628,9 @@ mod test {
 
         let array = [1, 2, 3, 4].into();
 
-        let Value::Enum {
-            tag: _,
-            value,
-            debug_name: _,
-        } = run_sierra_program(&program_slice, &[array, Value::Uint32(1), Value::Uint32(4)])
-            .return_value
+        let Value::Enum { value, .. } =
+            run_sierra_program(&program_slice, &[array, Value::Uint32(1), Value::Uint32(4)])
+                .return_value
         else {
             panic!("enum should contain an array")
         };
@@ -1687,11 +1648,7 @@ mod test {
             generator.build(&[GenericArg::Type(u32_ty)])
         };
 
-        let Value::Enum {
-            tag: _,
-            value,
-            debug_name: _,
-        } = run_sierra_program(
+        let Value::Enum { value, .. } = run_sierra_program(
             &program_slice,
             &[Value::Array(vec![]), Value::Uint32(0), Value::Uint32(0)],
         )
@@ -1808,19 +1765,11 @@ mod test {
         let result = run_sierra_program(&program_append, &[Value::Array(vec![]), Value::Uint32(1)])
             .return_value;
         let result = run_sierra_program(&program_append, &[result, Value::Uint32(2)]).return_value;
-        let Value::Enum {
-            tag: _,
-            value,
-            debug_name: _,
-        } = run_sierra_program(&program_pop, &[result]).return_value
+        let Value::Enum { value, .. } = run_sierra_program(&program_pop, &[result]).return_value
         else {
             panic!("should be an enum")
         };
-        let Value::Struct {
-            fields,
-            debug_name: _,
-        } = *value
-        else {
+        let Value::Struct { fields, .. } = *value else {
             panic!("should be an struct");
         };
 
@@ -1874,19 +1823,11 @@ mod test {
 
         let array = Value::Array(vec![1u32.into()]);
 
-        let Value::Enum {
-            tag: _,
-            value,
-            debug_name: _,
-        } = run_sierra_program(&program_pop, &[array]).return_value
+        let Value::Enum { value, .. } = run_sierra_program(&program_pop, &[array]).return_value
         else {
             panic!("should be an enum")
         };
-        let Value::Struct {
-            fields,
-            debug_name: _,
-        } = *value
-        else {
+        let Value::Struct { fields, .. } = *value else {
             panic!("should be an struct");
         };
         let result = run_sierra_program(&program_append, &[fields[0].clone(), Value::Uint32(2)])
@@ -2407,20 +2348,11 @@ mod test {
         .into();
         let enum_res =
             run_sierra_program(&program_multi_front, &[array, Value::Uint32(2)]).return_value;
-        let Value::Enum {
-            tag: _,
-            value,
-            debug_name: _,
-        } = enum_res.clone()
-        else {
+        let Value::Enum { value, .. } = enum_res.clone() else {
             panic!("should be an enum");
         };
         // fields is a array -> [rem_array, popped_elem_array]
-        let Value::Struct {
-            fields,
-            debug_name: _,
-        } = *value
-        else {
+        let Value::Struct { fields, .. } = *value else {
             panic!("should be a struct");
         };
 
