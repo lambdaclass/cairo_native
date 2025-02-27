@@ -396,6 +396,12 @@ pub mod test {
 
             generator.build(&[])
         };
+
+        static ref FELT252_DIV_CAIRO: (String, Program) = load_cairo! {
+            fn run_test(lhs: felt252, rhs: felt252) -> felt252 {
+                felt252_div(lhs, rhs.try_into().unwrap())
+            }
+        };
     }
 
     fn f(val: &str) -> Felt {
@@ -514,11 +520,6 @@ pub mod test {
             x
         }
 
-        // Division by zero is expected to panic.
-        assert_eq!(r(f("0"), f("0")), f("0"));
-        assert_eq!(r(f("1"), f("0")), f("0"));
-        assert_eq!(r(f("-2"), f("0")), f("0"));
-
         // Test cases for valid division results.
         assert_eq!(r(f("0"), f("1")), f("0"));
         assert_eq!(r(f("0"), f("-2")), f("0"));
@@ -540,6 +541,42 @@ pub mod test {
         assert_eq!(r(f("-1"), f("-1")), f("1"));
         assert_eq!(r(f("6"), f("2")), f("3"));
         assert_eq!(r(f("1000"), f("2")), f("500"));
+    }
+
+    #[test]
+    fn felt252_div_panic() {
+        // Helper function to run the test and extract the return value.
+        fn r(lhs: Felt, rhs: Felt) -> Option<Felt> {
+            match run_program(
+                &FELT252_DIV_CAIRO,
+                "run_test",
+                &[Value::Felt252(lhs), Value::Felt252(rhs)],
+            )
+            .return_value
+            {
+                Value::Enum { tag: 0, value, .. } => match *value {
+                    Value::Struct { fields, .. } => {
+                        assert_eq!(fields.len(), 1);
+                        Some(match &fields[0] {
+                            Value::Felt252(x) => *x,
+                            _ => panic!("invalid return type payload"),
+                        })
+                    }
+                    _ => panic!("invalid return type"),
+                },
+                Value::Enum { tag: 1, .. } => None,
+                _ => panic!("invalid return type"),
+            }
+        }
+
+        // Helper function to assert that a division panics.
+        let assert_panics =
+            |lhs, rhs| assert!(r(lhs, rhs).is_none(), "division by 0 is expected to panic",);
+
+        // Division by zero is expected to panic.
+        assert_panics(f("0"), f("0"));
+        assert_panics(f("1"), f("0"));
+        assert_panics(f("-2"), f("0"));
     }
 
     #[test]
