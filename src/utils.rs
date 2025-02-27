@@ -241,20 +241,6 @@ pub fn find_function_id<'a>(program: &'a Program, function_name: &str) -> Option
         .map(|func| &func.id)
 }
 
-/// Parse a numeric string into felt, wrapping negatives around the prime modulo.
-pub fn felt252_str(value: &str) -> Felt {
-    let value = value
-        .parse::<BigInt>()
-        .expect("value must be a digit number");
-
-    let value = match value.sign() {
-        Sign::Minus => &*PRIME - value.magnitude(),
-        _ => value.magnitude().clone(),
-    };
-
-    value.into()
-}
-
 /// Parse any type that can be a bigint to a felt that can be used in the cairo-native input.
 pub fn felt252_bigint(value: impl Into<BigInt>) -> Felt {
     let value: BigInt = value.into();
@@ -264,17 +250,6 @@ pub fn felt252_bigint(value: impl Into<BigInt>) -> Felt {
     };
 
     value.as_ref().into()
-}
-
-/// Parse a short string into a felt that can be used in the cairo-native input.
-pub fn felt252_short_str(value: &str) -> Felt {
-    let values: Vec<_> = value
-        .chars()
-        .filter_map(|c| c.is_ascii().then_some(c as u8))
-        .collect();
-
-    assert!(values.len() < 32, "A felt can't longer than 32 bytes");
-    Felt::from_bytes_be_slice(&values)
 }
 
 /// Creates the execution engine, with all symbols registered.
@@ -489,6 +464,31 @@ pub mod test {
     pub(crate) use jit_enum;
     pub(crate) use jit_panic;
     pub(crate) use jit_struct;
+
+    /// Parse a numeric string into felt, wrapping negatives around the prime modulo.
+    pub(crate) fn felt252_str(value: &str) -> Felt {
+        let value = value
+            .parse::<BigInt>()
+            .expect("value must be a digit number");
+
+        let value = match value.sign() {
+            Sign::Minus => &*PRIME - value.magnitude(),
+            _ => value.magnitude().clone(),
+        };
+
+        value.into()
+    }
+
+    /// Parse a short string into a felt that can be used in the cairo-native input.
+    pub fn felt252_short_str(value: &str) -> Felt {
+        let values: Vec<_> = value
+            .chars()
+            .filter_map(|c| c.is_ascii().then_some(c as u8))
+            .collect();
+
+        assert!(values.len() < 32, "A felt can't longer than 32 bytes");
+        Felt::from_bytes_be_slice(&values)
+    }
 
     pub(crate) fn load_cairo_str(program_str: &str) -> (String, Program) {
         compile_program(program_str, RootDatabase::default())
