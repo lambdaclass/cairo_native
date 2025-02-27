@@ -1009,9 +1009,9 @@ impl Value {
                         entry_key,
                     }
                 }
-                CoreTypeConcrete::Felt252DictEntry(_) => {
-                    native_panic!("unimplemented: should be impossible to return")
-                }
+                // CoreTypeConcrete::Felt252DictEntry(_) => {
+                //     native_panic!("unimplemented: should be impossible to return")
+                // }
                 CoreTypeConcrete::Pedersen(_)
                 | CoreTypeConcrete::Poseidon(_)
                 | CoreTypeConcrete::Bitwise(_)
