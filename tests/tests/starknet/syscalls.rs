@@ -1,8 +1,3 @@
-use std::{
-    collections::{HashMap, VecDeque},
-    sync::{Arc, Mutex},
-};
-
 use crate::common::{load_cairo_path, run_native_program};
 use cairo_lang_runner::SierraCasmRunner;
 use cairo_lang_sierra::program::Program;
@@ -16,6 +11,10 @@ use cairo_native::{
 use lazy_static::lazy_static;
 use pretty_assertions_sorted::{assert_eq, assert_eq_sorted};
 use starknet_types_core::felt::Felt;
+use std::{
+    collections::{HashMap, VecDeque},
+    sync::{Arc, Mutex},
+};
 
 type Log = (Vec<Felt>, Vec<Felt>);
 type L2ToL1Message = (Felt, Vec<Felt>);

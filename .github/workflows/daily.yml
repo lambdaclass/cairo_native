@@ -6,7 +6,7 @@ on:
     - cron: "0 0 * * *"
 
 env:
-  RANGE_SIZE: 25
+  RANGE_SIZE: 20
 
 jobs:
   run:
@@ -18,7 +18,7 @@ jobs:
       RPC_ENDPOINT_TESTNET: ${{ secrets.RPC_ENDPOINT_TESTNET }}
       RPC_ENDPOINT_MAINNET: ${{ secrets.RPC_ENDPOINT_MAINNET }}
     strategy:
-      max-parallel: 30
+      max-parallel: 25
       matrix:
         block:
           - 740000
@@ -61,6 +61,16 @@ jobs:
           - 1007000
           - 1008000
           - 1009000
+          - 1100400
+          - 1100500
+          - 1102000
+          - 1103000
+          - 1104000
+          - 1105000
+          - 1106000
+          - 1107000
+          - 1108000
+          - 1109000
         runner:
           - native
           - vm
@@ -95,7 +105,9 @@ jobs:
         uses: actions/cache/restore@v4.2.0
         with:
           path: starknet-replay/rpc_cache
-          key: cache-${{matrix.block}}
+          key: cache-${{matrix.block}}-${{ github.run_id }}
+          restore-keys: |
+            cache-${{matrix.block}}
 
       # Install dependencies
       - uses: ./cairo_native/.github/actions/install-linux-deps

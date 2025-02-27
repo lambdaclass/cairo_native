@@ -48,6 +48,7 @@ use melior::{
     dialect::{arith::CmpiPredicate, func, scf},
     ir::BlockLike,
 };
+use std::alloc::Layout;
 
 /// Build the MLIR type.
 ///
@@ -112,11 +113,7 @@ fn build_dup<'ctx>(
     let value_ty = registry.build_type(context, module, metadata, info.self_ty())?;
 
     let elem_layout = registry.get_type(&info.ty)?.layout(registry)?;
-    let refcount_offset = get_integer_layout(32)
-        .align_to(elem_layout.align())
-        .unwrap()
-        .pad_to_align()
-        .size();
+    let refcount_offset = calc_data_prefix_offset(elem_layout);
 
     let region = Region::new();
     let entry = region.append_block(Block::new(&[(value_ty, location)]));
@@ -151,12 +148,18 @@ fn build_dup<'ctx>(
             let region = Region::new();
             let block = region.append_block(Block::new(&[]));
 
-            let array_ptr = block.extract_value(
+            let array_ptr_ptr = block.extract_value(
                 context,
                 location,
                 entry.argument(0)?.into(),
                 llvm::r#type::pointer(context, 0),
                 0,
+            )?;
+            let array_ptr = block.load(
+                context,
+                location,
+                array_ptr_ptr,
+                llvm::r#type::pointer(context, 0),
             )?;
 
             let refcount_ptr = block.gep(
@@ -210,16 +213,12 @@ fn build_drop<'ctx>(
     let elem_stride = elem_ty.layout(registry)?.pad_to_align().size();
     let elem_ty = elem_ty.build(context, module, registry, metadata, &info.ty)?;
     let elem_layout = registry.get_type(&info.ty)?.layout(registry)?;
-    let refcount_offset = get_integer_layout(32)
-        .align_to(elem_layout.align())
-        .unwrap()
-        .pad_to_align()
-        .size();
+    let refcount_offset = calc_data_prefix_offset(elem_layout);
 
     let region = Region::new();
     let entry = region.append_block(Block::new(&[(value_ty, location)]));
 
-    let array_ptr = entry.extract_value(
+    let array_ptr_ptr = entry.extract_value(
         context,
         location,
         entry.argument(0)?.into(),
@@ -263,6 +262,12 @@ fn build_drop<'ctx>(
             let block = region.append_block(Block::new(&[]));
 
             // obtain the reference counter
+            let array_ptr = block.load(
+                context,
+                location,
+                array_ptr_ptr,
+                llvm::r#type::pointer(context, 0),
+            )?;
             let refcount_ptr = block.gep(
                 context,
                 location,
@@ -308,48 +313,35 @@ fn build_drop<'ctx>(
 
                     match metadata.get::<DropOverridesMeta>() {
                         Some(drop_overrides_meta) if drop_overrides_meta.is_overriden(&info.ty) => {
-                            let value_start = block.extract_value(
-                                context,
-                                location,
-                                entry.argument(0)?.into(),
-                                IntegerType::new(context, 32).into(),
-                                1,
-                            )?;
-                            let value_end = block.extract_value(
-                                context,
-                                location,
-                                entry.argument(0)?.into(),
-                                IntegerType::new(context, 32).into(),
-                                2,
-                            )?;
-
-                            let value_start = block.append_op_result(arith::extui(
-                                value_start,
-                                IntegerType::new(context, 64).into(),
-                                location,
-                            ))?;
-                            let value_end = block.append_op_result(arith::extui(
-                                value_end,
-                                IntegerType::new(context, 64).into(),
-                                location,
-                            ))?;
-
+                            let k0 = block.const_int(context, location, 0, 64)?;
                             let elem_stride =
                                 block.const_int(context, location, elem_stride, 64)?;
-                            let offset_start = block.append_op_result(arith::muli(
-                                value_start,
-                                elem_stride,
-                                location,
-                            ))?;
-                            let offset_end = block.append_op_result(arith::muli(
-                                value_end,
-                                elem_stride,
-                                location,
-                            ))?;
 
-                            // for each element in the aray, invoke its drop implementation
+                            let max_len_ptr = block.gep(
+                                context,
+                                location,
+                                array_ptr,
+                                &[GepIndex::Const(
+                                    -((refcount_offset - size_of::<u32>()) as i32),
+                                )],
+                                IntegerType::new(context, 8).into(),
+                            )?;
+                            let max_len = block.load(
+                                context,
+                                location,
+                                max_len_ptr,
+                                IntegerType::new(context, 32).into(),
+                            )?;
+                            let max_len = block.extui(
+                                max_len,
+                                IntegerType::new(context, 64).into(),
+                                location,
+                            )?;
+                            let offset_end = block.muli(max_len, elem_stride, location)?;
+
+                            // Drop each element in the array.
                             block.append_operation(scf::r#for(
-                                offset_start,
+                                k0,
                                 offset_end,
                                 elem_stride,
                                 {
@@ -389,6 +381,12 @@ fn build_drop<'ctx>(
                         refcount_ptr,
                         location,
                     )?);
+                    block.append_operation(ReallocBindingsMeta::free(
+                        context,
+                        array_ptr_ptr,
+                        location,
+                    )?);
+
                     block.append_operation(scf::r#yield(&[], location));
                     region
                 },
@@ -403,6 +401,17 @@ fn build_drop<'ctx>(
 
     entry.append_operation(func::r#return(&[], location));
     Ok(region)
+}
+
+pub fn calc_data_prefix_offset(layout: Layout) -> usize {
+    get_integer_layout(32)
+        .extend(get_integer_layout(32))
+        .expect("creating a layout of two i32 should never fail")
+        .0
+        .align_to(layout.align())
+        .expect("layout size rounded up to the next multiple of layout alignment should never be greater than ISIZE::MAX")
+        .pad_to_align()
+        .size()
 }
 
 #[cfg(test)]

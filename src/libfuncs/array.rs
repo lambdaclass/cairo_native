@@ -7,7 +7,8 @@ use crate::{
         drop_overrides::DropOverridesMeta, dup_overrides::DupOverridesMeta,
         realloc_bindings::ReallocBindingsMeta, MetadataStorage,
     },
-    utils::{get_integer_layout, BlockExt, GepIndex, ProgramRegistryExt},
+    types::array::calc_data_prefix_offset,
+    utils::{BlockExt, GepIndex, ProgramRegistryExt},
 };
 use cairo_lang_sierra::{
     extensions::{
@@ -24,8 +25,7 @@ use melior::{
         cf, llvm, ods, scf,
     },
     ir::{
-        attribute::IntegerAttribute, r#type::IntegerType, Block, BlockLike, Location, Region,
-        Value, ValueLike,
+        attribute::IntegerAttribute, r#type::IntegerType, Block, BlockLike, Location, Region, Value,
     },
     Context,
 };
@@ -120,7 +120,7 @@ pub fn build<'ctx, 'this>(
     }
 }
 
-/// Buils a new array with no initial capacity
+/// Builds a new array with no initial capacity.
 ///
 /// # Cairo Signature
 ///
@@ -152,14 +152,16 @@ pub fn build_new<'ctx, 'this>(
     Ok(())
 }
 
-/// Buils a span (a cairo native array) from a box of a tuple (struct with elements of the same type)
+/// Buils a span (a cairo native array) from a boxed tuple of same-type elements.
 ///
 /// Note: The `&info.ty` field has the entire `[T; N]` tuple. It is not the `T` in `Array<T>`.
 ///
 /// # Cairo Signature
 ///
 /// ```cairo
-/// extern fn span_from_tuple<T, impl Info: FixedSizedArrayInfo<T>>(struct_like: Box<@T>) -> @Array<Info::Element> nopanic;
+/// extern fn span_from_tuple<T, impl Info: FixedSizedArrayInfo<T>>(
+///     struct_like: Box<@T>
+/// ) -> @Array<Info::Element> nopanic;
 /// ```
 pub fn build_span_from_tuple<'ctx, 'this>(
     context: &'ctx Context,
@@ -188,7 +190,7 @@ pub fn build_span_from_tuple<'ctx, 'this>(
     let array_len_bytes_with_offset = entry.const_int(
         context,
         location,
-        array_len_bytes + calc_refcount_offset(tuple_layout),
+        array_len_bytes + calc_data_prefix_offset(tuple_layout),
         64,
     )?;
     let array_len_bytes = entry.const_int(context, location, array_len_bytes, 64)?;
@@ -197,7 +199,7 @@ pub fn build_span_from_tuple<'ctx, 'this>(
     let k0 = entry.const_int_from_type(context, location, 0, len_ty)?;
     let k1 = entry.const_int_from_type(context, location, 1, len_ty)?;
 
-    // build the new span (array)
+    // Allocate space for the array.
     let allocation_ptr = entry.append_op_result(llvm::zero(ptr_ty, location))?;
     let allocation_ptr = entry.append_op_result(ReallocBindingsMeta::realloc(
         context,
@@ -205,17 +207,24 @@ pub fn build_span_from_tuple<'ctx, 'this>(
         array_len_bytes_with_offset,
         location,
     )?)?;
-    entry.store(context, location, allocation_ptr, k1)?;
+
+    // Write the array data prefix.
+    let data_prefix = entry.append_op_result(llvm::undef(
+        llvm::r#type::r#struct(context, &[len_ty, len_ty], false),
+        location,
+    ))?;
+    let data_prefix = entry.insert_values(context, location, data_prefix, &[k1, array_len])?;
+    entry.store(context, location, allocation_ptr, data_prefix)?;
     let array_ptr = entry.gep(
         context,
         location,
         allocation_ptr,
-        &[GepIndex::Const(calc_refcount_offset(tuple_layout) as i32)],
+        &[GepIndex::Const(calc_data_prefix_offset(tuple_layout) as i32)],
         IntegerType::new(context, 8).into(),
     )?;
 
-    // as a tuple has the same representation as the array data,
-    // we just memcpy into the new array.
+    // Move the data into the array and free the original tuple. Since the tuple and the array are
+    // represented the same way, a simple memcpy is enough.
     entry.memcpy(
         context,
         location,
@@ -229,6 +238,18 @@ pub fn build_span_from_tuple<'ctx, 'this>(
         location,
     )?);
 
+    // Build the array representation.
+    let k8 = entry.const_int(context, location, 8, 64)?;
+    let array_ptr_ptr =
+        entry.append_op_result(llvm::zero(llvm::r#type::pointer(context, 0), location))?;
+    let array_ptr_ptr: Value<'ctx, '_> = entry.append_op_result(ReallocBindingsMeta::realloc(
+        context,
+        array_ptr_ptr,
+        k8,
+        location,
+    )?)?;
+    entry.store(context, location, array_ptr_ptr, array_ptr)?;
+
     let value = entry.append_op_result(llvm::undef(
         llvm::r#type::r#struct(context, &[ptr_ty, len_ty, len_ty, len_ty], false),
         location,
@@ -237,7 +258,7 @@ pub fn build_span_from_tuple<'ctx, 'this>(
         context,
         location,
         value,
-        &[array_ptr, k0, array_len, array_len],
+        &[array_ptr_ptr, k0, array_len, array_len],
     )?;
 
     entry.append_operation(helper.br(0, &[value], location));
@@ -291,7 +312,8 @@ pub fn build_tuple_from_span<'ctx, 'this>(
     let (tuple_ty, tuple_layout) =
         registry.build_type_with_layout(context, helper, metadata, &info.ty)?;
 
-    let array_ptr = entry.extract_value(context, location, entry.argument(0)?.into(), ptr_ty, 0)?;
+    let array_ptr_ptr =
+        entry.extract_value(context, location, entry.argument(0)?.into(), ptr_ty, 0)?;
     let array_start =
         entry.extract_value(context, location, entry.argument(0)?.into(), len_ty, 1)?;
     let array_end = entry.extract_value(context, location, entry.argument(0)?.into(), len_ty, 2)?;
@@ -306,7 +328,7 @@ pub fn build_tuple_from_span<'ctx, 'this>(
         location,
     ))?;
 
-    // check if the expected tuple matches the array length
+    // Ensure the tuple's length matches the array's.
     let valid_block = helper.append_block(Block::new(&[]));
     let error_block = helper.append_block(Block::new(&[]));
     entry.append_operation(cf::cond_br(
@@ -327,18 +349,14 @@ pub fn build_tuple_from_span<'ctx, 'this>(
         &info.signature.param_signatures[0].ty,
     )?;
 
+    // Branch for when the lengths match:
     {
-        // if the length matches...
-
         let value_size = valid_block.const_int(context, location, tuple_layout.size(), 64)?;
 
         let value = valid_block.append_op_result(llvm::zero(ptr_ty, location))?;
         let value = valid_block.append_op_result(ReallocBindingsMeta::realloc(
             context, value, value_size, location,
         )?)?;
-
-        // check if the array is shared
-        let is_shared = is_shared(context, valid_block, location, array_ptr, elem_layout)?;
 
         let array_start_offset = valid_block.append_op_result(arith::extui(
             array_start,
@@ -350,6 +368,8 @@ pub fn build_tuple_from_span<'ctx, 'this>(
             valid_block.const_int(context, location, elem_layout.pad_to_align().size(), 64)?,
             location,
         ))?;
+
+        let array_ptr = valid_block.load(context, location, array_ptr_ptr, ptr_ty)?;
         let array_data_start_ptr = valid_block.gep(
             context,
             location,
@@ -358,13 +378,13 @@ pub fn build_tuple_from_span<'ctx, 'this>(
             IntegerType::new(context, 8).into(),
         )?;
 
+        // Check if the array is shared.
+        let is_shared = is_shared(context, valid_block, location, array_ptr_ptr, elem_layout)?;
         valid_block.append_operation(scf::r#if(
             is_shared,
             &[],
             {
-                // if the array is shared we clone the inner data,
-                // as a tuple does not contain a reference counter.
-
+                // When the array is shared, we should clone the entire data.
                 let region = Region::new();
                 let block = region.append_block(Block::new(&[]));
 
@@ -375,8 +395,8 @@ pub fn build_tuple_from_span<'ctx, 'this>(
 
                         let value = block.load(context, location, src_ptr, tuple_ty)?;
 
-                        // as the array data has the same representation as the tuple,
-                        // we can use the tuple override, which is simpler.
+                        // Invoke the tuple's clone mechanism, which will take care of copying or
+                        // cloning each item in the array.
                         let values = dup_overrides_meta
                             .invoke_override(context, &block, location, &info.ty, value)?;
                         block.store(context, location, src_ptr, values.0)?;
@@ -385,7 +405,7 @@ pub fn build_tuple_from_span<'ctx, 'this>(
                     _ => block.memcpy(context, location, array_data_start_ptr, value, value_size),
                 }
 
-                // drop the original array (decreasing its reference counter)
+                // Drop the original array (by decreasing its reference counter).
                 metadata
                     .get::<DropOverridesMeta>()
                     .to_native_assert_error("array always has a drop implementation")?
@@ -401,28 +421,32 @@ pub fn build_tuple_from_span<'ctx, 'this>(
                 region
             },
             {
-                // if the array is not shared, then move the data to the new tuple
-                // and manually free the allocation (without calling drop on its elements).
+                // When the array is not shared, we can just move the data to the new tuple and free
+                // the array.
 
                 let region = Region::new();
                 let block = region.append_block(Block::new(&[]));
 
                 block.memcpy(context, location, array_data_start_ptr, value, value_size);
 
-                // NOTE: If the target tuple has no elements, and the array is not shared,
-                // then we will attempt to free 0xfffffffffffffff0. This is not possible and
-                // disallowed by the cairo compiler.
+                // NOTE: If the target tuple has no elements, and the array is not shared, then we
+                // would attempt to free 0xfffffffffffffff0. This is not possible and disallowed by
+                // the Cairo compiler.
 
-                let array_allocation_ptr = block.gep(
+                // TODO: Drop elements before array_start and between array_end and max length.
+                let data_ptr = block.gep(
                     context,
                     location,
                     array_ptr,
-                    &[GepIndex::Const(-(calc_refcount_offset(elem_layout) as i32))],
+                    &[GepIndex::Const(
+                        -(calc_data_prefix_offset(elem_layout) as i32),
+                    )],
                     IntegerType::new(context, 8).into(),
                 )?;
+                block.append_operation(ReallocBindingsMeta::free(context, data_ptr, location)?);
                 block.append_operation(ReallocBindingsMeta::free(
                     context,
-                    array_allocation_ptr,
+                    array_ptr_ptr,
                     location,
                 )?);
 
@@ -436,8 +460,7 @@ pub fn build_tuple_from_span<'ctx, 'this>(
     }
 
     {
-        // if the length doesn't match, free the tuple.
-
+        // When there's a length mismatch, just consume (drop) the array.
         metadata
             .get::<DropOverridesMeta>()
             .ok_or(Error::MissingMetadata)?
@@ -465,15 +488,6 @@ pub fn build_append<'ctx, 'this>(
     metadata: &mut MetadataStorage,
     info: &SignatureAndTypeConcreteLibfunc,
 ) -> Result<()> {
-    /*
-     * 1. Check if shared.
-     * 2. If shared:
-     *   1. Deep clone with space for at least 1 extra element.
-     * 3. If not shared:
-     *   1. Either realloc, move or do nothing.
-     * 4. Append element.
-     */
-
     metadata.get_or_insert_with(|| ReallocBindingsMeta::new(context, helper));
 
     let self_ty = registry.build_type(
@@ -486,48 +500,15 @@ pub fn build_append<'ctx, 'this>(
     let ptr_ty = llvm::r#type::pointer(context, 0);
     let len_ty = IntegerType::new(context, 32).into();
 
-    let (elem_ty, elem_layout) =
-        registry.build_type_with_layout(context, helper, metadata, &info.ty)?;
+    let (_, elem_layout) = registry.build_type_with_layout(context, helper, metadata, &info.ty)?;
     let elem_stride = entry.const_int(context, location, elem_layout.pad_to_align().size(), 64)?;
-
-    let k0 = entry.const_int(context, location, 0, 32)?;
-    let k1 = entry.const_int(context, location, 1, 32)?;
-
-    let array_ptr = entry.extract_value(context, location, entry.argument(0)?.into(), ptr_ty, 0)?;
-    let array_start =
-        entry.extract_value(context, location, entry.argument(0)?.into(), len_ty, 1)?;
-    let array_end = entry.extract_value(context, location, entry.argument(0)?.into(), len_ty, 2)?;
-    let array_capacity =
-        entry.extract_value(context, location, entry.argument(0)?.into(), len_ty, 3)?;
-
-    let array_len = entry.append_op_result(arith::subi(array_end, array_start, location))?;
-    let array_size = entry.append_op_result(arith::extui(
-        array_len,
-        IntegerType::new(context, 64).into(),
-        location,
-    ))?;
-    let array_size = entry.append_op_result(arith::muli(array_size, elem_stride, location))?;
-
-    let data_offset = entry.append_op_result(arith::extui(
-        array_start,
-        IntegerType::new(context, 64).into(),
-        location,
-    ))?;
-    let data_offset = entry.append_op_result(arith::muli(data_offset, elem_stride, location))?;
-    let data_ptr = entry.gep(
-        context,
-        location,
-        array_ptr,
-        &[GepIndex::Value(data_offset)],
-        IntegerType::new(context, 8).into(),
-    )?;
 
     fn compute_next_capacity<'ctx, 'this>(
         context: &'ctx Context,
         block: &'this Block<'ctx>,
         location: Location<'ctx>,
         elem_stride: Value<'ctx, 'this>,
-        array_end: Value<'ctx, 'this>,
+        array_capacity: Value<'ctx, 'this>,
     ) -> Result<(Value<'ctx, 'this>, Value<'ctx, 'this>)> {
         let len_ty = IntegerType::new(context, 32).into();
 
@@ -535,9 +516,10 @@ pub fn build_append<'ctx, 'this>(
         let k8 = block.const_int_from_type(context, location, 8, len_ty)?;
         let k1024 = block.const_int_from_type(context, location, 1024, len_ty)?;
 
-        let realloc_len = block.append_op_result(arith::shli(array_end, k1, location))?;
+        let realloc_len = block.append_op_result(arith::shli(array_capacity, k1, location))?;
         let realloc_len = block.append_op_result(arith::minui(realloc_len, k1024, location))?;
-        let realloc_len = block.append_op_result(arith::addi(realloc_len, array_end, location))?;
+        let realloc_len =
+            block.append_op_result(arith::addi(realloc_len, array_capacity, location))?;
         let realloc_len = block.append_op_result(arith::maxui(realloc_len, k8, location))?;
 
         let realloc_size = block.append_op_result(arith::extui(
@@ -551,192 +533,80 @@ pub fn build_append<'ctx, 'this>(
         Result::Ok((realloc_len, realloc_size))
     }
 
-    let is_empty = entry.append_op_result(arith::cmpi(
-        context,
-        CmpiPredicate::Eq,
-        array_capacity,
-        k0,
-        location,
-    ))?;
+    let data_prefix_size = calc_data_prefix_offset(elem_layout);
 
-    let is_shared = entry.append_op_result(scf::r#if(
+    let array_capacity =
+        entry.extract_value(context, location, entry.argument(0)?.into(), len_ty, 3)?;
+    let k0 = entry.const_int_from_type(context, location, 0, len_ty)?;
+    let is_empty = entry.cmpi(context, CmpiPredicate::Eq, array_capacity, k0, location)?;
+    let array_obj = entry.append_op_result(scf::r#if(
         is_empty,
-        &[IntegerType::new(context, 1).into()],
-        {
-            let region = Region::new();
-            let block = region.append_block(Block::new(&[]));
-
-            let k0 = block.const_int(context, location, 0, 1)?;
-
-            block.append_operation(scf::r#yield(&[k0], location));
-            region
-        },
-        {
-            let region = Region::new();
-            let block = region.append_block(Block::new(&[]));
-
-            let is_shared = is_shared(context, entry, location, array_ptr, elem_layout)?;
-
-            block.append_operation(scf::r#yield(&[is_shared], location));
-            region
-        },
-        location,
-    ))?;
-
-    let value = entry.append_op_result(scf::r#if(
-        is_shared,
         &[self_ty],
         {
             let region = Region::new();
             let block = region.append_block(Block::new(&[]));
 
-            let has_space = block.append_op_result(arith::cmpi(
+            let (array_capacity, realloc_len) =
+                compute_next_capacity(context, &block, location, elem_stride, array_capacity)?;
+
+            let data_prefix_size_value =
+                block.const_int(context, location, data_prefix_size, 64)?;
+            let realloc_len = block.addi(realloc_len, data_prefix_size_value, location)?;
+
+            let null_ptr = block.append_op_result(llvm::zero(ptr_ty, location))?;
+            let array_ptr = block.append_op_result(ReallocBindingsMeta::realloc(
                 context,
-                CmpiPredicate::Ugt,
-                array_capacity,
-                array_len,
-                location,
-            ))?;
-
-            let op = block.append_operation(scf::r#if(
-                has_space,
-                &[len_ty, IntegerType::new(context, 64).into()],
-                {
-                    let region = Region::new();
-                    let block = region.append_block(Block::new(&[]));
-
-                    let clone_size = block.append_op_result(arith::extui(
-                        array_capacity,
-                        IntegerType::new(context, 64).into(),
-                        location,
-                    ))?;
-                    let clone_size =
-                        block.append_op_result(arith::muli(clone_size, elem_stride, location))?;
-
-                    block.append_operation(scf::r#yield(&[array_capacity, clone_size], location));
-                    region
-                },
-                {
-                    let region = Region::new();
-                    let block = region.append_block(Block::new(&[]));
-
-                    let (realloc_capacity, realloc_size) =
-                        compute_next_capacity(context, &block, location, elem_stride, array_end)?;
-
-                    block.append_operation(scf::r#yield(
-                        &[realloc_capacity, realloc_size],
-                        location,
-                    ));
-                    region
-                },
-                location,
-            ));
-            let clone_capacity = op.result(0)?.into();
-            let clone_size = op.result(1)?.into();
-
-            let clone_size_with_refcount = block.append_op_result(arith::addi(
-                clone_size,
-                block.const_int(context, location, calc_refcount_offset(elem_layout), 64)?,
-                location,
-            ))?;
-
-            let clone_ptr = block.append_op_result(llvm::zero(ptr_ty, location))?;
-            let clone_ptr = block.append_op_result(ReallocBindingsMeta::realloc(
-                context,
-                clone_ptr,
-                clone_size_with_refcount,
+                null_ptr,
+                realloc_len,
                 location,
             )?)?;
-            block.store(context, location, clone_ptr, k1)?;
 
-            let clone_ptr = block.gep(
+            let k1 = block.const_int_from_type(context, location, 1, len_ty)?;
+            block.store(context, location, array_ptr, k1)?;
+            let max_len_ptr = block.gep(
                 context,
                 location,
-                clone_ptr,
-                &[GepIndex::Const(calc_refcount_offset(elem_layout) as i32)],
+                array_ptr,
+                &[GepIndex::Const(size_of::<u32>() as i32)],
+                IntegerType::new(context, 8).into(),
+            )?;
+            block.store(context, location, max_len_ptr, k0)?;
+
+            let array_ptr = block.gep(
+                context,
+                location,
+                array_ptr,
+                &[GepIndex::Const(data_prefix_size as i32)],
                 IntegerType::new(context, 8).into(),
             )?;
 
-            match metadata.get::<DupOverridesMeta>() {
-                Some(dup_overrides_meta) if dup_overrides_meta.is_overriden(&info.ty) => {
-                    let k0 = block.const_int(context, location, 0, 64)?;
-                    block.append_operation(scf::r#for(
-                        k0,
-                        array_size,
-                        elem_stride,
-                        {
-                            let region = Region::new();
-                            let block = region.append_block(Block::new(&[(
-                                IntegerType::new(context, 64).into(),
-                                location,
-                            )]));
+            let k8 = block.const_int(context, location, 8, 64)?;
+            let array_ptr_ptr = block.append_op_result(ReallocBindingsMeta::realloc(
+                context, null_ptr, k8, location,
+            )?)?;
+            block.store(context, location, array_ptr_ptr, array_ptr)?;
 
-                            let offset = block.argument(0)?.into();
-                            let source_ptr = block.gep(
-                                context,
-                                location,
-                                data_ptr,
-                                &[GepIndex::Value(offset)],
-                                IntegerType::new(context, 8).into(),
-                            )?;
-                            let target_ptr = block.gep(
-                                context,
-                                location,
-                                clone_ptr,
-                                &[GepIndex::Value(offset)],
-                                IntegerType::new(context, 8).into(),
-                            )?;
-
-                            let value = block.load(context, location, source_ptr, elem_ty)?;
-                            let values = dup_overrides_meta
-                                .invoke_override(context, &block, location, &info.ty, value)?;
-                            block.store(context, location, source_ptr, values.0)?;
-                            block.store(context, location, target_ptr, values.1)?;
-
-                            block.append_operation(scf::r#yield(&[], location));
-                            region
-                        },
-                        location,
-                    ));
-                }
-                _ => block.memcpy(context, location, array_ptr, clone_ptr, clone_size),
-            }
-
-            let clone_value = block.append_op_result(llvm::zero(self_ty, location))?;
-            let clone_value = block.insert_values(
-                context,
-                location,
-                clone_value,
-                &[clone_ptr, k0, array_len, clone_capacity],
-            )?;
-
-            metadata
-                .get::<DropOverridesMeta>()
-                .unwrap()
-                .invoke_override(
-                    context,
-                    &block,
-                    location,
-                    &info.signature.param_signatures[0].ty,
-                    entry.argument(0)?.into(),
-                )?;
-
-            block.append_operation(scf::r#yield(&[clone_value], location));
+            let array_obj = entry.argument(0)?.into();
+            let array_obj = block.insert_value(context, location, array_obj, array_ptr_ptr, 0)?;
+            let array_obj = block.insert_value(context, location, array_obj, array_capacity, 3)?;
+            block.append_operation(scf::r#yield(&[array_obj], location));
             region
         },
         {
             let region = Region::new();
             let block = region.append_block(Block::new(&[]));
 
-            let has_tail_space = block.append_op_result(arith::cmpi(
+            let array_end =
+                block.extract_value(context, location, entry.argument(0)?.into(), len_ty, 2)?;
+            let has_space = block.cmpi(
                 context,
                 CmpiPredicate::Ult,
                 array_end,
                 array_capacity,
                 location,
-            ))?;
-            let array_value = block.append_op_result(scf::r#if(
-                has_tail_space,
+            )?;
+            let array_obj = block.append_op_result(scf::r#if(
+                has_space,
                 &[self_ty],
                 {
                     let region = Region::new();
@@ -749,159 +619,110 @@ pub fn build_append<'ctx, 'this>(
                     let region = Region::new();
                     let block = region.append_block(Block::new(&[]));
 
-                    let has_head_space = block.append_op_result(arith::cmpi(
+                    let (array_capacity, realloc_len) = compute_next_capacity(
                         context,
-                        CmpiPredicate::Ugt,
-                        array_start,
-                        k0,
+                        &block,
                         location,
-                    ))?;
-                    let array_value = block.append_op_result(scf::r#if(
-                        has_head_space,
-                        &[self_ty],
-                        {
-                            let region = Region::new();
-                            let block = region.append_block(Block::new(&[]));
+                        elem_stride,
+                        array_capacity,
+                    )?;
 
-                            block.append_operation(
-                                ods::llvm::intr_memmove(
-                                    context,
-                                    array_ptr,
-                                    data_ptr,
-                                    array_size,
-                                    IntegerAttribute::new(IntegerType::new(context, 1).into(), 0),
-                                    location,
-                                )
-                                .into(),
-                            );
+                    let data_prefix_size_value =
+                        block.const_int(context, location, data_prefix_size, 64)?;
+                    let realloc_len = block.addi(realloc_len, data_prefix_size_value, location)?;
 
-                            let array_value = block.insert_value(
-                                context,
-                                location,
-                                entry.argument(0)?.into(),
-                                k0,
-                                1,
-                            )?;
-                            let array_value =
-                                block.insert_value(context, location, array_value, array_len, 2)?;
-
-                            block.append_operation(scf::r#yield(&[array_value], location));
-                            region
-                        },
-                        {
-                            let region = Region::new();
-                            let block = region.append_block(Block::new(&[]));
-
-                            let offset_array_ptr = block.gep(
-                                context,
-                                location,
-                                array_ptr,
-                                &[GepIndex::Const(-(calc_refcount_offset(elem_layout) as i32))],
-                                IntegerType::new(context, 8).into(),
-                            )?;
-                            let array_ptr = block.append_op_result(arith::select(
-                                is_empty,
-                                array_ptr,
-                                offset_array_ptr,
-                                location,
-                            ))?;
-
-                            let (realloc_len, realloc_size) = compute_next_capacity(
-                                context,
-                                &block,
-                                location,
-                                elem_stride,
-                                array_end,
-                            )?;
-                            let realloc_size_with_refcount =
-                                block.append_op_result(arith::addi(
-                                    realloc_size,
-                                    block.const_int(
-                                        context,
-                                        location,
-                                        calc_refcount_offset(elem_layout),
-                                        64,
-                                    )?,
-                                    location,
-                                ))?;
-
-                            let array_ptr =
-                                block.append_op_result(ReallocBindingsMeta::realloc(
-                                    context,
-                                    array_ptr,
-                                    realloc_size_with_refcount,
-                                    location,
-                                )?)?;
-
-                            let ref_count = block.load(context, location, array_ptr, len_ty)?;
-                            let ref_count = block.append_op_result(arith::select(
-                                is_empty, k1, ref_count, location,
-                            ))?;
-                            block.store(context, location, array_ptr, ref_count)?;
-
-                            let array_ptr = block.gep(
-                                context,
-                                location,
-                                array_ptr,
-                                &[GepIndex::Const(calc_refcount_offset(elem_layout) as i32)],
-                                IntegerType::new(context, 8).into(),
-                            )?;
-
-                            let array_value = block.insert_value(
-                                context,
-                                location,
-                                entry.argument(0)?.into(),
-                                array_ptr,
-                                0,
-                            )?;
-                            let array_value = block.insert_value(
-                                context,
-                                location,
-                                array_value,
-                                realloc_len,
-                                3,
-                            )?;
-
-                            block.append_operation(scf::r#yield(&[array_value], location));
-                            region
-                        },
+                    let array_ptr_ptr = block.extract_value(
+                        context,
                         location,
-                    ))?;
+                        entry.argument(0)?.into(),
+                        ptr_ty,
+                        0,
+                    )?;
+                    let array_ptr = block.load(context, location, array_ptr_ptr, ptr_ty)?;
+                    let array_ptr = block.gep(
+                        context,
+                        location,
+                        array_ptr,
+                        &[GepIndex::Const(-(data_prefix_size as i32))],
+                        IntegerType::new(context, 8).into(),
+                    )?;
 
-                    block.append_operation(scf::r#yield(&[array_value], location));
+                    let array_ptr = block.append_op_result(ReallocBindingsMeta::realloc(
+                        context,
+                        array_ptr,
+                        realloc_len,
+                        location,
+                    )?)?;
+                    let array_ptr = block.gep(
+                        context,
+                        location,
+                        array_ptr,
+                        &[GepIndex::Const(data_prefix_size as i32)],
+                        IntegerType::new(context, 8).into(),
+                    )?;
+
+                    block.store(context, location, array_ptr_ptr, array_ptr)?;
+
+                    let array_obj = block.insert_value(
+                        context,
+                        location,
+                        entry.argument(0)?.into(),
+                        array_capacity,
+                        3,
+                    )?;
+                    block.append_operation(scf::r#yield(&[array_obj], location));
                     region
                 },
                 location,
             ))?;
 
-            block.append_operation(scf::r#yield(&[array_value], location));
+            block.append_operation(scf::r#yield(&[array_obj], location));
             region
         },
         location,
     ))?;
 
-    let array_ptr = entry.extract_value(context, location, value, ptr_ty, 0)?;
-    let array_end = entry.extract_value(context, location, value, len_ty, 2)?;
+    let array_ptr_ptr = entry.extract_value(context, location, array_obj, ptr_ty, 0)?;
+    let array_ptr = entry.load(context, location, array_ptr_ptr, ptr_ty)?;
 
-    let data_offset = entry.append_op_result(arith::extui(
-        array_end,
+    // Insert the value.
+    let target_offset = entry.extract_value(context, location, array_obj, len_ty, 2)?;
+    let target_offset = entry.extui(
+        target_offset,
         IntegerType::new(context, 64).into(),
         location,
-    ))?;
-    let data_offset = entry.append_op_result(arith::muli(data_offset, elem_stride, location))?;
-    let data_ptr = entry.gep(
+    )?;
+    let target_offset = entry.muli(target_offset, elem_stride, location)?;
+    let target_ptr = entry.gep(
         context,
         location,
         array_ptr,
-        &[GepIndex::Value(data_offset)],
+        &[GepIndex::Value(target_offset)],
         IntegerType::new(context, 8).into(),
     )?;
-    entry.store(context, location, data_ptr, entry.argument(1)?.into())?;
 
-    let array_end = entry.append_op_result(arith::addi(array_end, k1, location))?;
-    let value = entry.insert_value(context, location, value, array_end, 2)?;
+    entry.store(context, location, target_ptr, entry.argument(1)?.into())?;
 
-    entry.append_operation(helper.br(0, &[value], location));
+    // Update array.
+    let k1 = entry.const_int_from_type(context, location, 1, len_ty)?;
+    let array_end = entry.extract_value(context, location, array_obj, len_ty, 2)?;
+    let array_end = entry.addi(array_end, k1, location)?;
+    let array_obj = entry.insert_value(context, location, array_obj, array_end, 2)?;
+
+    // Update max length.
+    let max_len_ptr = entry.gep(
+        context,
+        location,
+        array_ptr,
+        &[GepIndex::Const(
+            -((crate::types::array::calc_data_prefix_offset(elem_layout) - size_of::<u32>())
+                as i32),
+        )],
+        IntegerType::new(context, 8).into(),
+    )?;
+    entry.store(context, location, max_len_ptr, array_end)?;
+
+    entry.append_operation(helper.br(0, &[array_obj], location));
     Ok(())
 }
 
@@ -927,21 +748,12 @@ fn build_pop<'ctx, 'this, const CONSUME: bool, const REVERSE: bool>(
     metadata: &mut MetadataStorage,
     info: PopInfo,
 ) -> Result<()> {
-    /*
-     * 1. Check if there's enough data to pop.
-     * 2. If there is not enough data, maybe consume and return.
-     * 3. Allocate output.
-     * 4. Clone or copy the popped data.
-     *    - Clone if shared.
-     *    - Copy if not shared.
-     */
-
     metadata.get_or_insert_with(|| ReallocBindingsMeta::new(context, helper));
 
     let ptr_ty = llvm::r#type::pointer(context, 0);
     let len_ty = IntegerType::new(context, 32).into();
 
-    let (self_ty, elem_ty, array_value, extract_len, mut branch_values) = match info {
+    let (self_ty, elem_ty, array_obj, extract_len, branch_values) = match info {
         PopInfo::Single(info) => (
             &info.signature.param_signatures[0].ty,
             &info.ty,
@@ -986,24 +798,21 @@ fn build_pop<'ctx, 'this, const CONSUME: bool, const REVERSE: bool>(
             )
         }
     };
-
-    registry.build_type(context, helper, metadata, self_ty)?;
-    let extract_len_value = entry.const_int_from_type(context, location, extract_len, len_ty)?;
-
     let (elem_type, elem_layout) =
         registry.build_type_with_layout(context, helper, metadata, elem_ty)?;
 
-    let array_start = entry.extract_value(context, location, array_value, len_ty, 1)?;
-    let array_end = entry.extract_value(context, location, array_value, len_ty, 2)?;
+    let array_start = entry.extract_value(context, location, array_obj, len_ty, 1)?;
+    let array_end = entry.extract_value(context, location, array_obj, len_ty, 2)?;
 
+    let extract_len_value = entry.const_int_from_type(context, location, extract_len, len_ty)?;
     let array_len = entry.append_op_result(arith::subi(array_end, array_start, location))?;
-    let has_enough_data = entry.append_op_result(arith::cmpi(
+    let has_enough_data = entry.cmpi(
         context,
         CmpiPredicate::Ule,
         extract_len_value,
         array_len,
         location,
-    ))?;
+    )?;
 
     let valid_block = helper.append_block(Block::new(&[]));
     let error_block = helper.append_block(Block::new(&[]));
@@ -1018,333 +827,129 @@ fn build_pop<'ctx, 'this, const CONSUME: bool, const REVERSE: bool>(
     ));
 
     {
-        // Clone branch_values so that it doesn't interfere with the other branch.
         let mut branch_values = branch_values.clone();
 
-        let value_size = valid_block.const_int(
+        let array_ptr_ptr = valid_block.extract_value(context, location, array_obj, ptr_ty, 0)?;
+        let array_ptr = valid_block.load(context, location, array_ptr_ptr, ptr_ty)?;
+
+        let elem_stride =
+            valid_block.const_int(context, location, elem_layout.pad_to_align().size(), 64)?;
+
+        // Extract pointer and update bounds.
+        let (array_obj, source_ptr) = if REVERSE {
+            let array_end = valid_block.append_op_result(arith::subi(
+                array_end,
+                extract_len_value,
+                location,
+            ))?;
+            let array_obj = valid_block.insert_value(context, location, array_obj, array_end, 2)?;
+
+            // Compute data offset (elem_stride * array_end) and GEP.
+            let data_offset =
+                valid_block.extui(array_end, IntegerType::new(context, 64).into(), location)?;
+            let data_offset = valid_block.muli(elem_stride, data_offset, location)?;
+            let data_ptr = valid_block.gep(
+                context,
+                location,
+                array_ptr,
+                &[GepIndex::Value(data_offset)],
+                IntegerType::new(context, 8).into(),
+            )?;
+
+            (array_obj, data_ptr)
+        } else {
+            // Compute data offset (elem_stride * array_end) and GEP.
+            let data_offset =
+                valid_block.extui(array_start, IntegerType::new(context, 64).into(), location)?;
+            let data_offset = valid_block.muli(elem_stride, data_offset, location)?;
+            let data_ptr = valid_block.gep(
+                context,
+                location,
+                array_ptr,
+                &[GepIndex::Value(data_offset)],
+                IntegerType::new(context, 8).into(),
+            )?;
+
+            let array_start = valid_block.append_op_result(arith::addi(
+                array_start,
+                extract_len_value,
+                location,
+            ))?;
+            let array_obj =
+                valid_block.insert_value(context, location, array_obj, array_start, 1)?;
+
+            (array_obj, data_ptr)
+        };
+
+        // Allocate output pointer.
+        let target_size = valid_block.const_int(
             context,
             location,
             elem_layout.pad_to_align().size() * extract_len,
             64,
         )?;
-
-        let value_ptr = valid_block.append_op_result(llvm::zero(ptr_ty, location))?;
-        let value_ptr = valid_block.append_op_result(ReallocBindingsMeta::realloc(
-            context, value_ptr, value_size, location,
+        let target_ptr = valid_block
+            .append_op_result(llvm::zero(llvm::r#type::pointer(context, 0), location))?;
+        let target_ptr = valid_block.append_op_result(ReallocBindingsMeta::realloc(
+            context,
+            target_ptr,
+            target_size,
+            location,
         )?)?;
 
-        let array_ptr = valid_block.extract_value(context, location, array_value, ptr_ty, 0)?;
-        let is_shared = is_shared(context, valid_block, location, array_ptr, elem_layout)?;
-
-        let data_ptr = {
-            let offset_elems = if REVERSE {
-                valid_block.append_op_result(arith::subi(array_end, extract_len_value, location))?
-            } else {
-                array_start
-            };
-
-            let offset = valid_block.append_op_result(arith::extui(
-                offset_elems,
-                IntegerType::new(context, 64).into(),
-                location,
-            ))?;
-            let elem_stride =
-                valid_block.const_int(context, location, elem_layout.pad_to_align().size(), 64)?;
-            let offset =
-                valid_block.append_op_result(arith::muli(offset, elem_stride, location))?;
-
-            valid_block.gep(
-                context,
-                location,
-                array_ptr,
-                &[GepIndex::Value(offset)],
-                IntegerType::new(context, 8).into(),
-            )?
-        };
-
-        let new_array_ptr = valid_block.append_op_result(scf::r#if(
-            is_shared,
-            &[ptr_ty],
-            {
-                let region = Region::new();
-                let block = region.append_block(Block::new(&[]));
-
-                let k0 = block.const_int(context, location, 0, 64)?;
-                let k1 = block.const_int_from_type(context, location, 1, len_ty)?;
-
-                let elem_stride =
-                    block.const_int(context, location, elem_layout.pad_to_align().size(), 64)?;
-                match metadata.get::<DupOverridesMeta>() {
-                    Some(dup_overrides_meta) if dup_overrides_meta.is_overriden(elem_ty) => {
-                        // TODO: If extract_len is 1 there is no need for the for loop.
-                        block.append_operation(scf::r#for(
-                            k0,
-                            value_size,
-                            elem_stride,
-                            {
-                                let region = Region::new();
-                                let block = region.append_block(Block::new(&[(
-                                    IntegerType::new(context, 64).into(),
-                                    location,
-                                )]));
-
-                                let offset = block.argument(0)?.into();
-                                let source_ptr = block.gep(
-                                    context,
-                                    location,
-                                    data_ptr,
-                                    &[GepIndex::Value(offset)],
-                                    IntegerType::new(context, 8).into(),
-                                )?;
-                                let target_ptr = block.gep(
-                                    context,
-                                    location,
-                                    value_ptr,
-                                    &[GepIndex::Value(offset)],
-                                    IntegerType::new(context, 8).into(),
-                                )?;
-
-                                let value = block.load(context, location, source_ptr, elem_type)?;
-                                let values = dup_overrides_meta
-                                    .invoke_override(context, &block, location, elem_ty, value)?;
-                                block.store(context, location, source_ptr, values.0)?;
-                                block.store(context, location, target_ptr, values.1)?;
-
-                                block.append_operation(scf::r#yield(&[], location));
-                                region
-                            },
-                            location,
-                        ));
-                    }
-                    _ => block.memcpy(context, location, data_ptr, value_ptr, value_size),
-                }
-
-                let array_ptr = {
-                    let array_len_bytes =
-                        block.append_op_result(arith::subi(array_len, k1, location))?;
-                    let array_len_bytes = block.append_op_result(arith::extui(
-                        array_len_bytes,
-                        IntegerType::new(context, 64).into(),
-                        location,
-                    ))?;
-                    let array_len_bytes = block.append_op_result(arith::muli(
-                        array_len_bytes,
-                        elem_stride,
-                        location,
-                    ))?;
-                    let array_len_bytes = block.append_op_result(arith::addi(
-                        array_len_bytes,
-                        block.const_int(
-                            context,
-                            location,
-                            calc_refcount_offset(elem_layout),
-                            64,
-                        )?,
-                        location,
-                    ))?;
-
-                    let clone_ptr = block.append_op_result(llvm::zero(ptr_ty, location))?;
-                    let clone_ptr = block.append_op_result(ReallocBindingsMeta::realloc(
-                        context,
-                        clone_ptr,
-                        array_len_bytes,
-                        location,
-                    )?)?;
-                    block.store(context, location, clone_ptr, k1)?;
-
-                    let clone_ptr = block.gep(
+        // Clone popped items.
+        match metadata.get::<DupOverridesMeta>() {
+            Some(dup_overrides_meta) if dup_overrides_meta.is_overriden(elem_ty) => {
+                for i in 0..extract_len {
+                    let source_ptr = valid_block.gep(
                         context,
                         location,
-                        clone_ptr,
-                        &[GepIndex::Const(calc_refcount_offset(elem_layout) as i32)],
+                        source_ptr,
+                        &[GepIndex::Const(
+                            (elem_layout.pad_to_align().size() * i) as i32,
+                        )],
+                        IntegerType::new(context, 8).into(),
+                    )?;
+                    let target_ptr = valid_block.gep(
+                        context,
+                        location,
+                        target_ptr,
+                        &[GepIndex::Const(
+                            (elem_layout.pad_to_align().size() * i) as i32,
+                        )],
                         IntegerType::new(context, 8).into(),
                     )?;
 
-                    let data_ptr = {
-                        let offset = if REVERSE {
-                            array_start
-                        } else {
-                            block.addi(array_start, extract_len_value, location)?
-                        };
-
-                        let offset = block.append_op_result(arith::extui(
-                            offset,
-                            IntegerType::new(context, 64).into(),
-                            location,
-                        ))?;
-                        let offset =
-                            block.append_op_result(arith::muli(offset, elem_stride, location))?;
-
-                        block.gep(
-                            context,
-                            location,
-                            array_ptr,
-                            &[GepIndex::Value(offset)],
-                            IntegerType::new(context, 8).into(),
-                        )?
-                    };
-
-                    let others_len = block.append_op_result(arith::subi(
-                        array_len,
-                        extract_len_value,
+                    let value = valid_block.load(context, location, source_ptr, elem_type)?;
+                    let values = dup_overrides_meta.invoke_override(
+                        context,
+                        valid_block,
                         location,
-                    ))?;
-                    let others_len = block.append_op_result(arith::extui(
-                        others_len,
-                        IntegerType::new(context, 64).into(),
-                        location,
-                    ))?;
-                    let others_size =
-                        block.append_op_result(arith::muli(others_len, elem_stride, location))?;
+                        elem_ty,
+                        value,
+                    )?;
+                    valid_block.store(context, location, source_ptr, values.0)?;
+                    valid_block.store(context, location, target_ptr, values.1)?;
+                }
+            }
+            _ => valid_block.memcpy(context, location, source_ptr, target_ptr, target_size),
+        }
 
-                    match metadata.get::<DupOverridesMeta>() {
-                        Some(dup_overrides_meta) => {
-                            block.append_operation(scf::r#for(
-                                k0,
-                                others_size,
-                                elem_stride,
-                                {
-                                    let region = Region::new();
-                                    let block = region.append_block(Block::new(&[(
-                                        IntegerType::new(context, 64).into(),
-                                        location,
-                                    )]));
-
-                                    let offset = block.argument(0)?.into();
-                                    let source_ptr = block.gep(
-                                        context,
-                                        location,
-                                        data_ptr,
-                                        &[GepIndex::Value(offset)],
-                                        IntegerType::new(context, 8).into(),
-                                    )?;
-                                    let target_ptr = block.gep(
-                                        context,
-                                        location,
-                                        clone_ptr,
-                                        &[GepIndex::Value(offset)],
-                                        IntegerType::new(context, 8).into(),
-                                    )?;
-
-                                    let value =
-                                        block.load(context, location, source_ptr, elem_type)?;
-                                    let values = dup_overrides_meta.invoke_override(
-                                        context, &block, location, elem_ty, value,
-                                    )?;
-                                    block.store(context, location, source_ptr, values.0)?;
-                                    block.store(context, location, target_ptr, values.1)?;
-
-                                    block.append_operation(scf::r#yield(&[], location));
-                                    region
-                                },
-                                location,
-                            ));
-                        }
-                        _ => block.memcpy(context, location, data_ptr, clone_ptr, others_size),
-                    }
-
-                    metadata
-                        .get::<DropOverridesMeta>()
-                        .unwrap()
-                        .invoke_override(context, &block, location, self_ty, array_value)?;
-
-                    clone_ptr
-                };
-
-                block.append_operation(scf::r#yield(&[array_ptr], location));
-                region
-            },
-            {
-                let region = Region::new();
-                let block = region.append_block(Block::new(&[]));
-
-                block.memcpy(context, location, data_ptr, value_ptr, value_size);
-
-                block.append_operation(scf::r#yield(&[array_ptr], location));
-                region
-            },
-            location,
-        ))?;
-
-        let array_value =
-            valid_block.insert_value(context, location, array_value, new_array_ptr, 0)?;
-
-        let has_realloc = valid_block.append_op_result(
-            ods::llvm::icmp(
-                context,
-                IntegerType::new(context, 1).into(),
-                array_ptr,
-                new_array_ptr,
-                IntegerAttribute::new(IntegerType::new(context, 64).into(), 1).into(),
-                location,
-            )
-            .into(),
-        )?;
-        let array_value = valid_block.append_op_result(scf::r#if(
-            has_realloc,
-            &[array_value.r#type()],
-            {
-                let region = Region::new();
-                let block = region.append_block(Block::new(&[]));
-
-                let k0 = block.const_int_from_type(context, location, 0, len_ty)?;
-                let array_len =
-                    block.append_op_result(arith::subi(array_len, extract_len_value, location))?;
-
-                let array_value = block.insert_value(context, location, array_value, k0, 1)?;
-                let array_value =
-                    block.insert_value(context, location, array_value, array_len, 2)?;
-                let array_value =
-                    block.insert_value(context, location, array_value, array_len, 3)?;
-
-                block.append_operation(scf::r#yield(&[array_value], location));
-                region
-            },
-            {
-                let region = Region::new();
-                let block = region.append_block(Block::new(&[]));
-
-                let array_value = if REVERSE {
-                    let array_end = block.append_op_result(arith::subi(
-                        array_end,
-                        extract_len_value,
-                        location,
-                    ))?;
-                    block.insert_value(context, location, array_value, array_end, 2)?
-                } else {
-                    let array_start = block.append_op_result(arith::addi(
-                        array_start,
-                        extract_len_value,
-                        location,
-                    ))?;
-                    block.insert_value(context, location, array_value, array_start, 1)?
-                };
-
-                block.append_operation(scf::r#yield(&[array_value], location));
-                region
-            },
-            location,
-        ))?;
-
-        branch_values.push(array_value);
-        branch_values.push(value_ptr);
-
+        branch_values.push(array_obj);
+        branch_values.push(target_ptr);
         valid_block.append_operation(helper.br(0, &branch_values, location));
     }
 
     {
-        if CONSUME {
-            let self_ty = match info {
-                PopInfo::Single(info) => &info.signature.param_signatures[0].ty,
-                PopInfo::Multi(info) => &info.signature.param_signatures[1].ty,
-            };
+        let mut branch_values = branch_values.clone();
 
+        if CONSUME {
             metadata
                 .get::<DropOverridesMeta>()
-                .unwrap()
-                .invoke_override(context, error_block, location, self_ty, array_value)?;
+                .to_native_assert_error("drop overrides meta should exist")?
+                .invoke_override(context, error_block, location, self_ty, array_obj)?;
         } else {
-            branch_values.push(array_value);
+            branch_values.push(array_obj);
         }
 
         error_block.append_operation(helper.br(1, &branch_values, location));
@@ -1408,165 +1013,70 @@ pub fn build_get<'ctx, 'this>(
         let elem_stride =
             valid_block.const_int(context, location, elem_layout.pad_to_align().size(), 64)?;
 
-        let value_ptr = valid_block.append_op_result(llvm::zero(ptr_ty, location))?;
-        let value_ptr = valid_block.append_op_result(ReallocBindingsMeta::realloc(
+        // Compute data pointer.
+        let source_offset = valid_block.addi(array_start, entry.argument(2)?.into(), location)?;
+        let source_offset = valid_block.extui(
+            source_offset,
+            IntegerType::new(context, 64).into(),
+            location,
+        )?;
+        let source_offset = valid_block.muli(source_offset, elem_stride, location)?;
+        let source_ptr =
+            valid_block.extract_value(context, location, entry.argument(1)?.into(), ptr_ty, 0)?;
+        let source_ptr = valid_block.load(context, location, source_ptr, ptr_ty)?;
+        let source_ptr = valid_block.gep(
             context,
-            value_ptr,
+            location,
+            source_ptr,
+            &[GepIndex::Value(source_offset)],
+            IntegerType::new(context, 8).into(),
+        )?;
+
+        // Allocate output pointer.
+        let target_ptr = valid_block.append_op_result(llvm::zero(ptr_ty, location))?;
+        let target_ptr = valid_block.append_op_result(ReallocBindingsMeta::realloc(
+            context,
+            target_ptr,
             elem_stride,
             location,
         )?)?;
 
-        let array_ptr =
-            valid_block.extract_value(context, location, entry.argument(1)?.into(), ptr_ty, 0)?;
-        let is_shared = is_shared(context, valid_block, location, array_ptr, elem_layout)?;
-
-        let offset = valid_block.append_op_result(arith::addi(
-            array_start,
-            entry.argument(2)?.into(),
-            location,
-        ))?;
-        let offset = valid_block.append_op_result(arith::extui(
-            offset,
-            IntegerType::new(context, 64).into(),
-            location,
-        ))?;
-        let offset = valid_block.append_op_result(arith::muli(offset, elem_stride, location))?;
-
-        let source_ptr = valid_block.gep(
-            context,
-            location,
-            array_ptr,
-            &[GepIndex::Value(offset)],
-            IntegerType::new(context, 8).into(),
-        )?;
-
-        valid_block.append_operation(scf::r#if(
-            is_shared,
-            &[],
-            {
-                let region = Region::new();
-                let block = region.append_block(Block::new(&[]));
-
-                match metadata.get::<DupOverridesMeta>() {
-                    Some(dup_overrides_meta) if dup_overrides_meta.is_overriden(&info.ty) => {
-                        let value = block.load(context, location, source_ptr, elem_ty)?;
-                        let values = dup_overrides_meta
-                            .invoke_override(context, &block, location, &info.ty, value)?;
-                        block.store(context, location, source_ptr, values.0)?;
-                        block.store(context, location, value_ptr, values.1)?;
-                    }
-                    _ => block.memcpy(context, location, source_ptr, value_ptr, elem_stride),
-                }
-
-                metadata
-                    .get::<DropOverridesMeta>()
-                    .unwrap()
-                    .invoke_override(
-                        context,
-                        &block,
-                        location,
-                        &info.signature.param_signatures[1].ty,
-                        entry.argument(1)?.into(),
-                    )?;
-
-                block.append_operation(scf::r#yield(&[], location));
-                region
-            },
-            {
-                let region = Region::new();
-                let block = region.append_block(Block::new(&[]));
-
-                block.memcpy(context, location, source_ptr, value_ptr, elem_stride);
-
-                match metadata.get::<DropOverridesMeta>() {
-                    Some(drop_overrides_meta) if drop_overrides_meta.is_overriden(&info.ty) => {
-                        let drop_loop = |o0, o1| {
-                            block.append_operation(scf::r#for(
-                                o0,
-                                o1,
-                                elem_stride,
-                                {
-                                    let region = Region::new();
-                                    let block = region.append_block(Block::new(&[(
-                                        IntegerType::new(context, 64).into(),
-                                        location,
-                                    )]));
-
-                                    let value_ptr = block.gep(
-                                        context,
-                                        location,
-                                        array_ptr,
-                                        &[GepIndex::Value(block.argument(0)?.into())],
-                                        IntegerType::new(context, 8).into(),
-                                    )?;
-                                    let value =
-                                        block.load(context, location, value_ptr, elem_ty)?;
-                                    drop_overrides_meta.invoke_override(
-                                        context, &block, location, &info.ty, value,
-                                    )?;
-
-                                    block.append_operation(scf::r#yield(&[], location));
-                                    region
-                                },
-                                location,
-                            ));
-
-                            Result::Ok(())
-                        };
-
-                        let o0 = block.append_op_result(arith::extui(
-                            array_start,
-                            IntegerType::new(context, 64).into(),
-                            location,
-                        ))?;
-                        let o1 = block.append_op_result(arith::addi(
-                            array_start,
-                            entry.argument(2)?.into(),
-                            location,
-                        ))?;
-                        let o1 = block.append_op_result(arith::extui(
-                            o1,
-                            IntegerType::new(context, 64).into(),
-                            location,
-                        ))?;
-                        let o0 = block.append_op_result(arith::muli(o0, elem_stride, location))?;
-                        let o1 = block.append_op_result(arith::muli(o1, elem_stride, location))?;
-                        drop_loop(o0, o1)?;
-
-                        let o0 = block.append_op_result(arith::addi(o1, elem_stride, location))?;
-                        let o1 = block.append_op_result(arith::extui(
-                            array_end,
-                            IntegerType::new(context, 64).into(),
-                            location,
-                        ))?;
-                        let o1 = block.append_op_result(arith::muli(o1, elem_stride, location))?;
-                        drop_loop(o0, o1)?;
-                    }
-                    _ => {}
-                }
-
-                let array_ptr = block.gep(
+        // Clone the output data.
+        match metadata.get::<DupOverridesMeta>() {
+            Some(dup_overrides_meta) if dup_overrides_meta.is_overriden(&info.ty) => {
+                let value = valid_block.load(context, location, source_ptr, elem_ty)?;
+                let values = dup_overrides_meta.invoke_override(
                     context,
+                    valid_block,
                     location,
-                    array_ptr,
-                    &[GepIndex::Const(-(calc_refcount_offset(elem_layout) as i32))],
-                    IntegerType::new(context, 8).into(),
+                    &info.ty,
+                    value,
                 )?;
-                block.append_operation(ReallocBindingsMeta::free(context, array_ptr, location)?);
+                valid_block.store(context, location, source_ptr, values.0)?;
+                valid_block.store(context, location, target_ptr, values.1)?;
+            }
+            _ => valid_block.memcpy(context, location, source_ptr, target_ptr, elem_stride),
+        }
 
-                block.append_operation(scf::r#yield(&[], location));
-                region
-            },
-            location,
-        ));
+        // Drop the input array.
+        metadata
+            .get::<DropOverridesMeta>()
+            .to_native_assert_error("drop overrides metadata should be available")?
+            .invoke_override(
+                context,
+                valid_block,
+                location,
+                &info.signature.param_signatures[1].ty,
+                entry.argument(1)?.into(),
+            )?;
 
-        valid_block.append_operation(helper.br(0, &[range_check, value_ptr], location));
+        valid_block.append_operation(helper.br(0, &[range_check, target_ptr], location));
     }
 
     {
         metadata
             .get::<DropOverridesMeta>()
-            .unwrap()
+            .to_native_assert_error("drop overrides meta should exist")?
             .invoke_override(
                 context,
                 error_block,
@@ -1584,38 +1094,21 @@ pub fn build_get<'ctx, 'this>(
 /// Generate MLIR operations for the `array_slice` libfunc.
 pub fn build_slice<'ctx, 'this>(
     context: &'ctx Context,
-    registry: &ProgramRegistry<CoreType, CoreLibfunc>,
+    _registry: &ProgramRegistry<CoreType, CoreLibfunc>,
     entry: &'this Block<'ctx>,
     location: Location<'ctx>,
     helper: &LibfuncHelper<'ctx, 'this>,
     metadata: &mut MetadataStorage,
     info: &SignatureAndTypeConcreteLibfunc,
 ) -> Result<()> {
-    // Signature:
-    //   Params: RangeCheck, Snapshot<Array<felt252>>, u32, u32
-    //   Branches:
-    //     0: RangeCheck, Snapshot<Array<felt252>>
-    //     1: RangeCheck
-
-    let ptr_ty = llvm::r#type::pointer(context, 0);
     let len_ty = IntegerType::new(context, 32).into();
-
-    let self_ty = registry.build_type(
-        context,
-        helper,
-        metadata,
-        &info.signature.param_signatures[1].ty,
-    )?;
 
     let range_check =
         super::increment_builtin_counter(context, entry, location, entry.argument(0)?.into())?;
 
-    let k0 = entry.const_int_from_type(context, location, 0, len_ty)?;
-    let k1 = entry.const_int_from_type(context, location, 1, len_ty)?;
-
-    let array_start =
-        entry.extract_value(context, location, entry.argument(1)?.into(), len_ty, 1)?;
-    let array_end = entry.extract_value(context, location, entry.argument(1)?.into(), len_ty, 2)?;
+    let array_obj = entry.argument(1)?.into();
+    let array_start = entry.extract_value(context, location, array_obj, len_ty, 1)?;
+    let array_end = entry.extract_value(context, location, array_obj, len_ty, 2)?;
     let array_len = entry.append_op_result(arith::subi(array_end, array_start, location))?;
 
     let slice_start = entry.argument(2)?.into();
@@ -1652,278 +1145,13 @@ pub fn build_slice<'ctx, 'this>(
     ));
 
     {
-        let (elem_ty, elem_layout) =
-            registry.build_type_with_layout(context, helper, metadata, &info.ty)?;
-        let elem_stride =
-            valid_block.const_int(context, location, elem_layout.pad_to_align().size(), 64)?;
+        let array_start = valid_block.addi(array_start, slice_start, location)?;
+        let array_end = valid_block.addi(array_start, slice_len, location)?;
 
-        let slice_size = valid_block.append_op_result(arith::extui(
-            slice_len,
-            IntegerType::new(context, 64).into(),
-            location,
-        ))?;
-        let slice_size =
-            valid_block.append_op_result(arith::muli(elem_stride, slice_size, location))?;
-        let slice_size_with_offset = valid_block.append_op_result(arith::addi(
-            slice_size,
-            valid_block.const_int(context, location, calc_refcount_offset(elem_layout), 64)?,
-            location,
-        ))?;
+        let array_obj = valid_block.insert_value(context, location, array_obj, array_start, 1)?;
+        let array_obj = valid_block.insert_value(context, location, array_obj, array_end, 2)?;
 
-        let array_ptr =
-            valid_block.extract_value(context, location, entry.argument(1)?.into(), ptr_ty, 0)?;
-        let null_ptr = valid_block.append_op_result(llvm::zero(ptr_ty, location))?;
-        let is_null_source = valid_block.append_op_result(
-            ods::llvm::icmp(
-                context,
-                IntegerType::new(context, 1).into(),
-                array_ptr,
-                null_ptr,
-                IntegerAttribute::new(IntegerType::new(context, 64).into(), 0).into(),
-                location,
-            )
-            .into(),
-        )?;
-        let slice_ptr = valid_block.append_op_result(scf::r#if(
-            is_null_source,
-            &[ptr_ty],
-            {
-                let region = Region::new();
-                let block = region.append_block(Block::new(&[]));
-
-                block.append_operation(scf::r#yield(&[null_ptr], location));
-                region
-            },
-            {
-                let region = Region::new();
-                let block = region.append_block(Block::new(&[]));
-
-                let slice_ptr = block.append_op_result(llvm::zero(ptr_ty, location))?;
-                let slice_ptr = block.append_op_result(ReallocBindingsMeta::realloc(
-                    context,
-                    slice_ptr,
-                    slice_size_with_offset,
-                    location,
-                )?)?;
-                block.store(context, location, slice_ptr, k1)?;
-
-                let slice_ptr = block.gep(
-                    context,
-                    location,
-                    slice_ptr,
-                    &[GepIndex::Const(calc_refcount_offset(elem_layout) as i32)],
-                    IntegerType::new(context, 8).into(),
-                )?;
-
-                let is_shared = is_shared(context, &block, location, array_ptr, elem_layout)?;
-
-                let offset =
-                    block.append_op_result(arith::addi(array_start, slice_start, location))?;
-                let offset = block.append_op_result(arith::extui(
-                    offset,
-                    IntegerType::new(context, 64).into(),
-                    location,
-                ))?;
-                let offset = block.append_op_result(arith::muli(offset, elem_stride, location))?;
-
-                let source_ptr = block.gep(
-                    context,
-                    location,
-                    array_ptr,
-                    &[GepIndex::Value(offset)],
-                    IntegerType::new(context, 8).into(),
-                )?;
-
-                block.append_operation(scf::r#if(
-                    is_shared,
-                    &[],
-                    {
-                        let region = Region::new();
-                        let block = region.append_block(Block::new(&[]));
-
-                        match metadata.get::<DupOverridesMeta>() {
-                            Some(dup_overrides_meta)
-                                if dup_overrides_meta.is_overriden(&info.ty) =>
-                            {
-                                let k0 = block.const_int(context, location, 0, 64)?;
-                                block.append_operation(scf::r#for(
-                                    k0,
-                                    slice_size,
-                                    elem_stride,
-                                    {
-                                        let region = Region::new();
-                                        let block = region.append_block(Block::new(&[(
-                                            IntegerType::new(context, 64).into(),
-                                            location,
-                                        )]));
-
-                                        let offset = block.argument(0)?.into();
-                                        let source_ptr = block.gep(
-                                            context,
-                                            location,
-                                            source_ptr,
-                                            &[GepIndex::Value(offset)],
-                                            IntegerType::new(context, 8).into(),
-                                        )?;
-                                        let target_ptr = block.gep(
-                                            context,
-                                            location,
-                                            slice_ptr,
-                                            &[GepIndex::Value(offset)],
-                                            IntegerType::new(context, 8).into(),
-                                        )?;
-
-                                        let value =
-                                            block.load(context, location, source_ptr, elem_ty)?;
-                                        let values = dup_overrides_meta.invoke_override(
-                                            context, &block, location, &info.ty, value,
-                                        )?;
-                                        block.store(context, location, source_ptr, values.0)?;
-                                        block.store(context, location, target_ptr, values.1)?;
-
-                                        block.append_operation(scf::r#yield(&[], location));
-                                        region
-                                    },
-                                    location,
-                                ));
-                            }
-                            _ => block.memcpy(context, location, source_ptr, slice_ptr, slice_size),
-                        }
-
-                        metadata
-                            .get::<DropOverridesMeta>()
-                            .unwrap()
-                            .invoke_override(
-                                context,
-                                &block,
-                                location,
-                                &info.signature.param_signatures[1].ty,
-                                entry.argument(1)?.into(),
-                            )?;
-
-                        block.append_operation(scf::r#yield(&[], location));
-                        region
-                    },
-                    {
-                        let region = Region::new();
-                        let block = region.append_block(Block::new(&[]));
-
-                        block.memcpy(context, location, source_ptr, slice_ptr, slice_size);
-
-                        match metadata.get::<DropOverridesMeta>() {
-                            Some(drop_overrides_meta)
-                                if drop_overrides_meta.is_overriden(&info.ty) =>
-                            {
-                                let drop_loop = |o0, o1| {
-                                    block.append_operation(scf::r#for(
-                                        o0,
-                                        o1,
-                                        elem_stride,
-                                        {
-                                            let region = Region::new();
-                                            let block = region.append_block(Block::new(&[(
-                                                IntegerType::new(context, 64).into(),
-                                                location,
-                                            )]));
-
-                                            let value_ptr = block.gep(
-                                                context,
-                                                location,
-                                                array_ptr,
-                                                &[GepIndex::Value(block.argument(0)?.into())],
-                                                IntegerType::new(context, 8).into(),
-                                            )?;
-                                            let value = block
-                                                .load(context, location, value_ptr, elem_ty)?;
-                                            drop_overrides_meta.invoke_override(
-                                                context, &block, location, &info.ty, value,
-                                            )?;
-
-                                            block.append_operation(scf::r#yield(&[], location));
-                                            region
-                                        },
-                                        location,
-                                    ));
-
-                                    Result::Ok(())
-                                };
-
-                                let o0 = block.append_op_result(arith::extui(
-                                    array_start,
-                                    IntegerType::new(context, 64).into(),
-                                    location,
-                                ))?;
-                                let o1 = block.append_op_result(arith::addi(
-                                    array_start,
-                                    slice_start,
-                                    location,
-                                ))?;
-                                let o1 = block.append_op_result(arith::extui(
-                                    o1,
-                                    IntegerType::new(context, 64).into(),
-                                    location,
-                                ))?;
-                                let o0 = block.append_op_result(arith::muli(
-                                    o0,
-                                    elem_stride,
-                                    location,
-                                ))?;
-                                let o1 = block.append_op_result(arith::muli(
-                                    o1,
-                                    elem_stride,
-                                    location,
-                                ))?;
-                                drop_loop(o0, o1)?;
-
-                                let o0 = block
-                                    .append_op_result(arith::addi(o1, slice_size, location))?;
-                                let o1 = block.append_op_result(arith::extui(
-                                    array_end,
-                                    IntegerType::new(context, 64).into(),
-                                    location,
-                                ))?;
-                                let o1 = block.append_op_result(arith::muli(
-                                    o1,
-                                    elem_stride,
-                                    location,
-                                ))?;
-                                drop_loop(o0, o1)?;
-                            }
-                            _ => {}
-                        }
-
-                        let array_ptr = block.gep(
-                            context,
-                            location,
-                            array_ptr,
-                            &[GepIndex::Const(-(calc_refcount_offset(elem_layout) as i32))],
-                            IntegerType::new(context, 8).into(),
-                        )?;
-                        block.append_operation(ReallocBindingsMeta::free(
-                            context, array_ptr, location,
-                        )?);
-
-                        block.append_operation(scf::r#yield(&[], location));
-                        region
-                    },
-                    location,
-                ));
-
-                block.append_operation(scf::r#yield(&[slice_ptr], location));
-                region
-            },
-            location,
-        ))?;
-
-        let slice_value = valid_block.append_op_result(llvm::undef(self_ty, location))?;
-        let slice_value = valid_block.insert_values(
-            context,
-            location,
-            slice_value,
-            &[slice_ptr, k0, slice_len, slice_len],
-        )?;
-
-        valid_block.append_operation(helper.br(0, &[range_check, slice_value], location));
+        valid_block.append_operation(helper.br(0, &[range_check, array_obj], location));
     }
 
     {
@@ -1935,7 +1163,7 @@ pub fn build_slice<'ctx, 'this>(
                 error_block,
                 location,
                 &info.signature.param_signatures[1].ty,
-                entry.argument(1)?.into(),
+                array_obj,
             )?;
 
         error_block.append_operation(helper.br(1, &[range_check], location));
@@ -1964,7 +1192,7 @@ pub fn build_len<'ctx, 'this>(
 
     metadata
         .get::<DropOverridesMeta>()
-        .unwrap()
+        .to_native_assert_error("drop overrides meta should exist")?
         .invoke_override(
             context,
             entry,
@@ -1977,19 +1205,11 @@ pub fn build_len<'ctx, 'this>(
     Ok(())
 }
 
-fn calc_refcount_offset(layout: Layout) -> usize {
-    get_integer_layout(32)
-        .align_to(layout.align())
-        .unwrap()
-        .pad_to_align()
-        .size()
-}
-
 fn is_shared<'ctx, 'this>(
     context: &'ctx Context,
     block: &'this Block<'ctx>,
     location: Location<'ctx>,
-    array_ptr: Value<'ctx, 'this>,
+    array_ptr_ptr: Value<'ctx, 'this>,
     elem_layout: Layout,
 ) -> Result<Value<'ctx, 'this>> {
     let null_ptr =
@@ -1998,7 +1218,7 @@ fn is_shared<'ctx, 'this>(
         ods::llvm::icmp(
             context,
             IntegerType::new(context, 1).into(),
-            array_ptr,
+            array_ptr_ptr,
             null_ptr,
             IntegerAttribute::new(IntegerType::new(context, 64).into(), 0).into(),
             location,
@@ -2022,11 +1242,19 @@ fn is_shared<'ctx, 'this>(
             let region = Region::new();
             let block = region.append_block(Block::new(&[]));
 
+            let array_ptr = block.load(
+                context,
+                location,
+                array_ptr_ptr,
+                llvm::r#type::pointer(context, 0),
+            )?;
             let array_ptr = block.gep(
                 context,
                 location,
                 array_ptr,
-                &[GepIndex::Const(-(calc_refcount_offset(elem_layout) as i32))],
+                &[GepIndex::Const(
+                    -(calc_data_prefix_offset(elem_layout) as i32),
+                )],
                 IntegerType::new(context, 8).into(),
             )?;
             let ref_count = block.load(

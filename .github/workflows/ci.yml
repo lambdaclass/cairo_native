@@ -223,7 +223,7 @@ jobs:
       - name: Install scarb
         uses: software-mansion/setup-scarb@v1
         with:
-          scarb-version: "2.9.2"
+          scarb-version: "2.10.1"
       - name: Install deps
         run: make deps
       - name: Run tests
@@ -291,7 +291,7 @@ jobs:
       - name: Install scarb
         uses: software-mansion/setup-scarb@v1
         with:
-          scarb-version: "2.9.2"
+          scarb-version: "2.10.1"
       - name: Install deps
         run: make deps
       - name: Build alexandria
