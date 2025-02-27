@@ -7,6 +7,7 @@ use crate::{
         drop_overrides::DropOverridesMeta, dup_overrides::DupOverridesMeta,
         realloc_bindings::ReallocBindingsMeta, MetadataStorage,
     },
+    native_assert,
     types::array::calc_data_prefix_offset,
     utils::{BlockExt, GepIndex, ProgramRegistryExt},
 };
@@ -787,7 +788,10 @@ fn build_pop<'ctx, 'this, const CONSUME: bool, const REVERSE: bool>(
             let CoreTypeConcrete::Struct(info) = registry.get_type(popped_ty)? else {
                 return Err(Error::SierraAssert(SierraAssertError::BadTypeInfo));
             };
-            debug_assert!(info.members.iter().all(|member_ty| member_ty == ty));
+            native_assert!(
+                info.members.iter().all(|member_ty| member_ty == ty),
+                "output struct type should match the array's type"
+            );
 
             (
                 &signature.param_signatures[1].ty,
