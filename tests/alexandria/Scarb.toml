@@ -6,6 +6,6 @@ edition = "2024_07"
 # See more keys and their definitions at https://docs.swmansion.com/scarb/docs/reference/manifest.html
 
 [dependencies]
-alexandria_math = { rev = "162bed1c636d31ccaaa90ed3eb32c9eb1d5e3bd3", git = "https://github.com/keep-starknet-strange/alexandria.git" }
-alexandria_data_structures = { rev = "162bed1c636d31ccaaa90ed3eb32c9eb1d5e3bd3", git = "https://github.com/keep-starknet-strange/alexandria.git" }
-alexandria_encoding = { rev = "162bed1c636d31ccaaa90ed3eb32c9eb1d5e3bd3", git = "https://github.com/keep-starknet-strange/alexandria.git" }
+alexandria_math = { rev = "74cafd429eef374730f2c6fed9a74753103c6fdb", git = "https://github.com/keep-starknet-strange/alexandria.git" }
+alexandria_data_structures = { rev = "74cafd429eef374730f2c6fed9a74753103c6fdb", git = "https://github.com/keep-starknet-strange/alexandria.git" }
+alexandria_encoding = { rev = "74cafd429eef374730f2c6fed9a74753103c6fdb", git = "https://github.com/keep-starknet-strange/alexandria.git" }

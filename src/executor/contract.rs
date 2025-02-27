@@ -39,6 +39,7 @@ use crate::{
     executor::{invoke_trampoline, BuiltinCostsGuard},
     metadata::{gas::MetadataComputationConfig, runtime_bindings::setup_runtime},
     module::NativeModule,
+    native_assert, native_panic,
     starknet::{handler::StarknetSyscallHandlerCallbacks, StarknetSyscallHandler},
     types::TypeBuilder,
     utils::{
@@ -50,18 +51,21 @@ use crate::{
 use bumpalo::Bump;
 use cairo_lang_sierra::{
     extensions::{
-        circuit::CircuitTypeConcrete, core::CoreTypeConcrete, gas::CostTokenType,
+        circuit::CircuitTypeConcrete,
+        core::{CoreLibfunc, CoreType, CoreTypeConcrete},
+        gas::CostTokenType,
         starknet::StarkNetTypeConcrete,
     },
     ids::FunctionId,
-    program::Program,
+    program::{GenFunction, Program, StatementIdx},
+    program_registry::ProgramRegistry,
 };
 use cairo_lang_starknet_classes::contract_class::ContractEntryPoints;
 use cairo_lang_starknet_classes::{
     casm_contract_class::ENTRY_POINT_COST, compiler_version::VersionId,
 };
 use educe::Educe;
-use itertools::chain;
+use itertools::{chain, Itertools};
 use libloading::Library;
 use serde::{Deserialize, Serialize};
 use starknet_types_core::felt::Felt;
@@ -73,7 +77,7 @@ use std::{
     fs::{self, File},
     io,
     path::{Path, PathBuf},
-    ptr::NonNull,
+    ptr::{self, NonNull},
     sync::Arc,
 };
 use tempfile::NamedTempFile;
@@ -217,34 +221,7 @@ impl AotContractExecutor {
                 .get_function(&FunctionId::new(function_id))
                 .to_native_assert_error("unreachable")?;
 
-            let builtins = function
-                .params
-                .iter()
-                .map(|x| registry.get_type(&x.ty).unwrap())
-                .take_while(|ty| ty.is_builtin())
-                .filter(|ty| !ty.is_zst(&registry).unwrap())
-                .map(|ty| match ty {
-                    CoreTypeConcrete::Bitwise(_) => BuiltinType::Bitwise,
-                    CoreTypeConcrete::EcOp(_) => BuiltinType::EcOp,
-                    CoreTypeConcrete::RangeCheck(_) => BuiltinType::RangeCheck,
-                    CoreTypeConcrete::Pedersen(_) => BuiltinType::Pedersen,
-                    CoreTypeConcrete::Poseidon(_) => BuiltinType::Poseidon,
-                    CoreTypeConcrete::BuiltinCosts(_) => BuiltinType::BuiltinCosts,
-                    CoreTypeConcrete::SegmentArena(_) => BuiltinType::SegmentArena,
-                    CoreTypeConcrete::RangeCheck96(_) => BuiltinType::RangeCheck96,
-                    CoreTypeConcrete::Circuit(CircuitTypeConcrete::AddMod(_)) => {
-                        BuiltinType::CircuitAdd
-                    }
-                    CoreTypeConcrete::Circuit(CircuitTypeConcrete::MulMod(_)) => {
-                        BuiltinType::CircuitMul
-                    }
-                    CoreTypeConcrete::GasBuiltin(_) => BuiltinType::Gas,
-                    CoreTypeConcrete::StarkNet(StarkNetTypeConcrete::System(_)) => {
-                        BuiltinType::System
-                    }
-                    _ => unreachable!("not a builtin"),
-                })
-                .collect();
+            let builtins = find_entrypoint_builtins(function, &registry)?;
 
             Ok((
                 Felt::from(&x.selector),
@@ -375,50 +352,57 @@ impl AotContractExecutor {
         }
 
         let felt_layout = get_integer_layout(252).pad_to_align();
-        let refcount_offset = get_integer_layout(32)
-            .align_to(felt_layout.align())
-            .unwrap()
-            .pad_to_align()
-            .size();
+        let refcount_offset = crate::types::array::calc_data_prefix_offset(felt_layout);
 
-        let ptr = match args.len() {
-            0 => std::ptr::null_mut(),
-            _ => unsafe {
-                let ptr: *mut () =
-                    libc_malloc(felt_layout.size() * args.len() + refcount_offset).cast();
-
-                // Write reference count.
-                ptr.cast::<u32>().write(1);
-                ptr.byte_add(refcount_offset)
-            },
-        };
-        let len: u32 = args
+        let len_u32: u32 = args
             .len()
             .try_into()
             .to_native_assert_error("number of arguments should fit into a u32")?;
+        let array_ptr = match args.len() {
+            0 => std::ptr::null_mut(),
+            _ => unsafe {
+                let array_ptr: *mut () =
+                    libc_malloc(felt_layout.size() * args.len() + refcount_offset).cast();
 
-        ptr.to_bytes(&mut invoke_data, |_| unreachable!())?;
-        if cfg!(target_arch = "aarch64") {
-            0u32.to_bytes(&mut invoke_data, |_| unreachable!())?; // start
-            len.to_bytes(&mut invoke_data, |_| unreachable!())?; // end
-            len.to_bytes(&mut invoke_data, |_| unreachable!())?; // cap
-        } else if cfg!(target_arch = "x86_64") {
-            (0u32 as u64).to_bytes(&mut invoke_data, |_| unreachable!())?; // start
-            (len as u64).to_bytes(&mut invoke_data, |_| unreachable!())?; // end
-            (len as u64).to_bytes(&mut invoke_data, |_| unreachable!())?; // cap
-        } else {
-            unreachable!("unsupported architecture");
-        }
+                // Write reference count.
+                array_ptr.cast::<(u32, u32)>().write((1, len_u32));
+                array_ptr.byte_add(refcount_offset)
+            },
+        };
 
         for (idx, elem) in args.iter().enumerate() {
             let f = elem.to_bytes_le();
             unsafe {
                 std::ptr::copy_nonoverlapping(
                     f.as_ptr().cast::<u8>(),
-                    ptr.byte_add(idx * felt_layout.size()).cast::<u8>(),
+                    array_ptr.byte_add(idx * felt_layout.size()).cast::<u8>(),
                     felt_layout.size(),
                 )
             };
+        }
+
+        // Make double pointer.
+        let array_ptr_ptr = if array_ptr.is_null() {
+            ptr::null_mut()
+        } else {
+            unsafe {
+                let array_ptr_ptr = libc_malloc(size_of::<*mut ()>()).cast::<*mut ()>();
+                array_ptr_ptr.write(array_ptr);
+                array_ptr_ptr
+            }
+        };
+
+        array_ptr_ptr.to_bytes(&mut invoke_data, |_| unreachable!())?;
+        if cfg!(target_arch = "aarch64") {
+            0u32.to_bytes(&mut invoke_data, |_| unreachable!())?; // start
+            len_u32.to_bytes(&mut invoke_data, |_| unreachable!())?; // end
+            len_u32.to_bytes(&mut invoke_data, |_| unreachable!())?; // cap
+        } else if cfg!(target_arch = "x86_64") {
+            (0u32 as u64).to_bytes(&mut invoke_data, |_| unreachable!())?; // start
+            (len_u32 as u64).to_bytes(&mut invoke_data, |_| unreachable!())?; // end
+            (len_u32 as u64).to_bytes(&mut invoke_data, |_| unreachable!())?; // cap
+        } else {
+            unreachable!("unsupported architecture");
         }
 
         // Pad invoke data to the 16 byte boundary avoid segfaults.
@@ -524,62 +508,51 @@ impl AotContractExecutor {
         let tag = *unsafe { enum_ptr.cast::<u8>().as_ref() } as usize;
         let tag = tag & 0x01; // Filter out bits that are not part of the enum's tag.
 
-        // layout of both enum variants, both are a array of felts
         let value_layout = unsafe { Layout::from_size_align_unchecked(24, 8) };
-        let value_ptr = unsafe {
-            enum_ptr
-                .cast::<u8>()
-                .add(tag_layout.extend(value_layout)?.1)
-        };
+        let mut value_ptr = unsafe { enum_ptr.byte_add(tag_layout.extend(value_layout)?.1).cast() };
 
-        let value_ptr = &mut value_ptr.cast();
+        let array_ptr_ptr = unsafe { *read_value::<*mut NonNull<()>>(&mut value_ptr) };
+        let array_start = unsafe { *read_value::<u32>(&mut value_ptr) };
+        let array_end = unsafe { *read_value::<u32>(&mut value_ptr) };
+        let _array_capacity = unsafe { *read_value::<u32>(&mut value_ptr) };
 
-        let array_ptr: *mut u8 = unsafe { *read_value(value_ptr) };
-        let start: u32 = unsafe { *read_value(value_ptr) };
-        let end: u32 = unsafe { *read_value(value_ptr) };
-        let _cap: u32 = unsafe { *read_value(value_ptr) };
+        let mut array_value = Vec::with_capacity((array_end - array_start) as usize);
+        if !array_ptr_ptr.is_null() {
+            let array_ptr = unsafe { array_ptr_ptr.read() };
 
-        let elem_stride = felt_layout.pad_to_align().size();
+            let elem_stride = felt_layout.pad_to_align().size();
+            for i in array_start..array_end {
+                let cur_elem_ptr = unsafe { array_ptr.byte_add(elem_stride * i as usize) };
 
-        // this pointer can be null if the array has a size of 0.
-        let data_ptr = unsafe { array_ptr.byte_add(elem_stride * start as usize) };
+                let mut data = unsafe { cur_elem_ptr.cast::<[u8; 32]>().read() };
+                data[31] &= 0x0F; // Filter out first 4 bits (they're outside an i252).
 
-        assert!(end >= start);
-        let num_elems = (end - start) as usize;
-        let mut array_value = Vec::with_capacity(num_elems);
+                array_value.push(Felt::from_bytes_le(&data));
+            }
 
-        for i in 0..num_elems {
-            // safe to create a NonNull because if the array has elements, the data_ptr can't be null.
-            let cur_elem_ptr = NonNull::new(unsafe { data_ptr.byte_add(elem_stride * i) })
-                .to_native_assert_error("data_ptr should not be null")?;
-            let data = unsafe { cur_elem_ptr.cast::<[u8; 32]>().as_mut() };
-            data[31] &= 0x0F; // Filter out first 4 bits (they're outside an i252).
-            let data = Felt::from_bytes_le_slice(data);
-
-            array_value.push(data);
-        }
-
-        if !array_ptr.is_null() {
             unsafe {
-                let ptr = array_ptr.byte_sub(refcount_offset);
-                assert_eq!(ptr.cast::<u32>().read(), 1);
-
-                libc_free(ptr.cast());
+                let array_ptr = array_ptr.byte_sub(refcount_offset);
+                native_assert!(
+                    array_ptr.cast::<u32>().read() == 1,
+                    "return array should have a reference count of 1"
+                );
+                libc_free(array_ptr.as_ptr().cast());
+                libc_free(array_ptr_ptr.cast());
             }
         }
 
-        let error_msg = if tag != 0 {
-            let bytes_err: Vec<_> = array_value
-                .iter()
-                .flat_map(|felt| felt.to_bytes_be().to_vec())
-                // remove null chars
-                .filter(|b| *b != 0)
-                .collect();
-            let str_error = decode_error_message(&bytes_err);
-
-            Some(str_error)
-        } else {
-            None
+        let error_msg = match tag {
+            0 => None,
+            _ => {
+                Some(decode_error_message(
+                    &array_value
+                        .iter()
+                        .flat_map(|felt| felt.to_bytes_be().to_vec())
+                        // remove null chars
+                        .filter(|b| *b != 0)
+                        .collect::<Vec<_>>(),
+                ))
+            }
         };
 
         // Restore the original builtin costs pointer.
@@ -623,6 +596,48 @@ impl AotContractExecutor {
     }
 }
 
+fn find_entrypoint_builtins(
+    function: &GenFunction<StatementIdx>,
+    registry: &ProgramRegistry<CoreType, CoreLibfunc>,
+) -> Result<Vec<BuiltinType>> {
+    let param_type_infos = function
+        .params
+        .iter()
+        .map(|x| -> Result<_> {
+            let ty = registry.get_type(&x.ty)?;
+            let is_zst = ty.is_zst(registry)?;
+            Ok((ty, is_zst))
+        })
+        .try_collect::<_, Vec<_>, _>()?;
+
+    param_type_infos
+        .iter()
+        .take_while(|(ty, _)| ty.is_builtin())
+        .filter(|(_, is_zst)| !is_zst)
+        .map(|(ty, _)| -> Result<_> {
+            Ok(match ty {
+                CoreTypeConcrete::Bitwise(_) => BuiltinType::Bitwise,
+                CoreTypeConcrete::EcOp(_) => BuiltinType::EcOp,
+                CoreTypeConcrete::RangeCheck(_) => BuiltinType::RangeCheck,
+                CoreTypeConcrete::Pedersen(_) => BuiltinType::Pedersen,
+                CoreTypeConcrete::Poseidon(_) => BuiltinType::Poseidon,
+                CoreTypeConcrete::BuiltinCosts(_) => BuiltinType::BuiltinCosts,
+                CoreTypeConcrete::SegmentArena(_) => BuiltinType::SegmentArena,
+                CoreTypeConcrete::RangeCheck96(_) => BuiltinType::RangeCheck96,
+                CoreTypeConcrete::Circuit(CircuitTypeConcrete::AddMod(_)) => {
+                    BuiltinType::CircuitAdd
+                }
+                CoreTypeConcrete::Circuit(CircuitTypeConcrete::MulMod(_)) => {
+                    BuiltinType::CircuitMul
+                }
+                CoreTypeConcrete::GasBuiltin(_) => BuiltinType::Gas,
+                CoreTypeConcrete::StarkNet(StarkNetTypeConcrete::System(_)) => BuiltinType::System,
+                _ => native_panic!("unknown builtin type for function {}", function),
+            })
+        })
+        .try_collect()
+}
+
 #[derive(Debug)]
 struct LockFile(PathBuf);
 
@@ -650,7 +665,7 @@ impl LockFile {
 
 impl Drop for LockFile {
     fn drop(&mut self) {
-        fs::remove_file(&self.0).unwrap();
+        let _ = fs::remove_file(&self.0);
     }
 }
 

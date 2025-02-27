@@ -2,7 +2,7 @@
 
 use super::LibfuncHelper;
 use crate::{
-    error::{Error, Result},
+    error::{panic::ToNativeAssertError, Error, Result},
     metadata::{gas::GasCost, runtime_bindings::RuntimeBindingsMeta, MetadataStorage},
     native_panic,
     utils::{BlockExt, GepIndex},
@@ -91,7 +91,7 @@ pub fn build_withdraw_gas<'ctx, 'this>(
 
     let gas_cost = metadata
         .get::<GasCost>()
-        .expect("withdraw_gas should always have a gas cost")
+        .to_native_assert_error("withdraw_gas should always have a gas cost")?
         .clone();
 
     let u64_type: melior::ir::Type = IntegerType::new(context, 64).into();
@@ -172,7 +172,7 @@ pub fn build_redeposit_gas<'ctx, 'this>(
 
     let gas_cost = metadata
         .get::<GasCost>()
-        .expect("redeposit_gas should always have a gas cost")
+        .to_native_assert_error("redeposit_gas should always have a gas cost")?
         .clone();
 
     let u64_type: melior::ir::Type = IntegerType::new(context, 64).into();
@@ -247,7 +247,7 @@ pub fn build_builtin_withdraw_gas<'ctx, 'this>(
 
     let gas_cost = metadata
         .get::<GasCost>()
-        .expect("builtin_withdraw_gas should always have a gas cost")
+        .to_native_assert_error("builtin_withdraw_gas should always have a gas cost")?
         .clone();
 
     let u64_type: melior::ir::Type = IntegerType::new(context, 64).into();

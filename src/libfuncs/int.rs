@@ -880,8 +880,7 @@ fn build_wide_mul<'ctx, 'this>(
 
     let ext_fn = if registry
         .get_type(&info.signature.param_signatures[0].ty)?
-        .integer_range(registry)
-        .unwrap()
+        .integer_range(registry)?
         .lower
         .is_zero()
     {

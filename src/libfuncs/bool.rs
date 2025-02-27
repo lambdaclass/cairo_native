@@ -2,7 +2,7 @@
 
 use super::LibfuncHelper;
 use crate::{
-    error::Result,
+    error::{panic::ToNativeAssertError, Result},
     metadata::MetadataStorage,
     types::TypeBuilder,
     utils::{BlockExt, ProgramRegistryExt},
@@ -94,7 +94,7 @@ fn build_bool_binary<'ctx, 'this>(
     let enum_ty = registry.get_type(&info.param_signatures()[0].ty)?;
     let tag_bits = enum_ty
         .variants()
-        .expect("bool is a enum and has variants")
+        .to_native_assert_error("bool is a enum and has variants")?
         .len()
         .next_power_of_two()
         .trailing_zeros();
@@ -143,7 +143,7 @@ pub fn build_bool_not<'ctx, 'this>(
     let enum_ty = registry.get_type(&info.param_signatures()[0].ty)?;
     let tag_bits = enum_ty
         .variants()
-        .expect("bool is a enum and has variants")
+        .to_native_assert_error("bool is a enum and has variants")?
         .len()
         .next_power_of_two()
         .trailing_zeros();
@@ -192,7 +192,7 @@ pub fn build_bool_to_felt252<'ctx, 'this>(
 
     let tag_bits = enum_ty
         .variants()
-        .expect("bool is a enum and has variants")
+        .to_native_assert_error("bool is a enum and has variants")?
         .len()
         .next_power_of_two()
         .trailing_zeros();

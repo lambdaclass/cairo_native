@@ -37,6 +37,7 @@ mod program_registry_ext;
 mod range_ext;
 #[cfg(feature = "with-segfault-catcher")]
 pub mod safe_runner;
+pub mod sierra_gen;
 
 #[cfg(target_os = "macos")]
 pub const SHARED_LIBRARY_EXT: &str = "dylib";
@@ -176,7 +177,7 @@ pub fn get_integer_layout(width: u32) -> Layout {
     } else {
         // According to the docs this should never return an error.
         Layout::from_size_align((width as usize).next_multiple_of(8) >> 3, 16)
-            .expect("only fails if size is greater than ISIZE::MAX")
+            .expect("layout size rounded up to the next multiple of 16 should never be greater than ISIZE::MAX")
     }
 }
 

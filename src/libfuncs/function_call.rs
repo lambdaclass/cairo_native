@@ -7,6 +7,7 @@ use super::LibfuncHelper;
 use crate::{
     error::{Error, Result},
     metadata::{tail_recursion::TailRecursionMeta, MetadataStorage},
+    native_assert,
     types::TypeBuilder,
     utils::{generate_function_name, BlockExt},
 };
@@ -270,7 +271,10 @@ pub fn build<'ctx, 'this>(
                 let mut count = 0;
                 for (idx, type_id) in info.function.signature.ret_types.iter().enumerate() {
                     let type_info = registry.get_type(type_id)?;
-                    assert!(!type_info.is_memory_allocated(registry)?);
+                    native_assert!(
+                        !type_info.is_memory_allocated(registry)?,
+                        "if there is no return pointer, return data must not be memory allocated"
+                    );
 
                     if type_info.is_builtin() && type_info.is_zst(registry)? {
                         results.push(entry.argument(idx)?.into());
