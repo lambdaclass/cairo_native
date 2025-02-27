@@ -303,11 +303,11 @@ pub unsafe extern "C" fn cairo_native__dict_dup(dict_ptr: *const FeltDict) -> *c
 /// This function is intended to be called from MLIR, deals with pointers, and is therefore
 /// definitely unsafe to use manually.
 pub unsafe extern "C" fn cairo_native__dict_get(
-    dict: *const FeltDict,
+    dict_ptr: *mut *const FeltDict,
     key: &[u8; 32],
     value_ptr: *mut *mut c_void,
 ) -> c_int {
-    let mut dict_rc = Rc::from_raw(dict);
+    let mut dict_rc = Rc::from_raw(dict_ptr.read());
     let dict = Rc::make_mut(&mut dict_rc);
 
     let num_mappings = dict.mappings.len();
@@ -340,7 +340,7 @@ pub unsafe extern "C" fn cairo_native__dict_get(
         .cast();
 
     dict.count += 1;
-    forget(dict_rc);
+    dict_ptr.write(Rc::into_raw(dict_rc));
 
     is_present as c_int
 }

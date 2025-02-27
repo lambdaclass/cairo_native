@@ -88,7 +88,7 @@ pub fn build_get<'ctx, 'this>(
             .alloca1(context, location, key_ty, key_layout.align())?;
     entry.store(context, location, entry_key_ptr, entry_key)?;
 
-    let (is_present, value_ptr) = metadata
+    let (dict_ptr, is_present, value_ptr) = metadata
         .get_mut::<RuntimeBindingsMeta>()
         .ok_or(Error::MissingMetadata)?
         .dict_get(context, helper, entry, dict_ptr, entry_key_ptr, location)?;
