@@ -405,373 +405,139 @@ mod test {
                 unsigned128::Uint128Type,
             },
         },
-        program::{GenericArg, Program},
+        program::GenericArg,
     };
-    use lazy_static::lazy_static;
 
-    lazy_static! {
-        static ref DOWNCAST_U128_U128: Program = {
-            let mut generator = SierraGenerator::<DowncastLibfunc>::default();
+    macro_rules! cast {
+        ($from:ty, $to:ty, $is_up_cast:expr) => {
+            if $is_up_cast {
+                let mut generator = SierraGenerator::<UpcastLibfunc>::default();
 
-            let from_ty = generator.push_type_declaration::<Uint128Type>(&[]).clone();
-            let to_ty = generator.push_type_declaration::<Uint128Type>(&[]).clone();
+                let from_ty = generator.push_type_declaration::<$from>(&[]).clone();
+                let to_ty = generator.push_type_declaration::<$to>(&[]).clone();
 
-            generator.build(&[GenericArg::Type(from_ty), GenericArg::Type(to_ty)])
-        };
-        static ref DOWNCAST_U128_U64: Program = {
-            let mut generator = SierraGenerator::<DowncastLibfunc>::default();
+                generator.build(&[GenericArg::Type(from_ty), GenericArg::Type(to_ty)])
+            } else {
+                let mut generator = SierraGenerator::<DowncastLibfunc>::default();
 
-            let from_ty = generator.push_type_declaration::<Uint128Type>(&[]).clone();
-            let to_ty = generator.push_type_declaration::<Uint64Type>(&[]).clone();
+                let from_ty = generator.push_type_declaration::<$from>(&[]).clone();
+                let to_ty = generator.push_type_declaration::<$to>(&[]).clone();
 
-            generator.build(&[GenericArg::Type(from_ty), GenericArg::Type(to_ty)])
-        };
-        static ref DOWNCAST_U128_U32: Program = {
-            let mut generator = SierraGenerator::<DowncastLibfunc>::default();
-
-            let from_ty = generator.push_type_declaration::<Uint128Type>(&[]).clone();
-            let to_ty = generator.push_type_declaration::<Uint32Type>(&[]).clone();
-
-            generator.build(&[GenericArg::Type(from_ty), GenericArg::Type(to_ty)])
-        };
-        static ref DOWNCAST_U128_U16: Program = {
-            let mut generator = SierraGenerator::<DowncastLibfunc>::default();
-
-            let from_ty = generator.push_type_declaration::<Uint128Type>(&[]).clone();
-            let to_ty = generator.push_type_declaration::<Uint16Type>(&[]).clone();
-
-            generator.build(&[GenericArg::Type(from_ty), GenericArg::Type(to_ty)])
-        };
-        static ref DOWNCAST_U128_U8: Program = {
-            let mut generator = SierraGenerator::<DowncastLibfunc>::default();
-
-            let from_ty = generator.push_type_declaration::<Uint128Type>(&[]).clone();
-            let to_ty = generator.push_type_declaration::<Uint8Type>(&[]).clone();
-
-            generator.build(&[GenericArg::Type(from_ty), GenericArg::Type(to_ty)])
-        };
-        static ref DOWNCAST_U64_U64: Program = {
-            let mut generator = SierraGenerator::<DowncastLibfunc>::default();
-
-            let from_ty = generator.push_type_declaration::<Uint64Type>(&[]).clone();
-            let to_ty = generator.push_type_declaration::<Uint64Type>(&[]).clone();
-
-            generator.build(&[GenericArg::Type(from_ty), GenericArg::Type(to_ty)])
-        };
-        static ref DOWNCAST_U64_U32: Program = {
-            let mut generator = SierraGenerator::<DowncastLibfunc>::default();
-
-            let from_ty = generator.push_type_declaration::<Uint64Type>(&[]).clone();
-            let to_ty = generator.push_type_declaration::<Uint32Type>(&[]).clone();
-
-            generator.build(&[GenericArg::Type(from_ty), GenericArg::Type(to_ty)])
-        };
-        static ref DOWNCAST_U64_U16: Program = {
-            let mut generator = SierraGenerator::<DowncastLibfunc>::default();
-
-            let from_ty = generator.push_type_declaration::<Uint64Type>(&[]).clone();
-            let to_ty = generator.push_type_declaration::<Uint16Type>(&[]).clone();
-
-            generator.build(&[GenericArg::Type(from_ty), GenericArg::Type(to_ty)])
-        };
-        static ref DOWNCAST_U64_U8: Program = {
-            let mut generator = SierraGenerator::<DowncastLibfunc>::default();
-
-            let from_ty = generator.push_type_declaration::<Uint64Type>(&[]).clone();
-            let to_ty = generator.push_type_declaration::<Uint8Type>(&[]).clone();
-
-            generator.build(&[GenericArg::Type(from_ty), GenericArg::Type(to_ty)])
-        };
-        static ref DOWNCAST_U32_U32: Program = {
-            let mut generator = SierraGenerator::<DowncastLibfunc>::default();
-
-            let from_ty = generator.push_type_declaration::<Uint32Type>(&[]).clone();
-            let to_ty = generator.push_type_declaration::<Uint32Type>(&[]).clone();
-
-            generator.build(&[GenericArg::Type(from_ty), GenericArg::Type(to_ty)])
-        };
-        static ref DOWNCAST_U32_U16: Program = {
-            let mut generator = SierraGenerator::<DowncastLibfunc>::default();
-
-            let from_ty = generator.push_type_declaration::<Uint32Type>(&[]).clone();
-            let to_ty = generator.push_type_declaration::<Uint16Type>(&[]).clone();
-
-            generator.build(&[GenericArg::Type(from_ty), GenericArg::Type(to_ty)])
-        };
-        static ref DOWNCAST_U32_U8: Program = {
-            let mut generator = SierraGenerator::<DowncastLibfunc>::default();
-
-            let from_ty = generator.push_type_declaration::<Uint32Type>(&[]).clone();
-            let to_ty = generator.push_type_declaration::<Uint8Type>(&[]).clone();
-
-            generator.build(&[GenericArg::Type(from_ty), GenericArg::Type(to_ty)])
-        };
-        static ref DOWNCAST_U16_U16: Program = {
-            let mut generator = SierraGenerator::<DowncastLibfunc>::default();
-
-            let from_ty = generator.push_type_declaration::<Uint16Type>(&[]).clone();
-            let to_ty = generator.push_type_declaration::<Uint16Type>(&[]).clone();
-
-            generator.build(&[GenericArg::Type(from_ty), GenericArg::Type(to_ty)])
-        };
-        static ref DOWNCAST_U16_U8: Program = {
-            let mut generator = SierraGenerator::<DowncastLibfunc>::default();
-
-            let from_ty = generator.push_type_declaration::<Uint16Type>(&[]).clone();
-            let to_ty = generator.push_type_declaration::<Uint8Type>(&[]).clone();
-
-            generator.build(&[GenericArg::Type(from_ty), GenericArg::Type(to_ty)])
-        };
-        static ref DOWNCAST_U8_U8: Program = {
-            let mut generator = SierraGenerator::<DowncastLibfunc>::default();
-
-            let from_ty = generator.push_type_declaration::<Uint8Type>(&[]).clone();
-            let to_ty = generator.push_type_declaration::<Uint8Type>(&[]).clone();
-
-            generator.build(&[GenericArg::Type(from_ty), GenericArg::Type(to_ty)])
-        };
-
-        // UPCASTS
-        static ref UPCAST_U8_U128: Program = {
-            let mut generator = SierraGenerator::<UpcastLibfunc>::default();
-
-            let from_ty = generator.push_type_declaration::<Uint8Type>(&[]).clone();
-            let to_ty = generator.push_type_declaration::<Uint128Type>(&[]).clone();
-
-            generator.build(&[GenericArg::Type(from_ty), GenericArg::Type(to_ty)])
-        };
-        static ref UPCAST_U8_U64: Program = {
-            let mut generator = SierraGenerator::<UpcastLibfunc>::default();
-
-            let from_ty = generator.push_type_declaration::<Uint8Type>(&[]).clone();
-            let to_ty = generator.push_type_declaration::<Uint64Type>(&[]).clone();
-
-            generator.build(&[GenericArg::Type(from_ty), GenericArg::Type(to_ty)])
-        };
-        static ref UPCAST_U8_U32: Program = {
-            let mut generator = SierraGenerator::<UpcastLibfunc>::default();
-
-            let from_ty = generator.push_type_declaration::<Uint8Type>(&[]).clone();
-            let to_ty = generator.push_type_declaration::<Uint32Type>(&[]).clone();
-
-            generator.build(&[GenericArg::Type(from_ty), GenericArg::Type(to_ty)])
-        };
-        static ref UPCAST_U8_U16: Program = {
-            let mut generator = SierraGenerator::<UpcastLibfunc>::default();
-
-            let from_ty = generator.push_type_declaration::<Uint8Type>(&[]).clone();
-            let to_ty = generator.push_type_declaration::<Uint16Type>(&[]).clone();
-
-            generator.build(&[GenericArg::Type(from_ty), GenericArg::Type(to_ty)])
-        };
-        static ref UPCAST_U8_U8: Program = {
-            let mut generator = SierraGenerator::<UpcastLibfunc>::default();
-
-            let from_ty = generator.push_type_declaration::<Uint8Type>(&[]).clone();
-            let to_ty = generator.push_type_declaration::<Uint8Type>(&[]).clone();
-
-            generator.build(&[GenericArg::Type(from_ty), GenericArg::Type(to_ty)])
-        };
-        static ref UPCAST_U16_U16: Program = {
-            let mut generator = SierraGenerator::<UpcastLibfunc>::default();
-
-            let from_ty = generator.push_type_declaration::<Uint16Type>(&[]).clone();
-            let to_ty = generator.push_type_declaration::<Uint16Type>(&[]).clone();
-
-            generator.build(&[GenericArg::Type(from_ty), GenericArg::Type(to_ty)])
-        };
-        static ref UPCAST_U16_U32: Program = {
-            let mut generator = SierraGenerator::<UpcastLibfunc>::default();
-
-            let from_ty = generator.push_type_declaration::<Uint16Type>(&[]).clone();
-            let to_ty = generator.push_type_declaration::<Uint32Type>(&[]).clone();
-
-            generator.build(&[GenericArg::Type(from_ty), GenericArg::Type(to_ty)])
-        };
-        static ref UPCAST_U16_U64: Program = {
-            let mut generator = SierraGenerator::<UpcastLibfunc>::default();
-
-            let from_ty = generator.push_type_declaration::<Uint16Type>(&[]).clone();
-            let to_ty = generator.push_type_declaration::<Uint64Type>(&[]).clone();
-
-            generator.build(&[GenericArg::Type(from_ty), GenericArg::Type(to_ty)])
-        };
-        static ref UPCAST_U16_U128: Program = {
-            let mut generator = SierraGenerator::<UpcastLibfunc>::default();
-
-            let from_ty = generator.push_type_declaration::<Uint16Type>(&[]).clone();
-            let to_ty = generator.push_type_declaration::<Uint128Type>(&[]).clone();
-
-            generator.build(&[GenericArg::Type(from_ty), GenericArg::Type(to_ty)])
-        };
-        static ref UPCAST_U32_U32: Program = {
-            let mut generator = SierraGenerator::<UpcastLibfunc>::default();
-
-            let from_ty = generator.push_type_declaration::<Uint32Type>(&[]).clone();
-            let to_ty = generator.push_type_declaration::<Uint32Type>(&[]).clone();
-
-            generator.build(&[GenericArg::Type(from_ty), GenericArg::Type(to_ty)])
-        };
-        static ref UPCAST_U32_U64: Program = {
-            let mut generator = SierraGenerator::<UpcastLibfunc>::default();
-
-            let from_ty = generator.push_type_declaration::<Uint32Type>(&[]).clone();
-            let to_ty = generator.push_type_declaration::<Uint64Type>(&[]).clone();
-
-            generator.build(&[GenericArg::Type(from_ty), GenericArg::Type(to_ty)])
-        };
-        static ref UPCAST_U32_U128: Program = {
-            let mut generator = SierraGenerator::<UpcastLibfunc>::default();
-
-            let from_ty = generator.push_type_declaration::<Uint32Type>(&[]).clone();
-            let to_ty = generator.push_type_declaration::<Uint128Type>(&[]).clone();
-
-            generator.build(&[GenericArg::Type(from_ty), GenericArg::Type(to_ty)])
-        };
-        static ref UPCAST_U64_U64: Program = {
-            let mut generator = SierraGenerator::<UpcastLibfunc>::default();
-
-            let from_ty = generator.push_type_declaration::<Uint64Type>(&[]).clone();
-            let to_ty = generator.push_type_declaration::<Uint64Type>(&[]).clone();
-
-            generator.build(&[GenericArg::Type(from_ty), GenericArg::Type(to_ty)])
-        };
-        static ref UPCAST_U64_U128: Program = {
-            let mut generator = SierraGenerator::<UpcastLibfunc>::default();
-
-            let from_ty = generator.push_type_declaration::<Uint64Type>(&[]).clone();
-            let to_ty = generator.push_type_declaration::<Uint128Type>(&[]).clone();
-
-            generator.build(&[GenericArg::Type(from_ty), GenericArg::Type(to_ty)])
-        };
-        static ref UPCAST_U128_U128: Program = {
-            let mut generator = SierraGenerator::<UpcastLibfunc>::default();
-
-            let from_ty = generator.push_type_declaration::<Uint128Type>(&[]).clone();
-            let to_ty = generator.push_type_declaration::<Uint128Type>(&[]).clone();
-
-            generator.build(&[GenericArg::Type(from_ty), GenericArg::Type(to_ty)])
-        };
-        static ref UPCAST_BYTES31_BYTES31: Program = {
-            let mut generator = SierraGenerator::<UpcastLibfunc>::default();
-
-            let from_ty = generator.push_type_declaration::<Bytes31Type>(&[]).clone();
-            let to_ty = generator.push_type_declaration::<Bytes31Type>(&[]).clone();
-
-            generator.build(&[GenericArg::Type(from_ty), GenericArg::Type(to_ty)])
-        };
-        static ref UPCAST_U128_BYTES31: Program = {
-            let mut generator = SierraGenerator::<UpcastLibfunc>::default();
-
-            let from_ty = generator.push_type_declaration::<Uint128Type>(&[]).clone();
-            let to_ty = generator.push_type_declaration::<Bytes31Type>(&[]).clone();
-
-            generator.build(&[GenericArg::Type(from_ty), GenericArg::Type(to_ty)])
-        };
-        static ref UPCAST_U64_BYTES31: Program = {
-            let mut generator = SierraGenerator::<UpcastLibfunc>::default();
-
-            let from_ty = generator.push_type_declaration::<Uint64Type>(&[]).clone();
-            let to_ty = generator.push_type_declaration::<Bytes31Type>(&[]).clone();
-
-            generator.build(&[GenericArg::Type(from_ty), GenericArg::Type(to_ty)])
-        };
-        static ref UPCAST_U32_BYTES31: Program = {
-            let mut generator = SierraGenerator::<UpcastLibfunc>::default();
-
-            let from_ty = generator.push_type_declaration::<Uint32Type>(&[]).clone();
-            let to_ty = generator.push_type_declaration::<Bytes31Type>(&[]).clone();
-
-            generator.build(&[GenericArg::Type(from_ty), GenericArg::Type(to_ty)])
-        };
-        static ref UPCAST_U16_BYTES31: Program = {
-            let mut generator = SierraGenerator::<UpcastLibfunc>::default();
-
-            let from_ty = generator.push_type_declaration::<Uint16Type>(&[]).clone();
-            let to_ty = generator.push_type_declaration::<Bytes31Type>(&[]).clone();
-
-            generator.build(&[GenericArg::Type(from_ty), GenericArg::Type(to_ty)])
-        };
-        static ref UPCAST_U8_BYTES31: Program = {
-            let mut generator = SierraGenerator::<UpcastLibfunc>::default();
-
-            let from_ty = generator.push_type_declaration::<Uint8Type>(&[]).clone();
-            let to_ty = generator.push_type_declaration::<Bytes31Type>(&[]).clone();
-
-            generator.build(&[GenericArg::Type(from_ty), GenericArg::Type(to_ty)])
+                generator.build(&[GenericArg::Type(from_ty), GenericArg::Type(to_ty)])
+            }
         };
     }
 
     #[test]
     fn downcast() {
-        let result = run_sierra_program(&DOWNCAST_U128_U8, &[u128::MAX.into()]).return_value;
+        let result = run_sierra_program(&cast!(Uint128Type, Uint8Type, false), &[u128::MAX.into()])
+            .return_value;
         assert_eq!(result, jit_enum!(1, jit_struct!()));
-        let result = run_sierra_program(&DOWNCAST_U128_U16, &[u128::MAX.into()]).return_value;
+        let result =
+            run_sierra_program(&cast!(Uint128Type, Uint16Type, false), &[u128::MAX.into()])
+                .return_value;
         assert_eq!(result, jit_enum!(1, jit_struct!()));
-        let result = run_sierra_program(&DOWNCAST_U128_U32, &[u128::MAX.into()]).return_value;
+        let result =
+            run_sierra_program(&cast!(Uint128Type, Uint32Type, false), &[u128::MAX.into()])
+                .return_value;
         assert_eq!(result, jit_enum!(1, jit_struct!()));
-        let result = run_sierra_program(&DOWNCAST_U128_U64, &[u128::MAX.into()]).return_value;
+        let result =
+            run_sierra_program(&cast!(Uint128Type, Uint64Type, false), &[u128::MAX.into()])
+                .return_value;
         assert_eq!(result, jit_enum!(1, jit_struct!()));
-        let result = run_sierra_program(&DOWNCAST_U128_U128, &[u128::MAX.into()]).return_value;
+        let result =
+            run_sierra_program(&cast!(Uint128Type, Uint128Type, false), &[u128::MAX.into()])
+                .return_value;
         assert_eq!(result, jit_enum!(1, jit_struct!()));
-        let result = run_sierra_program(&DOWNCAST_U64_U8, &[u64::MAX.into()]).return_value;
+        let result = run_sierra_program(&cast!(Uint64Type, Uint8Type, false), &[u64::MAX.into()])
+            .return_value;
         assert_eq!(result, jit_enum!(1, jit_struct!()));
-        let result = run_sierra_program(&DOWNCAST_U64_U16, &[u64::MAX.into()]).return_value;
+        let result = run_sierra_program(&cast!(Uint64Type, Uint16Type, false), &[u64::MAX.into()])
+            .return_value;
         assert_eq!(result, jit_enum!(1, jit_struct!()));
-        let result = run_sierra_program(&DOWNCAST_U64_U32, &[u64::MAX.into()]).return_value;
+        let result = run_sierra_program(&cast!(Uint64Type, Uint32Type, false), &[u64::MAX.into()])
+            .return_value;
         assert_eq!(result, jit_enum!(1, jit_struct!()));
-        let result = run_sierra_program(&DOWNCAST_U64_U64, &[u64::MAX.into()]).return_value;
+        let result = run_sierra_program(&cast!(Uint64Type, Uint64Type, false), &[u64::MAX.into()])
+            .return_value;
         assert_eq!(result, jit_enum!(1, jit_struct!()));
-        let result = run_sierra_program(&DOWNCAST_U32_U8, &[u32::MAX.into()]).return_value;
+        let result = run_sierra_program(&cast!(Uint32Type, Uint8Type, false), &[u32::MAX.into()])
+            .return_value;
         assert_eq!(result, jit_enum!(1, jit_struct!()));
-        let result = run_sierra_program(&DOWNCAST_U32_U16, &[u32::MAX.into()]).return_value;
+        let result = run_sierra_program(&cast!(Uint32Type, Uint16Type, false), &[u32::MAX.into()])
+            .return_value;
         assert_eq!(result, jit_enum!(1, jit_struct!()));
-        let result = run_sierra_program(&DOWNCAST_U32_U32, &[u32::MAX.into()]).return_value;
+        let result = run_sierra_program(&cast!(Uint32Type, Uint32Type, false), &[u32::MAX.into()])
+            .return_value;
         assert_eq!(result, jit_enum!(1, jit_struct!()));
-        let result = run_sierra_program(&DOWNCAST_U16_U8, &[u16::MAX.into()]).return_value;
+        let result = run_sierra_program(&cast!(Uint16Type, Uint8Type, false), &[u16::MAX.into()])
+            .return_value;
         assert_eq!(result, jit_enum!(1, jit_struct!()));
-        let result = run_sierra_program(&DOWNCAST_U16_U16, &[u16::MAX.into()]).return_value;
+        let result = run_sierra_program(&cast!(Uint16Type, Uint16Type, false), &[u16::MAX.into()])
+            .return_value;
         assert_eq!(result, jit_enum!(1, jit_struct!()));
-        let result = run_sierra_program(&DOWNCAST_U8_U8, &[u8::MAX.into()]).return_value;
+        let result =
+            run_sierra_program(&cast!(Uint8Type, Uint8Type, false), &[u8::MAX.into()]).return_value;
         assert_eq!(result, jit_enum!(1, jit_struct!()));
     }
 
     #[test]
     fn upcast() {
-        let result = run_sierra_program(&UPCAST_U128_U128, &[u128::MAX.into()]).return_value;
-        assert_eq!(result, u128::MAX.into());
-        let result = run_sierra_program(&UPCAST_U64_U128, &[u64::MAX.into()]).return_value;
-        assert_eq!(result, (u64::MAX as u128).into());
-        let result = run_sierra_program(&UPCAST_U64_U64, &[u64::MAX.into()]).return_value;
-        assert_eq!(result, u64::MAX.into());
-        let result = run_sierra_program(&UPCAST_U32_U128, &[u32::MAX.into()]).return_value;
-        assert_eq!(result, (u32::MAX as u128).into());
-        let result = run_sierra_program(&UPCAST_U32_U64, &[u32::MAX.into()]).return_value;
-        assert_eq!(result, (u32::MAX as u64).into());
-        let result = run_sierra_program(&UPCAST_U32_U32, &[u32::MAX.into()]).return_value;
-        assert_eq!(result, u32::MAX.into());
-        let result = run_sierra_program(&UPCAST_U16_U128, &[u16::MAX.into()]).return_value;
-        assert_eq!(result, (u16::MAX as u128).into());
-        let result = run_sierra_program(&UPCAST_U16_U64, &[u16::MAX.into()]).return_value;
-        assert_eq!(result, (u16::MAX as u64).into());
-        let result = run_sierra_program(&UPCAST_U16_U32, &[u16::MAX.into()]).return_value;
-        assert_eq!(result, (u16::MAX as u32).into());
-        let result = run_sierra_program(&UPCAST_U16_U16, &[u16::MAX.into()]).return_value;
-        assert_eq!(result, u16::MAX.into());
-        let result = run_sierra_program(&UPCAST_U8_U128, &[u8::MAX.into()]).return_value;
-        assert_eq!(result, (u8::MAX as u128).into());
-        let result = run_sierra_program(&UPCAST_U8_U64, &[u8::MAX.into()]).return_value;
-        assert_eq!(result, (u8::MAX as u64).into());
-        let result = run_sierra_program(&UPCAST_U8_U32, &[u8::MAX.into()]).return_value;
-        assert_eq!(result, (u8::MAX as u32).into());
-        let result = run_sierra_program(&UPCAST_U8_U16, &[u8::MAX.into()]).return_value;
-        assert_eq!(result, (u8::MAX as u16).into());
-        let result = run_sierra_program(&UPCAST_U8_U8, &[u8::MAX.into()]).return_value;
-        assert_eq!(result, u8::MAX.into());
         let result =
-            run_sierra_program(&UPCAST_BYTES31_BYTES31, &[Value::Bytes31([0xFF; 31])]).return_value;
+            run_sierra_program(&cast!(Uint128Type, Uint128Type, true), &[u128::MAX.into()])
+                .return_value;
+        assert_eq!(result, u128::MAX.into());
+        let result = run_sierra_program(&cast!(Uint64Type, Uint128Type, true), &[u64::MAX.into()])
+            .return_value;
+        assert_eq!(result, (u64::MAX as u128).into());
+        let result = run_sierra_program(&cast!(Uint64Type, Uint64Type, true), &[u64::MAX.into()])
+            .return_value;
+        assert_eq!(result, u64::MAX.into());
+        let result = run_sierra_program(&cast!(Uint32Type, Uint128Type, true), &[u32::MAX.into()])
+            .return_value;
+        assert_eq!(result, (u32::MAX as u128).into());
+        let result = run_sierra_program(&cast!(Uint32Type, Uint64Type, true), &[u32::MAX.into()])
+            .return_value;
+        assert_eq!(result, (u32::MAX as u64).into());
+        let result = run_sierra_program(&cast!(Uint32Type, Uint32Type, true), &[u32::MAX.into()])
+            .return_value;
+        assert_eq!(result, u32::MAX.into());
+        let result = run_sierra_program(&cast!(Uint16Type, Uint128Type, true), &[u16::MAX.into()])
+            .return_value;
+        assert_eq!(result, (u16::MAX as u128).into());
+        let result = run_sierra_program(&cast!(Uint16Type, Uint64Type, true), &[u16::MAX.into()])
+            .return_value;
+        assert_eq!(result, (u16::MAX as u64).into());
+        let result = run_sierra_program(&cast!(Uint16Type, Uint32Type, true), &[u16::MAX.into()])
+            .return_value;
+        assert_eq!(result, (u16::MAX as u32).into());
+        let result = run_sierra_program(&cast!(Uint16Type, Uint16Type, true), &[u16::MAX.into()])
+            .return_value;
+        assert_eq!(result, u16::MAX.into());
+        let result = run_sierra_program(&cast!(Uint8Type, Uint128Type, true), &[u8::MAX.into()])
+            .return_value;
+        assert_eq!(result, (u8::MAX as u128).into());
+        let result =
+            run_sierra_program(&cast!(Uint8Type, Uint64Type, true), &[u8::MAX.into()]).return_value;
+        assert_eq!(result, (u8::MAX as u64).into());
+        let result =
+            run_sierra_program(&cast!(Uint8Type, Uint32Type, true), &[u8::MAX.into()]).return_value;
+        assert_eq!(result, (u8::MAX as u32).into());
+        let result =
+            run_sierra_program(&cast!(Uint8Type, Uint16Type, true), &[u8::MAX.into()]).return_value;
+        assert_eq!(result, (u8::MAX as u16).into());
+        let result =
+            run_sierra_program(&cast!(Uint8Type, Uint8Type, true), &[u8::MAX.into()]).return_value;
+        assert_eq!(result, u8::MAX.into());
+        let result = run_sierra_program(
+            &cast!(Bytes31Type, Bytes31Type, true),
+            &[Value::Bytes31([0xFF; 31])],
+        )
+        .return_value;
         assert_eq!(result, Value::Bytes31([0xFF; 31]));
-        let result = run_sierra_program(&UPCAST_U128_BYTES31, &[u128::MAX.into()]).return_value;
+        let result =
+            run_sierra_program(&cast!(Uint128Type, Bytes31Type, true), &[u128::MAX.into()])
+                .return_value;
         assert_eq!(
             result,
             Value::Bytes31([
@@ -808,7 +574,8 @@ mod test {
                 0,
             ])
         );
-        let result = run_sierra_program(&UPCAST_U64_BYTES31, &[u64::MAX.into()]).return_value;
+        let result = run_sierra_program(&cast!(Uint64Type, Bytes31Type, true), &[u64::MAX.into()])
+            .return_value;
         assert_eq!(
             result,
             Value::Bytes31([
@@ -845,7 +612,8 @@ mod test {
                 0,
             ])
         );
-        let result = run_sierra_program(&UPCAST_U32_BYTES31, &[u32::MAX.into()]).return_value;
+        let result = run_sierra_program(&cast!(Uint32Type, Bytes31Type, true), &[u32::MAX.into()])
+            .return_value;
         assert_eq!(
             result,
             Value::Bytes31([
@@ -882,7 +650,8 @@ mod test {
                 0,
             ])
         );
-        let result = run_sierra_program(&UPCAST_U16_BYTES31, &[u16::MAX.into()]).return_value;
+        let result = run_sierra_program(&cast!(Uint16Type, Bytes31Type, true), &[u16::MAX.into()])
+            .return_value;
         assert_eq!(
             result,
             Value::Bytes31([
@@ -919,7 +688,8 @@ mod test {
                 0,
             ])
         );
-        let result = run_sierra_program(&UPCAST_U8_BYTES31, &[u8::MAX.into()]).return_value;
+        let result = run_sierra_program(&cast!(Uint8Type, Bytes31Type, true), &[u8::MAX.into()])
+            .return_value;
         assert_eq!(
             result,
             Value::Bytes31([

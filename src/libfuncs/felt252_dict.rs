@@ -265,7 +265,9 @@ mod test {
             debug_name: None,
         };
 
-        run_sierra_program(&program, &[dict]);
+        let result = run_sierra_program(&program, &[dict.clone()]).return_value;
+
+        assert_eq!(result, dict);
     }
 
     #[test]
