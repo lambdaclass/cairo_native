@@ -231,7 +231,6 @@ mod test {
 
             generator.build(&[GenericArg::Type(u32_ty)])
         };
-        eprintln!("{program}");
 
         let dict = Value::Felt252Dict {
             value: [

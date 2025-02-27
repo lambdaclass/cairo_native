@@ -191,7 +191,7 @@ pub fn build_finalize<'ctx, 'this>(
 #[cfg(test)]
 mod test {
     use cairo_lang_sierra::{
-        extensions::{felt252_dict::Felt252DictEntryFinalizeLibfunc, int::unsigned::Uint32Type},
+        extensions::{felt252_dict::{Felt252DictEntryFinalizeLibfunc, Felt252DictEntryGetLibfunc}, int::unsigned::Uint32Type},
         program::GenericArg,
     };
 
@@ -230,7 +230,7 @@ mod test {
         };
 
         let dict = Value::Felt252DictEntry {
-            dict: [].into(),
+            dict: [(2.into(),0.into())].into(),
             key: 2.into(),
         };
 
@@ -246,33 +246,49 @@ mod test {
 
     #[test]
     fn run_dict_insert_multiple() {
-        let program = load_cairo!(
-            use traits::Default;
-            use dict::Felt252DictTrait;
+        let program_insert = {
+            let mut generator = SierraGenerator::<Felt252DictEntryFinalizeLibfunc>::default();
 
-            fn run_test() -> u32 {
-                let mut dict: Felt252Dict<u32> = Default::default();
-                dict.insert(2, 1_u32);
-                dict.insert(3, 1_u32);
-                dict.insert(4, 1_u32);
-                dict.insert(5, 1_u32);
-                dict.insert(6, 1_u32);
-                dict.insert(7, 1_u32);
-                dict.insert(8, 1_u32);
-                dict.insert(9, 1_u32);
-                dict.insert(10, 1_u32);
-                dict.insert(11, 1_u32);
-                dict.insert(12, 1_u32);
-                dict.insert(13, 1_u32);
-                dict.insert(14, 1_u32);
-                dict.insert(15, 1_u32);
-                dict.insert(16, 1_u32);
-                dict.insert(17, 1_u32);
-                dict.insert(18, 1345432_u32);
-                dict.get(18)
-            }
-        );
+            let u32_ty = generator.push_type_declaration::<Uint32Type>(&[]).clone();
 
-        run_program_assert_output(&program, "run_test", &[], 1345432_u32.into());
+            generator.build(&[GenericArg::Type(u32_ty)])
+        };
+        let program_get = {
+            let mut generator = SierraGenerator::<Felt252DictEntryGetLibfunc>::default();
+
+            let u32_ty = generator.push_type_declaration::<Uint32Type>(&[]).clone();
+
+            generator.build(&[GenericArg::Type(u32_ty)])
+        };
+        let dict_entry = Value::Felt252DictEntry { dict: [(0.into(), 0.into())].into(), key: 0.into() };
+        let mut result_dict = {
+            let Value::Felt252Dict { mut value, ..} = run_sierra_program(&program_insert, &[dict_entry, Value::Uint32(1)]).return_value else {
+                panic!("Should be a Felt252Dict");
+            };
+
+            // prepare next entry
+            value.insert((1).into(), 0.into());
+
+            value
+        };
+        
+        for i in 1..=16 {
+            let dict_entry = Value::Felt252DictEntry { dict: result_dict, key: i.into() };
+            result_dict = {
+                let Value::Felt252Dict {mut value, ..} = run_sierra_program(&program_insert, &[dict_entry, Value::Uint32(1)]).return_value else {
+                    panic!("Should be a Felt252Dict");
+                };
+                
+                // prepare next entry
+                value.insert((i + 1).into(), 0.into());
+
+                value
+            };
+        }
+
+        let dict_entry = Value::Felt252DictEntry { dict: result_dict, key: 17.into() };
+        let result = run_sierra_program(&program_insert, &[dict_entry, Value::Uint32(1345432_u32)]).return_value;
+
+        run_sierra_program(&program_get,&[result, Value::Felt252(17.into())]);
     }
 }
