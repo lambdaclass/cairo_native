@@ -1313,10 +1313,9 @@ mod test {
     use cairo_lang_sierra::{
         extensions::{
             array::{
-                ArrayAppendLibfunc, ArrayGetLibfunc, ArrayLenLibfunc, ArrayNewLibfunc,
-                ArrayPopFrontConsumeLibfunc, ArrayPopFrontLibfunc, ArraySliceLibfunc,
-                ArraySnapshotMultiPopBackLibfunc, ArraySnapshotMultiPopFrontLibfunc,
-                ArraySnapshotPopBackLibfunc, ArrayType,
+                ArrayAppendLibfunc, ArrayGetLibfunc, ArrayLenLibfunc, ArrayPopFrontConsumeLibfunc,
+                ArrayPopFrontLibfunc, ArraySliceLibfunc, ArraySnapshotMultiPopBackLibfunc,
+                ArraySnapshotMultiPopFrontLibfunc, ArraySnapshotPopBackLibfunc, ArrayType,
             },
             felt252::Felt252Type,
             int::unsigned::Uint32Type,

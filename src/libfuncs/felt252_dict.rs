@@ -231,6 +231,7 @@ mod test {
 
             generator.build(&[GenericArg::Type(u32_ty)])
         };
+        eprintln!("{program}");
 
         let dict = Value::Felt252Dict {
             value: [
@@ -249,10 +250,10 @@ mod test {
                 (Felt252::from(2), 1u32.into()),
             ]
             .into(),
-            entry_key: 2.into(),
+            key: 2.into(),
         };
 
-        assert_eq!(jit_struct!(dict_entry, 1u32.into()), result);
+        assert_eq!(result, jit_struct!(dict_entry, 1u32.into()));
     }
 
     #[test]

@@ -156,11 +156,12 @@ pub struct FeltDict {
     pub count: u64,
 }
 
+#[cfg(test)]
 #[repr(C)]
 #[derive(Debug)]
-pub struct FeltDictEntry<'a> {
+pub struct FeltDictEntry {
     pub dict: *const FeltDict,
-    pub entry_key: &'a [u8],
+    pub value_ptr: *mut (),
 }
 
 impl Clone for FeltDict {

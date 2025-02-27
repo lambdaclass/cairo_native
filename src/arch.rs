@@ -1,7 +1,6 @@
 use crate::{
     error::Result,
     native_panic,
-    runtime::FeltDictEntry,
     starknet::{ArrayAbi, Secp256k1Point, Secp256r1Point},
     types::TypeBuilder,
     utils::libc_malloc,
@@ -193,6 +192,7 @@ impl AbiArgument for ValueWithInfoWrapper<'_> {
                     .as_ptr()
                     .to_bytes(buffer, find_dict_overrides)?
             }
+            #[cfg(test)]
             (Value::Felt252DictEntry { .. }, CoreTypeConcrete::Felt252DictEntry(_)) => {
                 let abi_ptr = self.value.to_ptr(
                     self.arena,
@@ -201,11 +201,10 @@ impl AbiArgument for ValueWithInfoWrapper<'_> {
                     find_dict_overrides,
                 )?;
 
-                let abi = unsafe { abi_ptr.cast::<FeltDictEntry>().as_ref() };
+                let abi = unsafe { abi_ptr.cast::<crate::runtime::FeltDictEntry>().as_ref() };
 
                 abi.dict.to_bytes(buffer, find_dict_overrides)?;
-                abi.entry_key.as_ptr()
-                    .to_bytes(buffer, find_dict_overrides)?;
+                abi.value_ptr.to_bytes(buffer, find_dict_overrides)?;
             }
             (
                 Value::Secp256K1Point(Secp256k1Point { x, y, is_infinity }),

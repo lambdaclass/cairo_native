@@ -5,7 +5,7 @@
 use crate::{
     error::{panic::ToNativeAssertError, CompilerError, Error},
     native_assert, native_panic,
-    runtime::{FeltDict, FeltDictEntry},
+    runtime::FeltDict,
     starknet::{Secp256k1Point, Secp256r1Point},
     types::TypeBuilder,
     utils::{
@@ -43,7 +43,8 @@ use std::{
 /// The debug_name field on some variants is `Some` when receiving a [`Value`] as a result.
 ///
 /// A Boxed value or a non-null Nullable value is returned with it's inner value.
-#[derive(Clone, Educe, serde::Serialize, serde::Deserialize)]
+#[derive(Clone, Educe)]
+#[cfg_attr(not(test), derive(serde::Serialize, serde::Deserialize))]
 #[educe(Debug, Eq, PartialEq)]
 pub enum Value {
     Felt252(#[educe(Debug(method(std::fmt::Display::fmt)))] Felt),
@@ -66,9 +67,10 @@ pub enum Value {
         #[educe(PartialEq(ignore))]
         debug_name: Option<String>,
     },
+    #[cfg(test)]
     Felt252DictEntry {
         dict: HashMap<Felt, Self>,
-        entry_key: Felt,
+        key: Felt,
     },
     Uint8(u8),
     Uint16(u16),
@@ -86,7 +88,7 @@ pub enum Value {
     Secp256R1Point(Secp256r1Point),
     BoundedInt {
         value: Felt,
-        #[serde(with = "range_serde")]
+        #[cfg_attr(not(test), serde(with = "range_serde"))]
         range: Range,
     },
     IntRange {
@@ -472,7 +474,11 @@ impl Value {
                         )))?
                     }
                 }
-                Self::Felt252DictEntry { dict, entry_key } => {
+                #[cfg(test)]
+                Self::Felt252DictEntry {
+                    dict,
+                    key: entry_key,
+                } => {
                     if let CoreTypeConcrete::Felt252DictEntry(info) =
                         Self::resolve_type(ty, registry)?
                     {
@@ -498,6 +504,7 @@ impl Value {
                             count: 0,
                         };
 
+                        let mut value_ptr = None;
                         for (key, value) in dict.iter() {
                             let key = key.to_bytes_le();
                             let value =
@@ -505,6 +512,14 @@ impl Value {
 
                             let index = felt_dict.mappings.len();
                             felt_dict.mappings.insert(key, index);
+
+                            if value_ptr.is_none() && key == entry_key.to_bytes_le() {
+                                value_ptr = Some(
+                                    felt_dict
+                                        .elements
+                                        .byte_add(elem_layout.pad_to_align().size() * index),
+                                );
+                            }
 
                             std::ptr::copy_nonoverlapping(
                                 value.cast::<u8>().as_ptr(),
@@ -516,17 +531,12 @@ impl Value {
                             );
                         }
 
-                        let ptr =
-                            arena.alloc_layout(Layout::new::<FeltDictEntry>()).as_ptr() as *mut _;
-
-                        let felt_dict_entry = FeltDictEntry {
+                        let felt_dict_entry = crate::runtime::FeltDictEntry {
                             dict: Rc::into_raw(Rc::new(felt_dict)),
-                            entry_key: &entry_key.to_bytes_le(),
+                            value_ptr: value_ptr.unwrap(),
                         };
 
-                        std::ptr::write(ptr, felt_dict_entry);
-
-                        NonNull::new_unchecked(ptr as *mut ()).cast()
+                        NonNull::new_unchecked(arena.alloc(felt_dict_entry) as *mut _).cast()
                     } else {
                         Err(Error::UnexpectedValue(format!(
                             "expected value of type {:?} but got a felt dict entry",
@@ -911,6 +921,7 @@ impl Value {
                     for member_ty in &info.members {
                         let member = registry.get_type(member_ty)?;
                         let member_layout = member.layout(registry)?;
+                        dbg!((member_ty, member_layout));
 
                         let (new_layout, offset) = match layout {
                             Some(layout) => layout.extend(member_layout)?,
@@ -974,38 +985,41 @@ impl Value {
                         debug_name: type_id.debug_name.as_ref().map(|x| x.to_string()),
                     }
                 }
+                #[cfg(test)]
                 CoreTypeConcrete::Felt252DictEntry(info) => {
-                    println!("from ptr");
-                    let dict_entry = ptr.cast::<FeltDictEntry>().read();
+                    let dict_entry = ptr.cast::<crate::runtime::FeltDictEntry>().read();
                     let dict = Rc::from_raw(dict_entry.dict);
 
                     let mut map = HashMap::with_capacity(dict.mappings.len());
 
+                    let mut entry_key = None;
                     for (&key, &index) in dict.mappings.iter() {
                         let mut key = key;
-
                         key[31] &= 0x0F;
 
                         let key = Felt::from_bytes_le(&key);
+                        if entry_key.is_none()
+                            && dict_entry.value_ptr
+                                == dict
+                                    .elements
+                                    .byte_add(dict.layout.pad_to_align().size() * index)
+                        {
+                            entry_key = Some(key);
+                        }
 
                         map.insert(
                             key,
                             Self::from_ptr(
-                                NonNull::new(
+                                NonNull::new_unchecked(
                                     dict.elements
                                         .byte_add(dict.layout.pad_to_align().size() * index),
-                                )
-                                .to_native_assert_error(
-                                    "tried to make a non-null ptr out of a null one",
-                                )?,
+                                ),
                                 &info.ty,
                                 registry,
                                 should_drop,
                             )?,
                         );
                     }
-
-                    let entry_key = Felt::from_bytes_le_slice(dict_entry.entry_key);
 
                     if should_drop {
                         drop(dict);
@@ -1015,12 +1029,13 @@ impl Value {
 
                     Value::Felt252DictEntry {
                         dict: map,
-                        entry_key,
+                        key: entry_key.unwrap(),
                     }
                 }
-                // CoreTypeConcrete::Felt252DictEntry(_) => {
-                //     native_panic!("unimplemented: should be impossible to return")
-                // }
+                #[cfg(not(test))]
+                CoreTypeConcrete::Felt252DictEntry(_) => {
+                    native_panic!("unimplemented: should be impossible to return")
+                }
                 CoreTypeConcrete::Pedersen(_)
                 | CoreTypeConcrete::Poseidon(_)
                 | CoreTypeConcrete::Bitwise(_)
@@ -1993,6 +2008,7 @@ mod test {
     }
 }
 
+#[cfg(not(test))]
 mod range_serde {
     use std::fmt;
 

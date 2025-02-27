@@ -231,7 +231,7 @@ mod test {
 
         let dict = Value::Felt252DictEntry {
             dict: [].into(),
-            entry_key: 2.into(),
+            key: 2.into(),
         };
 
         let result = run_sierra_program(&program, &[dict, Value::Uint32(3)]).return_value;
