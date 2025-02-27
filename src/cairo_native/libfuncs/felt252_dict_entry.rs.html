@@ -280,7 +280,26 @@
 <a href="#279" id="279">279</a>
 <a href="#280" id="280">280</a>
 <a href="#281" id="281">281</a>
-<a href="#282" id="282">282</a></pre></div><pre class="rust"><code><span class="doccomment">//! # `Felt` dictionary entry libfuncs
+<a href="#282" id="282">282</a>
+<a href="#283" id="283">283</a>
+<a href="#284" id="284">284</a>
+<a href="#285" id="285">285</a>
+<a href="#286" id="286">286</a>
+<a href="#287" id="287">287</a>
+<a href="#288" id="288">288</a>
+<a href="#289" id="289">289</a>
+<a href="#290" id="290">290</a>
+<a href="#291" id="291">291</a>
+<a href="#292" id="292">292</a>
+<a href="#293" id="293">293</a>
+<a href="#294" id="294">294</a>
+<a href="#295" id="295">295</a>
+<a href="#296" id="296">296</a>
+<a href="#297" id="297">297</a>
+<a href="#298" id="298">298</a>
+<a href="#299" id="299">299</a>
+<a href="#300" id="300">300</a>
+<a href="#301" id="301">301</a></pre></div><pre class="rust"><code><span class="doccomment">//! # `Felt` dictionary entry libfuncs
 
 </span><span class="kw">use </span><span class="kw">super</span>::LibfuncHelper;
 <span class="kw">use crate</span>::{
@@ -370,7 +389,7 @@
             .alloca1(context, location, key_ty, key_layout.align())<span class="question-mark">?</span>;
     entry.store(context, location, entry_key_ptr, entry_key)<span class="question-mark">?</span>;
 
-    <span class="kw">let </span>(is_present, value_ptr) = metadata
+    <span class="kw">let </span>(dict_ptr, is_present, value_ptr) = metadata
         .get_mut::&lt;RuntimeBindingsMeta&gt;()
         .ok_or(Error::MissingMetadata)<span class="question-mark">?
         </span>.dict_get(context, helper, entry, dict_ptr, entry_key_ptr, location)<span class="question-mark">?</span>;
@@ -473,7 +492,7 @@
 
 <span class="attr">#[cfg(test)]
 </span><span class="kw">mod </span>test {
-    <span class="kw">use </span><span class="kw">crate</span>::utils::test::{jit_dict, load_cairo, run_program_assert_output};
+    <span class="kw">use </span><span class="kw">crate</span>::utils::test::{jit_dict, load_cairo, run_program, run_program_assert_output};
 
     <span class="attr">#[test]
     </span><span class="kw">fn </span>run_dict_insert() {
@@ -560,6 +579,25 @@
         );
 
         run_program_assert_output(<span class="kw-2">&amp;</span>program, <span class="string">"run_test"</span>, <span class="kw-2">&amp;</span>[], <span class="number">1345432_u32</span>.into());
+    }
+
+    <span class="attr">#[test]
+    </span><span class="kw">fn </span>run_dict_clone_ptr_update() {
+        <span class="kw">let </span>program = <span class="macro">load_cairo!</span>(
+            <span class="kw">use </span>core::dict::Felt252Dict;
+
+            <span class="kw">fn </span>run_test() {
+                <span class="kw">let </span><span class="kw-2">mut </span>dict: Felt252Dict&lt;u64&gt; = Default::default();
+
+                <span class="kw">let </span>snapshot = @dict;
+                dict.insert(<span class="number">1</span>, <span class="number">1</span>);
+                drop(snapshot);
+
+                dict.insert(<span class="number">2</span>, <span class="number">2</span>);
+            }
+        );
+
+        run_program(<span class="kw-2">&amp;</span>program, <span class="string">"run_test"</span>, <span class="kw-2">&amp;</span>[]);
     }
 }
 </code></pre></div></section></main></body></html>

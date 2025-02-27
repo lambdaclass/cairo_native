@@ -1294,11 +1294,11 @@
 /// This function is intended to be called from MLIR, deals with pointers, and is therefore
 /// definitely unsafe to use manually.
 </span><span class="kw">pub unsafe extern </span><span class="string">"C" </span><span class="kw">fn </span>cairo_native__dict_get(
-    dict: <span class="kw-2">*const </span>FeltDict,
+    dict_ptr: <span class="kw-2">*mut *const </span>FeltDict,
     key: <span class="kw-2">&amp;</span>[u8; <span class="number">32</span>],
     value_ptr: <span class="kw-2">*mut *mut </span>c_void,
 ) -&gt; c_int {
-    <span class="kw">let </span><span class="kw-2">mut </span>dict_rc = Rc::from_raw(dict);
+    <span class="kw">let </span><span class="kw-2">mut </span>dict_rc = Rc::from_raw(dict_ptr.read());
     <span class="kw">let </span>dict = Rc::make_mut(<span class="kw-2">&amp;mut </span>dict_rc);
 
     <span class="kw">let </span>num_mappings = dict.mappings.len();
@@ -1331,7 +1331,7 @@
         .cast();
 
     dict.count += <span class="number">1</span>;
-    forget(dict_rc);
+    dict_ptr.write(Rc::into_raw(dict_rc));
 
     is_present <span class="kw">as </span>c_int
 }
@@ -1857,7 +1857,7 @@
 
     <span class="attr">#[test]
     </span><span class="kw">fn </span>test_dict() {
-        <span class="kw">let </span>dict = <span class="kw">unsafe </span>{
+        <span class="kw">let </span><span class="kw-2">mut </span>dict = <span class="kw">unsafe </span>{
             cairo_native__dict_new(
                 size_of::&lt;u64&gt;() <span class="kw">as </span>u64,
                 align_of::&lt;u64&gt;() <span class="kw">as </span>u64,
@@ -1870,14 +1870,14 @@
         <span class="kw">let </span><span class="kw-2">mut </span>ptr = ptr::null_mut::&lt;u64&gt;();
 
         <span class="macro">assert_eq!</span>(
-            <span class="kw">unsafe </span>{ cairo_native__dict_get(dict, <span class="kw-2">&amp;</span>key, (<span class="kw-2">&amp;</span>raw <span class="kw-2">mut </span>ptr).cast()) },
+            <span class="kw">unsafe </span>{ cairo_native__dict_get(<span class="kw-2">&amp;mut </span>dict, <span class="kw-2">&amp;</span>key, (<span class="kw-2">&amp;</span>raw <span class="kw-2">mut </span>ptr).cast()) },
             <span class="number">0</span>,
         );
         <span class="macro">assert!</span>(!ptr.is_null());
         <span class="kw">unsafe </span>{ <span class="kw-2">*</span>ptr = <span class="number">24 </span>};
 
         <span class="macro">assert_eq!</span>(
-            <span class="kw">unsafe </span>{ cairo_native__dict_get(dict, <span class="kw-2">&amp;</span>key, (<span class="kw-2">&amp;</span>raw <span class="kw-2">mut </span>ptr).cast()) },
+            <span class="kw">unsafe </span>{ cairo_native__dict_get(<span class="kw-2">&amp;mut </span>dict, <span class="kw-2">&amp;</span>key, (<span class="kw-2">&amp;</span>raw <span class="kw-2">mut </span>ptr).cast()) },
             <span class="number">1</span>,
         );
         <span class="macro">assert!</span>(!ptr.is_null());
@@ -1887,11 +1887,11 @@
         <span class="kw">let </span>refund = <span class="kw">unsafe </span>{ cairo_native__dict_gas_refund(dict) };
         <span class="macro">assert_eq!</span>(refund, <span class="number">4050</span>);
 
-        <span class="kw">let </span>cloned_dict = <span class="kw">unsafe </span>{ cairo_native__dict_dup(<span class="kw-2">&amp;*</span>dict) };
+        <span class="kw">let </span><span class="kw-2">mut </span>cloned_dict = <span class="kw">unsafe </span>{ cairo_native__dict_dup(dict) };
         <span class="kw">unsafe </span>{ cairo_native__dict_drop(dict) };
 
         <span class="macro">assert_eq!</span>(
-            <span class="kw">unsafe </span>{ cairo_native__dict_get(cloned_dict, <span class="kw-2">&amp;</span>key, (<span class="kw-2">&amp;</span>raw <span class="kw-2">mut </span>ptr).cast()) },
+            <span class="kw">unsafe </span>{ cairo_native__dict_get(<span class="kw-2">&amp;mut </span>cloned_dict, <span class="kw-2">&amp;</span>key, (<span class="kw-2">&amp;</span>raw <span class="kw-2">mut </span>ptr).cast()) },
             <span class="number">1</span>,
         );
         <span class="macro">assert!</span>(!ptr.is_null());
