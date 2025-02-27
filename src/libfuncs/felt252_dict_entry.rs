@@ -208,7 +208,7 @@ mod test {
 
         run_program_assert_output(&program, "run_test", &[], 1u32.into());
     }
-    
+
     #[test]
     fn run_dict_insert_big() {
         let program = load_cairo!(
