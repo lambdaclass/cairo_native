@@ -642,7 +642,7 @@ impl Value {
                             .byte_sub(refcount_offset)
                             .cast::<u32>()
                             .as_mut()
-                            .unwrap();
+                            .to_native_assert_error("array data pointer should not be null")?;
                         if should_drop {
                             *ref_count -= 1;
                         }

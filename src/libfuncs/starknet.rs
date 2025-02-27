@@ -145,7 +145,9 @@ pub fn build<'ctx, 'this>(
         }
         #[cfg(not(feature = "with-cheatcode"))]
         StarkNetConcreteLibfunc::Testing(TestingConcreteLibfunc::Cheatcode(_)) => {
-            unimplemented!("feature 'with-cheatcode' is required to compile with cheatcode syscall")
+            crate::native_panic!(
+                "feature 'with-cheatcode' is required to compile with cheatcode syscall"
+            )
         }
     }
 }

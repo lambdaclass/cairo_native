@@ -1171,7 +1171,7 @@ mod test {
             assert_eq!(expected, result);
         }
 
-        // garantees are represented as Value::Null
+        // guarantees are represented as Value::Null
         let struct_ok_result = |value| {
             jit_struct!(
                 value,

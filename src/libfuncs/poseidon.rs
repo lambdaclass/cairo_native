@@ -3,7 +3,7 @@
 
 use super::LibfuncHelper;
 use crate::{
-    error::Result,
+    error::{panic::ToNativeAssertError, Result},
     metadata::{runtime_bindings::RuntimeBindingsMeta, MetadataStorage},
     utils::{get_integer_layout, BlockExt, ProgramRegistryExt},
 };
@@ -50,7 +50,7 @@ pub fn build_hades_permutation<'ctx>(
 ) -> Result<()> {
     metadata
         .get_mut::<RuntimeBindingsMeta>()
-        .expect("Runtime library not available.");
+        .to_native_assert_error("runtime library should be available")?;
 
     let poseidon_builtin =
         super::increment_builtin_counter(context, entry, location, entry.arg(0)?)?;
@@ -91,7 +91,7 @@ pub fn build_hades_permutation<'ctx>(
 
     let runtime_bindings = metadata
         .get_mut::<RuntimeBindingsMeta>()
-        .expect("Runtime library not available.");
+        .to_native_assert_error("runtime library should be available")?;
 
     runtime_bindings
         .libfunc_hades_permutation(context, helper, entry, op0_ptr, op1_ptr, op2_ptr, location)?;
