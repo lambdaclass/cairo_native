@@ -4,7 +4,7 @@ use super::LibfuncHelper;
 use crate::{
     error::Result,
     metadata::MetadataStorage,
-    native_panic,
+    native_assert, native_panic,
     types::TypeBuilder,
     utils::{BlockExt, RangeExt, HALF_PRIME, PRIME},
 };
@@ -301,7 +301,7 @@ pub fn build_upcast<'ctx, 'this>(
 
     let src_range = src_ty.integer_range(registry)?;
     let dst_range = dst_ty.integer_range(registry)?;
-    assert!(
+    native_assert!(
         if dst_ty.is_felt252(registry)? {
             let alt_range = Range {
                 lower: BigInt::from_biguint(Sign::Minus, HALF_PRIME.clone()),
@@ -330,10 +330,11 @@ pub fn build_upcast<'ctx, 'this>(
     };
 
     // If the source can be negative, the target type must also contain negatives when upcasting.
-    assert!(
+    native_assert!(
         src_range.lower.sign() != Sign::Minus
             || dst_ty.is_felt252(registry)?
-            || dst_range.lower.sign() == Sign::Minus
+            || dst_range.lower.sign() == Sign::Minus,
+        "if the source range contains negatives, the target range must always contain negatives",
     );
     let is_signed = src_range.lower.sign() == Sign::Minus;
 

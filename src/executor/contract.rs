@@ -39,7 +39,7 @@ use crate::{
     executor::{invoke_trampoline, BuiltinCostsGuard},
     metadata::{gas::MetadataComputationConfig, runtime_bindings::setup_runtime},
     module::NativeModule,
-    native_panic,
+    native_assert, native_panic,
     starknet::{handler::StarknetSyscallHandlerCallbacks, StarknetSyscallHandler},
     types::TypeBuilder,
     utils::{
@@ -528,7 +528,10 @@ impl AotContractExecutor {
 
             unsafe {
                 let array_ptr = array_ptr.byte_sub(refcount_offset);
-                assert_eq!(array_ptr.cast::<u32>().read(), 1);
+                native_assert!(
+                    array_ptr.cast::<u32>().read() == 1,
+                    "return array should have a reference count of 1"
+                );
                 libc_free(array_ptr.as_ptr().cast());
                 libc_free(array_ptr_ptr.cast());
             }
