@@ -517,16 +517,16 @@ impl Value {
                         }
 
                         let ptr =
-                            arena.alloc_layout(Layout::new::<FeltDictEntry>()).as_ptr() as *mut FeltDictEntry;
-                                              
+                            arena.alloc_layout(Layout::new::<FeltDictEntry>()).as_ptr() as *mut _;
+
                         let felt_dict_entry = FeltDictEntry {
                             dict: Rc::into_raw(Rc::new(felt_dict)),
-                            entry_key: entry_key.to_bytes_le(),
+                            entry_key: &entry_key.to_bytes_le(),
                         };
 
                         std::ptr::write(ptr, felt_dict_entry);
 
-                        NonNull::new_unchecked(ptr).cast()
+                        NonNull::new_unchecked(ptr as *mut ()).cast()
                     } else {
                         Err(Error::UnexpectedValue(format!(
                             "expected value of type {:?} but got a felt dict entry",
@@ -974,9 +974,9 @@ impl Value {
                         debug_name: type_id.debug_name.as_ref().map(|x| x.to_string()),
                     }
                 }
-                CoreTypeConcrete::Felt252DictEntry(_) => {
+                CoreTypeConcrete::Felt252DictEntry(info) => {
                     println!("from ptr");
-                    let dict_entry = Rc::from_raw(ptr.cast::<*const FeltDictEntry>().read());
+                    let dict_entry = ptr.cast::<FeltDictEntry>().read();
                     let dict = Rc::from_raw(dict_entry.dict);
 
                     let mut map = HashMap::with_capacity(dict.mappings.len());
@@ -998,14 +998,14 @@ impl Value {
                                 .to_native_assert_error(
                                     "tried to make a non-null ptr out of a null one",
                                 )?,
-                                type_id,
+                                &info.ty,
                                 registry,
                                 should_drop,
                             )?,
                         );
                     }
 
-                    let entry_key = Felt::from_bytes_le(&dict_entry.entry_key);
+                    let entry_key = Felt::from_bytes_le_slice(dict_entry.entry_key);
 
                     if should_drop {
                         drop(dict);

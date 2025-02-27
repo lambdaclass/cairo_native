@@ -1345,13 +1345,6 @@ mod test {
 
     #[test]
     fn run_append() {
-        let program_new = {
-            let mut generator = SierraGenerator::<ArrayNewLibfunc>::default();
-
-            let u32_ty = generator.push_type_declaration::<Uint32Type>(&[]).clone();
-
-            generator.build(&[GenericArg::Type(u32_ty)])
-        };
         let program_append = {
             let mut generator = SierraGenerator::<ArrayAppendLibfunc>::default();
 
@@ -1360,8 +1353,8 @@ mod test {
             generator.build(&[GenericArg::Type(u32_ty)])
         };
 
-        let result = run_sierra_program(&program_new, &[]).return_value;
-        let result = run_sierra_program(&program_append, &[result, Value::Uint32(4)]).return_value;
+        let result = run_sierra_program(&program_append, &[Value::Array(vec![]), Value::Uint32(4)])
+            .return_value;
 
         assert_eq!(result, [4u32].into());
     }

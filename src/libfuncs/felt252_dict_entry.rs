@@ -190,8 +190,6 @@ pub fn build_finalize<'ctx, 'this>(
 
 #[cfg(test)]
 mod test {
-    use std::collections::HashMap;
-
     use cairo_lang_sierra::{
         extensions::{felt252_dict::Felt252DictEntryFinalizeLibfunc, int::unsigned::Uint32Type},
         program::GenericArg,
@@ -232,15 +230,15 @@ mod test {
         };
 
         let dict = Value::Felt252DictEntry {
-            dict: HashMap::new(),
+            dict: [].into(),
             entry_key: 2.into(),
         };
 
-        let result = run_sierra_program(&program, &[dict, Value::Uint32(1)]).return_value;
+        let result = run_sierra_program(&program, &[dict, Value::Uint32(3)]).return_value;
 
         assert_eq!(
             jit_dict!(
-                2 => 1u32
+                2 => 3u32
             ),
             result
         );

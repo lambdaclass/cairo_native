@@ -167,11 +167,14 @@ mod test {
 
     use cairo_lang_sierra::{
         extensions::{
-            felt252_dict::{Felt252DictNewLibfunc, Felt252DictSquashLibfunc},
+            felt252_dict::{
+                Felt252DictEntryGetLibfunc, Felt252DictNewLibfunc, Felt252DictSquashLibfunc,
+            },
             int::unsigned::{Uint32Type, Uint64Type},
         },
         program::GenericArg,
     };
+    use cairo_vm::Felt252;
 
     use crate::{
         utils::{
@@ -217,6 +220,39 @@ mod test {
         );
 
         run_program_assert_output(&program, "run_test", &[], 1u32.into());
+    }
+
+    #[test]
+    fn run_dict_get() {
+        let program = {
+            let mut generator = SierraGenerator::<Felt252DictEntryGetLibfunc>::default();
+
+            let u32_ty = generator.push_type_declaration::<Uint32Type>(&[]).clone();
+
+            generator.build(&[GenericArg::Type(u32_ty)])
+        };
+
+        let dict = Value::Felt252Dict {
+            value: [
+                (Felt252::from(1), 2u32.into()),
+                (Felt252::from(2), 1u32.into()),
+            ]
+            .into(),
+            debug_name: None,
+        };
+
+        let result = run_sierra_program(&program, &[dict, Value::Felt252(2.into())]).return_value;
+
+        let dict_entry = Value::Felt252DictEntry {
+            dict: [
+                (Felt252::from(1), 2u32.into()),
+                (Felt252::from(2), 1u32.into()),
+            ]
+            .into(),
+            entry_key: 2.into(),
+        };
+
+        assert_eq!(jit_struct!(dict_entry, 1u32.into()), result);
     }
 
     #[test]
