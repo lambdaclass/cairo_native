@@ -191,7 +191,10 @@ pub fn build_finalize<'ctx, 'this>(
 #[cfg(test)]
 mod test {
     use cairo_lang_sierra::{
-        extensions::{felt252_dict::{Felt252DictEntryFinalizeLibfunc, Felt252DictEntryGetLibfunc}, int::unsigned::Uint32Type},
+        extensions::{
+            felt252_dict::{Felt252DictEntryFinalizeLibfunc, Felt252DictEntryGetLibfunc},
+            int::unsigned::Uint32Type,
+        },
         program::GenericArg,
     };
 
@@ -230,7 +233,7 @@ mod test {
         };
 
         let dict = Value::Felt252DictEntry {
-            dict: [(2.into(),0.into())].into(),
+            dict: [(2.into(), 0.into())].into(),
             key: 2.into(),
         };
 
@@ -260,9 +263,14 @@ mod test {
 
             generator.build(&[GenericArg::Type(u32_ty)])
         };
-        let dict_entry = Value::Felt252DictEntry { dict: [(0.into(), 0.into())].into(), key: 0.into() };
+        let dict_entry = Value::Felt252DictEntry {
+            dict: [(0.into(), 0.into())].into(),
+            key: 0.into(),
+        };
         let mut result_dict = {
-            let Value::Felt252Dict { mut value, ..} = run_sierra_program(&program_insert, &[dict_entry, Value::Uint32(1)]).return_value else {
+            let Value::Felt252Dict { mut value, .. } =
+                run_sierra_program(&program_insert, &[dict_entry, Value::Uint32(1)]).return_value
+            else {
                 panic!("Should be a Felt252Dict");
             };
 
@@ -271,14 +279,20 @@ mod test {
 
             value
         };
-        
+
         for i in 1..=16 {
-            let dict_entry = Value::Felt252DictEntry { dict: result_dict, key: i.into() };
+            let dict_entry = Value::Felt252DictEntry {
+                dict: result_dict,
+                key: i.into(),
+            };
             result_dict = {
-                let Value::Felt252Dict {mut value, ..} = run_sierra_program(&program_insert, &[dict_entry, Value::Uint32(1)]).return_value else {
+                let Value::Felt252Dict { mut value, .. } =
+                    run_sierra_program(&program_insert, &[dict_entry, Value::Uint32(1)])
+                        .return_value
+                else {
                     panic!("Should be a Felt252Dict");
                 };
-                
+
                 // prepare next entry
                 value.insert((i + 1).into(), 0.into());
 
@@ -286,9 +300,13 @@ mod test {
             };
         }
 
-        let dict_entry = Value::Felt252DictEntry { dict: result_dict, key: 17.into() };
-        let result = run_sierra_program(&program_insert, &[dict_entry, Value::Uint32(1345432_u32)]).return_value;
+        let dict_entry = Value::Felt252DictEntry {
+            dict: result_dict,
+            key: 17.into(),
+        };
+        let result = run_sierra_program(&program_insert, &[dict_entry, Value::Uint32(1345432_u32)])
+            .return_value;
 
-        run_sierra_program(&program_get,&[result, Value::Felt252(17.into())]);
+        run_sierra_program(&program_get, &[result, Value::Felt252(17.into())]);
     }
 }
