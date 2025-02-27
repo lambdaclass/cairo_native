@@ -765,7 +765,7 @@ impl Value {
                     } else {
                         native_panic!("todo: implement uint128mulguarantee from_ptr")
                     }
-                },
+                }
                 CoreTypeConcrete::Sint8(_) => Self::Sint8(*ptr.cast::<i8>().as_ref()),
                 CoreTypeConcrete::Sint16(_) => Self::Sint16(*ptr.cast::<i16>().as_ref()),
                 CoreTypeConcrete::Sint32(_) => Self::Sint32(*ptr.cast::<i32>().as_ref()),
