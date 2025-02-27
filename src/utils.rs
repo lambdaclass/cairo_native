@@ -608,6 +608,34 @@ pub mod test {
             .unwrap()
     }
 
+    // This function receives a sierra program and runs its first entrypoint
+    // It is used primarely along with the sierra generator
+    // The difference between this function and run_program is that the latter
+    // also receives the name of the entrypoint to run
+    pub fn run_sierra_program(program: &Program, args: &[Value]) -> ExecutionResult {
+        let entry_point_id = &program
+            .funcs
+            .first()
+            .expect("program entry point not found.")
+            .id;
+
+        let context = NativeContext::new();
+
+        let module = context
+            .compile(program, false, Some(Default::default()))
+            .expect("Could not compile test program to MLIR.");
+
+        let executor = JitNativeExecutor::from_native_module(module, OptLevel::Less).unwrap();
+        executor
+            .invoke_dynamic_with_syscall_handler(
+                entry_point_id,
+                args,
+                Some(u64::MAX),
+                &mut StubSyscallHandler::default(),
+            )
+            .unwrap()
+    }
+
     #[track_caller]
     pub fn run_program_assert_output(
         program: &(String, Program),
