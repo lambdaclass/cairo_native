@@ -540,13 +540,19 @@ impl RuntimeBindingsMeta {
         dict_ptr: Value<'c, 'a>, // ptr to the dict
         key_ptr: Value<'c, 'a>,  // key must be a ptr to Felt
         location: Location<'c>,
-    ) -> Result<(Value<'c, 'a>, Value<'c, 'a>)>
+    ) -> Result<(Value<'c, 'a>, Value<'c, 'a>, Value<'c, 'a>)>
     where
         'c: 'a,
     {
         let function =
             self.build_function(context, helper, block, location, RuntimeBinding::DictGet)?;
 
+        let dict_ptr_ptr = helper.init_block().alloca1(
+            context,
+            location,
+            llvm::r#type::pointer(context, 0),
+            align_of::<*mut ()>(),
+        )?;
         let value_ptr = helper.init_block().alloca1(
             context,
             location,
@@ -554,14 +560,21 @@ impl RuntimeBindingsMeta {
             align_of::<*mut ()>(),
         )?;
 
+        block.store(context, location, dict_ptr_ptr, dict_ptr)?;
         let is_present = block.append_op_result(
             OperationBuilder::new("llvm.call", location)
                 .add_operands(&[function])
-                .add_operands(&[dict_ptr, key_ptr, value_ptr])
+                .add_operands(&[dict_ptr_ptr, key_ptr, value_ptr])
                 .add_results(&[IntegerType::new(context, c_int::BITS).into()])
                 .build()?,
         )?;
 
+        let dict_ptr = block.load(
+            context,
+            location,
+            dict_ptr_ptr,
+            llvm::r#type::pointer(context, 0),
+        )?;
         let value_ptr = block.load(
             context,
             location,
@@ -569,7 +582,7 @@ impl RuntimeBindingsMeta {
             llvm::r#type::pointer(context, 0),
         )?;
 
-        Ok((is_present, value_ptr))
+        Ok((dict_ptr, is_present, value_ptr))
     }
 
     /// Register if necessary, then invoke the `dict_gas_refund()` function.
