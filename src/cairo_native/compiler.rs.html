@@ -1400,8 +1400,7 @@
 <a href="#1399" id="1399">1399</a>
 <a href="#1400" id="1400">1400</a>
 <a href="#1401" id="1401">1401</a>
-<a href="#1402" id="1402">1402</a>
-<a href="#1403" id="1403">1403</a></pre></div><pre class="rust"><code><span class="doccomment">//! # Compilation process
+<a href="#1402" id="1402">1402</a></pre></div><pre class="rust"><code><span class="doccomment">//! # Compilation process
 //!
 //! A Sierra program is compiled one function at a time. Each function has a pre-entry block that
 //! will be ran only once, even in tail-recursive functions. All libfuncs are intended to place
@@ -1456,7 +1455,7 @@
         tail_recursion::TailRecursionMeta,
         MetadataStorage,
     },
-    native_panic,
+    native_assert, native_panic,
     types::TypeBuilder,
     utils::{generate_function_name, BlockExt},
 };
@@ -2005,7 +2004,7 @@
                         <span class="kw-2">&amp;</span>helper,
                         metadata,
                     )<span class="question-mark">?</span>;
-                    <span class="macro">assert!</span>(
+                    <span class="macro">native_assert!</span>(
                         block.terminator().is_some(),
                         <span class="string">"libfunc {} had no terminator"</span>,
                         libfunc_name
@@ -2023,9 +2022,8 @@
                             .iter()
                             .zip(helper.results()<span class="question-mark">?</span>)
                             .map(|(branch_info, result_values)| {
-                                <span class="macro">assert_eq!</span>(
-                                    branch_info.results.len(),
-                                    result_values.len(),
+                                <span class="macro">native_assert!</span>(
+                                    branch_info.results.len() == result_values.len(),
                                     <span class="string">"Mismatched number of returned values from branch."
                                 </span>);
 
@@ -2456,7 +2454,7 @@
                                         Entry::Occupied(entry) =&gt; entry.into_mut(),
                                         Entry::Vacant(entry) =&gt; entry.insert((state.clone(), <span class="number">0</span>)),
                                     };
-                                <span class="macro">assert!</span>(
+                                <span class="macro">native_assert!</span>(
                                     prev_state.eq_unordered(<span class="kw-2">&amp;</span>state),
                                     <span class="string">"Branch target states do not match."
                                 </span>);
@@ -2473,7 +2471,7 @@
                     </span>);
 
                     <span class="kw">let </span>(state, types) = edit_state::take_args(state.clone(), var_ids.iter())<span class="question-mark">?</span>;
-                    <span class="macro">assert!</span>(
+                    <span class="macro">native_assert!</span>(
                         state.is_empty(),
                         <span class="string">"State must be empty after a return statement."
                     </span>);

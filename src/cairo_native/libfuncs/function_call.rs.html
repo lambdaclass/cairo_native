@@ -299,7 +299,11 @@
 <a href="#298" id="298">298</a>
 <a href="#299" id="299">299</a>
 <a href="#300" id="300">300</a>
-<a href="#301" id="301">301</a></pre></div><pre class="rust"><code><span class="doccomment">//! # Function call libfuncs
+<a href="#301" id="301">301</a>
+<a href="#302" id="302">302</a>
+<a href="#303" id="303">303</a>
+<a href="#304" id="304">304</a>
+<a href="#305" id="305">305</a></pre></div><pre class="rust"><code><span class="doccomment">//! # Function call libfuncs
 //!
 //! Includes logic for handling direct tail recursive function calls. More information on this topic
 //! at the [tail recursive metadata](crate::metadata::tail_recursion).
@@ -308,6 +312,7 @@
 <span class="kw">use crate</span>::{
     error::{Error, <span class="prelude-ty">Result</span>},
     metadata::{tail_recursion::TailRecursionMeta, MetadataStorage},
+    native_assert,
     types::TypeBuilder,
     utils::{generate_function_name, BlockExt},
 };
@@ -571,7 +576,10 @@
                 </span><span class="kw">let </span><span class="kw-2">mut </span>count = <span class="number">0</span>;
                 <span class="kw">for </span>(idx, type_id) <span class="kw">in </span>info.function.signature.ret_types.iter().enumerate() {
                     <span class="kw">let </span>type_info = registry.get_type(type_id)<span class="question-mark">?</span>;
-                    <span class="macro">assert!</span>(!type_info.is_memory_allocated(registry)<span class="question-mark">?</span>);
+                    <span class="macro">native_assert!</span>(
+                        !type_info.is_memory_allocated(registry)<span class="question-mark">?</span>,
+                        <span class="string">"if there is no return pointer, return data must not be memory allocated"
+                    </span>);
 
                     <span class="kw">if </span>type_info.is_builtin() &amp;&amp; type_info.is_zst(registry)<span class="question-mark">? </span>{
                         results.push(entry.argument(idx)<span class="question-mark">?</span>.into());

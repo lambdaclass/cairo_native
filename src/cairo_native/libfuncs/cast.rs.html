@@ -686,13 +686,14 @@
 <a href="#685" id="685">685</a>
 <a href="#686" id="686">686</a>
 <a href="#687" id="687">687</a>
-<a href="#688" id="688">688</a></pre></div><pre class="rust"><code><span class="doccomment">//! # Casting libfuncs
+<a href="#688" id="688">688</a>
+<a href="#689" id="689">689</a></pre></div><pre class="rust"><code><span class="doccomment">//! # Casting libfuncs
 
 </span><span class="kw">use </span><span class="kw">super</span>::LibfuncHelper;
 <span class="kw">use crate</span>::{
     error::Result,
     metadata::MetadataStorage,
-    native_panic,
+    native_assert, native_panic,
     types::TypeBuilder,
     utils::{BlockExt, RangeExt, HALF_PRIME, PRIME},
 };
@@ -989,7 +990,7 @@
 
     <span class="kw">let </span>src_range = src_ty.integer_range(registry)<span class="question-mark">?</span>;
     <span class="kw">let </span>dst_range = dst_ty.integer_range(registry)<span class="question-mark">?</span>;
-    <span class="macro">assert!</span>(
+    <span class="macro">native_assert!</span>(
         <span class="kw">if </span>dst_ty.is_felt252(registry)<span class="question-mark">? </span>{
             <span class="kw">let </span>alt_range = Range {
                 lower: BigInt::from_biguint(Sign::Minus, HALF_PRIME.clone()),
@@ -1018,10 +1019,11 @@
     };
 
     <span class="comment">// If the source can be negative, the target type must also contain negatives when upcasting.
-    </span><span class="macro">assert!</span>(
+    </span><span class="macro">native_assert!</span>(
         src_range.lower.sign() != Sign::Minus
             || dst_ty.is_felt252(registry)<span class="question-mark">?
-            </span>|| dst_range.lower.sign() == Sign::Minus
+            </span>|| dst_range.lower.sign() == Sign::Minus,
+        <span class="string">"if the source range contains negatives, the target range must always contain negatives"</span>,
     );
     <span class="kw">let </span>is_signed = src_range.lower.sign() == Sign::Minus;
 

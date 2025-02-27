@@ -2357,7 +2357,11 @@
 <a href="#2356" id="2356">2356</a>
 <a href="#2357" id="2357">2357</a>
 <a href="#2358" id="2358">2358</a>
-<a href="#2359" id="2359">2359</a></pre></div><pre class="rust"><code><span class="doccomment">//! # Array libfuncs
+<a href="#2359" id="2359">2359</a>
+<a href="#2360" id="2360">2360</a>
+<a href="#2361" id="2361">2361</a>
+<a href="#2362" id="2362">2362</a>
+<a href="#2363" id="2363">2363</a></pre></div><pre class="rust"><code><span class="doccomment">//! # Array libfuncs
 
 </span><span class="kw">use </span><span class="kw">super</span>::LibfuncHelper;
 <span class="kw">use crate</span>::{
@@ -2366,6 +2370,7 @@
         drop_overrides::DropOverridesMeta, dup_overrides::DupOverridesMeta,
         realloc_bindings::ReallocBindingsMeta, MetadataStorage,
     },
+    native_assert,
     types::array::calc_data_prefix_offset,
     utils::{BlockExt, GepIndex, ProgramRegistryExt},
 };
@@ -3146,7 +3151,10 @@
             <span class="kw">let </span>CoreTypeConcrete::Struct(info) = registry.get_type(popped_ty)<span class="question-mark">? </span><span class="kw">else </span>{
                 <span class="kw">return </span><span class="prelude-val">Err</span>(Error::SierraAssert(SierraAssertError::BadTypeInfo));
             };
-            <span class="macro">debug_assert!</span>(info.members.iter().all(|member_ty| member_ty == ty));
+            <span class="macro">native_assert!</span>(
+                info.members.iter().all(|member_ty| member_ty == ty),
+                <span class="string">"output struct type should match the array's type"
+            </span>);
 
             (
                 <span class="kw-2">&amp;</span>signature.param_signatures[<span class="number">1</span>].ty,
