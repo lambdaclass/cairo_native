@@ -4,5 +4,6 @@
 - Make a PR
 - Wait for PR to be merged
 - Pull changes once merged
-- `git tag v<version>`
-- `git push --tags` # this will test, build and publish the version if successful.
+- Run `git tag v<version>`
+- Run `git push --tags`. This will test, build and publish the version if successful.
+- Go to the [releases page](https://github.com/lambdaclass/cairo_native/releases), edit the latest release, and click `Generate release notes`.
