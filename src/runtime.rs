@@ -866,7 +866,7 @@ mod tests {
 
     #[test]
     fn test_dict() {
-        let dict = unsafe {
+        let mut dict = unsafe {
             cairo_native__dict_new(
                 size_of::<u64>() as u64,
                 align_of::<u64>() as u64,
@@ -879,14 +879,14 @@ mod tests {
         let mut ptr = ptr::null_mut::<u64>();
 
         assert_eq!(
-            unsafe { cairo_native__dict_get(dict, &key, (&raw mut ptr).cast()) },
+            unsafe { cairo_native__dict_get(&mut dict, &key, (&raw mut ptr).cast()) },
             0,
         );
         assert!(!ptr.is_null());
         unsafe { *ptr = 24 };
 
         assert_eq!(
-            unsafe { cairo_native__dict_get(dict, &key, (&raw mut ptr).cast()) },
+            unsafe { cairo_native__dict_get(&mut dict, &key, (&raw mut ptr).cast()) },
             1,
         );
         assert!(!ptr.is_null());
@@ -896,11 +896,11 @@ mod tests {
         let refund = unsafe { cairo_native__dict_gas_refund(dict) };
         assert_eq!(refund, 4050);
 
-        let cloned_dict = unsafe { cairo_native__dict_dup(&*dict) };
+        let mut cloned_dict = unsafe { cairo_native__dict_dup(dict) };
         unsafe { cairo_native__dict_drop(dict) };
 
         assert_eq!(
-            unsafe { cairo_native__dict_get(cloned_dict, &key, (&raw mut ptr).cast()) },
+            unsafe { cairo_native__dict_get(&mut cloned_dict, &key, (&raw mut ptr).cast()) },
             1,
         );
         assert!(!ptr.is_null());
