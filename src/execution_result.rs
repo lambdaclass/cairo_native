@@ -31,7 +31,8 @@ pub struct BuiltinStats {
 }
 
 /// The result of the JIT execution.
-#[derive(Debug, Clone, PartialEq, Eq, serde::Serialize, serde::Deserialize)]
+#[derive(Debug, Clone, PartialEq, Eq)]
+#[cfg_attr(not(test), derive(serde::Serialize, serde::Deserialize))]
 pub struct ExecutionResult {
     pub remaining_gas: Option<u64>,
     pub return_value: Value,
