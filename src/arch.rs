@@ -121,7 +121,8 @@ impl AbiArgument for ValueWithInfoWrapper<'_> {
                 .map(value, &info.ty)?
                 .to_bytes(buffer, find_dict_overrides)?,
 
-            (Value::Array(_), CoreTypeConcrete::Array(_)) => {
+            (Value::Array(_), CoreTypeConcrete::Array(_)) 
+            | (Value::Array(_), CoreTypeConcrete::Circuit(_)) => {
                 // TODO: Assert that `info.ty` matches all the values' types.
 
                 let abi_ptr = self.value.to_ptr(

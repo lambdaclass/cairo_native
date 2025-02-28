@@ -66,6 +66,8 @@ pub enum Value {
         #[educe(PartialEq(ignore))]
         debug_name: Option<String>,
     },
+    #[cfg(test)]
+    CircuitStuff(Vec<Self>),
     Uint8(u8),
     Uint16(u16),
     Uint32(u32),
@@ -218,7 +220,6 @@ impl Value {
                     ptr.cast::<[u8; 32]>().as_mut().copy_from_slice(&data);
                     ptr
                 }
-
                 Self::Bytes31(_) => native_panic!("todo: allocate type Bytes31"),
                 Self::Array(data) => {
                     if let CoreTypeConcrete::Array(info) = Self::resolve_type(ty, registry)? {
@@ -552,6 +553,25 @@ impl Value {
                     native_panic!(
                         "unimplemented: null is meant as return value for nullable for now"
                     )
+                }
+                #[cfg(test)]
+                Self::CircuitStuff(vec) => {
+                    let circuit_layout = ty.layout(&registry)?;
+                    let elem_layout = get_integer_layout(384);
+                    let ptr = arena.alloc_layout(circuit_layout).as_ptr();
+
+                    // Write the data.
+                    for (idx, elem) in vec.iter().enumerate() {
+                        let elem =
+                            elem.to_ptr(arena, registry, &info.ty, find_dict_overrides)?;
+
+                        std::ptr::copy_nonoverlapping(
+                            elem.cast::<u8>().as_ptr(),
+                            ptr.byte_add(idx * elem_layout.size()).cast::<u8>(),
+                            elem_layout.size(),
+                        );
+                    }
+                    todo!();
                 }
                 Self::IntRange { x, y } => {
                     if let CoreTypeConcrete::IntRange(info) = Self::resolve_type(ty, registry)? {

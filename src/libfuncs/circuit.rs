@@ -1450,27 +1450,18 @@ mod test {
             generator.build(&[GenericArg::Type(circuit_ty)])
         };
 
-        let input1 = Value::BoundedInt {
-            value: Felt::from_bytes_be_slice(&[9, 2, 9, 3]),
-            range: Range {
-                lower: 0.into(),
-                upper: 0.into(),
-            },
-        };
-        let input2 = Value::BoundedInt {
-            value: Felt::from_bytes_be_slice(&[5, 7, 0, 8]),
-            range: Range {
-                lower: 1.into(),
-                upper: 1.into(),
-            },
-        };
+        let input1 = u384(["9", "2", "9", "3"]);
+        
+        let input2 = u384(["5", "7", "0", "8"]);
+        
+        let zero_array= ["0"; 4];
         let circuit_data = Value::Array(vec![
-            0.into(),
-            0.into(),
-            0.into(),
-            0.into(),
-            0.into(),
-            0.into(),
+            u384(zero_array.clone()),
+            u384(zero_array.clone()),
+            u384(zero_array.clone()),
+            u384(zero_array.clone()),
+            u384(zero_array.clone()),
+            u384(zero_array),
         ]);
 
         run_sierra_program(
