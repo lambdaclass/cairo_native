@@ -150,7 +150,6 @@ pub struct FeltDict {
     pub layout: Layout,
     pub elements: *mut (),
 
-    pub dup_fn: Option<extern "C" fn(*mut c_void, *mut c_void)>,
     pub drop_fn: Option<extern "C" fn(*mut c_void)>,
 
     pub count: u64,
@@ -194,7 +193,6 @@ impl Drop for FeltDict {
 pub unsafe extern "C" fn cairo_native__dict_new(
     size: u64,
     align: u64,
-    dup_fn: Option<extern "C" fn(*mut c_void, *mut c_void)>,
     drop_fn: Option<extern "C" fn(*mut c_void)>,
 ) -> *const FeltDict {
     Rc::into_raw(Rc::new(FeltDict {
@@ -203,7 +201,6 @@ pub unsafe extern "C" fn cairo_native__dict_new(
         layout: Layout::from_size_align_unchecked(size as usize, align as usize),
         elements: ptr::null_mut(),
 
-        dup_fn,
         drop_fn,
 
         count: 0,
@@ -815,12 +812,7 @@ mod tests {
     #[test]
     fn test_dict() {
         let mut dict = unsafe {
-            cairo_native__dict_new(
-                size_of::<u64>() as u64,
-                align_of::<u64>() as u64,
-                None,
-                None,
-            )
+            cairo_native__dict_new(size_of::<u64>() as u64, align_of::<u64>() as u64, None)
         };
 
         let key = Felt::ONE.to_bytes_le();
