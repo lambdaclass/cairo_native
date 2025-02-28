@@ -24,13 +24,7 @@ impl AbiArgument for bool {
     fn to_bytes(
         &self,
         buffer: &mut Vec<u8>,
-        _find_dict_overrides: impl Copy
-            + Fn(
-                &ConcreteTypeId,
-            ) -> (
-                Option<extern "C" fn(*mut c_void, *mut c_void)>,
-                Option<extern "C" fn(*mut c_void)>,
-            ),
+        _find_dict_drop_override: impl Copy + Fn(&ConcreteTypeId) -> Option<extern "C" fn(*mut c_void)>,
     ) -> Result<(), Error> {
         if buffer.len() < 64 {
             buffer.extend_from_slice(&(*self as u64).to_ne_bytes());
@@ -46,13 +40,7 @@ impl AbiArgument for u8 {
     fn to_bytes(
         &self,
         buffer: &mut Vec<u8>,
-        _find_dict_overrides: impl Copy
-            + Fn(
-                &ConcreteTypeId,
-            ) -> (
-                Option<extern "C" fn(*mut c_void, *mut c_void)>,
-                Option<extern "C" fn(*mut c_void)>,
-            ),
+        _find_dict_drop_override: impl Copy + Fn(&ConcreteTypeId) -> Option<extern "C" fn(*mut c_void)>,
     ) -> Result<(), Error> {
         if buffer.len() < 64 {
             buffer.extend_from_slice(&(*self as u64).to_ne_bytes());
@@ -68,13 +56,7 @@ impl AbiArgument for i8 {
     fn to_bytes(
         &self,
         buffer: &mut Vec<u8>,
-        _find_dict_overrides: impl Copy
-            + Fn(
-                &ConcreteTypeId,
-            ) -> (
-                Option<extern "C" fn(*mut c_void, *mut c_void)>,
-                Option<extern "C" fn(*mut c_void)>,
-            ),
+        _find_dict_drop_override: impl Copy + Fn(&ConcreteTypeId) -> Option<extern "C" fn(*mut c_void)>,
     ) -> Result<(), Error> {
         if buffer.len() < 64 {
             buffer.extend_from_slice(&(*self as u64).to_ne_bytes());
@@ -90,13 +72,7 @@ impl AbiArgument for u16 {
     fn to_bytes(
         &self,
         buffer: &mut Vec<u8>,
-        _find_dict_overrides: impl Copy
-            + Fn(
-                &ConcreteTypeId,
-            ) -> (
-                Option<extern "C" fn(*mut c_void, *mut c_void)>,
-                Option<extern "C" fn(*mut c_void)>,
-            ),
+        _find_dict_drop_override: impl Copy + Fn(&ConcreteTypeId) -> Option<extern "C" fn(*mut c_void)>,
     ) -> Result<(), Error> {
         if buffer.len() < 64 {
             buffer.extend_from_slice(&(*self as u64).to_ne_bytes());
@@ -112,13 +88,7 @@ impl AbiArgument for i16 {
     fn to_bytes(
         &self,
         buffer: &mut Vec<u8>,
-        _find_dict_overrides: impl Copy
-            + Fn(
-                &ConcreteTypeId,
-            ) -> (
-                Option<extern "C" fn(*mut c_void, *mut c_void)>,
-                Option<extern "C" fn(*mut c_void)>,
-            ),
+        _find_dict_drop_override: impl Copy + Fn(&ConcreteTypeId) -> Option<extern "C" fn(*mut c_void)>,
     ) -> Result<(), Error> {
         if buffer.len() < 64 {
             buffer.extend_from_slice(&(*self as u64).to_ne_bytes());
@@ -134,13 +104,7 @@ impl AbiArgument for u32 {
     fn to_bytes(
         &self,
         buffer: &mut Vec<u8>,
-        _find_dict_overrides: impl Copy
-            + Fn(
-                &ConcreteTypeId,
-            ) -> (
-                Option<extern "C" fn(*mut c_void, *mut c_void)>,
-                Option<extern "C" fn(*mut c_void)>,
-            ),
+        _find_dict_drop_override: impl Copy + Fn(&ConcreteTypeId) -> Option<extern "C" fn(*mut c_void)>,
     ) -> Result<(), Error> {
         if buffer.len() < 64 {
             buffer.extend_from_slice(&(*self as u64).to_ne_bytes());
@@ -156,13 +120,7 @@ impl AbiArgument for i32 {
     fn to_bytes(
         &self,
         buffer: &mut Vec<u8>,
-        _find_dict_overrides: impl Copy
-            + Fn(
-                &ConcreteTypeId,
-            ) -> (
-                Option<extern "C" fn(*mut c_void, *mut c_void)>,
-                Option<extern "C" fn(*mut c_void)>,
-            ),
+        _find_dict_drop_override: impl Copy + Fn(&ConcreteTypeId) -> Option<extern "C" fn(*mut c_void)>,
     ) -> Result<(), Error> {
         if buffer.len() < 64 {
             buffer.extend_from_slice(&(*self as u64).to_ne_bytes());
@@ -178,13 +136,7 @@ impl AbiArgument for u64 {
     fn to_bytes(
         &self,
         buffer: &mut Vec<u8>,
-        _find_dict_overrides: impl Copy
-            + Fn(
-                &ConcreteTypeId,
-            ) -> (
-                Option<extern "C" fn(*mut c_void, *mut c_void)>,
-                Option<extern "C" fn(*mut c_void)>,
-            ),
+        _find_dict_drop_override: impl Copy + Fn(&ConcreteTypeId) -> Option<extern "C" fn(*mut c_void)>,
     ) -> Result<(), Error> {
         if buffer.len() >= 64 {
             align_to(buffer, get_integer_layout(64).align());
@@ -198,13 +150,7 @@ impl AbiArgument for i64 {
     fn to_bytes(
         &self,
         buffer: &mut Vec<u8>,
-        _find_dict_overrides: impl Copy
-            + Fn(
-                &ConcreteTypeId,
-            ) -> (
-                Option<extern "C" fn(*mut c_void, *mut c_void)>,
-                Option<extern "C" fn(*mut c_void)>,
-            ),
+        _find_dict_drop_override: impl Copy + Fn(&ConcreteTypeId) -> Option<extern "C" fn(*mut c_void)>,
     ) -> Result<(), Error> {
         if buffer.len() >= 64 {
             align_to(buffer, get_integer_layout(64).align());
@@ -218,13 +164,7 @@ impl AbiArgument for u128 {
     fn to_bytes(
         &self,
         buffer: &mut Vec<u8>,
-        _find_dict_overrides: impl Copy
-            + Fn(
-                &ConcreteTypeId,
-            ) -> (
-                Option<extern "C" fn(*mut c_void, *mut c_void)>,
-                Option<extern "C" fn(*mut c_void)>,
-            ),
+        _find_dict_drop_override: impl Copy + Fn(&ConcreteTypeId) -> Option<extern "C" fn(*mut c_void)>,
     ) -> Result<(), Error> {
         if buffer.len() >= 56 {
             align_to(buffer, get_integer_layout(128).align());
@@ -238,13 +178,7 @@ impl AbiArgument for i128 {
     fn to_bytes(
         &self,
         buffer: &mut Vec<u8>,
-        _find_dict_overrides: impl Copy
-            + Fn(
-                &ConcreteTypeId,
-            ) -> (
-                Option<extern "C" fn(*mut c_void, *mut c_void)>,
-                Option<extern "C" fn(*mut c_void)>,
-            ),
+        _find_dict_drop_override: impl Copy + Fn(&ConcreteTypeId) -> Option<extern "C" fn(*mut c_void)>,
     ) -> Result<(), Error> {
         if buffer.len() >= 56 {
             align_to(buffer, get_integer_layout(128).align());
@@ -258,13 +192,7 @@ impl AbiArgument for Felt {
     fn to_bytes(
         &self,
         buffer: &mut Vec<u8>,
-        _find_dict_overrides: impl Copy
-            + Fn(
-                &ConcreteTypeId,
-            ) -> (
-                Option<extern "C" fn(*mut c_void, *mut c_void)>,
-                Option<extern "C" fn(*mut c_void)>,
-            ),
+        _find_dict_drop_override: impl Copy + Fn(&ConcreteTypeId) -> Option<extern "C" fn(*mut c_void)>,
     ) -> Result<(), Error> {
         if buffer.len() >= 56 {
             align_to(buffer, get_integer_layout(252).align());
@@ -278,16 +206,10 @@ impl AbiArgument for U256 {
     fn to_bytes(
         &self,
         buffer: &mut Vec<u8>,
-        find_dict_overrides: impl Copy
-            + Fn(
-                &ConcreteTypeId,
-            ) -> (
-                Option<extern "C" fn(*mut c_void, *mut c_void)>,
-                Option<extern "C" fn(*mut c_void)>,
-            ),
+        find_dict_drop_override: impl Copy + Fn(&ConcreteTypeId) -> Option<extern "C" fn(*mut c_void)>,
     ) -> Result<(), Error> {
-        self.lo.to_bytes(buffer, find_dict_overrides)?;
-        self.hi.to_bytes(buffer, find_dict_overrides)
+        self.lo.to_bytes(buffer, find_dict_drop_override)?;
+        self.hi.to_bytes(buffer, find_dict_drop_override)
     }
 }
 
@@ -295,13 +217,7 @@ impl AbiArgument for [u8; 31] {
     fn to_bytes(
         &self,
         buffer: &mut Vec<u8>,
-        _find_dict_overrides: impl Copy
-            + Fn(
-                &ConcreteTypeId,
-            ) -> (
-                Option<extern "C" fn(*mut c_void, *mut c_void)>,
-                Option<extern "C" fn(*mut c_void)>,
-            ),
+        _find_dict_drop_override: impl Copy + Fn(&ConcreteTypeId) -> Option<extern "C" fn(*mut c_void)>,
     ) -> Result<(), Error> {
         // The `bytes31` type is treated as a 248-bit integer, therefore it follows the same
         // splitting rules as them.
@@ -318,15 +234,9 @@ impl<T> AbiArgument for *const T {
     fn to_bytes(
         &self,
         buffer: &mut Vec<u8>,
-        find_dict_overrides: impl Copy
-            + Fn(
-                &ConcreteTypeId,
-            ) -> (
-                Option<extern "C" fn(*mut c_void, *mut c_void)>,
-                Option<extern "C" fn(*mut c_void)>,
-            ),
+        find_dict_drop_override: impl Copy + Fn(&ConcreteTypeId) -> Option<extern "C" fn(*mut c_void)>,
     ) -> Result<(), Error> {
-        <u64 as AbiArgument>::to_bytes(&(*self as u64), buffer, find_dict_overrides)
+        <u64 as AbiArgument>::to_bytes(&(*self as u64), buffer, find_dict_drop_override)
     }
 }
 
@@ -334,15 +244,9 @@ impl<T> AbiArgument for *mut T {
     fn to_bytes(
         &self,
         buffer: &mut Vec<u8>,
-        find_dict_overrides: impl Copy
-            + Fn(
-                &ConcreteTypeId,
-            ) -> (
-                Option<extern "C" fn(*mut c_void, *mut c_void)>,
-                Option<extern "C" fn(*mut c_void)>,
-            ),
+        find_dict_drop_override: impl Copy + Fn(&ConcreteTypeId) -> Option<extern "C" fn(*mut c_void)>,
     ) -> Result<(), Error> {
-        <u64 as AbiArgument>::to_bytes(&(*self as u64), buffer, find_dict_overrides)
+        <u64 as AbiArgument>::to_bytes(&(*self as u64), buffer, find_dict_drop_override)
     }
 }
 
