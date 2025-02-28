@@ -307,8 +307,11 @@ pub unsafe extern "C" fn cairo_native__dict_get(
     key: &[u8; 32],
     value_ptr: *mut *mut c_void,
 ) -> c_int {
-    let mut dict_rc = Rc::from_raw(dict_ptr.read());
-    let dict = Rc::make_mut(&mut dict_rc);
+    let dict_rc = Rc::from_raw(dict_ptr.read());
+    let dict = Rc::as_ptr(&dict_rc)
+        .cast_mut()
+        .as_mut()
+        .expect("rc inner pointer should never be null");
 
     let num_mappings = dict.mappings.len();
     let has_capacity = num_mappings != dict.mappings.capacity();
