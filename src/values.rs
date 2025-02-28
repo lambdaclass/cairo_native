@@ -15,9 +15,7 @@ use crate::{
 use bumpalo::Bump;
 use cairo_lang_sierra::{
     extensions::{
-        core::{CoreLibfunc, CoreType, CoreTypeConcrete},
-        starknet::{secp256::Secp256PointTypeConcrete, StarkNetTypeConcrete},
-        utils::Range,
+        circuit::CircuitTypeConcrete, core::{CoreLibfunc, CoreType, CoreTypeConcrete}, starknet::{secp256::Secp256PointTypeConcrete, StarkNetTypeConcrete}, types::InfoAndTypeConcreteType, utils::Range, ConcreteType
     },
     ids::ConcreteTypeId,
     program_registry::ProgramRegistry,
@@ -67,10 +65,7 @@ pub enum Value {
         debug_name: Option<String>,
     },
     #[cfg(test)]
-    Circuit {
-        num_inputs: u32,
-        inputs: Vec<BigUint>,
-    },
+    CircuitData(Vec<BigUint>),
     #[cfg(test)]
     Uint384Test(BigUint),
     Uint8(u8),
@@ -567,24 +562,11 @@ impl Value {
                     )
                 }
                 #[cfg(test)]
-                Self::Circuit { num_inputs, inputs } => {
-                    if let CoreTypeConcrete::Circuit(_) = Self::resolve_type(ty, registry)? {
-                        let (circuit_layout, _) =
-                            get_integer_layout(32).extend(ty.layout(&registry)?)?;
+                Self::CircuitData(inputs) => {
+                    if let CoreTypeConcrete::Circuit(CircuitTypeConcrete::CircuitData(_)) = Self::resolve_type(ty, registry)? {
+                        let circuit_layout = ty.layout(&registry)?;
                         let elem_layout = get_integer_layout(384);
                         let circuit_ptr = arena.alloc_layout(circuit_layout);
-                        let inputs_num_layout = get_integer_layout(32);
-                        let inputs_num_ptr = arena.alloc_layout(get_integer_layout(32));
-
-                        *inputs_num_ptr.cast::<u32>().as_mut() = *num_inputs;
-
-                        std::ptr::copy_nonoverlapping(
-                            inputs_num_ptr.as_ptr(),
-                            circuit_ptr.as_ptr(),
-                            inputs_num_layout.size(),
-                        );
-
-                        let _ = circuit_ptr.byte_add(inputs_num_layout.size());
 
                         // Write the data.
                         for (idx, elem) in inputs.iter().enumerate() {
@@ -1027,7 +1009,9 @@ impl Value {
                     let u32_layout = get_integer_layout(32);
                     let num_inputs = *ptr.cast::<u32>().as_ref();
                     let mut inputs = Vec::with_capacity(num_inputs as usize);
+                    
                     let _ = ptr.byte_add(u32_layout.size());
+                    
                     for i in 0..num_inputs {
                         let elem = ptr
                             .byte_add(elem_layout.pad_to_align().size() * i as usize)
@@ -1037,7 +1021,7 @@ impl Value {
                         inputs.push(elem.clone());
                     }
 
-                    Value::Circuit { num_inputs, inputs }
+                    Value::CircuitData(inputs)
                 }
                 CoreTypeConcrete::Circuit(_)
                 | CoreTypeConcrete::Coupon(_)

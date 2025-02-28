@@ -137,8 +137,8 @@ impl AbiArgument for ValueWithInfoWrapper<'_> {
                 abi.until.to_bytes(buffer, find_dict_overrides)?;
                 abi.capacity.to_bytes(buffer, find_dict_overrides)?;
             }
-            (Value::BoundedInt { value, .. }, CoreTypeConcrete::BoundedInt(_)) => {
-                value.to_bytes(buffer, find_dict_overrides)?;
+            (Value::BoundedInt { .. }, CoreTypeConcrete::BoundedInt(_)) => {
+                native_panic!("todo: implement AbiArgument for Value::BoundedInt case")
             }
             (Value::Bytes31(value), CoreTypeConcrete::Bytes31(_)) => {
                 value.to_bytes(buffer, find_dict_overrides)?
@@ -253,13 +253,6 @@ impl AbiArgument for ValueWithInfoWrapper<'_> {
                 .to_bytes(buffer, find_dict_overrides)?,
             #[cfg(test)]
             (Value::Uint384Test(value), _) => value.to_bytes(buffer, find_dict_overrides)?,
-            #[cfg(test)]
-            (Value::Struct { fields, .. }, _) => {
-                fields
-                    .iter()
-                    .map(|value| self.map(value, self.type_id))
-                    .try_for_each(|wrapper| wrapper?.to_bytes(buffer, find_dict_overrides))?;
-            }
             _ => native_panic!(
                 "todo: abi argument unimplemented for ({:?}, {:?})",
                 self.value,
