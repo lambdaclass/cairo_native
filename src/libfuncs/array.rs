@@ -125,7 +125,9 @@ pub fn build<'ctx, 'this>(
 ///
 /// # Cairo Signature
 ///
-/// `cairo /// extern fn array_new<T>() -> Array<T> nopanic; ///`
+/// ```cairo
+/// extern fn array_new<T>() -> Array<T> nopanic;
+/// ```
 pub fn build_new<'ctx, 'this>(
     context: &'ctx Context,
     _registry: &ProgramRegistry<CoreType, CoreLibfunc>,
@@ -157,7 +159,11 @@ pub fn build_new<'ctx, 'this>(
 ///
 /// # Cairo Signature
 ///
-/// `cairo /// extern fn span_from_tuple<T, impl Info: FixedSizedArrayInfo<T>>( ///     struct_like: Box<@T> /// ) -> @Array<Info::Element> nopanic; ///`
+/// ```cairo
+/// extern fn span_from_tuple<T, impl Info: FixedSizedArrayInfo<T>>(
+///     struct_like: Box<@T>
+/// ) -> @Array<Info::Element> nopanic;
+/// ```
 pub fn build_span_from_tuple<'ctx, 'this>(
     context: &'ctx Context,
     registry: &ProgramRegistry<CoreType, CoreLibfunc>,
@@ -267,7 +273,9 @@ pub fn build_span_from_tuple<'ctx, 'this>(
 ///
 /// # Cairo Signature
 ///
-/// `cairo /// fn tuple_from_span<T, impl Info: FixedSizedArrayInfo<T>>(span: @Array<Info::Element>  -> Option<@Box<T>> nopanic; ///`
+/// ```cairo
+/// fn tuple_from_span<T, impl Info: FixedSizedArrayInfo<T>>(span: @Array<Info::Element>  -> Option<@Box<T>> nopanic;
+/// ```
 pub fn build_tuple_from_span<'ctx, 'this>(
     context: &'ctx Context,
     registry: &ProgramRegistry<CoreType, CoreLibfunc>,
