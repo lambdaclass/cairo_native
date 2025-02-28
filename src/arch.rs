@@ -192,6 +192,20 @@ impl AbiArgument for ValueWithInfoWrapper<'_> {
                     .as_ptr()
                     .to_bytes(buffer, find_dict_overrides)?
             }
+            #[cfg(test)]
+            (Value::Felt252DictEntry { .. }, CoreTypeConcrete::Felt252DictEntry(_)) => {
+                let abi_ptr = self.value.to_ptr(
+                    self.arena,
+                    self.registry,
+                    self.type_id,
+                    find_dict_overrides,
+                )?;
+
+                let abi = unsafe { abi_ptr.cast::<crate::runtime::FeltDictEntry>().as_ref() };
+
+                abi.dict.to_bytes(buffer, find_dict_overrides)?;
+                abi.value_ptr.to_bytes(buffer, find_dict_overrides)?;
+            }
             (
                 Value::Secp256K1Point(Secp256k1Point { x, y, is_infinity }),
                 CoreTypeConcrete::StarkNet(StarkNetTypeConcrete::Secp256Point(
