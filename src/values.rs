@@ -43,7 +43,8 @@ use std::{
 /// The debug_name field on some variants is `Some` when receiving a [`Value`] as a result.
 ///
 /// A Boxed value or a non-null Nullable value is returned with it's inner value.
-#[derive(Clone, Educe, serde::Serialize, serde::Deserialize)]
+#[derive(Clone, Educe)]
+#[cfg_attr(not(test), derive(serde::Serialize, serde::Deserialize))]
 #[educe(Debug, Eq, PartialEq)]
 pub enum Value {
     Felt252(#[educe(Debug(method(std::fmt::Display::fmt)))] Felt),
@@ -87,7 +88,7 @@ pub enum Value {
     Secp256R1Point(Secp256r1Point),
     BoundedInt {
         value: Felt,
-        #[serde(with = "range_serde")]
+        #[cfg_attr(not(test), serde(with = "range_serde"))]
         range: Range,
     },
     IntRange {
@@ -2006,6 +2007,7 @@ mod test {
     }
 }
 
+#[cfg(not(test))]
 mod range_serde {
     use std::fmt;
 
