@@ -159,15 +159,15 @@ pub struct FeltDict {
 impl Clone for FeltDict {
     fn clone(&self) -> Self {
         let mut new_dict = FeltDict {
-            mappings: HashMap::with_capacity(self.mappings.len()),
+            mappings: HashMap::with_capacity(self.mappings.capacity()),
 
             layout: self.layout,
-            elements: if self.mappings.is_empty() {
+            elements: if self.mappings.capacity() == 0 {
                 ptr::null_mut()
             } else {
                 unsafe {
                     alloc(Layout::from_size_align_unchecked(
-                        self.layout.pad_to_align().size() * self.mappings.len(),
+                        self.layout.pad_to_align().size() * self.mappings.capacity(),
                         self.layout.align(),
                     ))
                     .cast()
