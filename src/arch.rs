@@ -9,6 +9,7 @@ use crate::{
 use bumpalo::Bump;
 use cairo_lang_sierra::{
     extensions::{
+        circuit::CircuitTypeConcrete,
         core::{CoreLibfunc, CoreType, CoreTypeConcrete},
         starknet::{secp256::Secp256PointTypeConcrete, StarkNetTypeConcrete},
     },
@@ -246,7 +247,7 @@ impl AbiArgument for ValueWithInfoWrapper<'_> {
                 value.to_bytes(buffer, find_dict_overrides)?
             }
             #[cfg(test)]
-            (Value::Circuit { .. }, CoreTypeConcrete::Circuit(_)) => self
+            (Value::CircuitData(_), CoreTypeConcrete::Circuit(_)) => self
                 .value
                 .to_ptr(self.arena, self.registry, self.type_id, find_dict_overrides)?
                 .as_ptr()

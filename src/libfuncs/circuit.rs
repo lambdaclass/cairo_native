@@ -480,6 +480,7 @@ fn build_gate_evaluation<'ctx, 'this>(
     let mut values = vec![None; 1 + circuit_info.n_inputs + circuit_info.values.len()];
     values[0] = Some(block.const_int(context, location, 1, 384)?);
     for i in 0..circuit_info.n_inputs {
+        dbg!(i);
         values[i + 1] = Some(block.extract_value(
             context,
             location,
@@ -697,7 +698,7 @@ fn build_gate_evaluation<'ctx, 'this>(
         .skip(1 + circuit_info.n_inputs)
         .collect::<Option<Vec<Value>>>()
         .ok_or(SierraAssertError::ImpossibleCircuit)?;
-
+    dbg!(&values);
     Ok(([block, err_block], values))
 }
 
@@ -1488,17 +1489,10 @@ mod test {
         let input1 = u384_to_biguint([9, 2, 9, 3]);
         let input2 = u384_to_biguint([5, 7, 0, 8]);
 
-        let circuit_data = Value::Circuit {
-            num_inputs: 6,
-            inputs: vec![
-                u384_to_biguint([9, 2, 9, 3]),
-                u384_to_biguint([5, 7, 0, 8]),
-                u384_to_biguint([0; 4]),
-                u384_to_biguint([0; 4]),
-                u384_to_biguint([0; 4]),
-                u384_to_biguint([0; 4]),
-            ],
-        };
+        let circuit_data = Value::CircuitData(vec![
+            u384_to_biguint([9, 2, 9, 3]),
+            u384_to_biguint([5, 7, 0, 8]),
+        ]);
 
         let result = run_sierra_program(
             &program,

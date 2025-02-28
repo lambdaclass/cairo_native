@@ -15,7 +15,12 @@ use crate::{
 use bumpalo::Bump;
 use cairo_lang_sierra::{
     extensions::{
-        circuit::CircuitTypeConcrete, core::{CoreLibfunc, CoreType, CoreTypeConcrete}, starknet::{secp256::Secp256PointTypeConcrete, StarkNetTypeConcrete}, types::InfoAndTypeConcreteType, utils::Range, ConcreteType
+        circuit::CircuitTypeConcrete,
+        core::{CoreLibfunc, CoreType, CoreTypeConcrete},
+        starknet::{secp256::Secp256PointTypeConcrete, StarkNetTypeConcrete},
+        types::InfoAndTypeConcreteType,
+        utils::Range,
+        ConcreteType,
     },
     ids::ConcreteTypeId,
     program_registry::ProgramRegistry,
@@ -563,11 +568,11 @@ impl Value {
                 }
                 #[cfg(test)]
                 Self::CircuitData(inputs) => {
-                    if let CoreTypeConcrete::Circuit(CircuitTypeConcrete::CircuitData(_)) = Self::resolve_type(ty, registry)? {
+                    if let CoreTypeConcrete::Circuit(_) = Self::resolve_type(ty, registry)? {
                         let circuit_layout = ty.layout(&registry)?;
                         let elem_layout = get_integer_layout(384);
                         let circuit_ptr = arena.alloc_layout(circuit_layout);
-
+                        dbg!(inputs);
                         // Write the data.
                         for (idx, elem) in inputs.iter().enumerate() {
                             let elem_ptr = arena.alloc_layout(elem_layout).cast();
@@ -575,7 +580,10 @@ impl Value {
 
                             std::ptr::copy_nonoverlapping(
                                 elem_ptr.as_ptr(),
-                                circuit_ptr.as_ptr().byte_add(idx * elem_layout.pad_to_align().size()).cast::<u8>(),
+                                circuit_ptr
+                                    .as_ptr()
+                                    .byte_add(idx * elem_layout.pad_to_align().size())
+                                    .cast::<u8>(),
                                 elem_layout.size(),
                             );
                         }
@@ -909,14 +917,11 @@ impl Value {
                         output_map.insert(
                             key,
                             Self::from_ptr(
-                                NonNull::new(
-                                    dict.elements
-                                        .byte_add(dict.layout.size() * index),
-                                )
-                                .to_native_assert_error(
-                                    "tried to make a non-null ptr out of a null one",
-                                )?
-                                .cast(),
+                                NonNull::new(dict.elements.byte_add(dict.layout.size() * index))
+                                    .to_native_assert_error(
+                                        "tried to make a non-null ptr out of a null one",
+                                    )?
+                                    .cast(),
                                 &info.ty,
                                 registry,
                                 false,
@@ -1004,24 +1009,35 @@ impl Value {
                     }
                 }
                 #[cfg(test)]
-                CoreTypeConcrete::Circuit(_) => {
+                CoreTypeConcrete::Circuit(CircuitTypeConcrete::CircuitOutputs(_)) => {
                     let elem_layout = get_integer_layout(384);
-                    let u32_layout = get_integer_layout(32);
-                    let num_inputs = *ptr.cast::<u32>().as_ref();
-                    let mut inputs = Vec::with_capacity(num_inputs as usize);
-                    
-                    let _ = ptr.byte_add(u32_layout.size());
-                    
-                    for i in 0..num_inputs {
-                        let elem = ptr
-                            .byte_add(elem_layout.pad_to_align().size() * i as usize)
-                            .cast::<BigUint>()
-                            .as_ref();
+                    let mut fields = Vec::with_capacity(6);
 
-                        inputs.push(elem.clone());
+                    for i in 0..6 {
+                        fields.push(Value::Uint384Test(
+                            ptr.as_ptr()
+                                .byte_add(elem_layout.size() * i)
+                                .cast::<BigUint>()
+                                .read(),
+                        ));
                     }
 
-                    Value::CircuitData(inputs)
+                    Value::Struct {
+                        fields,
+                        debug_name: None,
+                    }
+                }
+                #[cfg(test)]
+                CoreTypeConcrete::Circuit(CircuitTypeConcrete::CircuitPartialOutputs(_)) => {
+                    Value::Null
+                }
+                #[cfg(test)]
+                CoreTypeConcrete::Circuit(CircuitTypeConcrete::CircuitModulus(_)) => {
+                    Self::Uint384Test(ptr.cast::<BigUint>().as_ref().clone())
+                }
+                #[cfg(test)]
+                CoreTypeConcrete::Circuit(CircuitTypeConcrete::CircuitFailureGuarantee(_)) => {
+                    Value::Null
                 }
                 CoreTypeConcrete::Circuit(_)
                 | CoreTypeConcrete::Coupon(_)
