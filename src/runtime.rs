@@ -15,7 +15,7 @@ use starknet_types_core::{
     hash::StarkHash,
 };
 use std::{
-    alloc::{alloc, dealloc, realloc, Layout},
+    alloc::{dealloc, realloc, Layout},
     cell::Cell,
     collections::{hash_map::Entry, HashMap},
     ffi::{c_int, c_void},
@@ -154,61 +154,6 @@ pub struct FeltDict {
     pub drop_fn: Option<extern "C" fn(*mut c_void)>,
 
     pub count: u64,
-}
-
-impl Clone for FeltDict {
-    fn clone(&self) -> Self {
-        let mut new_dict = FeltDict {
-            mappings: HashMap::with_capacity(self.mappings.len()),
-
-            layout: self.layout,
-            elements: if self.mappings.is_empty() {
-                ptr::null_mut()
-            } else {
-                unsafe {
-                    alloc(Layout::from_size_align_unchecked(
-                        self.layout.pad_to_align().size() * self.mappings.len(),
-                        self.layout.align(),
-                    ))
-                    .cast()
-                }
-            },
-
-            dup_fn: self.dup_fn,
-            drop_fn: self.drop_fn,
-
-            // TODO: Check if `0` is fine or otherwise we should copy the value from `old_dict` too.
-            count: 0,
-        };
-
-        for (&key, &old_index) in self.mappings.iter() {
-            let old_value_ptr = unsafe {
-                self.elements
-                    .byte_add(self.layout.pad_to_align().size() * old_index)
-            };
-
-            let new_index = new_dict.mappings.len();
-            let new_value_ptr = unsafe {
-                new_dict
-                    .elements
-                    .byte_add(new_dict.layout.pad_to_align().size() * new_index)
-            };
-
-            new_dict.mappings.insert(key, new_index);
-            match self.dup_fn {
-                Some(dup_fn) => dup_fn(old_value_ptr.cast(), new_value_ptr.cast()),
-                None => unsafe {
-                    ptr::copy_nonoverlapping::<u8>(
-                        old_value_ptr.cast(),
-                        new_value_ptr.cast(),
-                        self.layout.size(),
-                    )
-                },
-            }
-        }
-
-        new_dict
-    }
 }
 
 impl Drop for FeltDict {
