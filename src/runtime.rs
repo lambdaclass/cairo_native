@@ -250,6 +250,10 @@ pub unsafe extern "C" fn cairo_native__dict_get(
     value_ptr: *mut *mut c_void,
 ) -> c_int {
     let dict_rc = Rc::from_raw(dict_ptr.read());
+
+    // there may me multiple reference to the same dictionary (snapshots), but
+    // as snapshots cannot access the inner dictionary, then it is safe to modify it
+    // without cloning it.
     let dict = Rc::as_ptr(&dict_rc)
         .cast_mut()
         .as_mut()
