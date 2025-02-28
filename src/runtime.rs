@@ -156,6 +156,14 @@ pub struct FeltDict {
     pub count: u64,
 }
 
+#[cfg(test)]
+#[repr(C)]
+#[derive(Debug)]
+pub struct FeltDictEntry {
+    pub dict: *const FeltDict,
+    pub value_ptr: *mut (),
+}
+
 impl Clone for FeltDict {
     fn clone(&self) -> Self {
         let mut new_dict = FeltDict {
