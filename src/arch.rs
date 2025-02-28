@@ -9,7 +9,6 @@ use crate::{
 use bumpalo::Bump;
 use cairo_lang_sierra::{
     extensions::{
-        circuit::CircuitTypeConcrete,
         core::{CoreLibfunc, CoreType, CoreTypeConcrete},
         starknet::{secp256::Secp256PointTypeConcrete, StarkNetTypeConcrete},
     },

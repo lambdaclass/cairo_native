@@ -15,12 +15,9 @@ use crate::{
 use bumpalo::Bump;
 use cairo_lang_sierra::{
     extensions::{
-        circuit::CircuitTypeConcrete,
         core::{CoreLibfunc, CoreType, CoreTypeConcrete},
         starknet::{secp256::Secp256PointTypeConcrete, StarkNetTypeConcrete},
-        types::InfoAndTypeConcreteType,
         utils::Range,
-        ConcreteType,
     },
     ids::ConcreteTypeId,
     program_registry::ProgramRegistry,
@@ -1009,7 +1006,7 @@ impl Value {
                     }
                 }
                 #[cfg(test)]
-                CoreTypeConcrete::Circuit(CircuitTypeConcrete::CircuitOutputs(_)) => {
+                CoreTypeConcrete::Circuit(cairo_lang_sierra::extensions::circuit::CircuitTypeConcrete::CircuitOutputs(_)) => {
                     let elem_layout = get_integer_layout(384);
                     let mut fields = Vec::with_capacity(6);
 
@@ -1028,15 +1025,11 @@ impl Value {
                     }
                 }
                 #[cfg(test)]
-                CoreTypeConcrete::Circuit(CircuitTypeConcrete::CircuitPartialOutputs(_)) => {
+                CoreTypeConcrete::Circuit(cairo_lang_sierra::extensions::circuit::CircuitTypeConcrete::CircuitPartialOutputs(_)) => {
                     Value::Null
                 }
                 #[cfg(test)]
-                CoreTypeConcrete::Circuit(CircuitTypeConcrete::CircuitModulus(_)) => {
-                    Self::Uint384Test(ptr.cast::<BigUint>().as_ref().clone())
-                }
-                #[cfg(test)]
-                CoreTypeConcrete::Circuit(CircuitTypeConcrete::CircuitFailureGuarantee(_)) => {
+                CoreTypeConcrete::Circuit(cairo_lang_sierra::extensions::circuit::CircuitTypeConcrete::CircuitFailureGuarantee(_)) => {
                     Value::Null
                 }
                 CoreTypeConcrete::Circuit(_)
