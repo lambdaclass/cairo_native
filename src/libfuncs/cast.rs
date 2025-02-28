@@ -429,6 +429,16 @@ mod test {
         };
     }
 
+    fn bytes21_with_filled_u8_max(times: u8) -> Value {
+        let mut vec = [0; 31];
+
+        for i in 0..times {
+            vec[i as usize] = u8::MAX
+        }
+
+        Value::Bytes31(vec)
+    }
+
     #[test]
     fn downcast() {
         let result = run_sierra_program(&cast!(Uint128Type, Uint8Type, false), &[u128::MAX.into()])
@@ -539,193 +549,18 @@ mod test {
         let result =
             run_sierra_program(&cast!(Uint128Type, Bytes31Type, true), &[u128::MAX.into()])
                 .return_value;
-        assert_eq!(
-            result,
-            Value::Bytes31([
-                u8::MAX,
-                u8::MAX,
-                u8::MAX,
-                u8::MAX,
-                u8::MAX,
-                u8::MAX,
-                u8::MAX,
-                u8::MAX,
-                u8::MAX,
-                u8::MAX,
-                u8::MAX,
-                u8::MAX,
-                u8::MAX,
-                u8::MAX,
-                u8::MAX,
-                u8::MAX,
-                0,
-                0,
-                0,
-                0,
-                0,
-                0,
-                0,
-                0,
-                0,
-                0,
-                0,
-                0,
-                0,
-                0,
-                0,
-            ])
-        );
+        assert_eq!(result, bytes21_with_filled_u8_max(16));
         let result = run_sierra_program(&cast!(Uint64Type, Bytes31Type, true), &[u64::MAX.into()])
             .return_value;
-        assert_eq!(
-            result,
-            Value::Bytes31([
-                u8::MAX,
-                u8::MAX,
-                u8::MAX,
-                u8::MAX,
-                u8::MAX,
-                u8::MAX,
-                u8::MAX,
-                u8::MAX,
-                0,
-                0,
-                0,
-                0,
-                0,
-                0,
-                0,
-                0,
-                0,
-                0,
-                0,
-                0,
-                0,
-                0,
-                0,
-                0,
-                0,
-                0,
-                0,
-                0,
-                0,
-                0,
-                0,
-            ])
-        );
+        assert_eq!(result, bytes21_with_filled_u8_max(8));
         let result = run_sierra_program(&cast!(Uint32Type, Bytes31Type, true), &[u32::MAX.into()])
             .return_value;
-        assert_eq!(
-            result,
-            Value::Bytes31([
-                u8::MAX,
-                u8::MAX,
-                u8::MAX,
-                u8::MAX,
-                0,
-                0,
-                0,
-                0,
-                0,
-                0,
-                0,
-                0,
-                0,
-                0,
-                0,
-                0,
-                0,
-                0,
-                0,
-                0,
-                0,
-                0,
-                0,
-                0,
-                0,
-                0,
-                0,
-                0,
-                0,
-                0,
-                0,
-            ])
-        );
+        assert_eq!(result, bytes21_with_filled_u8_max(4));
         let result = run_sierra_program(&cast!(Uint16Type, Bytes31Type, true), &[u16::MAX.into()])
             .return_value;
-        assert_eq!(
-            result,
-            Value::Bytes31([
-                u8::MAX,
-                u8::MAX,
-                0,
-                0,
-                0,
-                0,
-                0,
-                0,
-                0,
-                0,
-                0,
-                0,
-                0,
-                0,
-                0,
-                0,
-                0,
-                0,
-                0,
-                0,
-                0,
-                0,
-                0,
-                0,
-                0,
-                0,
-                0,
-                0,
-                0,
-                0,
-                0,
-            ])
-        );
+        assert_eq!(result, bytes21_with_filled_u8_max(2));
         let result = run_sierra_program(&cast!(Uint8Type, Bytes31Type, true), &[u8::MAX.into()])
             .return_value;
-        assert_eq!(
-            result,
-            Value::Bytes31([
-                u8::MAX,
-                0,
-                0,
-                0,
-                0,
-                0,
-                0,
-                0,
-                0,
-                0,
-                0,
-                0,
-                0,
-                0,
-                0,
-                0,
-                0,
-                0,
-                0,
-                0,
-                0,
-                0,
-                0,
-                0,
-                0,
-                0,
-                0,
-                0,
-                0,
-                0,
-                0,
-            ])
-        );
+        assert_eq!(result, bytes21_with_filled_u8_max(1));
     }
 }
