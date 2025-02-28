@@ -67,7 +67,12 @@ pub enum Value {
         debug_name: Option<String>,
     },
     #[cfg(test)]
-    CircuitStuff(Vec<Self>),
+    Circuit {
+        num_inputs: u32,
+        inputs: Vec<BigUint>,
+    },
+    #[cfg(test)]
+    Uint384Test(BigUint),
     Uint8(u8),
     Uint16(u16),
     Uint32(u32),
@@ -519,6 +524,13 @@ impl Value {
 
                     ptr
                 }
+                #[cfg(test)]
+                Self::Uint384Test(value) => {
+                    let ptr = arena.alloc_layout(get_integer_layout(384)).cast();
+                    *ptr.cast::<BigUint>().as_mut() = value.clone();
+
+                    ptr
+                }
                 Self::EcPoint(a, b) => {
                     let ptr = arena
                         .alloc_layout(layout_repeat(&get_integer_layout(252), 2)?.0.pad_to_align())
@@ -555,23 +567,44 @@ impl Value {
                     )
                 }
                 #[cfg(test)]
-                Self::CircuitStuff(vec) => {
-                    let circuit_layout = ty.layout(&registry)?;
-                    let elem_layout = get_integer_layout(384);
-                    let ptr = arena.alloc_layout(circuit_layout).as_ptr();
+                Self::Circuit { num_inputs, inputs } => {
+                    if let CoreTypeConcrete::Circuit(_) = Self::resolve_type(ty, registry)? {
+                        let (circuit_layout, _) =
+                            get_integer_layout(32).extend(ty.layout(&registry)?)?;
+                        let elem_layout = get_integer_layout(384);
+                        let circuit_ptr = arena.alloc_layout(circuit_layout);
+                        let inputs_num_layout = get_integer_layout(32);
+                        let inputs_num_ptr = arena.alloc_layout(get_integer_layout(32));
 
-                    // Write the data.
-                    for (idx, elem) in vec.iter().enumerate() {
-                        let elem =
-                            elem.to_ptr(arena, registry, &info.ty, find_dict_overrides)?;
+                        *inputs_num_ptr.cast::<u32>().as_mut() = *num_inputs;
 
                         std::ptr::copy_nonoverlapping(
-                            elem.cast::<u8>().as_ptr(),
-                            ptr.byte_add(idx * elem_layout.size()).cast::<u8>(),
-                            elem_layout.size(),
+                            inputs_num_ptr.as_ptr(),
+                            circuit_ptr.as_ptr(),
+                            inputs_num_layout.size(),
                         );
+
+                        let _ = circuit_ptr.byte_add(inputs_num_layout.size());
+
+                        // Write the data.
+                        for (idx, elem) in inputs.iter().enumerate() {
+                            let elem_ptr = arena.alloc_layout(elem_layout).cast();
+                            *elem_ptr.cast::<BigUint>().as_mut() = elem.clone();
+
+                            std::ptr::copy_nonoverlapping(
+                                elem_ptr.as_ptr(),
+                                circuit_ptr.as_ptr().byte_add(idx * elem_layout.pad_to_align().size()).cast::<u8>(),
+                                elem_layout.size(),
+                            );
+                        }
+
+                        NonNull::new_unchecked(circuit_ptr.as_ptr() as *mut ())
+                    } else {
+                        Err(Error::UnexpectedValue(format!(
+                            "expected value of type {:?} but got a circuit",
+                            type_id.debug_name
+                        )))?
                     }
-                    todo!();
                 }
                 Self::IntRange { x, y } => {
                     if let CoreTypeConcrete::IntRange(info) = Self::resolve_type(ty, registry)? {
@@ -896,7 +929,7 @@ impl Value {
                             Self::from_ptr(
                                 NonNull::new(
                                     dict.elements
-                                        .byte_add(dict.layout.pad_to_align().size() * index),
+                                        .byte_add(dict.layout.size() * index),
                                 )
                                 .to_native_assert_error(
                                     "tried to make a non-null ptr out of a null one",
@@ -970,7 +1003,6 @@ impl Value {
                     let data = *ptr.cast::<[u8; 31]>().as_ref();
                     Self::Bytes31(data)
                 }
-
                 CoreTypeConcrete::Const(_) => native_panic!("implement const from_ptr"),
                 CoreTypeConcrete::BoundedInt(info) => {
                     let mut data = BigInt::from_biguint(
@@ -989,9 +1021,29 @@ impl Value {
                         range: info.range.clone(),
                     }
                 }
-                CoreTypeConcrete::Coupon(_)
-                | CoreTypeConcrete::Circuit(_)
-                | CoreTypeConcrete::RangeCheck96(_) => native_panic!("implement from_ptr"),
+                #[cfg(test)]
+                CoreTypeConcrete::Circuit(_) => {
+                    let elem_layout = get_integer_layout(384);
+                    let u32_layout = get_integer_layout(32);
+                    let num_inputs = *ptr.cast::<u32>().as_ref();
+                    let mut inputs = Vec::with_capacity(num_inputs as usize);
+                    let _ = ptr.byte_add(u32_layout.size());
+                    for i in 0..num_inputs {
+                        let elem = ptr
+                            .byte_add(elem_layout.pad_to_align().size() * i as usize)
+                            .cast::<BigUint>()
+                            .as_ref();
+
+                        inputs.push(elem.clone());
+                    }
+
+                    Value::Circuit { num_inputs, inputs }
+                }
+                CoreTypeConcrete::Circuit(_)
+                | CoreTypeConcrete::Coupon(_)
+                | CoreTypeConcrete::RangeCheck96(_) => {
+                    native_panic!("implement from_ptr")
+                }
                 CoreTypeConcrete::IntRange(info) => {
                     let member = registry.get_type(&info.ty)?;
                     let member_layout = member.layout(registry)?;

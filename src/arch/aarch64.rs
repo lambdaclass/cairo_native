@@ -12,6 +12,7 @@
 use super::AbiArgument;
 use crate::{error::Error, starknet::U256, utils::get_integer_layout};
 use cairo_lang_sierra::ids::ConcreteTypeId;
+use num_bigint::BigUint;
 use num_traits::ToBytes;
 use starknet_types_core::felt::Felt;
 use std::ffi::c_void;
@@ -310,6 +311,27 @@ impl AbiArgument for [u8; 31] {
         }
         buffer.extend_from_slice(self);
         buffer.push(0);
+        Ok(())
+    }
+}
+
+impl AbiArgument for BigUint {
+    fn to_bytes(
+        &self,
+        buffer: &mut Vec<u8>,
+        _find_dict_overrides: impl Copy
+            + Fn(
+                &ConcreteTypeId,
+            ) -> (
+                Option<extern "C" fn(*mut c_void, *mut c_void)>,
+                Option<extern "C" fn(*mut c_void)>,
+            ),
+    ) -> crate::error::Result<()> {
+        if buffer.len() >= 56 {
+            align_to(buffer, get_integer_layout(384).align());
+        }
+        buffer.extend_from_slice(&self.to_bytes_le());
+
         Ok(())
     }
 }

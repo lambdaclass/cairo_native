@@ -121,8 +121,7 @@ impl AbiArgument for ValueWithInfoWrapper<'_> {
                 .map(value, &info.ty)?
                 .to_bytes(buffer, find_dict_overrides)?,
 
-            (Value::Array(_), CoreTypeConcrete::Array(_)) 
-            | (Value::Array(_), CoreTypeConcrete::Circuit(_)) => {
+            (Value::Array(_), CoreTypeConcrete::Array(_)) => {
                 // TODO: Assert that `info.ty` matches all the values' types.
 
                 let abi_ptr = self.value.to_ptr(
@@ -138,8 +137,8 @@ impl AbiArgument for ValueWithInfoWrapper<'_> {
                 abi.until.to_bytes(buffer, find_dict_overrides)?;
                 abi.capacity.to_bytes(buffer, find_dict_overrides)?;
             }
-            (Value::BoundedInt { .. }, CoreTypeConcrete::BoundedInt(_)) => {
-                native_panic!("todo: implement AbiArgument for Value::BoundedInt case")
+            (Value::BoundedInt { value, .. }, CoreTypeConcrete::BoundedInt(_)) => {
+                value.to_bytes(buffer, find_dict_overrides)?;
             }
             (Value::Bytes31(value), CoreTypeConcrete::Bytes31(_)) => {
                 value.to_bytes(buffer, find_dict_overrides)?
@@ -245,6 +244,21 @@ impl AbiArgument for ValueWithInfoWrapper<'_> {
             }
             (Value::Uint8(value), CoreTypeConcrete::Uint8(_)) => {
                 value.to_bytes(buffer, find_dict_overrides)?
+            }
+            #[cfg(test)]
+            (Value::Circuit { .. }, CoreTypeConcrete::Circuit(_)) => self
+                .value
+                .to_ptr(self.arena, self.registry, self.type_id, find_dict_overrides)?
+                .as_ptr()
+                .to_bytes(buffer, find_dict_overrides)?,
+            #[cfg(test)]
+            (Value::Uint384Test(value), _) => value.to_bytes(buffer, find_dict_overrides)?,
+            #[cfg(test)]
+            (Value::Struct { fields, .. }, _) => {
+                fields
+                    .iter()
+                    .map(|value| self.map(value, self.type_id))
+                    .try_for_each(|wrapper| wrapper?.to_bytes(buffer, find_dict_overrides))?;
             }
             _ => native_panic!(
                 "todo: abi argument unimplemented for ({:?}, {:?})",
