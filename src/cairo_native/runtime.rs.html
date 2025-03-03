@@ -1150,15 +1150,15 @@
 <span class="kw">impl </span>Clone <span class="kw">for </span>FeltDict {
     <span class="kw">fn </span>clone(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; <span class="self">Self </span>{
         <span class="kw">let </span><span class="kw-2">mut </span>new_dict = FeltDict {
-            mappings: HashMap::with_capacity(<span class="self">self</span>.mappings.len()),
+            mappings: HashMap::with_capacity(<span class="self">self</span>.mappings.capacity()),
 
             layout: <span class="self">self</span>.layout,
-            elements: <span class="kw">if </span><span class="self">self</span>.mappings.is_empty() {
+            elements: <span class="kw">if </span><span class="self">self</span>.mappings.capacity() == <span class="number">0 </span>{
                 ptr::null_mut()
             } <span class="kw">else </span>{
                 <span class="kw">unsafe </span>{
                     alloc(Layout::from_size_align_unchecked(
-                        <span class="self">self</span>.layout.pad_to_align().size() * <span class="self">self</span>.mappings.len(),
+                        <span class="self">self</span>.layout.pad_to_align().size() * <span class="self">self</span>.mappings.capacity(),
                         <span class="self">self</span>.layout.align(),
                     ))
                     .cast()
