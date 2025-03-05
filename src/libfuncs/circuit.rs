@@ -480,6 +480,7 @@ fn build_gate_evaluation<'ctx, 'this>(
     let mut values = vec![None; 1 + circuit_info.n_inputs + circuit_info.values.len()];
     values[0] = Some(block.const_int(context, location, 1, 384)?);
     for i in 0..circuit_info.n_inputs {
+        dbg!(i);
         values[i + 1] = Some(block.extract_value(
             context,
             location,
@@ -697,7 +698,7 @@ fn build_gate_evaluation<'ctx, 'this>(
         .skip(1 + circuit_info.n_inputs)
         .collect::<Option<Vec<Value>>>()
         .ok_or(SierraAssertError::ImpossibleCircuit)?;
-
+    dbg!(&values);
     Ok(([block, err_block], values))
 }
 
@@ -1089,12 +1090,27 @@ mod test {
     use crate::{
         utils::{
             felt252_str,
-            test::{jit_enum, jit_panic, jit_struct, load_cairo, run_program_assert_output},
+            sierra_gen::SierraGenerator,
+            test::{
+                jit_enum, jit_panic, jit_struct, load_cairo, run_program_assert_output,
+                run_sierra_program,
+            },
         },
         values::Value,
     };
-    use cairo_lang_sierra::extensions::utils::Range;
-    use num_bigint::BigUint;
+    use cairo_lang_sierra::{
+        extensions::{
+            circuit::{
+                AddModGate, Circuit, CircuitInput, EvalCircuitLibFunc, InverseGate, MulModGate,
+                SubModGate,
+            },
+            structure::StructType,
+            utils::Range,
+        },
+        ids::UserTypeId,
+        program::GenericArg,
+    };
+    use num_bigint::{BigInt, BigUint};
     use num_traits::Num;
     use starknet_types_core::felt::Felt;
 
@@ -1129,6 +1145,24 @@ mod test {
             ],
             debug_name: None,
         }
+    }
+
+    fn u384_to_biguint(value: [u128; 4]) -> BigUint {
+        let l0 = value[0].to_le_bytes();
+        let l1 = value[1].to_le_bytes();
+        let l2 = value[2].to_le_bytes();
+        let l3 = value[3].to_le_bytes();
+
+        BigUint::from_bytes_le(&[
+            l0[0], l0[1], l0[2], l0[3], l0[4], l0[5], l0[6], l0[7], l0[8], l0[9], l0[10],
+            l0[11], //
+            l1[0], l1[1], l1[2], l1[3], l1[4], l1[5], l1[6], l1[7], l1[8], l1[9], l1[10],
+            l1[11], //
+            l2[0], l2[1], l2[2], l2[3], l2[4], l2[5], l2[6], l2[7], l2[8], l2[9], l2[10],
+            l2[11], //
+            l3[0], l3[1], l3[2], l3[3], l3[4], l3[5], l3[6], l3[7], l3[8], l3[9], l3[10],
+            l3[11], //
+        ])
     }
 
     #[test]
@@ -1403,5 +1437,74 @@ mod test {
                 ]))
             ),
         );
+    }
+
+    #[test]
+    fn test_eval_circuit_sierra() {
+        let program = {
+            let mut generator = SierraGenerator::<EvalCircuitLibFunc>::default();
+
+            let circuit_input_1_ty = generator
+                .push_type_declaration::<CircuitInput>(&[GenericArg::Value(BigInt::from(0))])
+                .clone();
+            let circuit_input_2_ty = generator
+                .push_type_declaration::<CircuitInput>(&[GenericArg::Value(BigInt::from(1))])
+                .clone();
+            let add_mod_gate_ty = generator
+                .push_type_declaration::<AddModGate>(&[
+                    GenericArg::Type(circuit_input_1_ty.clone()),
+                    GenericArg::Type(circuit_input_2_ty.clone()),
+                ])
+                .clone();
+            let mul_mod_gate_ty = generator
+                .push_type_declaration::<MulModGate>(&[
+                    GenericArg::Type(add_mod_gate_ty),
+                    GenericArg::Type(circuit_input_2_ty.clone()),
+                ])
+                .clone();
+            let inv_gate_ty = generator
+                .push_type_declaration::<InverseGate>(&[GenericArg::Type(mul_mod_gate_ty)])
+                .clone();
+            let sub_gate_ty = generator
+                .push_type_declaration::<SubModGate>(&[
+                    GenericArg::Type(inv_gate_ty),
+                    GenericArg::Type(circuit_input_1_ty),
+                ])
+                .clone();
+            let struct_ty = generator
+                .push_type_declaration::<StructType>(&[
+                    GenericArg::UserType(UserTypeId::from_string("Tuple")),
+                    GenericArg::Type(sub_gate_ty),
+                ])
+                .clone();
+
+            let circuit_ty = generator
+                .push_type_declaration::<Circuit>(&[GenericArg::Type(struct_ty)])
+                .clone();
+
+            generator.build(&[GenericArg::Type(circuit_ty)])
+        };
+        println!("{program}");
+
+        let input1 = u384_to_biguint([9, 2, 9, 3]);
+        let input2 = u384_to_biguint([5, 7, 0, 8]);
+
+        let circuit_data = Value::CircuitData(vec![
+            u384_to_biguint([9, 2, 9, 3]),
+            u384_to_biguint([5, 7, 0, 8]),
+        ]);
+
+        let result = run_sierra_program(
+            &program,
+            &[
+                circuit_data.clone(),
+                circuit_data,
+                Value::Uint384Test(u384_to_biguint([17, 14, 14, 14])),
+                Value::Uint384Test(input1),
+                Value::Uint384Test(input2),
+            ],
+        );
+
+        dbg!(result.return_value);
     }
 }

@@ -245,6 +245,14 @@ impl AbiArgument for ValueWithInfoWrapper<'_> {
             (Value::Uint8(value), CoreTypeConcrete::Uint8(_)) => {
                 value.to_bytes(buffer, find_dict_overrides)?
             }
+            #[cfg(test)]
+            (Value::CircuitData(_), CoreTypeConcrete::Circuit(_)) => self
+                .value
+                .to_ptr(self.arena, self.registry, self.type_id, find_dict_overrides)?
+                .as_ptr()
+                .to_bytes(buffer, find_dict_overrides)?,
+            #[cfg(test)]
+            (Value::Uint384Test(value), _) => value.to_bytes(buffer, find_dict_overrides)?,
             _ => native_panic!(
                 "todo: abi argument unimplemented for ({:?}, {:?})",
                 self.value,

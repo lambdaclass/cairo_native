@@ -66,6 +66,10 @@ pub enum Value {
         #[educe(PartialEq(ignore))]
         debug_name: Option<String>,
     },
+    #[cfg(test)]
+    CircuitData(Vec<BigUint>),
+    #[cfg(test)]
+    Uint384Test(BigUint),
     Uint8(u8),
     Uint16(u16),
     Uint32(u32),
@@ -218,7 +222,6 @@ impl Value {
                     ptr.cast::<[u8; 32]>().as_mut().copy_from_slice(&data);
                     ptr
                 }
-
                 Self::Bytes31(_) => native_panic!("todo: allocate type Bytes31"),
                 Self::Array(data) => {
                     if let CoreTypeConcrete::Array(info) = Self::resolve_type(ty, registry)? {
@@ -518,6 +521,13 @@ impl Value {
 
                     ptr
                 }
+                #[cfg(test)]
+                Self::Uint384Test(value) => {
+                    let ptr = arena.alloc_layout(get_integer_layout(384)).cast();
+                    *ptr.cast::<BigUint>().as_mut() = value.clone();
+
+                    ptr
+                }
                 Self::EcPoint(a, b) => {
                     let ptr = arena
                         .alloc_layout(layout_repeat(&get_integer_layout(252), 2)?.0.pad_to_align())
@@ -552,6 +562,36 @@ impl Value {
                     native_panic!(
                         "unimplemented: null is meant as return value for nullable for now"
                     )
+                }
+                #[cfg(test)]
+                Self::CircuitData(inputs) => {
+                    if let CoreTypeConcrete::Circuit(_) = Self::resolve_type(ty, registry)? {
+                        let circuit_layout = ty.layout(&registry)?;
+                        let elem_layout = get_integer_layout(384);
+                        let circuit_ptr = arena.alloc_layout(circuit_layout);
+                        dbg!(inputs);
+                        // Write the data.
+                        for (idx, elem) in inputs.iter().enumerate() {
+                            let elem_ptr = arena.alloc_layout(elem_layout).cast();
+                            *elem_ptr.cast::<BigUint>().as_mut() = elem.clone();
+
+                            std::ptr::copy_nonoverlapping(
+                                elem_ptr.as_ptr(),
+                                circuit_ptr
+                                    .as_ptr()
+                                    .byte_add(idx * elem_layout.pad_to_align().size())
+                                    .cast::<u8>(),
+                                elem_layout.size(),
+                            );
+                        }
+
+                        NonNull::new_unchecked(circuit_ptr.as_ptr() as *mut ())
+                    } else {
+                        Err(Error::UnexpectedValue(format!(
+                            "expected value of type {:?} but got a circuit",
+                            type_id.debug_name
+                        )))?
+                    }
                 }
                 Self::IntRange { x, y } => {
                     if let CoreTypeConcrete::IntRange(info) = Self::resolve_type(ty, registry)? {
@@ -874,14 +914,11 @@ impl Value {
                         output_map.insert(
                             key,
                             Self::from_ptr(
-                                NonNull::new(
-                                    dict.elements
-                                        .byte_add(dict.layout.pad_to_align().size() * index),
-                                )
-                                .to_native_assert_error(
-                                    "tried to make a non-null ptr out of a null one",
-                                )?
-                                .cast(),
+                                NonNull::new(dict.elements.byte_add(dict.layout.size() * index))
+                                    .to_native_assert_error(
+                                        "tried to make a non-null ptr out of a null one",
+                                    )?
+                                    .cast(),
                                 &info.ty,
                                 registry,
                                 false,
@@ -950,7 +987,6 @@ impl Value {
                     let data = *ptr.cast::<[u8; 31]>().as_ref();
                     Self::Bytes31(data)
                 }
-
                 CoreTypeConcrete::Const(_) => native_panic!("implement const from_ptr"),
                 CoreTypeConcrete::BoundedInt(info) => {
                     let mut data = BigInt::from_biguint(
@@ -969,9 +1005,38 @@ impl Value {
                         range: info.range.clone(),
                     }
                 }
-                CoreTypeConcrete::Coupon(_)
-                | CoreTypeConcrete::Circuit(_)
-                | CoreTypeConcrete::RangeCheck96(_) => native_panic!("implement from_ptr"),
+                #[cfg(test)]
+                CoreTypeConcrete::Circuit(cairo_lang_sierra::extensions::circuit::CircuitTypeConcrete::CircuitOutputs(_)) => {
+                    let elem_layout = get_integer_layout(384);
+                    let mut fields = Vec::with_capacity(6);
+
+                    for i in 0..6 {
+                        fields.push(Value::Uint384Test(
+                            ptr.as_ptr()
+                                .byte_add(elem_layout.size() * i)
+                                .cast::<BigUint>()
+                                .read(),
+                        ));
+                    }
+
+                    Value::Struct {
+                        fields,
+                        debug_name: None,
+                    }
+                }
+                #[cfg(test)]
+                CoreTypeConcrete::Circuit(cairo_lang_sierra::extensions::circuit::CircuitTypeConcrete::CircuitPartialOutputs(_)) => {
+                    Value::Null
+                }
+                #[cfg(test)]
+                CoreTypeConcrete::Circuit(cairo_lang_sierra::extensions::circuit::CircuitTypeConcrete::CircuitFailureGuarantee(_)) => {
+                    Value::Null
+                }
+                CoreTypeConcrete::Circuit(_)
+                | CoreTypeConcrete::Coupon(_)
+                | CoreTypeConcrete::RangeCheck96(_) => {
+                    native_panic!("implement from_ptr")
+                }
                 CoreTypeConcrete::IntRange(info) => {
                     let member = registry.get_type(&info.ty)?;
                     let member_layout = member.layout(registry)?;
