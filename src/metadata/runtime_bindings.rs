@@ -437,7 +437,6 @@ impl RuntimeBindingsMeta {
         module: &Module,
         block: &'a Block<'c>,
         location: Location<'c>,
-        dup_fn: Option<Value<'c, 'a>>,
         drop_fn: Option<Value<'c, 'a>>,
         layout: Layout,
     ) -> Result<Value<'c, 'a>>
@@ -451,12 +450,6 @@ impl RuntimeBindingsMeta {
         let size = block.const_int_from_type(context, location, layout.size(), i64_ty)?;
         let align = block.const_int_from_type(context, location, layout.align(), i64_ty)?;
 
-        let dup_fn = match dup_fn {
-            Some(x) => x,
-            None => {
-                block.append_op_result(llvm::zero(llvm::r#type::pointer(context, 0), location))?
-            }
-        };
         let drop_fn = match drop_fn {
             Some(x) => x,
             None => {
@@ -467,7 +460,7 @@ impl RuntimeBindingsMeta {
         block.append_op_result(
             OperationBuilder::new("llvm.call", location)
                 .add_operands(&[function])
-                .add_operands(&[size, align, dup_fn, drop_fn])
+                .add_operands(&[size, align, drop_fn])
                 .add_results(&[llvm::r#type::pointer(context, 0)])
                 .build()?,
         )
