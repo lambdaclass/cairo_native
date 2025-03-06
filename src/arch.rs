@@ -9,6 +9,7 @@ use crate::{
 use bumpalo::Bump;
 use cairo_lang_sierra::{
     extensions::{
+        circuit::CircuitTypeConcrete,
         core::{CoreLibfunc, CoreType, CoreTypeConcrete},
         starknet::{secp256::Secp256PointTypeConcrete, StarkNetTypeConcrete},
     },
@@ -137,8 +138,8 @@ impl AbiArgument for ValueWithInfoWrapper<'_> {
                 abi.until.to_bytes(buffer, find_dict_overrides)?;
                 abi.capacity.to_bytes(buffer, find_dict_overrides)?;
             }
-            (Value::BoundedInt { .. }, CoreTypeConcrete::BoundedInt(_)) => {
-                native_panic!("todo: implement AbiArgument for Value::BoundedInt case")
+            (Value::BoundedInt { value, .. }, CoreTypeConcrete::BoundedInt(_)) => {
+                value.to_bytes(buffer, find_dict_overrides)?
             }
             (Value::Bytes31(value), CoreTypeConcrete::Bytes31(_)) => {
                 value.to_bytes(buffer, find_dict_overrides)?
@@ -246,15 +247,27 @@ impl AbiArgument for ValueWithInfoWrapper<'_> {
                 value.to_bytes(buffer, find_dict_overrides)?
             }
             #[cfg(test)]
-            (Value::CircuitData(_), CoreTypeConcrete::Circuit(_)) => self
+            (
+                Value::Uint384Test(_),
+                CoreTypeConcrete::Circuit(CircuitTypeConcrete::CircuitModulus(_)),
+            ) => self
                 .value
                 .to_ptr(self.arena, self.registry, self.type_id, find_dict_overrides)?
                 .as_ptr()
                 .to_bytes(buffer, find_dict_overrides)?,
             #[cfg(test)]
-            (Value::Uint384Test(value), _) => {
-                crate::utils::test::u384_to_bytes(*value).to_bytes(buffer, find_dict_overrides)?
-            }
+            (
+                Value::CircuitData(_),
+                CoreTypeConcrete::Circuit(CircuitTypeConcrete::CircuitData(_)),
+            )
+            | (
+                Value::CircuitData(_),
+                CoreTypeConcrete::Circuit(CircuitTypeConcrete::CircuitDescriptor(_)),
+            ) => self
+                .value
+                .to_ptr(self.arena, self.registry, self.type_id, find_dict_overrides)?
+                .as_ptr()
+                .to_bytes(buffer, find_dict_overrides)?,
             _ => native_panic!(
                 "todo: abi argument unimplemented for ({:?}, {:?})",
                 self.value,

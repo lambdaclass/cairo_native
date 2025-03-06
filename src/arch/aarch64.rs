@@ -314,26 +314,6 @@ impl AbiArgument for [u8; 31] {
     }
 }
 
-impl AbiArgument for [u8; 48] {
-    fn to_bytes(
-        &self,
-        buffer: &mut Vec<u8>,
-        _find_dict_overrides: impl Copy
-            + Fn(
-                &ConcreteTypeId,
-            ) -> (
-                Option<extern "C" fn(*mut c_void, *mut c_void)>,
-                Option<extern "C" fn(*mut c_void)>,
-            ),
-    ) -> crate::error::Result<()> {
-        if buffer.len() >= 56 {
-            align_to(buffer, get_integer_layout(384).align());
-        }
-        buffer.extend_from_slice(self);
-        Ok(())
-    }
-}
-
 impl<T> AbiArgument for *const T {
     fn to_bytes(
         &self,

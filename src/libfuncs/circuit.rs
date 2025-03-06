@@ -1085,14 +1085,13 @@ fn build_array_slice<'ctx>(
 
 #[cfg(test)]
 mod test {
-
     use crate::{
         utils::{
             felt252_str,
             sierra_gen::SierraGenerator,
             test::{
                 jit_enum, jit_panic, jit_struct, load_cairo, run_program_assert_output,
-                run_sierra_program, u384, u384_to_bytes,
+                run_sierra_program, u384,
             },
         },
         values::Value,
@@ -1104,11 +1103,13 @@ mod test {
                 SubModGate,
             },
             structure::StructType,
+            utils::Range,
         },
         ids::UserTypeId,
         program::GenericArg,
     };
-    use num_bigint::BigInt;
+    use num_bigint::{BigInt, BigUint};
+    use num_traits::Num;
 
     #[test]
     fn run_add_circuit() {
@@ -1419,13 +1420,12 @@ mod test {
 
         let input1 = [1, 0, 0, 0];
         let input2 = [16, 0, 0, 0];
-        let zero = [0,0,0,0];
         let circuit_data = Value::CircuitData(vec![input1, input2]);
+        let circuit_descriptor = Value::CircuitData(vec![]);
 
         let Value::Enum { value, .. } = run_sierra_program(
             &program,
             &[
-                circuit_data.clone(),
                 circuit_data,
                 Value::Uint384Test([
                     0xffffffffffffffffffffffff,
@@ -1433,8 +1433,24 @@ mod test {
                     0xffffffffffffffffffffffff,
                     0xffffffffffffffffffffffff,
                 ]),
-                Value::Uint384Test(zero),
-                Value::Uint384Test([1,0,0,0]),
+                Value::BoundedInt {
+                    value: 0.into(),
+                    range: Range {
+                        lower: BigUint::from_str_radix("0", 16).unwrap().into(),
+                        upper: BigUint::from_str_radix("79228162514264337593543950336", 10)
+                            .unwrap()
+                            .into(),
+                    },
+                },
+                Value::BoundedInt {
+                    value: 1.into(),
+                    range: Range {
+                        lower: BigUint::from_str_radix("0", 16).unwrap().into(),
+                        upper: BigUint::from_str_radix("79228162514264337593543950336", 10)
+                            .unwrap()
+                            .into(),
+                    },
+                },
             ],
         )
         .return_value
@@ -1502,7 +1518,7 @@ mod test {
         let input1 = [9, 2, 9, 3];
         let input2 = [5, 7, 0, 8];
 
-        let circuit_data = Value::CircuitData(vec![[9, 2, 9, 3], [5, 7, 0, 8]]);
+        let circuit_data = Value::CircuitData(vec![input1, input2]);
 
         let result = run_sierra_program(
             &program,
@@ -1510,8 +1526,8 @@ mod test {
                 circuit_data.clone(),
                 circuit_data,
                 Value::Uint384Test([17, 14, 14, 14]),
-                Value::Uint384Test([0,0,0,0]),
-                Value::Uint384Test([1,0,0,0]),
+                Value::Uint384Test([0, 0, 0, 0]),
+                Value::Uint384Test([1, 0, 0, 0]),
             ],
         );
 

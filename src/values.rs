@@ -15,6 +15,7 @@ use crate::{
 use bumpalo::Bump;
 use cairo_lang_sierra::{
     extensions::{
+        circuit::CircuitTypeConcrete,
         core::{CoreLibfunc, CoreType, CoreTypeConcrete},
         starknet::{secp256::Secp256PointTypeConcrete, StarkNetTypeConcrete},
         utils::Range,
@@ -523,6 +524,7 @@ impl Value {
                 }
                 #[cfg(test)]
                 Self::Uint384Test(value) => {
+                    dbg!(value);
                     let ptr = arena.alloc_layout(get_integer_layout(384)).cast();
                     let data = crate::utils::test::u384_to_bytes(*value);
                     ptr.cast::<[u8; 48]>().as_mut().copy_from_slice(&data);
@@ -566,28 +568,43 @@ impl Value {
                 }
                 #[cfg(test)]
                 Self::CircuitData(inputs) => {
-                    if let CoreTypeConcrete::Circuit(_) = Self::resolve_type(ty, registry)? {
+                    let ty = Self::resolve_type(ty, registry)?;
+
+                    if let CoreTypeConcrete::Circuit(CircuitTypeConcrete::CircuitData(_)) = ty {
                         let circuit_layout = ty.layout(&registry)?;
                         let elem_layout = get_integer_layout(384);
-                        let circuit_ptr = arena.alloc_layout(circuit_layout);
+                        let circuit_ptr = arena.alloc_layout(circuit_layout).as_ptr();
 
                         // Write the data.
                         for (idx, elem) in inputs.iter().enumerate() {
-                            let elem_ptr = arena.alloc_layout(elem_layout).cast();
+                            let elem_ptr = arena.alloc_layout(elem_layout.pad_to_align());
+
                             let data = crate::utils::test::u384_to_bytes(*elem);
+
                             elem_ptr.cast::<[u8; 48]>().as_mut().copy_from_slice(&data);
 
                             std::ptr::copy_nonoverlapping(
-                                elem_ptr.as_ptr(),
-                                circuit_ptr
-                                    .as_ptr()
-                                    .byte_add(idx * elem_layout.pad_to_align().size())
-                                    .cast::<u8>(),
+                                elem_ptr.cast::<u8>().as_ptr(),
+                                circuit_ptr.byte_add(idx * elem_layout.size()).cast(),
                                 elem_layout.size(),
                             );
                         }
 
-                        NonNull::new_unchecked(circuit_ptr.as_ptr() as *mut ())
+                        NonNull::new_unchecked(circuit_ptr).cast()
+                    } else if let CoreTypeConcrete::Circuit(
+                        CircuitTypeConcrete::CircuitDescriptor(_),
+                    ) = ty
+                    {
+                        let descriptor_ptr = arena.alloc_layout(get_integer_layout(0));
+
+                        descriptor_ptr.cast()
+                    } else if let CoreTypeConcrete::Circuit(
+                        CircuitTypeConcrete::CircuitDescriptor(_),
+                    ) = ty
+                    {
+                        let descriptor_ptr = arena.alloc_layout(get_integer_layout(0));
+                        println!("XD");
+                        descriptor_ptr.cast()
                     } else {
                         Err(Error::UnexpectedValue(format!(
                             "expected value of type {:?} but got a circuit",
@@ -1026,7 +1043,7 @@ impl Value {
                             
                             limbs[j] = u128::from_le_bytes(limb_bytes);
                         }
-                        circuits.push(crate::utils::test::u384(limbs)?);
+                        circuits.push(dbg!(crate::utils::test::u384(limbs)?));
                     }
 
                     // // read circuit modulus
