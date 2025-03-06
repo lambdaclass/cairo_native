@@ -379,15 +379,7 @@
 <a href="#378" id="378">378</a>
 <a href="#379" id="379">379</a>
 <a href="#380" id="380">380</a>
-<a href="#381" id="381">381</a>
-<a href="#382" id="382">382</a>
-<a href="#383" id="383">383</a>
-<a href="#384" id="384">384</a>
-<a href="#385" id="385">385</a>
-<a href="#386" id="386">386</a>
-<a href="#387" id="387">387</a>
-<a href="#388" id="388">388</a>
-<a href="#389" id="389">389</a></pre></div><pre class="rust"><code><span class="doccomment">//! # `Felt` dictionary type
+<a href="#381" id="381">381</a></pre></div><pre class="rust"><code><span class="doccomment">//! # `Felt` dictionary type
 //!
 //! A key value storage for values whose type implement Copy. The key is always a felt.
 //!
@@ -473,14 +465,6 @@
     }
 
     <span class="kw">let </span>value_ty = registry.build_type(context, module, metadata, info.self_ty())<span class="question-mark">?</span>;
-
-    {
-        <span class="kw">let </span><span class="kw-2">mut </span>dict_overrides = metadata
-            .remove::&lt;Felt252DictOverrides&gt;()
-            .unwrap_or_default();
-        dict_overrides.build_dup_fn(context, module, registry, metadata, <span class="kw-2">&amp;</span>info.ty)<span class="question-mark">?</span>;
-        metadata.insert(dict_overrides);
-    }
 
     <span class="kw">let </span>region = Region::new();
     <span class="kw">let </span>entry = region.append_block(Block::new(<span class="kw-2">&amp;</span>[(value_ty, location)]));

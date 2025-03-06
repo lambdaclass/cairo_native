@@ -933,63 +933,7 @@
 <a href="#932" id="932">932</a>
 <a href="#933" id="933">933</a>
 <a href="#934" id="934">934</a>
-<a href="#935" id="935">935</a>
-<a href="#936" id="936">936</a>
-<a href="#937" id="937">937</a>
-<a href="#938" id="938">938</a>
-<a href="#939" id="939">939</a>
-<a href="#940" id="940">940</a>
-<a href="#941" id="941">941</a>
-<a href="#942" id="942">942</a>
-<a href="#943" id="943">943</a>
-<a href="#944" id="944">944</a>
-<a href="#945" id="945">945</a>
-<a href="#946" id="946">946</a>
-<a href="#947" id="947">947</a>
-<a href="#948" id="948">948</a>
-<a href="#949" id="949">949</a>
-<a href="#950" id="950">950</a>
-<a href="#951" id="951">951</a>
-<a href="#952" id="952">952</a>
-<a href="#953" id="953">953</a>
-<a href="#954" id="954">954</a>
-<a href="#955" id="955">955</a>
-<a href="#956" id="956">956</a>
-<a href="#957" id="957">957</a>
-<a href="#958" id="958">958</a>
-<a href="#959" id="959">959</a>
-<a href="#960" id="960">960</a>
-<a href="#961" id="961">961</a>
-<a href="#962" id="962">962</a>
-<a href="#963" id="963">963</a>
-<a href="#964" id="964">964</a>
-<a href="#965" id="965">965</a>
-<a href="#966" id="966">966</a>
-<a href="#967" id="967">967</a>
-<a href="#968" id="968">968</a>
-<a href="#969" id="969">969</a>
-<a href="#970" id="970">970</a>
-<a href="#971" id="971">971</a>
-<a href="#972" id="972">972</a>
-<a href="#973" id="973">973</a>
-<a href="#974" id="974">974</a>
-<a href="#975" id="975">975</a>
-<a href="#976" id="976">976</a>
-<a href="#977" id="977">977</a>
-<a href="#978" id="978">978</a>
-<a href="#979" id="979">979</a>
-<a href="#980" id="980">980</a>
-<a href="#981" id="981">981</a>
-<a href="#982" id="982">982</a>
-<a href="#983" id="983">983</a>
-<a href="#984" id="984">984</a>
-<a href="#985" id="985">985</a>
-<a href="#986" id="986">986</a>
-<a href="#987" id="987">987</a>
-<a href="#988" id="988">988</a>
-<a href="#989" id="989">989</a>
-<a href="#990" id="990">990</a>
-<a href="#991" id="991">991</a></pre></div><pre class="rust"><code><span class="attr">#![allow(non_snake_case)]
+<a href="#935" id="935">935</a></pre></div><pre class="rust"><code><span class="attr">#![allow(non_snake_case)]
 
 </span><span class="kw">use </span><span class="kw">crate</span>::utils::BuiltinCosts;
 <span class="kw">use </span>cairo_lang_sierra_gas::core_libfunc_cost::{
@@ -1006,7 +950,7 @@
     hash::StarkHash,
 };
 <span class="kw">use </span>std::{
-    alloc::{alloc, dealloc, realloc, Layout},
+    alloc::{dealloc, realloc, Layout},
     cell::Cell,
     collections::{hash_map::Entry, HashMap},
     ffi::{c_int, c_void},
@@ -1141,65 +1085,9 @@
     <span class="kw">pub </span>layout: Layout,
     <span class="kw">pub </span>elements: <span class="kw-2">*mut </span>(),
 
-    <span class="kw">pub </span>dup_fn: <span class="prelude-ty">Option</span>&lt;<span class="kw">extern </span><span class="string">"C" </span><span class="kw">fn</span>(<span class="kw-2">*mut </span>c_void, <span class="kw-2">*mut </span>c_void)&gt;,
     <span class="kw">pub </span>drop_fn: <span class="prelude-ty">Option</span>&lt;<span class="kw">extern </span><span class="string">"C" </span><span class="kw">fn</span>(<span class="kw-2">*mut </span>c_void)&gt;,
 
     <span class="kw">pub </span>count: u64,
-}
-
-<span class="kw">impl </span>Clone <span class="kw">for </span>FeltDict {
-    <span class="kw">fn </span>clone(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; <span class="self">Self </span>{
-        <span class="kw">let </span><span class="kw-2">mut </span>new_dict = FeltDict {
-            mappings: HashMap::with_capacity(<span class="self">self</span>.mappings.capacity()),
-
-            layout: <span class="self">self</span>.layout,
-            elements: <span class="kw">if </span><span class="self">self</span>.mappings.capacity() == <span class="number">0 </span>{
-                ptr::null_mut()
-            } <span class="kw">else </span>{
-                <span class="kw">unsafe </span>{
-                    alloc(Layout::from_size_align_unchecked(
-                        <span class="self">self</span>.layout.pad_to_align().size() * <span class="self">self</span>.mappings.capacity(),
-                        <span class="self">self</span>.layout.align(),
-                    ))
-                    .cast()
-                }
-            },
-
-            dup_fn: <span class="self">self</span>.dup_fn,
-            drop_fn: <span class="self">self</span>.drop_fn,
-
-            <span class="comment">// TODO: Check if `0` is fine or otherwise we should copy the value from `old_dict` too.
-            </span>count: <span class="number">0</span>,
-        };
-
-        <span class="kw">for </span>(<span class="kw-2">&amp;</span>key, <span class="kw-2">&amp;</span>old_index) <span class="kw">in </span><span class="self">self</span>.mappings.iter() {
-            <span class="kw">let </span>old_value_ptr = <span class="kw">unsafe </span>{
-                <span class="self">self</span>.elements
-                    .byte_add(<span class="self">self</span>.layout.pad_to_align().size() * old_index)
-            };
-
-            <span class="kw">let </span>new_index = new_dict.mappings.len();
-            <span class="kw">let </span>new_value_ptr = <span class="kw">unsafe </span>{
-                new_dict
-                    .elements
-                    .byte_add(new_dict.layout.pad_to_align().size() * new_index)
-            };
-
-            new_dict.mappings.insert(key, new_index);
-            <span class="kw">match </span><span class="self">self</span>.dup_fn {
-                <span class="prelude-val">Some</span>(dup_fn) =&gt; dup_fn(old_value_ptr.cast(), new_value_ptr.cast()),
-                <span class="prelude-val">None </span>=&gt; <span class="kw">unsafe </span>{
-                    ptr::copy_nonoverlapping::&lt;u8&gt;(
-                        old_value_ptr.cast(),
-                        new_value_ptr.cast(),
-                        <span class="self">self</span>.layout.size(),
-                    )
-                },
-            }
-        }
-
-        new_dict
-    }
 }
 
 <span class="kw">impl </span>Drop <span class="kw">for </span>FeltDict {
@@ -1240,7 +1128,6 @@
 </span><span class="kw">pub unsafe extern </span><span class="string">"C" </span><span class="kw">fn </span>cairo_native__dict_new(
     size: u64,
     align: u64,
-    dup_fn: <span class="prelude-ty">Option</span>&lt;<span class="kw">extern </span><span class="string">"C" </span><span class="kw">fn</span>(<span class="kw-2">*mut </span>c_void, <span class="kw-2">*mut </span>c_void)&gt;,
     drop_fn: <span class="prelude-ty">Option</span>&lt;<span class="kw">extern </span><span class="string">"C" </span><span class="kw">fn</span>(<span class="kw-2">*mut </span>c_void)&gt;,
 ) -&gt; <span class="kw-2">*const </span>FeltDict {
     Rc::into_raw(Rc::new(FeltDict {
@@ -1249,7 +1136,6 @@
         layout: Layout::from_size_align_unchecked(size <span class="kw">as </span>usize, align <span class="kw">as </span>usize),
         elements: ptr::null_mut(),
 
-        dup_fn,
         drop_fn,
 
         count: <span class="number">0</span>,
@@ -1298,8 +1184,15 @@
     key: <span class="kw-2">&amp;</span>[u8; <span class="number">32</span>],
     value_ptr: <span class="kw-2">*mut *mut </span>c_void,
 ) -&gt; c_int {
-    <span class="kw">let </span><span class="kw-2">mut </span>dict_rc = Rc::from_raw(dict_ptr.read());
-    <span class="kw">let </span>dict = Rc::make_mut(<span class="kw-2">&amp;mut </span>dict_rc);
+    <span class="kw">let </span>dict_rc = Rc::from_raw(dict_ptr.read());
+
+    <span class="comment">// there may me multiple reference to the same dictionary (snapshots), but
+    // as snapshots cannot access the inner dictionary, then it is safe to modify it
+    // without cloning it.
+    </span><span class="kw">let </span>dict = Rc::as_ptr(<span class="kw-2">&amp;</span>dict_rc)
+        .cast_mut()
+        .as_mut()
+        .expect(<span class="string">"rc inner pointer should never be null"</span>);
 
     <span class="kw">let </span>num_mappings = dict.mappings.len();
     <span class="kw">let </span>has_capacity = num_mappings != dict.mappings.capacity();
@@ -1858,12 +1751,7 @@
     <span class="attr">#[test]
     </span><span class="kw">fn </span>test_dict() {
         <span class="kw">let </span><span class="kw-2">mut </span>dict = <span class="kw">unsafe </span>{
-            cairo_native__dict_new(
-                size_of::&lt;u64&gt;() <span class="kw">as </span>u64,
-                align_of::&lt;u64&gt;() <span class="kw">as </span>u64,
-                <span class="prelude-val">None</span>,
-                <span class="prelude-val">None</span>,
-            )
+            cairo_native__dict_new(size_of::&lt;u64&gt;() <span class="kw">as </span>u64, align_of::&lt;u64&gt;() <span class="kw">as </span>u64, <span class="prelude-val">None</span>)
         };
 
         <span class="kw">let </span>key = Felt::ONE.to_bytes_le();

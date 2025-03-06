@@ -334,20 +334,7 @@
 <a href="#333" id="333">333</a>
 <a href="#334" id="334">334</a>
 <a href="#335" id="335">335</a>
-<a href="#336" id="336">336</a>
-<a href="#337" id="337">337</a>
-<a href="#338" id="338">338</a>
-<a href="#339" id="339">339</a>
-<a href="#340" id="340">340</a>
-<a href="#341" id="341">341</a>
-<a href="#342" id="342">342</a>
-<a href="#343" id="343">343</a>
-<a href="#344" id="344">344</a>
-<a href="#345" id="345">345</a>
-<a href="#346" id="346">346</a>
-<a href="#347" id="347">347</a>
-<a href="#348" id="348">348</a>
-<a href="#349" id="349">349</a></pre></div><pre class="rust"><code><span class="kw">use crate</span>::{
+<a href="#336" id="336">336</a></pre></div><pre class="rust"><code><span class="kw">use crate</span>::{
     error::Error,
     execution_result::{ContractExecutionResult, ExecutionResult},
     metadata::{
@@ -448,7 +435,7 @@
             args,
             available_gas,
             <span class="prelude-ty">Option</span>::&lt;DummySyscallHandler&gt;::None,
-            <span class="self">self</span>.build_find_dict_overrides(),
+            <span class="self">self</span>.build_find_dict_drop_override(),
         )
     }
 
@@ -471,7 +458,7 @@
             args,
             available_gas,
             <span class="prelude-val">Some</span>(syscall_handler),
-            <span class="self">self</span>.build_find_dict_overrides(),
+            <span class="self">self</span>.build_find_dict_drop_override(),
         )
     }
 
@@ -499,7 +486,7 @@
             }],
             available_gas,
             <span class="prelude-val">Some</span>(syscall_handler),
-            <span class="self">self</span>.build_find_dict_overrides(),
+            <span class="self">self</span>.build_find_dict_drop_override(),
         )<span class="question-mark">?</span>)
     }
 
@@ -530,27 +517,14 @@
         <span class="prelude-val">Ok</span>(<span class="kw-2">&amp;</span><span class="self">self</span>.registry.get_function(function_id)<span class="question-mark">?</span>.signature)
     }
 
-    <span class="kw">fn </span>build_find_dict_overrides(
+    <span class="kw">fn </span>build_find_dict_drop_override(
         <span class="kw-2">&amp;</span><span class="self">self</span>,
-    ) -&gt; <span class="kw">impl </span><span class="lifetime">'_
-           </span>+ Copy
-           + Fn(
-        <span class="kw-2">&amp;</span>ConcreteTypeId,
-    ) -&gt; (
-        <span class="prelude-ty">Option</span>&lt;<span class="kw">extern </span><span class="string">"C" </span><span class="kw">fn</span>(<span class="kw-2">*mut </span>c_void, <span class="kw-2">*mut </span>c_void)&gt;,
-        <span class="prelude-ty">Option</span>&lt;<span class="kw">extern </span><span class="string">"C" </span><span class="kw">fn</span>(<span class="kw-2">*mut </span>c_void)&gt;,
-    ) {
+    ) -&gt; <span class="kw">impl </span><span class="lifetime">'_ </span>+ Copy + Fn(<span class="kw-2">&amp;</span>ConcreteTypeId) -&gt; <span class="prelude-ty">Option</span>&lt;<span class="kw">extern </span><span class="string">"C" </span><span class="kw">fn</span>(<span class="kw-2">*mut </span>c_void)&gt; {
         |type_id| {
-            (
-                <span class="self">self</span>.dict_overrides
-                    .get_dup_fn(type_id)
-                    .and_then(|symbol| <span class="self">self</span>.find_symbol_ptr(symbol))
-                    .map(|ptr| <span class="kw">unsafe </span>{ transmute(ptr <span class="kw">as </span><span class="kw-2">*const </span>()) }),
-                <span class="self">self</span>.dict_overrides
-                    .get_drop_fn(type_id)
-                    .and_then(|symbol| <span class="self">self</span>.find_symbol_ptr(symbol))
-                    .map(|ptr| <span class="kw">unsafe </span>{ transmute(ptr <span class="kw">as </span><span class="kw-2">*const </span>()) }),
-            )
+            <span class="self">self</span>.dict_overrides
+                .get_drop_fn(type_id)
+                .and_then(|symbol| <span class="self">self</span>.find_symbol_ptr(symbol))
+                .map(|ptr| <span class="kw">unsafe </span>{ transmute(ptr <span class="kw">as </span><span class="kw-2">*const </span>()) })
         }
     }
 }

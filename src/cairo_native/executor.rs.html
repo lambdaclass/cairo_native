@@ -800,13 +800,7 @@
 <a href="#799" id="799">799</a>
 <a href="#800" id="800">800</a>
 <a href="#801" id="801">801</a>
-<a href="#802" id="802">802</a>
-<a href="#803" id="803">803</a>
-<a href="#804" id="804">804</a>
-<a href="#805" id="805">805</a>
-<a href="#806" id="806">806</a>
-<a href="#807" id="807">807</a>
-<a href="#808" id="808">808</a></pre></div><pre class="rust"><code><span class="doccomment">//! # Executors
+<a href="#802" id="802">802</a></pre></div><pre class="rust"><code><span class="doccomment">//! # Executors
 //!
 //! This module provides methods to execute the programs, either via JIT or compiled ahead
 //! of time. It also provides a cache to avoid recompiling previously compiled programs.
@@ -880,13 +874,7 @@
     args: <span class="kw-2">&amp;</span>[Value],
     gas: u64,
     <span class="kw-2">mut </span>syscall_handler: <span class="prelude-ty">Option</span>&lt;<span class="kw">impl </span>StarknetSyscallHandler&gt;,
-    find_dict_overrides: <span class="kw">impl </span>Copy
-        + Fn(
-            <span class="kw-2">&amp;</span>ConcreteTypeId,
-        ) -&gt; (
-            <span class="prelude-ty">Option</span>&lt;<span class="kw">extern </span><span class="string">"C" </span><span class="kw">fn</span>(<span class="kw-2">*mut </span>c_void, <span class="kw-2">*mut </span>c_void)&gt;,
-            <span class="prelude-ty">Option</span>&lt;<span class="kw">extern </span><span class="string">"C" </span><span class="kw">fn</span>(<span class="kw-2">*mut </span>c_void)&gt;,
-        ),
+    find_dict_drop_override: <span class="kw">impl </span>Copy + Fn(<span class="kw-2">&amp;</span>ConcreteTypeId) -&gt; <span class="prelude-ty">Option</span>&lt;<span class="kw">extern </span><span class="string">"C" </span><span class="kw">fn</span>(<span class="kw-2">*mut </span>c_void)&gt;,
 ) -&gt; <span class="prelude-ty">Result</span>&lt;ExecutionResult, Error&gt; {
     <span class="macro">tracing::info!</span>(<span class="string">"Invoking function with signature: {function_signature:?}."</span>);
     <span class="kw">let </span>arena = Bump::new();
@@ -1000,7 +988,7 @@
                 arena: <span class="kw-2">&amp;</span>arena,
                 registry,
             }
-            .to_bytes(<span class="kw-2">&amp;mut </span>invoke_data, find_dict_overrides)<span class="question-mark">?</span>,
+            .to_bytes(<span class="kw-2">&amp;mut </span>invoke_data, find_dict_drop_override)<span class="question-mark">?</span>,
         }
     }
 

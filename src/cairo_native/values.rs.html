@@ -1950,10 +1950,7 @@
 <a href="#1949" id="1949">1949</a>
 <a href="#1950" id="1950">1950</a>
 <a href="#1951" id="1951">1951</a>
-<a href="#1952" id="1952">1952</a>
-<a href="#1953" id="1953">1953</a>
-<a href="#1954" id="1954">1954</a>
-<a href="#1955" id="1955">1955</a></pre></div><pre class="rust"><code><span class="doccomment">//! # Params and return values de/serialization
+<a href="#1952" id="1952">1952</a></pre></div><pre class="rust"><code><span class="doccomment">//! # Params and return values de/serialization
 //!
 //! A Rusty interface to provide parameters to cairo-native entry point calls.
 
@@ -2120,13 +2117,7 @@
         arena: <span class="kw-2">&amp;</span>Bump,
         registry: <span class="kw-2">&amp;</span>ProgramRegistry&lt;CoreType, CoreLibfunc&gt;,
         type_id: <span class="kw-2">&amp;</span>ConcreteTypeId,
-        find_dict_overrides: <span class="kw">impl </span>Copy
-            + Fn(
-                <span class="kw-2">&amp;</span>ConcreteTypeId,
-            ) -&gt; (
-                <span class="prelude-ty">Option</span>&lt;<span class="kw">extern </span><span class="string">"C" </span><span class="kw">fn</span>(<span class="kw-2">*mut </span>c_void, <span class="kw-2">*mut </span>c_void)&gt;,
-                <span class="prelude-ty">Option</span>&lt;<span class="kw">extern </span><span class="string">"C" </span><span class="kw">fn</span>(<span class="kw-2">*mut </span>c_void)&gt;,
-            ),
+        find_dict_drop_override: <span class="kw">impl </span>Copy + Fn(<span class="kw-2">&amp;</span>ConcreteTypeId) -&gt; <span class="prelude-ty">Option</span>&lt;<span class="kw">extern </span><span class="string">"C" </span><span class="kw">fn</span>(<span class="kw-2">*mut </span>c_void)&gt;,
     ) -&gt; <span class="prelude-ty">Result</span>&lt;NonNull&lt;()&gt;, Error&gt; {
         <span class="kw">let </span>ty = registry.get_type(type_id)<span class="question-mark">?</span>;
 
@@ -2202,7 +2193,7 @@
                         <span class="comment">// Write the data.
                         </span><span class="kw">for </span>(idx, elem) <span class="kw">in </span>data.iter().enumerate() {
                             <span class="kw">let </span>elem =
-                                elem.to_ptr(arena, registry, <span class="kw-2">&amp;</span>info.ty, find_dict_overrides)<span class="question-mark">?</span>;
+                                elem.to_ptr(arena, registry, <span class="kw-2">&amp;</span>info.ty, find_dict_drop_override)<span class="question-mark">?</span>;
 
                             std::ptr::copy_nonoverlapping(
                                 elem.cast::&lt;u8&gt;().as_ptr(),
@@ -2274,7 +2265,7 @@
                                 arena,
                                 registry,
                                 member_type_id,
-                                find_dict_overrides,
+                                find_dict_drop_override,
                             )<span class="question-mark">?</span>;
                             data.push((
                                 member_layout,
@@ -2321,8 +2312,12 @@
                         <span class="macro">native_assert!</span>(<span class="kw-2">*</span>tag &lt; info.variants.len(), <span class="string">"Variant index out of range."</span>);
 
                         <span class="kw">let </span>payload_type_id = <span class="kw-2">&amp;</span>info.variants[<span class="kw-2">*</span>tag];
-                        <span class="kw">let </span>payload =
-                            value.to_ptr(arena, registry, payload_type_id, find_dict_overrides)<span class="question-mark">?</span>;
+                        <span class="kw">let </span>payload = value.to_ptr(
+                            arena,
+                            registry,
+                            payload_type_id,
+                            find_dict_drop_override,
+                        )<span class="question-mark">?</span>;
 
                         <span class="kw">let </span>(layout, tag_layout, variant_layouts) =
                             <span class="kw">crate</span>::types::r#enum::get_layout_for_variants(
@@ -2361,10 +2356,10 @@
                         <span class="kw">let </span>elem_ty = registry.get_type(<span class="kw-2">&amp;</span>info.ty)<span class="question-mark">?</span>;
                         <span class="kw">let </span>elem_layout = elem_ty.layout(registry)<span class="question-mark">?</span>.pad_to_align();
 
-                        <span class="comment">// We need `find_dict_overrides` to obtain the function pointers of the dup and drop
-                        // implementations (if any) for the value type. This is required to be able to clone and drop
+                        <span class="comment">// We need `find_dict_drop_override` to obtain the function pointers of drop
+                        // implementations (if any) for the value type. This is required to be able to drop
                         // the dictionary automatically when their reference count drops to zero.
-                        </span><span class="kw">let </span>(dup_fn, drop_fn) = find_dict_overrides(<span class="kw-2">&amp;</span>info.ty);
+                        </span><span class="kw">let </span>drop_fn = find_dict_drop_override(<span class="kw-2">&amp;</span>info.ty);
                         <span class="kw">let </span><span class="kw-2">mut </span>value_map = FeltDict {
                             mappings: HashMap::with_capacity(map.len()),
 
@@ -2379,7 +2374,6 @@
                                 .cast()
                             },
 
-                            dup_fn,
                             drop_fn,
 
                             count: <span class="number">0</span>,
@@ -2390,7 +2384,7 @@
                         </span><span class="kw">for </span>(key, value) <span class="kw">in </span>map.iter() {
                             <span class="kw">let </span>key = key.to_bytes_le();
                             <span class="kw">let </span>value =
-                                value.to_ptr(arena, registry, <span class="kw-2">&amp;</span>info.ty, find_dict_overrides)<span class="question-mark">?</span>;
+                                value.to_ptr(arena, registry, <span class="kw-2">&amp;</span>info.ty, find_dict_drop_override)<span class="question-mark">?</span>;
 
                             <span class="kw">let </span>index = value_map.mappings.len();
                             value_map.mappings.insert(key, index);
@@ -2513,11 +2507,11 @@
                         <span class="kw">let </span>inner = registry.get_type(<span class="kw-2">&amp;</span>info.ty)<span class="question-mark">?</span>;
                         <span class="kw">let </span>inner_layout = inner.layout(registry)<span class="question-mark">?</span>;
 
-                        <span class="kw">let </span>x_ptr = x.to_ptr(arena, registry, <span class="kw-2">&amp;</span>info.ty, find_dict_overrides)<span class="question-mark">?</span>;
+                        <span class="kw">let </span>x_ptr = x.to_ptr(arena, registry, <span class="kw-2">&amp;</span>info.ty, find_dict_drop_override)<span class="question-mark">?</span>;
 
                         <span class="kw">let </span>(struct_layout, y_offset) = inner_layout.extend(inner_layout)<span class="question-mark">?</span>;
 
-                        <span class="kw">let </span>y_ptr = y.to_ptr(arena, registry, <span class="kw-2">&amp;</span>info.ty, find_dict_overrides)<span class="question-mark">?</span>;
+                        <span class="kw">let </span>y_ptr = y.to_ptr(arena, registry, <span class="kw-2">&amp;</span>info.ty, find_dict_drop_override)<span class="question-mark">?</span>;
 
                         <span class="kw">let </span>ptr = arena.alloc_layout(struct_layout.pad_to_align()).as_ptr();
 

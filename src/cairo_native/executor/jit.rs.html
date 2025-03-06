@@ -187,20 +187,7 @@
 <a href="#186" id="186">186</a>
 <a href="#187" id="187">187</a>
 <a href="#188" id="188">188</a>
-<a href="#189" id="189">189</a>
-<a href="#190" id="190">190</a>
-<a href="#191" id="191">191</a>
-<a href="#192" id="192">192</a>
-<a href="#193" id="193">193</a>
-<a href="#194" id="194">194</a>
-<a href="#195" id="195">195</a>
-<a href="#196" id="196">196</a>
-<a href="#197" id="197">197</a>
-<a href="#198" id="198">198</a>
-<a href="#199" id="199">199</a>
-<a href="#200" id="200">200</a>
-<a href="#201" id="201">201</a>
-<a href="#202" id="202">202</a></pre></div><pre class="rust"><code><span class="kw">use crate</span>::{
+<a href="#189" id="189">189</a></pre></div><pre class="rust"><code><span class="kw">use crate</span>::{
     error::Error,
     execution_result::{ContractExecutionResult, ExecutionResult},
     metadata::{
@@ -297,7 +284,7 @@
             args,
             available_gas,
             <span class="prelude-ty">Option</span>::&lt;DummySyscallHandler&gt;::None,
-            <span class="self">self</span>.build_find_dict_overrides(),
+            <span class="self">self</span>.build_find_dict_drop_override(),
         )
     }
 
@@ -321,7 +308,7 @@
             args,
             available_gas,
             <span class="prelude-val">Some</span>(syscall_handler),
-            <span class="self">self</span>.build_find_dict_overrides(),
+            <span class="self">self</span>.build_find_dict_drop_override(),
         )
     }
 
@@ -349,7 +336,7 @@
             }],
             available_gas,
             <span class="prelude-val">Some</span>(syscall_handler),
-            <span class="self">self</span>.build_find_dict_overrides(),
+            <span class="self">self</span>.build_find_dict_drop_override(),
         )<span class="question-mark">?</span>)
     }
 
@@ -378,27 +365,14 @@
             .map(|func| <span class="kw-2">&amp;</span>func.signature)<span class="question-mark">?</span>)
     }
 
-    <span class="kw">fn </span>build_find_dict_overrides(
+    <span class="kw">fn </span>build_find_dict_drop_override(
         <span class="kw-2">&amp;</span><span class="self">self</span>,
-    ) -&gt; <span class="kw">impl </span><span class="lifetime">'_
-           </span>+ Copy
-           + Fn(
-        <span class="kw-2">&amp;</span>ConcreteTypeId,
-    ) -&gt; (
-        <span class="prelude-ty">Option</span>&lt;<span class="kw">extern </span><span class="string">"C" </span><span class="kw">fn</span>(<span class="kw-2">*mut </span>c_void, <span class="kw-2">*mut </span>c_void)&gt;,
-        <span class="prelude-ty">Option</span>&lt;<span class="kw">extern </span><span class="string">"C" </span><span class="kw">fn</span>(<span class="kw-2">*mut </span>c_void)&gt;,
-    ) {
+    ) -&gt; <span class="kw">impl </span><span class="lifetime">'_ </span>+ Copy + Fn(<span class="kw-2">&amp;</span>ConcreteTypeId) -&gt; <span class="prelude-ty">Option</span>&lt;<span class="kw">extern </span><span class="string">"C" </span><span class="kw">fn</span>(<span class="kw-2">*mut </span>c_void)&gt; {
         |type_id| {
-            (
-                <span class="self">self</span>.dict_overrides
-                    .get_dup_fn(type_id)
-                    .and_then(|symbol| <span class="self">self</span>.find_symbol_ptr(symbol))
-                    .map(|ptr| <span class="kw">unsafe </span>{ transmute(ptr <span class="kw">as </span><span class="kw-2">*const </span>()) }),
-                <span class="self">self</span>.dict_overrides
-                    .get_drop_fn(type_id)
-                    .and_then(|symbol| <span class="self">self</span>.find_symbol_ptr(symbol))
-                    .map(|ptr| <span class="kw">unsafe </span>{ transmute(ptr <span class="kw">as </span><span class="kw-2">*const </span>()) }),
-            )
+            <span class="self">self</span>.dict_overrides
+                .get_drop_fn(type_id)
+                .and_then(|symbol| <span class="self">self</span>.find_symbol_ptr(symbol))
+                .map(|ptr| <span class="kw">unsafe </span>{ transmute(ptr <span class="kw">as </span><span class="kw-2">*const </span>()) })
         }
     }
 }
