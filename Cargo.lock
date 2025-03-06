@@ -1119,7 +1119,7 @@ dependencies = [
  "cairo-lang-starknet-classes",
  "cairo-lang-test-plugin",
  "cairo-lang-utils",
- "cairo-vm 2.0.0",
+ "cairo-vm 2.0.0-rc3",
  "cc",
  "clap",
  "colored",
@@ -1192,9 +1192,9 @@ dependencies = [
 
 [[package]]
 name = "cairo-vm"
-version = "2.0.0"
+version = "2.0.0-rc3"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "d9b51a63d0c89638a1de1fa9a685b80dc3b7e6c0ecdc050b4e1a182b8ef00190"
+checksum = "88898d02699b294573d2954d42900c8f0d1fa2c6de0514a36e86be8c8fb3165c"
 dependencies = [
  "anyhow",
  "ark-ff 0.4.2",
@@ -1207,7 +1207,6 @@ dependencies = [
  "generic-array",
  "hashbrown 0.15.2",
  "hex",
- "indoc",
  "keccak",
  "lazy_static",
  "nom",
