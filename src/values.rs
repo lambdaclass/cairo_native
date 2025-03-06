@@ -1017,7 +1017,7 @@ impl Value {
                     // read all circuit outputs
                     for i in 0..3 {
                         let offset = i * elem_layout.size() * 4;
-                        
+
                         // every circuit output is a struct of 4 limbs
                         for j  in 0..4 {
                             let u96 = ptr.byte_add(j as usize * elem_layout.size() + offset).cast::<[u8; 12]>().read();
@@ -1026,7 +1026,7 @@ impl Value {
                             
                             limbs[j] = u128::from_le_bytes(limb_bytes);
                         }
-                        circuits.push(dbg!(crate::utils::test::u384(limbs)?));
+                        circuits.push(crate::utils::test::u384(limbs)?);
                     }
 
                     // // read circuit modulus

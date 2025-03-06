@@ -1419,8 +1419,8 @@ mod test {
 
         let input1 = [1, 0, 0, 0];
         let input2 = [16, 0, 0, 0];
-        let circuit_data =
-            Value::CircuitData(vec![[1, 0, 0, 0], [16, 0, 0, 0]]);
+        let zero = [0,0,0,0];
+        let circuit_data = Value::CircuitData(vec![input1, input2]);
 
         let Value::Enum { value, .. } = run_sierra_program(
             &program,
@@ -1433,8 +1433,8 @@ mod test {
                     0xffffffffffffffffffffffff,
                     0xffffffffffffffffffffffff,
                 ]),
-                Value::Uint384Test(input1),
-                Value::Uint384Test(input2),
+                Value::Uint384Test(zero),
+                Value::Uint384Test([1,0,0,0]),
             ],
         )
         .return_value
@@ -1510,8 +1510,8 @@ mod test {
                 circuit_data.clone(),
                 circuit_data,
                 Value::Uint384Test([17, 14, 14, 14]),
-                Value::Uint384Test(input1),
-                Value::Uint384Test(input2),
+                Value::Uint384Test([0,0,0,0]),
+                Value::Uint384Test([1,0,0,0]),
             ],
         );
 
