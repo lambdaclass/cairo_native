@@ -99,7 +99,7 @@ impl AotNativeExecutor {
             args,
             available_gas,
             Option::<DummySyscallHandler>::None,
-            self.build_find_dict_overrides(),
+            self.build_find_dict_drop_override(),
         )
     }
 
@@ -122,7 +122,7 @@ impl AotNativeExecutor {
             args,
             available_gas,
             Some(syscall_handler),
-            self.build_find_dict_overrides(),
+            self.build_find_dict_drop_override(),
         )
     }
 
@@ -150,7 +150,7 @@ impl AotNativeExecutor {
             }],
             available_gas,
             Some(syscall_handler),
-            self.build_find_dict_overrides(),
+            self.build_find_dict_drop_override(),
         )?)
     }
 
@@ -181,27 +181,14 @@ impl AotNativeExecutor {
         Ok(&self.registry.get_function(function_id)?.signature)
     }
 
-    fn build_find_dict_overrides(
+    fn build_find_dict_drop_override(
         &self,
-    ) -> impl '_
-           + Copy
-           + Fn(
-        &ConcreteTypeId,
-    ) -> (
-        Option<extern "C" fn(*mut c_void, *mut c_void)>,
-        Option<extern "C" fn(*mut c_void)>,
-    ) {
+    ) -> impl '_ + Copy + Fn(&ConcreteTypeId) -> Option<extern "C" fn(*mut c_void)> {
         |type_id| {
-            (
-                self.dict_overrides
-                    .get_dup_fn(type_id)
-                    .and_then(|symbol| self.find_symbol_ptr(symbol))
-                    .map(|ptr| unsafe { transmute(ptr as *const ()) }),
-                self.dict_overrides
-                    .get_drop_fn(type_id)
-                    .and_then(|symbol| self.find_symbol_ptr(symbol))
-                    .map(|ptr| unsafe { transmute(ptr as *const ()) }),
-            )
+            self.dict_overrides
+                .get_drop_fn(type_id)
+                .and_then(|symbol| self.find_symbol_ptr(symbol))
+                .map(|ptr| unsafe { transmute(ptr as *const ()) })
         }
     }
 }

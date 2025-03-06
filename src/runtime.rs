@@ -15,7 +15,7 @@ use starknet_types_core::{
     hash::StarkHash,
 };
 use std::{
-    alloc::{alloc, dealloc, realloc, Layout},
+    alloc::{dealloc, realloc, Layout},
     cell::Cell,
     collections::{hash_map::Entry, HashMap},
     ffi::{c_int, c_void},
@@ -150,65 +150,9 @@ pub struct FeltDict {
     pub layout: Layout,
     pub elements: *mut (),
 
-    pub dup_fn: Option<extern "C" fn(*mut c_void, *mut c_void)>,
     pub drop_fn: Option<extern "C" fn(*mut c_void)>,
 
     pub count: u64,
-}
-
-impl Clone for FeltDict {
-    fn clone(&self) -> Self {
-        let mut new_dict = FeltDict {
-            mappings: HashMap::with_capacity(self.mappings.capacity()),
-
-            layout: self.layout,
-            elements: if self.mappings.capacity() == 0 {
-                ptr::null_mut()
-            } else {
-                unsafe {
-                    alloc(Layout::from_size_align_unchecked(
-                        self.layout.pad_to_align().size() * self.mappings.capacity(),
-                        self.layout.align(),
-                    ))
-                    .cast()
-                }
-            },
-
-            dup_fn: self.dup_fn,
-            drop_fn: self.drop_fn,
-
-            // TODO: Check if `0` is fine or otherwise we should copy the value from `old_dict` too.
-            count: 0,
-        };
-
-        for (&key, &old_index) in self.mappings.iter() {
-            let old_value_ptr = unsafe {
-                self.elements
-                    .byte_add(self.layout.pad_to_align().size() * old_index)
-            };
-
-            let new_index = new_dict.mappings.len();
-            let new_value_ptr = unsafe {
-                new_dict
-                    .elements
-                    .byte_add(new_dict.layout.pad_to_align().size() * new_index)
-            };
-
-            new_dict.mappings.insert(key, new_index);
-            match self.dup_fn {
-                Some(dup_fn) => dup_fn(old_value_ptr.cast(), new_value_ptr.cast()),
-                None => unsafe {
-                    ptr::copy_nonoverlapping::<u8>(
-                        old_value_ptr.cast(),
-                        new_value_ptr.cast(),
-                        self.layout.size(),
-                    )
-                },
-            }
-        }
-
-        new_dict
-    }
 }
 
 impl Drop for FeltDict {
@@ -249,7 +193,6 @@ impl Drop for FeltDict {
 pub unsafe extern "C" fn cairo_native__dict_new(
     size: u64,
     align: u64,
-    dup_fn: Option<extern "C" fn(*mut c_void, *mut c_void)>,
     drop_fn: Option<extern "C" fn(*mut c_void)>,
 ) -> *const FeltDict {
     Rc::into_raw(Rc::new(FeltDict {
@@ -258,7 +201,6 @@ pub unsafe extern "C" fn cairo_native__dict_new(
         layout: Layout::from_size_align_unchecked(size as usize, align as usize),
         elements: ptr::null_mut(),
 
-        dup_fn,
         drop_fn,
 
         count: 0,
@@ -307,8 +249,15 @@ pub unsafe extern "C" fn cairo_native__dict_get(
     key: &[u8; 32],
     value_ptr: *mut *mut c_void,
 ) -> c_int {
-    let mut dict_rc = Rc::from_raw(dict_ptr.read());
-    let dict = Rc::make_mut(&mut dict_rc);
+    let dict_rc = Rc::from_raw(dict_ptr.read());
+
+    // there may me multiple reference to the same dictionary (snapshots), but
+    // as snapshots cannot access the inner dictionary, then it is safe to modify it
+    // without cloning it.
+    let dict = Rc::as_ptr(&dict_rc)
+        .cast_mut()
+        .as_mut()
+        .expect("rc inner pointer should never be null");
 
     let num_mappings = dict.mappings.len();
     let has_capacity = num_mappings != dict.mappings.capacity();
@@ -867,12 +816,7 @@ mod tests {
     #[test]
     fn test_dict() {
         let mut dict = unsafe {
-            cairo_native__dict_new(
-                size_of::<u64>() as u64,
-                align_of::<u64>() as u64,
-                None,
-                None,
-            )
+            cairo_native__dict_new(size_of::<u64>() as u64, align_of::<u64>() as u64, None)
         };
 
         let key = Felt::ONE.to_bytes_le();

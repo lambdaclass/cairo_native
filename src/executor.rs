@@ -72,13 +72,7 @@ fn invoke_dynamic(
     args: &[Value],
     gas: u64,
     mut syscall_handler: Option<impl StarknetSyscallHandler>,
-    find_dict_overrides: impl Copy
-        + Fn(
-            &ConcreteTypeId,
-        ) -> (
-            Option<extern "C" fn(*mut c_void, *mut c_void)>,
-            Option<extern "C" fn(*mut c_void)>,
-        ),
+    find_dict_drop_override: impl Copy + Fn(&ConcreteTypeId) -> Option<extern "C" fn(*mut c_void)>,
 ) -> Result<ExecutionResult, Error> {
     tracing::info!("Invoking function with signature: {function_signature:?}.");
     let arena = Bump::new();
@@ -192,7 +186,7 @@ fn invoke_dynamic(
                 arena: &arena,
                 registry,
             }
-            .to_bytes(&mut invoke_data, find_dict_overrides)?,
+            .to_bytes(&mut invoke_data, find_dict_drop_override)?,
         }
     }
 
