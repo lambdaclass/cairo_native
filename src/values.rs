@@ -165,13 +165,7 @@ impl Value {
         arena: &Bump,
         registry: &ProgramRegistry<CoreType, CoreLibfunc>,
         type_id: &ConcreteTypeId,
-        find_dict_overrides: impl Copy
-            + Fn(
-                &ConcreteTypeId,
-            ) -> (
-                Option<extern "C" fn(*mut c_void, *mut c_void)>,
-                Option<extern "C" fn(*mut c_void)>,
-            ),
+        find_dict_drop_override: impl Copy + Fn(&ConcreteTypeId) -> Option<extern "C" fn(*mut c_void)>,
     ) -> Result<NonNull<()>, Error> {
         let ty = registry.get_type(type_id)?;
 
@@ -257,7 +251,7 @@ impl Value {
                         // Write the data.
                         for (idx, elem) in data.iter().enumerate() {
                             let elem =
-                                elem.to_ptr(arena, registry, &info.ty, find_dict_overrides)?;
+                                elem.to_ptr(arena, registry, &info.ty, find_dict_drop_override)?;
 
                             std::ptr::copy_nonoverlapping(
                                 elem.cast::<u8>().as_ptr(),
@@ -329,7 +323,7 @@ impl Value {
                                 arena,
                                 registry,
                                 member_type_id,
-                                find_dict_overrides,
+                                find_dict_drop_override,
                             )?;
                             data.push((
                                 member_layout,
@@ -376,8 +370,12 @@ impl Value {
                         native_assert!(*tag < info.variants.len(), "Variant index out of range.");
 
                         let payload_type_id = &info.variants[*tag];
-                        let payload =
-                            value.to_ptr(arena, registry, payload_type_id, find_dict_overrides)?;
+                        let payload = value.to_ptr(
+                            arena,
+                            registry,
+                            payload_type_id,
+                            find_dict_drop_override,
+                        )?;
 
                         let (layout, tag_layout, variant_layouts) =
                             crate::types::r#enum::get_layout_for_variants(
@@ -416,10 +414,10 @@ impl Value {
                         let elem_ty = registry.get_type(&info.ty)?;
                         let elem_layout = elem_ty.layout(registry)?.pad_to_align();
 
-                        // We need `find_dict_overrides` to obtain the function pointers of the dup and drop
-                        // implementations (if any) for the value type. This is required to be able to clone and drop
+                        // We need `find_dict_drop_override` to obtain the function pointers of drop
+                        // implementations (if any) for the value type. This is required to be able to drop
                         // the dictionary automatically when their reference count drops to zero.
-                        let (dup_fn, drop_fn) = find_dict_overrides(&info.ty);
+                        let drop_fn = find_dict_drop_override(&info.ty);
                         let mut value_map = FeltDict {
                             mappings: HashMap::with_capacity(map.len()),
 
@@ -434,7 +432,6 @@ impl Value {
                                 .cast()
                             },
 
-                            dup_fn,
                             drop_fn,
 
                             count: 0,
@@ -445,7 +442,7 @@ impl Value {
                         for (key, value) in map.iter() {
                             let key = key.to_bytes_le();
                             let value =
-                                value.to_ptr(arena, registry, &info.ty, find_dict_overrides)?;
+                                value.to_ptr(arena, registry, &info.ty, find_dict_drop_override)?;
 
                             let index = value_map.mappings.len();
                             value_map.mappings.insert(key, index);
@@ -568,11 +565,11 @@ impl Value {
                         let inner = registry.get_type(&info.ty)?;
                         let inner_layout = inner.layout(registry)?;
 
-                        let x_ptr = x.to_ptr(arena, registry, &info.ty, find_dict_overrides)?;
+                        let x_ptr = x.to_ptr(arena, registry, &info.ty, find_dict_drop_override)?;
 
                         let (struct_layout, y_offset) = inner_layout.extend(inner_layout)?;
 
-                        let y_ptr = y.to_ptr(arena, registry, &info.ty, find_dict_overrides)?;
+                        let y_ptr = y.to_ptr(arena, registry, &info.ty, find_dict_drop_override)?;
 
                         let ptr = arena.alloc_layout(struct_layout.pad_to_align()).as_ptr();
 

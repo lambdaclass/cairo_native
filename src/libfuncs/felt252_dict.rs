@@ -60,31 +60,11 @@ pub fn build_new<'ctx, 'this>(
         _ => native_panic!("entered unreachable code"),
     };
 
-    let (dup_fn, drop_fn) = {
+    let drop_fn = {
         let mut dict_overrides = metadata
             .remove::<Felt252DictOverrides>()
             .unwrap_or_default();
 
-        let dup_fn = match dict_overrides.build_dup_fn(
-            context,
-            helper,
-            registry,
-            metadata,
-            value_type_id,
-        )? {
-            Some(dup_fn) => Some(
-                entry.append_op_result(
-                    ods::llvm::mlir_addressof(
-                        context,
-                        llvm::r#type::pointer(context, 0),
-                        dup_fn,
-                        location,
-                    )
-                    .into(),
-                )?,
-            ),
-            None => None,
-        };
         let drop_fn = match dict_overrides.build_drop_fn(
             context,
             helper,
@@ -107,7 +87,8 @@ pub fn build_new<'ctx, 'this>(
         };
 
         metadata.insert(dict_overrides);
-        (dup_fn, drop_fn)
+
+        drop_fn
     };
 
     let runtime_bindings = metadata
@@ -118,7 +99,6 @@ pub fn build_new<'ctx, 'this>(
         helper,
         entry,
         location,
-        dup_fn,
         drop_fn,
         registry.get_type(value_type_id)?.layout(registry)?,
     )?;
