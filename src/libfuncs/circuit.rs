@@ -1092,7 +1092,7 @@ mod test {
             sierra_gen::SierraGenerator,
             test::{
                 jit_enum, jit_panic, jit_struct, load_cairo, run_program_assert_output,
-                run_sierra_program, u384,
+                run_sierra_program, u384, u384_to_bytes,
             },
         },
         values::Value,
@@ -1108,25 +1108,7 @@ mod test {
         ids::UserTypeId,
         program::GenericArg,
     };
-    use num_bigint::{BigInt, BigUint};
-
-    fn u384_to_biguint(value: [u128; 4]) -> BigUint {
-        let l0 = value[0].to_le_bytes();
-        let l1 = value[1].to_le_bytes();
-        let l2 = value[2].to_le_bytes();
-        let l3 = value[3].to_le_bytes();
-
-        BigUint::from_bytes_le(&[
-            l0[0], l0[1], l0[2], l0[3], l0[4], l0[5], l0[6], l0[7], l0[8], l0[9], l0[10],
-            l0[11], //
-            l1[0], l1[1], l1[2], l1[3], l1[4], l1[5], l1[6], l1[7], l1[8], l1[9], l1[10],
-            l1[11], //
-            l2[0], l2[1], l2[2], l2[3], l2[4], l2[5], l2[6], l2[7], l2[8], l2[9], l2[10],
-            l2[11], //
-            l3[0], l3[1], l3[2], l3[3], l3[4], l3[5], l3[6], l3[7], l3[8], l3[9], l3[10],
-            l3[11], //
-        ])
-    }
+    use num_bigint::BigInt;
 
     #[test]
     fn run_add_circuit() {
@@ -1437,7 +1419,6 @@ mod test {
 
         let input1 = [1, 0, 0, 0];
         let input2 = [16, 0, 0, 0];
-        dbg!(u384_to_biguint([16, 0, 0, 0]));
         let circuit_data =
             Value::CircuitData(vec![[1, 0, 0, 0], [16, 0, 0, 0]]);
 
@@ -1447,10 +1428,10 @@ mod test {
                 circuit_data.clone(),
                 circuit_data,
                 Value::Uint384Test([
-                    0x1,
-                    0x0,
-                    0x0,
-                    0x0,
+                    0xffffffffffffffffffffffff,
+                    0xffffffffffffffffffffffff,
+                    0xffffffffffffffffffffffff,
+                    0xffffffffffffffffffffffff,
                 ]),
                 Value::Uint384Test(input1),
                 Value::Uint384Test(input2),

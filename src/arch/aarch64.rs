@@ -12,7 +12,6 @@
 use super::AbiArgument;
 use crate::{error::Error, starknet::U256, utils::get_integer_layout};
 use cairo_lang_sierra::ids::ConcreteTypeId;
-use num_bigint::BigUint;
 use num_traits::ToBytes;
 use starknet_types_core::felt::Felt;
 use std::ffi::c_void;
