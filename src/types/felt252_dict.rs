@@ -85,14 +85,6 @@ fn build_dup<'ctx>(
 
     let value_ty = registry.build_type(context, module, metadata, info.self_ty())?;
 
-    {
-        let mut dict_overrides = metadata
-            .remove::<Felt252DictOverrides>()
-            .unwrap_or_default();
-        dict_overrides.build_dup_fn(context, module, registry, metadata, &info.ty)?;
-        metadata.insert(dict_overrides);
-    }
-
     let region = Region::new();
     let entry = region.append_block(Block::new(&[(value_ty, location)]));
 
