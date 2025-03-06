@@ -67,9 +67,9 @@ pub enum Value {
         debug_name: Option<String>,
     },
     #[cfg(test)]
-    CircuitData(Vec<BigUint>),
+    CircuitData(Vec<[u128; 4]>),
     #[cfg(test)]
-    Uint384Test(BigUint),
+    Uint384Test([u128; 4]),
     Uint8(u8),
     Uint16(u16),
     Uint32(u32),
@@ -524,7 +524,8 @@ impl Value {
                 #[cfg(test)]
                 Self::Uint384Test(value) => {
                     let ptr = arena.alloc_layout(get_integer_layout(384)).cast();
-                    *ptr.cast::<BigUint>().as_mut() = value.clone();
+                    let data = crate::utils::test::u384_to_bytes(*value);
+                    ptr.cast::<[u8; 48]>().as_mut().copy_from_slice(&data);
 
                     ptr
                 }
@@ -569,11 +570,12 @@ impl Value {
                         let circuit_layout = ty.layout(&registry)?;
                         let elem_layout = get_integer_layout(384);
                         let circuit_ptr = arena.alloc_layout(circuit_layout);
-                        dbg!(inputs);
+
                         // Write the data.
                         for (idx, elem) in inputs.iter().enumerate() {
                             let elem_ptr = arena.alloc_layout(elem_layout).cast();
-                            *elem_ptr.cast::<BigUint>().as_mut() = elem.clone();
+                            let data = crate::utils::test::u384_to_bytes(*elem);
+                            elem_ptr.cast::<[u8; 48]>().as_mut().copy_from_slice(&data);
 
                             std::ptr::copy_nonoverlapping(
                                 elem_ptr.as_ptr(),
@@ -1007,20 +1009,37 @@ impl Value {
                 }
                 #[cfg(test)]
                 CoreTypeConcrete::Circuit(cairo_lang_sierra::extensions::circuit::CircuitTypeConcrete::CircuitOutputs(_)) => {
-                    let elem_layout = get_integer_layout(384);
-                    let mut fields = Vec::with_capacity(6);
-
-                    for i in 0..6 {
-                        fields.push(Value::Uint384Test(
-                            ptr.as_ptr()
-                                .byte_add(elem_layout.size() * i)
-                                .cast::<BigUint>()
-                                .read(),
-                        ));
+                    let elem_layout = get_integer_layout(96);
+                    let mut circuits = Vec::with_capacity(3);
+                    let mut limb_bytes = [0; 16];
+                    let mut limbs = [0; 4];
+                    
+                    // read all circuit outputs
+                    for i in 0..3 {
+                        let offset = i * elem_layout.size() * 4;
+                        
+                        // every circuit output is a struct of 4 limbs
+                        for j  in 0..4 {
+                            let u96 = ptr.byte_add(j as usize * elem_layout.size() + offset).cast::<[u8; 12]>().read();
+                        
+                            limb_bytes[0..12].copy_from_slice(&u96);
+                            
+                            limbs[j] = u128::from_le_bytes(limb_bytes);
+                        }
+                        circuits.push(dbg!(crate::utils::test::u384(limbs)?));
                     }
 
+                    // // read circuit modulus
+                    // let (new_layout, offset) = match layout {
+                    //     Some(layout) => layout.extend(elem_layout)?,
+                    //     None => (elem_layout, 0),
+                    // };
+                    // layout = Some(new_layout);
+                    // let u96 = *ptr.byte_add(offset).cast::<[u8; 48]>().as_ref();
+                    // u384[0..48].copy_from_slice(&u96);
+
                     Value::Struct {
-                        fields,
+                        fields: circuits,
                         debug_name: None,
                     }
                 }

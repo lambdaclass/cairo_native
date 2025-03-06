@@ -409,7 +409,8 @@ pub fn layout_repeat(layout: &Layout, n: usize) -> Result<(Layout, usize), Layou
 #[cfg(test)]
 pub mod test {
     use crate::{
-        context::NativeContext, execution_result::ExecutionResult, executor::JitNativeExecutor,
+        context::NativeContext, error::panic::ToNativeAssertError,
+        execution_result::ExecutionResult, executor::JitNativeExecutor,
         starknet_stub::StubSyscallHandler, utils::*, values::Value,
     };
     use cairo_lang_compiler::{
@@ -418,12 +419,13 @@ pub mod test {
     };
     use cairo_lang_filesystem::db::init_dev_corelib;
     use cairo_lang_sierra::{
+        extensions::utils::Range,
         ids::FunctionId,
-        program::Program,
-        program::{FunctionSignature, GenFunction, StatementIdx},
+        program::{FunctionSignature, GenFunction, Program, StatementIdx},
     };
     use cairo_lang_starknet::{compile::compile_contract_in_prepared_db, starknet_plugin_suite};
     use cairo_lang_starknet_classes::contract_class::ContractClass;
+    use num_traits::{FromPrimitive, Num};
     use pretty_assertions_sorted::assert_eq;
     use std::io::Write;
     use std::{env::var, fmt::Formatter, fs, path::Path};
@@ -634,6 +636,61 @@ pub mod test {
                 &mut StubSyscallHandler::default(),
             )
             .unwrap()
+    }
+
+    pub fn u384(limbs: [u128; 4]) -> crate::error::Result<Value> {
+        fn u96_range() -> Range {
+            Range {
+                lower: BigUint::from_str_radix("0", 16).unwrap().into(),
+                upper: BigUint::from_str_radix("79228162514264337593543950336", 10)
+                    .unwrap()
+                    .into(),
+            }
+        }
+
+        Ok(Value::Struct {
+            fields: vec![
+                Value::BoundedInt {
+                    value: Felt::from_u128(limbs[0])
+                        .to_native_assert_error("A felt can't be longer than 252 bits")?,
+                    range: u96_range(),
+                },
+                Value::BoundedInt {
+                    value: Felt::from_u128(limbs[1])
+                        .to_native_assert_error("A felt can't be longer than 252 bits")?,
+                    range: u96_range(),
+                },
+                Value::BoundedInt {
+                    value: Felt::from_u128(limbs[2])
+                        .to_native_assert_error("A felt can't be longer than 252 bits")?,
+                    range: u96_range(),
+                },
+                Value::BoundedInt {
+                    value: Felt::from_u128(limbs[3])
+                        .to_native_assert_error("A felt can't be longer than 252 bits")?,
+                    range: u96_range(),
+                },
+            ],
+            debug_name: None,
+        })
+    }
+
+    pub fn u384_to_bytes(limbs: [u128; 4]) -> [u8; 48] {
+        let l0 = limbs[0].to_le_bytes();
+        let l1 = limbs[1].to_le_bytes();
+        let l2 = limbs[2].to_le_bytes();
+        let l3 = limbs[3].to_le_bytes();
+
+        [
+            l0[0], l0[1], l0[2], l0[3], l0[4], l0[5], l0[6], l0[7], l0[8], l0[9], l0[10],
+            l0[11], //
+            l1[0], l1[1], l1[2], l1[3], l1[4], l1[5], l1[6], l1[7], l1[8], l1[9], l1[10],
+            l1[11], //
+            l2[0], l2[1], l2[2], l2[3], l2[4], l2[5], l2[6], l2[7], l2[8], l2[9], l2[10],
+            l2[11], //
+            l3[0], l3[1], l3[2], l3[3], l3[4], l3[5], l3[6], l3[7], l3[8], l3[9], l3[10],
+            l3[11], //
+        ]
     }
 
     #[track_caller]

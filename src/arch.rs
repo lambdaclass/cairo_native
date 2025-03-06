@@ -252,7 +252,9 @@ impl AbiArgument for ValueWithInfoWrapper<'_> {
                 .as_ptr()
                 .to_bytes(buffer, find_dict_overrides)?,
             #[cfg(test)]
-            (Value::Uint384Test(value), _) => value.to_bytes(buffer, find_dict_overrides)?,
+            (Value::Uint384Test(value), _) => {
+                crate::utils::test::u384_to_bytes(*value).to_bytes(buffer, find_dict_overrides)?
+            }
             _ => native_panic!(
                 "todo: abi argument unimplemented for ({:?}, {:?})",
                 self.value,

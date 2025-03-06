@@ -315,7 +315,7 @@ impl AbiArgument for [u8; 31] {
     }
 }
 
-impl AbiArgument for BigUint {
+impl AbiArgument for [u8; 48] {
     fn to_bytes(
         &self,
         buffer: &mut Vec<u8>,
@@ -330,8 +330,7 @@ impl AbiArgument for BigUint {
         if buffer.len() >= 56 {
             align_to(buffer, get_integer_layout(384).align());
         }
-        buffer.extend_from_slice(&self.to_bytes_le());
-
+        buffer.extend_from_slice(self);
         Ok(())
     }
 }

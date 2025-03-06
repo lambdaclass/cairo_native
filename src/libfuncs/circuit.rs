@@ -480,7 +480,6 @@ fn build_gate_evaluation<'ctx, 'this>(
     let mut values = vec![None; 1 + circuit_info.n_inputs + circuit_info.values.len()];
     values[0] = Some(block.const_int(context, location, 1, 384)?);
     for i in 0..circuit_info.n_inputs {
-        dbg!(i);
         values[i + 1] = Some(block.extract_value(
             context,
             location,
@@ -698,7 +697,7 @@ fn build_gate_evaluation<'ctx, 'this>(
         .skip(1 + circuit_info.n_inputs)
         .collect::<Option<Vec<Value>>>()
         .ok_or(SierraAssertError::ImpossibleCircuit)?;
-    dbg!(&values);
+
     Ok(([block, err_block], values))
 }
 
@@ -1093,7 +1092,7 @@ mod test {
             sierra_gen::SierraGenerator,
             test::{
                 jit_enum, jit_panic, jit_struct, load_cairo, run_program_assert_output,
-                run_sierra_program,
+                run_sierra_program, u384,
             },
         },
         values::Value,
@@ -1105,47 +1104,11 @@ mod test {
                 SubModGate,
             },
             structure::StructType,
-            utils::Range,
         },
         ids::UserTypeId,
         program::GenericArg,
     };
     use num_bigint::{BigInt, BigUint};
-    use num_traits::Num;
-    use starknet_types_core::felt::Felt;
-
-    fn u384(limbs: [&str; 4]) -> Value {
-        fn u96_range() -> Range {
-            Range {
-                lower: BigUint::from_str_radix("0", 16).unwrap().into(),
-                upper: BigUint::from_str_radix("79228162514264337593543950336", 10)
-                    .unwrap()
-                    .into(),
-            }
-        }
-
-        Value::Struct {
-            fields: vec![
-                Value::BoundedInt {
-                    value: Felt::from_hex_unchecked(limbs[0]),
-                    range: u96_range(),
-                },
-                Value::BoundedInt {
-                    value: Felt::from_hex_unchecked(limbs[1]),
-                    range: u96_range(),
-                },
-                Value::BoundedInt {
-                    value: Felt::from_hex_unchecked(limbs[2]),
-                    range: u96_range(),
-                },
-                Value::BoundedInt {
-                    value: Felt::from_hex_unchecked(limbs[3]),
-                    range: u96_range(),
-                },
-            ],
-            debug_name: None,
-        }
-    }
 
     fn u384_to_biguint(value: [u128; 4]) -> BigUint {
         let l0 = value[0].to_le_bytes();
@@ -1197,7 +1160,7 @@ mod test {
             &program,
             "main",
             &[],
-            jit_enum!(0, jit_struct!(u384(["0x9", "0x9", "0x9", "0x9"]))),
+            jit_enum!(0, jit_struct!(u384([0x9, 0x9, 0x9, 0x9]).unwrap())),
         );
     }
 
@@ -1233,7 +1196,7 @@ mod test {
             &program,
             "main",
             &[],
-            jit_enum!(0, jit_struct!(u384(["0x3", "0x3", "0x3", "0x3"]))),
+            jit_enum!(0, jit_struct!(u384([0x3, 0x3, 0x3, 0x3]).unwrap())),
         );
     }
 
@@ -1269,7 +1232,7 @@ mod test {
             &program,
             "main",
             &[],
-            jit_enum!(0, jit_struct!(u384(["0x9", "0x9", "0x9", "0x9"]))),
+            jit_enum!(0, jit_struct!(u384([0x9, 0x9, 0x9, 0x9]).unwrap())),
         );
     }
 
@@ -1303,7 +1266,7 @@ mod test {
             &program,
             "main",
             &[],
-            jit_enum!(0, jit_struct!(u384(["0x6", "0x0", "0x0", "0x0"]))),
+            jit_enum!(0, jit_struct!(u384([0x6, 0x0, 0x0, 0x0]).unwrap())),
         );
     }
 
@@ -1383,7 +1346,7 @@ mod test {
             &[],
             jit_enum!(
                 0,
-                jit_struct!(u384(["0xf", "0x0", "0x0", "0xfffffffffffffffffffffff0"]))
+                jit_struct!(u384([0xf, 0x0, 0x0, 0xfffffffffffffffffffffff0]).unwrap())
             ),
         );
     }
@@ -1430,17 +1393,86 @@ mod test {
             jit_enum!(
                 0,
                 jit_struct!(u384([
-                    "0x76956587ccb74125e760fdf3",
-                    "0xe8c82ede90011c6adc4b5cfa",
-                    "0xaf4bed7eef975ff1941fdf3d",
-                    "0x7"
-                ]))
+                    0x76956587ccb74125e760fdf3,
+                    0xe8c82ede90011c6adc4b5cfa,
+                    0xaf4bed7eef975ff1941fdf3d,
+                    0x7
+                ])
+                .unwrap())
             ),
         );
     }
 
     #[test]
-    fn test_eval_circuit_sierra() {
+    fn test_eval_mul_circuit_sierra() {
+        let program = {
+            let mut generator = SierraGenerator::<EvalCircuitLibFunc>::default();
+
+            let circuit_input_1_ty = generator
+                .push_type_declaration::<CircuitInput>(&[GenericArg::Value(BigInt::from(0))])
+                .clone();
+            let circuit_input_2_ty = generator
+                .push_type_declaration::<CircuitInput>(&[GenericArg::Value(BigInt::from(1))])
+                .clone();
+            let mul_mod_gate_ty = generator
+                .push_type_declaration::<MulModGate>(&[
+                    GenericArg::Type(circuit_input_1_ty),
+                    GenericArg::Type(circuit_input_2_ty.clone()),
+                ])
+                .clone();
+            let struct_ty = generator
+                .push_type_declaration::<StructType>(&[
+                    GenericArg::UserType(UserTypeId::from_string("Tuple")),
+                    GenericArg::Type(mul_mod_gate_ty),
+                ])
+                .clone();
+
+            let circuit_ty = generator
+                .push_type_declaration::<Circuit>(&[GenericArg::Type(struct_ty)])
+                .clone();
+
+            generator.build(&[GenericArg::Type(circuit_ty)])
+        };
+        println!("{program}");
+
+        let input1 = [1, 0, 0, 0];
+        let input2 = [16, 0, 0, 0];
+        dbg!(u384_to_biguint([16, 0, 0, 0]));
+        let circuit_data =
+            Value::CircuitData(vec![[1, 0, 0, 0], [16, 0, 0, 0]]);
+
+        let Value::Enum { value, .. } = run_sierra_program(
+            &program,
+            &[
+                circuit_data.clone(),
+                circuit_data,
+                Value::Uint384Test([
+                    0x1,
+                    0x0,
+                    0x0,
+                    0x0,
+                ]),
+                Value::Uint384Test(input1),
+                Value::Uint384Test(input2),
+            ],
+        )
+        .return_value
+        else {
+            panic!()
+        };
+
+        let Value::Struct { fields, .. } = *value else {
+            panic!()
+        };
+
+        assert_eq!(
+            jit_struct!(u384([0xf, 0x0, 0x0, 0xfffffffffffffffffffffff0]).unwrap()),
+            fields[2]
+        );
+    }
+
+    #[test]
+    fn test_eval_complex_circuit_sierra() {
         let program = {
             let mut generator = SierraGenerator::<EvalCircuitLibFunc>::default();
 
@@ -1486,20 +1518,17 @@ mod test {
         };
         println!("{program}");
 
-        let input1 = u384_to_biguint([9, 2, 9, 3]);
-        let input2 = u384_to_biguint([5, 7, 0, 8]);
+        let input1 = [9, 2, 9, 3];
+        let input2 = [5, 7, 0, 8];
 
-        let circuit_data = Value::CircuitData(vec![
-            u384_to_biguint([9, 2, 9, 3]),
-            u384_to_biguint([5, 7, 0, 8]),
-        ]);
+        let circuit_data = Value::CircuitData(vec![[9, 2, 9, 3], [5, 7, 0, 8]]);
 
         let result = run_sierra_program(
             &program,
             &[
                 circuit_data.clone(),
                 circuit_data,
-                Value::Uint384Test(u384_to_biguint([17, 14, 14, 14])),
+                Value::Uint384Test([17, 14, 14, 14]),
                 Value::Uint384Test(input1),
                 Value::Uint384Test(input2),
             ],
