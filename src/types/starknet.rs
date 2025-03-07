@@ -33,7 +33,7 @@ use crate::{
 use cairo_lang_sierra::{
     extensions::{
         core::{CoreLibfunc, CoreType},
-        starknet::{secp256::Secp256PointTypeConcrete, StarkNetTypeConcrete},
+        starknet::{secp256::Secp256PointTypeConcrete, StarknetTypeConcrete},
         types::InfoOnlyConcreteType,
     },
     program_registry::ProgramRegistry,
@@ -55,52 +55,52 @@ pub fn build<'ctx>(
     module: &Module<'ctx>,
     registry: &ProgramRegistry<CoreType, CoreLibfunc>,
     metadata: &mut MetadataStorage,
-    selector: WithSelf<StarkNetTypeConcrete>,
+    selector: WithSelf<StarknetTypeConcrete>,
 ) -> Result<Type<'ctx>> {
     match &*selector {
-        StarkNetTypeConcrete::ClassHash(info) => build_class_hash(
+        StarknetTypeConcrete::ClassHash(info) => build_class_hash(
             context,
             module,
             registry,
             metadata,
             WithSelf::new(selector.self_ty(), info),
         ),
-        StarkNetTypeConcrete::ContractAddress(info) => build_contract_address(
+        StarknetTypeConcrete::ContractAddress(info) => build_contract_address(
             context,
             module,
             registry,
             metadata,
             WithSelf::new(selector.self_ty(), info),
         ),
-        StarkNetTypeConcrete::StorageBaseAddress(info) => build_storage_base_address(
+        StarknetTypeConcrete::StorageBaseAddress(info) => build_storage_base_address(
             context,
             module,
             registry,
             metadata,
             WithSelf::new(selector.self_ty(), info),
         ),
-        StarkNetTypeConcrete::StorageAddress(info) => build_storage_address(
+        StarknetTypeConcrete::StorageAddress(info) => build_storage_address(
             context,
             module,
             registry,
             metadata,
             WithSelf::new(selector.self_ty(), info),
         ),
-        StarkNetTypeConcrete::System(info) => build_system(
+        StarknetTypeConcrete::System(info) => build_system(
             context,
             module,
             registry,
             metadata,
             WithSelf::new(selector.self_ty(), info),
         ),
-        StarkNetTypeConcrete::Secp256Point(info) => build_secp256_point(
+        StarknetTypeConcrete::Secp256Point(info) => build_secp256_point(
             context,
             module,
             registry,
             metadata,
             WithSelf::new(selector.self_ty(), info),
         ),
-        StarkNetTypeConcrete::Sha256StateHandle(info) => build_sha256_state_handle(
+        StarknetTypeConcrete::Sha256StateHandle(info) => build_sha256_state_handle(
             context,
             module,
             registry,
