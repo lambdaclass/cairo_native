@@ -47,7 +47,9 @@ pub fn build<'ctx, 'this>(
         GasConcreteLibfunc::GetBuiltinCosts(info) => {
             build_get_builtin_costs(context, registry, entry, location, helper, metadata, info)
         }
-        GasConcreteLibfunc::GetUnspentGas(_) => { todo!("Implement GetUnspentGas libfunc"); }
+        GasConcreteLibfunc::GetUnspentGas(_) => {
+            todo!("Implement GetUnspentGas libfunc");
+        }
     }
 }
 

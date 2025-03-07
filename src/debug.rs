@@ -375,7 +375,7 @@ pub const fn libfunc_to_name(value: &CoreConcreteLibfunc) -> &'static str {
             StarknetConcreteLibfunc::Sha256StateHandleInit(_) => "sha256_state_handle_init",
             StarknetConcreteLibfunc::Sha256StateHandleDigest(_) => "sha256_state_handle_digest",
             StarknetConcreteLibfunc::GetClassHashAt(_) => "get_class_hash_at_syscall",
-            StarknetConcreteLibfunc::MetaTxV0(_) => "meta_tx_v0"
+            StarknetConcreteLibfunc::MetaTxV0(_) => "meta_tx_v0",
         },
         CoreConcreteLibfunc::Debug(value) => match value {
             DebugConcreteLibfunc::Print(_) => "debug_print",
