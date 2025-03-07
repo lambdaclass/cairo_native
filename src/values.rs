@@ -482,7 +482,7 @@ impl Value {
                         let elem_ty = registry.get_type(&info.ty)?;
                         let elem_layout = elem_ty.layout(registry)?.pad_to_align();
 
-                        let (dup_fn, drop_fn) = find_dict_overrides(&info.ty);
+                        let drop_fn = find_dict_drop_override(&info.ty);
 
                         let mut felt_dict = FeltDict {
                             mappings: HashMap::with_capacity(dict.len()),
@@ -496,7 +496,6 @@ impl Value {
                                 ))
                                 .cast()
                             },
-                            dup_fn,
                             drop_fn,
                             count: 0,
                         };
@@ -505,7 +504,7 @@ impl Value {
                         for (key, value) in dict.iter() {
                             let key = key.to_bytes_le();
                             let value =
-                                value.to_ptr(arena, registry, &info.ty, find_dict_overrides)?;
+                                value.to_ptr(arena, registry, &info.ty, find_dict_drop_override)?;
 
                             let index = felt_dict.mappings.len();
                             felt_dict.mappings.insert(key, index);

@@ -195,13 +195,13 @@ impl AbiArgument for ValueWithInfoWrapper<'_> {
                     self.arena,
                     self.registry,
                     self.type_id,
-                    find_dict_overrides,
+                    find_dict_drop_override,
                 )?;
 
                 let abi = unsafe { abi_ptr.cast::<crate::runtime::FeltDictEntry>().as_ref() };
 
-                abi.dict.to_bytes(buffer, find_dict_overrides)?;
-                abi.value_ptr.to_bytes(buffer, find_dict_overrides)?;
+                abi.dict.to_bytes(buffer, find_dict_drop_override)?;
+                abi.value_ptr.to_bytes(buffer, find_dict_drop_override)?;
             }
             (
                 Value::Secp256K1Point(Secp256k1Point { x, y, is_infinity }),
