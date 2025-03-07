@@ -62,13 +62,46 @@ impl ContractExecutionResult {
     /// Convert an [`ExecutionResult`] into a [`ContractExecutionResult`]
     pub fn from_execution_result(result: ExecutionResult) -> Result<Self, Error> {
         let mut error_msg = None;
-        let mut failure_flag = false;
+        let failure_flag;
 
         let return_values = match &result.return_value {
-            Value::Struct { fields, debug_name } => {
-                if debug_name.as_ref().unwrap() == "core::panics::Panic" {
-                    failure_flag = true;
+            Value::Enum { tag, value, .. } => {
+                failure_flag = *tag != 0;
 
+                if !failure_flag {
+                    if let Value::Struct { fields, .. } = &**value {
+                        if let Value::Struct { fields, .. } = &fields[0] {
+                            if let Value::Array(data) = &fields[0] {
+                                let felt_vec: Vec<_> = data
+                                    .iter()
+                                    .map(|x| {
+                                        if let Value::Felt252(f) = x {
+                                            Ok(*f)
+                                        } else {
+                                            native_panic!("should always be a felt")
+                                        }
+                                    })
+                                    .collect::<Result<_, _>>()?;
+                                felt_vec
+                            } else {
+                                Err(Error::UnexpectedValue(format!(
+                                    "wrong type, expected: Struct {{ Struct {{ Array<felt252> }} }}, value: {:?}",
+                                    value
+                                )))?
+                            }
+                        } else {
+                            Err(Error::UnexpectedValue(format!(
+                                "wrong type, expected: Struct {{ Struct {{ Array<felt252> }} }}, value: {:?}",
+                                value
+                            )))?
+                        }
+                    } else {
+                        Err(Error::UnexpectedValue(format!(
+                            "wrong type, expected: Struct {{ Struct {{ Array<felt252> }} }}, value: {:?}",
+                            value
+                        )))?
+                    }
+                } else if let Value::Struct { fields, .. } = &**value {
                     if fields.len() < 2 {
                         Err(Error::UnexpectedValue(format!(
                             "wrong type, expect: struct.fields.len() >= 2, value: {:?}",
