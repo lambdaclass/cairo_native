@@ -998,7 +998,7 @@ impl Value {
                         y: y.into(),
                     }
                 }
-                CoreTypeConcrete::Blake(_) => todo!("Implement from_ptr for Blake type")
+                CoreTypeConcrete::Blake(_) => todo!("Implement from_ptr for Blake type"),
             }
         })
     }

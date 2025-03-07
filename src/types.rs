@@ -436,7 +436,7 @@ impl TypeBuilder for CoreTypeConcrete {
                 metadata,
                 WithSelf::new(self_ty, info),
             ),
-            Self::Blake(_) => todo!("Build Blake type")
+            Self::Blake(_) => todo!("Build Blake type"),
         }
     }
 
@@ -628,7 +628,7 @@ impl TypeBuilder for CoreTypeConcrete {
                 let type_info = registry.get_type(&info.ty)?;
                 type_info.is_zst(registry)?
             }
-            CoreTypeConcrete::Blake(_info) => todo!("Implement is_zst for Blake type")
+            CoreTypeConcrete::Blake(_info) => todo!("Implement is_zst for Blake type"),
         })
     }
 
@@ -739,8 +739,7 @@ impl TypeBuilder for CoreTypeConcrete {
                 let inner = registry.get_type(&info.ty)?.layout(registry)?;
                 inner.extend(inner)?.0
             }
-            CoreTypeConcrete::Blake(_info) => todo!("Implement layout for Blake type")
-
+            CoreTypeConcrete::Blake(_info) => todo!("Implement layout for Blake type"),
         }
         .pad_to_align())
     }
