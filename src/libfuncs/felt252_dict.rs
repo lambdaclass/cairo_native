@@ -60,31 +60,11 @@ pub fn build_new<'ctx, 'this>(
         _ => native_panic!("entered unreachable code"),
     };
 
-    let (dup_fn, drop_fn) = {
+    let drop_fn = {
         let mut dict_overrides = metadata
             .remove::<Felt252DictOverrides>()
             .unwrap_or_default();
 
-        let dup_fn = match dict_overrides.build_dup_fn(
-            context,
-            helper,
-            registry,
-            metadata,
-            value_type_id,
-        )? {
-            Some(dup_fn) => Some(
-                entry.append_op_result(
-                    ods::llvm::mlir_addressof(
-                        context,
-                        llvm::r#type::pointer(context, 0),
-                        dup_fn,
-                        location,
-                    )
-                    .into(),
-                )?,
-            ),
-            None => None,
-        };
         let drop_fn = match dict_overrides.build_drop_fn(
             context,
             helper,
@@ -107,7 +87,8 @@ pub fn build_new<'ctx, 'this>(
         };
 
         metadata.insert(dict_overrides);
-        (dup_fn, drop_fn)
+
+        drop_fn
     };
 
     let runtime_bindings = metadata
@@ -118,7 +99,6 @@ pub fn build_new<'ctx, 'this>(
         helper,
         entry,
         location,
-        dup_fn,
         drop_fn,
         registry.get_type(value_type_id)?.layout(registry)?,
     )?;
@@ -163,23 +143,45 @@ pub fn build_squash<'ctx, 'this>(
 
 #[cfg(test)]
 mod test {
+    use std::collections::HashMap;
+
+    use cairo_lang_sierra::{
+        extensions::{
+            felt252_dict::{Felt252DictNewLibfunc, Felt252DictSquashLibfunc},
+            int::unsigned::{Uint32Type, Uint64Type},
+        },
+        program::GenericArg,
+    };
+
     use crate::{
-        utils::test::{jit_dict, jit_enum, jit_struct, load_cairo, run_program_assert_output},
+        utils::{
+            sierra_gen::SierraGenerator,
+            test::{
+                jit_dict, jit_enum, jit_struct, load_cairo, run_program_assert_output,
+                run_sierra_program,
+            },
+        },
         values::Value,
     };
 
     #[test]
     fn run_dict_new() {
-        let program = load_cairo!(
-            use traits::Default;
-            use dict::Felt252DictTrait;
+        let program = {
+            let mut generator = SierraGenerator::<Felt252DictNewLibfunc>::default();
 
-            fn run_test() {
-                let mut _dict: Felt252Dict<u32> = Default::default();
-            }
-        );
+            let u32_ty = generator.push_type_declaration::<Uint32Type>(&[]).clone();
 
-        run_program_assert_output(&program, "run_test", &[], jit_struct!());
+            generator.build(&[GenericArg::Type(u32_ty)])
+        };
+
+        let result = run_sierra_program(&program, &[]).return_value;
+
+        let dict = Value::Felt252Dict {
+            value: HashMap::new(),
+            debug_name: None,
+        };
+
+        assert_eq!(result, dict);
     }
 
     #[test]
@@ -226,6 +228,26 @@ mod test {
                 5 => 6u32,
             ),
         );
+    }
+
+    #[test]
+    fn run_dict_squash() {
+        let program = {
+            let mut generator = SierraGenerator::<Felt252DictSquashLibfunc>::default();
+
+            let u64_ty = generator.push_type_declaration::<Uint64Type>(&[]).clone();
+
+            generator.build(&[GenericArg::Type(u64_ty)])
+        };
+
+        let dict = Value::Felt252Dict {
+            value: HashMap::new(),
+            debug_name: None,
+        };
+
+        let result = run_sierra_program(&program, &[dict.clone()]).return_value;
+
+        assert_eq!(result, dict);
     }
 
     #[test]
