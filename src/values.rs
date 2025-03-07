@@ -186,7 +186,7 @@ impl Value {
             | CoreTypeConcrete::NonZero(info)
             | CoreTypeConcrete::Nullable(info)
             | CoreTypeConcrete::Snapshot(info) => {
-                return self.to_ptr(arena, registry, &info.ty, find_dict_overrides);
+                return self.to_ptr(arena, registry, &info.ty, find_dict_drop_override);
             }
             _ => {}
         }
