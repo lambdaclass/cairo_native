@@ -139,7 +139,9 @@ pub fn build<'ctx, 'this>(
         StarknetConcreteLibfunc::Sha256ProcessBlock(info) => build_sha256_process_block_syscall(
             context, registry, entry, location, helper, metadata, info,
         ),
-        StarknetConcreteLibfunc::MetaTxV0(_) => { todo!("Implement MetaTxV0 libfunc"); }
+        StarknetConcreteLibfunc::MetaTxV0(_) => {
+            todo!("Implement MetaTxV0 libfunc");
+        }
         #[cfg(feature = "with-cheatcode")]
         StarknetConcreteLibfunc::Testing(TestingConcreteLibfunc::Cheatcode(info)) => {
             self::testing::build(context, registry, entry, location, helper, metadata, info)
