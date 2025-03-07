@@ -20,7 +20,7 @@ use cairo_lang_sierra::{
     extensions::{
         circuit::CircuitTypeConcrete,
         core::{CoreLibfunc, CoreType, CoreTypeConcrete},
-        starknet::StarkNetTypeConcrete,
+        starknet::StarknetTypeConcrete,
         ConcreteType,
     },
     ids::ConcreteTypeId,
@@ -162,7 +162,7 @@ fn invoke_dynamic(
             CoreTypeConcrete::GasBuiltin(_) => {
                 gas.to_bytes(&mut invoke_data, |_| unreachable!())?
             }
-            CoreTypeConcrete::StarkNet(StarkNetTypeConcrete::System(_)) => {
+            CoreTypeConcrete::Starknet(StarknetTypeConcrete::System(_)) => {
                 let syscall_handler = syscall_handler
                     .as_mut()
                     .to_native_assert_error("syscall handler should be available")?;
@@ -254,7 +254,7 @@ fn invoke_dynamic(
                     }
                 });
             }
-            CoreTypeConcrete::StarkNet(StarkNetTypeConcrete::System(_)) => {
+            CoreTypeConcrete::Starknet(StarknetTypeConcrete::System(_)) => {
                 if let Some(return_ptr) = &mut return_ptr {
                     unsafe {
                         let ptr = return_ptr.cast::<*mut ()>();
@@ -420,11 +420,11 @@ fn parse_result(
             true,
         )?),
         CoreTypeConcrete::Felt252(_)
-        | CoreTypeConcrete::StarkNet(
-            StarkNetTypeConcrete::ClassHash(_)
-            | StarkNetTypeConcrete::ContractAddress(_)
-            | StarkNetTypeConcrete::StorageAddress(_)
-            | StarkNetTypeConcrete::StorageBaseAddress(_),
+        | CoreTypeConcrete::Starknet(
+            StarknetTypeConcrete::ClassHash(_)
+            | StarknetTypeConcrete::ContractAddress(_)
+            | StarknetTypeConcrete::StorageAddress(_)
+            | StarknetTypeConcrete::StorageBaseAddress(_),
         ) => match return_ptr {
             Some(return_ptr) => Ok(Value::from_ptr(return_ptr, type_id, registry, true)?),
             None => {
@@ -642,7 +642,7 @@ fn parse_result(
         | CoreTypeConcrete::Pedersen(_)
         | CoreTypeConcrete::Poseidon(_)
         | CoreTypeConcrete::SegmentArena(_)
-        | CoreTypeConcrete::StarkNet(StarkNetTypeConcrete::System(_)) => {
+        | CoreTypeConcrete::Starknet(StarknetTypeConcrete::System(_)) => {
             native_panic!("builtins should have been handled before")
         }
 
@@ -650,12 +650,14 @@ fn parse_result(
         | CoreTypeConcrete::Span(_)
         | CoreTypeConcrete::Uninitialized(_)
         | CoreTypeConcrete::Coupon(_)
-        | CoreTypeConcrete::StarkNet(_)
+        | CoreTypeConcrete::Starknet(_)
         | CoreTypeConcrete::Uint128MulGuarantee(_)
         | CoreTypeConcrete::Circuit(_)
         | CoreTypeConcrete::RangeCheck96(_) => native_panic!("not yet implemented as results"),
         // 2.9.0
         CoreTypeConcrete::IntRange(_) => native_panic!("not yet implemented as results"),
+        // 2.11.1
+        CoreTypeConcrete::Blake(_) => native_panic!("not yet implemented as results"),
     }
 }
 
