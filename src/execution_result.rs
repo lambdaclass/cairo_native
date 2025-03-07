@@ -62,10 +62,11 @@ impl ContractExecutionResult {
     /// Convert an [`ExecutionResult`] into a [`ContractExecutionResult`]
     pub fn from_execution_result(result: ExecutionResult) -> Result<Self, Error> {
         let mut error_msg = None;
-        let mut failure_flag = false;
+        let mut failure_flag= false;
 
         let return_values = match &result.return_value {
             Value::Struct { fields, debug_name } => {
+
                 if debug_name.as_ref().unwrap() == "core::panics::Panic" {
                     let Value::Struct { fields, .. } = &fields[0] else {
                         Err(Error::UnexpectedValue(format!(
@@ -94,7 +95,7 @@ impl ContractExecutionResult {
                     }
                 } else {
                     failure_flag = true;
-
+                    
                     if fields.len() < 2 {
                         Err(Error::UnexpectedValue(format!(
                             "wrong type, expect: struct.fields.len() >= 2, value: {:?}",
@@ -127,9 +128,10 @@ impl ContractExecutionResult {
                         Err(Error::UnexpectedValue(format!(
                             "wrong type, expected: Struct {{ [X, Array<felt252>] }}, value: {:?}",
                             fields[1]
+                            fields[1]
                         )))?
                     }
-                }
+                } 
             }
             // Value::Enum { tag, value, .. } => {
             //     failure_flag = *tag != 0;
@@ -211,6 +213,10 @@ impl ContractExecutionResult {
             // }
             ty => {
                 failure_flag = true;
+                Err(Error::UnexpectedValue(format!(
+                    "wrong return value type expected a enum got: {:?}",
+                    ty
+                )))?
                 Err(Error::UnexpectedValue(format!(
                     "wrong return value type expected a enum got: {:?}",
                     ty
