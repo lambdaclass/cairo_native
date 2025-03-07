@@ -54,7 +54,7 @@ use cairo_lang_sierra::{
         circuit::CircuitTypeConcrete,
         core::{CoreLibfunc, CoreType, CoreTypeConcrete},
         gas::CostTokenType,
-        starknet::StarkNetTypeConcrete,
+        starknet::StarknetTypeConcrete,
     },
     ids::FunctionId,
     program::{GenFunction, Program, StatementIdx},
@@ -627,7 +627,7 @@ fn find_entrypoint_builtins(
                     BuiltinType::CircuitMul
                 }
                 CoreTypeConcrete::GasBuiltin(_) => BuiltinType::Gas,
-                CoreTypeConcrete::StarkNet(StarkNetTypeConcrete::System(_)) => BuiltinType::System,
+                CoreTypeConcrete::Starknet(StarknetTypeConcrete::System(_)) => BuiltinType::System,
                 _ => native_panic!("unknown builtin type for function {}", function),
             })
         })
