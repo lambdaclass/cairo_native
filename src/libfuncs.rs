@@ -17,7 +17,7 @@ use cairo_lang_sierra::{
             unsigned::{Uint16Traits, Uint32Traits, Uint64Traits, Uint8Traits},
         },
         lib_func::ParamSignature,
-        starknet::StarkNetTypeConcrete,
+        starknet::StarknetTypeConcrete,
         ConcreteLibfunc,
     },
     ids::FunctionId,
@@ -144,6 +144,7 @@ impl LibfuncBuilder for CoreConcreteLibfunc {
             Self::Debug(selector) => self::debug::build(
                 context, registry, entry, location, helper, metadata, selector,
             ),
+            Self::Trace(_) => todo!("Implement trace libfunc"),
             Self::Drop(info) => {
                 self::drop::build(context, registry, entry, location, helper, metadata, info)
             }
@@ -162,6 +163,7 @@ impl LibfuncBuilder for CoreConcreteLibfunc {
             Self::Felt252Dict(selector) => self::felt252_dict::build(
                 context, registry, entry, location, helper, metadata, selector,
             ),
+            Self::Felt252SquashedDict(_) => { todo!("Implement felt252_squashed_dict libfunc") }
             Self::Felt252DictEntry(selector) => self::felt252_dict_entry::build(
                 context, registry, entry, location, helper, metadata, selector,
             ),
@@ -174,6 +176,7 @@ impl LibfuncBuilder for CoreConcreteLibfunc {
             Self::IntRange(selector) => self::int_range::build(
                 context, registry, entry, location, helper, metadata, selector,
             ),
+            Self::Blake(_) => todo!("Implement blake libfunc"),
             Self::Mem(selector) => self::mem::build(
                 context, registry, entry, location, helper, metadata, selector,
             ),
@@ -201,7 +204,7 @@ impl LibfuncBuilder for CoreConcreteLibfunc {
             Self::Sint128(selector) => self::int::build_i128(
                 context, registry, entry, location, helper, metadata, selector,
             ),
-            Self::StarkNet(selector) => self::starknet::build(
+            Self::Starknet(selector) => self::starknet::build(
                 context, registry, entry, location, helper, metadata, selector,
             ),
             Self::Struct(selector) => self::r#struct::build(
@@ -471,7 +474,7 @@ fn build_noop<'ctx, 'this, const N: usize, const PROCESS_BUILTINS: bool>(
                 CoreTypeConcrete::BuiltinCosts(_)
                     | CoreTypeConcrete::Coupon(_)
                     | CoreTypeConcrete::GasBuiltin(_)
-                    | CoreTypeConcrete::StarkNet(StarkNetTypeConcrete::System(_))
+                    | CoreTypeConcrete::Starknet(StarknetTypeConcrete::System(_))
             )
         {
             param_val = increment_builtin_counter(context, entry, location, param_val)?;
