@@ -16,11 +16,6 @@ use crate::{
     metadata::{runtime_bindings::RuntimeBindingsMeta, MetadataStorage},
     utils::BlockExt,
 };
-use crate::{
-    error::{panic::ToNativeAssertError, Result},
-    metadata::{runtime_bindings::RuntimeBindingsMeta, MetadataStorage},
-    utils::BlockExt,
-};
 
 use super::LibfuncHelper;
 

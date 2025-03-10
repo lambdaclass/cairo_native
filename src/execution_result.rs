@@ -63,7 +63,6 @@ impl ContractExecutionResult {
     pub fn from_execution_result(result: ExecutionResult) -> Result<Self, Error> {
         let mut error_msg = None;
         let failure_flag;
-        let failure_flag;
 
         let return_values = match &result.return_value {
             Value::Enum { tag, value, .. } => {
@@ -100,43 +99,8 @@ impl ContractExecutionResult {
                         Err(Error::UnexpectedValue(format!(
                             "wrong type, expected: Struct {{ Struct {{ Array<felt252> }} }}, value: {:?}",
                             value
-            Value::Enum { tag, value, .. } => {
-                failure_flag = *tag != 0;
-
-                if !failure_flag {
-                    if let Value::Struct { fields, .. } = &**value {
-                        if let Value::Struct { fields, .. } = &fields[0] {
-                            if let Value::Array(data) = &fields[0] {
-                                let felt_vec: Vec<_> = data
-                                    .iter()
-                                    .map(|x| {
-                                        if let Value::Felt252(f) = x {
-                                            Ok(*f)
-                                        } else {
-                                            native_panic!("should always be a felt")
-                                        }
-                                    })
-                                    .collect::<Result<_, _>>()?;
-                                felt_vec
-                            } else {
-                                Err(Error::UnexpectedValue(format!(
-                                    "wrong type, expected: Struct {{ Struct {{ Array<felt252> }} }}, value: {:?}",
-                                    value
-                                )))?
-                            }
-                        } else {
-                            Err(Error::UnexpectedValue(format!(
-                                "wrong type, expected: Struct {{ Struct {{ Array<felt252> }} }}, value: {:?}",
-                                value
-                            )))?
-                        }
-                    } else {
-                        Err(Error::UnexpectedValue(format!(
-                            "wrong type, expected: Struct {{ Struct {{ Array<felt252> }} }}, value: {:?}",
-                            value
                         )))?
                     }
-                } else if let Value::Struct { fields, .. } = &**value {
                 } else if let Value::Struct { fields, .. } = &**value {
                     if fields.len() < 2 {
                         Err(Error::UnexpectedValue(format!(
@@ -169,17 +133,21 @@ impl ContractExecutionResult {
                     } else {
                         Err(Error::UnexpectedValue(format!(
                             "wrong type, expected: Struct {{ [X, Array<felt252>] }}, value: {:?}",
-                            fields[1]
+                            value
                         )))?
                     }
-                } 
+                } else {
+                    Err(Error::UnexpectedValue(format!(
+                        "wrong type, expected: Struct {{ [X, Array<felt252>] }}, value: {:?}",
+                        value
+                    )))?
+                }
             }
-            ty => {
+            _ => {
                 failure_flag = true;
-                Err(Error::UnexpectedValue(format!(
-                    "wrong return value type expected a enum got: {:?}",
-                    ty
-                )))?
+                Err(Error::UnexpectedValue(
+                    "wrong return value type expected a enum".to_string(),
+                ))?
             }
         };
 
