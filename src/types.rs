@@ -31,6 +31,7 @@ use std::{alloc::Layout, error::Error, ops::Deref, sync::OnceLock};
 
 pub mod array;
 mod bitwise;
+mod blake;
 mod bounded_int;
 mod r#box;
 mod builtin_costs;
@@ -436,7 +437,13 @@ impl TypeBuilder for CoreTypeConcrete {
                 metadata,
                 WithSelf::new(self_ty, info),
             ),
-            Self::Blake(_) => todo!("Build Blake type"),
+            Self::Blake(info) => blake::build(
+                context,
+                module,
+                registry,
+                metadata,
+                WithSelf::new(self_ty, info),
+            ),
         }
     }
 
@@ -543,7 +550,7 @@ impl TypeBuilder for CoreTypeConcrete {
             CoreTypeConcrete::Circuit(info) => circuit::is_complex(info),
 
             CoreTypeConcrete::IntRange(_info) => false,
-            CoreTypeConcrete::Blake(_info) => todo!("Implement is_complex for Blake type")
+            CoreTypeConcrete::Blake(_) => false,
         })
     }
 
@@ -628,7 +635,7 @@ impl TypeBuilder for CoreTypeConcrete {
                 let type_info = registry.get_type(&info.ty)?;
                 type_info.is_zst(registry)?
             }
-            CoreTypeConcrete::Blake(_info) => todo!("Implement is_zst for Blake type"),
+            CoreTypeConcrete::Blake(_) => false,
         })
     }
 
@@ -739,7 +746,7 @@ impl TypeBuilder for CoreTypeConcrete {
                 let inner = registry.get_type(&info.ty)?.layout(registry)?;
                 inner.extend(inner)?.0
             }
-            CoreTypeConcrete::Blake(_info) => todo!("Implement layout for Blake type"),
+            CoreTypeConcrete::Blake(_info) => Layout::new::<*mut ()>(),
         }
         .pad_to_align())
     }
@@ -752,7 +759,7 @@ impl TypeBuilder for CoreTypeConcrete {
         // arguments.
         Ok(match self {
             CoreTypeConcrete::IntRange(_) => false,
-            CoreTypeConcrete::Blake(_info) => todo!("Implement is_memory_allocated for Blake type"),
+            CoreTypeConcrete::Blake(_) => false,
             CoreTypeConcrete::Array(_) => false,
             CoreTypeConcrete::Bitwise(_) => false,
             CoreTypeConcrete::Box(_) => false,
