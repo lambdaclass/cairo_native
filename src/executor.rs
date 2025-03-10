@@ -675,7 +675,7 @@ mod tests {
     #[fixture]
     fn program() -> Program {
         let (_, program) = load_cairo! {
-            use core::starknet::{SyscallResultTrait, get_block_hash_syscall};
+            use starknet::{SyscallResultTrait, get_block_hash_syscall};
 
             fn run_test() -> felt252 {
                 42
