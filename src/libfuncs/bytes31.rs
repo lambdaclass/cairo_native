@@ -195,11 +195,8 @@ mod test {
 
     #[test]
     fn bytes31_roundtrip() {
-        let Value::Enum {
-            tag: _,
-            value,
-            debug_name: _,
-        } = run_sierra_program(&BYTES31_TRY_FROM_FELT, &[Felt::from(2).into()]).return_value
+        let Value::Enum { value, .. } =
+            run_sierra_program(&BYTES31_TRY_FROM_FELT, &[Felt::from(2).into()]).return_value
         else {
             panic!("Invalid result type");
         };

@@ -824,10 +824,12 @@ mod test {
                 signed::{Sint16Type, Sint8Type},
                 unsigned::Uint32Type,
             },
+            utils::Range,
         },
         program::GenericArg,
     };
     use cairo_vm::Felt252;
+    use num_bigint::BigInt;
 
     use crate::{
         utils::{
@@ -854,11 +856,16 @@ mod test {
             panic!("should be OptionRev::Some");
         };
 
-        let Value::BoundedInt { value, range: _ } = *value else {
-            panic!();
-        };
-
-        assert_eq!(value, Felt252::from(1_u8));
+        assert_eq!(
+            *value,
+            Value::BoundedInt {
+                value: 1_u8.into(),
+                range: Range {
+                    lower: BigInt::from(i8::MIN),
+                    upper: BigInt::from(i8::MAX)
+                }
+            }
+        );
     }
 
     #[test]
@@ -878,11 +885,16 @@ mod test {
             panic!("should be OptionRev::Some");
         };
 
-        let Value::BoundedInt { value, range: _ } = *value else {
-            panic!();
-        };
-
-        assert_eq!(value, Felt252::from(-1_i8));
+        assert_eq!(
+            *value,
+            Value::BoundedInt {
+                value: (-1_i8).into(),
+                range: Range {
+                    lower: BigInt::from(i8::MIN),
+                    upper: BigInt::from(i8::MAX)
+                }
+            }
+        );
     }
 
     #[test]
@@ -903,11 +915,16 @@ mod test {
             panic!("should be OptionRev::Some");
         };
 
-        let Value::BoundedInt { value, range: _ } = *value else {
-            panic!();
-        };
-
-        assert_eq!(value, Felt252::from(0xfffffffe_u32));
+        assert_eq!(
+            *value,
+            Value::BoundedInt {
+                value: 0xfffffffeu32.into(),
+                range: Range {
+                    lower: 0.into(),
+                    upper: u32::MAX.into()
+                }
+            }
+        );
     }
 
     #[test]
