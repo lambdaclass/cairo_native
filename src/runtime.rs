@@ -245,11 +245,11 @@ pub unsafe extern "C" fn cairo_native__dict_dup(dict_ptr: *const FeltDict) -> *c
 /// This function is intended to be called from MLIR, deals with pointers, and is therefore
 /// definitely unsafe to use manually.
 pub unsafe extern "C" fn cairo_native__dict_get(
-    dict_ptr: *mut *const FeltDict,
+    dict_ptr: *const FeltDict,
     key: &[u8; 32],
     value_ptr: *mut *mut c_void,
 ) -> c_int {
-    let dict_rc = Rc::from_raw(dict_ptr.read());
+    let dict_rc = Rc::from_raw(dict_ptr);
 
     // there may me multiple reference to the same dictionary (snapshots), but
     // as snapshots cannot access the inner dictionary, then it is safe to modify it
@@ -289,7 +289,7 @@ pub unsafe extern "C" fn cairo_native__dict_get(
         .cast();
 
     dict.count += 1;
-    dict_ptr.write(Rc::into_raw(dict_rc));
+    forget(dict_rc);
 
     is_present as c_int
 }
@@ -815,7 +815,7 @@ mod tests {
 
     #[test]
     fn test_dict() {
-        let mut dict = unsafe {
+        let dict = unsafe {
             cairo_native__dict_new(size_of::<u64>() as u64, align_of::<u64>() as u64, None)
         };
 
@@ -823,14 +823,14 @@ mod tests {
         let mut ptr = ptr::null_mut::<u64>();
 
         assert_eq!(
-            unsafe { cairo_native__dict_get(&mut dict, &key, (&raw mut ptr).cast()) },
+            unsafe { cairo_native__dict_get(dict, &key, (&raw mut ptr).cast()) },
             0,
         );
         assert!(!ptr.is_null());
         unsafe { *ptr = 24 };
 
         assert_eq!(
-            unsafe { cairo_native__dict_get(&mut dict, &key, (&raw mut ptr).cast()) },
+            unsafe { cairo_native__dict_get(dict, &key, (&raw mut ptr).cast()) },
             1,
         );
         assert!(!ptr.is_null());
@@ -840,11 +840,11 @@ mod tests {
         let refund = unsafe { cairo_native__dict_gas_refund(dict) };
         assert_eq!(refund, 4050);
 
-        let mut cloned_dict = unsafe { cairo_native__dict_dup(dict) };
+        let cloned_dict = unsafe { cairo_native__dict_dup(dict) };
         unsafe { cairo_native__dict_drop(dict) };
 
         assert_eq!(
-            unsafe { cairo_native__dict_get(&mut cloned_dict, &key, (&raw mut ptr).cast()) },
+            unsafe { cairo_native__dict_get(cloned_dict, &key, (&raw mut ptr).cast()) },
             1,
         );
         assert!(!ptr.is_null());
