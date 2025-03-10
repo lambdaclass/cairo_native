@@ -149,7 +149,6 @@ mod test {
 
     lazy_static! {
         static ref INT_RANGE_TRY_NEW: (String, Program) = load_cairo! {
-            #[derive(Copy, Drop)]
             pub extern type IntRange<T>;
             pub extern fn int_range_try_new<T>(
                 x: T, y: T
