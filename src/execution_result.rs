@@ -67,7 +67,7 @@ impl ContractExecutionResult {
             Value::Struct { fields, debug_name } => {
                 if debug_name.as_ref().unwrap() == "Tuple<core::panics::Panic, Array<felt252>>" {
                     failure_flag = true;
-                    
+
                     if fields.len() < 2 {
                         Err(Error::UnexpectedValue(format!(
                             "wrong type, expect: struct.fields.len() >= 2, value: {:?}",
