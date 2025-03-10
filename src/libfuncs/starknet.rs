@@ -2792,17 +2792,18 @@ mod test {
             }
         };
         static ref CLASS_HASH_CONST: (String, Program) = load_cairo! {
-            use starknet::class_hash::{class_hash_const, ClassHash};
+            use starknet::class_hash::ClassHash;
 
             fn run_program() -> ClassHash {
-                class_hash_const::<0>()
+                0.try_into().unwrap()
             }
         };
     }
 
     #[test]
     fn class_hash_const() {
-        run_program_assert_output(&CLASS_HASH_CONST, "run_program", &[], Felt::ZERO.into())
+        let expected = jit_enum!(0, jit_struct!(Felt::ZERO.into()));
+        run_program_assert_output(&CLASS_HASH_CONST, "run_program", &[], expected)
     }
 
     #[test]
