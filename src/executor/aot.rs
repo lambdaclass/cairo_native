@@ -330,7 +330,7 @@ mod tests {
                 &mut StubSyscallHandler::default(),
             )
             .unwrap();
-        dbg!(&result);
+
         assert_eq!(result.return_values, vec![Felt::from(42)]);
     }
 }
