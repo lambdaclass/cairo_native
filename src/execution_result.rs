@@ -67,32 +67,6 @@ impl ContractExecutionResult {
         let return_values = match &result.return_value {
             Value::Struct { fields, debug_name } => {
                 if debug_name.as_ref().unwrap() == "core::panics::Panic" {
-                    let Value::Struct { fields, .. } = &fields[0] else {
-                        Err(Error::UnexpectedValue(format!(
-                            "wrong type, expected: Struct {{ Struct {{ Array<felt252> }} }}, value: {:?}",
-                            &fields[0]
-                        )))?
-                    };
-
-                    if let Value::Array(data) = &fields[1] {
-                        let felt_vec: Vec<_> = data
-                            .iter()
-                            .map(|x| {
-                                if let Value::Felt252(f) = x {
-                                    Ok(*f)
-                                } else {
-                                    native_panic!("should always be a felt")
-                                }
-                            })
-                            .collect::<Result<_, _>>()?;
-                        felt_vec
-                    } else {
-                        Err(Error::UnexpectedValue(format!(
-                            "wrong type, expected: Struct {{ Struct {{ Array<felt252> }} }}, value: {:?}",
-                            &fields[0]
-                        )))?
-                    }
-                } else {
                     failure_flag = true;
 
                     if fields.len() < 2 {
