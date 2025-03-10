@@ -261,7 +261,7 @@ mod tests {
         let result = executor
             .invoke_dynamic(entrypoint_function_id, &[], Some(u64::MAX))
             .unwrap();
-        
+
         assert_eq!(result.return_value, Value::Felt252(Felt::from(42)));
     }
 

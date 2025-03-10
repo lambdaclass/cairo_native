@@ -100,7 +100,7 @@ impl LibfuncBuilder for CoreConcreteLibfunc {
         metadata: &mut MetadataStorage,
     ) -> Result<()> {
         match self {
-            Self::ApTracking(_) | Self::BranchAlign(_) | Self::UnconditionalJump(_) => {
+            Self::ApTracking(_) | Self::BranchAlign(_) | Self::UnconditionalJump(_) | Self::Trace(_) => {
                 build_noop::<0, true>(
                     context,
                     registry,
@@ -144,7 +144,6 @@ impl LibfuncBuilder for CoreConcreteLibfunc {
             Self::Debug(selector) => self::debug::build(
                 context, registry, entry, location, helper, metadata, selector,
             ),
-            Self::Trace(_) => todo!("Implement trace libfunc"),
             Self::Drop(info) => {
                 self::drop::build(context, registry, entry, location, helper, metadata, info)
             }
