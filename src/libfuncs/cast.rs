@@ -405,28 +405,18 @@ mod test {
                 unsigned::{Uint16Type, Uint32Type, Uint64Type, Uint8Type},
                 unsigned128::Uint128Type,
             },
+            GenericLibfunc, NamedType,
         },
-        program::GenericArg,
+        program::{GenericArg, Program},
     };
 
-    macro_rules! cast {
-        ($from:ty, $to:ty, $is_up_cast:expr) => {
-            if $is_up_cast {
-                let mut generator = SierraGenerator::<UpcastLibfunc>::default();
+    fn cast<FROM: NamedType, TO: NamedType, KIND: GenericLibfunc>() -> Program {
+        let mut generator = SierraGenerator::<KIND>::default();
 
-                let from_ty = generator.push_type_declaration::<$from>(&[]).clone();
-                let to_ty = generator.push_type_declaration::<$to>(&[]).clone();
+        let from_ty = generator.push_type_declaration::<FROM>(&[]).clone();
+        let to_ty = generator.push_type_declaration::<TO>(&[]).clone();
 
-                generator.build(&[GenericArg::Type(from_ty), GenericArg::Type(to_ty)])
-            } else {
-                let mut generator = SierraGenerator::<DowncastLibfunc>::default();
-
-                let from_ty = generator.push_type_declaration::<$from>(&[]).clone();
-                let to_ty = generator.push_type_declaration::<$to>(&[]).clone();
-
-                generator.build(&[GenericArg::Type(from_ty), GenericArg::Type(to_ty)])
-            }
-        };
+        generator.build(&[GenericArg::Type(from_ty), GenericArg::Type(to_ty)])
     }
 
     fn bytes21_with_filled_u8_max(times: u8) -> Value {
@@ -441,126 +431,225 @@ mod test {
 
     #[test]
     fn downcast() {
-        let result = run_sierra_program(&cast!(Uint128Type, Uint8Type, false), &[u128::MAX.into()])
-            .return_value;
+        let result = run_sierra_program(
+            &cast::<Uint128Type, Uint8Type, DowncastLibfunc>(),
+            &[u128::MAX.into()],
+        )
+        .return_value;
         assert_eq!(result, jit_enum!(1, jit_struct!()));
-        let result =
-            run_sierra_program(&cast!(Uint128Type, Uint16Type, false), &[u128::MAX.into()])
-                .return_value;
+        let result = run_sierra_program(
+            &cast::<Uint128Type, Uint16Type, DowncastLibfunc>(),
+            &[u128::MAX.into()],
+        )
+        .return_value;
         assert_eq!(result, jit_enum!(1, jit_struct!()));
-        let result =
-            run_sierra_program(&cast!(Uint128Type, Uint32Type, false), &[u128::MAX.into()])
-                .return_value;
+        let result = run_sierra_program(
+            &cast::<Uint128Type, Uint32Type, DowncastLibfunc>(),
+            &[u128::MAX.into()],
+        )
+        .return_value;
         assert_eq!(result, jit_enum!(1, jit_struct!()));
-        let result =
-            run_sierra_program(&cast!(Uint128Type, Uint64Type, false), &[u128::MAX.into()])
-                .return_value;
+        let result = run_sierra_program(
+            &cast::<Uint128Type, Uint64Type, DowncastLibfunc>(),
+            &[u128::MAX.into()],
+        )
+        .return_value;
         assert_eq!(result, jit_enum!(1, jit_struct!()));
-        let result =
-            run_sierra_program(&cast!(Uint128Type, Uint128Type, false), &[u128::MAX.into()])
-                .return_value;
+        let result = run_sierra_program(
+            &cast::<Uint128Type, Uint128Type, DowncastLibfunc>(),
+            &[u128::MAX.into()],
+        )
+        .return_value;
         assert_eq!(result, jit_enum!(1, jit_struct!()));
-        let result = run_sierra_program(&cast!(Uint64Type, Uint8Type, false), &[u64::MAX.into()])
-            .return_value;
+        let result = run_sierra_program(
+            &cast::<Uint64Type, Uint8Type, DowncastLibfunc>(),
+            &[u64::MAX.into()],
+        )
+        .return_value;
         assert_eq!(result, jit_enum!(1, jit_struct!()));
-        let result = run_sierra_program(&cast!(Uint64Type, Uint16Type, false), &[u64::MAX.into()])
-            .return_value;
+        let result = run_sierra_program(
+            &cast::<Uint64Type, Uint16Type, DowncastLibfunc>(),
+            &[u64::MAX.into()],
+        )
+        .return_value;
         assert_eq!(result, jit_enum!(1, jit_struct!()));
-        let result = run_sierra_program(&cast!(Uint64Type, Uint32Type, false), &[u64::MAX.into()])
-            .return_value;
+        let result = run_sierra_program(
+            &cast::<Uint64Type, Uint32Type, DowncastLibfunc>(),
+            &[u64::MAX.into()],
+        )
+        .return_value;
         assert_eq!(result, jit_enum!(1, jit_struct!()));
-        let result = run_sierra_program(&cast!(Uint64Type, Uint64Type, false), &[u64::MAX.into()])
-            .return_value;
+        let result = run_sierra_program(
+            &cast::<Uint64Type, Uint64Type, DowncastLibfunc>(),
+            &[u64::MAX.into()],
+        )
+        .return_value;
         assert_eq!(result, jit_enum!(1, jit_struct!()));
-        let result = run_sierra_program(&cast!(Uint32Type, Uint8Type, false), &[u32::MAX.into()])
-            .return_value;
+        let result = run_sierra_program(
+            &cast::<Uint32Type, Uint8Type, DowncastLibfunc>(),
+            &[u32::MAX.into()],
+        )
+        .return_value;
         assert_eq!(result, jit_enum!(1, jit_struct!()));
-        let result = run_sierra_program(&cast!(Uint32Type, Uint16Type, false), &[u32::MAX.into()])
-            .return_value;
+        let result = run_sierra_program(
+            &cast::<Uint32Type, Uint16Type, DowncastLibfunc>(),
+            &[u32::MAX.into()],
+        )
+        .return_value;
         assert_eq!(result, jit_enum!(1, jit_struct!()));
-        let result = run_sierra_program(&cast!(Uint32Type, Uint32Type, false), &[u32::MAX.into()])
-            .return_value;
+        let result = run_sierra_program(
+            &cast::<Uint32Type, Uint32Type, DowncastLibfunc>(),
+            &[u32::MAX.into()],
+        )
+        .return_value;
         assert_eq!(result, jit_enum!(1, jit_struct!()));
-        let result = run_sierra_program(&cast!(Uint16Type, Uint8Type, false), &[u16::MAX.into()])
-            .return_value;
+        let result = run_sierra_program(
+            &cast::<Uint16Type, Uint8Type, DowncastLibfunc>(),
+            &[u16::MAX.into()],
+        )
+        .return_value;
         assert_eq!(result, jit_enum!(1, jit_struct!()));
-        let result = run_sierra_program(&cast!(Uint16Type, Uint16Type, false), &[u16::MAX.into()])
-            .return_value;
+        let result = run_sierra_program(
+            &cast::<Uint16Type, Uint16Type, DowncastLibfunc>(),
+            &[u16::MAX.into()],
+        )
+        .return_value;
         assert_eq!(result, jit_enum!(1, jit_struct!()));
-        let result =
-            run_sierra_program(&cast!(Uint8Type, Uint8Type, false), &[u8::MAX.into()]).return_value;
+        let result = run_sierra_program(
+            &cast::<Uint8Type, Uint8Type, DowncastLibfunc>(),
+            &[u8::MAX.into()],
+        )
+        .return_value;
         assert_eq!(result, jit_enum!(1, jit_struct!()));
     }
 
     #[test]
     fn upcast() {
-        let result =
-            run_sierra_program(&cast!(Uint128Type, Uint128Type, true), &[u128::MAX.into()])
-                .return_value;
+        let result = run_sierra_program(
+            &cast::<Uint128Type, Uint128Type, UpcastLibfunc>(),
+            &[u128::MAX.into()],
+        )
+        .return_value;
         assert_eq!(result, u128::MAX.into());
-        let result = run_sierra_program(&cast!(Uint64Type, Uint128Type, true), &[u64::MAX.into()])
-            .return_value;
+        let result = run_sierra_program(
+            &cast::<Uint64Type, Uint128Type, UpcastLibfunc>(),
+            &[u64::MAX.into()],
+        )
+        .return_value;
         assert_eq!(result, (u64::MAX as u128).into());
-        let result = run_sierra_program(&cast!(Uint64Type, Uint64Type, true), &[u64::MAX.into()])
-            .return_value;
+        let result = run_sierra_program(
+            &cast::<Uint64Type, Uint64Type, UpcastLibfunc>(),
+            &[u64::MAX.into()],
+        )
+        .return_value;
         assert_eq!(result, u64::MAX.into());
-        let result = run_sierra_program(&cast!(Uint32Type, Uint128Type, true), &[u32::MAX.into()])
-            .return_value;
+        let result = run_sierra_program(
+            &cast::<Uint32Type, Uint128Type, UpcastLibfunc>(),
+            &[u32::MAX.into()],
+        )
+        .return_value;
         assert_eq!(result, (u32::MAX as u128).into());
-        let result = run_sierra_program(&cast!(Uint32Type, Uint64Type, true), &[u32::MAX.into()])
-            .return_value;
+        let result = run_sierra_program(
+            &cast::<Uint32Type, Uint64Type, UpcastLibfunc>(),
+            &[u32::MAX.into()],
+        )
+        .return_value;
         assert_eq!(result, (u32::MAX as u64).into());
-        let result = run_sierra_program(&cast!(Uint32Type, Uint32Type, true), &[u32::MAX.into()])
-            .return_value;
+        let result = run_sierra_program(
+            &cast::<Uint32Type, Uint32Type, UpcastLibfunc>(),
+            &[u32::MAX.into()],
+        )
+        .return_value;
         assert_eq!(result, u32::MAX.into());
-        let result = run_sierra_program(&cast!(Uint16Type, Uint128Type, true), &[u16::MAX.into()])
-            .return_value;
+        let result = run_sierra_program(
+            &cast::<Uint16Type, Uint128Type, UpcastLibfunc>(),
+            &[u16::MAX.into()],
+        )
+        .return_value;
         assert_eq!(result, (u16::MAX as u128).into());
-        let result = run_sierra_program(&cast!(Uint16Type, Uint64Type, true), &[u16::MAX.into()])
-            .return_value;
+        let result = run_sierra_program(
+            &cast::<Uint16Type, Uint64Type, UpcastLibfunc>(),
+            &[u16::MAX.into()],
+        )
+        .return_value;
         assert_eq!(result, (u16::MAX as u64).into());
-        let result = run_sierra_program(&cast!(Uint16Type, Uint32Type, true), &[u16::MAX.into()])
-            .return_value;
+        let result = run_sierra_program(
+            &cast::<Uint16Type, Uint32Type, UpcastLibfunc>(),
+            &[u16::MAX.into()],
+        )
+        .return_value;
         assert_eq!(result, (u16::MAX as u32).into());
-        let result = run_sierra_program(&cast!(Uint16Type, Uint16Type, true), &[u16::MAX.into()])
-            .return_value;
+        let result = run_sierra_program(
+            &cast::<Uint16Type, Uint16Type, UpcastLibfunc>(),
+            &[u16::MAX.into()],
+        )
+        .return_value;
         assert_eq!(result, u16::MAX.into());
-        let result = run_sierra_program(&cast!(Uint8Type, Uint128Type, true), &[u8::MAX.into()])
-            .return_value;
+        let result = run_sierra_program(
+            &cast::<Uint8Type, Uint128Type, UpcastLibfunc>(),
+            &[u8::MAX.into()],
+        )
+        .return_value;
         assert_eq!(result, (u8::MAX as u128).into());
-        let result =
-            run_sierra_program(&cast!(Uint8Type, Uint64Type, true), &[u8::MAX.into()]).return_value;
+        let result = run_sierra_program(
+            &cast::<Uint8Type, Uint64Type, UpcastLibfunc>(),
+            &[u8::MAX.into()],
+        )
+        .return_value;
         assert_eq!(result, (u8::MAX as u64).into());
-        let result =
-            run_sierra_program(&cast!(Uint8Type, Uint32Type, true), &[u8::MAX.into()]).return_value;
+        let result = run_sierra_program(
+            &cast::<Uint8Type, Uint32Type, UpcastLibfunc>(),
+            &[u8::MAX.into()],
+        )
+        .return_value;
         assert_eq!(result, (u8::MAX as u32).into());
-        let result =
-            run_sierra_program(&cast!(Uint8Type, Uint16Type, true), &[u8::MAX.into()]).return_value;
+        let result = run_sierra_program(
+            &cast::<Uint8Type, Uint16Type, UpcastLibfunc>(),
+            &[u8::MAX.into()],
+        )
+        .return_value;
         assert_eq!(result, (u8::MAX as u16).into());
-        let result =
-            run_sierra_program(&cast!(Uint8Type, Uint8Type, true), &[u8::MAX.into()]).return_value;
+        let result = run_sierra_program(
+            &cast::<Uint8Type, Uint8Type, UpcastLibfunc>(),
+            &[u8::MAX.into()],
+        )
+        .return_value;
         assert_eq!(result, u8::MAX.into());
         let result = run_sierra_program(
-            &cast!(Bytes31Type, Bytes31Type, true),
+            &cast::<Bytes31Type, Bytes31Type, UpcastLibfunc>(),
             &[Value::Bytes31([0xFF; 31])],
         )
         .return_value;
         assert_eq!(result, Value::Bytes31([0xFF; 31]));
-        let result =
-            run_sierra_program(&cast!(Uint128Type, Bytes31Type, true), &[u128::MAX.into()])
-                .return_value;
+        let result = run_sierra_program(
+            &cast::<Uint128Type, Bytes31Type, UpcastLibfunc>(),
+            &[u128::MAX.into()],
+        )
+        .return_value;
         assert_eq!(result, bytes21_with_filled_u8_max(16));
-        let result = run_sierra_program(&cast!(Uint64Type, Bytes31Type, true), &[u64::MAX.into()])
-            .return_value;
+        let result = run_sierra_program(
+            &cast::<Uint64Type, Bytes31Type, UpcastLibfunc>(),
+            &[u64::MAX.into()],
+        )
+        .return_value;
         assert_eq!(result, bytes21_with_filled_u8_max(8));
-        let result = run_sierra_program(&cast!(Uint32Type, Bytes31Type, true), &[u32::MAX.into()])
-            .return_value;
+        let result = run_sierra_program(
+            &cast::<Uint32Type, Bytes31Type, UpcastLibfunc>(),
+            &[u32::MAX.into()],
+        )
+        .return_value;
         assert_eq!(result, bytes21_with_filled_u8_max(4));
-        let result = run_sierra_program(&cast!(Uint16Type, Bytes31Type, true), &[u16::MAX.into()])
-            .return_value;
+        let result = run_sierra_program(
+            &cast::<Uint16Type, Bytes31Type, UpcastLibfunc>(),
+            &[u16::MAX.into()],
+        )
+        .return_value;
         assert_eq!(result, bytes21_with_filled_u8_max(2));
-        let result = run_sierra_program(&cast!(Uint8Type, Bytes31Type, true), &[u8::MAX.into()])
-            .return_value;
+        let result = run_sierra_program(
+            &cast::<Uint8Type, Bytes31Type, UpcastLibfunc>(),
+            &[u8::MAX.into()],
+        )
+        .return_value;
         assert_eq!(result, bytes21_with_filled_u8_max(1));
     }
 }

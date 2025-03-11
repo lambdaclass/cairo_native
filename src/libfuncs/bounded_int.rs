@@ -828,7 +828,6 @@ mod test {
         },
         program::GenericArg,
     };
-    use cairo_vm::Felt252;
     use num_bigint::BigInt;
 
     use crate::{
