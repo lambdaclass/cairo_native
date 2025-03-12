@@ -1816,9 +1816,9 @@ dependencies = [
 
 [[package]]
 name = "good_lp"
-version = "1.12.0"
+version = "1.13.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "ada2d4e8d3e6fb80d007479bbcf318882e65c21798c6587a693dffcf271e3f3e"
+checksum = "1445fc8d4668eb98fee10cdb2b11bb68478c332efb0ae2893b9f15852b8079f1"
 dependencies = [
  "fnv",
  "microlp",
