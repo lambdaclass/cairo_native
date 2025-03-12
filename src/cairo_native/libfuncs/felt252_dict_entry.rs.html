@@ -389,7 +389,7 @@
             .alloca1(context, location, key_ty, key_layout.align())<span class="question-mark">?</span>;
     entry.store(context, location, entry_key_ptr, entry_key)<span class="question-mark">?</span>;
 
-    <span class="kw">let </span>(dict_ptr, is_present, value_ptr) = metadata
+    <span class="kw">let </span>(is_present, value_ptr) = metadata
         .get_mut::&lt;RuntimeBindingsMeta&gt;()
         .ok_or(Error::MissingMetadata)<span class="question-mark">?
         </span>.dict_get(context, helper, entry, dict_ptr, entry_key_ptr, location)<span class="question-mark">?</span>;
