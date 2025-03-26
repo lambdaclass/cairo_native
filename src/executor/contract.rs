@@ -894,7 +894,6 @@ mod tests {
         .unwrap();
 
         // The last function in the program is the `get` wrapper function.
-        // The last function in the program is the `get` wrapper function.
         let selector = starknet_program_empty
             .entry_points_by_type
             .external
