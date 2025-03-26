@@ -872,7 +872,7 @@ mod tests {
             )
             .unwrap();
         assert_eq!(result.return_values, vec![Felt::from(3628800)]);
-        assert_eq!(result.remaining_gas, 18446744073709537615);
+        assert_eq!(result.remaining_gas, 18446744073709538015);
     }
 
     #[rstest]
