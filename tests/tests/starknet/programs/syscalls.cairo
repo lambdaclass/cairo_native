@@ -1,5 +1,5 @@
 use starknet::{
-    call_contract_syscall, class_hash_const, contract_address_const, ContractAddress,
+    call_contract_syscall, ContractAddress,
     deploy_syscall, emit_event_syscall, ExecutionInfo, get_block_hash_syscall,
     keccak_syscall,
     library_call_syscall, replace_class_syscall, send_message_to_l1_syscall,
@@ -13,12 +13,17 @@ use core::sha256::{sha256_state_handle_init, sha256_state_handle_digest, SHA256_
 use core::box::BoxTrait;
 use starknet::SyscallResultTrait;
 
+const ZERO_CLASS_HASH: ClassHash = 0x0.try_into().unwrap();
+
+const ZERO_CONTRACT_ADDRESS: ContractAddress = 0x0.try_into().unwrap();
+const TWO_CONTRACT_ADDRESS: ContractAddress = 0x2.try_into().unwrap();
+
 fn get_block_hash() -> SyscallResult<felt252> {
     get_block_hash_syscall(0)
 }
 
 fn get_class_hash_at() -> SyscallResult<ClassHash> {
-    get_class_hash_at_syscall(contract_address_const::<2>())
+    get_class_hash_at_syscall(TWO_CONTRACT_ADDRESS)
 }
 
 fn get_execution_info() -> SyscallResult<Box<starknet::info::ExecutionInfo>> {
@@ -30,19 +35,19 @@ fn get_execution_info_v2() -> SyscallResult<Box<starknet::info::v2::ExecutionInf
 }
 
 fn deploy() -> SyscallResult<(ContractAddress, Span<felt252>)> {
-    deploy_syscall(class_hash_const::<0>(), 0, array![].span(), false)
+    deploy_syscall(ZERO_CLASS_HASH, 0, array![].span(), false)
 }
 
 fn replace_class() -> SyscallResult<()> {
-    replace_class_syscall(class_hash_const::<0>())
+    replace_class_syscall(ZERO_CLASS_HASH)
 }
 
 fn library_call() -> SyscallResult<Span<felt252>> {
-    library_call_syscall(class_hash_const::<0>(), 0, array![].span())
+    library_call_syscall(ZERO_CLASS_HASH, 0, array![].span())
 }
 
 fn call_contract() -> SyscallResult<Span<felt252>> {
-    call_contract_syscall(contract_address_const::<0>(), 0, array![].span())
+    call_contract_syscall(ZERO_CONTRACT_ADDRESS, 0, array![].span())
 }
 
 fn storage_read() -> felt252 {
