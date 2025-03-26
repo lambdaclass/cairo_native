@@ -140,7 +140,7 @@ corelib is found, and then list available targets.
 ```bash
 % make
 LLVM is correctly set at /opt/homebrew/opt/llvm.
-./scripts/check-corelib-version.sh 2.10.0-rc1
+./scripts/check-corelib-version.sh 2.11.1
 Usage:
     deps:         Installs the necesary dependencies.
     build:        Builds the cairo-native library and binaries in release mode.
@@ -349,7 +349,7 @@ Options:
 
 ### Requirements
 - [hyperfine](https://github.com/sharkdp/hyperfine): `cargo install hyperfine`
-- [cairo 2.10.0-rc1](https://github.com/starkware-libs/cairo)
+- [cairo 2.11.1](https://github.com/starkware-libs/cairo)
 - Cairo Corelibs
 - LLVM 19 with MLIR
 
