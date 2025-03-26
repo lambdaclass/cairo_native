@@ -1,4 +1,4 @@
-use core::starknet::{
+use starknet::{
     call_contract_syscall, class_hash_const, contract_address_const, ContractAddress,
     deploy_syscall, emit_event_syscall, ExecutionInfo, get_block_hash_syscall,
     keccak_syscall,
@@ -6,12 +6,12 @@ use core::starknet::{
     storage_address_try_from_felt252, storage_read_syscall, storage_write_syscall, SyscallResult,
     testing::cheatcode, class_hash::ClassHash
 };
-use core::starknet::syscalls::get_execution_info_syscall;
-use core::starknet::syscalls::get_execution_info_v2_syscall;
-use core::starknet::syscalls::get_class_hash_at_syscall;
+use starknet::syscalls::get_execution_info_syscall;
+use starknet::syscalls::get_execution_info_v2_syscall;
+use starknet::syscalls::get_class_hash_at_syscall;
 use core::sha256::{sha256_state_handle_init, sha256_state_handle_digest, SHA256_INITIAL_STATE};
 use core::box::BoxTrait;
-use core::starknet::SyscallResultTrait;
+use starknet::SyscallResultTrait;
 
 fn get_block_hash() -> SyscallResult<felt252> {
     get_block_hash_syscall(0)
@@ -21,11 +21,11 @@ fn get_class_hash_at() -> SyscallResult<ClassHash> {
     get_class_hash_at_syscall(contract_address_const::<2>())
 }
 
-fn get_execution_info() -> SyscallResult<Box<core::starknet::info::ExecutionInfo>> {
+fn get_execution_info() -> SyscallResult<Box<starknet::info::ExecutionInfo>> {
      get_execution_info_syscall()
 }
 
-fn get_execution_info_v2() -> SyscallResult<Box<core::starknet::info::v2::ExecutionInfo>> {
+fn get_execution_info_v2() -> SyscallResult<Box<starknet::info::v2::ExecutionInfo>> {
     get_execution_info_v2_syscall()
 }
 
