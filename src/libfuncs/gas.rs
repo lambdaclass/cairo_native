@@ -5,7 +5,7 @@ use crate::{
     error::{panic::ToNativeAssertError, Error, Result},
     metadata::{gas::GasCost, runtime_bindings::RuntimeBindingsMeta, MetadataStorage},
     native_panic,
-    utils::{BlockExt, GepIndex},
+    utils::{BlockExt, BuiltinCosts, GepIndex},
 };
 use cairo_lang_sierra::{
     extensions::{
@@ -106,16 +106,7 @@ pub fn build_withdraw_gas<'ctx, 'this>(
             continue;
         }
 
-        let builtin_costs_index = match token_type {
-            CostTokenType::Const => 0,
-            CostTokenType::Pedersen => 1,
-            CostTokenType::Bitwise => 2,
-            CostTokenType::EcOp => 3,
-            CostTokenType::Poseidon => 4,
-            CostTokenType::AddMod => 5,
-            CostTokenType::MulMod => 6,
-            _ => native_panic!("matched an unexpected CostTokenType which is not being used"),
-        };
+        let builtin_costs_index = BuiltinCosts::index_for_token_type(token_type)?;
 
         let cost_count_value =
             entry.const_int_from_type(context, location, *cost_count, u64_type)?;

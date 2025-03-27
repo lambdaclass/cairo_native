@@ -5,7 +5,7 @@ pub(crate) use self::{
     program_registry_ext::ProgramRegistryExt,
     range_ext::RangeExt,
 };
-use crate::{metadata::MetadataStorage, OptLevel};
+use crate::{error::Result as NativeResult, metadata::MetadataStorage, native_panic, OptLevel};
 use cairo_lang_compiler::CompilerConfig;
 use cairo_lang_runner::token_gas_cost;
 use cairo_lang_sierra::{
@@ -71,6 +71,23 @@ pub struct BuiltinCosts {
     pub poseidon: u64,
     pub add_mod: u64,
     pub mul_mod: u64,
+}
+
+impl BuiltinCosts {
+    pub fn index_for_token_type(token_type: &CostTokenType) -> NativeResult<usize> {
+        let index = match token_type {
+            CostTokenType::Const => 0,
+            CostTokenType::Pedersen => 1,
+            CostTokenType::Bitwise => 2,
+            CostTokenType::EcOp => 3,
+            CostTokenType::Poseidon => 4,
+            CostTokenType::AddMod => 5,
+            CostTokenType::MulMod => 6,
+            _ => native_panic!("matched an unexpected CostTokenType which is not being used"),
+        };
+
+        Ok(index)
+    }
 }
 
 impl Default for BuiltinCosts {
