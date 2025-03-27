@@ -46,8 +46,8 @@ pub fn build<'ctx, 'this>(
         GasConcreteLibfunc::GetBuiltinCosts(info) => {
             build_get_builtin_costs(context, registry, entry, location, helper, metadata, info)
         }
-        GasConcreteLibfunc::GetUnspentGas(_) => {
-            todo!("Implement GetUnspentGas libfunc");
+        GasConcreteLibfunc::GetUnspentGas(info) => {
+            build_get_unspent_gas(context, registry, entry, location, helper, metadata, info)
         }
     }
 }
@@ -236,6 +236,56 @@ pub fn build_get_builtin_costs<'ctx, 'this>(
     Ok(())
 }
 
+/// Returns the amount of gas available in the `GasBuiltin`, as well as the
+/// amount of gas unused in the local wallet.
+///
+/// # Cairo Signature
+///
+/// ```cairo
+/// extern fn get_unspent_gas() -> u128 implicits(GasBuiltin) nopanic;
+/// ```
+#[allow(unused_variables)]
+pub fn build_get_unspent_gas<'ctx, 'this>(
+    context: &'ctx Context,
+    _registry: &ProgramRegistry<CoreType, CoreLibfunc>,
+    entry: &'this Block<'ctx>,
+    location: Location<'ctx>,
+    helper: &LibfuncHelper<'ctx, 'this>,
+    metadata: &mut MetadataStorage,
+    _info: &SignatureOnlyConcreteLibfunc,
+) -> Result<()> {
+    let current_gas = entry.arg(0)?;
+
+    let gas_cost = metadata
+        .get::<GasCost>()
+        .to_native_assert_error("redeposit_gas should always have a gas cost")?
+        .clone();
+
+    let builtin_ptr = {
+        let runtime = metadata
+            .get_mut::<RuntimeBindingsMeta>()
+            .ok_or(Error::MissingMetadata)?;
+        runtime
+            .get_gas_builtin(context, helper, entry, location)?
+            .result(0)?
+            .into()
+    };
+
+    let current_gas_u128 =
+        entry.extui(current_gas, IntegerType::new(context, 128).into(), location)?;
+
+    let gas_cost = build_actual_gas_cost(context, entry, location, gas_cost, builtin_ptr)?;
+    let gas_cost_u128 = entry.extui(gas_cost, IntegerType::new(context, 128).into(), location)?;
+
+    let unspent_gas = entry.append_op_result(
+        ods::llvm::intr_uadd_sat(context, current_gas_u128, gas_cost_u128, location).into(),
+    )?;
+
+    entry.append_operation(helper.br(0, &[current_gas, unspent_gas], location));
+
+    Ok(())
+}
+
 /// Calculate the actual gas cost, given the constant `GasCost` configuration,
 /// and the current `BuiltinCosts` pointer.
 pub fn build_actual_gas_cost<'c, 'b>(
@@ -286,7 +336,11 @@ pub fn build_actual_gas_cost<'c, 'b>(
 
 #[cfg(test)]
 mod test {
-    use crate::utils::test::{load_cairo, run_program};
+    use crate::{
+        utils::test::{jit_enum, jit_struct, load_cairo, run_program},
+        Value,
+    };
+    use pretty_assertions_sorted::assert_eq;
 
     #[test]
     fn run_withdraw_gas() {
@@ -317,5 +371,32 @@ mod test {
 
         let result = run_program(&program, "run_test", &[]);
         assert_eq!(result.remaining_gas, Some(18446744073709545265));
+    }
+
+    #[test]
+    fn run_get_unspent_gas() {
+        let program = load_cairo!(
+            pub extern fn get_unspent_gas() -> u128 implicits(GasBuiltin) nopanic;
+
+            fn run_test() -> u128 {
+                let n: u32 = 10;
+
+                let one = 1;
+                let two = 2;
+
+                let prev = get_unspent_gas();
+                for _ in 0..n { let _three = one + two; }
+                let after = get_unspent_gas();
+
+                return prev - after;
+            }
+        );
+
+        let result = run_program(&program, "run_test", &[]);
+
+        assert_eq!(
+            result.return_value,
+            jit_enum!(0, jit_struct!(Value::Felt252(27160.into())))
+        )
     }
 }
