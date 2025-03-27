@@ -25,6 +25,8 @@ pub fn build<'ctx, 'this>(
     selector: &SquashedFelt252DictConcreteLibfunc,
 ) -> Result<()> {
     match selector {
+        // This libfunc is an identity operation in cairo-lang, which means 
+        // it returns the original value. So in cairo-naitve is a noop.
         SquashedFelt252DictConcreteLibfunc::IntoEntries(info) => build_noop::<0, false>(
             context,
             registry,
