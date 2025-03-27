@@ -1,7 +1,6 @@
 use cairo_lang_sierra::{
     extensions::{
         core::{CoreLibfunc, CoreType},
-        lib_func::SignatureAndTypeConcreteLibfunc,
         squashed_felt252_dict::SquashedFelt252DictConcreteLibfunc,
         ConcreteLibfunc,
     },
