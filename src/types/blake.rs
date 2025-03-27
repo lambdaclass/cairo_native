@@ -6,10 +6,22 @@ use cairo_lang_sierra::{
     program_registry::ProgramRegistry,
 };
 use melior::{
-    dialect::{func, llvm, ods}, helpers::{ArithBlockExt, BuiltinBlockExt}, ir::{attribute::IntegerAttribute, r#type::IntegerType, Block, BlockLike, Location, Module, Region, Type}, Context
+    dialect::{func, llvm, ods},
+    helpers::{ArithBlockExt, BuiltinBlockExt},
+    ir::{
+        attribute::IntegerAttribute, r#type::IntegerType, Block, BlockLike, Location, Module,
+        Region, Type,
+    },
+    Context,
 };
 
-use crate::{error::Result, metadata::{drop_overrides::DropOverridesMeta, dup_overrides::DupOverridesMeta, realloc_bindings::ReallocBindingsMeta, MetadataStorage}};
+use crate::{
+    error::Result,
+    metadata::{
+        drop_overrides::DropOverridesMeta, dup_overrides::DupOverridesMeta,
+        realloc_bindings::ReallocBindingsMeta, MetadataStorage,
+    },
+};
 
 use super::WithSelf;
 

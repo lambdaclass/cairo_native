@@ -179,7 +179,9 @@ impl LibfuncBuilder for CoreConcreteLibfunc {
             Self::IntRange(selector) => self::int_range::build(
                 context, registry, entry, location, helper, metadata, selector,
             ),
-            Self::Blake(selector) => todo!("Implement blake libfunc"),
+            Self::Blake(selector) => self::blake::build(
+                context, registry, entry, location, helper, metadata, selector,
+            ),
             Self::Mem(selector) => self::mem::build(
                 context, registry, entry, location, helper, metadata, selector,
             ),
