@@ -55,8 +55,12 @@ pub static HALF_PRIME: LazyLock<BigUint> = LazyLock::new(|| {
         .expect("hardcoded half prime constant should be valid")
 });
 
-// Order matters, for the libfunc impl
-// https://github.com/starkware-libs/sequencer/blob/1b7252f8a30244d39614d7666aa113b81291808e/crates/blockifier/src/execution/entry_point_execution.rs#L208
+/// Represents the gas cost of each cost token type
+///
+/// See `crate::metadata::gas` for more documentation.
+///
+/// Order matters, for the libfunc impl
+/// https://github.com/starkware-libs/sequencer/blob/1b7252f8a30244d39614d7666aa113b81291808e/crates/blockifier/src/execution/entry_point_execution.rs#L208
 #[derive(Debug, Clone, Copy, Deserialize, Serialize)]
 #[repr(C)]
 pub struct BuiltinCosts {
