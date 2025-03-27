@@ -32,6 +32,7 @@ use num_bigint::BigInt;
 use std::{cell::Cell, error::Error, ops::Deref};
 
 mod array;
+mod blake;
 mod r#bool;
 mod bounded_int;
 mod r#box;
@@ -178,7 +179,7 @@ impl LibfuncBuilder for CoreConcreteLibfunc {
             Self::IntRange(selector) => self::int_range::build(
                 context, registry, entry, location, helper, metadata, selector,
             ),
-            Self::Blake(_) => todo!("Implement blake libfunc"),
+            Self::Blake(selector) => todo!("Implement blake libfunc"),
             Self::Mem(selector) => self::mem::build(
                 context, registry, entry, location, helper, metadata, selector,
             ),
