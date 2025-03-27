@@ -42,6 +42,6 @@ fn build_into_entries<'ctx, 'this>(
     _info: &SignatureAndTypeConcreteLibfunc,
 ) -> Result<()> {
     entry.append_operation(helper.br(0, &[entry.arg(0)?], location));
-    
+
     Ok(())
 }
