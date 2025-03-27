@@ -4,20 +4,19 @@ use super::LibfuncHelper;
 use crate::{
     error::{panic::ToNativeAssertError, Error, Result},
     metadata::{gas::GasCost, runtime_bindings::RuntimeBindingsMeta, MetadataStorage},
-    native_panic,
-    utils::{BlockExt, GepIndex},
+    utils::{BlockExt, BuiltinCosts, GepIndex},
 };
 use cairo_lang_sierra::{
     extensions::{
         core::{CoreLibfunc, CoreType},
-        gas::{CostTokenType, GasConcreteLibfunc},
+        gas::GasConcreteLibfunc,
         lib_func::SignatureOnlyConcreteLibfunc,
     },
     program_registry::ProgramRegistry,
 };
 use melior::{
     dialect::{arith::CmpiPredicate, ods},
-    ir::{r#type::IntegerType, Block, BlockLike, Location},
+    ir::{r#type::IntegerType, Block, BlockLike, Location, Value},
     Context,
 };
 
@@ -47,8 +46,8 @@ pub fn build<'ctx, 'this>(
         GasConcreteLibfunc::GetBuiltinCosts(info) => {
             build_get_builtin_costs(context, registry, entry, location, helper, metadata, info)
         }
-        GasConcreteLibfunc::GetUnspentGas(_) => {
-            todo!("Implement GetUnspentGas libfunc");
+        GasConcreteLibfunc::GetUnspentGas(info) => {
+            build_get_unspent_gas(context, registry, entry, location, helper, metadata, info)
         }
     }
 }
@@ -97,42 +96,8 @@ pub fn build_withdraw_gas<'ctx, 'this>(
         .to_native_assert_error("withdraw_gas should always have a gas cost")?
         .clone();
 
-    let u64_type: melior::ir::Type = IntegerType::new(context, 64).into();
-
-    let mut total_gas_cost_value = entry.const_int_from_type(context, location, 0, u64_type)?;
-
-    for (cost_count, token_type) in &gas_cost.0 {
-        if *cost_count == 0 {
-            continue;
-        }
-
-        let builtin_costs_index = match token_type {
-            CostTokenType::Const => 0,
-            CostTokenType::Pedersen => 1,
-            CostTokenType::Bitwise => 2,
-            CostTokenType::EcOp => 3,
-            CostTokenType::Poseidon => 4,
-            CostTokenType::AddMod => 5,
-            CostTokenType::MulMod => 6,
-            _ => native_panic!("matched an unexpected CostTokenType which is not being used"),
-        };
-
-        let cost_count_value =
-            entry.const_int_from_type(context, location, *cost_count, u64_type)?;
-        let builtin_costs_index_value =
-            entry.const_int_from_type(context, location, builtin_costs_index, u64_type)?;
-
-        let builtin_cost_value_ptr = entry.gep(
-            context,
-            location,
-            builtin_ptr,
-            &[GepIndex::Value(builtin_costs_index_value)],
-            u64_type,
-        )?;
-        let cost_value = entry.load(context, location, builtin_cost_value_ptr, u64_type)?;
-        let gas_cost_value = entry.muli(cost_count_value, cost_value, location)?;
-        total_gas_cost_value = entry.addi(total_gas_cost_value, gas_cost_value, location)?;
-    }
+    let total_gas_cost_value =
+        build_actual_gas_cost(context, entry, location, gas_cost, builtin_ptr)?;
 
     let is_enough = entry.cmpi(
         context,
@@ -178,8 +143,6 @@ pub fn build_redeposit_gas<'ctx, 'this>(
         .to_native_assert_error("redeposit_gas should always have a gas cost")?
         .clone();
 
-    let u64_type: melior::ir::Type = IntegerType::new(context, 64).into();
-
     let builtin_ptr = {
         let runtime = metadata
             .get_mut::<RuntimeBindingsMeta>()
@@ -190,40 +153,8 @@ pub fn build_redeposit_gas<'ctx, 'this>(
             .into()
     };
 
-    let mut total_gas_cost_value = entry.const_int_from_type(context, location, 0, u64_type)?;
-
-    for (cost_count, token_type) in &gas_cost.0 {
-        if *cost_count == 0 {
-            continue;
-        }
-
-        let builtin_costs_index = match token_type {
-            CostTokenType::Const => 0,
-            CostTokenType::Pedersen => 1,
-            CostTokenType::Bitwise => 2,
-            CostTokenType::EcOp => 3,
-            CostTokenType::Poseidon => 4,
-            CostTokenType::AddMod => 5,
-            CostTokenType::MulMod => 6,
-            _ => native_panic!("matched an unexpected CostTokenType which is not being used"),
-        };
-
-        let cost_count_value =
-            entry.const_int_from_type(context, location, *cost_count, u64_type)?;
-        let builtin_costs_index_value =
-            entry.const_int_from_type(context, location, builtin_costs_index, u64_type)?;
-
-        let builtin_cost_value_ptr = entry.gep(
-            context,
-            location,
-            builtin_ptr,
-            &[GepIndex::Value(builtin_costs_index_value)],
-            u64_type,
-        )?;
-        let cost_value = entry.load(context, location, builtin_cost_value_ptr, u64_type)?;
-        let gas_cost_value = entry.muli(cost_count_value, cost_value, location)?;
-        total_gas_cost_value = entry.addi(total_gas_cost_value, gas_cost_value, location)?;
-    }
+    let total_gas_cost_value =
+        build_actual_gas_cost(context, entry, location, gas_cost, builtin_ptr)?;
 
     let resulting_gas = entry.append_op_result(
         ods::llvm::intr_uadd_sat(context, current_gas, total_gas_cost_value, location).into(),
@@ -253,42 +184,8 @@ pub fn build_builtin_withdraw_gas<'ctx, 'this>(
         .to_native_assert_error("builtin_withdraw_gas should always have a gas cost")?
         .clone();
 
-    let u64_type: melior::ir::Type = IntegerType::new(context, 64).into();
-
-    let mut total_gas_cost_value = entry.const_int_from_type(context, location, 0, u64_type)?;
-
-    for (cost_count, token_type) in &gas_cost.0 {
-        if *cost_count == 0 {
-            continue;
-        }
-
-        let builtin_costs_index = match token_type {
-            CostTokenType::Const => 0,
-            CostTokenType::Pedersen => 1,
-            CostTokenType::Bitwise => 2,
-            CostTokenType::EcOp => 3,
-            CostTokenType::Poseidon => 4,
-            CostTokenType::AddMod => 5,
-            CostTokenType::MulMod => 6,
-            _ => native_panic!("matched an unexpected CostTokenType which is not being used"),
-        };
-
-        let cost_count_value =
-            entry.const_int_from_type(context, location, *cost_count, u64_type)?;
-        let builtin_costs_index_value =
-            entry.const_int_from_type(context, location, builtin_costs_index, u64_type)?;
-
-        let builtin_cost_value_ptr = entry.gep(
-            context,
-            location,
-            builtin_ptr,
-            &[GepIndex::Value(builtin_costs_index_value)],
-            u64_type,
-        )?;
-        let cost_value = entry.load(context, location, builtin_cost_value_ptr, u64_type)?;
-        let gas_cost_value = entry.muli(cost_count_value, cost_value, location)?;
-        total_gas_cost_value = entry.addi(total_gas_cost_value, gas_cost_value, location)?;
-    }
+    let total_gas_cost_value =
+        build_actual_gas_cost(context, entry, location, gas_cost, builtin_ptr)?;
 
     let is_enough = entry.cmpi(
         context,
@@ -339,9 +236,110 @@ pub fn build_get_builtin_costs<'ctx, 'this>(
     Ok(())
 }
 
+/// Returns the amount of gas available in the `GasBuiltin`, as well as the
+/// amount of gas unused in the local wallet.
+///
+/// # Cairo Signature
+///
+/// ```cairo
+/// extern fn get_unspent_gas() -> u128 implicits(GasBuiltin) nopanic;
+/// ```
+#[allow(unused_variables)]
+pub fn build_get_unspent_gas<'ctx, 'this>(
+    context: &'ctx Context,
+    _registry: &ProgramRegistry<CoreType, CoreLibfunc>,
+    entry: &'this Block<'ctx>,
+    location: Location<'ctx>,
+    helper: &LibfuncHelper<'ctx, 'this>,
+    metadata: &mut MetadataStorage,
+    _info: &SignatureOnlyConcreteLibfunc,
+) -> Result<()> {
+    let current_gas = entry.arg(0)?;
+
+    let gas_cost = metadata
+        .get::<GasCost>()
+        .to_native_assert_error("redeposit_gas should always have a gas cost")?
+        .clone();
+
+    let builtin_ptr: Value<'ctx, 'this> = {
+        let runtime = metadata
+            .get_mut::<RuntimeBindingsMeta>()
+            .ok_or(Error::MissingMetadata)?;
+        runtime
+            .get_gas_builtin(context, helper, entry, location)?
+            .result(0)?
+            .into()
+    };
+
+    let current_gas_u128 =
+        entry.extui(current_gas, IntegerType::new(context, 128).into(), location)?;
+    // let gas_cost = build_actual_gas_cost(context, entry, location, gas_cost, builtin_ptr)?;
+    // let gas_cost_u128 = entry.extui(gas_cost, IntegerType::new(context, 128).into(), location)?;
+
+    // let unspent_gas = entry.append_op_result(
+    //     ods::llvm::intr_uadd_sat(context, current_gas_u128, gas_cost_u128, location).into(),
+    // )?;
+
+    entry.append_operation(helper.br(0, &[current_gas, current_gas_u128], location));
+
+    Ok(())
+}
+
+/// Calculate the actual gas cost, given the constant `GasCost` configuration,
+/// and the current `BuiltinCosts` pointer.
+pub fn build_actual_gas_cost<'c, 'b>(
+    context: &'c Context,
+    block: &'b Block<'c>,
+    location: Location<'c>,
+    gas_cost: GasCost,
+    builtin_ptr: Value<'c, 'b>,
+) -> Result<Value<'c, 'b>> {
+    let u64_type: melior::ir::Type = IntegerType::new(context, 64).into();
+
+    let mut total_gas_cost = block.const_int_from_type(context, location, 0, u64_type)?;
+
+    // For each gas cost entry
+    for (token_count, token_type) in &gas_cost.0 {
+        if *token_count == 0 {
+            continue;
+        }
+
+        let token_count = block.const_int_from_type(context, location, *token_count, u64_type)?;
+
+        // Calculate the index of the token type in the builtin costs array
+        let token_costs_index = block.const_int_from_type(
+            context,
+            location,
+            BuiltinCosts::index_for_token_type(token_type)?,
+            u64_type,
+        )?;
+
+        // Index the builtin costs array
+        let token_cost_ptr = block.gep(
+            context,
+            location,
+            builtin_ptr,
+            &[GepIndex::Value(token_costs_index)],
+            u64_type,
+        )?;
+        let token_cost = block.load(context, location, token_cost_ptr, u64_type)?;
+
+        // Multiply the number of tokens by the cost of each token
+        let gas_cost = block.muli(token_count, token_cost, location)?;
+
+        total_gas_cost = block.addi(total_gas_cost, gas_cost, location)?;
+    }
+
+    Ok(total_gas_cost)
+}
+
 #[cfg(test)]
 mod test {
-    use crate::utils::test::{load_cairo, run_program};
+    use crate::{
+        utils::test::{jit_enum, jit_struct, load_cairo, run_program},
+        Value,
+    };
+    use pretty_assertions_sorted::assert_eq;
 
     #[test]
     fn run_withdraw_gas() {
@@ -372,5 +370,32 @@ mod test {
 
         let result = run_program(&program, "run_test", &[]);
         assert_eq!(result.remaining_gas, Some(18446744073709545265));
+    }
+
+    #[test]
+    fn run_get_unspent_gas() {
+        let program = load_cairo!(
+            pub extern fn get_unspent_gas() -> u128 implicits(GasBuiltin) nopanic;
+
+            fn run_test() -> u128 {
+                let n: u32 = 10;
+
+                let one = 1;
+                let two = 2;
+
+                let prev = get_unspent_gas();
+                for _ in 0..n { let _three = one + two; }
+                let after = get_unspent_gas();
+
+                return prev - after;
+            }
+        );
+
+        let result = run_program(&program, "run_test", &[]);
+
+        assert_eq!(
+            result.return_value,
+            jit_enum!(0, jit_struct!(Value::Felt252(27160.into())))
+        )
     }
 }

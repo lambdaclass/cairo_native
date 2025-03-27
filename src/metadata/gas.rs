@@ -1,3 +1,15 @@
+//! This file contains the gas calculation metadata.
+//!
+//! Each statement has an associated `GasCost`, which represents the cost of
+//! executing that statement, in terms of tokens.
+//!
+//! To calculate the actual cost, the amount of tokens is multiplied by the cost
+//! of the given token type. The cost of each token type is specified on runtime,
+//! with the `BuiltinCosts` structure.
+//!
+//! When implementing libfuncs, the `GasCost` metadata entry already contains
+//! the `GasCost` for the current sierra statement
+
 use cairo_lang_runner::token_gas_cost;
 use cairo_lang_sierra::{
     extensions::gas::CostTokenType,
@@ -24,8 +36,11 @@ pub struct GasMetadata {
     pub gas_info: GasInfo,
 }
 
+/// The gas cost associated to a determined sierra statement.
+///
+/// It contains the amount of tokens for each token type,
+/// that a given sierra statement costs.
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
-// Cost, token type (index into builtin costs).
 pub struct GasCost(pub Vec<(u64, CostTokenType)>);
 
 /// Configuration for metadata computation.
