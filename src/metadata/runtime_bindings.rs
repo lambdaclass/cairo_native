@@ -39,7 +39,7 @@ enum RuntimeBinding {
     DictGasRefund,
     DictDrop,
     DictDup,
-    GetCostBuiltin,
+    GetGasBuiltin,
     DebugPrint,
     #[cfg(feature = "with-cheatcode")]
     VtableCheatcode,
@@ -64,7 +64,7 @@ impl RuntimeBinding {
             RuntimeBinding::DictGasRefund => "cairo_native__dict_gas_refund",
             RuntimeBinding::DictDrop => "cairo_native__dict_drop",
             RuntimeBinding::DictDup => "cairo_native__dict_dup",
-            RuntimeBinding::GetCostBuiltin => "cairo_native__get_costs_builtin",
+            RuntimeBinding::GetGasBuiltin => "cairo_native__get_costs_builtin",
             #[cfg(feature = "with-cheatcode")]
             RuntimeBinding::VtableCheatcode => "cairo_native__vtable_cheatcode",
         }
@@ -106,7 +106,7 @@ impl RuntimeBinding {
             }
             RuntimeBinding::DictDrop => crate::runtime::cairo_native__dict_drop as *const (),
             RuntimeBinding::DictDup => crate::runtime::cairo_native__dict_dup as *const (),
-            RuntimeBinding::GetCostBuiltin => {
+            RuntimeBinding::GetGasBuiltin => {
                 crate::runtime::cairo_native__get_costs_builtin as *const ()
             }
             #[cfg(feature = "with-cheatcode")]
@@ -616,7 +616,7 @@ impl RuntimeBindingsMeta {
             module,
             block,
             location,
-            RuntimeBinding::GetCostBuiltin,
+            RuntimeBinding::GetGasBuiltin,
         )?;
 
         Ok(block.append_operation(
@@ -680,7 +680,7 @@ pub fn setup_runtime(find_symbol_ptr: impl Fn(&str) -> Option<*mut c_void>) {
         RuntimeBinding::DictGasRefund,
         RuntimeBinding::DictDrop,
         RuntimeBinding::DictDup,
-        RuntimeBinding::GetCostBuiltin,
+        RuntimeBinding::GetGasBuiltin,
         RuntimeBinding::DebugPrint,
         #[cfg(feature = "with-cheatcode")]
         RuntimeBinding::VtableCheatcode,
