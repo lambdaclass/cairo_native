@@ -2,7 +2,7 @@ use cairo_lang_sierra::{
     extensions::{
         core::{CoreLibfunc, CoreType},
         lib_func::SignatureAndTypeConcreteLibfunc,
-        squashed_felt252_dict::SquashedFelt252DictConcreteLibfunc,
+        squashed_felt252_dict::SquashedFelt252DictConcreteLibfunc, ConcreteLibfunc,
     },
     program_registry::ProgramRegistry,
 };
@@ -14,7 +14,7 @@ use melior::{
 
 use crate::{error::Result, metadata::MetadataStorage};
 
-use super::LibfuncHelper;
+use super::{build_noop, LibfuncHelper};
 
 pub fn build<'ctx, 'this>(
     context: &'ctx Context,
@@ -27,21 +27,8 @@ pub fn build<'ctx, 'this>(
 ) -> Result<()> {
     match selector {
         SquashedFelt252DictConcreteLibfunc::IntoEntries(info) => {
-            build_into_entries(context, registry, entry, location, helper, metadata, info)
+            build_noop::<0, false>(context, registry, entry, location, helper, metadata, info.param_signatures())
         }
     }
 }
 
-fn build_into_entries<'ctx, 'this>(
-    _context: &'ctx Context,
-    _registry: &ProgramRegistry<CoreType, CoreLibfunc>,
-    entry: &'this Block<'ctx>,
-    location: Location<'ctx>,
-    helper: &LibfuncHelper<'ctx, 'this>,
-    _metadata: &mut MetadataStorage,
-    _info: &SignatureAndTypeConcreteLibfunc,
-) -> Result<()> {
-    entry.append_operation(helper.br(0, &[entry.arg(0)?], location));
-
-    Ok(())
-}
