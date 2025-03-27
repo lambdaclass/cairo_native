@@ -2,7 +2,8 @@ use cairo_lang_sierra::{
     extensions::{
         core::{CoreLibfunc, CoreType},
         lib_func::SignatureAndTypeConcreteLibfunc,
-        squashed_felt252_dict::SquashedFelt252DictConcreteLibfunc, ConcreteLibfunc,
+        squashed_felt252_dict::SquashedFelt252DictConcreteLibfunc,
+        ConcreteLibfunc,
     },
     program_registry::ProgramRegistry,
 };
@@ -26,9 +27,14 @@ pub fn build<'ctx, 'this>(
     selector: &SquashedFelt252DictConcreteLibfunc,
 ) -> Result<()> {
     match selector {
-        SquashedFelt252DictConcreteLibfunc::IntoEntries(info) => {
-            build_noop::<0, false>(context, registry, entry, location, helper, metadata, info.param_signatures())
-        }
+        SquashedFelt252DictConcreteLibfunc::IntoEntries(info) => build_noop::<0, false>(
+            context,
+            registry,
+            entry,
+            location,
+            helper,
+            metadata,
+            info.param_signatures(),
+        ),
     }
 }
-
