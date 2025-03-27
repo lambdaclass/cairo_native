@@ -48,6 +48,7 @@ mod r#enum;
 mod felt252;
 mod felt252_dict;
 mod felt252_dict_entry;
+mod felt252_squashed_dict;
 mod function_call;
 mod gas;
 mod int;
@@ -163,9 +164,9 @@ impl LibfuncBuilder for CoreConcreteLibfunc {
             Self::Felt252Dict(selector) => self::felt252_dict::build(
                 context, registry, entry, location, helper, metadata, selector,
             ),
-            Self::Felt252SquashedDict(_) => {
-                todo!("Implement felt252_squashed_dict libfunc")
-            }
+            Self::Felt252SquashedDict(selector) => felt252_squashed_dict::build(
+                context, registry, entry, location, helper, metadata, selector,
+            ),
             Self::Felt252DictEntry(selector) => self::felt252_dict_entry::build(
                 context, registry, entry, location, helper, metadata, selector,
             ),
