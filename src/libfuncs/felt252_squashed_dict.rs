@@ -7,8 +7,7 @@ use cairo_lang_sierra::{
     program_registry::ProgramRegistry,
 };
 use melior::{
-    helpers::BuiltinBlockExt,
-    ir::{Block, BlockLike, Location},
+    ir::{Block, Location},
     Context,
 };
 
