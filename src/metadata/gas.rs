@@ -6,6 +6,9 @@
 //! To calculate the actual cost, the amount of tokens is multiplied by the cost
 //! of the given token type. The cost of each token type is specified on runtime,
 //! with the `BuiltinCosts` structure.
+//!
+//! When implementing libfuncs, the `GasCost` metadata entry already contains
+//! the `GasCost` for the current sierra statement
 
 use cairo_lang_runner::token_gas_cost;
 use cairo_lang_sierra::{
