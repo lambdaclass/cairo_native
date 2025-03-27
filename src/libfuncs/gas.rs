@@ -261,7 +261,7 @@ pub fn build_get_unspent_gas<'ctx, 'this>(
         .to_native_assert_error("redeposit_gas should always have a gas cost")?
         .clone();
 
-    let builtin_ptr = {
+    let builtin_ptr: Value<'ctx, 'this> = {
         let runtime = metadata
             .get_mut::<RuntimeBindingsMeta>()
             .ok_or(Error::MissingMetadata)?;
@@ -273,15 +273,14 @@ pub fn build_get_unspent_gas<'ctx, 'this>(
 
     let current_gas_u128 =
         entry.extui(current_gas, IntegerType::new(context, 128).into(), location)?;
+    // let gas_cost = build_actual_gas_cost(context, entry, location, gas_cost, builtin_ptr)?;
+    // let gas_cost_u128 = entry.extui(gas_cost, IntegerType::new(context, 128).into(), location)?;
 
-    let gas_cost = build_actual_gas_cost(context, entry, location, gas_cost, builtin_ptr)?;
-    let gas_cost_u128 = entry.extui(gas_cost, IntegerType::new(context, 128).into(), location)?;
+    // let unspent_gas = entry.append_op_result(
+    //     ods::llvm::intr_uadd_sat(context, current_gas_u128, gas_cost_u128, location).into(),
+    // )?;
 
-    let unspent_gas = entry.append_op_result(
-        ods::llvm::intr_uadd_sat(context, current_gas_u128, gas_cost_u128, location).into(),
-    )?;
-
-    entry.append_operation(helper.br(0, &[current_gas, unspent_gas], location));
+    entry.append_operation(helper.br(0, &[current_gas, current_gas_u128], location));
 
     Ok(())
 }
