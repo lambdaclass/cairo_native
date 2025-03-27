@@ -72,23 +72,14 @@ fn build_blake_operation<'ctx, 'this>(
     let curr_state_ptr = entry.arg(0)?;
     let bytes_count = entry.arg(1)?;
     let message = entry.arg(2)?;
-
+    let k0 = entry.const_int(context, location, 0, 32)?;
+    let kffffffff = entry.const_int(context, location, 0xffffffff as u32, 32)?;
     let u32_ty = IntegerType::new(context, 32).into();
 
     // IV values to MLIR values
     let iv_values = IV
         .into_iter()
         .map(|v| entry.const_int(context, location, v, 32))
-        .collect::<Result<Vec<_>>>()?;
-
-    // SIGMA values to MLIR values
-    let sigma_values = SIGMA
-        .into_iter()
-        .map(|a| {
-            a.into_iter()
-                .map(|v| entry.const_int(context, location, v, 32))
-                .collect::<Result<Vec<_>>>()
-        })
         .collect::<Result<Vec<_>>>()?;
 
     // local state vector to work with during the compression
@@ -109,9 +100,17 @@ fn build_blake_operation<'ctx, 'this>(
     for i in 0..4 {
         vector_v.push(iv_values[i]);
     }
+    vector_v.push(entry.append_op_result(arith::xori(iv_values[4], bytes_count, location))?);
+    vector_v.push(entry.append_op_result(arith::xori(iv_values[5], k0, location))?);
+    vector_v.push(entry.append_op_result(arith::xori(
+        iv_values[6],
+        if finalize { kffffffff } else { k0 },
+        location,
+    ))?);
+    vector_v.push(entry.append_op_result(arith::xori(iv_values[7], k0, location))?);
 
     // Blake rounding
-    for sigma_array in sigma_values {
+    for sigma_array in SIGMA {
         vector_v = blake_rounding(
             context,
             registry,
@@ -162,9 +161,75 @@ fn blake_rounding<'ctx, 'this>(
     info: &SignatureOnlyConcreteLibfunc,
     vector_v: Vec<Value<'ctx, 'this>>,
     msg: Value<'ctx, 'this>,
-    sigma_array: Vec<Value<'ctx, 'this>>,
+    sigma_array: [u32; 16],
 ) -> Result<Vec<Value<'ctx, 'this>>> {
-    todo!()
+    let u32_ty = IntegerType::new(context, 32).into();
+
+    (vector_v[0], vector_v[4], vector_v[8], vector_v[12]) = blak(
+        vector_v[0],
+        vector_v[4],
+        vector_v[8],
+        vector_v[12],
+        entry.gep(context, location, msg, &[GepIndex::Const(sigma_array[0] as i32)], u32_ty),
+        entry.gep(context, location, msg, &[GepIndex::Const(sigma_array[1] as i32)], u32_ty,
+    );
+    (vector_v[1], vector_v[5], vector_v[9], vector_v[13]) = mix(
+        vector_v[1],
+        vector_v[5],
+        vector_v[9],
+        vector_v[13],
+        msg[sigma_array[2]],
+        msg[sigma_array[3]],
+    );
+    (vector_v[2], vector_v[6], vector_v[10], vector_v[14]) = mix(
+        vector_v[2],
+        vector_v[6],
+        vector_v[10],
+        vector_v[14],
+        msg[sigma_array[4]],
+        msg[sigma_array[5]],
+    );
+    (vector_v[3], vector_v[7], vector_v[11], vector_v[15]) = mix(
+        vector_v[3],
+        vector_v[7],
+        vector_v[11],
+        vector_v[15],
+        msg[sigma_array[6]],
+        msg[sigma_array[7]],
+    );
+    (vector_v[0], vector_v[5], vector_v[10], vector_v[15]) = mix(
+        vector_v[0],
+        vector_v[5],
+        vector_v[10],
+        vector_v[15],
+        msg[sigma_array[8]],
+        msg[sigma_array[9]],
+    );
+    (vector_v[1], vector_v[6], vector_v[11], vector_v[12]) = mix(
+        vector_v[1],
+        vector_v[6],
+        vector_v[11],
+        vector_v[12],
+        msg[sigma_array[10]],
+        msg[sigma_array[11]],
+    );
+    (vector_v[2], vector_v[7], vector_v[8], vector_v[13]) = mix(
+        vector_v[2],
+        vector_v[7],
+        vector_v[8],
+        vector_v[13],
+        msg[sigma_array[12]],
+        msg[sigma_array[13]],
+    );
+    (vector_v[3], vector_v[4], vector_v[9], vector_v[14]) = mix(
+        vector_v[3],
+        vector_v[4],
+        vector_v[9],
+        vector_v[14],
+        msg[sigma_array[14]],
+        msg[sigma_array[15]],
+    );
+    Ok(vector_v)
 }
 
 fn blake_mix<'ctx, 'this>(
