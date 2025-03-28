@@ -136,14 +136,18 @@ impl ContractExecutionResult {
                             value
                         )))?
                     }
+                } else {
+                    Err(Error::UnexpectedValue(format!(
+                        "wrong type, expected: Struct {{ [X, Array<felt252>] }}, value: {:?}",
+                        value
+                    )))?
                 }
             }
-            ty => {
+            _ => {
                 failure_flag = true;
-                Err(Error::UnexpectedValue(format!(
-                    "wrong return value type expected a enum got: {:?}",
-                    ty
-                )))?
+                Err(Error::UnexpectedValue(
+                    "wrong return value type expected a enum".to_string(),
+                ))?
             }
         };
 

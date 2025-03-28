@@ -102,8 +102,16 @@ impl LibfuncBuilder for CoreConcreteLibfunc {
         match self {
             Self::ApTracking(_)
             | Self::BranchAlign(_)
-            | Self::UnconditionalJump(_)
-            | Self::Trace(_) => build_noop::<0, true>(
+            | Self::UnconditionalJump(_) => build_noop::<0, true>(
+                context,
+                registry,
+                entry,
+                location,
+                helper,
+                metadata,
+                self.param_signatures(),
+            ),
+            Self::Trace(_) => build_noop::<0, false>(
                 context,
                 registry,
                 entry,
