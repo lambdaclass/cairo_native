@@ -35,8 +35,9 @@ jobs:
     steps:
       - uses: actions/checkout@v4
       - name: Set env
-        run: echo "MLIR_SYS_190_PREFIX=${{ matrix.dep_base_dir }}" >> $GITHUB_ENV && \
-          echo "LLVM_SYS_191_PREFIX=${{ matrix.dep_base_dir }}" >> $GITHUB_ENV && \
+        run: |
+          echo "MLIR_SYS_190_PREFIX=${{ matrix.dep_base_dir }}" >> $GITHUB_ENV
+          echo "LLVM_SYS_191_PREFIX=${{ matrix.dep_base_dir }}" >> $GITHUB_ENV
           echo "TABLEGEN_190_PREFIX=${{ matrix.dep_base_dir }}" >> $GITHUB_ENV
       - name: Install deps
         # deps-ci-linux does nothing on macos so it works

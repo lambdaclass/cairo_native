@@ -1,4 +1,4 @@
-use core::starknet::{
+use starknet::{
     secp256k1::{
         Secp256k1Point, secp256k1_new_syscall, secp256k1_add_syscall, secp256k1_mul_syscall,
         secp256k1_get_point_from_x_syscall, secp256k1_get_xy_syscall,
