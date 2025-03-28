@@ -6,7 +6,6 @@ use crate::{
     error::{panic::ToNativeAssertError, Error as CoreLibfuncBuilderError, Result},
     metadata::MetadataStorage,
     native_panic,
-    native_panic,
     types::TypeBuilder,
     utils::BlockExt,
 };
@@ -19,7 +18,6 @@ use cairo_lang_sierra::{
             unsigned::{Uint16Traits, Uint32Traits, Uint64Traits, Uint8Traits},
         },
         lib_func::ParamSignature,
-        starknet::StarknetTypeConcrete,
         starknet::StarknetTypeConcrete,
         ConcreteLibfunc,
     },
@@ -149,7 +147,6 @@ impl LibfuncBuilder for CoreConcreteLibfunc {
                 context, registry, entry, location, helper, metadata, selector,
             ),
             Self::Trace(_) => native_panic!("Implement trace libfunc"),
-            Self::Trace(_) => native_panic!("Implement trace libfunc"),
             Self::Drop(info) => {
                 self::drop::build(context, registry, entry, location, helper, metadata, info)
             }
@@ -168,9 +165,6 @@ impl LibfuncBuilder for CoreConcreteLibfunc {
             Self::Felt252Dict(selector) => self::felt252_dict::build(
                 context, registry, entry, location, helper, metadata, selector,
             ),
-            Self::Felt252SquashedDict(_) => {
-                native_panic!("Implement felt252_squashed_dict libfunc")
-            }
             Self::Felt252SquashedDict(_) => {
                 native_panic!("Implement felt252_squashed_dict libfunc")
             }
@@ -486,7 +480,6 @@ fn build_noop<'ctx, 'this, const N: usize, const PROCESS_BUILTINS: bool>(
                 CoreTypeConcrete::BuiltinCosts(_)
                     | CoreTypeConcrete::Coupon(_)
                     | CoreTypeConcrete::GasBuiltin(_)
-                    | CoreTypeConcrete::Starknet(StarknetTypeConcrete::System(_))
                     | CoreTypeConcrete::Starknet(StarknetTypeConcrete::System(_))
             )
         {

@@ -14,7 +14,6 @@ use cairo_lang_sierra::{
         circuit::CircuitTypeConcrete,
         core::{CoreLibfunc, CoreType, CoreTypeConcrete},
         starknet::StarknetTypeConcrete,
-        starknet::StarknetTypeConcrete,
         utils::Range,
     },
     ids::{ConcreteTypeId, UserTypeId},
@@ -355,7 +354,6 @@ impl TypeBuilder for CoreTypeConcrete {
                 WithSelf::new(self_ty, info),
             ),
             Self::Starknet(selector) => self::starknet::build(
-            Self::Starknet(selector) => self::starknet::build(
                 context,
                 module,
                 registry,
@@ -462,7 +460,6 @@ impl TypeBuilder for CoreTypeConcrete {
                 | CoreTypeConcrete::Poseidon(_)
                 | CoreTypeConcrete::Coupon(_)
                 | CoreTypeConcrete::Starknet(StarknetTypeConcrete::System(_))
-                | CoreTypeConcrete::Starknet(StarknetTypeConcrete::System(_))
                 | CoreTypeConcrete::SegmentArena(_)
                 | CoreTypeConcrete::Circuit(CircuitTypeConcrete::AddMod(_))
                 | CoreTypeConcrete::Circuit(CircuitTypeConcrete::MulMod(_))
@@ -483,7 +480,6 @@ impl TypeBuilder for CoreTypeConcrete {
             | CoreTypeConcrete::Pedersen(_)
             | CoreTypeConcrete::Poseidon(_)
             | CoreTypeConcrete::RangeCheck96(_)
-            | CoreTypeConcrete::Starknet(StarknetTypeConcrete::System(_)) // u64 is not complex
             | CoreTypeConcrete::Starknet(StarknetTypeConcrete::System(_)) // u64 is not complex
             | CoreTypeConcrete::SegmentArena(_) => false,
 
@@ -510,11 +506,6 @@ impl TypeBuilder for CoreTypeConcrete {
 
             CoreTypeConcrete::Felt252(_)
             | CoreTypeConcrete::Bytes31(_)
-            | CoreTypeConcrete::Starknet(
-                StarknetTypeConcrete::ClassHash(_)
-                | StarknetTypeConcrete::ContractAddress(_)
-                | StarknetTypeConcrete::StorageAddress(_)
-                | StarknetTypeConcrete::StorageBaseAddress(_)
             | CoreTypeConcrete::Starknet(
                 StarknetTypeConcrete::ClassHash(_)
                 | StarknetTypeConcrete::ContractAddress(_)
@@ -552,8 +543,6 @@ impl TypeBuilder for CoreTypeConcrete {
             },
             CoreTypeConcrete::Const(_) => native_panic!("todo: check Const is complex"),
             CoreTypeConcrete::Span(_) => native_panic!("todo: check Span is complex"),
-            CoreTypeConcrete::Starknet(StarknetTypeConcrete::Secp256Point(_))
-            | CoreTypeConcrete::Starknet(StarknetTypeConcrete::Sha256StateHandle(_)) => native_panic!("todo: check Sha256StateHandle is complex"),
             CoreTypeConcrete::Starknet(StarknetTypeConcrete::Secp256Point(_))
             | CoreTypeConcrete::Starknet(StarknetTypeConcrete::Sha256StateHandle(_)) => native_panic!("todo: check Sha256StateHandle is complex"),
             CoreTypeConcrete::Coupon(_) => false,
@@ -606,7 +595,6 @@ impl TypeBuilder for CoreTypeConcrete {
             | CoreTypeConcrete::Felt252Dict(_)
             | CoreTypeConcrete::Felt252DictEntry(_)
             | CoreTypeConcrete::SquashedFelt252Dict(_)
-            | CoreTypeConcrete::Starknet(_)
             | CoreTypeConcrete::Starknet(_)
             | CoreTypeConcrete::Nullable(_) => false,
 
@@ -729,20 +717,12 @@ impl TypeBuilder for CoreTypeConcrete {
                 StarknetTypeConcrete::StorageAddress(_) => get_integer_layout(252),
                 StarknetTypeConcrete::System(_) => Layout::new::<*mut ()>(),
                 StarknetTypeConcrete::Secp256Point(_) => {
-            CoreTypeConcrete::Starknet(info) => match info {
-                StarknetTypeConcrete::ClassHash(_) => get_integer_layout(252),
-                StarknetTypeConcrete::ContractAddress(_) => get_integer_layout(252),
-                StarknetTypeConcrete::StorageBaseAddress(_) => get_integer_layout(252),
-                StarknetTypeConcrete::StorageAddress(_) => get_integer_layout(252),
-                StarknetTypeConcrete::System(_) => Layout::new::<*mut ()>(),
-                StarknetTypeConcrete::Secp256Point(_) => {
                     get_integer_layout(256)
                         .extend(get_integer_layout(256))?
                         .0
                         .extend(get_integer_layout(1))?
                         .0
                 }
-                StarknetTypeConcrete::Sha256StateHandle(_) => Layout::new::<*mut ()>(),
                 StarknetTypeConcrete::Sha256StateHandle(_) => Layout::new::<*mut ()>(),
             },
             CoreTypeConcrete::SegmentArena(_) => Layout::new::<u64>(),
@@ -842,7 +822,6 @@ impl TypeBuilder for CoreTypeConcrete {
             CoreTypeConcrete::Pedersen(_) => false,
             CoreTypeConcrete::Poseidon(_) => false,
             CoreTypeConcrete::Span(_) => false,
-            CoreTypeConcrete::Starknet(_) => false,
             CoreTypeConcrete::Starknet(_) => false,
             CoreTypeConcrete::SegmentArena(_) => false,
             CoreTypeConcrete::Snapshot(info) => {
