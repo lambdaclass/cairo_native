@@ -155,6 +155,14 @@ pub struct FeltDict {
     pub count: u64,
 }
 
+#[cfg(test)]
+#[repr(C)]
+#[derive(Debug)]
+pub struct FeltDictEntry {
+    pub dict: *const FeltDict,
+    pub value_ptr: *mut (),
+}
+
 impl Drop for FeltDict {
     fn drop(&mut self) {
         // Free the entries manually.
