@@ -5,6 +5,7 @@
 use crate::{
     error::{panic::ToNativeAssertError, Error as CoreLibfuncBuilderError, Result},
     metadata::MetadataStorage,
+    native_panic,
     types::TypeBuilder,
     utils::BlockExt,
 };
@@ -144,7 +145,7 @@ impl LibfuncBuilder for CoreConcreteLibfunc {
             Self::Debug(selector) => self::debug::build(
                 context, registry, entry, location, helper, metadata, selector,
             ),
-            Self::Trace(_) => todo!("Implement trace libfunc"),
+            Self::Trace(_) => native_panic!("Implement trace libfunc"),
             Self::Drop(info) => {
                 self::drop::build(context, registry, entry, location, helper, metadata, info)
             }
@@ -164,7 +165,7 @@ impl LibfuncBuilder for CoreConcreteLibfunc {
                 context, registry, entry, location, helper, metadata, selector,
             ),
             Self::Felt252SquashedDict(_) => {
-                todo!("Implement felt252_squashed_dict libfunc")
+                native_panic!("Implement felt252_squashed_dict libfunc")
             }
             Self::Felt252DictEntry(selector) => self::felt252_dict_entry::build(
                 context, registry, entry, location, helper, metadata, selector,
@@ -178,7 +179,7 @@ impl LibfuncBuilder for CoreConcreteLibfunc {
             Self::IntRange(selector) => self::int_range::build(
                 context, registry, entry, location, helper, metadata, selector,
             ),
-            Self::Blake(_) => todo!("Implement blake libfunc"),
+            Self::Blake(_) => native_panic!("Implement blake libfunc"),
             Self::Mem(selector) => self::mem::build(
                 context, registry, entry, location, helper, metadata, selector,
             ),
