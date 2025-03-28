@@ -7,9 +7,7 @@ use cairo_lang_sierra::{
     program_registry::ProgramRegistry,
 };
 use melior::{
-    dialect::{arith, llvm},
-    ir::{r#type::IntegerType, Block, BlockLike, Location, Value},
-    Context,
+    dialect::{arith, llvm, ods}, ir::{r#type::IntegerType, Block, BlockLike, Location, Value}, Context
 };
 
 use crate::{
@@ -61,12 +59,12 @@ pub fn build<'ctx, 'this>(
 
 fn build_blake_operation<'ctx, 'this>(
     context: &'ctx Context,
-    registry: &ProgramRegistry<CoreType, CoreLibfunc>,
+    _registry: &ProgramRegistry<CoreType, CoreLibfunc>,
     entry: &'this Block<'ctx>,
     location: Location<'ctx>,
     helper: &LibfuncHelper<'ctx, 'this>,
-    metadata: &mut MetadataStorage,
-    info: &SignatureOnlyConcreteLibfunc,
+    _metadata: &mut MetadataStorage,
+    _info: &SignatureOnlyConcreteLibfunc,
     finalize: bool,
 ) -> Result<()> {
     let curr_state_ptr = entry.arg(0)?;
@@ -113,12 +111,9 @@ fn build_blake_operation<'ctx, 'this>(
     for sigma_array in SIGMA {
         vector_v = blake_rounding(
             context,
-            registry,
             entry,
             location,
             helper,
-            metadata,
-            info,
             vector_v,
             message,
             sigma_array,
@@ -153,98 +148,285 @@ fn build_blake_operation<'ctx, 'this>(
 
 fn blake_rounding<'ctx, 'this>(
     context: &'ctx Context,
-    registry: &ProgramRegistry<CoreType, CoreLibfunc>,
     entry: &'this Block<'ctx>,
     location: Location<'ctx>,
     helper: &LibfuncHelper<'ctx, 'this>,
-    metadata: &mut MetadataStorage,
-    info: &SignatureOnlyConcreteLibfunc,
-    vector_v: Vec<Value<'ctx, 'this>>,
+    mut vector_v: Vec<Value<'ctx, 'this>>,
     msg: Value<'ctx, 'this>,
     sigma_array: [u32; 16],
 ) -> Result<Vec<Value<'ctx, 'this>>> {
     let u32_ty = IntegerType::new(context, 32).into();
 
-    (vector_v[0], vector_v[4], vector_v[8], vector_v[12]) = blak(
+    (vector_v[0], vector_v[4], vector_v[8], vector_v[12]) = blake_mix(
+        context,
+        entry,
+        location,
+        helper,
         vector_v[0],
         vector_v[4],
         vector_v[8],
         vector_v[12],
-        entry.gep(context, location, msg, &[GepIndex::Const(sigma_array[0] as i32)], u32_ty),
-        entry.gep(context, location, msg, &[GepIndex::Const(sigma_array[1] as i32)], u32_ty,
-    );
-    (vector_v[1], vector_v[5], vector_v[9], vector_v[13]) = mix(
+        entry.gep(
+            context,
+            location,
+            msg,
+            &[GepIndex::Const(sigma_array[0] as i32)],
+            u32_ty,
+        )?,
+        entry.gep(
+            context,
+            location,
+            msg,
+            &[GepIndex::Const(sigma_array[1] as i32)],
+            u32_ty,
+        )?,
+    )?;
+    (vector_v[1], vector_v[5], vector_v[9], vector_v[13]) = blake_mix(
+        context,
+        entry,
+        location,
+        helper,
         vector_v[1],
         vector_v[5],
         vector_v[9],
         vector_v[13],
-        msg[sigma_array[2]],
-        msg[sigma_array[3]],
-    );
-    (vector_v[2], vector_v[6], vector_v[10], vector_v[14]) = mix(
+        entry.gep(
+            context,
+            location,
+            msg,
+            &[GepIndex::Const(sigma_array[2] as i32)],
+            u32_ty,
+        )?,
+        entry.gep(
+            context,
+            location,
+            msg,
+            &[GepIndex::Const(sigma_array[3] as i32)],
+            u32_ty,
+        )?,
+    )?;
+    (vector_v[2], vector_v[6], vector_v[10], vector_v[14]) = blake_mix(
+        context,
+        entry,
+        location,
+        helper,
         vector_v[2],
         vector_v[6],
         vector_v[10],
         vector_v[14],
-        msg[sigma_array[4]],
-        msg[sigma_array[5]],
-    );
-    (vector_v[3], vector_v[7], vector_v[11], vector_v[15]) = mix(
+        entry.gep(
+            context,
+            location,
+            msg,
+            &[GepIndex::Const(sigma_array[4] as i32)],
+            u32_ty,
+        )?,
+        entry.gep(
+            context,
+            location,
+            msg,
+            &[GepIndex::Const(sigma_array[5] as i32)],
+            u32_ty,
+        )?,
+    )?;
+    (vector_v[3], vector_v[7], vector_v[11], vector_v[15]) = blake_mix(
+        context,
+        entry,
+        location,
+        helper,
         vector_v[3],
         vector_v[7],
         vector_v[11],
         vector_v[15],
-        msg[sigma_array[6]],
-        msg[sigma_array[7]],
-    );
-    (vector_v[0], vector_v[5], vector_v[10], vector_v[15]) = mix(
+        entry.gep(
+            context,
+            location,
+            msg,
+            &[GepIndex::Const(sigma_array[6] as i32)],
+            u32_ty,
+        )?,
+        entry.gep(
+            context,
+            location,
+            msg,
+            &[GepIndex::Const(sigma_array[7] as i32)],
+            u32_ty,
+        )?,
+    )?;
+    (vector_v[0], vector_v[5], vector_v[10], vector_v[15]) = blake_mix(
+        context,
+        entry,
+        location,
+        helper,
         vector_v[0],
         vector_v[5],
         vector_v[10],
         vector_v[15],
-        msg[sigma_array[8]],
-        msg[sigma_array[9]],
-    );
-    (vector_v[1], vector_v[6], vector_v[11], vector_v[12]) = mix(
+        entry.gep(
+            context,
+            location,
+            msg,
+            &[GepIndex::Const(sigma_array[8] as i32)],
+            u32_ty,
+        )?,
+        entry.gep(
+            context,
+            location,
+            msg,
+            &[GepIndex::Const(sigma_array[9] as i32)],
+            u32_ty,
+        )?,
+    )?;
+    (vector_v[1], vector_v[6], vector_v[11], vector_v[12]) = blake_mix(
+        context,
+        entry,
+        location,
+        helper,
         vector_v[1],
         vector_v[6],
         vector_v[11],
         vector_v[12],
-        msg[sigma_array[10]],
-        msg[sigma_array[11]],
-    );
-    (vector_v[2], vector_v[7], vector_v[8], vector_v[13]) = mix(
+        entry.gep(
+            context,
+            location,
+            msg,
+            &[GepIndex::Const(sigma_array[10] as i32)],
+            u32_ty,
+        )?,
+        entry.gep(
+            context,
+            location,
+            msg,
+            &[GepIndex::Const(sigma_array[11] as i32)],
+            u32_ty,
+        )?,
+    )?;
+    (vector_v[2], vector_v[7], vector_v[8], vector_v[13]) = blake_mix(
+        context,
+        entry,
+        location,
+        helper,
         vector_v[2],
         vector_v[7],
         vector_v[8],
         vector_v[13],
-        msg[sigma_array[12]],
-        msg[sigma_array[13]],
-    );
-    (vector_v[3], vector_v[4], vector_v[9], vector_v[14]) = mix(
+        entry.gep(
+            context,
+            location,
+            msg,
+            &[GepIndex::Const(sigma_array[12] as i32)],
+            u32_ty,
+        )?,
+        entry.gep(
+            context,
+            location,
+            msg,
+            &[GepIndex::Const(sigma_array[13] as i32)],
+            u32_ty,
+        )?,
+    )?;
+    (vector_v[3], vector_v[4], vector_v[9], vector_v[14]) = blake_mix(
+        context,
+        entry,
+        location,
+        helper,
         vector_v[3],
         vector_v[4],
         vector_v[9],
         vector_v[14],
-        msg[sigma_array[14]],
-        msg[sigma_array[15]],
-    );
+        entry.gep(
+            context,
+            location,
+            msg,
+            &[GepIndex::Const(sigma_array[14] as i32)],
+            u32_ty,
+        )?,
+        entry.gep(
+            context,
+            location,
+            msg,
+            &[GepIndex::Const(sigma_array[15] as i32)],
+            u32_ty,
+        )?,
+    )?;
+
     Ok(vector_v)
 }
 
 fn blake_mix<'ctx, 'this>(
     context: &'ctx Context,
-    registry: &ProgramRegistry<CoreType, CoreLibfunc>,
     entry: &'this Block<'ctx>,
     location: Location<'ctx>,
     helper: &LibfuncHelper<'ctx, 'this>,
-    metadata: &mut MetadataStorage,
-    info: &SignatureOnlyConcreteLibfunc,
-    vector_v: Vec<Value<'ctx, 'this>>,
-    msg: Value<'ctx, 'this>,
-    sigma_array: Vec<Value<'ctx, 'this>>,
-) -> Result<Vec<Value<'ctx, 'this>>> {
+    // these first four value are from vector v
+    v_a: Value<'ctx, 'this>,
+    v_b: Value<'ctx, 'this>,
+    v_c: Value<'ctx, 'this>,
+    v_d: Value<'ctx, 'this>,
+    // these last two values are from the message to compress
+    m_0: Value<'ctx, 'this>,
+    m_1: Value<'ctx, 'this>,
+) -> Result<(
+    Value<'ctx, 'this>,
+    Value<'ctx, 'this>,
+    Value<'ctx, 'this>,
+    Value<'ctx, 'this>,
+)> {
+    let a = wrapping_adds(context, entry, location, &[v_a, v_b, m_0])?;
+    // let d = blake_right_rot(d ^ a, 16);
+    let c = wrapping_adds(context, entry, location, &[v_c, v_d])?;
+    // let b = blake_right_rot(b ^ c, 12);
+    let a = wrapping_adds(context, entry, location, &[v_a, v_b, m_1])?;
+    // let d = blake_right_rot(d ^ a, 8);
+    let c = wrapping_adds(context, entry, location, &[v_c, v_d])?;
+    // let b = blake_right_rot(b ^ c, 7);
+
+    //Ok((a, b, c, d))
     todo!()
+}
+
+fn blake_right_rot<'ctx, 'this>(
+    context: &'ctx Context,
+    entry: &'this Block<'ctx>,
+    location: Location<'ctx>,
+    value: Value<'ctx, 'this>, 
+    // order of the shift
+    n: u32) -> Result<Value<'ctx, 'this>> {
+        let kn = entry.const_int(context, location, n, 32)?;
+        let k1 = entry.const_int(context, location, 1, 32)?;
+        let k32 = entry.const_int(context, location, 32, 32)?;
+        let lhs = entry.shrui(value, kn, location)?;
+        let k1_shl_n = entry.shli(k1, kn, location)?;
+        let k1_shl_n_minus_k1= entry.append_op_result(arith::subi(k1_shl_n, k1, location))?;
+        let value_and_shl = entry.append_op_result(arith::andi(value, k1_shl_n_minus_k1, location))?;
+        let k32_minus_n = entry.append_op_result(arith::subi(k32, kn, location))?;
+        
+        // Ok(res)
+        todo!()
+    }
+
+
+// Wrapping add of multiple operands, the addition's order
+// is based on the order of the operands in the array
+fn wrapping_adds<'ctx, 'this>(
+    context: &'ctx Context,
+    entry: &'this Block<'ctx>,
+    location: Location<'ctx>,
+    operands: &[Value<'ctx, 'this>],
+) -> Result<Value<'ctx, 'this>> {
+    let lhs = operands[0];
+    let rhs = operands[1];
+    let mut res =
+        entry.append_op_result(ods::llvm::intr_sadd_sat(context, lhs, rhs, location).into())?;
+
+    let mut operands_iter = operands.into_iter().skip(2);
+
+    while let Some(rhs) = operands_iter.next() {
+        res = entry
+            .append_op_result(ods::llvm::intr_sadd_sat(context, lhs, *rhs, location).into())?;
+    }
+
+    Ok(res)
 }
 
 #[cfg(test)]
