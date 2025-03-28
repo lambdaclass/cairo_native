@@ -40,6 +40,7 @@ enum RuntimeBinding {
     DictDrop,
     DictDup,
     GetGasBuiltin,
+    BlakeCompress,
     DebugPrint,
     #[cfg(feature = "with-cheatcode")]
     VtableCheatcode,
@@ -65,6 +66,7 @@ impl RuntimeBinding {
             RuntimeBinding::DictDrop => "cairo_native__dict_drop",
             RuntimeBinding::DictDup => "cairo_native__dict_dup",
             RuntimeBinding::GetGasBuiltin => "cairo_native__get_costs_builtin",
+            RuntimeBinding::BlakeCompress => "cairo_native_libfunc_blake_compress",
             #[cfg(feature = "with-cheatcode")]
             RuntimeBinding::VtableCheatcode => "cairo_native__vtable_cheatcode",
         }
@@ -108,6 +110,9 @@ impl RuntimeBinding {
             RuntimeBinding::DictDup => crate::runtime::cairo_native__dict_dup as *const (),
             RuntimeBinding::GetGasBuiltin => {
                 crate::runtime::cairo_native__get_costs_builtin as *const ()
+            }
+            RuntimeBinding::BlakeCompress => {
+                crate::runtime::cairo_native_libfunc_blake_compress as *const ()
             }
             #[cfg(feature = "with-cheatcode")]
             RuntimeBinding::VtableCheatcode => {
@@ -253,6 +258,37 @@ impl RuntimeBindingsMeta {
             OperationBuilder::new("llvm.call", location)
                 .add_operands(&[function])
                 .add_operands(&[op0_ptr, op1_ptr, op2_ptr])
+                .build()?,
+        ))
+    }
+
+    #[allow(clippy::too_many_arguments)]
+    pub fn libfunc_blake_compress<'c, 'a>(
+        &mut self,
+        context: &'c Context,
+        module: &Module,
+        block: &'a Block<'c>,
+        state: Value<'c, 'a>,
+        message: Value<'c, 'a>,
+        count_bytes: Value<'c, 'a>,
+        finalize: Value<'c, 'a>,
+        location: Location<'c>,
+    ) -> Result<OperationRef<'c, 'a>>
+    where
+        'c: 'a,
+    {
+        let function = self.build_function(
+            context,
+            module,
+            block,
+            location,
+            RuntimeBinding::BlakeCompress,
+        )?;
+
+        Ok(block.append_operation(
+            OperationBuilder::new("llvm.call", location)
+                .add_operands(&[function])
+                .add_operands(&[state, message, count_bytes, finalize])
                 .build()?,
         ))
     }
@@ -681,6 +717,7 @@ pub fn setup_runtime(find_symbol_ptr: impl Fn(&str) -> Option<*mut c_void>) {
         RuntimeBinding::DictDrop,
         RuntimeBinding::DictDup,
         RuntimeBinding::GetGasBuiltin,
+        RuntimeBinding::BlakeCompress,
         RuntimeBinding::DebugPrint,
         #[cfg(feature = "with-cheatcode")]
         RuntimeBinding::VtableCheatcode,
