@@ -872,7 +872,7 @@ mod tests {
             )
             .unwrap();
         assert_eq!(result.return_values, vec![Felt::from(3628800)]);
-        assert_eq!(result.remaining_gas, 18446744073709537615);
+        assert_eq!(result.remaining_gas, 18446744073709538015);
     }
 
     #[rstest]
@@ -893,7 +893,6 @@ mod tests {
         )
         .unwrap();
 
-        // The last function in the program is the `get` wrapper function.
         // The last function in the program is the `get` wrapper function.
         let selector = starknet_program_empty
             .entry_points_by_type

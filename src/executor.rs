@@ -675,7 +675,7 @@ mod tests {
     #[fixture]
     fn program() -> Program {
         let (_, program) = load_cairo! {
-            use core::starknet::{SyscallResultTrait, get_block_hash_syscall};
+            use starknet::{SyscallResultTrait, get_block_hash_syscall};
 
             fn run_test() -> felt252 {
                 42
@@ -756,10 +756,15 @@ mod tests {
             .expect("failed to compile context");
         let executor = AotNativeExecutor::from_native_module(module, OptLevel::default()).unwrap();
 
-        // The last function in the program is the `get` wrapper function.
         let entrypoint_function_id = &starknet_program
             .funcs
-            .last()
+            .iter()
+            .find(|f| {
+                f.id.debug_name
+                    .as_ref()
+                    .map(|name| name.contains("__wrapper__ISimpleStorageImpl__get"))
+                    .unwrap_or_default()
+            })
             .expect("should have a function")
             .id;
 
@@ -783,10 +788,15 @@ mod tests {
             .expect("failed to compile context");
         let executor = JitNativeExecutor::from_native_module(module, OptLevel::default()).unwrap();
 
-        // The last function in the program is the `get` wrapper function.
         let entrypoint_function_id = &starknet_program
             .funcs
-            .last()
+            .iter()
+            .find(|f| {
+                f.id.debug_name
+                    .as_ref()
+                    .map(|name| name.contains("__wrapper__ISimpleStorageImpl__get"))
+                    .unwrap_or_default()
+            })
             .expect("should have a function")
             .id;
 
