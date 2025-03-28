@@ -111,6 +111,15 @@ impl LibfuncBuilder for CoreConcreteLibfunc {
                     self.param_signatures(),
                 )
             }
+            Self::Trace(_) => build_noop::<0, false>(
+                context,
+                registry,
+                entry,
+                location,
+                helper,
+                metadata,
+                self.param_signatures(),
+            ),
             Self::Array(selector) => self::array::build(
                 context, registry, entry, location, helper, metadata, selector,
             ),
@@ -144,7 +153,6 @@ impl LibfuncBuilder for CoreConcreteLibfunc {
             Self::Debug(selector) => self::debug::build(
                 context, registry, entry, location, helper, metadata, selector,
             ),
-            Self::Trace(_) => todo!("Implement trace libfunc"),
             Self::Drop(info) => {
                 self::drop::build(context, registry, entry, location, helper, metadata, info)
             }
