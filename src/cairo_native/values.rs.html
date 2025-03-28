@@ -1950,7 +1950,8 @@
 <a href="#1949" id="1949">1949</a>
 <a href="#1950" id="1950">1950</a>
 <a href="#1951" id="1951">1951</a>
-<a href="#1952" id="1952">1952</a></pre></div><pre class="rust"><code><span class="doccomment">//! # Params and return values de/serialization
+<a href="#1952" id="1952">1952</a>
+<a href="#1953" id="1953">1953</a></pre></div><pre class="rust"><code><span class="doccomment">//! # Params and return values de/serialization
 //!
 //! A Rusty interface to provide parameters to cairo-native entry point calls.
 
@@ -1968,7 +1969,7 @@
 <span class="kw">use </span>cairo_lang_sierra::{
     extensions::{
         core::{CoreLibfunc, CoreType, CoreTypeConcrete},
-        starknet::{secp256::Secp256PointTypeConcrete, StarkNetTypeConcrete},
+        starknet::{secp256::Secp256PointTypeConcrete, StarknetTypeConcrete},
         utils::Range,
     },
     ids::ConcreteTypeId,
@@ -2863,21 +2864,21 @@
                     <span class="macro">native_panic!</span>(<span class="string">"handled before: {:?}"</span>, type_id)
                 }
                 <span class="comment">// Does it make sense for programs to return this? Should it be implemented
-                </span>CoreTypeConcrete::StarkNet(selector) =&gt; <span class="kw">match </span>selector {
-                    StarkNetTypeConcrete::ClassHash(<span class="kw">_</span>)
-                    | StarkNetTypeConcrete::ContractAddress(<span class="kw">_</span>)
-                    | StarkNetTypeConcrete::StorageBaseAddress(<span class="kw">_</span>)
-                    | StarkNetTypeConcrete::StorageAddress(<span class="kw">_</span>) =&gt; {
+                </span>CoreTypeConcrete::Starknet(selector) =&gt; <span class="kw">match </span>selector {
+                    StarknetTypeConcrete::ClassHash(<span class="kw">_</span>)
+                    | StarknetTypeConcrete::ContractAddress(<span class="kw">_</span>)
+                    | StarknetTypeConcrete::StorageBaseAddress(<span class="kw">_</span>)
+                    | StarknetTypeConcrete::StorageAddress(<span class="kw">_</span>) =&gt; {
                         <span class="comment">// felt values
                         </span><span class="kw">let </span>data = ptr.cast::&lt;[u8; <span class="number">32</span>]&gt;().as_mut();
                         data[<span class="number">31</span>] &amp;= <span class="number">0x0F</span>; <span class="comment">// Filter out first 4 bits (they're outside an i252).
                         </span><span class="kw">let </span>data = Felt::from_bytes_le(data);
                         <span class="self">Self</span>::Felt252(data)
                     }
-                    StarkNetTypeConcrete::System(<span class="kw">_</span>) =&gt; {
+                    StarknetTypeConcrete::System(<span class="kw">_</span>) =&gt; {
                         <span class="macro">native_panic!</span>(<span class="string">"should be handled before"</span>)
                     }
-                    StarkNetTypeConcrete::Secp256Point(info) =&gt; <span class="kw">match </span>info {
+                    StarknetTypeConcrete::Secp256Point(info) =&gt; <span class="kw">match </span>info {
                         Secp256PointTypeConcrete::K1(<span class="kw">_</span>) =&gt; {
                             <span class="kw">let </span>data = ptr.cast::&lt;Secp256k1Point&gt;().as_ref();
                             <span class="self">Self</span>::Secp256K1Point(<span class="kw-2">*</span>data)
@@ -2887,7 +2888,7 @@
                             <span class="self">Self</span>::Secp256R1Point(<span class="kw-2">*</span>data)
                         }
                     },
-                    StarkNetTypeConcrete::Sha256StateHandle(<span class="kw">_</span>) =&gt; {
+                    StarknetTypeConcrete::Sha256StateHandle(<span class="kw">_</span>) =&gt; {
                         <span class="macro">native_panic!</span>(<span class="string">"todo: implement Sha256StateHandle from_ptr"</span>)
                     }
                 },
@@ -2950,6 +2951,7 @@
                         y: y.into(),
                     }
                 }
+                CoreTypeConcrete::Blake(<span class="kw">_</span>) =&gt; <span class="macro">native_panic!</span>(<span class="string">"Implement from_ptr for Blake type"</span>),
             }
         })
     }

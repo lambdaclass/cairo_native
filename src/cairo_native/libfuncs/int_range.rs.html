@@ -177,7 +177,8 @@
 <a href="#176" id="176">176</a>
 <a href="#177" id="177">177</a>
 <a href="#178" id="178">178</a>
-<a href="#179" id="179">179</a></pre></div><pre class="rust"><code><span class="doccomment">//! # Int range libfuncs
+<a href="#179" id="179">179</a>
+<a href="#180" id="180">180</a></pre></div><pre class="rust"><code><span class="doccomment">//! # Int range libfuncs
 
 </span><span class="kw">use </span><span class="kw">super</span>::LibfuncHelper;
 <span class="kw">use crate</span>::{
@@ -328,8 +329,9 @@
 
     <span class="macro">lazy_static!</span> {
         <span class="kw">static </span><span class="kw-2">ref </span>INT_RANGE_TRY_NEW: (String, Program) = <span class="macro">load_cairo!</span> {
-            <span class="attr">#[derive(Copy, Drop)]
-            </span><span class="kw">pub extern type </span>IntRange&lt;T&gt;;
+            <span class="kw">pub extern type </span>IntRange&lt;T&gt;;
+            <span class="kw">impl </span>IntRangeDrop&lt;T&gt; of Drop&lt;IntRange&lt;T&gt;&gt;;
+
             <span class="kw">pub extern fn </span>int_range_try_new&lt;T&gt;(
                 x: T, y: T
             ) -&gt; <span class="prelude-ty">Result</span>&lt;IntRange&lt;T&gt;, IntRange&lt;T&gt;&gt; implicits(core::RangeCheck) nopanic;

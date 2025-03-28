@@ -417,7 +417,12 @@
 <a href="#416" id="416">416</a>
 <a href="#417" id="417">417</a>
 <a href="#418" id="418">418</a>
-<a href="#419" id="419">419</a></pre></div><pre class="rust"><code><span class="kw">use </span>cairo_lang_sierra::extensions::{
+<a href="#419" id="419">419</a>
+<a href="#420" id="420">420</a>
+<a href="#421" id="421">421</a>
+<a href="#422" id="422">422</a>
+<a href="#423" id="423">423</a>
+<a href="#424" id="424">424</a></pre></div><pre class="rust"><code><span class="kw">use </span>cairo_lang_sierra::extensions::{
     array::ArrayConcreteLibfunc,
     boolean::BoolConcreteLibfunc,
     bounded_int::BoundedIntConcreteLibfunc,
@@ -447,7 +452,7 @@
     starknet::{
         secp256::{Secp256ConcreteLibfunc, Secp256OpConcreteLibfunc},
         testing::TestingConcreteLibfunc,
-        StarkNetConcreteLibfunc,
+        StarknetConcreteLibfunc,
     },
     structure::StructConcreteLibfunc,
 };
@@ -545,6 +550,7 @@
             GasConcreteLibfunc::GetAvailableGas(<span class="kw">_</span>) =&gt; <span class="string">"get_available_gas"</span>,
             GasConcreteLibfunc::BuiltinWithdrawGas(<span class="kw">_</span>) =&gt; <span class="string">"builtin_withdraw_gas"</span>,
             GasConcreteLibfunc::GetBuiltinCosts(<span class="kw">_</span>) =&gt; <span class="string">"get_builtin_costs"</span>,
+            GasConcreteLibfunc::GetUnspentGas(<span class="kw">_</span>) =&gt; <span class="string">"get_unspent_gas"</span>,
         },
         CoreConcreteLibfunc::Uint8(value) =&gt; <span class="kw">match </span>value {
             UintConcrete::Const(<span class="kw">_</span>) =&gt; <span class="string">"u8_const"</span>,
@@ -730,49 +736,50 @@
             Felt252DictEntryConcreteLibfunc::Get(<span class="kw">_</span>) =&gt; <span class="string">"felt252dict_get"</span>,
             Felt252DictEntryConcreteLibfunc::Finalize(<span class="kw">_</span>) =&gt; <span class="string">"felt252dict_finalize"</span>,
         },
+        CoreConcreteLibfunc::Felt252SquashedDict(<span class="kw">_</span>) =&gt; <span class="string">"felt252_squashed_dict"</span>,
         CoreConcreteLibfunc::Pedersen(value) =&gt; <span class="kw">match </span>value {
             PedersenConcreteLibfunc::PedersenHash(<span class="kw">_</span>) =&gt; <span class="string">"pedersen_hash"</span>,
         },
         CoreConcreteLibfunc::Poseidon(value) =&gt; <span class="kw">match </span>value {
             PoseidonConcreteLibfunc::HadesPermutation(<span class="kw">_</span>) =&gt; <span class="string">"hades_permutation"</span>,
         },
-        CoreConcreteLibfunc::StarkNet(value) =&gt; <span class="kw">match </span>value {
-            StarkNetConcreteLibfunc::CallContract(<span class="kw">_</span>) =&gt; <span class="string">"call_contract"</span>,
-            StarkNetConcreteLibfunc::ClassHashConst(<span class="kw">_</span>) =&gt; <span class="string">"class_hash_const"</span>,
-            StarkNetConcreteLibfunc::ClassHashTryFromFelt252(<span class="kw">_</span>) =&gt; <span class="string">"class_hash_try_from_felt252"</span>,
-            StarkNetConcreteLibfunc::ClassHashToFelt252(<span class="kw">_</span>) =&gt; <span class="string">"class_hash_to_felt252"</span>,
-            StarkNetConcreteLibfunc::ContractAddressConst(<span class="kw">_</span>) =&gt; <span class="string">"contract_address_const"</span>,
-            StarkNetConcreteLibfunc::ContractAddressTryFromFelt252(<span class="kw">_</span>) =&gt; {
+        CoreConcreteLibfunc::Starknet(value) =&gt; <span class="kw">match </span>value {
+            StarknetConcreteLibfunc::CallContract(<span class="kw">_</span>) =&gt; <span class="string">"call_contract"</span>,
+            StarknetConcreteLibfunc::ClassHashConst(<span class="kw">_</span>) =&gt; <span class="string">"class_hash_const"</span>,
+            StarknetConcreteLibfunc::ClassHashTryFromFelt252(<span class="kw">_</span>) =&gt; <span class="string">"class_hash_try_from_felt252"</span>,
+            StarknetConcreteLibfunc::ClassHashToFelt252(<span class="kw">_</span>) =&gt; <span class="string">"class_hash_to_felt252"</span>,
+            StarknetConcreteLibfunc::ContractAddressConst(<span class="kw">_</span>) =&gt; <span class="string">"contract_address_const"</span>,
+            StarknetConcreteLibfunc::ContractAddressTryFromFelt252(<span class="kw">_</span>) =&gt; {
                 <span class="string">"contract_address_try_from_felt252"
             </span>}
-            StarkNetConcreteLibfunc::ContractAddressToFelt252(<span class="kw">_</span>) =&gt; <span class="string">"contract_address_to_felt252"</span>,
-            StarkNetConcreteLibfunc::StorageRead(<span class="kw">_</span>) =&gt; <span class="string">"storage_read"</span>,
-            StarkNetConcreteLibfunc::StorageWrite(<span class="kw">_</span>) =&gt; <span class="string">"storage_write"</span>,
-            StarkNetConcreteLibfunc::StorageBaseAddressConst(<span class="kw">_</span>) =&gt; <span class="string">"storage_base_address_const"</span>,
-            StarkNetConcreteLibfunc::StorageBaseAddressFromFelt252(<span class="kw">_</span>) =&gt; {
+            StarknetConcreteLibfunc::ContractAddressToFelt252(<span class="kw">_</span>) =&gt; <span class="string">"contract_address_to_felt252"</span>,
+            StarknetConcreteLibfunc::StorageRead(<span class="kw">_</span>) =&gt; <span class="string">"storage_read"</span>,
+            StarknetConcreteLibfunc::StorageWrite(<span class="kw">_</span>) =&gt; <span class="string">"storage_write"</span>,
+            StarknetConcreteLibfunc::StorageBaseAddressConst(<span class="kw">_</span>) =&gt; <span class="string">"storage_base_address_const"</span>,
+            StarknetConcreteLibfunc::StorageBaseAddressFromFelt252(<span class="kw">_</span>) =&gt; {
                 <span class="string">"storage_base_address_from_felt252"
             </span>}
-            StarkNetConcreteLibfunc::StorageAddressFromBase(<span class="kw">_</span>) =&gt; <span class="string">"storage_address_from_base"</span>,
-            StarkNetConcreteLibfunc::StorageAddressFromBaseAndOffset(<span class="kw">_</span>) =&gt; {
+            StarknetConcreteLibfunc::StorageAddressFromBase(<span class="kw">_</span>) =&gt; <span class="string">"storage_address_from_base"</span>,
+            StarknetConcreteLibfunc::StorageAddressFromBaseAndOffset(<span class="kw">_</span>) =&gt; {
                 <span class="string">"storage_address_from_base_and_offset"
             </span>}
-            StarkNetConcreteLibfunc::StorageAddressToFelt252(<span class="kw">_</span>) =&gt; <span class="string">"storage_address_to_felt252"</span>,
-            StarkNetConcreteLibfunc::StorageAddressTryFromFelt252(<span class="kw">_</span>) =&gt; {
+            StarknetConcreteLibfunc::StorageAddressToFelt252(<span class="kw">_</span>) =&gt; <span class="string">"storage_address_to_felt252"</span>,
+            StarknetConcreteLibfunc::StorageAddressTryFromFelt252(<span class="kw">_</span>) =&gt; {
                 <span class="string">"storage_address_try_from_felt252"
             </span>}
-            StarkNetConcreteLibfunc::EmitEvent(<span class="kw">_</span>) =&gt; <span class="string">"emit_event"</span>,
-            StarkNetConcreteLibfunc::GetBlockHash(<span class="kw">_</span>) =&gt; <span class="string">"get_block_hash"</span>,
-            StarkNetConcreteLibfunc::GetExecutionInfo(<span class="kw">_</span>) =&gt; <span class="string">"get_exec_info_v1"</span>,
-            StarkNetConcreteLibfunc::GetExecutionInfoV2(<span class="kw">_</span>) =&gt; <span class="string">"get_exec_info_v2"</span>,
-            StarkNetConcreteLibfunc::Deploy(<span class="kw">_</span>) =&gt; <span class="string">"deploy"</span>,
-            StarkNetConcreteLibfunc::Keccak(<span class="kw">_</span>) =&gt; <span class="string">"keccak"</span>,
-            StarkNetConcreteLibfunc::LibraryCall(<span class="kw">_</span>) =&gt; <span class="string">"library_call"</span>,
-            StarkNetConcreteLibfunc::ReplaceClass(<span class="kw">_</span>) =&gt; <span class="string">"replace_class"</span>,
-            StarkNetConcreteLibfunc::SendMessageToL1(<span class="kw">_</span>) =&gt; <span class="string">"send_message_to_l1"</span>,
-            StarkNetConcreteLibfunc::Testing(value) =&gt; <span class="kw">match </span>value {
+            StarknetConcreteLibfunc::EmitEvent(<span class="kw">_</span>) =&gt; <span class="string">"emit_event"</span>,
+            StarknetConcreteLibfunc::GetBlockHash(<span class="kw">_</span>) =&gt; <span class="string">"get_block_hash"</span>,
+            StarknetConcreteLibfunc::GetExecutionInfo(<span class="kw">_</span>) =&gt; <span class="string">"get_exec_info_v1"</span>,
+            StarknetConcreteLibfunc::GetExecutionInfoV2(<span class="kw">_</span>) =&gt; <span class="string">"get_exec_info_v2"</span>,
+            StarknetConcreteLibfunc::Deploy(<span class="kw">_</span>) =&gt; <span class="string">"deploy"</span>,
+            StarknetConcreteLibfunc::Keccak(<span class="kw">_</span>) =&gt; <span class="string">"keccak"</span>,
+            StarknetConcreteLibfunc::LibraryCall(<span class="kw">_</span>) =&gt; <span class="string">"library_call"</span>,
+            StarknetConcreteLibfunc::ReplaceClass(<span class="kw">_</span>) =&gt; <span class="string">"replace_class"</span>,
+            StarknetConcreteLibfunc::SendMessageToL1(<span class="kw">_</span>) =&gt; <span class="string">"send_message_to_l1"</span>,
+            StarknetConcreteLibfunc::Testing(value) =&gt; <span class="kw">match </span>value {
                 TestingConcreteLibfunc::Cheatcode(<span class="kw">_</span>) =&gt; <span class="string">"cheatcode"</span>,
             },
-            StarkNetConcreteLibfunc::Secp256(value) =&gt; <span class="kw">match </span>value {
+            StarknetConcreteLibfunc::Secp256(value) =&gt; <span class="kw">match </span>value {
                 Secp256ConcreteLibfunc::K1(value) =&gt; <span class="kw">match </span>value {
                     Secp256OpConcreteLibfunc::New(<span class="kw">_</span>) =&gt; <span class="string">"secp256k1_new"</span>,
                     Secp256OpConcreteLibfunc::Add(<span class="kw">_</span>) =&gt; <span class="string">"secp256k1_add"</span>,
@@ -788,14 +795,16 @@
                     Secp256OpConcreteLibfunc::GetXy(<span class="kw">_</span>) =&gt; <span class="string">"secp256r1_get_xy"</span>,
                 },
             },
-            StarkNetConcreteLibfunc::Sha256ProcessBlock(<span class="kw">_</span>) =&gt; <span class="string">"sha256_process_block"</span>,
-            StarkNetConcreteLibfunc::Sha256StateHandleInit(<span class="kw">_</span>) =&gt; <span class="string">"sha256_state_handle_init"</span>,
-            StarkNetConcreteLibfunc::Sha256StateHandleDigest(<span class="kw">_</span>) =&gt; <span class="string">"sha256_state_handle_digest"</span>,
-            StarkNetConcreteLibfunc::GetClassHashAt(<span class="kw">_</span>) =&gt; <span class="string">"get_class_hash_at_syscall"</span>,
+            StarknetConcreteLibfunc::Sha256ProcessBlock(<span class="kw">_</span>) =&gt; <span class="string">"sha256_process_block"</span>,
+            StarknetConcreteLibfunc::Sha256StateHandleInit(<span class="kw">_</span>) =&gt; <span class="string">"sha256_state_handle_init"</span>,
+            StarknetConcreteLibfunc::Sha256StateHandleDigest(<span class="kw">_</span>) =&gt; <span class="string">"sha256_state_handle_digest"</span>,
+            StarknetConcreteLibfunc::GetClassHashAt(<span class="kw">_</span>) =&gt; <span class="string">"get_class_hash_at_syscall"</span>,
+            StarknetConcreteLibfunc::MetaTxV0(<span class="kw">_</span>) =&gt; <span class="string">"meta_tx_v0"</span>,
         },
         CoreConcreteLibfunc::Debug(value) =&gt; <span class="kw">match </span>value {
             DebugConcreteLibfunc::Print(<span class="kw">_</span>) =&gt; <span class="string">"debug_print"</span>,
         },
+        CoreConcreteLibfunc::Trace(<span class="kw">_</span>) =&gt; <span class="string">"trace"</span>,
         CoreConcreteLibfunc::SnapshotTake(<span class="kw">_</span>) =&gt; <span class="string">"snapshot_take"</span>,
         CoreConcreteLibfunc::Bytes31(value) =&gt; <span class="kw">match </span>value {
             Bytes31ConcreteLibfunc::Const(<span class="kw">_</span>) =&gt; <span class="string">"bytes31_const"</span>,
@@ -834,6 +843,7 @@
             IntRangeConcreteLibfunc::TryNew(<span class="kw">_</span>) =&gt; <span class="string">"int_range_try_new"</span>,
             IntRangeConcreteLibfunc::PopFront(<span class="kw">_</span>) =&gt; <span class="string">"int_range_pop_front"</span>,
         },
+        CoreConcreteLibfunc::Blake(<span class="kw">_</span>) =&gt; <span class="string">"blake"</span>,
     }
 }
 </code></pre></div></section></main></body></html>

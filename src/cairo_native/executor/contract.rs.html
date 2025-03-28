@@ -915,8 +915,7 @@
 <a href="#914" id="914">914</a>
 <a href="#915" id="915">915</a>
 <a href="#916" id="916">916</a>
-<a href="#917" id="917">917</a>
-<a href="#918" id="918">918</a></pre></div><pre class="rust"><code><span class="doccomment">//! A specialized executor for Starknet contracts, avoiding the overhead of storing the sierra program registry and
+<a href="#917" id="917">917</a></pre></div><pre class="rust"><code><span class="doccomment">//! A specialized executor for Starknet contracts, avoiding the overhead of storing the sierra program registry and
 //! enabling efficient serialization of the program/data once compiled.
 //!
 //! This executor heavily relies on the stability of the contract entry point argument order.
@@ -972,7 +971,7 @@
         circuit::CircuitTypeConcrete,
         core::{CoreLibfunc, CoreType, CoreTypeConcrete},
         gas::CostTokenType,
-        starknet::StarkNetTypeConcrete,
+        starknet::StarknetTypeConcrete,
     },
     ids::FunctionId,
     program::{GenFunction, Program, StatementIdx},
@@ -1545,7 +1544,7 @@
                     BuiltinType::CircuitMul
                 }
                 CoreTypeConcrete::GasBuiltin(<span class="kw">_</span>) =&gt; BuiltinType::Gas,
-                CoreTypeConcrete::StarkNet(StarkNetTypeConcrete::System(<span class="kw">_</span>)) =&gt; BuiltinType::System,
+                CoreTypeConcrete::Starknet(StarknetTypeConcrete::System(<span class="kw">_</span>)) =&gt; BuiltinType::System,
                 <span class="kw">_ </span>=&gt; <span class="macro">native_panic!</span>(<span class="string">"unknown builtin type for function {}"</span>, function),
             })
         })
@@ -1790,7 +1789,7 @@
             )
             .unwrap();
         <span class="macro">assert_eq!</span>(result.return_values, <span class="macro">vec!</span>[Felt::from(<span class="number">3628800</span>)]);
-        <span class="macro">assert_eq!</span>(result.remaining_gas, <span class="number">18446744073709537615</span>);
+        <span class="macro">assert_eq!</span>(result.remaining_gas, <span class="number">18446744073709538015</span>);
     }
 
     <span class="attr">#[rstest]
@@ -1812,7 +1811,6 @@
         .unwrap();
 
         <span class="comment">// The last function in the program is the `get` wrapper function.
-        // The last function in the program is the `get` wrapper function.
         </span><span class="kw">let </span>selector = starknet_program_empty
             .entry_points_by_type
             .external

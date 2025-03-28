@@ -483,13 +483,20 @@
 <a href="#482" id="482">482</a>
 <a href="#483" id="483">483</a>
 <a href="#484" id="484">484</a>
-<a href="#485" id="485">485</a></pre></div><pre class="rust"><code><span class="doccomment">//! # Compiler libfunc infrastructure
+<a href="#485" id="485">485</a>
+<a href="#486" id="486">486</a>
+<a href="#487" id="487">487</a>
+<a href="#488" id="488">488</a>
+<a href="#489" id="489">489</a>
+<a href="#490" id="490">490</a>
+<a href="#491" id="491">491</a></pre></div><pre class="rust"><code><span class="doccomment">//! # Compiler libfunc infrastructure
 //!
 //! Contains libfunc generation stuff (aka. the actual instructions).
 
 </span><span class="kw">use crate</span>::{
     error::{panic::ToNativeAssertError, Error <span class="kw">as </span>CoreLibfuncBuilderError, <span class="prelude-ty">Result</span>},
     metadata::MetadataStorage,
+    native_panic,
     types::TypeBuilder,
     utils::BlockExt,
 };
@@ -502,7 +509,7 @@
             unsigned::{Uint16Traits, Uint32Traits, Uint64Traits, Uint8Traits},
         },
         lib_func::ParamSignature,
-        starknet::StarkNetTypeConcrete,
+        starknet::StarknetTypeConcrete,
         ConcreteLibfunc,
     },
     ids::FunctionId,
@@ -629,6 +636,7 @@
             <span class="self">Self</span>::Debug(selector) =&gt; <span class="self">self</span>::debug::build(
                 context, registry, entry, location, helper, metadata, selector,
             ),
+            <span class="self">Self</span>::Trace(<span class="kw">_</span>) =&gt; <span class="macro">native_panic!</span>(<span class="string">"Implement trace libfunc"</span>),
             <span class="self">Self</span>::Drop(info) =&gt; {
                 <span class="self">self</span>::drop::build(context, registry, entry, location, helper, metadata, info)
             }
@@ -647,6 +655,9 @@
             <span class="self">Self</span>::Felt252Dict(selector) =&gt; <span class="self">self</span>::felt252_dict::build(
                 context, registry, entry, location, helper, metadata, selector,
             ),
+            <span class="self">Self</span>::Felt252SquashedDict(<span class="kw">_</span>) =&gt; {
+                <span class="macro">native_panic!</span>(<span class="string">"Implement felt252_squashed_dict libfunc"</span>)
+            }
             <span class="self">Self</span>::Felt252DictEntry(selector) =&gt; <span class="self">self</span>::felt252_dict_entry::build(
                 context, registry, entry, location, helper, metadata, selector,
             ),
@@ -659,6 +670,7 @@
             <span class="self">Self</span>::IntRange(selector) =&gt; <span class="self">self</span>::int_range::build(
                 context, registry, entry, location, helper, metadata, selector,
             ),
+            <span class="self">Self</span>::Blake(<span class="kw">_</span>) =&gt; <span class="macro">native_panic!</span>(<span class="string">"Implement blake libfunc"</span>),
             <span class="self">Self</span>::Mem(selector) =&gt; <span class="self">self</span>::mem::build(
                 context, registry, entry, location, helper, metadata, selector,
             ),
@@ -686,7 +698,7 @@
             <span class="self">Self</span>::Sint128(selector) =&gt; <span class="self">self</span>::int::build_i128(
                 context, registry, entry, location, helper, metadata, selector,
             ),
-            <span class="self">Self</span>::StarkNet(selector) =&gt; <span class="self">self</span>::starknet::build(
+            <span class="self">Self</span>::Starknet(selector) =&gt; <span class="self">self</span>::starknet::build(
                 context, registry, entry, location, helper, metadata, selector,
             ),
             <span class="self">Self</span>::Struct(selector) =&gt; <span class="self">self</span>::r#struct::build(
@@ -956,7 +968,7 @@
                 CoreTypeConcrete::BuiltinCosts(<span class="kw">_</span>)
                     | CoreTypeConcrete::Coupon(<span class="kw">_</span>)
                     | CoreTypeConcrete::GasBuiltin(<span class="kw">_</span>)
-                    | CoreTypeConcrete::StarkNet(StarkNetTypeConcrete::System(<span class="kw">_</span>))
+                    | CoreTypeConcrete::Starknet(StarknetTypeConcrete::System(<span class="kw">_</span>))
             )
         {
             param_val = increment_builtin_counter(context, entry, location, param_val)<span class="question-mark">?</span>;

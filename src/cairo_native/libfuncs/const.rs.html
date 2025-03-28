@@ -352,7 +352,7 @@
             ConstConcreteType,
         },
         core::{CoreLibfunc, CoreType, CoreTypeConcrete},
-        starknet::StarkNetTypeConcrete,
+        starknet::StarknetTypeConcrete,
     },
     program::GenericArg,
     program_registry::ProgramRegistry,
@@ -604,8 +604,8 @@
 
             entry.const_int_from_type(context, location, value, inner_ty)
         }
-        CoreTypeConcrete::StarkNet(
-            StarkNetTypeConcrete::ClassHash(<span class="kw">_</span>) | StarkNetTypeConcrete::ContractAddress(<span class="kw">_</span>),
+        CoreTypeConcrete::Starknet(
+            StarknetTypeConcrete::ClassHash(<span class="kw">_</span>) | StarknetTypeConcrete::ContractAddress(<span class="kw">_</span>),
         ) =&gt; {
             <span class="kw">let </span>value = <span class="kw">match </span><span class="kw-2">&amp;</span>info.inner_data.as_slice() {
                 [GenericArg::Value(value)] =&gt; value.clone(),

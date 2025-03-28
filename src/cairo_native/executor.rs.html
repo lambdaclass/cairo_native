@@ -800,7 +800,19 @@
 <a href="#799" id="799">799</a>
 <a href="#800" id="800">800</a>
 <a href="#801" id="801">801</a>
-<a href="#802" id="802">802</a></pre></div><pre class="rust"><code><span class="doccomment">//! # Executors
+<a href="#802" id="802">802</a>
+<a href="#803" id="803">803</a>
+<a href="#804" id="804">804</a>
+<a href="#805" id="805">805</a>
+<a href="#806" id="806">806</a>
+<a href="#807" id="807">807</a>
+<a href="#808" id="808">808</a>
+<a href="#809" id="809">809</a>
+<a href="#810" id="810">810</a>
+<a href="#811" id="811">811</a>
+<a href="#812" id="812">812</a>
+<a href="#813" id="813">813</a>
+<a href="#814" id="814">814</a></pre></div><pre class="rust"><code><span class="doccomment">//! # Executors
 //!
 //! This module provides methods to execute the programs, either via JIT or compiled ahead
 //! of time. It also provides a cache to avoid recompiling previously compiled programs.
@@ -822,7 +834,7 @@
     extensions::{
         circuit::CircuitTypeConcrete,
         core::{CoreLibfunc, CoreType, CoreTypeConcrete},
-        starknet::StarkNetTypeConcrete,
+        starknet::StarknetTypeConcrete,
         ConcreteType,
     },
     ids::ConcreteTypeId,
@@ -964,7 +976,7 @@
             CoreTypeConcrete::GasBuiltin(<span class="kw">_</span>) =&gt; {
                 gas.to_bytes(<span class="kw-2">&amp;mut </span>invoke_data, |<span class="kw">_</span>| <span class="macro">unreachable!</span>())<span class="question-mark">?
             </span>}
-            CoreTypeConcrete::StarkNet(StarkNetTypeConcrete::System(<span class="kw">_</span>)) =&gt; {
+            CoreTypeConcrete::Starknet(StarknetTypeConcrete::System(<span class="kw">_</span>)) =&gt; {
                 <span class="kw">let </span>syscall_handler = syscall_handler
                     .as_mut()
                     .to_native_assert_error(<span class="string">"syscall handler should be available"</span>)<span class="question-mark">?</span>;
@@ -1056,7 +1068,7 @@
                     }
                 });
             }
-            CoreTypeConcrete::StarkNet(StarkNetTypeConcrete::System(<span class="kw">_</span>)) =&gt; {
+            CoreTypeConcrete::Starknet(StarknetTypeConcrete::System(<span class="kw">_</span>)) =&gt; {
                 <span class="kw">if let </span><span class="prelude-val">Some</span>(return_ptr) = <span class="kw-2">&amp;mut </span>return_ptr {
                     <span class="kw">unsafe </span>{
                         <span class="kw">let </span>ptr = return_ptr.cast::&lt;<span class="kw-2">*mut </span>()&gt;();
@@ -1222,11 +1234,11 @@
             <span class="bool-val">true</span>,
         )<span class="question-mark">?</span>),
         CoreTypeConcrete::Felt252(<span class="kw">_</span>)
-        | CoreTypeConcrete::StarkNet(
-            StarkNetTypeConcrete::ClassHash(<span class="kw">_</span>)
-            | StarkNetTypeConcrete::ContractAddress(<span class="kw">_</span>)
-            | StarkNetTypeConcrete::StorageAddress(<span class="kw">_</span>)
-            | StarkNetTypeConcrete::StorageBaseAddress(<span class="kw">_</span>),
+        | CoreTypeConcrete::Starknet(
+            StarknetTypeConcrete::ClassHash(<span class="kw">_</span>)
+            | StarknetTypeConcrete::ContractAddress(<span class="kw">_</span>)
+            | StarknetTypeConcrete::StorageAddress(<span class="kw">_</span>)
+            | StarknetTypeConcrete::StorageBaseAddress(<span class="kw">_</span>),
         ) =&gt; <span class="kw">match </span>return_ptr {
             <span class="prelude-val">Some</span>(return_ptr) =&gt; <span class="prelude-val">Ok</span>(Value::from_ptr(return_ptr, type_id, registry, <span class="bool-val">true</span>)<span class="question-mark">?</span>),
             <span class="prelude-val">None </span>=&gt; {
@@ -1444,7 +1456,7 @@
         | CoreTypeConcrete::Pedersen(<span class="kw">_</span>)
         | CoreTypeConcrete::Poseidon(<span class="kw">_</span>)
         | CoreTypeConcrete::SegmentArena(<span class="kw">_</span>)
-        | CoreTypeConcrete::StarkNet(StarkNetTypeConcrete::System(<span class="kw">_</span>)) =&gt; {
+        | CoreTypeConcrete::Starknet(StarknetTypeConcrete::System(<span class="kw">_</span>)) =&gt; {
             <span class="macro">native_panic!</span>(<span class="string">"builtins should have been handled before"</span>)
         }
 
@@ -1452,12 +1464,14 @@
         | CoreTypeConcrete::Span(<span class="kw">_</span>)
         | CoreTypeConcrete::Uninitialized(<span class="kw">_</span>)
         | CoreTypeConcrete::Coupon(<span class="kw">_</span>)
-        | CoreTypeConcrete::StarkNet(<span class="kw">_</span>)
+        | CoreTypeConcrete::Starknet(<span class="kw">_</span>)
         | CoreTypeConcrete::Uint128MulGuarantee(<span class="kw">_</span>)
         | CoreTypeConcrete::Circuit(<span class="kw">_</span>)
         | CoreTypeConcrete::RangeCheck96(<span class="kw">_</span>) =&gt; <span class="macro">native_panic!</span>(<span class="string">"not yet implemented as results"</span>),
         <span class="comment">// 2.9.0
         </span>CoreTypeConcrete::IntRange(<span class="kw">_</span>) =&gt; <span class="macro">native_panic!</span>(<span class="string">"not yet implemented as results"</span>),
+        <span class="comment">// 2.11.1
+        </span>CoreTypeConcrete::Blake(<span class="kw">_</span>) =&gt; <span class="macro">native_panic!</span>(<span class="string">"not yet implemented as results"</span>),
     }
 }
 
@@ -1475,7 +1489,7 @@
     <span class="attr">#[fixture]
     </span><span class="kw">fn </span>program() -&gt; Program {
         <span class="kw">let </span>(<span class="kw">_</span>, program) = <span class="macro">load_cairo!</span> {
-            <span class="kw">use </span>core::starknet::{SyscallResultTrait, get_block_hash_syscall};
+            <span class="kw">use </span>starknet::{SyscallResultTrait, get_block_hash_syscall};
 
             <span class="kw">fn </span>run_test() -&gt; felt252 {
                 <span class="number">42
@@ -1556,10 +1570,15 @@
             .expect(<span class="string">"failed to compile context"</span>);
         <span class="kw">let </span>executor = AotNativeExecutor::from_native_module(module, OptLevel::default()).unwrap();
 
-        <span class="comment">// The last function in the program is the `get` wrapper function.
-        </span><span class="kw">let </span>entrypoint_function_id = <span class="kw-2">&amp;</span>starknet_program
+        <span class="kw">let </span>entrypoint_function_id = <span class="kw-2">&amp;</span>starknet_program
             .funcs
-            .last()
+            .iter()
+            .find(|f| {
+                f.id.debug_name
+                    .as_ref()
+                    .map(|name| name.contains(<span class="string">"__wrapper__ISimpleStorageImpl__get"</span>))
+                    .unwrap_or_default()
+            })
             .expect(<span class="string">"should have a function"</span>)
             .id;
 
@@ -1583,10 +1602,15 @@
             .expect(<span class="string">"failed to compile context"</span>);
         <span class="kw">let </span>executor = JitNativeExecutor::from_native_module(module, OptLevel::default()).unwrap();
 
-        <span class="comment">// The last function in the program is the `get` wrapper function.
-        </span><span class="kw">let </span>entrypoint_function_id = <span class="kw-2">&amp;</span>starknet_program
+        <span class="kw">let </span>entrypoint_function_id = <span class="kw-2">&amp;</span>starknet_program
             .funcs
-            .last()
+            .iter()
+            .find(|f| {
+                f.id.debug_name
+                    .as_ref()
+                    .map(|name| name.contains(<span class="string">"__wrapper__ISimpleStorageImpl__get"</span>))
+                    .unwrap_or_default()
+            })
             .expect(<span class="string">"should have a function"</span>)
             .id;
 
