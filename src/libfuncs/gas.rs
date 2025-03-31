@@ -98,7 +98,7 @@ pub fn build_withdraw_gas<'ctx, 'this>(
         .clone();
 
     let total_gas_cost_value =
-        build_actual_gas_cost(context, entry, location, gas_cost, builtin_ptr)?;
+        build_calculate_gas_cost(context, entry, location, gas_cost, builtin_ptr)?;
 
     let is_enough = entry.cmpi(
         context,
@@ -155,7 +155,7 @@ pub fn build_redeposit_gas<'ctx, 'this>(
     };
 
     let total_gas_cost_value =
-        build_actual_gas_cost(context, entry, location, gas_cost, builtin_ptr)?;
+        build_calculate_gas_cost(context, entry, location, gas_cost, builtin_ptr)?;
 
     let resulting_gas = entry.append_op_result(
         ods::llvm::intr_uadd_sat(context, current_gas, total_gas_cost_value, location).into(),
@@ -186,7 +186,7 @@ pub fn build_builtin_withdraw_gas<'ctx, 'this>(
         .clone();
 
     let total_gas_cost_value =
-        build_actual_gas_cost(context, entry, location, gas_cost, builtin_ptr)?;
+        build_calculate_gas_cost(context, entry, location, gas_cost, builtin_ptr)?;
 
     let is_enough = entry.cmpi(
         context,
@@ -237,9 +237,9 @@ pub fn build_get_builtin_costs<'ctx, 'this>(
     Ok(())
 }
 
-/// Calculate the actual gas cost, given the constant `GasCost` configuration,
+/// Calculate the current gas cost, given the constant `GasCost` configuration,
 /// and the current `BuiltinCosts` pointer.
-pub fn build_actual_gas_cost<'c, 'b>(
+pub fn build_calculate_gas_cost<'c, 'b>(
     context: &'c Context,
     block: &'b Block<'c>,
     location: Location<'c>,
