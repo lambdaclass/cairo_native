@@ -448,7 +448,6 @@ fn compile_func(
         |statement_idx, mut state| {
             if let Some(gas_metadata) = metadata.get::<GasMetadata>() {
                 let gas_cost = gas_metadata.get_gas_costs_for_statement(statement_idx);
-                metadata.remove::<GasCost>();
                 metadata.insert(GasCost(gas_cost));
             }
 
@@ -487,7 +486,7 @@ fn compile_func(
                 ));
             }
 
-            Ok(match &statements[statement_idx.0] {
+            let statement_compilation_result = match &statements[statement_idx.0] {
                 Statement::Invocation(invocation) => {
                     tracing::trace!(
                         "Implementing the invocation statement at {statement_idx}: {}.",
@@ -614,7 +613,7 @@ fn compile_func(
                         }
                     }
 
-                    StatementCompileResult::Processed(
+                    StatementCompilationResult::Processed(
                         invocation
                             .branches
                             .iter()
@@ -657,7 +656,7 @@ fn compile_func(
                                 // within a tail-recursive function before the recursive call has
                                 // been generated. Since we don't have the return target block at
                                 // this point we need to defer this return statement's generation.
-                                return Ok(StatementCompileResult::Deferred);
+                                return Ok(StatementCompilationResult::Deferred);
                             }
                             Some((depth_counter, recursion_target)) => {
                                 let location = Location::name(
@@ -824,9 +823,13 @@ fn compile_func(
                         location,
                     ));
 
-                    StatementCompileResult::Processed(Vec::new())
+                    StatementCompilationResult::Processed(Vec::new())
                 }
-            })
+            };
+
+            metadata.remove::<GasCost>();
+
+            Ok(statement_compilation_result)
         },
     )?;
 
@@ -1022,7 +1025,7 @@ fn generate_function_structure<'c, 'a>(
                         }
                     }
 
-                    StatementCompileResult::Processed(
+                    StatementCompilationResult::Processed(
                         invocation
                             .branches
                             .iter()
@@ -1085,7 +1088,7 @@ fn generate_function_structure<'c, 'a>(
                         block.add_argument(ty, location);
                     }
 
-                    StatementCompileResult::Processed(Vec::new())
+                    StatementCompilationResult::Processed(Vec::new())
                 }
             })
         },
@@ -1210,7 +1213,7 @@ fn foreach_statement_in_function<S, E>(
     statements: &[Statement],
     entry_point: StatementIdx,
     initial_state: S,
-    mut closure: impl FnMut(StatementIdx, S) -> Result<StatementCompileResult<Vec<S>>, E>,
+    mut closure: impl FnMut(StatementIdx, S) -> Result<StatementCompilationResult<Vec<S>>, E>,
 ) -> Result<(), E>
 where
     S: Clone,
@@ -1224,7 +1227,7 @@ where
         }
 
         match closure(statement_idx, state.clone())? {
-            StatementCompileResult::Processed(branch_states) => {
+            StatementCompilationResult::Processed(branch_states) => {
                 let branches = match &statements[statement_idx.0] {
                     Statement::Invocation(x) => x.branches.as_slice(),
                     Statement::Return(_) => &[],
@@ -1242,7 +1245,7 @@ where
                         .zip(branch_states),
                 );
             }
-            StatementCompileResult::Deferred => {
+            StatementCompilationResult::Deferred => {
                 tracing::trace!("Statement {statement_idx}'s compilation has been deferred.");
 
                 visited.remove(&statement_idx);
@@ -1394,7 +1397,7 @@ fn generate_entry_point_wrapper<'c>(
 /// Return type for the closure in [`foreach_statement_in_function`] that determines whether the
 /// statement was processed successfully or needs to be processed again at the end.
 #[derive(Clone, Debug)]
-enum StatementCompileResult<T> {
+enum StatementCompilationResult<T> {
     /// The statement was processed successfully.
     Processed(T),
     /// The statement's processing has to be deferred until the end.
