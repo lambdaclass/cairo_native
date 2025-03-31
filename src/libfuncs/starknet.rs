@@ -141,11 +141,7 @@ pub fn build<'ctx, 'this>(
             context, registry, entry, location, helper, metadata, info,
         ),
         StarknetConcreteLibfunc::MetaTxV0(_) => {
-<<<<<<< HEAD
-            todo!("Implement MetaTxV0 libfunc");
-=======
             native_panic!("Implement MetaTxV0 libfunc");
->>>>>>> main
         }
         #[cfg(feature = "with-cheatcode")]
         StarknetConcreteLibfunc::Testing(TestingConcreteLibfunc::Cheatcode(info)) => {
