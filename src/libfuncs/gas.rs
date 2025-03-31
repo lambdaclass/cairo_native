@@ -87,7 +87,7 @@ pub fn build_withdraw_gas<'ctx, 'this>(
             .get_mut::<RuntimeBindingsMeta>()
             .ok_or(Error::MissingMetadata)?;
         runtime
-            .get_gas_builtin(context, helper, entry, location)?
+            .get_costs_builtin(context, helper, entry, location)?
             .result(0)?
             .into()
     };
@@ -149,7 +149,7 @@ pub fn build_redeposit_gas<'ctx, 'this>(
             .get_mut::<RuntimeBindingsMeta>()
             .ok_or(Error::MissingMetadata)?;
         runtime
-            .get_gas_builtin(context, helper, entry, location)?
+            .get_costs_builtin(context, helper, entry, location)?
             .result(0)?
             .into()
     };
@@ -227,7 +227,7 @@ pub fn build_get_builtin_costs<'ctx, 'this>(
             .get_mut::<RuntimeBindingsMeta>()
             .ok_or(Error::MissingMetadata)?;
         runtime
-            .get_gas_builtin(context, helper, entry, location)?
+            .get_costs_builtin(context, helper, entry, location)?
             .result(0)?
             .into()
     };
