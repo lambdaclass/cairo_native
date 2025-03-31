@@ -28,7 +28,7 @@ use cairo_lang_sierra::extensions::{
     starknet::{
         secp256::{Secp256ConcreteLibfunc, Secp256OpConcreteLibfunc},
         testing::TestingConcreteLibfunc,
-        StarkNetConcreteLibfunc,
+        StarknetConcreteLibfunc,
     },
     structure::StructConcreteLibfunc,
 };
@@ -126,6 +126,7 @@ pub const fn libfunc_to_name(value: &CoreConcreteLibfunc) -> &'static str {
             GasConcreteLibfunc::GetAvailableGas(_) => "get_available_gas",
             GasConcreteLibfunc::BuiltinWithdrawGas(_) => "builtin_withdraw_gas",
             GasConcreteLibfunc::GetBuiltinCosts(_) => "get_builtin_costs",
+            GasConcreteLibfunc::GetUnspentGas(_) => "get_unspent_gas",
         },
         CoreConcreteLibfunc::Uint8(value) => match value {
             UintConcrete::Const(_) => "u8_const",
@@ -311,49 +312,50 @@ pub const fn libfunc_to_name(value: &CoreConcreteLibfunc) -> &'static str {
             Felt252DictEntryConcreteLibfunc::Get(_) => "felt252dict_get",
             Felt252DictEntryConcreteLibfunc::Finalize(_) => "felt252dict_finalize",
         },
+        CoreConcreteLibfunc::Felt252SquashedDict(_) => "felt252_squashed_dict",
         CoreConcreteLibfunc::Pedersen(value) => match value {
             PedersenConcreteLibfunc::PedersenHash(_) => "pedersen_hash",
         },
         CoreConcreteLibfunc::Poseidon(value) => match value {
             PoseidonConcreteLibfunc::HadesPermutation(_) => "hades_permutation",
         },
-        CoreConcreteLibfunc::StarkNet(value) => match value {
-            StarkNetConcreteLibfunc::CallContract(_) => "call_contract",
-            StarkNetConcreteLibfunc::ClassHashConst(_) => "class_hash_const",
-            StarkNetConcreteLibfunc::ClassHashTryFromFelt252(_) => "class_hash_try_from_felt252",
-            StarkNetConcreteLibfunc::ClassHashToFelt252(_) => "class_hash_to_felt252",
-            StarkNetConcreteLibfunc::ContractAddressConst(_) => "contract_address_const",
-            StarkNetConcreteLibfunc::ContractAddressTryFromFelt252(_) => {
+        CoreConcreteLibfunc::Starknet(value) => match value {
+            StarknetConcreteLibfunc::CallContract(_) => "call_contract",
+            StarknetConcreteLibfunc::ClassHashConst(_) => "class_hash_const",
+            StarknetConcreteLibfunc::ClassHashTryFromFelt252(_) => "class_hash_try_from_felt252",
+            StarknetConcreteLibfunc::ClassHashToFelt252(_) => "class_hash_to_felt252",
+            StarknetConcreteLibfunc::ContractAddressConst(_) => "contract_address_const",
+            StarknetConcreteLibfunc::ContractAddressTryFromFelt252(_) => {
                 "contract_address_try_from_felt252"
             }
-            StarkNetConcreteLibfunc::ContractAddressToFelt252(_) => "contract_address_to_felt252",
-            StarkNetConcreteLibfunc::StorageRead(_) => "storage_read",
-            StarkNetConcreteLibfunc::StorageWrite(_) => "storage_write",
-            StarkNetConcreteLibfunc::StorageBaseAddressConst(_) => "storage_base_address_const",
-            StarkNetConcreteLibfunc::StorageBaseAddressFromFelt252(_) => {
+            StarknetConcreteLibfunc::ContractAddressToFelt252(_) => "contract_address_to_felt252",
+            StarknetConcreteLibfunc::StorageRead(_) => "storage_read",
+            StarknetConcreteLibfunc::StorageWrite(_) => "storage_write",
+            StarknetConcreteLibfunc::StorageBaseAddressConst(_) => "storage_base_address_const",
+            StarknetConcreteLibfunc::StorageBaseAddressFromFelt252(_) => {
                 "storage_base_address_from_felt252"
             }
-            StarkNetConcreteLibfunc::StorageAddressFromBase(_) => "storage_address_from_base",
-            StarkNetConcreteLibfunc::StorageAddressFromBaseAndOffset(_) => {
+            StarknetConcreteLibfunc::StorageAddressFromBase(_) => "storage_address_from_base",
+            StarknetConcreteLibfunc::StorageAddressFromBaseAndOffset(_) => {
                 "storage_address_from_base_and_offset"
             }
-            StarkNetConcreteLibfunc::StorageAddressToFelt252(_) => "storage_address_to_felt252",
-            StarkNetConcreteLibfunc::StorageAddressTryFromFelt252(_) => {
+            StarknetConcreteLibfunc::StorageAddressToFelt252(_) => "storage_address_to_felt252",
+            StarknetConcreteLibfunc::StorageAddressTryFromFelt252(_) => {
                 "storage_address_try_from_felt252"
             }
-            StarkNetConcreteLibfunc::EmitEvent(_) => "emit_event",
-            StarkNetConcreteLibfunc::GetBlockHash(_) => "get_block_hash",
-            StarkNetConcreteLibfunc::GetExecutionInfo(_) => "get_exec_info_v1",
-            StarkNetConcreteLibfunc::GetExecutionInfoV2(_) => "get_exec_info_v2",
-            StarkNetConcreteLibfunc::Deploy(_) => "deploy",
-            StarkNetConcreteLibfunc::Keccak(_) => "keccak",
-            StarkNetConcreteLibfunc::LibraryCall(_) => "library_call",
-            StarkNetConcreteLibfunc::ReplaceClass(_) => "replace_class",
-            StarkNetConcreteLibfunc::SendMessageToL1(_) => "send_message_to_l1",
-            StarkNetConcreteLibfunc::Testing(value) => match value {
+            StarknetConcreteLibfunc::EmitEvent(_) => "emit_event",
+            StarknetConcreteLibfunc::GetBlockHash(_) => "get_block_hash",
+            StarknetConcreteLibfunc::GetExecutionInfo(_) => "get_exec_info_v1",
+            StarknetConcreteLibfunc::GetExecutionInfoV2(_) => "get_exec_info_v2",
+            StarknetConcreteLibfunc::Deploy(_) => "deploy",
+            StarknetConcreteLibfunc::Keccak(_) => "keccak",
+            StarknetConcreteLibfunc::LibraryCall(_) => "library_call",
+            StarknetConcreteLibfunc::ReplaceClass(_) => "replace_class",
+            StarknetConcreteLibfunc::SendMessageToL1(_) => "send_message_to_l1",
+            StarknetConcreteLibfunc::Testing(value) => match value {
                 TestingConcreteLibfunc::Cheatcode(_) => "cheatcode",
             },
-            StarkNetConcreteLibfunc::Secp256(value) => match value {
+            StarknetConcreteLibfunc::Secp256(value) => match value {
                 Secp256ConcreteLibfunc::K1(value) => match value {
                     Secp256OpConcreteLibfunc::New(_) => "secp256k1_new",
                     Secp256OpConcreteLibfunc::Add(_) => "secp256k1_add",
@@ -369,14 +371,16 @@ pub const fn libfunc_to_name(value: &CoreConcreteLibfunc) -> &'static str {
                     Secp256OpConcreteLibfunc::GetXy(_) => "secp256r1_get_xy",
                 },
             },
-            StarkNetConcreteLibfunc::Sha256ProcessBlock(_) => "sha256_process_block",
-            StarkNetConcreteLibfunc::Sha256StateHandleInit(_) => "sha256_state_handle_init",
-            StarkNetConcreteLibfunc::Sha256StateHandleDigest(_) => "sha256_state_handle_digest",
-            StarkNetConcreteLibfunc::GetClassHashAt(_) => "get_class_hash_at_syscall",
+            StarknetConcreteLibfunc::Sha256ProcessBlock(_) => "sha256_process_block",
+            StarknetConcreteLibfunc::Sha256StateHandleInit(_) => "sha256_state_handle_init",
+            StarknetConcreteLibfunc::Sha256StateHandleDigest(_) => "sha256_state_handle_digest",
+            StarknetConcreteLibfunc::GetClassHashAt(_) => "get_class_hash_at_syscall",
+            StarknetConcreteLibfunc::MetaTxV0(_) => "meta_tx_v0",
         },
         CoreConcreteLibfunc::Debug(value) => match value {
             DebugConcreteLibfunc::Print(_) => "debug_print",
         },
+        CoreConcreteLibfunc::Trace(_) => "trace",
         CoreConcreteLibfunc::SnapshotTake(_) => "snapshot_take",
         CoreConcreteLibfunc::Bytes31(value) => match value {
             Bytes31ConcreteLibfunc::Const(_) => "bytes31_const",
@@ -415,5 +419,6 @@ pub const fn libfunc_to_name(value: &CoreConcreteLibfunc) -> &'static str {
             IntRangeConcreteLibfunc::TryNew(_) => "int_range_try_new",
             IntRangeConcreteLibfunc::PopFront(_) => "int_range_pop_front",
         },
+        CoreConcreteLibfunc::Blake(_) => "blake",
     }
 }

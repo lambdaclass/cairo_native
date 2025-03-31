@@ -495,7 +495,7 @@ pub mod test {
         compile_program(
             program_str,
             RootDatabase::builder()
-                .with_plugin_suite(starknet_plugin_suite())
+                .with_default_plugin_suite(starknet_plugin_suite())
                 .build()
                 .unwrap(),
         )
@@ -505,7 +505,7 @@ pub mod test {
         compile_contract(
             program_str,
             RootDatabase::builder()
-                .with_plugin_suite(starknet_plugin_suite())
+                .with_default_plugin_suite(starknet_plugin_suite())
                 .build()
                 .unwrap(),
         )
