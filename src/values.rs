@@ -998,7 +998,11 @@ impl Value {
                         y: y.into(),
                     }
                 }
+<<<<<<< HEAD
                 CoreTypeConcrete::Blake(_) => todo!("Implement from_ptr for Blake type"),
+=======
+                CoreTypeConcrete::Blake(_) => native_panic!("Implement from_ptr for Blake type"),
+>>>>>>> main
             }
         })
     }

@@ -5,6 +5,7 @@ use crate::{
     error::{Error, Result},
     ffi::get_struct_field_type_at,
     metadata::{drop_overrides::DropOverridesMeta, MetadataStorage},
+    native_panic,
     starknet::handler::StarknetSyscallHandlerCallbacks,
     utils::{get_integer_layout, BlockExt, GepIndex, ProgramRegistryExt, PRIME},
 };
@@ -140,7 +141,11 @@ pub fn build<'ctx, 'this>(
             context, registry, entry, location, helper, metadata, info,
         ),
         StarknetConcreteLibfunc::MetaTxV0(_) => {
+<<<<<<< HEAD
             todo!("Implement MetaTxV0 libfunc");
+=======
+            native_panic!("Implement MetaTxV0 libfunc");
+>>>>>>> main
         }
         #[cfg(feature = "with-cheatcode")]
         StarknetConcreteLibfunc::Testing(TestingConcreteLibfunc::Cheatcode(info)) => {
