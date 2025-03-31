@@ -1082,7 +1082,20 @@
 <a href="#1081" id="1081">1081</a>
 <a href="#1082" id="1082">1082</a>
 <a href="#1083" id="1083">1083</a>
-<a href="#1084" id="1084">1084</a></pre></div><pre class="rust"><code><span class="doccomment">//! A (somewhat) usable implementation of the starknet syscall handler trait.
+<a href="#1084" id="1084">1084</a>
+<a href="#1085" id="1085">1085</a>
+<a href="#1086" id="1086">1086</a>
+<a href="#1087" id="1087">1087</a>
+<a href="#1088" id="1088">1088</a>
+<a href="#1089" id="1089">1089</a>
+<a href="#1090" id="1090">1090</a>
+<a href="#1091" id="1091">1091</a>
+<a href="#1092" id="1092">1092</a>
+<a href="#1093" id="1093">1093</a>
+<a href="#1094" id="1094">1094</a>
+<a href="#1095" id="1095">1095</a>
+<a href="#1096" id="1096">1096</a>
+<a href="#1097" id="1097">1097</a></pre></div><pre class="rust"><code><span class="doccomment">//! A (somewhat) usable implementation of the starknet syscall handler trait.
 
 </span><span class="kw">use </span>std::{
     collections::{HashMap, VecDeque},
@@ -1622,6 +1635,19 @@
         _remaining_gas: <span class="kw-2">&amp;mut </span>u64,
     ) -&gt; SyscallResult&lt;(U256, U256)&gt; {
         <span class="prelude-val">Ok</span>((p.x, p.y))
+    }
+
+    <span class="attr">#[instrument(skip(<span class="self">self</span>))]
+    </span><span class="kw">fn </span>meta_tx_v0(
+        <span class="kw-2">&amp;mut </span><span class="self">self</span>,
+        address: Felt,
+        entry_point_selector: Felt,
+        calldata: <span class="kw-2">&amp;</span>[Felt],
+        signature: <span class="kw-2">&amp;</span>[Felt],
+        remaining_gas: <span class="kw-2">&amp;mut </span>u64,
+    ) -&gt; SyscallResult&lt;Vec&lt;Felt&gt;&gt; {
+        <span class="macro">tracing::warn!</span>(<span class="string">"unimplemented"</span>);
+        <span class="prelude-val">Ok</span>(<span class="macro">vec!</span>[])
     }
 
     <span class="attr">#[cfg(feature = <span class="string">"with-cheatcode"</span>)]
