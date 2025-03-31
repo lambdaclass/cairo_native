@@ -5,6 +5,7 @@ use crate::{
     error::{Error, Result},
     ffi::get_struct_field_type_at,
     metadata::{drop_overrides::DropOverridesMeta, MetadataStorage},
+    native_panic,
     starknet::handler::StarknetSyscallHandlerCallbacks,
     utils::{get_integer_layout, BlockExt, GepIndex, ProgramRegistryExt, PRIME},
 };
@@ -13,7 +14,7 @@ use cairo_lang_sierra::{
         consts::SignatureAndConstConcreteLibfunc,
         core::{CoreLibfunc, CoreType},
         lib_func::SignatureOnlyConcreteLibfunc,
-        starknet::{testing::TestingConcreteLibfunc, StarkNetConcreteLibfunc},
+        starknet::{testing::TestingConcreteLibfunc, StarknetConcreteLibfunc},
         ConcreteLibfunc,
     },
     program_registry::ProgramRegistry,
@@ -43,15 +44,15 @@ pub fn build<'ctx, 'this>(
     location: Location<'ctx>,
     helper: &LibfuncHelper<'ctx, 'this>,
     metadata: &mut MetadataStorage,
-    selector: &StarkNetConcreteLibfunc,
+    selector: &StarknetConcreteLibfunc,
 ) -> Result<()> {
     match selector {
-        StarkNetConcreteLibfunc::ClassHashToFelt252(info)
-        | StarkNetConcreteLibfunc::ContractAddressToFelt252(info)
-        | StarkNetConcreteLibfunc::StorageAddressFromBase(info)
-        | StarkNetConcreteLibfunc::StorageAddressToFelt252(info)
-        | StarkNetConcreteLibfunc::Sha256StateHandleInit(info)
-        | StarkNetConcreteLibfunc::Sha256StateHandleDigest(info) => super::build_noop::<1, true>(
+        StarknetConcreteLibfunc::ClassHashToFelt252(info)
+        | StarknetConcreteLibfunc::ContractAddressToFelt252(info)
+        | StarknetConcreteLibfunc::StorageAddressFromBase(info)
+        | StarknetConcreteLibfunc::StorageAddressToFelt252(info)
+        | StarknetConcreteLibfunc::Sha256StateHandleInit(info)
+        | StarknetConcreteLibfunc::Sha256StateHandleDigest(info) => super::build_noop::<1, true>(
             context,
             registry,
             entry,
@@ -60,91 +61,94 @@ pub fn build<'ctx, 'this>(
             metadata,
             &info.signature.param_signatures,
         ),
-        StarkNetConcreteLibfunc::CallContract(info) => {
+        StarknetConcreteLibfunc::CallContract(info) => {
             build_call_contract(context, registry, entry, location, helper, metadata, info)
         }
-        StarkNetConcreteLibfunc::ClassHashConst(info) => {
+        StarknetConcreteLibfunc::ClassHashConst(info) => {
             build_class_hash_const(context, registry, entry, location, helper, metadata, info)
         }
-        StarkNetConcreteLibfunc::ClassHashTryFromFelt252(info) => {
+        StarknetConcreteLibfunc::ClassHashTryFromFelt252(info) => {
             build_class_hash_try_from_felt252(
                 context, registry, entry, location, helper, metadata, info,
             )
         }
-        StarkNetConcreteLibfunc::ContractAddressConst(info) => {
+        StarknetConcreteLibfunc::ContractAddressConst(info) => {
             build_contract_address_const(context, registry, entry, location, helper, metadata, info)
         }
-        StarkNetConcreteLibfunc::ContractAddressTryFromFelt252(info) => {
+        StarknetConcreteLibfunc::ContractAddressTryFromFelt252(info) => {
             build_contract_address_try_from_felt252(
                 context, registry, entry, location, helper, metadata, info,
             )
         }
-        StarkNetConcreteLibfunc::StorageRead(info) => {
+        StarknetConcreteLibfunc::StorageRead(info) => {
             build_storage_read(context, registry, entry, location, helper, metadata, info)
         }
-        StarkNetConcreteLibfunc::StorageWrite(info) => {
+        StarknetConcreteLibfunc::StorageWrite(info) => {
             build_storage_write(context, registry, entry, location, helper, metadata, info)
         }
-        StarkNetConcreteLibfunc::StorageBaseAddressConst(info) => build_storage_base_address_const(
+        StarknetConcreteLibfunc::StorageBaseAddressConst(info) => build_storage_base_address_const(
             context, registry, entry, location, helper, metadata, info,
         ),
-        StarkNetConcreteLibfunc::StorageBaseAddressFromFelt252(info) => {
+        StarknetConcreteLibfunc::StorageBaseAddressFromFelt252(info) => {
             build_storage_base_address_from_felt252(
                 context, registry, entry, location, helper, metadata, info,
             )
         }
-        StarkNetConcreteLibfunc::StorageAddressFromBaseAndOffset(info) => {
+        StarknetConcreteLibfunc::StorageAddressFromBaseAndOffset(info) => {
             build_storage_address_from_base_and_offset(
                 context, registry, entry, location, helper, metadata, info,
             )
         }
-        StarkNetConcreteLibfunc::StorageAddressTryFromFelt252(info) => {
+        StarknetConcreteLibfunc::StorageAddressTryFromFelt252(info) => {
             build_storage_address_try_from_felt252(
                 context, registry, entry, location, helper, metadata, info,
             )
         }
-        StarkNetConcreteLibfunc::EmitEvent(info) => {
+        StarknetConcreteLibfunc::EmitEvent(info) => {
             build_emit_event(context, registry, entry, location, helper, metadata, info)
         }
-        StarkNetConcreteLibfunc::GetBlockHash(info) => {
+        StarknetConcreteLibfunc::GetBlockHash(info) => {
             build_get_block_hash(context, registry, entry, location, helper, metadata, info)
         }
-        StarkNetConcreteLibfunc::GetClassHashAt(info) => {
+        StarknetConcreteLibfunc::GetClassHashAt(info) => {
             build_get_class_hash_at(context, registry, entry, location, helper, metadata, info)
         }
-        StarkNetConcreteLibfunc::GetExecutionInfo(info) => {
+        StarknetConcreteLibfunc::GetExecutionInfo(info) => {
             build_get_execution_info(context, registry, entry, location, helper, metadata, info)
         }
-        StarkNetConcreteLibfunc::GetExecutionInfoV2(info) => {
+        StarknetConcreteLibfunc::GetExecutionInfoV2(info) => {
             build_get_execution_info_v2(context, registry, entry, location, helper, metadata, info)
         }
-        StarkNetConcreteLibfunc::Deploy(info) => {
+        StarknetConcreteLibfunc::Deploy(info) => {
             build_deploy(context, registry, entry, location, helper, metadata, info)
         }
-        StarkNetConcreteLibfunc::Keccak(info) => {
+        StarknetConcreteLibfunc::Keccak(info) => {
             build_keccak(context, registry, entry, location, helper, metadata, info)
         }
-        StarkNetConcreteLibfunc::LibraryCall(info) => {
+        StarknetConcreteLibfunc::LibraryCall(info) => {
             build_library_call(context, registry, entry, location, helper, metadata, info)
         }
-        StarkNetConcreteLibfunc::ReplaceClass(info) => {
+        StarknetConcreteLibfunc::ReplaceClass(info) => {
             build_replace_class(context, registry, entry, location, helper, metadata, info)
         }
-        StarkNetConcreteLibfunc::SendMessageToL1(info) => {
+        StarknetConcreteLibfunc::SendMessageToL1(info) => {
             build_send_message_to_l1(context, registry, entry, location, helper, metadata, info)
         }
-        StarkNetConcreteLibfunc::Secp256(selector) => self::secp256::build(
+        StarknetConcreteLibfunc::Secp256(selector) => self::secp256::build(
             context, registry, entry, location, helper, metadata, selector,
         ),
-        StarkNetConcreteLibfunc::Sha256ProcessBlock(info) => build_sha256_process_block_syscall(
+        StarknetConcreteLibfunc::Sha256ProcessBlock(info) => build_sha256_process_block_syscall(
             context, registry, entry, location, helper, metadata, info,
         ),
+        StarknetConcreteLibfunc::MetaTxV0(_) => {
+            native_panic!("Implement MetaTxV0 libfunc");
+        }
         #[cfg(feature = "with-cheatcode")]
-        StarkNetConcreteLibfunc::Testing(TestingConcreteLibfunc::Cheatcode(info)) => {
+        StarknetConcreteLibfunc::Testing(TestingConcreteLibfunc::Cheatcode(info)) => {
             self::testing::build(context, registry, entry, location, helper, metadata, info)
         }
         #[cfg(not(feature = "with-cheatcode"))]
-        StarkNetConcreteLibfunc::Testing(TestingConcreteLibfunc::Cheatcode(_)) => {
+        StarknetConcreteLibfunc::Testing(TestingConcreteLibfunc::Cheatcode(_)) => {
             crate::native_panic!(
                 "feature 'with-cheatcode' is required to compile with cheatcode syscall"
             )
@@ -2789,17 +2793,18 @@ mod test {
             }
         };
         static ref CLASS_HASH_CONST: (String, Program) = load_cairo! {
-            use starknet::class_hash::{class_hash_const, ClassHash};
+            use starknet::class_hash::ClassHash;
 
             fn run_program() -> ClassHash {
-                class_hash_const::<0>()
+                0.try_into().unwrap()
             }
         };
     }
 
     #[test]
     fn class_hash_const() {
-        run_program_assert_output(&CLASS_HASH_CONST, "run_program", &[], Felt::ZERO.into())
+        let expected = jit_enum!(0, jit_struct!(Felt::ZERO.into()));
+        run_program_assert_output(&CLASS_HASH_CONST, "run_program", &[], expected)
     }
 
     #[test]
