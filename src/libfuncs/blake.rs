@@ -38,6 +38,10 @@ pub fn build<'ctx, 'this>(
     }
 }
 
+/// Performs a blake2s compression.
+///
+/// `bytes_count` is the total amount of bytes hashed after hashing the message.
+/// `finalize` is wether the libfunc call is a finalize or not.
 #[allow(clippy::too_many_arguments)]
 fn build_blake_operation<'ctx, 'this>(
     context: &'ctx Context,

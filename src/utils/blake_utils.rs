@@ -20,10 +20,12 @@ const SIGMA: [[usize; 16]; 10] = [
     [10, 2, 8, 4, 7, 6, 1, 5, 15, 11, 9, 14, 3, 12, 13, 0],
 ];
 
+// Rotate right
 fn right_rot(value: u32, n: u32) -> u32 {
     (value >> n) | ((value & (1_u32.shl(n) - 1)) << (32 - n))
 }
 
+// Mixes two 8-bytes words from the message with the hash state
 fn mix(a: u32, b: u32, c: u32, d: u32, m0: u32, m1: u32) -> (u32, u32, u32, u32) {
     let a = a.wrapping_add(b).wrapping_add(m0);
     let d = right_rot(d ^ a, 16);
@@ -36,6 +38,7 @@ fn mix(a: u32, b: u32, c: u32, d: u32, m0: u32, m1: u32) -> (u32, u32, u32, u32)
     (a, b, c, d)
 }
 
+// Performs a round of mixing
 fn blake_round(mut state: Vec<u32>, message: &[u32; 16], sigma: [usize; 16]) -> Vec<u32> {
     (state[0], state[4], state[8], state[12]) = mix(
         state[0],
