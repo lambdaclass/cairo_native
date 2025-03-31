@@ -282,6 +282,17 @@ impl StarknetSyscallHandler for SyscallHandler {
     ) -> SyscallResult<Felt> {
         unimplemented!()
     }
+
+    fn meta_tx_v0(
+        &mut self,
+        _address: Felt,
+        _entry_point_selector: Felt,
+        _calldata: &[Felt],
+        _signature: &[Felt],
+        _remaining_gas: &mut u64,
+    ) -> SyscallResult<Vec<Felt>> {
+        unimplemented!()
+    }
 }
 
 fn main() {
