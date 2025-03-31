@@ -1,4 +1,4 @@
-// This file is completely inspired in LambdaClass' cairo-vm blake compression implementation
+// This file is completely inspired in LambdaClass' cairo-vm blake2s compression implementation
 // For more info check: https://github.com/lambdaclass/cairo-vm/blob/main/vm/src/hint_processor/builtin_hint_processor/blake2s_hash.rs#L24
 
 use std::ops::Shl;
