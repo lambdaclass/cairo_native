@@ -10,7 +10,7 @@ use bumpalo::Bump;
 use cairo_lang_sierra::{
     extensions::{
         core::{CoreLibfunc, CoreType, CoreTypeConcrete},
-        starknet::{secp256::Secp256PointTypeConcrete, StarkNetTypeConcrete},
+        starknet::{secp256::Secp256PointTypeConcrete, StarknetTypeConcrete},
     },
     ids::ConcreteTypeId,
     program_registry::ProgramRegistry,
@@ -169,11 +169,11 @@ impl AbiArgument for ValueWithInfoWrapper<'_> {
             (
                 Value::Felt252(value),
                 CoreTypeConcrete::Felt252(_)
-                | CoreTypeConcrete::StarkNet(
-                    StarkNetTypeConcrete::ClassHash(_)
-                    | StarkNetTypeConcrete::ContractAddress(_)
-                    | StarkNetTypeConcrete::StorageAddress(_)
-                    | StarkNetTypeConcrete::StorageBaseAddress(_),
+                | CoreTypeConcrete::Starknet(
+                    StarknetTypeConcrete::ClassHash(_)
+                    | StarknetTypeConcrete::ContractAddress(_)
+                    | StarknetTypeConcrete::StorageAddress(_)
+                    | StarknetTypeConcrete::StorageBaseAddress(_),
                 ),
             ) => value.to_bytes(buffer, find_dict_drop_override)?,
             (Value::Felt252Dict { .. }, CoreTypeConcrete::Felt252Dict(_)) => {
@@ -205,13 +205,13 @@ impl AbiArgument for ValueWithInfoWrapper<'_> {
             }
             (
                 Value::Secp256K1Point(Secp256k1Point { x, y, is_infinity }),
-                CoreTypeConcrete::StarkNet(StarkNetTypeConcrete::Secp256Point(
+                CoreTypeConcrete::Starknet(StarknetTypeConcrete::Secp256Point(
                     Secp256PointTypeConcrete::K1(_),
                 )),
             )
             | (
                 Value::Secp256R1Point(Secp256r1Point { x, y, is_infinity }),
-                CoreTypeConcrete::StarkNet(StarkNetTypeConcrete::Secp256Point(
+                CoreTypeConcrete::Starknet(StarknetTypeConcrete::Secp256Point(
                     Secp256PointTypeConcrete::R1(_),
                 )),
             ) => {

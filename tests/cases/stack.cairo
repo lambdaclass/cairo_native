@@ -1,6 +1,6 @@
 use core::nullable::{NullableTrait};
 use core::num::traits::Bounded;
-use core::starknet::EthAddress;
+use starknet::EthAddress;
 use core::dict::{Felt252Dict, Felt252DictTrait};
 
 #[derive(Destruct, Default)]
