@@ -43,7 +43,7 @@ jobs:
         with:
           repository: lambdaclass/sequencer
           path: sequencer
-          ref: 056bf87a45a197f0501169af9c836eb0732d4467
+          ref: a32ee022e7be701871779e232f2bab70381b9cc0
 
       - name: Cache RPC Calls
         uses: actions/cache@v4.2.0
