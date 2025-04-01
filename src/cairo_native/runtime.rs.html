@@ -1478,7 +1478,7 @@
     };
 }
 
-<span class="doccomment">/// Get the gas builtin from the internal thread local.
+<span class="doccomment">/// Get the costs builtin from the internal thread local.
 </span><span class="kw">pub extern </span><span class="string">"C" </span><span class="kw">fn </span>cairo_native__get_costs_builtin() -&gt; <span class="kw-2">*const </span>[u64; <span class="number">7</span>] {
     BUILTIN_COSTS.with(|x| x.as_ptr()) <span class="kw">as </span><span class="kw-2">*const </span>[u64; <span class="number">7</span>]
 }

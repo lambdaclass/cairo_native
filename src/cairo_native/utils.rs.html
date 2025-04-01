@@ -1015,14 +1015,35 @@
 <a href="#1014" id="1014">1014</a>
 <a href="#1015" id="1015">1015</a>
 <a href="#1016" id="1016">1016</a>
-<a href="#1017" id="1017">1017</a></pre></div><pre class="rust"><code><span class="doccomment">//! # Various utilities
+<a href="#1017" id="1017">1017</a>
+<a href="#1018" id="1018">1018</a>
+<a href="#1019" id="1019">1019</a>
+<a href="#1020" id="1020">1020</a>
+<a href="#1021" id="1021">1021</a>
+<a href="#1022" id="1022">1022</a>
+<a href="#1023" id="1023">1023</a>
+<a href="#1024" id="1024">1024</a>
+<a href="#1025" id="1025">1025</a>
+<a href="#1026" id="1026">1026</a>
+<a href="#1027" id="1027">1027</a>
+<a href="#1028" id="1028">1028</a>
+<a href="#1029" id="1029">1029</a>
+<a href="#1030" id="1030">1030</a>
+<a href="#1031" id="1031">1031</a>
+<a href="#1032" id="1032">1032</a>
+<a href="#1033" id="1033">1033</a>
+<a href="#1034" id="1034">1034</a>
+<a href="#1035" id="1035">1035</a>
+<a href="#1036" id="1036">1036</a>
+<a href="#1037" id="1037">1037</a>
+<a href="#1038" id="1038">1038</a></pre></div><pre class="rust"><code><span class="doccomment">//! # Various utilities
 
 </span><span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">use </span><span class="self">self</span>::{
     block_ext::{BlockExt, GepIndex},
     program_registry_ext::ProgramRegistryExt,
     range_ext::RangeExt,
 };
-<span class="kw">use crate</span>::{metadata::MetadataStorage, OptLevel};
+<span class="kw">use crate</span>::{error::Result <span class="kw">as </span>NativeResult, metadata::MetadataStorage, native_panic, OptLevel};
 <span class="kw">use </span>cairo_lang_compiler::CompilerConfig;
 <span class="kw">use </span>cairo_lang_runner::token_gas_cost;
 <span class="kw">use </span>cairo_lang_sierra::{
@@ -1072,8 +1093,12 @@
         .expect(<span class="string">"hardcoded half prime constant should be valid"</span>)
 });
 
-<span class="comment">// Order matters, for the libfunc impl
-// https://github.com/starkware-libs/sequencer/blob/1b7252f8a30244d39614d7666aa113b81291808e/crates/blockifier/src/execution/entry_point_execution.rs#L208
+<span class="doccomment">/// Represents the gas cost of each cost token type
+///
+/// See `crate::metadata::gas` for more documentation.
+///
+/// Order matters, for the libfunc impl
+/// https://github.com/starkware-libs/sequencer/blob/1b7252f8a30244d39614d7666aa113b81291808e/crates/blockifier/src/execution/entry_point_execution.rs#L208
 </span><span class="attr">#[derive(Debug, Clone, Copy, Deserialize, Serialize)]
 #[repr(C)]
 </span><span class="kw">pub struct </span>BuiltinCosts {
@@ -1084,6 +1109,23 @@
     <span class="kw">pub </span>poseidon: u64,
     <span class="kw">pub </span>add_mod: u64,
     <span class="kw">pub </span>mul_mod: u64,
+}
+
+<span class="kw">impl </span>BuiltinCosts {
+    <span class="kw">pub fn </span>index_for_token_type(token_type: <span class="kw-2">&amp;</span>CostTokenType) -&gt; NativeResult&lt;usize&gt; {
+        <span class="kw">let </span>index = <span class="kw">match </span>token_type {
+            CostTokenType::Const =&gt; <span class="number">0</span>,
+            CostTokenType::Pedersen =&gt; <span class="number">1</span>,
+            CostTokenType::Bitwise =&gt; <span class="number">2</span>,
+            CostTokenType::EcOp =&gt; <span class="number">3</span>,
+            CostTokenType::Poseidon =&gt; <span class="number">4</span>,
+            CostTokenType::AddMod =&gt; <span class="number">5</span>,
+            CostTokenType::MulMod =&gt; <span class="number">6</span>,
+            <span class="kw">_ </span>=&gt; <span class="macro">native_panic!</span>(<span class="string">"matched an unexpected CostTokenType which is not being used"</span>),
+        };
+
+        <span class="prelude-val">Ok</span>(index)
+    }
 }
 
 <span class="kw">impl </span>Default <span class="kw">for </span>BuiltinCosts {

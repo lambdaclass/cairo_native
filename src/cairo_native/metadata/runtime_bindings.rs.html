@@ -732,7 +732,7 @@
     DictGasRefund,
     DictDrop,
     DictDup,
-    GetGasBuiltin,
+    GetCostsBuiltin,
     DebugPrint,
     <span class="attr">#[cfg(feature = <span class="string">"with-cheatcode"</span>)]
     </span>VtableCheatcode,
@@ -757,7 +757,7 @@
             RuntimeBinding::DictGasRefund =&gt; <span class="string">"cairo_native__dict_gas_refund"</span>,
             RuntimeBinding::DictDrop =&gt; <span class="string">"cairo_native__dict_drop"</span>,
             RuntimeBinding::DictDup =&gt; <span class="string">"cairo_native__dict_dup"</span>,
-            RuntimeBinding::GetGasBuiltin =&gt; <span class="string">"cairo_native__get_costs_builtin"</span>,
+            RuntimeBinding::GetCostsBuiltin =&gt; <span class="string">"cairo_native__get_costs_builtin"</span>,
             <span class="attr">#[cfg(feature = <span class="string">"with-cheatcode"</span>)]
             </span>RuntimeBinding::VtableCheatcode =&gt; <span class="string">"cairo_native__vtable_cheatcode"</span>,
         }
@@ -799,7 +799,7 @@
             }
             RuntimeBinding::DictDrop =&gt; <span class="kw">crate</span>::runtime::cairo_native__dict_drop <span class="kw">as </span><span class="kw-2">*const </span>(),
             RuntimeBinding::DictDup =&gt; <span class="kw">crate</span>::runtime::cairo_native__dict_dup <span class="kw">as </span><span class="kw-2">*const </span>(),
-            RuntimeBinding::GetGasBuiltin =&gt; {
+            RuntimeBinding::GetCostsBuiltin =&gt; {
                 <span class="kw">crate</span>::runtime::cairo_native__get_costs_builtin <span class="kw">as </span><span class="kw-2">*const </span>()
             }
             <span class="attr">#[cfg(feature = <span class="string">"with-cheatcode"</span>)]
@@ -1292,9 +1292,9 @@
         ))
     }
 
-    <span class="comment">// Register if necessary, then invoke the `set_gas_builtin()` function.
+    <span class="comment">// Register if necessary, then invoke the `get_costs_builtin()` function.
     </span><span class="attr">#[allow(clippy::too_many_arguments)]
-    </span><span class="kw">pub fn </span>get_gas_builtin&lt;<span class="lifetime">'c</span>, <span class="lifetime">'a</span>&gt;(
+    </span><span class="kw">pub fn </span>get_costs_builtin&lt;<span class="lifetime">'c</span>, <span class="lifetime">'a</span>&gt;(
         <span class="kw-2">&amp;mut </span><span class="self">self</span>,
         context: <span class="kw-2">&amp;</span><span class="lifetime">'c </span>Context,
         module: <span class="kw-2">&amp;</span>Module,
@@ -1309,7 +1309,7 @@
             module,
             block,
             location,
-            RuntimeBinding::GetGasBuiltin,
+            RuntimeBinding::GetCostsBuiltin,
         )<span class="question-mark">?</span>;
 
         <span class="prelude-val">Ok</span>(block.append_operation(
@@ -1373,7 +1373,7 @@
         RuntimeBinding::DictGasRefund,
         RuntimeBinding::DictDrop,
         RuntimeBinding::DictDup,
-        RuntimeBinding::GetGasBuiltin,
+        RuntimeBinding::GetCostsBuiltin,
         RuntimeBinding::DebugPrint,
         <span class="attr">#[cfg(feature = <span class="string">"with-cheatcode"</span>)]
         </span>RuntimeBinding::VtableCheatcode,
