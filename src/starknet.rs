@@ -327,6 +327,15 @@ pub trait StarknetSyscallHandler {
         remaining_gas: &mut u64,
     ) -> SyscallResult<Felt>;
 
+    fn meta_tx_v0(
+        &mut self,
+        address: Felt,
+        entry_point_selector: Felt,
+        calldata: &[Felt],
+        signature: &[Felt],
+        remaining_gas: &mut u64,
+    ) -> SyscallResult<Vec<Felt>>;
+
     #[cfg(feature = "with-cheatcode")]
     fn cheatcode(&mut self, _selector: Felt, _input: &[Felt]) -> Vec<Felt> {
         unimplemented!();
@@ -533,6 +542,17 @@ impl StarknetSyscallHandler for DummySyscallHandler {
         _contract_address: Felt,
         _remaining_gas: &mut u64,
     ) -> SyscallResult<Felt> {
+        unimplemented!()
+    }
+
+    fn meta_tx_v0(
+        &mut self,
+        _address: Felt,
+        _entry_point_selector: Felt,
+        _calldata: &[Felt],
+        _signature: &[Felt],
+        _remaining_gas: &mut u64,
+    ) -> SyscallResult<Vec<Felt>> {
         unimplemented!()
     }
 }
@@ -816,6 +836,17 @@ pub(crate) mod handler {
             gas: &mut u64,
             contract_address: &Felt252Abi,
         ),
+
+        meta_tx_v0: extern "C" fn(
+            result_ptr: &mut SyscallResultAbi<ArrayAbi<Felt252Abi>>,
+            ptr: &mut T,
+            gas: &mut u64,
+            address: &Felt252Abi,
+            entry_point_selector: &Felt252Abi,
+            calldata: &ArrayAbi<Felt252Abi>,
+            signature: &ArrayAbi<Felt252Abi>,
+        ),
+
         // testing syscalls
         #[cfg(feature = "with-cheatcode")]
         pub cheatcode: extern "C" fn(
@@ -860,6 +891,8 @@ pub(crate) mod handler {
         pub const SHA256_PROCESS_BLOCK: usize = field_offset!(Self, sha256_process_block) >> 3;
 
         pub const GET_CLASS_HASH_AT: usize = field_offset!(Self, get_class_hash_at) >> 3;
+
+        pub const META_TX_V0: usize = field_offset!(Self, meta_tx_v0) >> 3;
     }
 
     #[allow(unused_variables)]
@@ -894,6 +927,7 @@ pub(crate) mod handler {
                 secp256r1_get_xy: Self::wrap_secp256r1_get_xy,
                 sha256_process_block: Self::wrap_sha256_process_block,
                 get_class_hash_at: Self::wrap_get_class_hash_at,
+                meta_tx_v0: Self::wrap_meta_tx_v0,
                 #[cfg(feature = "with-cheatcode")]
                 cheatcode: Self::wrap_cheatcode,
             }
@@ -1667,6 +1701,50 @@ pub(crate) mod handler {
                         payload: ManuallyDrop::new(Felt252Abi(x.to_bytes_le())),
                     }),
                 },
+                Err(e) => Self::wrap_error(&e),
+            };
+        }
+
+        extern "C" fn wrap_meta_tx_v0(
+            result_ptr: &mut SyscallResultAbi<ArrayAbi<Felt252Abi>>,
+            ptr: &mut T,
+            gas: &mut u64,
+            address: &Felt252Abi,
+            entry_point_selector: &Felt252Abi,
+            calldata: &ArrayAbi<Felt252Abi>,
+            signature: &ArrayAbi<Felt252Abi>,
+        ) {
+            let address = Felt::from(address);
+            let entry_point_selector = Felt::from(entry_point_selector);
+
+            let calldata_vec: Vec<Felt> = calldata.into();
+            unsafe {
+                Self::drop_mlir_array(calldata);
+            }
+            let signature_vec: Vec<Felt> = signature.into();
+            unsafe {
+                Self::drop_mlir_array(signature);
+            }
+
+            let result = ptr.meta_tx_v0(
+                address,
+                entry_point_selector,
+                &calldata_vec,
+                &signature_vec,
+                gas,
+            );
+
+            *result_ptr = match result {
+                Ok(x) => {
+                    let felts: Vec<_> = x.iter().map(|x| Felt252Abi(x.to_bytes_le())).collect();
+                    let felts_ptr = unsafe { Self::alloc_mlir_array(&felts) };
+                    SyscallResultAbi {
+                        ok: ManuallyDrop::new(SyscallResultAbiOk {
+                            tag: 0u8,
+                            payload: ManuallyDrop::new(felts_ptr),
+                        }),
+                    }
+                }
                 Err(e) => Self::wrap_error(&e),
             };
         }
