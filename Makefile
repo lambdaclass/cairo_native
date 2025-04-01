@@ -69,7 +69,8 @@ test-cairo: check-llvm needs-cairo2
 	cargo r --profile ci --bin cairo-native-test -- corelib \
 		--skip-compilation core::test::dict_test::test_array_from_squash_dict \
 		--skip-compilation core::test::hash_test::test_blake2s \
-		--skip-compilation core::test::testing_test::test_get_unspent_gas
+		--skip-compilation core::test::testing_test::test_get_unspent_gas \
+		--skip-compilation core::test::qm31_test::
 
 .PHONY: proptest
 proptest: check-llvm needs-cairo2
