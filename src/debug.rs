@@ -420,5 +420,6 @@ pub const fn libfunc_to_name(value: &CoreConcreteLibfunc) -> &'static str {
             IntRangeConcreteLibfunc::PopFront(_) => "int_range_pop_front",
         },
         CoreConcreteLibfunc::Blake(_) => "blake",
+        CoreConcreteLibfunc::QM31(_) => "qm31",
     }
 }
