@@ -289,7 +289,7 @@ pub fn run_vm_contract(
         .expect("failed to extract program from casm contract");
 
     // Initialize runner and builtins
-    let mut runner = CairoRunner::new(&program, LayoutName::all_cairo, None, false, false)
+    let mut runner = CairoRunner::new(&program, LayoutName::all_cairo, None, false, false, false)
         .expect("failed to build runner");
 
     let entrypoint = contract
