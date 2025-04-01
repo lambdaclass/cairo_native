@@ -5356,7 +5356,20 @@
     <span class="prelude-val">Ok</span>(())
 }
 
-<span class="kw">pub fn </span>build_meta_tx_v0&lt;<span class="lifetime">'ctx</span>, <span class="lifetime">'this</span>&gt;(
+<span class="doccomment">/// Executes the `meta_tx_v0_syscall`.
+///
+/// This syscall executes a given entrypoint as a v0 meta transaction. As all
+/// syscalls, implementation is delegated to the user provided syscall handler.
+///
+/// ```cairo
+/// extern fn meta_tx_v0_syscall(
+///     address: ContractAddress,
+///     entry_point_selector: felt252,
+///     calldata: Span&lt;felt252&gt;,
+///     signature: Span&lt;felt252&gt;,
+/// ) -&gt; starknet::SyscallResult&lt;Span&lt;felt252&gt;&gt; implicits(GasBuiltin, System) nopanic;
+/// ```
+</span><span class="kw">pub fn </span>build_meta_tx_v0&lt;<span class="lifetime">'ctx</span>, <span class="lifetime">'this</span>&gt;(
     context: <span class="kw-2">&amp;</span><span class="lifetime">'ctx </span>Context,
     registry: <span class="kw-2">&amp;</span>ProgramRegistry&lt;CoreType, CoreLibfunc&gt;,
     entry: <span class="kw-2">&amp;</span><span class="lifetime">'this </span>Block&lt;<span class="lifetime">'ctx</span>&gt;,
@@ -5365,20 +5378,7 @@
     metadata: <span class="kw-2">&amp;mut </span>MetadataStorage,
     info: <span class="kw-2">&amp;</span>SignatureOnlyConcreteLibfunc,
 ) -&gt; <span class="prelude-ty">Result</span>&lt;()&gt; {
-    <span class="comment">// pub extern fn call_contract_syscall(
-    //     address: ContractAddress,
-    //     entry_point_selector: felt252,
-    //     calldata: Span&lt;felt252&gt;,
-    // ) -&gt; SyscallResult&lt;Span&lt;felt252&gt;&gt; implicits(GasBuiltin, System) nopanic;
-    //
-    // extern fn meta_tx_v0_syscall(
-    //     address: ContractAddress,
-    //     entry_point_selector: felt252,
-    //     calldata: Span&lt;felt252&gt;,
-    //     signature: Span&lt;felt252&gt;,
-    // ) -&gt; SyscallResult&lt;Span&lt;felt252&gt;&gt; implicits(GasBuiltin, System) nopanic;
-
-    // Extract self pointer.
+    <span class="comment">// Extract self pointer.
     </span><span class="kw">let </span>ptr = entry.load(
         context,
         location,
