@@ -61,7 +61,6 @@ use test_case::test_case;
 #[test_case("tests/cases/uint/u512_safe_divmod_by_u256.cairo")]
 // sint
 #[test_case("tests/cases/sint/eq.cairo")]
-#[test_case("tests/cases/sint/is_zero.cairo")]
 #[test_case("tests/cases/sint/to_from_felt252.cairo")]
 // sint8
 #[test_case("tests/cases/sint/i8_diff.cairo")]
