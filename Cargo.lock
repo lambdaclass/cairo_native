@@ -1031,7 +1031,7 @@ dependencies = [
 
 [[package]]
 name = "cairo-native"
-version = "0.3.4"
+version = "0.4.0"
 dependencies = [
  "anyhow",
  "aquamarine",
