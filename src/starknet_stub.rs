@@ -540,6 +540,19 @@ impl StarknetSyscallHandler for &mut StubSyscallHandler {
         Ok((p.x, p.y))
     }
 
+    #[instrument(skip(self))]
+    fn meta_tx_v0(
+        &mut self,
+        address: Felt,
+        entry_point_selector: Felt,
+        calldata: &[Felt],
+        signature: &[Felt],
+        remaining_gas: &mut u64,
+    ) -> SyscallResult<Vec<Felt>> {
+        tracing::warn!("unimplemented");
+        Ok(vec![])
+    }
+
     #[cfg(feature = "with-cheatcode")]
     #[instrument(skip(self))]
     fn cheatcode(&mut self, selector: Felt, input: &[Felt]) -> Vec<Felt> {
