@@ -653,7 +653,9 @@ fn parse_result(
         | CoreTypeConcrete::Starknet(_)
         | CoreTypeConcrete::Uint128MulGuarantee(_)
         | CoreTypeConcrete::Circuit(_)
-        | CoreTypeConcrete::RangeCheck96(_) => native_panic!("not yet implemented as results"),
+        | CoreTypeConcrete::RangeCheck96(_) => {
+            native_panic!("range check 96 not yet implemented as results")
+        }
         // 2.9.0
         CoreTypeConcrete::IntRange(_) => native_panic!("int range not yet implemented as results"),
         // 2.11.1
