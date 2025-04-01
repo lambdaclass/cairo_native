@@ -5,7 +5,6 @@ use crate::{
     error::{Error, Result},
     ffi::get_struct_field_type_at,
     metadata::{drop_overrides::DropOverridesMeta, MetadataStorage},
-    native_panic,
     starknet::handler::StarknetSyscallHandlerCallbacks,
     utils::{get_integer_layout, BlockExt, GepIndex, ProgramRegistryExt, PRIME},
 };
@@ -140,8 +139,8 @@ pub fn build<'ctx, 'this>(
         StarknetConcreteLibfunc::Sha256ProcessBlock(info) => build_sha256_process_block_syscall(
             context, registry, entry, location, helper, metadata, info,
         ),
-        StarknetConcreteLibfunc::MetaTxV0(_) => {
-            native_panic!("Implement MetaTxV0 libfunc");
+        StarknetConcreteLibfunc::MetaTxV0(info) => {
+            build_meta_tx_v0(context, registry, entry, location, helper, metadata, info)
         }
         #[cfg(feature = "with-cheatcode")]
         StarknetConcreteLibfunc::Testing(TestingConcreteLibfunc::Cheatcode(info)) => {
@@ -2110,6 +2109,221 @@ pub fn build_library_call<'ctx, 'this>(
     };
 
     let remaining_gas = entry.load(context, location, gas_builtin_ptr, gas_ty)?;
+
+    entry.append_operation(helper.cond_br(
+        context,
+        result_tag,
+        [1, 0],
+        [
+            &[remaining_gas, entry.arg(1)?, payload_err],
+            &[remaining_gas, entry.arg(1)?, payload_ok],
+        ],
+        location,
+    ));
+    Ok(())
+}
+
+pub fn build_meta_tx_v0<'ctx, 'this>(
+    context: &'ctx Context,
+    registry: &ProgramRegistry<CoreType, CoreLibfunc>,
+    entry: &'this Block<'ctx>,
+    location: Location<'ctx>,
+    helper: &LibfuncHelper<'ctx, 'this>,
+    metadata: &mut MetadataStorage,
+    info: &SignatureOnlyConcreteLibfunc,
+) -> Result<()> {
+    // pub extern fn call_contract_syscall(
+    //     address: ContractAddress,
+    //     entry_point_selector: felt252,
+    //     calldata: Span<felt252>,
+    // ) -> SyscallResult<Span<felt252>> implicits(GasBuiltin, System) nopanic;
+    //
+    // extern fn meta_tx_v0_syscall(
+    //     address: ContractAddress,
+    //     entry_point_selector: felt252,
+    //     calldata: Span<felt252>,
+    //     signature: Span<felt252>,
+    // ) -> SyscallResult<Span<felt252>> implicits(GasBuiltin, System) nopanic;
+
+    // Extract self pointer.
+    let ptr = entry.load(
+        context,
+        location,
+        entry.arg(1)?,
+        llvm::r#type::pointer(context, 0),
+    )?;
+
+    // Allocate space for the return value.
+    let (result_layout, (result_tag_ty, result_tag_layout), variant_tys) =
+        crate::types::r#enum::get_type_for_variants(
+            context,
+            helper,
+            registry,
+            metadata,
+            &[
+                info.branch_signatures()[0].vars[2].ty.clone(),
+                info.branch_signatures()[1].vars[2].ty.clone(),
+            ],
+        )?;
+
+    let result_ptr = helper.init_block().alloca1(
+        context,
+        location,
+        llvm::r#type::r#struct(
+            context,
+            &[
+                result_tag_ty,
+                llvm::r#type::array(
+                    IntegerType::new(context, 8).into(),
+                    (result_layout.size() - 1).try_into()?,
+                ),
+            ],
+            false,
+        ),
+        result_layout.align(),
+    )?;
+
+    // Allocate space and write the current gas.
+    let (gas_ty, gas_layout) = registry.build_type_with_layout(
+        context,
+        helper,
+        metadata,
+        &info.param_signatures()[0].ty,
+    )?;
+    let gas_builtin_ptr =
+        helper
+            .init_block()
+            .alloca1(context, location, gas_ty, gas_layout.align())?;
+    entry.store(context, location, gas_builtin_ptr, entry.arg(0)?)?;
+
+    // Allocate `address` argument and write the value.
+    let address_arg_ptr = helper.init_block().alloca_int(context, location, 252)?;
+    entry.store(context, location, address_arg_ptr, entry.arg(2)?)?;
+
+    // Allocate `entry_point_selector` argument and write its value.
+    let entry_point_selector_arg_ptr = helper.init_block().alloca_int(context, location, 252)?;
+    entry.store(
+        context,
+        location,
+        entry_point_selector_arg_ptr,
+        entry.arg(3)?,
+    )?;
+
+    // Allocate `calldata` argument and write the value.
+    let calldata_arg_ty = llvm::r#type::r#struct(
+        context,
+        &[llvm::r#type::r#struct(
+            context,
+            &[
+                llvm::r#type::pointer(context, 0),
+                IntegerType::new(context, 32).into(),
+                IntegerType::new(context, 32).into(),
+                IntegerType::new(context, 32).into(),
+            ],
+            false,
+        )],
+        false,
+    );
+    let calldata_arg_ptr = helper.init_block().alloca1(
+        context,
+        location,
+        calldata_arg_ty,
+        get_integer_layout(64).align(),
+    )?;
+    entry.store(context, location, calldata_arg_ptr, entry.arg(4)?)?;
+
+    // Allocate `signature` argument and write the value.
+    let signature_arg_ty = calldata_arg_ty;
+    let signature_arg_ptr = helper.init_block().alloca1(
+        context,
+        location,
+        signature_arg_ty,
+        get_integer_layout(64).align(),
+    )?;
+    entry.store(context, location, signature_arg_ptr, entry.arg(5)?)?;
+
+    // Extract function pointer.
+    let fn_ptr = entry.gep(
+        context,
+        location,
+        entry.arg(1)?,
+        &[GepIndex::Const(
+            StarknetSyscallHandlerCallbacks::<()>::META_TX_V0.try_into()?,
+        )],
+        llvm::r#type::pointer(context, 0),
+    )?;
+    let fn_ptr = entry.load(context, location, fn_ptr, llvm::r#type::pointer(context, 0))?;
+
+    entry.append_operation(
+        OperationBuilder::new("llvm.call", location)
+            .add_operands(&[
+                fn_ptr,
+                result_ptr,
+                ptr,
+                gas_builtin_ptr,
+                address_arg_ptr,
+                entry_point_selector_arg_ptr,
+                calldata_arg_ptr,
+                signature_arg_ptr,
+            ])
+            .build()?,
+    );
+
+    let result = entry.load(
+        context,
+        location,
+        result_ptr,
+        llvm::r#type::r#struct(
+            context,
+            &[
+                result_tag_ty,
+                llvm::r#type::array(
+                    IntegerType::new(context, 8).into(),
+                    (result_layout.size() - 1).try_into()?,
+                ),
+            ],
+            false,
+        ),
+    )?;
+    let result_tag = entry.extract_value(
+        context,
+        location,
+        result,
+        IntegerType::new(context, 1).into(),
+        0,
+    )?;
+
+    let payload_ok = {
+        let ptr = entry.gep(
+            context,
+            location,
+            result_ptr,
+            &[GepIndex::Const(
+                result_tag_layout.extend(variant_tys[0].1)?.1.try_into()?,
+            )],
+            IntegerType::new(context, 8).into(),
+        )?;
+        entry.load(context, location, ptr, variant_tys[0].0)?
+    };
+    let payload_err = {
+        let ptr = entry.gep(
+            context,
+            location,
+            result_ptr,
+            &[GepIndex::Const(
+                result_tag_layout.extend(variant_tys[1].1)?.1.try_into()?,
+            )],
+            IntegerType::new(context, 8).into(),
+        )?;
+        entry.load(context, location, ptr, variant_tys[1].0)?
+    };
+
+    let remaining_gas = entry.load(
+        context,
+        location,
+        gas_builtin_ptr,
+        IntegerType::new(context, 64).into(),
+    )?;
 
     entry.append_operation(helper.cond_br(
         context,
