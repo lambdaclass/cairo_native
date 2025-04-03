@@ -750,7 +750,7 @@ impl TypeBuilder for CoreTypeConcrete {
                 inner.extend(inner)?.0
             }
             CoreTypeConcrete::Blake(_info) => native_panic!("Implement layout for Blake type"),
-            CoreTypeConcrete::QM31(_info) => get_integer_layout(124),
+            CoreTypeConcrete::QM31(_info) => get_integer_layout(128),
         }
         .pad_to_align())
     }

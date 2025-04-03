@@ -24,5 +24,5 @@ pub fn build<'ctx>(
     _metadata: &mut MetadataStorage,
     _info: WithSelf<InfoOnlyConcreteType>,
 ) -> Result<Type<'ctx>> {
-    Ok(IntegerType::new(context, 124).into())
+    Ok(IntegerType::new(context, 128).into())
 }
