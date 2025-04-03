@@ -34,7 +34,6 @@ pub fn build<'ctx, 'this>(
         }
         QM31Concrete::Unpack(info) => {
             todo!("impl qm31_unpack");
-
         }
         QM31Concrete::Const(info) => {
             todo!("impl qm31_const");
