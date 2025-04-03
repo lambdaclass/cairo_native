@@ -52,7 +52,7 @@ pub fn build<'ctx, 'this>(
             build_qm31_is_zero(context, registry, entry, location, helper, metadata, info)
         }
         QM31Concrete::BinaryOperation(info) => {
-            build_qm31_bin_operation(context, registry, entry, location, helper, metadata, info)
+            todo!("impl qm31_bin_op");
         }
     }
 }
@@ -135,43 +135,6 @@ pub fn build_qm31_is_zero<'ctx, 'this>(
     let is_zero = entry.cmpi(context, CmpiPredicate::Eq, value, k0, location)?;
 
     entry.append_operation(helper.cond_br(context, is_zero, [0, 1], [&[], &[value]], location));
-
-    Ok(())
-}
-
-pub fn build_qm31_bin_operation<'ctx, 'this>(
-    context: &'ctx Context,
-    _registry: &ProgramRegistry<CoreType, CoreLibfunc>,
-    entry: &'this Block<'ctx>,
-    location: Location<'ctx>,
-    helper: &LibfuncHelper<'ctx, 'this>,
-    _metadata: &mut MetadataStorage,
-    info: &QM31BinaryOpConcreteLibfunc,
-) -> Result<()> {
-    let i144_ty = IntegerType::new(context, 144).into();
-
-    let lhs = entry.arg(0)?;
-    let rhs = entry.arg(1)?;
-
-    let result = match info.operator {
-        QM31BinaryOperator::Add => todo!(),
-        QM31BinaryOperator::Sub => {
-            let lhs = entry.extui(lhs, i144_ty, location)?;
-            let rhs = entry.extui(rhs, i144_ty, location)?;
-            let result = entry.append_op_result(arith::subi(lhs, rhs, location))?;
-
-            let qm31_prime =
-                entry.const_int_from_type(context, location, QM31_PRIME.clone(), i144_ty)?;
-            let result_mod = entry.addi(result, qm31_prime, location)?;
-            let is_out_of_range = entry.cmpi(context, CmpiPredicate::Ult, lhs, rhs, location)?;
-
-            entry.append_op_result(arith::select(is_out_of_range, result_mod, result, location))?
-        }
-        QM31BinaryOperator::Mul => todo!(),
-        QM31BinaryOperator::Div => todo!(),
-    };
-
-    entry.append_operation(helper.br(0, &[result], location));
 
     Ok(())
 }
