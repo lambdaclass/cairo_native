@@ -246,6 +246,7 @@ impl LibfuncBuilder for CoreConcreteLibfunc {
                 metadata,
                 &info.signature.param_signatures,
             ),
+            Self::QM31(_) => native_panic!("Implement QM31 libfunc"),
         }
     }
 

@@ -653,11 +653,15 @@ fn parse_result(
         | CoreTypeConcrete::Starknet(_)
         | CoreTypeConcrete::Uint128MulGuarantee(_)
         | CoreTypeConcrete::Circuit(_)
-        | CoreTypeConcrete::RangeCheck96(_) => native_panic!("not yet implemented as results"),
+        | CoreTypeConcrete::RangeCheck96(_) => {
+            native_panic!("range check 96 not yet implemented as results")
+        }
         // 2.9.0
-        CoreTypeConcrete::IntRange(_) => native_panic!("not yet implemented as results"),
+        CoreTypeConcrete::IntRange(_) => native_panic!("int range not yet implemented as results"),
         // 2.11.1
-        CoreTypeConcrete::Blake(_) => native_panic!("not yet implemented as results"),
+        CoreTypeConcrete::Blake(_) => native_panic!("blake not yet implemented as results"),
+        // 2.12.0
+        CoreTypeConcrete::QM31(_) => native_panic!("qm31 not yet implemented as results"),
     }
 }
 
