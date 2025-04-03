@@ -39,7 +39,7 @@ enum RuntimeBinding {
     DictGasRefund,
     DictDrop,
     DictDup,
-    GetGasBuiltin,
+    GetCostsBuiltin,
     BlakeCompress,
     DebugPrint,
     #[cfg(feature = "with-cheatcode")]
@@ -65,7 +65,7 @@ impl RuntimeBinding {
             RuntimeBinding::DictGasRefund => "cairo_native__dict_gas_refund",
             RuntimeBinding::DictDrop => "cairo_native__dict_drop",
             RuntimeBinding::DictDup => "cairo_native__dict_dup",
-            RuntimeBinding::GetGasBuiltin => "cairo_native__get_costs_builtin",
+            RuntimeBinding::GetCostsBuiltin => "cairo_native__get_costs_builtin",
             RuntimeBinding::BlakeCompress => "cairo_native_libfunc_blake_compress",
             #[cfg(feature = "with-cheatcode")]
             RuntimeBinding::VtableCheatcode => "cairo_native__vtable_cheatcode",
@@ -108,7 +108,7 @@ impl RuntimeBinding {
             }
             RuntimeBinding::DictDrop => crate::runtime::cairo_native__dict_drop as *const (),
             RuntimeBinding::DictDup => crate::runtime::cairo_native__dict_dup as *const (),
-            RuntimeBinding::GetGasBuiltin => {
+            RuntimeBinding::GetCostsBuiltin => {
                 crate::runtime::cairo_native__get_costs_builtin as *const ()
             }
             RuntimeBinding::BlakeCompress => {
@@ -635,9 +635,9 @@ impl RuntimeBindingsMeta {
         ))
     }
 
-    // Register if necessary, then invoke the `set_gas_builtin()` function.
+    // Register if necessary, then invoke the `get_costs_builtin()` function.
     #[allow(clippy::too_many_arguments)]
-    pub fn get_gas_builtin<'c, 'a>(
+    pub fn get_costs_builtin<'c, 'a>(
         &mut self,
         context: &'c Context,
         module: &Module,
@@ -652,7 +652,7 @@ impl RuntimeBindingsMeta {
             module,
             block,
             location,
-            RuntimeBinding::GetGasBuiltin,
+            RuntimeBinding::GetCostsBuiltin,
         )?;
 
         Ok(block.append_operation(
@@ -716,7 +716,7 @@ pub fn setup_runtime(find_symbol_ptr: impl Fn(&str) -> Option<*mut c_void>) {
         RuntimeBinding::DictGasRefund,
         RuntimeBinding::DictDrop,
         RuntimeBinding::DictDup,
-        RuntimeBinding::GetGasBuiltin,
+        RuntimeBinding::GetCostsBuiltin,
         RuntimeBinding::BlakeCompress,
         RuntimeBinding::DebugPrint,
         #[cfg(feature = "with-cheatcode")]
