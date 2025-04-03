@@ -15,6 +15,9 @@ use crate::{error::Result, metadata::MetadataStorage};
 
 use super::LibfuncHelper;
 
+const M31_SIZE: u32 = 36;
+const M31_MAX: u64 = 1 << M31_SIZE;
+
 /// Select and call the correct libfunc builder function from the selector.
 pub fn build<'ctx, 'this>(
     context: &'ctx Context,
