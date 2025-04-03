@@ -41,7 +41,7 @@ often so use it at your own risk. 🚧
 
 For versions under `1.0` `cargo` doesn't comply with
 [semver](https://semver.org/), so we advise to pin the version you
-use. This can be done by adding `cairo-native = "0.3.4"` to your Cargo.toml
+use. This can be done by adding `cairo-native = "0.4.0"` to your Cargo.toml
 
 ## Getting Started
 
@@ -140,7 +140,7 @@ corelib is found, and then list available targets.
 ```bash
 % make
 LLVM is correctly set at /opt/homebrew/opt/llvm.
-./scripts/check-corelib-version.sh 2.11.1
+./scripts/check-corelib-version.sh 2.11.2
 Usage:
     deps:         Installs the necesary dependencies.
     build:        Builds the cairo-native library and binaries in release mode.
@@ -349,7 +349,7 @@ Options:
 
 ### Requirements
 - [hyperfine](https://github.com/sharkdp/hyperfine): `cargo install hyperfine`
-- [cairo 2.11.1](https://github.com/starkware-libs/cairo)
+- [cairo 2.11.2](https://github.com/starkware-libs/cairo)
 - Cairo Corelibs
 - LLVM 19 with MLIR
 
