@@ -30,100 +30,23 @@ pub fn build<'ctx, 'this>(
 ) -> Result<()> {
     match selector {
         QM31Concrete::Pack(info) => {
-            build_qm31_pack(context, registry, entry, location, helper, metadata, info)
+            todo!("impl qm31_pack");
         }
         QM31Concrete::Unpack(info) => {
-            build_qm31_unpack(context, registry, entry, location, helper, metadata, info)
+            todo!("impl qm31_unpack");
+
         }
         QM31Concrete::Const(info) => {
-            build_qm31_const(context, registry, entry, location, helper, metadata, info)
+            todo!("impl qm31_const");
         }
         QM31Concrete::FromM31(info) => {
-            build_qm31_from_m31(context, registry, entry, location, helper, metadata, info)
+            todo!("impl qm31_from_m31");
         }
         QM31Concrete::IsZero(info) => {
-            build_qm31_is_zero(context, registry, entry, location, helper, metadata, info)
+            todo!("impl qm31_is_zero");
         }
         QM31Concrete::BinaryOperation(info) => {
-            build_qm31_bin_operation(context, registry, entry, location, helper, metadata, info)
+            todo!("impl qm31_binary_operation");
         }
     }
-}
-
-/// Select and call the correct libfunc builder function from the selector.
-pub fn build_qm31_pack<'ctx, 'this>(
-    context: &'ctx Context,
-    registry: &ProgramRegistry<CoreType, CoreLibfunc>,
-    entry: &'this Block<'ctx>,
-    location: Location<'ctx>,
-    helper: &LibfuncHelper<'ctx, 'this>,
-    metadata: &mut MetadataStorage,
-    info: &SignatureOnlyConcreteLibfunc,
-) -> Result<()> {
-    Ok(())
-}
-
-/// Select and call the correct libfunc builder function from the selector.
-pub fn build_qm31_unpack<'ctx, 'this>(
-    context: &'ctx Context,
-    registry: &ProgramRegistry<CoreType, CoreLibfunc>,
-    entry: &'this Block<'ctx>,
-    location: Location<'ctx>,
-    helper: &LibfuncHelper<'ctx, 'this>,
-    metadata: &mut MetadataStorage,
-    info: &SignatureOnlyConcreteLibfunc,
-) -> Result<()> {
-    Ok(())
-}
-
-/// Select and call the correct libfunc builder function from the selector.
-pub fn build_qm31_const<'ctx, 'this>(
-    context: &'ctx Context,
-    registry: &ProgramRegistry<CoreType, CoreLibfunc>,
-    entry: &'this Block<'ctx>,
-    location: Location<'ctx>,
-    helper: &LibfuncHelper<'ctx, 'this>,
-    metadata: &mut MetadataStorage,
-    info: &QM31ConstConcreteLibfunc,
-) -> Result<()> {
-    Ok(())
-}
-
-/// Select and call the correct libfunc builder function from the selector.
-pub fn build_qm31_from_m31<'ctx, 'this>(
-    context: &'ctx Context,
-    registry: &ProgramRegistry<CoreType, CoreLibfunc>,
-    entry: &'this Block<'ctx>,
-    location: Location<'ctx>,
-    helper: &LibfuncHelper<'ctx, 'this>,
-    metadata: &mut MetadataStorage,
-    info: &SignatureOnlyConcreteLibfunc,
-) -> Result<()> {
-    Ok(())
-}
-
-/// Select and call the correct libfunc builder function from the selector.
-pub fn build_qm31_is_zero<'ctx, 'this>(
-    context: &'ctx Context,
-    registry: &ProgramRegistry<CoreType, CoreLibfunc>,
-    entry: &'this Block<'ctx>,
-    location: Location<'ctx>,
-    helper: &LibfuncHelper<'ctx, 'this>,
-    metadata: &mut MetadataStorage,
-    info: &SignatureOnlyConcreteLibfunc,
-) -> Result<()> {
-    Ok(())
-}
-
-/// Select and call the correct libfunc builder function from the selector.
-pub fn build_qm31_bin_operation<'ctx, 'this>(
-    context: &'ctx Context,
-    registry: &ProgramRegistry<CoreType, CoreLibfunc>,
-    entry: &'this Block<'ctx>,
-    location: Location<'ctx>,
-    helper: &LibfuncHelper<'ctx, 'this>,
-    metadata: &mut MetadataStorage,
-    info: &QM31BinaryOpConcreteLibfunc,
-) -> Result<()> {
-    Ok(())
 }
