@@ -50,6 +50,7 @@ mod non_zero;
 mod nullable;
 mod pedersen;
 mod poseidon;
+mod qm31;
 mod range_check;
 mod segment_arena;
 mod snapshot;
@@ -437,7 +438,13 @@ impl TypeBuilder for CoreTypeConcrete {
                 WithSelf::new(self_ty, info),
             ),
             Self::Blake(_) => native_panic!("Build Blake type"),
-            CoreTypeConcrete::QM31(_) => native_panic!("Build QM31 type"),
+            CoreTypeConcrete::QM31(info) => self::qm31::build(
+                context,
+                module,
+                registry,
+                metadata,
+                WithSelf::new(self_ty, info),
+            ),
         }
     }
 
@@ -545,7 +552,7 @@ impl TypeBuilder for CoreTypeConcrete {
 
             CoreTypeConcrete::IntRange(_info) => false,
             CoreTypeConcrete::Blake(_info) => native_panic!("Implement is_complex for Blake type"),
-            CoreTypeConcrete::QM31(_info) => native_panic!("Implement is_complex for QM31 type"),
+            CoreTypeConcrete::QM31(_info) => false,
         })
     }
 
@@ -631,7 +638,7 @@ impl TypeBuilder for CoreTypeConcrete {
                 type_info.is_zst(registry)?
             }
             CoreTypeConcrete::Blake(_info) => native_panic!("Implement is_zst for Blake type"),
-            CoreTypeConcrete::QM31(_info) => native_panic!("Implement is_zst for QM31 type"),
+            CoreTypeConcrete::QM31(_info) => false,
         })
     }
 
@@ -743,7 +750,7 @@ impl TypeBuilder for CoreTypeConcrete {
                 inner.extend(inner)?.0
             }
             CoreTypeConcrete::Blake(_info) => native_panic!("Implement layout for Blake type"),
-            CoreTypeConcrete::QM31(_info) => native_panic!("Implement layout for QM31 type"),
+            CoreTypeConcrete::QM31(_info) => get_integer_layout(124),
         }
         .pad_to_align())
     }
@@ -834,7 +841,7 @@ impl TypeBuilder for CoreTypeConcrete {
                 .is_memory_allocated(registry)?,
             CoreTypeConcrete::Coupon(_) => false,
             CoreTypeConcrete::Circuit(_) => false,
-            CoreTypeConcrete::QM31(_) => native_panic!("Implement is_memory_allocated for QM31"),
+            CoreTypeConcrete::QM31(_) => false,
         })
     }
 
