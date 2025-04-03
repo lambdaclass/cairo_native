@@ -1007,6 +1007,7 @@ impl Value {
                     }
                 }
                 CoreTypeConcrete::Blake(_) => native_panic!("Implement from_ptr for Blake type"),
+                CoreTypeConcrete::QM31(_) => native_panic!("Implement from_ptr for QM31 type"),
             }
         })
     }

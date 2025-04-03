@@ -224,7 +224,6 @@ pub const fn libfunc_to_name(value: &CoreConcreteLibfunc) -> &'static str {
                 IntOperator::OverflowingSub => "i8_overflowing_sub",
             },
             SintConcrete::Diff(_) => "i8_diff",
-            SintConcrete::IsZero(_) => "i8_is_zero",
             SintConcrete::WideMul(_) => "i8_wide_mul",
         },
         CoreConcreteLibfunc::Sint16(value) => match value {
@@ -237,7 +236,6 @@ pub const fn libfunc_to_name(value: &CoreConcreteLibfunc) -> &'static str {
                 IntOperator::OverflowingSub => "i16_overflowing_sub",
             },
             SintConcrete::Diff(_) => "i16_diff",
-            SintConcrete::IsZero(_) => "i16_is_zero",
             SintConcrete::WideMul(_) => "i16_wide_mul",
         },
         CoreConcreteLibfunc::Sint32(value) => match value {
@@ -250,7 +248,6 @@ pub const fn libfunc_to_name(value: &CoreConcreteLibfunc) -> &'static str {
                 IntOperator::OverflowingSub => "i32_overflowing_sub",
             },
             SintConcrete::Diff(_) => "i32_diff",
-            SintConcrete::IsZero(_) => "i32_is_zero",
             SintConcrete::WideMul(_) => "i32_wide_mul",
         },
         CoreConcreteLibfunc::Sint64(value) => match value {
@@ -263,7 +260,6 @@ pub const fn libfunc_to_name(value: &CoreConcreteLibfunc) -> &'static str {
                 IntOperator::OverflowingSub => "i64_overflowing_sub",
             },
             SintConcrete::Diff(_) => "i64_diff",
-            SintConcrete::IsZero(_) => "i64_is_zero",
             SintConcrete::WideMul(_) => "i64_wide_mul",
         },
         CoreConcreteLibfunc::Sint128(value) => match value {
@@ -276,7 +272,6 @@ pub const fn libfunc_to_name(value: &CoreConcreteLibfunc) -> &'static str {
                 IntOperator::OverflowingSub => "i128_overflowing_sub",
             },
             Sint128Concrete::Diff(_) => "i128_diff",
-            Sint128Concrete::IsZero(_) => "i128_is_zero",
         },
         CoreConcreteLibfunc::Mem(value) => match value {
             MemConcreteLibfunc::StoreTemp(_) => "store_temp",
@@ -420,5 +415,6 @@ pub const fn libfunc_to_name(value: &CoreConcreteLibfunc) -> &'static str {
             IntRangeConcreteLibfunc::PopFront(_) => "int_range_pop_front",
         },
         CoreConcreteLibfunc::Blake(_) => "blake",
+        CoreConcreteLibfunc::QM31(_) => "qm31",
     }
 }
