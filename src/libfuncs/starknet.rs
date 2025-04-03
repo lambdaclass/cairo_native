@@ -2123,6 +2123,19 @@ pub fn build_library_call<'ctx, 'this>(
     Ok(())
 }
 
+/// Executes the `meta_tx_v0_syscall`.
+///
+/// This syscall executes a given entrypoint as a v0 meta transaction. As all
+/// syscalls, implementation is delegated to the user provided syscall handler.
+///
+/// ```cairo
+/// extern fn meta_tx_v0_syscall(
+///     address: ContractAddress,
+///     entry_point_selector: felt252,
+///     calldata: Span<felt252>,
+///     signature: Span<felt252>,
+/// ) -> starknet::SyscallResult<Span<felt252>> implicits(GasBuiltin, System) nopanic;
+/// ```
 pub fn build_meta_tx_v0<'ctx, 'this>(
     context: &'ctx Context,
     registry: &ProgramRegistry<CoreType, CoreLibfunc>,
@@ -2132,19 +2145,6 @@ pub fn build_meta_tx_v0<'ctx, 'this>(
     metadata: &mut MetadataStorage,
     info: &SignatureOnlyConcreteLibfunc,
 ) -> Result<()> {
-    // pub extern fn call_contract_syscall(
-    //     address: ContractAddress,
-    //     entry_point_selector: felt252,
-    //     calldata: Span<felt252>,
-    // ) -> SyscallResult<Span<felt252>> implicits(GasBuiltin, System) nopanic;
-    //
-    // extern fn meta_tx_v0_syscall(
-    //     address: ContractAddress,
-    //     entry_point_selector: felt252,
-    //     calldata: Span<felt252>,
-    //     signature: Span<felt252>,
-    // ) -> SyscallResult<Span<felt252>> implicits(GasBuiltin, System) nopanic;
-
     // Extract self pointer.
     let ptr = entry.load(
         context,
