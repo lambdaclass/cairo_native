@@ -39,7 +39,7 @@ enum RuntimeBinding {
     DictGasRefund,
     DictDrop,
     DictDup,
-    GetGasBuiltin,
+    GetCostsBuiltin,
     DebugPrint,
     #[cfg(feature = "with-cheatcode")]
     VtableCheatcode,
@@ -64,7 +64,7 @@ impl RuntimeBinding {
             RuntimeBinding::DictGasRefund => "cairo_native__dict_gas_refund",
             RuntimeBinding::DictDrop => "cairo_native__dict_drop",
             RuntimeBinding::DictDup => "cairo_native__dict_dup",
-            RuntimeBinding::GetGasBuiltin => "cairo_native__get_costs_builtin",
+            RuntimeBinding::GetCostsBuiltin => "cairo_native__get_costs_builtin",
             #[cfg(feature = "with-cheatcode")]
             RuntimeBinding::VtableCheatcode => "cairo_native__vtable_cheatcode",
         }
@@ -106,7 +106,7 @@ impl RuntimeBinding {
             }
             RuntimeBinding::DictDrop => crate::runtime::cairo_native__dict_drop as *const (),
             RuntimeBinding::DictDup => crate::runtime::cairo_native__dict_dup as *const (),
-            RuntimeBinding::GetGasBuiltin => {
+            RuntimeBinding::GetCostsBuiltin => {
                 crate::runtime::cairo_native__get_costs_builtin as *const ()
             }
             #[cfg(feature = "with-cheatcode")]
@@ -533,19 +533,13 @@ impl RuntimeBindingsMeta {
         dict_ptr: Value<'c, 'a>, // ptr to the dict
         key_ptr: Value<'c, 'a>,  // key must be a ptr to Felt
         location: Location<'c>,
-    ) -> Result<(Value<'c, 'a>, Value<'c, 'a>, Value<'c, 'a>)>
+    ) -> Result<(Value<'c, 'a>, Value<'c, 'a>)>
     where
         'c: 'a,
     {
         let function =
             self.build_function(context, helper, block, location, RuntimeBinding::DictGet)?;
 
-        let dict_ptr_ptr = helper.init_block().alloca1(
-            context,
-            location,
-            llvm::r#type::pointer(context, 0),
-            align_of::<*mut ()>(),
-        )?;
         let value_ptr = helper.init_block().alloca1(
             context,
             location,
@@ -553,21 +547,14 @@ impl RuntimeBindingsMeta {
             align_of::<*mut ()>(),
         )?;
 
-        block.store(context, location, dict_ptr_ptr, dict_ptr)?;
         let is_present = block.append_op_result(
             OperationBuilder::new("llvm.call", location)
                 .add_operands(&[function])
-                .add_operands(&[dict_ptr_ptr, key_ptr, value_ptr])
+                .add_operands(&[dict_ptr, key_ptr, value_ptr])
                 .add_results(&[IntegerType::new(context, c_int::BITS).into()])
                 .build()?,
         )?;
 
-        let dict_ptr = block.load(
-            context,
-            location,
-            dict_ptr_ptr,
-            llvm::r#type::pointer(context, 0),
-        )?;
         let value_ptr = block.load(
             context,
             location,
@@ -575,7 +562,7 @@ impl RuntimeBindingsMeta {
             llvm::r#type::pointer(context, 0),
         )?;
 
-        Ok((dict_ptr, is_present, value_ptr))
+        Ok((is_present, value_ptr))
     }
 
     /// Register if necessary, then invoke the `dict_gas_refund()` function.
@@ -612,9 +599,9 @@ impl RuntimeBindingsMeta {
         ))
     }
 
-    // Register if necessary, then invoke the `set_gas_builtin()` function.
+    // Register if necessary, then invoke the `get_costs_builtin()` function.
     #[allow(clippy::too_many_arguments)]
-    pub fn get_gas_builtin<'c, 'a>(
+    pub fn get_costs_builtin<'c, 'a>(
         &mut self,
         context: &'c Context,
         module: &Module,
@@ -629,7 +616,7 @@ impl RuntimeBindingsMeta {
             module,
             block,
             location,
-            RuntimeBinding::GetGasBuiltin,
+            RuntimeBinding::GetCostsBuiltin,
         )?;
 
         Ok(block.append_operation(
@@ -693,7 +680,7 @@ pub fn setup_runtime(find_symbol_ptr: impl Fn(&str) -> Option<*mut c_void>) {
         RuntimeBinding::DictGasRefund,
         RuntimeBinding::DictDrop,
         RuntimeBinding::DictDup,
-        RuntimeBinding::GetGasBuiltin,
+        RuntimeBinding::GetCostsBuiltin,
         RuntimeBinding::DebugPrint,
         #[cfg(feature = "with-cheatcode")]
         RuntimeBinding::VtableCheatcode,

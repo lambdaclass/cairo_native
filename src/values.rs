@@ -16,7 +16,7 @@ use bumpalo::Bump;
 use cairo_lang_sierra::{
     extensions::{
         core::{CoreLibfunc, CoreType, CoreTypeConcrete},
-        starknet::{secp256::Secp256PointTypeConcrete, StarkNetTypeConcrete},
+        starknet::{secp256::Secp256PointTypeConcrete, StarknetTypeConcrete},
         utils::Range,
     },
     ids::ConcreteTypeId,
@@ -919,21 +919,21 @@ impl Value {
                     native_panic!("handled before: {:?}", type_id)
                 }
                 // Does it make sense for programs to return this? Should it be implemented
-                CoreTypeConcrete::StarkNet(selector) => match selector {
-                    StarkNetTypeConcrete::ClassHash(_)
-                    | StarkNetTypeConcrete::ContractAddress(_)
-                    | StarkNetTypeConcrete::StorageBaseAddress(_)
-                    | StarkNetTypeConcrete::StorageAddress(_) => {
+                CoreTypeConcrete::Starknet(selector) => match selector {
+                    StarknetTypeConcrete::ClassHash(_)
+                    | StarknetTypeConcrete::ContractAddress(_)
+                    | StarknetTypeConcrete::StorageBaseAddress(_)
+                    | StarknetTypeConcrete::StorageAddress(_) => {
                         // felt values
                         let data = ptr.cast::<[u8; 32]>().as_mut();
                         data[31] &= 0x0F; // Filter out first 4 bits (they're outside an i252).
                         let data = Felt::from_bytes_le(data);
                         Self::Felt252(data)
                     }
-                    StarkNetTypeConcrete::System(_) => {
+                    StarknetTypeConcrete::System(_) => {
                         native_panic!("should be handled before")
                     }
-                    StarkNetTypeConcrete::Secp256Point(info) => match info {
+                    StarknetTypeConcrete::Secp256Point(info) => match info {
                         Secp256PointTypeConcrete::K1(_) => {
                             let data = ptr.cast::<Secp256k1Point>().as_ref();
                             Self::Secp256K1Point(*data)
@@ -943,7 +943,7 @@ impl Value {
                             Self::Secp256R1Point(*data)
                         }
                     },
-                    StarkNetTypeConcrete::Sha256StateHandle(_) => {
+                    StarknetTypeConcrete::Sha256StateHandle(_) => {
                         native_panic!("todo: implement Sha256StateHandle from_ptr")
                     }
                 },
@@ -1006,6 +1006,8 @@ impl Value {
                         y: y.into(),
                     }
                 }
+                CoreTypeConcrete::Blake(_) => native_panic!("Implement from_ptr for Blake type"),
+                CoreTypeConcrete::QM31(_) => native_panic!("Implement from_ptr for QM31 type"),
             }
         })
     }

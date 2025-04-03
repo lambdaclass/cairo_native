@@ -54,7 +54,7 @@ use cairo_lang_sierra::{
         circuit::CircuitTypeConcrete,
         core::{CoreLibfunc, CoreType, CoreTypeConcrete},
         gas::CostTokenType,
-        starknet::StarkNetTypeConcrete,
+        starknet::StarknetTypeConcrete,
     },
     ids::FunctionId,
     program::{GenFunction, Program, StatementIdx},
@@ -627,7 +627,7 @@ fn find_entrypoint_builtins(
                     BuiltinType::CircuitMul
                 }
                 CoreTypeConcrete::GasBuiltin(_) => BuiltinType::Gas,
-                CoreTypeConcrete::StarkNet(StarkNetTypeConcrete::System(_)) => BuiltinType::System,
+                CoreTypeConcrete::Starknet(StarknetTypeConcrete::System(_)) => BuiltinType::System,
                 _ => native_panic!("unknown builtin type for function {}", function),
             })
         })
@@ -872,7 +872,7 @@ mod tests {
             )
             .unwrap();
         assert_eq!(result.return_values, vec![Felt::from(3628800)]);
-        assert_eq!(result.remaining_gas, 18446744073709537615);
+        assert_eq!(result.remaining_gas, 18446744073709538315);
     }
 
     #[rstest]
@@ -893,7 +893,6 @@ mod tests {
         )
         .unwrap();
 
-        // The last function in the program is the `get` wrapper function.
         // The last function in the program is the `get` wrapper function.
         let selector = starknet_program_empty
             .entry_points_by_type
