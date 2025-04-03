@@ -543,7 +543,7 @@ thread_local! {
     };
 }
 
-/// Get the gas builtin from the internal thread local.
+/// Get the costs builtin from the internal thread local.
 pub extern "C" fn cairo_native__get_costs_builtin() -> *const [u64; 7] {
     BUILTIN_COSTS.with(|x| x.as_ptr()) as *const [u64; 7]
 }
