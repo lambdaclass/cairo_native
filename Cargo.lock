@@ -1026,7 +1026,7 @@ dependencies = [
  "cairo-lang-starknet-classes",
  "cairo-lang-test-plugin",
  "cairo-lang-utils",
- "cairo-vm 2.0.1 (git+https://github.com/lambdaclass/cairo-vm?rev=ae356ca846aea0666745fdf791f0cded5af4d895)",
+ "cairo-vm 2.0.1 (git+https://github.com/lambdaclass/cairo-vm?rev=368e3fb311601a33ff8945e784eaa332f1fd499a)",
  "cc",
  "clap",
  "colored 2.2.0",
@@ -1101,7 +1101,7 @@ dependencies = [
 [[package]]
 name = "cairo-vm"
 version = "2.0.1"
-source = "git+https://github.com/lambdaclass/cairo-vm?rev=ae356ca846aea0666745fdf791f0cded5af4d895#ae356ca846aea0666745fdf791f0cded5af4d895"
+source = "git+https://github.com/lambdaclass/cairo-vm?rev=368e3fb311601a33ff8945e784eaa332f1fd499a#368e3fb311601a33ff8945e784eaa332f1fd499a"
 dependencies = [
  "anyhow",
  "ark-ff 0.4.2",

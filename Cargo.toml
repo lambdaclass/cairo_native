@@ -127,7 +127,7 @@ rand = "0.9.0"
 starknet-curve = "0.5.1"
 
 [dev-dependencies]
-cairo-vm = { git = "https://github.com/lambdaclass/cairo-vm", rev = "ae356ca846aea0666745fdf791f0cded5af4d895", features = ["cairo-1-hints"] }
+cairo-vm = { git = "https://github.com/lambdaclass/cairo-vm", rev = "368e3fb311601a33ff8945e784eaa332f1fd499a", features = ["cairo-1-hints"] }
 cairo-lang-semantic = { version = "=2.12.0-dev.0", features = ["testing"] }
 criterion = { version = "0.5.1", features = ["html_reports"] }
 lambdaworks-math = "0.11.0"
