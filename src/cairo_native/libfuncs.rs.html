@@ -489,7 +489,8 @@
 <a href="#488" id="488">488</a>
 <a href="#489" id="489">489</a>
 <a href="#490" id="490">490</a>
-<a href="#491" id="491">491</a></pre></div><pre class="rust"><code><span class="doccomment">//! # Compiler libfunc infrastructure
+<a href="#491" id="491">491</a>
+<a href="#492" id="492">492</a></pre></div><pre class="rust"><code><span class="doccomment">//! # Compiler libfunc infrastructure
 //!
 //! Contains libfunc generation stuff (aka. the actual instructions).
 
@@ -734,6 +735,7 @@
                 metadata,
                 <span class="kw-2">&amp;</span>info.signature.param_signatures,
             ),
+            <span class="self">Self</span>::QM31(<span class="kw">_</span>) =&gt; <span class="macro">native_panic!</span>(<span class="string">"Implement QM31 libfunc"</span>),
         }
     }
 

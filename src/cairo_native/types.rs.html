@@ -1019,7 +1019,12 @@
 <a href="#1018" id="1018">1018</a>
 <a href="#1019" id="1019">1019</a>
 <a href="#1020" id="1020">1020</a>
-<a href="#1021" id="1021">1021</a></pre></div><pre class="rust"><code><span class="doccomment">//! # Compiler type infrastructure
+<a href="#1021" id="1021">1021</a>
+<a href="#1022" id="1022">1022</a>
+<a href="#1023" id="1023">1023</a>
+<a href="#1024" id="1024">1024</a>
+<a href="#1025" id="1025">1025</a>
+<a href="#1026" id="1026">1026</a></pre></div><pre class="rust"><code><span class="doccomment">//! # Compiler type infrastructure
 //!
 //! Contains type generation stuff (aka. conversion from Sierra to MLIR types).
 
@@ -1458,6 +1463,7 @@
                 WithSelf::new(self_ty, info),
             ),
             <span class="self">Self</span>::Blake(<span class="kw">_</span>) =&gt; <span class="macro">native_panic!</span>(<span class="string">"Build Blake type"</span>),
+            CoreTypeConcrete::QM31(<span class="kw">_</span>) =&gt; <span class="macro">native_panic!</span>(<span class="string">"Build QM31 type"</span>),
         }
     }
 
@@ -1564,7 +1570,8 @@
             CoreTypeConcrete::Circuit(info) =&gt; circuit::is_complex(info),
 
             CoreTypeConcrete::IntRange(_info) =&gt; <span class="bool-val">false</span>,
-            CoreTypeConcrete::Blake(_info) =&gt; <span class="macro">native_panic!</span>(<span class="string">"Implement is_complex for Blake type"</span>)
+            CoreTypeConcrete::Blake(_info) =&gt; <span class="macro">native_panic!</span>(<span class="string">"Implement is_complex for Blake type"</span>),
+            CoreTypeConcrete::QM31(_info) =&gt; <span class="macro">native_panic!</span>(<span class="string">"Implement is_complex for QM31 type"</span>),
         })
     }
 
@@ -1650,6 +1657,7 @@
                 type_info.is_zst(registry)<span class="question-mark">?
             </span>}
             CoreTypeConcrete::Blake(_info) =&gt; <span class="macro">native_panic!</span>(<span class="string">"Implement is_zst for Blake type"</span>),
+            CoreTypeConcrete::QM31(_info) =&gt; <span class="macro">native_panic!</span>(<span class="string">"Implement is_zst for QM31 type"</span>),
         })
     }
 
@@ -1761,6 +1769,7 @@
                 inner.extend(inner)<span class="question-mark">?</span>.<span class="number">0
             </span>}
             CoreTypeConcrete::Blake(_info) =&gt; <span class="macro">native_panic!</span>(<span class="string">"Implement layout for Blake type"</span>),
+            CoreTypeConcrete::QM31(_info) =&gt; <span class="macro">native_panic!</span>(<span class="string">"Implement layout for QM31 type"</span>),
         }
         .pad_to_align())
     }
@@ -1851,6 +1860,7 @@
                 </span>.is_memory_allocated(registry)<span class="question-mark">?</span>,
             CoreTypeConcrete::Coupon(<span class="kw">_</span>) =&gt; <span class="bool-val">false</span>,
             CoreTypeConcrete::Circuit(<span class="kw">_</span>) =&gt; <span class="bool-val">false</span>,
+            CoreTypeConcrete::QM31(<span class="kw">_</span>) =&gt; <span class="macro">native_panic!</span>(<span class="string">"Implement is_memory_allocated for QM31"</span>),
         })
     }
 

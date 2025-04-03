@@ -1951,7 +1951,8 @@
 <a href="#1950" id="1950">1950</a>
 <a href="#1951" id="1951">1951</a>
 <a href="#1952" id="1952">1952</a>
-<a href="#1953" id="1953">1953</a></pre></div><pre class="rust"><code><span class="doccomment">//! # Params and return values de/serialization
+<a href="#1953" id="1953">1953</a>
+<a href="#1954" id="1954">1954</a></pre></div><pre class="rust"><code><span class="doccomment">//! # Params and return values de/serialization
 //!
 //! A Rusty interface to provide parameters to cairo-native entry point calls.
 
@@ -2952,6 +2953,7 @@
                     }
                 }
                 CoreTypeConcrete::Blake(<span class="kw">_</span>) =&gt; <span class="macro">native_panic!</span>(<span class="string">"Implement from_ptr for Blake type"</span>),
+                CoreTypeConcrete::QM31(<span class="kw">_</span>) =&gt; <span class="macro">native_panic!</span>(<span class="string">"Implement from_ptr for QM31 type"</span>),
             }
         })
     }

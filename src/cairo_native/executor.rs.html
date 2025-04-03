@@ -812,7 +812,11 @@
 <a href="#811" id="811">811</a>
 <a href="#812" id="812">812</a>
 <a href="#813" id="813">813</a>
-<a href="#814" id="814">814</a></pre></div><pre class="rust"><code><span class="doccomment">//! # Executors
+<a href="#814" id="814">814</a>
+<a href="#815" id="815">815</a>
+<a href="#816" id="816">816</a>
+<a href="#817" id="817">817</a>
+<a href="#818" id="818">818</a></pre></div><pre class="rust"><code><span class="doccomment">//! # Executors
 //!
 //! This module provides methods to execute the programs, either via JIT or compiled ahead
 //! of time. It also provides a cache to avoid recompiling previously compiled programs.
@@ -1467,11 +1471,15 @@
         | CoreTypeConcrete::Starknet(<span class="kw">_</span>)
         | CoreTypeConcrete::Uint128MulGuarantee(<span class="kw">_</span>)
         | CoreTypeConcrete::Circuit(<span class="kw">_</span>)
-        | CoreTypeConcrete::RangeCheck96(<span class="kw">_</span>) =&gt; <span class="macro">native_panic!</span>(<span class="string">"not yet implemented as results"</span>),
+        | CoreTypeConcrete::RangeCheck96(<span class="kw">_</span>) =&gt; {
+            <span class="macro">native_panic!</span>(<span class="string">"range check 96 not yet implemented as results"</span>)
+        }
         <span class="comment">// 2.9.0
-        </span>CoreTypeConcrete::IntRange(<span class="kw">_</span>) =&gt; <span class="macro">native_panic!</span>(<span class="string">"not yet implemented as results"</span>),
+        </span>CoreTypeConcrete::IntRange(<span class="kw">_</span>) =&gt; <span class="macro">native_panic!</span>(<span class="string">"int range not yet implemented as results"</span>),
         <span class="comment">// 2.11.1
-        </span>CoreTypeConcrete::Blake(<span class="kw">_</span>) =&gt; <span class="macro">native_panic!</span>(<span class="string">"not yet implemented as results"</span>),
+        </span>CoreTypeConcrete::Blake(<span class="kw">_</span>) =&gt; <span class="macro">native_panic!</span>(<span class="string">"blake not yet implemented as results"</span>),
+        <span class="comment">// 2.12.0
+        </span>CoreTypeConcrete::QM31(<span class="kw">_</span>) =&gt; <span class="macro">native_panic!</span>(<span class="string">"qm31 not yet implemented as results"</span>),
     }
 }
 
