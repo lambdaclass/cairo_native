@@ -1001,9 +1001,9 @@ impl Value {
                     }
                 }
                 CoreTypeConcrete::Blake(_) => native_panic!("Implement from_ptr for Blake type"),
-                CoreTypeConcrete::QM31(_) => Value::QM31(BigUint::from(BigUint::from_bytes_le(
+                CoreTypeConcrete::QM31(_) => Value::QM31(BigUint::from_bytes_le(
                     slice::from_raw_parts(ptr.cast::<u8>().as_ptr(), 1),
-                ))),
+                )),
             }
         })
     }

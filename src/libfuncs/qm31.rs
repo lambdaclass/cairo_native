@@ -20,8 +20,6 @@ use super::LibfuncHelper;
 // An M31 is the quarter part of a QM31, is a 36-bit integer
 // whose 5 least significant bits are 0s.
 const M31_SIZE: u8 = 36;
-const M31_MAX: u128 = 1 << M31_SIZE;
-const QM31_PRIME: u128 = (1 << 31) - 1;
 
 /// Select and call the correct libfunc builder function from the selector.
 pub fn build<'ctx, 'this>(
@@ -37,19 +35,19 @@ pub fn build<'ctx, 'this>(
         QM31Concrete::Pack(info) => {
             build_qm31_pack(context, registry, entry, location, helper, metadata, info)
         }
-        QM31Concrete::Unpack(info) => {
+        QM31Concrete::Unpack(_) => {
             todo!("impl qm31_unpack");
         }
         QM31Concrete::Const(info) => {
             build_qm31_const(context, registry, entry, location, helper, metadata, info)
         }
-        QM31Concrete::FromM31(info) => {
+        QM31Concrete::FromM31(_) => {
             todo!("impl qm31_from_m31");
         }
         QM31Concrete::IsZero(info) => {
             build_qm31_is_zero(context, registry, entry, location, helper, metadata, info)
         }
-        QM31Concrete::BinaryOperation(info) => {
+        QM31Concrete::BinaryOperation(_) => {
             todo!("impl qm31_bin_op");
         }
     }
