@@ -139,8 +139,6 @@ pub fn build_qm31_is_zero<'ctx, 'this>(
 mod tests {
     use num_bigint::BigUint;
     use num_traits::Num;
-
-    use super::BigInt;
     use crate::{
         utils::test::{load_cairo, run_program},
         Value,

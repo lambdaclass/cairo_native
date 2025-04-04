@@ -28,8 +28,8 @@ use cairo_lang_sierra::{
     program_registry::ProgramRegistry,
 };
 use libc::c_void;
-use num_bigint::{BigInt, BigUint};
-use num_traits::{FromBytes, One};
+use num_bigint::BigInt;
+use num_traits::One;
 use std::{alloc::Layout, arch::global_asm, ptr::NonNull};
 
 mod aot;
@@ -672,6 +672,9 @@ fn parse_result(
 
                 #[cfg(target_arch = "aarch64")]
                 {
+                    use num_traits::FromBytes;
+                    use num_bigint::BigUint;
+
                     let limb0 = ret_registers[0].to_le_bytes();
                     let limb1 = ret_registers[1].to_le_bytes();
                     //only use the first 16 bytes
