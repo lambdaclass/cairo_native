@@ -66,6 +66,7 @@ pub enum Value {
         #[educe(PartialEq(ignore))]
         debug_name: Option<String>,
     },
+    QM31(BigUint),
     Uint8(u8),
     Uint16(u16),
     Uint32(u32),
@@ -582,6 +583,7 @@ impl Value {
                         )
                     }
                 }
+                Self::QM31(_) => native_panic!("implement to_ptr for QM31"),
             }
         })
     }
@@ -999,7 +1001,9 @@ impl Value {
                     }
                 }
                 CoreTypeConcrete::Blake(_) => native_panic!("Implement from_ptr for Blake type"),
-                CoreTypeConcrete::QM31(_) => native_panic!("Implement from_ptr for QM31 type"),
+                CoreTypeConcrete::QM31(_) => Value::QM31(BigUint::from(BigUint::from_bytes_le(
+                    slice::from_raw_parts(ptr.cast::<u8>().as_ptr(), 1),
+                ))),
             }
         })
     }

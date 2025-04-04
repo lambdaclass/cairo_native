@@ -28,8 +28,8 @@ use cairo_lang_sierra::{
     program_registry::ProgramRegistry,
 };
 use libc::c_void;
-use num_bigint::BigInt;
-use num_traits::One;
+use num_bigint::{BigInt, BigUint};
+use num_traits::{FromBytes, One, PrimInt, ToBytes};
 use std::{alloc::Layout, arch::global_asm, ptr::NonNull};
 
 mod aot;
@@ -661,7 +661,18 @@ fn parse_result(
         // 2.11.1
         CoreTypeConcrete::Blake(_) => native_panic!("blake not yet implemented as results"),
         // 2.12.0
-        CoreTypeConcrete::QM31(_) => native_panic!("qm31 not yet implemented as results"),
+        CoreTypeConcrete::QM31(_) => Ok(match return_ptr {
+            Some(value) => Value::from_ptr(value, type_id, registry, true)?,
+            None => {
+                let limb0 = ret_registers[0].to_le_bytes();
+                let limb1 = ret_registers[1].to_le_bytes();
+                let limb2 = ret_registers[2].to_le_bytes();
+
+                let value_bytes = [limb0, limb1, limb2].concat();
+
+                Value::QM31(BigUint::from_le_bytes(&value_bytes))
+            }
+        }),
     }
 }
 

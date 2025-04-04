@@ -2,14 +2,12 @@ use cairo_lang_sierra::{
     extensions::{
         core::{CoreLibfunc, CoreType},
         lib_func::SignatureOnlyConcreteLibfunc,
-        qm31::{
-            QM31BinaryOpConcreteLibfunc, QM31BinaryOperator, QM31Concrete, QM31ConstConcreteLibfunc,
-        },
+        qm31::{QM31Concrete, QM31ConstConcreteLibfunc},
     },
     program_registry::ProgramRegistry,
 };
 use melior::{
-    dialect::arith::{self, CmpiPredicate},
+    dialect::arith::CmpiPredicate,
     ir::{r#type::IntegerType, Block, BlockLike, Location},
     Context,
 };
@@ -67,7 +65,7 @@ pub fn build_qm31_pack<'ctx, 'this>(
     _info: &SignatureOnlyConcreteLibfunc,
 ) -> Result<()> {
     let i144_ty = IntegerType::new(context, 144).into();
-    let m31_max = entry.const_int(context, location, M31_MAX, 144)?;
+    let m31_size = entry.const_int(context, location, M31_SIZE, 144)?;
 
     let m31_0 = entry.arg(0)?;
     let m31_1 = entry.arg(1)?;
@@ -82,13 +80,13 @@ pub fn build_qm31_pack<'ctx, 'this>(
     // We first crate the qm31 with its most significant bits
     let qm31 = entry.extui(m31_3, i144_ty, location)?;
 
-    let qm31 = entry.shli(qm31, m31_max, location)?;
+    let qm31 = entry.shli(qm31, m31_size, location)?;
     let qm31 = entry.addi(qm31, m31_2, location)?;
 
-    let qm31 = entry.shli(qm31, m31_max, location)?;
+    let qm31 = entry.shli(qm31, m31_size, location)?;
     let qm31 = entry.addi(qm31, m31_1, location)?;
 
-    let qm31 = entry.shli(qm31, m31_max, location)?;
+    let qm31 = entry.shli(qm31, m31_size, location)?;
     let qm31 = entry.addi(qm31, m31_0, location)?;
 
     entry.append_operation(helper.br(0, &[qm31], location));
@@ -106,12 +104,12 @@ pub fn build_qm31_const<'ctx, 'this>(
     info: &QM31ConstConcreteLibfunc,
 ) -> Result<()> {
     let mut qm31 = BigInt::from(info.w3);
-    qm31 <<= M31_MAX;
+    qm31 <<= M31_SIZE;
     qm31 += BigInt::from(info.w2);
-    qm31 <<= M31_MAX;
-    qm31 = BigInt::from(info.w1);
-    qm31 <<= M31_MAX;
-    qm31 = BigInt::from(info.w0);
+    qm31 <<= M31_SIZE;
+    qm31 += BigInt::from(info.w1);
+    qm31 <<= M31_SIZE;
+    qm31 += BigInt::from(info.w0);
 
     let qm31 = entry.const_int(context, location, qm31, 144)?;
 
@@ -141,22 +139,52 @@ pub fn build_qm31_is_zero<'ctx, 'this>(
 
 #[cfg(test)]
 mod tests {
-    use crate::utils::test::{load_cairo, run_program};
+    use num_bigint::BigUint;
+    use num_traits::Num;
+
+    use super::BigInt;
+    use crate::{
+        utils::test::{load_cairo, run_program},
+        Value,
+    };
 
     #[test]
     fn test_qm31_pack() {
         let program = load_cairo! {
-            use core::qm31::{QM31Trait, m31, qm31};
+            use core::qm31::{QM31Trait, qm31};
 
-            extern fn qm31_const<
-                const W0: m31, const W1: m31, const W2: m31, const W3: m31,
-            >() -> qm31 nopanic;
-
-            fn run_test() {
-                assert!(QM31Trait::new(1, 2, 3, 4) == qm31_const::<1, 2, 3, 4>());
+            fn run_test() -> qm31 {
+                QM31Trait::new(1, 2, 3, 4)
             }
         };
 
-        run_program(&program, "run_test", &[]);
+        let result = run_program(&program, "run_test", &[]).return_value;
+
+        assert_eq!(
+            result,
+            Value::QM31(BigUint::from_str_radix("4000000003000000002000000001", 16).unwrap())
+        );
+    }
+
+    #[test]
+    fn test_qm31_const() {
+        let program = load_cairo! {
+            use core::qm31::{qm31, m31};
+
+            pub extern fn qm31_const<
+                const W0: m31, const W1: m31, const W2: m31, const W3: m31,
+            >() -> qm31 nopanic;
+
+            fn run_test() -> qm31 {
+                qm31_const::<1, 2, 3, 4>()
+            }
+        };
+
+        let result = run_program(&program, "run_test", &[]).return_value;
+
+        assert_eq!(
+            result,
+            Value::QM31(BigUint::from_str_radix("4000000003000000002000000001", 16).unwrap())
+        );
     }
 }

@@ -182,6 +182,7 @@ fn jitvalue_to_felt(value: &Value) -> Vec<Felt> {
         }
         Value::Null => vec![0.into()],
         Value::IntRange { x, y } => [jitvalue_to_felt(x), jitvalue_to_felt(y)].concat(),
+        Value::QM31(value) => dbg!(vec![Felt::from(value)]),
     }
 }
 
