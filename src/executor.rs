@@ -664,6 +664,12 @@ fn parse_result(
         CoreTypeConcrete::QM31(_) => Ok(match return_ptr {
             Some(value) => Value::from_ptr(value, type_id, registry, true)?,
             None => {
+                #[cfg(target_arch = "x86_64")]
+                // Since x86_64's return values hold at most two different 64bit registers,
+                // everything bigger than u128 will be returned by memory, therefore making
+                // this branch is unreachable on that architecture.
+                return Err(Error::ParseAttributeError);
+
                 #[cfg(target_arch = "aarch64")]
                 {
                     let limb0 = ret_registers[0].to_le_bytes();
