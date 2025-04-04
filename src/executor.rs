@@ -664,7 +664,8 @@ fn parse_result(
         CoreTypeConcrete::QM31(_) => Ok(match return_ptr {
             Some(value) => Value::from_ptr(value, type_id, registry, true)?,
             None => {
-                #[cfg(target_arch = "aarch64")] {
+                #[cfg(target_arch = "aarch64")]
+                {
                     let limb0 = ret_registers[0].to_le_bytes();
                     let limb1 = ret_registers[1].to_le_bytes();
                     //only use the first 16 bytes
