@@ -672,8 +672,8 @@ fn parse_result(
 
                 #[cfg(target_arch = "aarch64")]
                 {
-                    use num_traits::FromBytes;
                     use num_bigint::BigUint;
+                    use num_traits::FromBytes;
 
                     let limb0 = ret_registers[0].to_le_bytes();
                     let limb1 = ret_registers[1].to_le_bytes();

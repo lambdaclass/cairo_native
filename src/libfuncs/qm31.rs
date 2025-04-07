@@ -137,12 +137,12 @@ pub fn build_qm31_is_zero<'ctx, 'this>(
 
 #[cfg(test)]
 mod tests {
-    use num_bigint::BigUint;
-    use num_traits::Num;
     use crate::{
         utils::test::{load_cairo, run_program},
         Value,
     };
+    use num_bigint::BigUint;
+    use num_traits::Num;
 
     #[test]
     fn test_qm31_pack() {
