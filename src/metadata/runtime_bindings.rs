@@ -112,7 +112,7 @@ impl RuntimeBinding {
                 crate::runtime::cairo_native__get_costs_builtin as *const ()
             }
             RuntimeBinding::BlakeCompress => {
-                crate::runtime::cairo_native_libfunc_blake_compress as *const ()
+                crate::runtime::cairo_native__libfunc__blake_compress as *const ()
             }
             #[cfg(feature = "with-cheatcode")]
             RuntimeBinding::VtableCheatcode => {

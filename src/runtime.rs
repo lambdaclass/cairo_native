@@ -142,7 +142,7 @@ pub unsafe extern "C" fn cairo_native__libfunc__hades_permutation(
     *op2 = state[2].to_bytes_le();
 }
 
-pub unsafe extern "C" fn cairo_native_libfunc_blake_compress(
+pub unsafe extern "C" fn cairo_native__libfunc__blake_compress(
     state: &mut [u32; 8],
     message: &[u32; 16],
     count_bytes: u32,
