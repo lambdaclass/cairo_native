@@ -661,7 +661,31 @@ fn parse_result(
         // 2.11.1
         CoreTypeConcrete::Blake(_) => native_panic!("blake not yet implemented as results"),
         // 2.12.0
-        CoreTypeConcrete::QM31(_) => native_panic!("qm31 not yet implemented as results"),
+        CoreTypeConcrete::QM31(_) => Ok(match return_ptr {
+            Some(value) => Value::from_ptr(value, type_id, registry, true)?,
+            None => {
+                #[cfg(target_arch = "x86_64")]
+                // Since x86_64's return values hold at most two different 64bit registers,
+                // everything bigger than u128 will be returned by memory, therefore making
+                // this branch is unreachable on that architecture.
+                return Err(Error::ParseAttributeError);
+
+                #[cfg(target_arch = "aarch64")]
+                {
+                    use num_bigint::BigUint;
+                    use num_traits::FromBytes;
+
+                    let limb0 = ret_registers[0].to_le_bytes();
+                    let limb1 = ret_registers[1].to_le_bytes();
+                    //only use the first 16 bytes
+                    let limb2 = &ret_registers[2].to_le_bytes()[0..=1];
+
+                    let value_bytes = [[limb0, limb1].concat(), limb2.to_vec()].concat();
+
+                    Value::QM31(BigUint::from_le_bytes(&value_bytes))
+                }
+            }
+        }),
     }
 }
 
