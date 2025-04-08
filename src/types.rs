@@ -31,7 +31,6 @@ use std::{alloc::Layout, error::Error, ops::Deref, sync::OnceLock};
 
 pub mod array;
 mod bitwise;
-mod blake;
 mod bounded_int;
 mod r#box;
 mod builtin_costs;
@@ -437,13 +436,7 @@ impl TypeBuilder for CoreTypeConcrete {
                 metadata,
                 WithSelf::new(self_ty, info),
             ),
-            Self::Blake(info) => blake::build(
-                context,
-                module,
-                registry,
-                metadata,
-                WithSelf::new(self_ty, info),
-            ),
+            Self::Blake(_) => native_panic!("Build Blake type"),
             CoreTypeConcrete::QM31(_) => native_panic!("Build QM31 type"),
         }
     }
@@ -552,7 +545,7 @@ impl TypeBuilder for CoreTypeConcrete {
 
             CoreTypeConcrete::IntRange(_info) => false,
 
-            CoreTypeConcrete::Blake(_) => false,
+            CoreTypeConcrete::Blake(_) => native_panic!("Implement is_complex for Blake type"),
             CoreTypeConcrete::QM31(_info) => native_panic!("Implement is_complex for QM31 type"),
         })
     }
@@ -638,7 +631,7 @@ impl TypeBuilder for CoreTypeConcrete {
                 let type_info = registry.get_type(&info.ty)?;
                 type_info.is_zst(registry)?
             }
-            CoreTypeConcrete::Blake(_) => false,
+            CoreTypeConcrete::Blake(_) => native_panic!("Implement is_zst for Blake type"),
             CoreTypeConcrete::QM31(_info) => native_panic!("Implement is_zst for QM31 type"),
         })
     }
@@ -750,7 +743,7 @@ impl TypeBuilder for CoreTypeConcrete {
                 let inner = registry.get_type(&info.ty)?.layout(registry)?;
                 inner.extend(inner)?.0
             }
-            CoreTypeConcrete::Blake(_info) => Layout::new::<*mut ()>(),
+            CoreTypeConcrete::Blake(_info) => native_panic!("Implement layout for Blake type"),
             CoreTypeConcrete::QM31(_info) => native_panic!("Implement layout for QM31 type"),
         }
         .pad_to_align())
@@ -764,7 +757,6 @@ impl TypeBuilder for CoreTypeConcrete {
         // arguments.
         Ok(match self {
             CoreTypeConcrete::IntRange(_) => false,
-            CoreTypeConcrete::Blake(_) => false,
             CoreTypeConcrete::Array(_) => false,
             CoreTypeConcrete::Bitwise(_) => false,
             CoreTypeConcrete::Box(_) => false,
@@ -840,6 +832,7 @@ impl TypeBuilder for CoreTypeConcrete {
                 .is_memory_allocated(registry)?,
             CoreTypeConcrete::Coupon(_) => false,
             CoreTypeConcrete::Circuit(_) => false,
+            CoreTypeConcrete::Blake(_) => native_panic!("Implement is_memory_allocated for Blake type"),
             CoreTypeConcrete::QM31(_) => native_panic!("Implement is_memory_allocated for QM31"),
         })
     }
