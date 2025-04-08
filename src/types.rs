@@ -832,7 +832,9 @@ impl TypeBuilder for CoreTypeConcrete {
                 .is_memory_allocated(registry)?,
             CoreTypeConcrete::Coupon(_) => false,
             CoreTypeConcrete::Circuit(_) => false,
-            CoreTypeConcrete::Blake(_) => native_panic!("Implement is_memory_allocated for Blake type"),
+            CoreTypeConcrete::Blake(_) => {
+                native_panic!("Implement is_memory_allocated for Blake type")
+            }
             CoreTypeConcrete::QM31(_) => native_panic!("Implement is_memory_allocated for QM31"),
         })
     }
