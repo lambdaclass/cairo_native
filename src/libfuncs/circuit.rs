@@ -34,7 +34,7 @@ use melior::{
     },
     Context,
 };
-use num_traits::{Signed, Zero};
+use num_traits::Signed;
 
 /// Select and call the correct libfunc builder function from the selector.
 pub fn build<'ctx, 'this>(
@@ -1084,6 +1084,13 @@ fn build_array_slice<'ctx>(
     )
 }
 
+/// Converts input to an U96Guarantee.
+/// Input type must fit inside of an u96.
+///
+/// # Signature
+/// ```cairo
+/// extern fn into_u96_guarantee<T>(val: T) -> U96Guarantee nopanic;
+/// ```
 fn build_into_u96_guarantee<'ctx, 'this>(
     context: &'ctx Context,
     registry: &ProgramRegistry<CoreType, CoreLibfunc>,
@@ -1096,26 +1103,30 @@ fn build_into_u96_guarantee<'ctx, 'this>(
     let src = entry.argument(0)?.into();
 
     let src_ty = registry.get_type(&info.param_signatures()[0].ty)?;
+
     let src_range = src_ty.integer_range(registry)?;
 
-    let value = if src_range.lower.is_zero() {
-        // if the lower bound is zero, we just extend the range
-        entry.extui(src, IntegerType::new(context, 96).into(), location)?
-    } else if src_range.lower.is_positive() {
-        // if the lower bound is positive, we need to add the offset
-        let value = entry.extui(src, IntegerType::new(context, 96).into(), location)?;
+    // We expect the input value to be unsigned, but we check it just in case.
+    if src_range.lower.is_negative() {
+        native_panic!("into_u96_guarantee expects an unsigned integer")
+    }
+
+    // Extend the input value to an u96
+    let mut dst = entry.extui(src, IntegerType::new(context, 96).into(), location)?;
+
+    // If the lower bound is positive, we offset the value by the lower bound
+    // to obtain the actual value.
+    if src_range.lower.is_positive() {
         let klower = entry.const_int_from_type(
             context,
             location,
             src_range.lower,
             IntegerType::new(context, 96).into(),
         )?;
-        entry.addi(value, klower, location)?
-    } else {
-        native_panic!("into_u96_guarantee expects an unsigned integer")
-    };
+        dst = entry.addi(dst, klower, location)?
+    }
 
-    entry.append_operation(helper.br(0, &[value], location));
+    entry.append_operation(helper.br(0, &[dst], location));
     Ok(())
 }
 
