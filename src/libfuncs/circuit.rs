@@ -1130,8 +1130,8 @@ mod test {
         values::Value,
     };
     use cairo_lang_sierra::extensions::utils::Range;
-    use num_bigint::BigUint;
-    use num_traits::Num;
+    use num_bigint::{BigInt, BigUint};
+    use num_traits::{Num, One};
     use starknet_types_core::felt::Felt;
 
     fn u384(limbs: [&str; 4]) -> Value {
@@ -1437,6 +1437,47 @@ mod test {
                     "0xaf4bed7eef975ff1941fdf3d",
                     "0x7"
                 ]))
+            ),
+        );
+    }
+
+    #[test]
+    fn run_into_u96_guarantee() {
+        let program = load_cairo!(
+            use core::circuit::{into_u96_guarantee, U96Guarantee};
+            use core::internal::bounded_int::BoundedInt;
+
+            fn main() -> (U96Guarantee, U96Guarantee, U96Guarantee) {
+                (
+                    into_u96_guarantee::<BoundedInt<0, 79228162514264337593543950335>>(123),
+                    into_u96_guarantee::<BoundedInt<100, 1000>>(123),
+                    into_u96_guarantee::<u8>(123),
+                )
+            }
+        );
+
+        let range = Range {
+            lower: BigInt::ZERO,
+            upper: BigInt::one() << 96,
+        };
+
+        run_program_assert_output(
+            &program,
+            "main",
+            &[],
+            jit_struct!(
+                Value::BoundedInt {
+                    value: 123.into(),
+                    range: range.clone()
+                },
+                Value::BoundedInt {
+                    value: 123.into(),
+                    range: range.clone()
+                },
+                Value::BoundedInt {
+                    value: 123.into(),
+                    range: range.clone()
+                }
             ),
         );
     }
