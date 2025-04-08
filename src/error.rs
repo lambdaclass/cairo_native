@@ -155,6 +155,7 @@ pub mod panic {
     impl std::error::Error for NativeAssertError {}
 
     impl NativeAssertError {
+        #[track_caller]
         pub fn new(msg: String) -> Self {
             let backtrace = Backtrace::capture();
             let info = if BacktraceStatus::Captured == backtrace.status() {
