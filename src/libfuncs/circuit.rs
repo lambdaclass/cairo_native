@@ -7,6 +7,7 @@ use crate::{
     error::{Result, SierraAssertError},
     libfuncs::r#struct::build_struct_value,
     metadata::MetadataStorage,
+    native_panic,
     types::{circuit::build_u384_struct_type, TypeBuilder},
     utils::{get_integer_layout, layout_repeat, BlockExt, ProgramRegistryExt},
 };
@@ -33,6 +34,7 @@ use melior::{
     },
     Context,
 };
+use num_traits::{Signed, Zero};
 
 /// Select and call the correct libfunc builder function from the selector.
 pub fn build<'ctx, 'this>(
@@ -66,11 +68,10 @@ pub fn build<'ctx, 'this>(
         CircuitConcreteLibfunc::FailureGuaranteeVerify(info) => build_failure_guarantee_verify(
             context, registry, entry, location, helper, metadata, info,
         ),
-        CircuitConcreteLibfunc::IntoU96Guarantee(SignatureAndTypeConcreteLibfunc {
-            signature,
-            ..
-        })
-        | CircuitConcreteLibfunc::U96SingleLimbLessThanGuaranteeVerify(
+        CircuitConcreteLibfunc::IntoU96Guarantee(info) => {
+            build_into_u96_guarantee(context, registry, entry, location, helper, metadata, info)
+        }
+        CircuitConcreteLibfunc::U96SingleLimbLessThanGuaranteeVerify(
             SignatureOnlyConcreteLibfunc { signature, .. },
         )
         | CircuitConcreteLibfunc::U96GuaranteeVerify(SignatureOnlyConcreteLibfunc { signature }) => {
@@ -1081,6 +1082,41 @@ fn build_array_slice<'ctx>(
         block.append_op_result(llvm::undef(result_type, location))?,
         &values,
     )
+}
+
+fn build_into_u96_guarantee<'ctx, 'this>(
+    context: &'ctx Context,
+    registry: &ProgramRegistry<CoreType, CoreLibfunc>,
+    entry: &'this Block<'ctx>,
+    location: Location<'ctx>,
+    helper: &LibfuncHelper<'ctx, 'this>,
+    _metadata: &mut MetadataStorage,
+    info: &SignatureAndTypeConcreteLibfunc,
+) -> Result<()> {
+    let src = entry.argument(0)?.into();
+
+    let src_ty = registry.get_type(&info.param_signatures()[0].ty)?;
+    let src_range = src_ty.integer_range(registry)?;
+
+    let value = if src_range.lower.is_zero() {
+        // if the lower bound is zero, we just extend the range
+        entry.extui(src, IntegerType::new(context, 96).into(), location)?
+    } else if src_range.lower.is_positive() {
+        // if the lower bound is positive, we need to add the offset
+        let value = entry.extui(src, IntegerType::new(context, 96).into(), location)?;
+        let klower = entry.const_int_from_type(
+            context,
+            location,
+            src_range.lower,
+            IntegerType::new(context, 96).into(),
+        )?;
+        entry.addi(value, klower, location)?
+    } else {
+        native_panic!("into_u96_guarantee expects an unsigned integer")
+    };
+
+    entry.append_operation(helper.br(0, &[value], location));
+    Ok(())
 }
 
 #[cfg(test)]
