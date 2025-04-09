@@ -594,6 +594,18 @@ fn compile_func(
                         }
                     }
 
+                    #[cfg(feature = "with-debug-utils")]
+                    metadata
+                        .get_mut::<crate::metadata::debug_utils::DebugUtils>()
+                        .unwrap()
+                        .debug_print(
+                            context,
+                            &helper,
+                            block,
+                            &libfunc_name,
+                            Location::name(context, &libfunc_name, location),
+                        )
+                        .unwrap();
                     libfunc.build(
                         context,
                         registry,
