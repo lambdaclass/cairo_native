@@ -107,7 +107,7 @@ use std::{collections::HashSet, ffi::c_void};
 #[derive(Clone, Copy, Debug, Hash, Eq, PartialEq)]
 enum DebugBinding {
     BreakpointMarker,
-    DebugPrint,
+    PrintStr,
     PrintI1,
     PrintI8,
     PrintI32,
@@ -122,7 +122,7 @@ impl DebugBinding {
     const fn symbol(self) -> &'static str {
         match self {
             DebugBinding::BreakpointMarker => "cairo_native__debug__breakpoint_marker_impl",
-            DebugBinding::DebugPrint => "cairo_native__debug__debug_print_impl",
+            DebugBinding::PrintStr => "cairo_native__debug__print_str_impl",
             DebugBinding::PrintI1 => "cairo_native__debug__print_i1_impl",
             DebugBinding::PrintI8 => "cairo_native__debug__print_i8_impl",
             DebugBinding::PrintI32 => "cairo_native__debug__print_i32_impl",
@@ -136,7 +136,7 @@ impl DebugBinding {
     const fn function_ptr(self) -> *const () {
         match self {
             DebugBinding::BreakpointMarker => breakpoint_marker_impl as *const (),
-            DebugBinding::DebugPrint => debug_print_impl as *const (),
+            DebugBinding::PrintStr => print_str_impl as *const (),
             DebugBinding::PrintI1 => print_i1_impl as *const (),
             DebugBinding::PrintI8 => print_i8_impl as *const (),
             DebugBinding::PrintI32 => print_i32_impl as *const (),
@@ -234,7 +234,7 @@ impl DebugUtils {
         location: Location,
     ) -> Result<()> {
         let function =
-            self.build_function(context, module, block, location, DebugBinding::DebugPrint)?;
+            self.build_function(context, module, block, location, DebugBinding::PrintStr)?;
 
         let ty = llvm::r#type::array(
             IntegerType::new(context, 8).into(),
@@ -556,7 +556,7 @@ impl DebugUtils {
 pub fn setup_runtime(find_symbol_ptr: impl Fn(&str) -> Option<*mut c_void>) {
     for binding in [
         DebugBinding::BreakpointMarker,
-        DebugBinding::DebugPrint,
+        DebugBinding::PrintStr,
         DebugBinding::PrintI1,
         DebugBinding::PrintI8,
         DebugBinding::PrintI32,
@@ -577,15 +577,15 @@ extern "C" fn breakpoint_marker_impl() {
     println!("[DEBUG] Breakpoint marker.");
 }
 
-extern "C" fn debug_print_impl(message: *const std::ffi::c_char, len: u64) {
+extern "C" fn print_str_impl(message: *const std::ffi::c_char, len: u64) {
     // llvm constant strings are not zero terminated
     let slice = unsafe { std::slice::from_raw_parts(message as *const u8, len as usize) };
     let message = std::str::from_utf8(slice);
 
     if let Ok(message) = message {
-        println!("[DEBUG] Message: {}", message);
+        println!("[DEBUG] {}", message);
     } else {
-        println!("[DEBUG] Message: {:?}", message);
+        println!("[DEBUG] {:?}", message);
     }
 }
 
