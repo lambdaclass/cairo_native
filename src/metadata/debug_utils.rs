@@ -224,6 +224,11 @@ impl DebugUtils {
         Ok(())
     }
 
+    pub fn debug_breakpoint_trap(&self, block: &Block, location: Location) -> Result<()> {
+        block.append_operation(OperationBuilder::new("llvm.intr.debugtrap", location).build()?);
+        Ok(())
+    }
+
     /// Prints the given &str.
     pub fn debug_print(
         &mut self,
@@ -288,11 +293,6 @@ impl DebugUtils {
                 .build()?,
         );
 
-        Ok(())
-    }
-
-    pub fn debug_breakpoint_trap(&self, block: &Block, location: Location) -> Result<()> {
-        block.append_operation(OperationBuilder::new("llvm.intr.debugtrap", location).build()?);
         Ok(())
     }
 
