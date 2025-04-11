@@ -174,3 +174,6 @@ harness = false
 [[bench]]
 name = "libfuncs"
 harness = false
+
+[workspace]
+members = ["debug_utils/sierra-emu"]

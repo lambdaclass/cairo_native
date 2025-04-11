@@ -341,3 +341,18 @@ jobs:
           df -h
       - name: build image
         run: docker build .
+  
+  build-sierra-emu:
+    name: Build sierra-emu
+    runs-on: ubuntu-latest
+
+    steps:
+    - uses: actions/checkout@v4
+    - name: Retreive cached dependecies
+      uses: Swatinem/rust-cache@v2
+    - name: Deps
+      run: make deps
+    - name: Build
+      run: cargo build --all-features --verbose
+    - name: Run tests
+      run: make test
