@@ -351,8 +351,11 @@ jobs:
     - name: Retreive cached dependecies
       uses: Swatinem/rust-cache@v2
     - name: Deps
+      working-directory: ./debug_utils/sierra-emu
       run: make deps
     - name: Build
+      working-directory: ./debug_utils/sierra-emu
       run: cargo build --all-features --verbose
     - name: Run tests
+      working-directory: ./debug_utils/sierra-emu
       run: make test
