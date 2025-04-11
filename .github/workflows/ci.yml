@@ -227,7 +227,7 @@ jobs:
           sudo rm -rf /usr/local/lib/android
           df -h
       - name: Setup rust env
-        uses: dtolnay/rust-toolchain@1.84.1
+        uses: dtolnay/rust-toolchain@1.85
       - name: Retreive cached dependecies
         uses: Swatinem/rust-cache@v2
       - name: add llvm deb repository
@@ -239,7 +239,7 @@ jobs:
       - run: sudo apt-get update && sudo apt-get upgrade -y
       - name: Install LLVM
         run: sudo apt-get install llvm-19 llvm-19-dev llvm-19-runtime clang-19 clang-tools-19 lld-19 libpolly-19-dev libmlir-19-dev mlir-19-tools
-      - name: Patch replay dependencies
+      - name: Patch Cairo Native in Sequencer
         run: |
           # Updates native dependency to local path
           new_path='"..\/cairo_native"'
@@ -247,9 +247,7 @@ jobs:
 
           git diff
       - name: Run blockifier tests
-        run: |
-          cd ../sequencer
-          cargo test -p blockifier --features cairo_native
+        run: cargo test -p blockifier --features cairo_native
 
   coverage:
     name: coverage
