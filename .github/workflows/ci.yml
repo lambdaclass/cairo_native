@@ -184,7 +184,7 @@ jobs:
         run: make test-cairo
 
   tests-sequencer:
-    name: test (linux, amd64)
+    name: Blockifier tests
     runs-on: ubuntu-24.04
     env:
       MLIR_SYS_190_PREFIX: /usr/lib/llvm-19/
