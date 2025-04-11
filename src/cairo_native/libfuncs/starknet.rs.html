@@ -4807,7 +4807,7 @@
                 )<span class="question-mark">?</span>;
 
                 <span class="kw">let </span>payload_ty = llvm::r#type::r#struct(context, <span class="kw-2">&amp;</span>[p0_ty, p1_ty], <span class="bool-val">false</span>);
-                <span class="kw">let </span>payload_layout = p0_layout.extend(p1_layout)<span class="question-mark">?</span>.<span class="number">0</span>;
+                <span class="kw">let </span>payload_layout = p0_layout.extend(p1_layout)<span class="question-mark">?</span>.<span class="number">0</span>.pad_to_align();
 
                 <span class="kw">let </span>full_layout = tag_layout.extend(payload_layout)<span class="question-mark">?</span>.<span class="number">0</span>;
                 layout = Layout::from_size_align(
