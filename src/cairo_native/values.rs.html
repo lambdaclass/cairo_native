@@ -1952,7 +1952,25 @@
 <a href="#1951" id="1951">1951</a>
 <a href="#1952" id="1952">1952</a>
 <a href="#1953" id="1953">1953</a>
-<a href="#1954" id="1954">1954</a></pre></div><pre class="rust"><code><span class="doccomment">//! # Params and return values de/serialization
+<a href="#1954" id="1954">1954</a>
+<a href="#1955" id="1955">1955</a>
+<a href="#1956" id="1956">1956</a>
+<a href="#1957" id="1957">1957</a>
+<a href="#1958" id="1958">1958</a>
+<a href="#1959" id="1959">1959</a>
+<a href="#1960" id="1960">1960</a>
+<a href="#1961" id="1961">1961</a>
+<a href="#1962" id="1962">1962</a>
+<a href="#1963" id="1963">1963</a>
+<a href="#1964" id="1964">1964</a>
+<a href="#1965" id="1965">1965</a>
+<a href="#1966" id="1966">1966</a>
+<a href="#1967" id="1967">1967</a>
+<a href="#1968" id="1968">1968</a>
+<a href="#1969" id="1969">1969</a>
+<a href="#1970" id="1970">1970</a>
+<a href="#1971" id="1971">1971</a>
+<a href="#1972" id="1972">1972</a></pre></div><pre class="rust"><code><span class="doccomment">//! # Params and return values de/serialization
 //!
 //! A Rusty interface to provide parameters to cairo-native entry point calls.
 
@@ -1969,6 +1987,7 @@
 <span class="kw">use </span>bumpalo::Bump;
 <span class="kw">use </span>cairo_lang_sierra::{
     extensions::{
+        circuit::CircuitTypeConcrete,
         core::{CoreLibfunc, CoreType, CoreTypeConcrete},
         starknet::{secp256::Secp256PointTypeConcrete, StarknetTypeConcrete},
         utils::Range,
@@ -2918,6 +2937,23 @@
                     <span class="self">Self</span>::BoundedInt {
                         value: data.into(),
                         range: info.range.clone(),
+                    }
+                }
+                CoreTypeConcrete::Circuit(CircuitTypeConcrete::U96Guarantee(<span class="kw">_</span>)) =&gt; {
+                    <span class="kw">let </span>data = BigInt::from_biguint(
+                        Sign::Plus,
+                        BigUint::from_bytes_le(slice::from_raw_parts(
+                            ptr.cast::&lt;u8&gt;().as_ptr(),
+                            <span class="number">12</span>,
+                        )),
+                    );
+
+                    <span class="self">Self</span>::BoundedInt {
+                        value: data.into(),
+                        range: Range {
+                            lower: BigInt::ZERO,
+                            upper: BigInt::one() &lt;&lt; <span class="number">96</span>,
+                        },
                     }
                 }
                 CoreTypeConcrete::Coupon(<span class="kw">_</span>)

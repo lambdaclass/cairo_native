@@ -257,7 +257,8 @@
 <a href="#256" id="256">256</a>
 <a href="#257" id="257">257</a>
 <a href="#258" id="258">258</a>
-<a href="#259" id="259">259</a></pre></div><pre class="rust"><code><span class="doccomment">//! Various error types used thorough the crate.
+<a href="#259" id="259">259</a>
+<a href="#260" id="260">260</a></pre></div><pre class="rust"><code><span class="doccomment">//! Various error types used thorough the crate.
 </span><span class="kw">use </span><span class="kw">crate</span>::metadata::gas::GasMetadataError;
 <span class="kw">use </span>cairo_lang_sierra::extensions::modules::utils::Range;
 <span class="kw">use </span>cairo_lang_sierra::{
@@ -414,7 +415,8 @@
     <span class="kw">impl </span>std::error::Error <span class="kw">for </span>NativeAssertError {}
 
     <span class="kw">impl </span>NativeAssertError {
-        <span class="kw">pub fn </span>new(msg: String) -&gt; <span class="self">Self </span>{
+        <span class="attr">#[track_caller]
+        </span><span class="kw">pub fn </span>new(msg: String) -&gt; <span class="self">Self </span>{
             <span class="kw">let </span>backtrace = Backtrace::capture();
             <span class="kw">let </span>info = <span class="kw">if </span>BacktraceStatus::Captured == backtrace.status() {
                 BacktraceOrLocation::Backtrace(backtrace)
