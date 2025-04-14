@@ -185,7 +185,7 @@ jobs:
 
   tests-sequencer:
     name: Blockifier tests
-    runs-on: ubuntu-24.04
+    runs-on: ubuntu-latest
     env:
       MLIR_SYS_190_PREFIX: /usr/lib/llvm-19/
       LLVM_SYS_191_PREFIX: /usr/lib/llvm-19/
@@ -222,7 +222,7 @@ jobs:
           sed -i'' -r "s/^cairo-native = .*/cairo-native.path = $new_path/" Cargo.toml
 
           git diff
-          
+
       - name: Run blockifier tests
         run: cargo test -p blockifier --features cairo_native
 
