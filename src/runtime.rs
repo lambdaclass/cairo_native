@@ -733,7 +733,7 @@ pub mod trace_dump {
             bounded_int::BoundedIntConcreteType,
             circuit::CircuitTypeConcrete,
             core::{CoreLibfunc, CoreType, CoreTypeConcrete},
-            starknet::{secp256::Secp256PointTypeConcrete, StarkNetTypeConcrete},
+            starknet::{secp256::Secp256PointTypeConcrete, StarknetTypeConcrete},
         },
         ids::{ConcreteTypeId, VarId},
         program::{GenericArg, StatementIdx},
@@ -835,10 +835,10 @@ pub mod trace_dump {
         let type_info = registry.get_type(type_id).unwrap();
         match type_info {
             CoreTypeConcrete::Felt252(_)
-            | CoreTypeConcrete::StarkNet(StarkNetTypeConcrete::ContractAddress(_))
-            | CoreTypeConcrete::StarkNet(StarkNetTypeConcrete::ClassHash(_))
-            | CoreTypeConcrete::StarkNet(StarkNetTypeConcrete::StorageAddress(_))
-            | CoreTypeConcrete::StarkNet(StarkNetTypeConcrete::StorageBaseAddress(_)) => {
+            | CoreTypeConcrete::Starknet(StarknetTypeConcrete::ContractAddress(_))
+            | CoreTypeConcrete::Starknet(StarknetTypeConcrete::ClassHash(_))
+            | CoreTypeConcrete::Starknet(StarknetTypeConcrete::StorageAddress(_))
+            | CoreTypeConcrete::Starknet(StarknetTypeConcrete::StorageBaseAddress(_)) => {
                 Value::Felt(Felt::from_bytes_le(value_ptr.cast().as_ref()))
             }
             CoreTypeConcrete::Uint8(_) => Value::U8(value_ptr.cast().read()),
@@ -1033,7 +1033,7 @@ pub mod trace_dump {
             | CoreTypeConcrete::RangeCheck96(_)
             | CoreTypeConcrete::RangeCheck(_)
             | CoreTypeConcrete::SegmentArena(_)
-            | CoreTypeConcrete::StarkNet(StarkNetTypeConcrete::System(_))
+            | CoreTypeConcrete::Starknet(StarknetTypeConcrete::System(_))
             | CoreTypeConcrete::Uint128MulGuarantee(_) => Value::Unit,
 
             CoreTypeConcrete::BuiltinCosts(_) => {
@@ -1252,8 +1252,8 @@ pub mod trace_dump {
                 }
             }
             CoreTypeConcrete::Span(_) => todo!("CoreTypeConcrete::Span"),
-            CoreTypeConcrete::StarkNet(selector) => match selector {
-                StarkNetTypeConcrete::Secp256Point(selector) => match selector {
+            CoreTypeConcrete::Starknet(selector) => match selector {
+                StarknetTypeConcrete::Secp256Point(selector) => match selector {
                     Secp256PointTypeConcrete::K1(_) => {
                         let point: Secp256Point = value_ptr.cast().read();
                         let emu_point = EmuSecp256k1Point {
@@ -1283,7 +1283,7 @@ pub mod trace_dump {
                         emu_point.into_value()
                     }
                 },
-                StarkNetTypeConcrete::Sha256StateHandle(_) => {
+                StarknetTypeConcrete::Sha256StateHandle(_) => {
                     let raw_data = value_ptr.cast::<NonNull<[u32; 8]>>().read().read();
                     let data = raw_data.into_iter().map(Value::U32).collect_vec();
                     Value::Struct(data)
