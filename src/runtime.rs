@@ -1214,7 +1214,6 @@ pub mod trace_dump {
 
                 Value::FeltDict {
                     ty: info.ty.clone(),
-                    count: value.count,
                     data,
                 }
             }
@@ -1247,7 +1246,6 @@ pub mod trace_dump {
                 Value::FeltDictEntry {
                     ty: info.ty.clone(),
                     data,
-                    count: value.dict.count,
                     key,
                 }
             }
@@ -1299,7 +1297,9 @@ pub mod trace_dump {
 
                 Value::Bytes31(Felt::from_bytes_le(&data))
             }
-            CoreTypeConcrete::IntRange(_) => todo!(),
+            CoreTypeConcrete::IntRange(_)
+            | CoreTypeConcrete::Blake(_)
+            | CoreTypeConcrete::QM31(_) => todo!(),
         }
     }
 
