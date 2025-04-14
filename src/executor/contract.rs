@@ -39,6 +39,7 @@ use crate::{
     executor::{invoke_trampoline, BuiltinCostsGuard},
     metadata::{gas::MetadataComputationConfig, runtime_bindings::setup_runtime},
     module::NativeModule,
+    native_assert, native_panic,
     starknet::{handler::StarknetSyscallHandlerCallbacks, StarknetSyscallHandler},
     types::TypeBuilder,
     utils::{
@@ -50,18 +51,21 @@ use crate::{
 use bumpalo::Bump;
 use cairo_lang_sierra::{
     extensions::{
-        circuit::CircuitTypeConcrete, core::CoreTypeConcrete, gas::CostTokenType,
-        starknet::StarkNetTypeConcrete,
+        circuit::CircuitTypeConcrete,
+        core::{CoreLibfunc, CoreType, CoreTypeConcrete},
+        gas::CostTokenType,
+        starknet::StarknetTypeConcrete,
     },
     ids::FunctionId,
-    program::Program,
+    program::{GenFunction, Program, StatementIdx},
+    program_registry::ProgramRegistry,
 };
 use cairo_lang_starknet_classes::contract_class::ContractEntryPoints;
 use cairo_lang_starknet_classes::{
     casm_contract_class::ENTRY_POINT_COST, compiler_version::VersionId,
 };
 use educe::Educe;
-use itertools::chain;
+use itertools::{chain, Itertools};
 use libloading::Library;
 use serde::{Deserialize, Serialize};
 use starknet_types_core::felt::Felt;
@@ -217,34 +221,7 @@ impl AotContractExecutor {
                 .get_function(&FunctionId::new(function_id))
                 .to_native_assert_error("unreachable")?;
 
-            let builtins = function
-                .params
-                .iter()
-                .map(|x| registry.get_type(&x.ty).unwrap())
-                .take_while(|ty| ty.is_builtin())
-                .filter(|ty| !ty.is_zst(&registry).unwrap())
-                .map(|ty| match ty {
-                    CoreTypeConcrete::Bitwise(_) => BuiltinType::Bitwise,
-                    CoreTypeConcrete::EcOp(_) => BuiltinType::EcOp,
-                    CoreTypeConcrete::RangeCheck(_) => BuiltinType::RangeCheck,
-                    CoreTypeConcrete::Pedersen(_) => BuiltinType::Pedersen,
-                    CoreTypeConcrete::Poseidon(_) => BuiltinType::Poseidon,
-                    CoreTypeConcrete::BuiltinCosts(_) => BuiltinType::BuiltinCosts,
-                    CoreTypeConcrete::SegmentArena(_) => BuiltinType::SegmentArena,
-                    CoreTypeConcrete::RangeCheck96(_) => BuiltinType::RangeCheck96,
-                    CoreTypeConcrete::Circuit(CircuitTypeConcrete::AddMod(_)) => {
-                        BuiltinType::CircuitAdd
-                    }
-                    CoreTypeConcrete::Circuit(CircuitTypeConcrete::MulMod(_)) => {
-                        BuiltinType::CircuitMul
-                    }
-                    CoreTypeConcrete::GasBuiltin(_) => BuiltinType::Gas,
-                    CoreTypeConcrete::StarkNet(StarkNetTypeConcrete::System(_)) => {
-                        BuiltinType::System
-                    }
-                    _ => unreachable!("not a builtin"),
-                })
-                .collect();
+            let builtins = find_entrypoint_builtins(function, &registry)?;
 
             Ok((
                 Felt::from(&x.selector),
@@ -554,7 +531,10 @@ impl AotContractExecutor {
 
             unsafe {
                 let array_ptr = array_ptr.byte_sub(refcount_offset);
-                assert_eq!(array_ptr.cast::<u32>().read(), 1);
+                native_assert!(
+                    array_ptr.cast::<u32>().read() == 1,
+                    "return array should have a reference count of 1"
+                );
                 libc_free(array_ptr.as_ptr().cast());
                 libc_free(array_ptr_ptr.cast());
             }
@@ -615,6 +595,48 @@ impl AotContractExecutor {
     }
 }
 
+fn find_entrypoint_builtins(
+    function: &GenFunction<StatementIdx>,
+    registry: &ProgramRegistry<CoreType, CoreLibfunc>,
+) -> Result<Vec<BuiltinType>> {
+    let param_type_infos = function
+        .params
+        .iter()
+        .map(|x| -> Result<_> {
+            let ty = registry.get_type(&x.ty)?;
+            let is_zst = ty.is_zst(registry)?;
+            Ok((ty, is_zst))
+        })
+        .try_collect::<_, Vec<_>, _>()?;
+
+    param_type_infos
+        .iter()
+        .take_while(|(ty, _)| ty.is_builtin())
+        .filter(|(_, is_zst)| !is_zst)
+        .map(|(ty, _)| -> Result<_> {
+            Ok(match ty {
+                CoreTypeConcrete::Bitwise(_) => BuiltinType::Bitwise,
+                CoreTypeConcrete::EcOp(_) => BuiltinType::EcOp,
+                CoreTypeConcrete::RangeCheck(_) => BuiltinType::RangeCheck,
+                CoreTypeConcrete::Pedersen(_) => BuiltinType::Pedersen,
+                CoreTypeConcrete::Poseidon(_) => BuiltinType::Poseidon,
+                CoreTypeConcrete::BuiltinCosts(_) => BuiltinType::BuiltinCosts,
+                CoreTypeConcrete::SegmentArena(_) => BuiltinType::SegmentArena,
+                CoreTypeConcrete::RangeCheck96(_) => BuiltinType::RangeCheck96,
+                CoreTypeConcrete::Circuit(CircuitTypeConcrete::AddMod(_)) => {
+                    BuiltinType::CircuitAdd
+                }
+                CoreTypeConcrete::Circuit(CircuitTypeConcrete::MulMod(_)) => {
+                    BuiltinType::CircuitMul
+                }
+                CoreTypeConcrete::GasBuiltin(_) => BuiltinType::Gas,
+                CoreTypeConcrete::Starknet(StarknetTypeConcrete::System(_)) => BuiltinType::System,
+                _ => native_panic!("unknown builtin type for function {}", function),
+            })
+        })
+        .try_collect()
+}
+
 #[derive(Debug)]
 struct LockFile(PathBuf);
 
@@ -642,7 +664,7 @@ impl LockFile {
 
 impl Drop for LockFile {
     fn drop(&mut self) {
-        fs::remove_file(&self.0).unwrap();
+        let _ = fs::remove_file(&self.0);
     }
 }
 
@@ -853,7 +875,7 @@ mod tests {
             )
             .unwrap();
         assert_eq!(result.return_values, vec![Felt::from(3628800)]);
-        assert_eq!(result.remaining_gas, 18446744073709537615);
+        assert_eq!(result.remaining_gas, 18446744073709538315);
     }
 
     #[rstest]
@@ -874,7 +896,6 @@ mod tests {
         )
         .unwrap();
 
-        // The last function in the program is the `get` wrapper function.
         // The last function in the program is the `get` wrapper function.
         let selector = starknet_program_empty
             .entry_points_by_type

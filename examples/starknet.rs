@@ -308,6 +308,34 @@ impl StarknetSyscallHandler for SyscallHandler {
         unimplemented!()
     }
 
+    fn sha256_process_block(
+        &mut self,
+        _state: &mut [u32; 8],
+        _block: &[u32; 16],
+        _remaining_gas: &mut u64,
+    ) -> SyscallResult<()> {
+        unimplemented!()
+    }
+
+    fn get_class_hash_at(
+        &mut self,
+        _contract_address: Felt,
+        _remaining_gas: &mut u64,
+    ) -> SyscallResult<Felt> {
+        unimplemented!()
+    }
+
+    fn meta_tx_v0(
+        &mut self,
+        _address: Felt,
+        _entry_point_selector: Felt,
+        _calldata: &[Felt],
+        _signature: &[Felt],
+        _remaining_gas: &mut u64,
+    ) -> SyscallResult<Vec<Felt>> {
+        unimplemented!()
+    }
+
     #[cfg(feature = "with-cheatcode")]
     fn cheatcode(&mut self, selector: Felt, input: &[Felt]) -> Vec<Felt> {
         let selector_bytes = selector.to_bytes_be();
@@ -398,23 +426,6 @@ impl StarknetSyscallHandler for SyscallHandler {
                 .unwrap_or_default(),
             _ => vec![],
         }
-    }
-
-    fn sha256_process_block(
-        &mut self,
-        _state: &mut [u32; 8],
-        _block: &[u32; 16],
-        _remaining_gas: &mut u64,
-    ) -> SyscallResult<()> {
-        unimplemented!()
-    }
-
-    fn get_class_hash_at(
-        &mut self,
-        _contract_address: Felt,
-        _remaining_gas: &mut u64,
-    ) -> SyscallResult<Felt> {
-        unimplemented!()
     }
 }
 

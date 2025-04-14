@@ -6,7 +6,9 @@ use cairo_lang_compiler::{
 };
 use cairo_lang_filesystem::cfg::{Cfg, CfgSet};
 use cairo_lang_starknet::starknet_plugin_suite;
-use cairo_lang_test_plugin::{compile_test_prepared_db, test_plugin_suite, TestsCompilationConfig};
+use cairo_lang_test_plugin::{
+    compile_test_prepared_db, test_plugin_suite, TestCompilation, TestsCompilationConfig,
+};
 use clap::Parser;
 use colored::Colorize;
 use std::path::PathBuf;
@@ -34,6 +36,13 @@ struct Args {
     /// The filter for the tests, running only tests containing the filter string.
     #[arg(short, long, default_value_t = String::default())]
     filter: String,
+    /// Skips compilation for tests/functions containing any of the given filters.
+    /// Unlike `--filter`, the matching tests are not even compiled by native.
+    ///
+    /// DISCLAIMER: This is a hacky and temporary flag, used to run corelib tests
+    /// when not all libfuncs are implemented.
+    #[arg(long)]
+    skip_compilation: Vec<String>,
     /// Should we run ignored tests as well.
     #[arg(long, default_value_t = false)]
     include_ignored: bool,
@@ -68,9 +77,9 @@ fn main() -> anyhow::Result<()> {
         let mut b = RootDatabase::builder();
         b.detect_corelib();
         b.with_cfg(CfgSet::from_iter([Cfg::name("test")]));
-        b.with_plugin_suite(test_plugin_suite());
+        b.with_default_plugin_suite(test_plugin_suite());
         if args.starknet {
-            b.with_plugin_suite(starknet_plugin_suite());
+            b.with_default_plugin_suite(starknet_plugin_suite());
         }
 
         b.build()?
@@ -104,6 +113,8 @@ fn main() -> anyhow::Result<()> {
         args.filter.clone(),
     );
 
+    let compiled = filter_test_case_compilation(compiled, &args.skip_compilation);
+
     let summary = run_tests(
         compiled.metadata.named_tests,
         compiled.sierra_program.program,
@@ -126,4 +137,51 @@ fn main() -> anyhow::Result<()> {
     }
 
     Ok(())
+}
+
+/// Removes matching tests from `TestCompilation`. This not only includes the
+/// test cases, but also the function definition in the inner sierra program.
+/// This means that the matching tests are not even compiled.
+///
+/// DISCLAIMER: This is a hacky and temporary function, used to run corelib tests
+/// when not all libfuncs are implemented.
+fn filter_test_case_compilation(
+    mut compiled: TestCompilation,
+    compilation_filter: &[String],
+) -> TestCompilation {
+    let should_skip_test = |name: &str| -> bool {
+        compilation_filter
+            .iter()
+            .any(|filter| name.contains(filter))
+    };
+
+    // Remove matching function definitions.
+    compiled.sierra_program.program.funcs.retain(|f| {
+        let name =
+            f.id.debug_name
+                .as_ref()
+                .map(|s| s.as_str())
+                .unwrap_or_default();
+
+        let skipped = should_skip_test(name);
+
+        if skipped {
+            println!("skipping compilation of: {}", name);
+        }
+
+        !skipped
+    });
+
+    // Ignore matching test cases.
+    compiled
+        .metadata
+        .named_tests
+        .iter_mut()
+        .for_each(|(test, case)| {
+            if should_skip_test(test) {
+                case.ignored = true
+            }
+        });
+
+    compiled
 }
