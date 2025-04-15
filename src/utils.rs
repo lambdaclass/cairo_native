@@ -30,6 +30,7 @@ use std::{
 };
 use thiserror::Error;
 
+pub mod blake_utils;
 mod block_ext;
 pub mod mem_tracing;
 mod program_registry_ext;
