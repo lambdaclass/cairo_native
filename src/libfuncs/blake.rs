@@ -42,6 +42,18 @@ pub fn build<'ctx, 'this>(
 ///
 /// `bytes_count` is the total amount of bytes hashed after hashing the message.
 /// `finalize` is wether the libfunc call is a finalize or not.
+/// ```cairo
+/// pub extern fn blake2s_compress(
+///     state: Blake2sState, byte_count: u32, msg: Blake2sInput,
+/// ) -> Blake2sState nopanic;
+/// ```
+///
+/// Similar to `blake2s_compress`, but it marks the end of the compression
+/// ```cairo
+/// pub extern fn blake2s_finalize(
+///     state: Blake2sState, byte_count: u32, msg: Blake2sInput,
+/// ) -> Blake2sState nopanic;
+/// ```
 #[allow(clippy::too_many_arguments)]
 fn build_blake_operation<'ctx, 'this>(
     context: &'ctx Context,
