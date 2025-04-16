@@ -128,7 +128,7 @@ impl VirtualMachine {
                     linear_gas_solver: no_eq_solver,
                     linear_ap_change_solver: no_eq_solver,
                     skip_non_linear_solver_comparisons: false,
-                    compute_runtime_costs: false
+                    compute_runtime_costs: false,
                 }),
             )
             .unwrap(),

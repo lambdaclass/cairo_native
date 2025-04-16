@@ -167,8 +167,7 @@ impl GasMetadata {
         idx: StatementIdx,
         cost_type: CostTokenType,
     ) -> Option<u64> {
-        self
-            .gas_info
+        self.gas_info
             .variable_values
             .get(&(idx, cost_type))
             .copied()
