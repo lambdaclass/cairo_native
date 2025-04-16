@@ -1,6 +1,6 @@
 [package]
 name = "cairo-native"
-version = "0.4.1"
+version = "0.4.2"
 edition = "2021"
 license = "Apache-2.0"
 description = "A compiler to convert Cairo's IR Sierra code to MLIR and execute it."
@@ -77,7 +77,7 @@ lazy_static = "1.5"
 libc = "0.2"
 llvm-sys = "191.0.0"
 melior = { version = "0.21.0", features = ["ods-dialects", "helpers"] }
-mlir-sys = { version = "0.4.1" }
+mlir-sys = { version = "0.4.2" }
 num-bigint = "0.4.6"
 num-traits = "0.2"
 starknet-types-core = { version = "0.1.7", default-features = false, features = [
