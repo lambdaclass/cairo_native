@@ -3,10 +3,11 @@ use cairo_lang_compiler::{
     compile_prepared_db, db::RootDatabase, project::setup_project, CompilerConfig,
 };
 use cairo_lang_runner::short_string::as_cairo_short_string;
+use cairo_lang_sierra_to_casm::metadata::MetadataComputationConfig;
 use cairo_native::{
     context::NativeContext,
     executor::{AotNativeExecutor, JitNativeExecutor},
-    metadata::gas::{GasMetadata, MetadataComputationConfig},
+    metadata::gas::GasMetadata,
     starknet_stub::StubSyscallHandler,
 };
 use clap::{Parser, ValueEnum};
