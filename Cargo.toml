@@ -55,6 +55,7 @@ with-cheatcode = []
 with-debug-utils = []
 with-mem-tracing = []
 with-segfault-catcher = []
+with-trace-dump = ["dep:sierra-emu"]
 
 # the aquamarine dep is only used in docs and cannot be detected as used by cargo udeps
 [package.metadata.cargo-udeps.ignore]
@@ -126,6 +127,9 @@ num-integer = "0.1.46"
 # Runtime functions
 rand = "0.9.0"
 starknet-curve = "0.5.1"
+
+# trace dump
+sierra-emu = { git = "https://github.com/lambdaclass/sierra-emu", branch = "main", optional = true}
 
 [dev-dependencies]
 cairo-vm = { git = "https://github.com/lambdaclass/cairo-vm", rev = "368e3fb311601a33ff8945e784eaa332f1fd499a", features = ["cairo-1-hints"] }
