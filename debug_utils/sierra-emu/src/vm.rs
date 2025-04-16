@@ -484,14 +484,9 @@ fn eval<'a>(
             self::felt252_dict_entry::eval(registry, selector, args)
         }
         CoreConcreteLibfunc::FunctionCall(info) => self::function_call::eval(registry, info, args),
-        CoreConcreteLibfunc::Gas(selector) => self::gas::eval(
-            registry,
-            selector,
-            args,
-            &gas,
-            *statement_idx,
-            builtin_costs,
-        ),
+        CoreConcreteLibfunc::Gas(selector) => {
+            self::gas::eval(registry, selector, args, gas, *statement_idx, builtin_costs)
+        }
         CoreConcreteLibfunc::Mem(selector) => self::mem::eval(registry, selector, args),
         CoreConcreteLibfunc::Nullable(_) => todo!(),
         CoreConcreteLibfunc::Pedersen(selector) => self::pedersen::eval(registry, selector, args),
