@@ -1214,6 +1214,7 @@ pub mod trace_dump {
 
                 Value::FeltDict {
                     ty: info.ty.clone(),
+                    count: value.count,
                     data,
                 }
             }
@@ -1246,6 +1247,7 @@ pub mod trace_dump {
                 Value::FeltDictEntry {
                     ty: info.ty.clone(),
                     data,
+                    count: value.dict.count,
                     key,
                 }
             }
