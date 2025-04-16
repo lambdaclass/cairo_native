@@ -38,10 +38,12 @@ pub enum Value {
     FeltDict {
         ty: ConcreteTypeId,
         data: HashMap<Felt, Self>,
+        count: u64,
     },
     FeltDictEntry {
         ty: ConcreteTypeId,
         data: HashMap<Felt, Self>,
+        count: u64,
         key: Felt,
     },
     EcPoint {

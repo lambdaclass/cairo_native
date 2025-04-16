@@ -8,6 +8,9 @@ use cairo_lang_sierra::{
     },
     program_registry::ProgramRegistry,
 };
+use cairo_lang_sierra_gas::core_libfunc_cost::{
+    DICT_SQUASH_REPEATED_ACCESS_COST, DICT_SQUASH_UNIQUE_KEY_COST,
+};
 use smallvec::smallvec;
 use std::collections::HashMap;
 
@@ -46,6 +49,7 @@ pub fn eval_new(
             Value::FeltDict {
                 ty: ty.clone(),
                 data: HashMap::new(),
+                count: 0
             },
         ],
     )
@@ -56,19 +60,25 @@ pub fn eval_squash(
     _info: &SignatureOnlyConcreteLibfunc,
     args: Vec<Value>,
 ) -> EvalAction {
-    let [range_check @ Value::Unit, Value::U64(gas_builtin), segment_arena @ Value::Unit, Value::FeltDict { ty, data }]: [Value; 4] =
+    let [range_check @ Value::Unit, Value::U64(gas_builtin), segment_arena @ Value::Unit, Value::FeltDict { ty, data, count }]: [Value; 4] =
         args.try_into().unwrap()
     else {
         panic!();
     };
 
+    const DICT_GAS_REFUND_PER_ACCESS: u64 =
+        (DICT_SQUASH_UNIQUE_KEY_COST.cost() - DICT_SQUASH_REPEATED_ACCESS_COST.cost()) as u64;
+
+    let refund = count.saturating_sub(data.len() as u64) * DICT_GAS_REFUND_PER_ACCESS;
+    let new_gas_builtin = gas_builtin + refund;
+
     EvalAction::NormalBranch(
         0,
         smallvec![
             range_check,
-            Value::U64(gas_builtin),
+            Value::U64(new_gas_builtin),
             segment_arena,
-            Value::FeltDict { ty, data }
+            Value::FeltDict { ty, data, count }
         ],
     )
 }
