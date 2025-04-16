@@ -277,10 +277,14 @@
 <a href="#276" id="276">276</a>
 <a href="#277" id="277">277</a>
 <a href="#278" id="278">278</a>
-<a href="#279" id="279">279</a></pre></div><pre class="rust"><code><span class="kw">use super</span>::{find_function, format_for_panic, result_to_runresult, RunArgs, RunMode};
+<a href="#279" id="279">279</a>
+<a href="#280" id="280">280</a>
+<a href="#281" id="281">281</a>
+<a href="#282" id="282">282</a></pre></div><pre class="rust"><code><span class="kw">use super</span>::{find_function, format_for_panic, result_to_runresult, RunArgs, RunMode};
 <span class="kw">use </span>anyhow::Context;
 <span class="kw">use </span>cairo_lang_runner::RunResultValue;
 <span class="kw">use </span>cairo_lang_sierra::{extensions::gas::CostTokenType, ids::FunctionId, program::Program};
+<span class="kw">use </span>cairo_lang_sierra_to_casm::metadata::MetadataComputationConfig;
 <span class="kw">use </span>cairo_lang_test_plugin::{
     test_config::{PanicExpectation, TestExpectation},
     TestConfig,
@@ -290,7 +294,7 @@
 <span class="kw">use </span>cairo_native::{
     context::NativeContext,
     executor::{AotNativeExecutor, JitNativeExecutor},
-    metadata::gas::{GasMetadata, MetadataComputationConfig},
+    metadata::gas::GasMetadata,
     starknet_stub::StubSyscallHandler,
 };
 <span class="kw">use </span>colored::Colorize;
@@ -452,6 +456,8 @@
             function_set_costs,
             linear_ap_change_solver: <span class="bool-val">true</span>,
             linear_gas_solver: <span class="bool-val">true</span>,
+            skip_non_linear_solver_comparisons: <span class="bool-val">false</span>,
+            compute_runtime_costs: <span class="bool-val">false</span>,
         }),
     )
     .unwrap();

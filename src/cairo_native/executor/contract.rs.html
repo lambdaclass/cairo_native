@@ -915,7 +915,10 @@
 <a href="#914" id="914">914</a>
 <a href="#915" id="915">915</a>
 <a href="#916" id="916">916</a>
-<a href="#917" id="917">917</a></pre></div><pre class="rust"><code><span class="doccomment">//! A specialized executor for Starknet contracts, avoiding the overhead of storing the sierra program registry and
+<a href="#917" id="917">917</a>
+<a href="#918" id="918">918</a>
+<a href="#919" id="919">919</a>
+<a href="#920" id="920">920</a></pre></div><pre class="rust"><code><span class="doccomment">//! A specialized executor for Starknet contracts, avoiding the overhead of storing the sierra program registry and
 //! enabling efficient serialization of the program/data once compiled.
 //!
 //! This executor heavily relies on the stability of the contract entry point argument order.
@@ -954,7 +957,7 @@
     error::{panic::ToNativeAssertError, Error, <span class="prelude-ty">Result</span>},
     execution_result::{BuiltinStats, ContractExecutionResult},
     executor::{invoke_trampoline, BuiltinCostsGuard},
-    metadata::{gas::MetadataComputationConfig, runtime_bindings::setup_runtime},
+    metadata::runtime_bindings::setup_runtime,
     module::NativeModule,
     native_assert, native_panic,
     starknet::{handler::StarknetSyscallHandlerCallbacks, StarknetSyscallHandler},
@@ -977,6 +980,7 @@
     program::{GenFunction, Program, StatementIdx},
     program_registry::ProgramRegistry,
 };
+<span class="kw">use </span>cairo_lang_sierra_to_casm::metadata::MetadataComputationConfig;
 <span class="kw">use </span>cairo_lang_starknet_classes::contract_class::ContractEntryPoints;
 <span class="kw">use </span>cairo_lang_starknet_classes::{
     casm_contract_class::ENTRY_POINT_COST, compiler_version::VersionId,
@@ -1123,6 +1127,8 @@
                 .collect(),
                 linear_gas_solver: no_eq_solver,
                 linear_ap_change_solver: no_eq_solver,
+                skip_non_linear_solver_comparisons: <span class="bool-val">false</span>,
+                compute_runtime_costs: <span class="bool-val">false</span>,
             }),
         )<span class="question-mark">?</span>;
 

@@ -140,15 +140,17 @@
 <a href="#139" id="139">139</a>
 <a href="#140" id="140">140</a>
 <a href="#141" id="141">141</a>
-<a href="#142" id="142">142</a></pre></div><pre class="rust"><code><span class="kw">use </span>anyhow::Context;
+<a href="#142" id="142">142</a>
+<a href="#143" id="143">143</a></pre></div><pre class="rust"><code><span class="kw">use </span>anyhow::Context;
 <span class="kw">use </span>cairo_lang_compiler::{
     compile_prepared_db, db::RootDatabase, project::setup_project, CompilerConfig,
 };
 <span class="kw">use </span>cairo_lang_runner::short_string::as_cairo_short_string;
+<span class="kw">use </span>cairo_lang_sierra_to_casm::metadata::MetadataComputationConfig;
 <span class="kw">use </span>cairo_native::{
     context::NativeContext,
     executor::{AotNativeExecutor, JitNativeExecutor},
-    metadata::gas::{GasMetadata, MetadataComputationConfig},
+    metadata::gas::GasMetadata,
     starknet_stub::StubSyscallHandler,
 };
 <span class="kw">use </span>clap::{Parser, ValueEnum};
