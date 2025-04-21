@@ -224,6 +224,7 @@ jobs:
       - name: Run blockifier tests
         run: |
           cd sequencer
+          sudo apt-get install binutils
           cargo test -p blockifier --features cairo_native
 
   coverage:
