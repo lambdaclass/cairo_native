@@ -195,12 +195,13 @@ jobs:
         uses: actions/checkout@v4
         with:
           path: cairo_native
+
       - name: Checkout Sequencer
         uses: actions/checkout@v4
         with:
           repository: lambdaclass/sequencer
           path: sequencer
-          ref: 998a3d6fa88b349785b2f81dbe42292c246e1917 # replay-v2.12.0-dev.0
+          ref: c94c609d6c7fc9b03a8378fe1c70fb992515ef75 # replay-v2.12.0-dev.0
 
       - name: check and free hdd space left
         run: |
