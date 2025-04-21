@@ -203,26 +203,6 @@ jobs:
           repository: lambdaclass/sequencer
           path: sequencer
           ref: c94c609d6c7fc9b03a8378fe1c70fb992515ef75 # replay-v2.12.0-dev.0
-
-      - name: check and free hdd space left
-        run: |
-          echo "Listing 20 largest packages"
-          dpkg-query -Wf '${Installed-Size}\t${Package}\n' | sort -n | tail -n 20
-          df -h
-          sudo apt-get update
-          sudo apt-get remove -y '^llvm-.*'
-          sudo apt-get remove -y 'php.*'
-          sudo apt-get remove -y '^dotnet-.*'
-          sudo apt-get remove -y '^temurin-.*'
-          sudo apt-get remove -y azure-cli microsoft-edge-stable google-chrome-stable firefox mono-devel
-          sudo apt-get autoremove -y
-          sudo apt-get clean
-          df -h
-          echo "Removing large directories"
-          # deleting 15GB
-          sudo rm -rf /usr/share/dotnet/
-          sudo rm -rf /usr/local/lib/android
-          df -h
       - name: Setup rust env
         uses: dtolnay/rust-toolchain@1.84.1
       - name: Retreive cached dependecies
