@@ -3303,6 +3303,7 @@ dependencies = [
  "cairo-lang-sierra-gas",
  "cairo-lang-starknet",
  "cairo-lang-starknet-classes",
+ "cairo-lang-test-plugin",
  "cairo-lang-utils",
  "clap",
  "k256",

@@ -16,6 +16,7 @@ cairo-lang-sierra = "=2.12.0-dev.0"
 cairo-lang-sierra-ap-change = "=2.12.0-dev.0"
 cairo-lang-sierra-gas = "=2.12.0-dev.0"
 cairo-lang-starknet-classes = "=2.12.0-dev.0"
+cairo-lang-test-plugin = "=2.12.0-dev.0"
 cairo-lang-utils = "=2.12.0-dev.0"
 clap = { version = "4.5.26", features = ["derive"] }
 k256 = "0.13.4"
