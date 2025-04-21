@@ -1,6 +1,7 @@
 use cairo_lang_sierra::{
     extensions::{
         array::ArrayConcreteLibfunc,
+        blake::BlakeConcreteLibfunc,
         boolean::BoolConcreteLibfunc,
         bounded_int::BoundedIntConcreteLibfunc,
         boxing::BoxConcreteLibfunc,
@@ -26,6 +27,7 @@ use cairo_lang_sierra::{
         nullable::NullableConcreteLibfunc,
         pedersen::PedersenConcreteLibfunc,
         poseidon::PoseidonConcreteLibfunc,
+        qm31::{QM31BinaryOperator, QM31Concrete},
         range::IntRangeConcreteLibfunc,
         starknet::{
             secp256::{Secp256ConcreteLibfunc, Secp256OpConcreteLibfunc},
@@ -133,7 +135,7 @@ pub fn libfunc_to_name(value: &CoreConcreteLibfunc) -> &'static str {
             GasConcreteLibfunc::GetAvailableGas(_) => "get_available_gas",
             GasConcreteLibfunc::BuiltinWithdrawGas(_) => "builtin_withdraw_gas",
             GasConcreteLibfunc::GetBuiltinCosts(_) => "get_builtin_costs",
-            GasConcreteLibfunc::GetUnspentGas(_) => todo!(),
+            GasConcreteLibfunc::GetUnspentGas(_) => "get_unspent_gas",
         },
         CoreConcreteLibfunc::Uint8(value) => match value {
             UintConcrete::Const(_) => "u8_const",
@@ -376,7 +378,7 @@ pub fn libfunc_to_name(value: &CoreConcreteLibfunc) -> &'static str {
             StarknetConcreteLibfunc::Sha256StateHandleInit(_) => "sha256_state_handle_init",
             StarknetConcreteLibfunc::Sha256StateHandleDigest(_) => "sha256_state_handle_digest",
             StarknetConcreteLibfunc::GetClassHashAt(_) => "get_class_hash_at",
-            StarknetConcreteLibfunc::MetaTxV0(_) => todo!(),
+            StarknetConcreteLibfunc::MetaTxV0(_) => "meta_tx_v0",
         },
         CoreConcreteLibfunc::Debug(value) => match value {
             DebugConcreteLibfunc::Print(_) => "debug_print",
@@ -419,10 +421,25 @@ pub fn libfunc_to_name(value: &CoreConcreteLibfunc) -> &'static str {
             IntRangeConcreteLibfunc::TryNew(_) => "int_range_try_new",
             IntRangeConcreteLibfunc::PopFront(_) => "int_range_pop_front",
         },
-        CoreConcreteLibfunc::Blake(_) => todo!(),
-        CoreConcreteLibfunc::Felt252SquashedDict(_) => todo!(),
-        CoreConcreteLibfunc::Trace(_) => todo!(),
-        CoreConcreteLibfunc::QM31(_) => todo!(),
+        CoreConcreteLibfunc::Blake(selector) => match selector {
+            BlakeConcreteLibfunc::Blake2sCompress(_) => "blake2s_compress",
+            BlakeConcreteLibfunc::Blake2sFinalize(_) => "blake2s_finalize",
+        },
+        CoreConcreteLibfunc::Felt252SquashedDict(_) => "felt252_squashed_dict",
+        CoreConcreteLibfunc::Trace(_) => "trace",
+        CoreConcreteLibfunc::QM31(selector) => match selector {
+            QM31Concrete::BinaryOperation(binop) => match binop.operator {
+                QM31BinaryOperator::Add => "qm31_add",
+                QM31BinaryOperator::Sub => "qm31_sub",
+                QM31BinaryOperator::Mul => "qm31_mul",
+                QM31BinaryOperator::Div => "qm31_div",
+            },
+            QM31Concrete::Const(_) => "qm31_const",
+            QM31Concrete::FromM31(_) => "qm31_from_m31",
+            QM31Concrete::IsZero(_) => "qm31_is_zero",
+            QM31Concrete::Pack(_) => "qm31_pack",
+            QM31Concrete::Unpack(_) => "qm31_unpack",
+        },
     }
 }
 
@@ -545,8 +562,8 @@ pub fn type_to_name(
         CoreTypeConcrete::IntRange(info) => {
             format!("IntRange<{}>", type_to_name(&info.ty, registry))
         }
-        CoreTypeConcrete::Blake(_) => todo!(),
-        CoreTypeConcrete::QM31(_) => todo!(),
+        CoreTypeConcrete::Blake(_) => String::from("Blake"),
+        CoreTypeConcrete::QM31(_) => String::from("QM31"),
     }
 }
 
