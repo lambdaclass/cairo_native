@@ -218,7 +218,7 @@ jobs:
 
       - name: Patch Cairo Native in Sequencer
         run: |
-          cd ../sequencer
+          cd sequencer
           # Updates native dependency to local path
           new_path='"..\/cairo_native"'
           sed -i'' -r "s/^cairo-native = .*/cairo-native.path = $new_path/" Cargo.toml
@@ -227,7 +227,7 @@ jobs:
 
       - name: Run blockifier tests
         run: |
-          ../sequencer
+          cd sequencer
           cargo test -p blockifier --features cairo_native
 
   coverage:
