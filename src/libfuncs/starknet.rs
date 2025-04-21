@@ -1574,7 +1574,7 @@ pub fn build_deploy<'ctx, 'this>(
                 )?;
 
                 let payload_ty = llvm::r#type::r#struct(context, &[p0_ty, p1_ty], false);
-                let payload_layout = p0_layout.extend(p1_layout)?.0;
+                let payload_layout = p0_layout.extend(p1_layout)?.0.pad_to_align();
 
                 let full_layout = tag_layout.extend(payload_layout)?.0;
                 layout = Layout::from_size_align(
