@@ -202,7 +202,6 @@ jobs:
           path: sequencer
           ref: 998a3d6fa88b349785b2f81dbe42292c246e1917 # replay-v2.12.0-dev.0
 
-      - uses: ./cairo_native/.github/actions/install-linux-deps
       - name: Setup rust env
         uses: dtolnay/rust-toolchain@1.84.1
       - name: Retreive cached dependecies
@@ -211,6 +210,7 @@ jobs:
           workspaces: |
             cairo_native
             sequencer
+      - uses: ./cairo_native/.github/actions/install-linux-deps
 
       - name: Patch Cairo Native in Sequencer
         run: |
