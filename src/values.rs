@@ -15,6 +15,7 @@ use crate::{
 use bumpalo::Bump;
 use cairo_lang_sierra::{
     extensions::{
+        circuit::CircuitTypeConcrete,
         core::{CoreLibfunc, CoreType, CoreTypeConcrete},
         starknet::{secp256::Secp256PointTypeConcrete, StarknetTypeConcrete},
         utils::Range,
@@ -964,6 +965,23 @@ impl Value {
                     Self::BoundedInt {
                         value: data.into(),
                         range: info.range.clone(),
+                    }
+                }
+                CoreTypeConcrete::Circuit(CircuitTypeConcrete::U96Guarantee(_)) => {
+                    let data = BigInt::from_biguint(
+                        Sign::Plus,
+                        BigUint::from_bytes_le(slice::from_raw_parts(
+                            ptr.cast::<u8>().as_ptr(),
+                            12,
+                        )),
+                    );
+
+                    Self::BoundedInt {
+                        value: data.into(),
+                        range: Range {
+                            lower: BigInt::ZERO,
+                            upper: BigInt::one() << 96,
+                        },
                     }
                 }
                 CoreTypeConcrete::Coupon(_)

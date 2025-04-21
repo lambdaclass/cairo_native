@@ -1,6 +1,6 @@
 [package]
 name = "cairo-native"
-version = "0.4.0"
+version = "0.5.0-rc.3"
 edition = "2021"
 license = "Apache-2.0"
 description = "A compiler to convert Cairo's IR Sierra code to MLIR and execute it."
@@ -70,6 +70,7 @@ cairo-lang-runner = "=2.12.0-dev.0"
 cairo-lang-semantic = "=2.12.0-dev.0"
 cairo-lang-sierra = "=2.12.0-dev.0"
 cairo-lang-sierra-generator = "=2.12.0-dev.0"
+cairo-lang-sierra-to-casm = "=2.12.0-dev.0"
 educe = "0.5.11" # can't update until https://github.com/magiclen/educe/issues/27
 itertools = "0.14.0"
 lazy_static = "1.5"

@@ -37,7 +37,7 @@ use crate::{
     error::{panic::ToNativeAssertError, Error, Result},
     execution_result::{BuiltinStats, ContractExecutionResult},
     executor::{invoke_trampoline, BuiltinCostsGuard},
-    metadata::{gas::MetadataComputationConfig, runtime_bindings::setup_runtime},
+    metadata::runtime_bindings::setup_runtime,
     module::NativeModule,
     native_assert, native_panic,
     starknet::{handler::StarknetSyscallHandlerCallbacks, StarknetSyscallHandler},
@@ -60,6 +60,7 @@ use cairo_lang_sierra::{
     program::{GenFunction, Program, StatementIdx},
     program_registry::ProgramRegistry,
 };
+use cairo_lang_sierra_to_casm::metadata::MetadataComputationConfig;
 use cairo_lang_starknet_classes::contract_class::ContractEntryPoints;
 use cairo_lang_starknet_classes::{
     casm_contract_class::ENTRY_POINT_COST, compiler_version::VersionId,
@@ -206,6 +207,8 @@ impl AotContractExecutor {
                 .collect(),
                 linear_gas_solver: no_eq_solver,
                 linear_ap_change_solver: no_eq_solver,
+                skip_non_linear_solver_comparisons: false,
+                compute_runtime_costs: false,
             }),
         )?;
 
