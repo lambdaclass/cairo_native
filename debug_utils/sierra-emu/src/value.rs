@@ -66,6 +66,10 @@ pub enum Value {
     U32(u32),
     U64(u64),
     U8(u8),
+    IntRange {
+        x: Box<Value>,
+        y: Box<Value>,
+    },
     Uninitialized {
         ty: ConcreteTypeId,
     },
@@ -107,7 +111,7 @@ impl Value {
     ) -> bool {
         let ty = registry.get_type(type_id).unwrap();
         let res = match ty {
-            CoreTypeConcrete::Array(info) => {
+            CoreTypeConcrete::Array(info) | CoreTypeConcrete::Span(info) => {
                 matches!(self, Self::Array { ty, .. } if *ty == info.ty)
             }
             CoreTypeConcrete::BoundedInt(info) => {
@@ -157,7 +161,7 @@ impl Value {
             }
 
             // To do:
-            CoreTypeConcrete::Coupon(_) => todo!(),
+            CoreTypeConcrete::Coupon(_) => matches!(self, Self::Unit),
             CoreTypeConcrete::Bitwise(_) => matches!(self, Self::Unit),
             CoreTypeConcrete::Box(info) => self.is(registry, &info.ty),
 
@@ -183,7 +187,7 @@ impl Value {
                     matches!(self, Self::Unit)
                 }
             },
-            CoreTypeConcrete::Const(_) => todo!(),
+            CoreTypeConcrete::Const(info) => self.is(registry, &info.inner_ty),
             CoreTypeConcrete::EcOp(_) => matches!(self, Self::Unit),
             CoreTypeConcrete::EcPoint(_) => matches!(self, Self::EcPoint { .. }),
             CoreTypeConcrete::EcState(_) => matches!(self, Self::EcState { .. }),
@@ -203,7 +207,6 @@ impl Value {
             }
             CoreTypeConcrete::Pedersen(_) => matches!(self, Self::Unit),
             CoreTypeConcrete::Poseidon(_) => matches!(self, Self::Unit),
-            CoreTypeConcrete::Span(_) => todo!(),
             CoreTypeConcrete::Starknet(inner) => match inner {
                 StarknetTypeConcrete::ClassHash(_)
                 | StarknetTypeConcrete::ContractAddress(_)
@@ -213,7 +216,7 @@ impl Value {
                 StarknetTypeConcrete::Secp256Point(_) => matches!(self, Self::Struct(_)),
                 StarknetTypeConcrete::Sha256StateHandle(_) => matches!(self, Self::Struct { .. }),
             },
-            CoreTypeConcrete::IntRange(_) => todo!(),
+            CoreTypeConcrete::IntRange(_) => matches!(self, Value::IntRange { .. }),
             CoreTypeConcrete::Blake(_) => todo!(),
             CoreTypeConcrete::QM31(_) => todo!(),
         };
