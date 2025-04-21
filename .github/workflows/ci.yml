@@ -183,7 +183,7 @@ jobs:
       - name: test-cairo
         run: make test-cairo
 
-  tests-sequencer:
+  tests-blockifier:
     name: Blockifier tests
     runs-on: ubuntu-latest
     env:
@@ -193,7 +193,7 @@ jobs:
     defaults:
       run:
         shell: bash
-        working-directory: ./sequencer
+
     steps:
       - name: Checkout Native
         uses: actions/checkout@v4
@@ -214,6 +214,7 @@ jobs:
         with:
           workspaces: |
             cairo_native
+            sequencer
 
       - name: Patch Cairo Native in Sequencer
         run: |
@@ -224,7 +225,9 @@ jobs:
           git diff
 
       - name: Run blockifier tests
-        run: cargo test -p blockifier --features cairo_native
+        run: |
+          ../sequencer
+          cargo test -p blockifier --features cairo_native
 
   coverage:
     name: coverage
