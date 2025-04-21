@@ -30,7 +30,7 @@ runs:
         keys-asc: https://apt.llvm.org/llvm-snapshot.gpg.key
     - name: Update and upgrade APT
       shell: bash
-      run: sudo apt-get update && sudo apt-get upgrade -y
+      run: sudo apt-get update && sudo apt-get upgrade -y && sudo apt-get install binutils
     - name: Install LLVM
       shell: bash
       run: sudo apt-get install llvm-19 llvm-19-dev llvm-19-runtime clang-19 clang-tools-19 lld-19 libpolly-19-dev libmlir-19-dev mlir-19-tools
