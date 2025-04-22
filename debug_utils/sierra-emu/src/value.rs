@@ -42,10 +42,12 @@ pub enum Value {
     FeltDict {
         ty: ConcreteTypeId,
         data: HashMap<Felt, Self>,
+        count: u64,
     },
     FeltDictEntry {
         ty: ConcreteTypeId,
         data: HashMap<Felt, Self>,
+        count: u64,
         key: Felt,
     },
     EcPoint {
@@ -116,7 +118,7 @@ impl Value {
     ) -> bool {
         let ty = registry.get_type(type_id).unwrap();
         let res = match ty {
-            CoreTypeConcrete::Array(info) | CoreTypeConcrete::Span(info) => {
+            CoreTypeConcrete::Array(info) => {
                 matches!(self, Self::Array { ty, .. } if *ty == info.ty)
             }
             CoreTypeConcrete::BoundedInt(info) => {
@@ -166,7 +168,7 @@ impl Value {
             }
 
             // To do:
-            CoreTypeConcrete::Coupon(_) => matches!(self, Self::Unit),
+            CoreTypeConcrete::Coupon(_) => todo!(),
             CoreTypeConcrete::Bitwise(_) => matches!(self, Self::Unit),
             CoreTypeConcrete::Box(info) => self.is(registry, &info.ty),
 
@@ -192,7 +194,7 @@ impl Value {
                     matches!(self, Self::Unit)
                 }
             },
-            CoreTypeConcrete::Const(info) => self.is(registry, &info.inner_ty),
+            CoreTypeConcrete::Const(_) => todo!(),
             CoreTypeConcrete::EcOp(_) => matches!(self, Self::Unit),
             CoreTypeConcrete::EcPoint(_) => matches!(self, Self::EcPoint { .. }),
             CoreTypeConcrete::EcState(_) => matches!(self, Self::EcState { .. }),
@@ -212,6 +214,7 @@ impl Value {
             }
             CoreTypeConcrete::Pedersen(_) => matches!(self, Self::Unit),
             CoreTypeConcrete::Poseidon(_) => matches!(self, Self::Unit),
+            CoreTypeConcrete::Span(_) => todo!(),
             CoreTypeConcrete::Starknet(inner) => match inner {
                 StarknetTypeConcrete::ClassHash(_)
                 | StarknetTypeConcrete::ContractAddress(_)
@@ -221,7 +224,7 @@ impl Value {
                 StarknetTypeConcrete::Secp256Point(_) => matches!(self, Self::Struct(_)),
                 StarknetTypeConcrete::Sha256StateHandle(_) => matches!(self, Self::Struct { .. }),
             },
-            CoreTypeConcrete::IntRange(_) => matches!(self, Value::IntRange { .. }),
+            CoreTypeConcrete::IntRange(_) => todo!(),
             CoreTypeConcrete::Blake(_) => todo!(),
             CoreTypeConcrete::QM31(_) => todo!(),
         };
