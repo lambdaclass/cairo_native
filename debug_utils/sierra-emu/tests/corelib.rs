@@ -62,17 +62,20 @@ pub fn run_tests(compiled: TestCompilation) {
     let program = Arc::new(compiled.sierra_program.program);
     let success = true;
 
-    compiled.metadata.named_tests.into_par_iter().for_each_with(success, move |success, (name, test)| {
-        let trace = run_program(
-            program.clone(),
-            EntryPoint::String(name.clone()),
-            vec![],
-            u64::MAX,
-        );
-        let run_result = trace_to_run_result(trace);
+    compiled.metadata.named_tests.into_par_iter().for_each_with(
+        success,
+        move |success, (name, test)| {
+            let trace = run_program(
+                program.clone(),
+                EntryPoint::String(name.clone()),
+                vec![],
+                u64::MAX,
+            );
+            let run_result = trace_to_run_result(trace);
 
-        *success &= assert_test_expectation(name, test.expectation, run_result);
-    });
+            *success &= assert_test_expectation(name, test.expectation, run_result);
+        },
+    );
 
     assert!(success);
 }
@@ -247,7 +250,6 @@ pub fn jitvalue_to_felt(value: &Value) -> Vec<Felt> {
 
             felts
         }
-        Value::IntRange { x, y } => [jitvalue_to_felt(x), jitvalue_to_felt(y)].concat(),
         Value::I8(x) => vec![(*x).into()],
         Value::I16(x) => vec![(*x).into()],
         Value::I32(x) => vec![(*x).into()],
