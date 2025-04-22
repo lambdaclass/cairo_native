@@ -50,6 +50,7 @@ pub fn eval_init(
             self_ty: self_ty.clone(),
             index: info.index,
             payload: Box::new(value),
+            debug_name: self_ty.debug_name.as_ref().map(|n| n.to_string())
         }],
     )
 }
@@ -62,11 +63,13 @@ pub fn eval_from_bounded_int(
     let [Value::BoundedInt { range: _, value }]: [Value; 1] = args.try_into().unwrap() else {
         panic!()
     };
+    let self_ty = &info.branch_signatures()[0].vars[0].ty;
 
     let enm = Value::Enum {
-        self_ty: info.branch_signatures()[0].vars[0].ty.clone(),
+        self_ty: self_ty.clone(),
         index: value.try_into().unwrap(),
         payload: Box::new(Value::Struct(vec![])),
+        debug_name: self_ty.debug_name.as_ref().map(|n| n.to_string()),
     };
 
     EvalAction::NormalBranch(0, smallvec![enm])
@@ -81,6 +84,7 @@ pub fn eval_match(
         self_ty,
         index,
         payload,
+        ..
     }]: [Value; 1] = args.try_into().unwrap()
     else {
         panic!()
@@ -103,6 +107,7 @@ pub fn eval_snapshot_match(
         self_ty,
         index,
         payload,
+        ..
     }]: [Value; 1] = args.try_into().unwrap()
     else {
         panic!()

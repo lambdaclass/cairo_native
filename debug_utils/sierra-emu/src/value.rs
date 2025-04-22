@@ -8,14 +8,16 @@ use cairo_lang_sierra::{
     ids::ConcreteTypeId,
     program_registry::ProgramRegistry,
 };
+use educe::Educe;
 use num_bigint::{BigInt, BigUint};
 use serde::Serialize;
 use starknet_types_core::felt::Felt;
-use std::{collections::HashMap, fmt::Debug, ops::Range};
+use std::{collections::HashMap, ops::Range};
 
 use crate::{debug::type_to_name, gas::BuiltinCosts};
 
-#[derive(Clone, Debug, Eq, PartialEq, Serialize)]
+#[derive(Clone, Educe, Serialize)]
+#[educe(Debug, Eq, PartialEq)]
 pub enum Value {
     Array {
         ty: ConcreteTypeId,
@@ -32,6 +34,8 @@ pub enum Value {
         self_ty: ConcreteTypeId,
         index: usize,
         payload: Box<Self>,
+        #[educe(PartialEq(ignore))]
+        debug_name: Option<String>,
     },
     Felt(Felt),
     Bytes31(Felt),
@@ -93,6 +97,7 @@ impl Value {
                 self_ty: type_id.clone(),
                 index: 0,
                 payload: Box::new(Value::default_for_type(registry, &info.variants[0])),
+                debug_name: type_id.debug_name.as_ref().map(|n| n.to_string()),
             },
             CoreTypeConcrete::Struct(info) => Value::Struct(
                 info.members

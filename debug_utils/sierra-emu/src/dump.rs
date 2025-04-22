@@ -80,6 +80,7 @@ impl ContractExecutionResult {
                     self_ty: _,
                     index,
                     payload,
+                    ..
                 } => {
                     failure_flag = (*index) != 0;
 

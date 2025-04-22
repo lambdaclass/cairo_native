@@ -157,7 +157,8 @@ impl AbiArgument for ValueWithInfoWrapper<'_> {
                     let abi_ptr = unsafe { *abi_ptr.cast::<NonNull<()>>().as_ref() };
                     abi_ptr.as_ptr().to_bytes(buffer, find_dict_drop_override)?;
                 } else {
-                    match (info.variants.len().next_power_of_two().trailing_zeros() + 7) / 8 {
+                    match (info.variants.len().next_power_of_two().trailing_zeros() + 7).div_ceil(8)
+                    {
                         0 => {}
                         _ => (*tag as u64).to_bytes(buffer, find_dict_drop_override)?,
                     }

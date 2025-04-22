@@ -1,15 +1,30 @@
-use std::path::Path;
+use std::{path::Path, sync::Arc, u64};
 
-use cairo_lang_compiler::{db::RootDatabase, diagnostics::DiagnosticsReporter, project::{check_compiler_path, setup_project}};
+use cairo_lang_compiler::{
+    db::RootDatabase,
+    diagnostics::DiagnosticsReporter,
+    project::{check_compiler_path, setup_project},
+};
 use cairo_lang_filesystem::cfg::{Cfg, CfgSet};
+use cairo_lang_runner::{casm_run::format_for_panic, RunResultValue};
 use cairo_lang_starknet::starknet_plugin_suite;
-use cairo_lang_test_plugin::{compile_test_prepared_db, test_plugin_suite, TestsCompilationConfig};
+use cairo_lang_test_plugin::{
+    compile_test_prepared_db,
+    test_config::{PanicExpectation, TestExpectation},
+    test_plugin_suite, TestCompilation, TestsCompilationConfig,
+};
+use rayon::iter::{IntoParallelIterator, ParallelIterator};
+use sierra_emu::{run_program, EntryPoint, ProgramTrace, Value};
+use starknet_crypto::Felt;
+use tracing::{error, info};
+use tracing_test::traced_test;
 
 #[test]
+#[traced_test]
 fn test_corelib() {
-    let compiler_path = Path::new("corelib");
+    let compiler_path = Path::new("../../corelib");
 
-    check_compiler_path(false, &compiler_path).unwrap();
+    check_compiler_path(false, &compiler_path).expect("Couldn't the corelib in the given path");
 
     let db = &mut {
         let mut b = RootDatabase::builder();
@@ -17,6 +32,7 @@ fn test_corelib() {
         b.with_cfg(CfgSet::from_iter([Cfg::name("test")]));
         b.with_default_plugin_suite(test_plugin_suite());
         b.with_default_plugin_suite(starknet_plugin_suite());
+
         b.build().unwrap()
     };
 
@@ -25,38 +41,224 @@ fn test_corelib() {
     let db = db.snapshot();
     let test_crate_ids = main_crate_ids.clone();
     let test_config = TestsCompilationConfig {
-        starknet: true,
-        add_statements_functions: false,
-        add_statements_code_locations: false,
+        starknet: false,
+        add_statements_functions: true,
+        add_statements_code_locations: true,
         contract_declarations: None,
         contract_crate_ids: None,
         executable_crate_ids: None,
     };
 
-    let mut diag_reporter = DiagnosticsReporter::stderr().with_crates(&main_crate_ids);
+    let diag_reporter = DiagnosticsReporter::stderr().with_crates(&main_crate_ids);
 
     let build_test_compilation =
         compile_test_prepared_db(&db, test_config, test_crate_ids.clone(), diag_reporter).unwrap();
 
-    let (compiled, filtered_out) = filter_test_cases(
-        build_test_compilation,
-        args.include_ignored,
-        args.ignored,
-        args.filter.clone(),
-    );
+    run_tests(build_test_compilation);
+}
 
-    let compiled = filter_test_case_compilation(compiled, &args.skip_compilation);
+/// Runs the tests and process the results for a summary.
+pub fn run_tests(compiled: TestCompilation) {
+    let program = Arc::new(compiled.sierra_program.program);
+    let success = true;
 
-    let summary =
-
-    display_tests_summary(&summary, filtered_out);
-    if !summary.failed.is_empty() {
-        bail!(
-            "test result: {}. {} passed; {} failed; {} ignored",
-            "FAILED".bright_red(),
-            summary.passed.len(),
-            summary.failed.len(),
-            summary.ignored.len()
+    compiled.metadata.named_tests.into_par_iter().for_each_with(success, move |success, (name, test)| {
+        let trace = run_program(
+            program.clone(),
+            EntryPoint::String(name.clone()),
+            vec![],
+            u64::MAX,
         );
+        let run_result = trace_to_run_result(trace);
+
+        *success &= assert_test_expectation(name, test.expectation, run_result);
+    });
+
+    assert!(success);
+}
+
+fn trace_to_run_result(trace: ProgramTrace) -> RunResultValue {
+    let result = trace
+        .states
+        .last()
+        .unwrap()
+        .items
+        .values()
+        .cloned()
+        .collect::<Vec<_>>();
+    let return_value = result.last().unwrap();
+    let mut felts = Vec::new();
+
+    let is_success = match &return_value {
+        outer_value @ Value::Enum {
+            index,
+            payload,
+            debug_name: _,
+            ..
+        } => {
+            //let debug_name = debug_name.as_ref().expect("missing debug name");
+            if *index == 0
+            // debug_name.starts_with("core::panics::PanicResult::")
+            //     || debug_name.starts_with("Enum<ut@core::panics::PanicResult::")
+            {
+                let is_success = *index == 0;
+
+                if !is_success {
+                    match &**payload {
+                        Value::Struct(fields) => {
+                            for field in fields {
+                                let felt = jitvalue_to_felt(&field);
+                                felts.extend(felt);
+                            }
+                        }
+                        _ => panic!("unsuported return value in cairo-native"),
+                    }
+                } else {
+                    felts.extend(jitvalue_to_felt(&*payload));
+                }
+
+                is_success
+            } else {
+                felts.extend(jitvalue_to_felt(&outer_value));
+                true
+            }
+        }
+        x => {
+            felts.extend(jitvalue_to_felt(&x));
+            true
+        }
+    };
+
+    let return_values = felts.into_iter().map(|x| x.to_bigint().into()).collect();
+
+    match is_success {
+        true => RunResultValue::Success(return_values),
+        false => RunResultValue::Panic(return_values),
+    }
+}
+
+fn assert_test_expectation(
+    name: String,
+    expectation: TestExpectation,
+    result: RunResultValue,
+) -> bool {
+    let mut success = true;
+
+    match result {
+        RunResultValue::Success(r) => {
+            if let TestExpectation::Panics(_) = expectation {
+                let err_msg = format_for_panic(r.into_iter());
+                error!("test {}: {}", name, err_msg);
+                success = false;
+            }
+            info!("test: {}", name);
+        }
+        RunResultValue::Panic(e) => match expectation {
+            TestExpectation::Success => {
+                let err_msg = format_for_panic(e.into_iter());
+                error!("test {}: {}", name, err_msg);
+                success = false;
+            }
+            TestExpectation::Panics(panic_expect) => {
+                if let PanicExpectation::Exact(expected) = panic_expect {
+                    if expected != e {
+                        let err_msg = format_for_panic(e.into_iter());
+                        error!("test {}: {}", name, err_msg);
+                        success = false;
+                    }
+                    info!("test {}", name);
+                }
+            }
+        },
+    }
+
+    success
+}
+
+/// Convert a Value to a felt.
+pub fn jitvalue_to_felt(value: &Value) -> Vec<Felt> {
+    let mut felts = Vec::new();
+    match value {
+        Value::Array { data, .. } | Value::Struct(data) => {
+            data.iter().flat_map(jitvalue_to_felt).collect()
+        }
+        Value::BoundedInt { value, .. } => vec![value.into()],
+        Value::Bytes31(bytes) => vec![*bytes],
+        Value::BuiltinCosts(costs) => vec![
+            costs.r#const.into(),
+            costs.pedersen.into(),
+            costs.bitwise.into(),
+            costs.ecop.into(),
+            costs.poseidon.into(),
+            costs.add_mod.into(),
+            costs.mul_mod.into(),
+        ],
+        Value::CircuitModulus(value) => vec![value.into()],
+        Value::Circuit(data) | Value::CircuitOutputs(data) => data.iter().map(Felt::from).collect(),
+        Value::EcPoint { x, y } => {
+            vec![*x, *y]
+        }
+        Value::EcState { x0, y0, x1, y1 } => {
+            vec![*x0, *y0, *x1, *y1]
+        }
+        Value::Enum {
+            index,
+            payload,
+            debug_name,
+            ..
+        } => {
+            if let Some(debug_name) = debug_name {
+                if debug_name == "core::bool" {
+                    vec![(*index == 1).into()]
+                } else {
+                    let mut felts = vec![(*index).into()];
+                    felts.extend(jitvalue_to_felt(payload));
+                    felts
+                }
+            } else {
+                // Assume its a regular enum.
+                let mut felts = vec![(*index).into()];
+                felts.extend(jitvalue_to_felt(payload));
+                felts
+            }
+        }
+        Value::Felt(felt) => vec![*felt],
+        Value::FeltDict { data, .. } => {
+            for (key, value) in data {
+                felts.push(*key);
+                let felt = jitvalue_to_felt(value);
+                felts.extend(felt);
+            }
+
+            felts
+        }
+        Value::FeltDictEntry {
+            key: data_key,
+            data,
+            ..
+        } => {
+            felts.push(*data_key);
+
+            for (key, value) in data {
+                felts.push(*key);
+                let felt = jitvalue_to_felt(value);
+                felts.extend(felt);
+            }
+
+            felts
+        }
+        Value::IntRange { x, y } => [jitvalue_to_felt(x), jitvalue_to_felt(y)].concat(),
+        Value::I8(x) => vec![(*x).into()],
+        Value::I16(x) => vec![(*x).into()],
+        Value::I32(x) => vec![(*x).into()],
+        Value::I64(x) => vec![(*x).into()],
+        Value::I128(x) => vec![(*x).into()],
+        Value::U8(x) => vec![(*x).into()],
+        Value::U16(x) => vec![(*x).into()],
+        Value::U32(x) => vec![(*x).into()],
+        Value::U64(x) => vec![(*x).into()],
+        Value::U128(x) => vec![(*x).into()],
+        Value::U256(x, y) => vec![(*x).into(), (*y).into()],
+        Value::Unit | Value::Uninitialized { .. } => vec![0.into()],
     }
 }

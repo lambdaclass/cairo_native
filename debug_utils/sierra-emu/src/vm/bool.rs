@@ -33,10 +33,12 @@ pub fn eval_and(
         self_ty,
         index: lhs,
         payload,
+        ..
     }, Value::Enum {
         self_ty: _,
         index: rhs,
         payload: _,
+        ..
     }]: [Value; 2] = args.try_into().unwrap()
     else {
         panic!()
@@ -48,9 +50,10 @@ pub fn eval_and(
     EvalAction::NormalBranch(
         0,
         smallvec![Value::Enum {
-            self_ty,
+            self_ty: self_ty.clone(),
             index: (lhs && rhs) as usize,
-            payload
+            payload,
+            debug_name: self_ty.debug_name.as_ref().map(|n| n.to_string())
         }],
     )
 }
@@ -64,6 +67,7 @@ pub fn eval_not(
         self_ty,
         index: lhs,
         payload,
+        ..
     }]: [Value; 1] = args.try_into().unwrap()
     else {
         panic!()
@@ -72,9 +76,10 @@ pub fn eval_not(
     EvalAction::NormalBranch(
         0,
         smallvec![Value::Enum {
-            self_ty,
+            self_ty: self_ty.clone(),
             index: (lhs == 0) as usize,
-            payload
+            payload,
+            debug_name: self_ty.debug_name.as_ref().map(|n| n.to_string())
         }],
     )
 }
@@ -88,10 +93,12 @@ pub fn eval_xor(
         self_ty,
         index: lhs,
         payload,
+        ..
     }, Value::Enum {
         self_ty: _,
         index: rhs,
         payload: _,
+        ..
     }]: [Value; 2] = args.try_into().unwrap()
     else {
         panic!()
@@ -103,9 +110,10 @@ pub fn eval_xor(
     EvalAction::NormalBranch(
         0,
         smallvec![Value::Enum {
-            self_ty,
+            self_ty: self_ty.clone(),
             index: (lhs ^ rhs) as usize,
-            payload
+            payload,
+            debug_name: self_ty.debug_name.as_ref().map(|n| n.to_string())
         }],
     )
 }
@@ -119,10 +127,12 @@ pub fn eval_or(
         self_ty,
         index: lhs,
         payload,
+        ..
     }, Value::Enum {
         self_ty: _,
         index: rhs,
         payload: _,
+        ..
     }]: [Value; 2] = args.try_into().unwrap()
     else {
         panic!()
@@ -134,9 +144,10 @@ pub fn eval_or(
     EvalAction::NormalBranch(
         0,
         smallvec![Value::Enum {
-            self_ty,
+            self_ty: self_ty.clone(),
             index: (lhs || rhs) as usize,
-            payload
+            payload,
+            debug_name: self_ty.debug_name.as_ref().map(|n| n.to_string())
         }],
     )
 }
@@ -150,6 +161,7 @@ pub fn eval_to_felt252(
         self_ty: _,
         index: lhs,
         payload: _,
+        ..
     }]: [Value; 1] = args.try_into().unwrap()
     else {
         panic!()
