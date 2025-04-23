@@ -228,9 +228,8 @@ jobs:
 
       - name: Run blockifier tests
         run: |
-          ls
           cd sequencer
-          cargo test -p blockifier --features cairo_native --locked
+          cargo test -p blockifier --features cairo_native
 
   coverage:
     name: coverage
