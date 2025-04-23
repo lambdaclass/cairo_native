@@ -1,6 +1,6 @@
 use crate::{
     debug::libfunc_to_name,
-    gas::{BuiltinCosts, GasMetadata, MetadataComputationConfig},
+    gas::{BuiltinCosts, GasMetadata},
     starknet::StarknetSyscallHandler,
     ContractExecutionResult, ProgramTrace, StateDump, Value,
 };
@@ -17,6 +17,7 @@ use cairo_lang_sierra::{
     program::{GenFunction, GenStatement, Invocation, Program, StatementIdx},
     program_registry::ProgramRegistry,
 };
+use cairo_lang_sierra_to_casm::metadata::MetadataComputationConfig;
 use cairo_lang_starknet_classes::{
     casm_contract_class::ENTRY_POINT_COST, compiler_version::VersionId,
     contract_class::ContractEntryPoints,
@@ -127,6 +128,8 @@ impl VirtualMachine {
                         .collect(),
                     linear_gas_solver: no_eq_solver,
                     linear_ap_change_solver: no_eq_solver,
+                    skip_non_linear_solver_comparisons: false,
+                    compute_runtime_costs: false,
                 }),
             )
             .unwrap(),
