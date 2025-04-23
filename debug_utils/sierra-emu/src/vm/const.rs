@@ -11,6 +11,7 @@ use cairo_lang_sierra::{
     program::GenericArg,
     program_registry::ProgramRegistry,
 };
+use num_traits::ToPrimitive;
 use smallvec::smallvec;
 
 pub fn eval(
@@ -160,6 +161,27 @@ fn inner(
 
             Value::Struct(fields)
         }
+        CoreTypeConcrete::Enum(_) => match inner_data {
+            [GenericArg::Value(value_idx), GenericArg::Type(payload_ty)] => {
+                let payload_type = registry.get_type(payload_ty).unwrap();
+                let const_payload_type = match payload_type {
+                    CoreTypeConcrete::Const(inner) => inner,
+                    _ => {
+                        panic!("matched an unexpected CoreTypeConcrete that is not a Const")
+                    }
+                };
+                let payload = inner(registry, payload_ty, &const_payload_type.inner_data);
+                let index: usize = value_idx.to_usize().unwrap();
+
+                Value::Enum {
+                    self_ty: type_id.clone(),
+                    index,
+                    payload: Box::new(payload),
+                    debug_name: type_id.debug_name.as_ref().map(|s| s.to_string()),
+                }
+            }
+            _ => panic!("const data mismatch"),
+        },
         _ => todo!("{}", type_id),
     }
 }

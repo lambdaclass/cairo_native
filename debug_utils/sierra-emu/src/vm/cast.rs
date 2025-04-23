@@ -100,7 +100,12 @@ pub fn eval_upcast(
             CoreTypeConcrete::Felt252(_) => Value::Felt(value.into()),
             CoreTypeConcrete::Sint16(_) => todo!("Sint16"),
             CoreTypeConcrete::Sint64(_) => todo!("Sint64"),
-            CoreTypeConcrete::BoundedInt(_) => todo!("BoundedInt"),
+            CoreTypeConcrete::BoundedInt(info) => {
+                Value::BoundedInt {
+                    range: info.range.lower.clone()..info.range.upper.clone(),
+                    value,
+                }
+            }
             _ => todo!(),
         }],
     )
