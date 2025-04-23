@@ -20,7 +20,7 @@ use cairo_lang_test_plugin::{
 use common::jitvalue_to_felt;
 use rayon::iter::{IntoParallelIterator, ParallelIterator};
 use sierra_emu::{run_program, EntryPoint, ProgramTrace, Value};
-use tracing::{error, info};
+use tracing::info;
 use tracing_test::traced_test;
 
 mod common;
@@ -94,8 +94,7 @@ pub fn run_tests(compiled: TestCompilation) {
         },
     );
 
-    // TODO: assert success, since there missing features (like libfuncs, types, etc)
-    // this test would fail. So this shouldn't be done until it's ready
+    assert!(success);
 }
 
 fn trace_to_run_result(trace: ProgramTrace) -> RunResultValue {
