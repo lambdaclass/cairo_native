@@ -230,7 +230,7 @@ jobs:
         run: |
           ls
           cd sequencer
-          cargo test -p blockifier --features cairo_native
+          cargo test -p blockifier --features cairo_native --locked
 
   coverage:
     name: coverage
