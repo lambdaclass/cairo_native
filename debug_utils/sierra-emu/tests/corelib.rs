@@ -81,15 +81,7 @@ pub fn run_tests(compiled: TestCompilation) {
 }
 
 fn trace_to_run_result(trace: ProgramTrace) -> RunResultValue {
-    let result = trace
-        .states
-        .last()
-        .unwrap()
-        .items
-        .values()
-        .cloned()
-        .collect::<Vec<_>>();
-    let return_value = result.last().unwrap();
+    let return_value = trace.return_value().unwrap();
     let mut felts = Vec::new();
 
     let is_success = match &return_value {
