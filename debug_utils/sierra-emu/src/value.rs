@@ -113,7 +113,7 @@ impl Value {
     ) -> bool {
         let ty = registry.get_type(type_id).unwrap();
         let res = match ty {
-            CoreTypeConcrete::Array(info) | CoreTypeConcrete::Span(info) => {
+            CoreTypeConcrete::Array(info) => {
                 matches!(self, Self::Array { ty, .. } if *ty == info.ty)
             }
             CoreTypeConcrete::BoundedInt(info) => {
@@ -147,6 +147,9 @@ impl Value {
                             .zip(&info.members)
                             .all(|(value, ty)| value.is(registry, ty))
                 )
+            }
+            CoreTypeConcrete::Span(info) => {
+                self.is(registry, &info.ty)
             }
             CoreTypeConcrete::Uint8(_) => matches!(self, Self::U8(_)),
             CoreTypeConcrete::Uint32(_) => matches!(self, Self::U32(_)),
