@@ -21,8 +21,7 @@ impl ProgramTrace {
     }
 
     pub fn return_value(&self) -> Option<Value> {
-        self
-            .states
+        self.states
             .last()
             .unwrap()
             .items

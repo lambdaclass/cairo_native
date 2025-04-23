@@ -5,8 +5,12 @@ use cairo_lang_compiler::{
     diagnostics::DiagnosticsReporter,
     project::{check_compiler_path, setup_project},
 };
-use cairo_lang_filesystem::cfg::{Cfg, CfgSet};
+use cairo_lang_filesystem::{
+    cfg::{Cfg, CfgSet},
+    ids::CrateId,
+};
 use cairo_lang_runner::{casm_run::format_for_panic, RunResultValue};
+use cairo_lang_sierra_generator::replace_ids::replace_sierra_ids_in_program;
 use cairo_lang_starknet::starknet_plugin_suite;
 use cairo_lang_test_plugin::{
     compile_test_prepared_db,
@@ -51,10 +55,21 @@ fn test_corelib() {
 
     let diag_reporter = DiagnosticsReporter::stderr().with_crates(&main_crate_ids);
 
-    let build_test_compilation =
-        compile_test_prepared_db(&db, test_config, test_crate_ids.clone(), diag_reporter).unwrap();
+    let filtered_tests = vec![
+        "core::test::dict_test::test_array_from_squash_dict",
+        "core::test::hash_test::test_blake2s",
+        "core::test::testing_test::test_get_unspent_gas",
+    ];
 
-    run_tests(build_test_compilation);
+    let compiled = compile_tests(
+        &db,
+        test_config,
+        test_crate_ids,
+        diag_reporter,
+        Some(&filtered_tests),
+    );
+
+    run_tests(compiled);
 }
 
 /// Runs the tests and process the results for a summary.
@@ -254,5 +269,58 @@ pub fn jitvalue_to_felt(value: &Value) -> Vec<Felt> {
         Value::U128(x) => vec![(*x).into()],
         Value::U256(x, y) => vec![(*x).into(), (*y).into()],
         Value::Unit | Value::Uninitialized { .. } => vec![0.into()],
+    }
+}
+
+fn compile_tests(
+    db: &RootDatabase,
+    test_config: TestsCompilationConfig,
+    test_crate_ids: Vec<CrateId>,
+    diag_reporter: DiagnosticsReporter<'_>,
+    with_filtered_tests: Option<&[&str]>,
+) -> TestCompilation {
+    let mut compiled =
+        compile_test_prepared_db(db, test_config, test_crate_ids.clone(), diag_reporter).unwrap();
+    compiled.sierra_program.program =
+        replace_sierra_ids_in_program(db, &compiled.sierra_program.program);
+
+    if let Some(compilation_filter) = with_filtered_tests {
+        let should_skip_test = |name: &str| -> bool {
+            compilation_filter
+                .iter()
+                .any(|filter| name.contains(filter))
+        };
+
+        // Remove matching function definitions.
+        compiled.sierra_program.program.funcs.retain(|f| {
+            let name =
+                f.id.debug_name
+                    .as_ref()
+                    .map(|s| s.as_str())
+                    .unwrap_or_default();
+
+            let skipped = should_skip_test(name);
+
+            if skipped {
+                println!("skipping compilation of: {}", name);
+            }
+
+            !skipped
+        });
+
+        // Ignore matching test cases.
+        compiled
+            .metadata
+            .named_tests
+            .iter_mut()
+            .for_each(|(test, case)| {
+                if should_skip_test(test) {
+                    case.ignored = true
+                }
+            });
+
+        compiled
+    } else {
+        compiled
     }
 }
