@@ -229,7 +229,7 @@ jobs:
       - name: Run blockifier tests
         run: |
           cd sequencer
-          cargo test -p blockifier --features cairo_native --offline
+          cargo test -p blockifier --features cairo_native
 
   coverage:
     name: coverage
