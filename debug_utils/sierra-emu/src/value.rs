@@ -148,9 +148,7 @@ impl Value {
                             .all(|(value, ty)| value.is(registry, ty))
                 )
             }
-            CoreTypeConcrete::Span(info) => {
-                self.is(registry, &info.ty)
-            }
+            CoreTypeConcrete::Span(info) => self.is(registry, &info.ty),
             CoreTypeConcrete::Uint8(_) => matches!(self, Self::U8(_)),
             CoreTypeConcrete::Uint32(_) => matches!(self, Self::U32(_)),
             CoreTypeConcrete::Uint128(_) => {
