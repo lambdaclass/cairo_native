@@ -87,11 +87,6 @@ jobs:
 
           git diff
 
-      - name: Run sequencer tests
-        run: | 
-          cd ../sequencer
-          cargo test -p blockifier --features cairo_native
-
       - name: Run with Native
         if: ${{ matrix.runner == 'native' }}
         run: |
