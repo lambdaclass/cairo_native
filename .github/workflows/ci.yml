@@ -228,8 +228,9 @@ jobs:
 
       - name: Run blockifier tests
         run: |
-          cd sequencer
-          cargo test -p blockifier --features cairo_native
+          which ld
+          cd sequencer/crates/blockifier
+          cargo test --features cairo_native
 
   coverage:
     name: coverage
@@ -389,7 +390,7 @@ jobs:
           df -h
       - name: build image
         run: docker build .
-  
+
   build-sierra-emu:
     name: Build sierra-emu
     runs-on: ubuntu-latest
