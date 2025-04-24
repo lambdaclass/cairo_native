@@ -2,7 +2,7 @@ use sierra_emu::Value;
 use starknet_crypto::Felt;
 
 /// Convert a Value to a felt.
-pub fn jitvalue_to_felt(value: &Value) -> Vec<Felt> {
+pub fn value_to_felt(value: &Value) -> Vec<Felt> {
     let mut felts = Vec::new();
     match value {
         Value::Array { data, .. } | Value::Struct(data) => {
