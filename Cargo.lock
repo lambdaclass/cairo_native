@@ -3309,7 +3309,6 @@ dependencies = [
  "cairo-lang-test-plugin",
  "cairo-lang-utils",
  "clap",
- "educe 0.5.11",
  "k256",
  "keccak",
  "num-bigint",

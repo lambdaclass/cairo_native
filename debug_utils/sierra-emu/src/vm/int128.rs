@@ -153,7 +153,6 @@ mod tests {
             self_ty: _,
             index: _,
             payload,
-            ..
         } = result.last().unwrap()
         else {
             panic!("No output");
@@ -182,7 +181,6 @@ mod tests {
             self_ty: _,
             index: _,
             payload,
-            ..
         } = result.last().unwrap()
         else {
             panic!("No output");

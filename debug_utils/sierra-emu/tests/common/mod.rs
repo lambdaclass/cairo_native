@@ -28,12 +28,11 @@ pub fn value_to_felt(value: &Value) -> Vec<Felt> {
             vec![*x0, *y0, *x1, *y1]
         }
         Value::Enum {
+            self_ty,
             index,
             payload,
-            debug_name,
-            ..
         } => {
-            if let Some(debug_name) = debug_name {
+            if let Some(debug_name) = &self_ty.debug_name {
                 if debug_name == "core::bool" {
                     vec![(*index == 1).into()]
                 } else {

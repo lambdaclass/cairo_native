@@ -106,12 +106,12 @@ fn trace_to_run_result(trace: ProgramTrace) -> RunResultValue {
 
     let is_success = match &return_value {
         outer_value @ Value::Enum {
+            self_ty,
             index,
             payload,
-            debug_name,
             ..
         } => {
-            let debug_name = debug_name.as_ref().expect("missing debug name");
+            let debug_name = self_ty.debug_name.as_ref().expect("missing debug name");
             if debug_name.starts_with("core::panics::PanicResult::")
                 || debug_name.starts_with("Enum<ut@core::panics::PanicResult::")
             {
