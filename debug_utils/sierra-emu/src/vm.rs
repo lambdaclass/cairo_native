@@ -48,6 +48,7 @@ mod felt252_dict_entry;
 mod function_call;
 mod gas;
 mod int128;
+mod int8;
 mod jump;
 mod mem;
 mod pedersen;
@@ -495,7 +496,7 @@ fn eval<'a>(
         CoreConcreteLibfunc::Sint16(_) => todo!(),
         CoreConcreteLibfunc::Sint32(_) => todo!(),
         CoreConcreteLibfunc::Sint64(_) => todo!(),
-        CoreConcreteLibfunc::Sint8(_) => todo!(),
+        CoreConcreteLibfunc::Sint8(selector) => self::int8::eval(registry, selector, args),
         CoreConcreteLibfunc::SnapshotTake(info) => self::snapshot_take::eval(registry, info, args),
         CoreConcreteLibfunc::Starknet(selector) => {
             self::starknet::eval(registry, selector, args, syscall_handler)
