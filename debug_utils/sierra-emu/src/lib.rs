@@ -21,6 +21,7 @@ pub mod starknet;
 mod test_utils;
 mod value;
 mod vm;
+mod utils;
 
 #[derive(Clone, Debug)]
 pub enum EntryPoint {

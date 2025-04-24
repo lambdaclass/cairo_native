@@ -5,7 +5,7 @@ use cairo_lang_sierra::{
         const_type::{
             ConstAsBoxConcreteLibfunc, ConstAsImmediateConcreteLibfunc, ConstConcreteLibfunc,
         },
-        core::{CoreLibfunc, CoreType, CoreTypeConcrete},
+        core::{CoreLibfunc, CoreType, CoreTypeConcrete}, starknet::StarknetTypeConcrete,
     },
     ids::ConcreteTypeId,
     program::GenericArg,
@@ -90,28 +90,32 @@ fn inner(
             },
             _ => unreachable!(),
         },
+        CoreTypeConcrete::Bytes31(_) => match inner_data {
+            [GenericArg::Value(value)] => Value::Bytes31(value.try_into().unwrap()),
+            _ => unreachable!(),
+        },
         CoreTypeConcrete::Sint128(_) => match inner_data {
-            [GenericArg::Value(value)] => Value::I128(value.try_into().unwrap()),
+            [GenericArg::Value(value)] => Value::I128(value.to_i128().unwrap()),
             _ => unreachable!(),
         },
         CoreTypeConcrete::Sint64(_) => match inner_data {
-            [GenericArg::Value(value)] => Value::U64(value.try_into().unwrap()),
+            [GenericArg::Value(value)] => Value::I64(value.to_i64().unwrap()),
             _ => unreachable!(),
         },
         CoreTypeConcrete::Sint32(_) => match inner_data {
-            [GenericArg::Value(value)] => Value::I32(value.try_into().unwrap()),
+            [GenericArg::Value(value)] => Value::I32(value.to_i32().unwrap()),
             _ => unreachable!(),
         },
         CoreTypeConcrete::Sint16(_) => match inner_data {
-            [GenericArg::Value(value)] => Value::I16(value.try_into().unwrap()),
+            [GenericArg::Value(value)] => Value::I16(value.to_i16().unwrap()),
             _ => unreachable!(),
         },
         CoreTypeConcrete::Sint8(_) => match inner_data {
-            [GenericArg::Value(value)] => Value::I8(value.try_into().unwrap()),
+            [GenericArg::Value(value)] => Value::I8(value.to_i8().unwrap()),
             _ => unreachable!(),
         },
         CoreTypeConcrete::Uint128(_) => match inner_data {
-            [GenericArg::Value(value)] => Value::U128(value.try_into().unwrap()),
+            [GenericArg::Value(value)] => Value::U128(value.to_u128().unwrap()),
             [GenericArg::Type(type_id)] => match registry.get_type(type_id).unwrap() {
                 CoreTypeConcrete::Const(info) => inner(registry, &info.inner_ty, &info.inner_data),
                 _ => unreachable!(),
@@ -119,11 +123,11 @@ fn inner(
             _ => unreachable!(),
         },
         CoreTypeConcrete::Uint64(_) => match inner_data {
-            [GenericArg::Value(value)] => Value::U64(value.try_into().unwrap()),
+            [GenericArg::Value(value)] => Value::U64(value.to_u64().unwrap()),
             _ => unreachable!(),
         },
         CoreTypeConcrete::Uint32(_) => match inner_data {
-            [GenericArg::Value(value)] => Value::U32(value.try_into().unwrap()),
+            [GenericArg::Value(value)] => Value::U32(value.to_u32().unwrap()),
             [GenericArg::Type(type_id)] => match registry.get_type(type_id).unwrap() {
                 CoreTypeConcrete::Const(info) => inner(registry, &info.inner_ty, &info.inner_data),
                 _ => unreachable!(),
@@ -131,11 +135,11 @@ fn inner(
             _ => unreachable!(),
         },
         CoreTypeConcrete::Uint16(_) => match inner_data {
-            [GenericArg::Value(value)] => Value::U16(value.try_into().unwrap()),
+            [GenericArg::Value(value)] => Value::U16(value.to_u16().unwrap()),
             _ => unreachable!(),
         },
         CoreTypeConcrete::Uint8(_) => match inner_data {
-            [GenericArg::Value(value)] => Value::U8(value.try_into().unwrap()),
+            [GenericArg::Value(value)] => Value::U8(value.to_u8().unwrap()),
             _ => unreachable!(),
         },
         CoreTypeConcrete::Struct(_) => {
@@ -182,6 +186,19 @@ fn inner(
             }
             _ => panic!("const data mismatch"),
         },
+        CoreTypeConcrete::Const(info) => {
+            inner(registry, &info.inner_ty, &info.inner_data)
+        }
+        CoreTypeConcrete::Starknet(selector) => match selector {
+            StarknetTypeConcrete::ClassHash(_)
+            | StarknetTypeConcrete::ContractAddress(_)
+            | StarknetTypeConcrete::StorageAddress(_)
+            | StarknetTypeConcrete::StorageBaseAddress(_) => match inner_data {
+                    [GenericArg::Value(value)] => Value::Felt(value.into()),
+                    _ => unreachable!(),
+                }
+            _ => todo!(""),
+        }
         _ => todo!("{}", type_id),
     }
 }

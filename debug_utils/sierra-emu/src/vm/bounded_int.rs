@@ -1,5 +1,5 @@
 use super::EvalAction;
-use crate::Value;
+use crate::{utils::get_numberic_args_as_bigints, Value};
 use cairo_lang_sierra::{
     extensions::{
         bounded_int::{
@@ -14,28 +14,6 @@ use cairo_lang_sierra::{
 };
 use num_bigint::BigInt;
 use smallvec::smallvec;
-
-// All binary operations have generic arguments, this function takes their values
-// and builds bigints out of them (since Bigints are used to represent bounded ints' values)
-fn get_numberic_args_as_bigints(args: Vec<Value>) -> Vec<BigInt> {
-    args.into_iter()
-        .filter(|v| !matches!(v, Value::Unit))
-        .map(|v| match v {
-            Value::BoundedInt { value, .. } => value,
-            Value::I8(value) => BigInt::from(value),
-            Value::I16(value) => BigInt::from(value),
-            Value::I32(value) => BigInt::from(value),
-            Value::I64(value) => BigInt::from(value),
-            Value::I128(value) => BigInt::from(value),
-            Value::U8(value) => BigInt::from(value),
-            Value::U16(value) => BigInt::from(value),
-            Value::U32(value) => BigInt::from(value),
-            Value::U64(value) => BigInt::from(value),
-            Value::U128(value) => BigInt::from(value),
-            _ => panic!("Not a numeric value"),
-        })
-        .collect()
-}
 
 pub fn eval(
     registry: &ProgramRegistry<CoreType, CoreLibfunc>,
