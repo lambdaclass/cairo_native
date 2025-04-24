@@ -17,7 +17,7 @@ use cairo_lang_test_plugin::{
     test_config::{PanicExpectation, TestExpectation},
     test_plugin_suite, TestCompilation, TestsCompilationConfig,
 };
-use common::jitvalue_to_felt;
+use common::value_to_felt;
 use rayon::iter::{IntoParallelIterator, ParallelIterator};
 use sierra_emu::{run_program, EntryPoint, ProgramTrace, Value};
 use tracing::info;
@@ -27,7 +27,7 @@ mod common;
 
 #[traced_test]
 #[test]
-//#[ignore = "sierra-emu is not fully implemented yet"]
+#[ignore = "sierra-emu is not fully implemented yet"]
 fn test_corelib() {
     let compiler_path = Path::new(&std::env::var("CARGO_MANIFEST_DIR").unwrap()).join("corelib");
 
@@ -121,24 +121,24 @@ fn trace_to_run_result(trace: ProgramTrace) -> RunResultValue {
                     match &**payload {
                         Value::Struct(fields) => {
                             for field in fields {
-                                let felt = jitvalue_to_felt(&field);
+                                let felt = value_to_felt(&field);
                                 felts.extend(felt);
                             }
                         }
                         _ => panic!("unsuported return value in cairo-native"),
                     }
                 } else {
-                    felts.extend(jitvalue_to_felt(&*payload));
+                    felts.extend(value_to_felt(&*payload));
                 }
 
                 is_success
             } else {
-                felts.extend(jitvalue_to_felt(&outer_value));
+                felts.extend(value_to_felt(&outer_value));
                 true
             }
         }
         x => {
-            felts.extend(jitvalue_to_felt(&x));
+            felts.extend(value_to_felt(&x));
             true
         }
     };

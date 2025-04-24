@@ -6,7 +6,7 @@ pub fn value_to_felt(value: &Value) -> Vec<Felt> {
     let mut felts = Vec::new();
     match value {
         Value::Array { data, .. } | Value::Struct(data) => {
-            data.iter().flat_map(jitvalue_to_felt).collect()
+            data.iter().flat_map(value_to_felt).collect()
         }
         Value::BoundedInt { value, .. } => vec![value.into()],
         Value::Bytes31(bytes) => vec![*bytes],
@@ -38,13 +38,13 @@ pub fn value_to_felt(value: &Value) -> Vec<Felt> {
                     vec![(*index == 1).into()]
                 } else {
                     let mut felts = vec![(*index).into()];
-                    felts.extend(jitvalue_to_felt(payload));
+                    felts.extend(value_to_felt(payload));
                     felts
                 }
             } else {
                 // Assume its a regular enum.
                 let mut felts = vec![(*index).into()];
-                felts.extend(jitvalue_to_felt(payload));
+                felts.extend(value_to_felt(payload));
                 felts
             }
         }
@@ -52,7 +52,7 @@ pub fn value_to_felt(value: &Value) -> Vec<Felt> {
         Value::FeltDict { data, .. } => {
             for (key, value) in data {
                 felts.push(*key);
-                let felt = jitvalue_to_felt(value);
+                let felt = value_to_felt(value);
                 felts.extend(felt);
             }
 
@@ -67,7 +67,7 @@ pub fn value_to_felt(value: &Value) -> Vec<Felt> {
 
             for (key, value) in data {
                 felts.push(*key);
-                let felt = jitvalue_to_felt(value);
+                let felt = value_to_felt(value);
                 felts.extend(felt);
             }
 
