@@ -27,7 +27,7 @@ mod common;
 
 #[traced_test]
 #[test]
-#[ignore = "sierra-emu is not fully implemented yet"]
+//#[ignore = "sierra-emu is not fully implemented yet"]
 fn test_corelib() {
     let compiler_path = Path::new(&std::env::var("CARGO_MANIFEST_DIR").unwrap()).join("corelib");
 
@@ -80,9 +80,12 @@ pub fn run_tests(compiled: TestCompilation) {
     let program = Arc::new(compiled.sierra_program.program);
     let success = true;
 
-    compiled.metadata.named_tests.into_par_iter().for_each_with(
-        success,
-        move |success, (name, test)| {
+    compiled
+        .metadata
+        .named_tests
+        .into_par_iter()
+        .filter(|(_, test)| !test.ignored)
+        .for_each_with(success, |success, (name, test)| {
             let trace = run_program(
                 program.clone(),
                 EntryPoint::String(name.clone()),
@@ -92,14 +95,13 @@ pub fn run_tests(compiled: TestCompilation) {
             let run_result = trace_to_run_result(trace);
 
             *success &= assert_test_expectation(name, test.expectation, run_result);
-        },
-    );
+        });
 
-    assert!(success);
+    assert!(success, "Some tests from the corelib have failed");
 }
 
 fn trace_to_run_result(trace: ProgramTrace) -> RunResultValue {
-    let return_value = trace.return_value().unwrap();
+    let return_value = trace.return_value();
     let mut felts = Vec::new();
 
     let is_success = match &return_value {
@@ -205,23 +207,6 @@ fn compile_tests(
                 .iter()
                 .any(|filter| name.contains(filter))
         };
-
-        // Remove matching function definitions.
-        compiled.sierra_program.program.funcs.retain(|f| {
-            let name =
-                f.id.debug_name
-                    .as_ref()
-                    .map(|s| s.as_str())
-                    .unwrap_or_default();
-
-            let skipped = should_skip_test(name);
-
-            if skipped {
-                println!("skipping compilation of: {}", name);
-            }
-
-            !skipped
-        });
 
         // Ignore matching test cases.
         compiled
