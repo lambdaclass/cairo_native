@@ -361,4 +361,5 @@ jobs:
       run: make test
     - name: Run corelib's tests
       working-directory: ./debug_utils/sierra-emu
-      run: cargo test -- --ignored || true # ignore result for now. When sierra-emu is fully implemented this should be removed
+      run: cargo test -- --ignored
+      continue-on-error: true # ignore result for now. When sierra-emu is fully implemented this should be removed
