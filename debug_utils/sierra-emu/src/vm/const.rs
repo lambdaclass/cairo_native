@@ -5,7 +5,8 @@ use cairo_lang_sierra::{
         const_type::{
             ConstAsBoxConcreteLibfunc, ConstAsImmediateConcreteLibfunc, ConstConcreteLibfunc,
         },
-        core::{CoreLibfunc, CoreType, CoreTypeConcrete}, starknet::StarknetTypeConcrete,
+        core::{CoreLibfunc, CoreType, CoreTypeConcrete},
+        starknet::StarknetTypeConcrete,
     },
     ids::ConcreteTypeId,
     program::GenericArg,
@@ -186,19 +187,17 @@ fn inner(
             }
             _ => panic!("const data mismatch"),
         },
-        CoreTypeConcrete::Const(info) => {
-            inner(registry, &info.inner_ty, &info.inner_data)
-        }
+        CoreTypeConcrete::Const(info) => inner(registry, &info.inner_ty, &info.inner_data),
         CoreTypeConcrete::Starknet(selector) => match selector {
             StarknetTypeConcrete::ClassHash(_)
             | StarknetTypeConcrete::ContractAddress(_)
             | StarknetTypeConcrete::StorageAddress(_)
             | StarknetTypeConcrete::StorageBaseAddress(_) => match inner_data {
-                    [GenericArg::Value(value)] => Value::Felt(value.into()),
-                    _ => unreachable!(),
-                }
+                [GenericArg::Value(value)] => Value::Felt(value.into()),
+                _ => unreachable!(),
+            },
             _ => todo!(""),
-        }
+        },
         _ => todo!("{}", type_id),
     }
 }
