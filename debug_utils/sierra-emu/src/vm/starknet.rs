@@ -200,13 +200,11 @@ fn eval_secp_r_new(
                     self_ty: enum_ty.clone(),
                     index: 0,
                     payload: Box::new(p.into_value()),
-                    debug_name: enum_ty.debug_name.as_ref().map(|n| n.to_string()),
                 },
                 None => Value::Enum {
                     self_ty: enum_ty.clone(),
                     index: 1,
                     payload: Box::new(Value::Unit),
-                    debug_name: enum_ty.debug_name.as_ref().map(|n| n.to_string()),
                 },
             };
 
@@ -266,13 +264,11 @@ fn eval_secp_r_get_point_from_x(
                     self_ty: enum_ty.clone(),
                     index: 0,
                     payload: Box::new(p.into_value()),
-                    debug_name: enum_ty.debug_name.as_ref().map(|n| n.to_string()),
                 },
                 None => Value::Enum {
                     self_ty: enum_ty.clone(),
                     index: 1,
                     payload: Box::new(Value::Unit),
-                    debug_name: enum_ty.debug_name.as_ref().map(|n| n.to_string()),
                 },
             };
 

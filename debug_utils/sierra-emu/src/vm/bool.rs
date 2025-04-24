@@ -53,7 +53,6 @@ pub fn eval_and(
             self_ty: self_ty.clone(),
             index: (lhs && rhs) as usize,
             payload,
-            debug_name: self_ty.debug_name.as_ref().map(|n| n.to_string())
         }],
     )
 }
@@ -79,7 +78,6 @@ pub fn eval_not(
             self_ty: self_ty.clone(),
             index: (lhs == 0) as usize,
             payload,
-            debug_name: self_ty.debug_name.as_ref().map(|n| n.to_string())
         }],
     )
 }
@@ -113,7 +111,6 @@ pub fn eval_xor(
             self_ty: self_ty.clone(),
             index: (lhs ^ rhs) as usize,
             payload,
-            debug_name: self_ty.debug_name.as_ref().map(|n| n.to_string())
         }],
     )
 }
@@ -147,7 +144,6 @@ pub fn eval_or(
             self_ty: self_ty.clone(),
             index: (lhs || rhs) as usize,
             payload,
-            debug_name: self_ty.debug_name.as_ref().map(|n| n.to_string())
         }],
     )
 }

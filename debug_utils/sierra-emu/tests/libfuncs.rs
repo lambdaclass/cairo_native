@@ -54,7 +54,6 @@ fn test_u32_overflow() {
             self_ty: _,
             index: 0,
             payload: _,
-            debug_name: _
         }
     ));
 
@@ -69,7 +68,6 @@ fn test_u32_overflow() {
             self_ty: _,
             index: 1,
             payload: _,
-            debug_name: _
         }
     ));
 
@@ -84,7 +82,6 @@ fn test_u32_overflow() {
             self_ty: _,
             index: 0,
             payload: _,
-            debug_name: _
         }
     ));
 }
@@ -141,7 +138,6 @@ fn test_run_full_circuit() {
         self_ty: _,
         index: _,
         payload,
-        debug_name: _,
     } = output.last().unwrap()
     else {
         panic!("No output");

@@ -50,7 +50,6 @@ pub fn eval_init(
             self_ty: self_ty.clone(),
             index: info.index,
             payload: Box::new(value),
-            debug_name: self_ty.debug_name.as_ref().map(|n| n.to_string())
         }],
     )
 }
@@ -69,7 +68,6 @@ pub fn eval_from_bounded_int(
         self_ty: self_ty.clone(),
         index: value.try_into().unwrap(),
         payload: Box::new(Value::Struct(vec![])),
-        debug_name: self_ty.debug_name.as_ref().map(|n| n.to_string()),
     };
 
     EvalAction::NormalBranch(0, smallvec![enm])
