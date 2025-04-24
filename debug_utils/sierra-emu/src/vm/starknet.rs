@@ -887,7 +887,6 @@ fn eval_deploy(
         self_ty: _,
         index: deploy_from_zero,
         payload: _,
-        ..
     }]: [Value; 6] = args.try_into().unwrap()
     else {
         panic!()

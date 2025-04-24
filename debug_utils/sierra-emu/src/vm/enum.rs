@@ -82,7 +82,6 @@ pub fn eval_match(
         self_ty,
         index,
         payload,
-        ..
     }]: [Value; 1] = args.try_into().unwrap()
     else {
         panic!()
@@ -105,7 +104,6 @@ pub fn eval_snapshot_match(
         self_ty,
         index,
         payload,
-        ..
     }]: [Value; 1] = args.try_into().unwrap()
     else {
         panic!()

@@ -53,7 +53,7 @@ fn test_u32_overflow() {
         Value::Enum {
             self_ty: _,
             index: 0,
-            payload: _,
+            payload: _
         }
     ));
 
@@ -67,7 +67,7 @@ fn test_u32_overflow() {
         Value::Enum {
             self_ty: _,
             index: 1,
-            payload: _,
+            payload: _
         }
     ));
 
@@ -81,7 +81,7 @@ fn test_u32_overflow() {
         Value::Enum {
             self_ty: _,
             index: 0,
-            payload: _,
+            payload: _
         }
     ));
 }
