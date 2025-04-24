@@ -202,7 +202,7 @@ jobs:
         with:
           repository: lambdaclass/sequencer
           path: sequencer
-          ref: c94c609d6c7fc9b03a8378fe1c70fb992515ef75 # replay-v2.12.0-dev.0
+          ref: 81505b1b48e941c52c2e9780f48ef4443d555f89 # branch: reduce-recursion-depth
       - name: Setup rust env
         uses: dtolnay/rust-toolchain@1.84.1
       - name: Retreive cached dependecies
