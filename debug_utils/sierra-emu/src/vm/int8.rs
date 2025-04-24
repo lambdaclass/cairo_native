@@ -29,7 +29,7 @@ pub fn eval(
         Sint8Concrete::ToFelt252(info) => eval_to_felt(registry, info, args),
         Sint8Concrete::FromFelt252(info) => eval_from_felt(registry, info, args),
         Sint8Concrete::Diff(info) => eval_diff(registry, info, args),
-        Sint8Concrete::WideMul(info) => eval_widemul(registry, info, args)
+        Sint8Concrete::WideMul(info) => eval_widemul(registry, info, args),
     }
 }
 
