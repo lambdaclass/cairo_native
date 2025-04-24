@@ -20,7 +20,7 @@ impl ProgramTrace {
         self.states.push(state);
     }
 
-    pub fn return_value(&self) -> Option<Value> {
+    pub fn return_value(&self) -> Value {
         self.states
             .last()
             .unwrap()
@@ -30,6 +30,7 @@ impl ProgramTrace {
             .collect::<Vec<_>>()
             .last()
             .cloned()
+            .unwrap_or(Value::Unit)
     }
 }
 

@@ -17,7 +17,7 @@ use cairo_lang_test_plugin::{
     test_config::{PanicExpectation, TestExpectation},
     test_plugin_suite, TestCompilation, TestsCompilationConfig,
 };
-use common::jitvalue_to_felt;
+use common::value_to_felt;
 use rayon::iter::{IntoParallelIterator, ParallelIterator};
 use sierra_emu::{run_program, EntryPoint, ProgramTrace, Value};
 use tracing::info;
@@ -80,9 +80,12 @@ pub fn run_tests(compiled: TestCompilation) {
     let program = Arc::new(compiled.sierra_program.program);
     let success = true;
 
-    compiled.metadata.named_tests.into_par_iter().for_each_with(
-        success,
-        move |success, (name, test)| {
+    compiled
+        .metadata
+        .named_tests
+        .into_par_iter()
+        .filter(|(_, test)| !test.ignored)
+        .for_each_with(success, |success, (name, test)| {
             let trace = run_program(
                 program.clone(),
                 EntryPoint::String(name.clone()),
@@ -92,14 +95,13 @@ pub fn run_tests(compiled: TestCompilation) {
             let run_result = trace_to_run_result(trace);
 
             *success &= assert_test_expectation(name, test.expectation, run_result);
-        },
-    );
+        });
 
-    assert!(success);
+    assert!(success, "Some tests from the corelib have failed");
 }
 
 fn trace_to_run_result(trace: ProgramTrace) -> RunResultValue {
-    let return_value = trace.return_value().unwrap();
+    let return_value = trace.return_value();
     let mut felts = Vec::new();
 
     let is_success = match &return_value {
@@ -119,24 +121,24 @@ fn trace_to_run_result(trace: ProgramTrace) -> RunResultValue {
                     match &**payload {
                         Value::Struct(fields) => {
                             for field in fields {
-                                let felt = jitvalue_to_felt(&field);
+                                let felt = value_to_felt(&field);
                                 felts.extend(felt);
                             }
                         }
                         _ => panic!("unsuported return value in cairo-native"),
                     }
                 } else {
-                    felts.extend(jitvalue_to_felt(&*payload));
+                    felts.extend(value_to_felt(&*payload));
                 }
 
                 is_success
             } else {
-                felts.extend(jitvalue_to_felt(&outer_value));
+                felts.extend(value_to_felt(&outer_value));
                 true
             }
         }
         x => {
-            felts.extend(jitvalue_to_felt(&x));
+            felts.extend(value_to_felt(&x));
             true
         }
     };
@@ -205,23 +207,6 @@ fn compile_tests(
                 .iter()
                 .any(|filter| name.contains(filter))
         };
-
-        // Remove matching function definitions.
-        compiled.sierra_program.program.funcs.retain(|f| {
-            let name =
-                f.id.debug_name
-                    .as_ref()
-                    .map(|s| s.as_str())
-                    .unwrap_or_default();
-
-            let skipped = should_skip_test(name);
-
-            if skipped {
-                println!("skipping compilation of: {}", name);
-            }
-
-            !skipped
-        });
 
         // Ignore matching test cases.
         compiled

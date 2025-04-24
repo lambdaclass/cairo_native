@@ -341,7 +341,7 @@ jobs:
           df -h
       - name: build image
         run: docker build .
-  
+
   build-sierra-emu:
     name: Build sierra-emu
     runs-on: ubuntu-latest
@@ -359,3 +359,7 @@ jobs:
     - name: Run tests
       working-directory: ./debug_utils/sierra-emu
       run: make test
+    - name: Run corelib's tests
+      working-directory: ./debug_utils/sierra-emu
+      run: cargo test -- --ignored
+      continue-on-error: true # ignore result for now. When sierra-emu is fully implemented this should be removed
