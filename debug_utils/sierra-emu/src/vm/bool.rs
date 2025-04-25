@@ -48,7 +48,7 @@ pub fn eval_and(
     EvalAction::NormalBranch(
         0,
         smallvec![Value::Enum {
-            self_ty: self_ty.clone(),
+            self_ty,
             index: (lhs && rhs) as usize,
             payload,
         }],
@@ -72,7 +72,7 @@ pub fn eval_not(
     EvalAction::NormalBranch(
         0,
         smallvec![Value::Enum {
-            self_ty: self_ty.clone(),
+            self_ty,
             index: (lhs == 0) as usize,
             payload,
         }],
@@ -103,7 +103,7 @@ pub fn eval_xor(
     EvalAction::NormalBranch(
         0,
         smallvec![Value::Enum {
-            self_ty: self_ty.clone(),
+            self_ty,
             index: (lhs ^ rhs) as usize,
             payload,
         }],
@@ -134,7 +134,7 @@ pub fn eval_or(
     EvalAction::NormalBranch(
         0,
         smallvec![Value::Enum {
-            self_ty: self_ty.clone(),
+            self_ty,
             index: (lhs || rhs) as usize,
             payload,
         }],

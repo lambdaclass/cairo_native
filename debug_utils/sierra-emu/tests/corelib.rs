@@ -18,7 +18,7 @@ use cairo_lang_test_plugin::{
     test_plugin_suite, TestCompilation, TestsCompilationConfig,
 };
 use common::value_to_felt;
-use rayon::iter::{IntoParallelIterator, ParallelIterator};
+use rayon::iter::{IntoParallelIterator, IntoParallelRefIterator, ParallelIterator};
 use sierra_emu::{run_program, EntryPoint, ProgramTrace, Value};
 use tracing::info;
 use tracing_test::traced_test;
@@ -78,14 +78,13 @@ fn test_corelib() {
 /// Runs the tests and process the results for a summary.
 pub fn run_tests(compiled: TestCompilation) {
     let program = Arc::new(compiled.sierra_program.program);
-    let success = true;
 
-    compiled
+    let success = compiled
         .metadata
         .named_tests
-        .into_par_iter()
+        .into_iter()
         .filter(|(_, test)| !test.ignored)
-        .for_each_with(success, |success, (name, test)| {
+        .map(|(name, test)| {
             let trace = run_program(
                 program.clone(),
                 EntryPoint::String(name.clone()),
@@ -94,8 +93,9 @@ pub fn run_tests(compiled: TestCompilation) {
             );
             let run_result = trace_to_run_result(trace);
 
-            *success &= assert_test_expectation(name, test.expectation, run_result);
-        });
+            assert_test_expectation(name, test.expectation, run_result)
+        })
+        .all(|r| r);
 
     assert!(success, "Some tests from the corelib have failed");
 }
@@ -218,9 +218,7 @@ fn compile_tests(
                     case.ignored = true
                 }
             });
-
-        compiled
-    } else {
-        compiled
     }
+
+    compiled
 }
