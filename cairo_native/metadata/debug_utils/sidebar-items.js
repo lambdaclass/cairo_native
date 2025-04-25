@@ -1,1 +1,1 @@
-window.SIDEBAR_ITEMS = {"struct":["DebugUtils"]};
+window.SIDEBAR_ITEMS = {"fn":["setup_runtime"],"struct":["DebugUtils"]};

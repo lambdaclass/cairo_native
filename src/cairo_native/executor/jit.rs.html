@@ -187,7 +187,10 @@
 <a href="#186" id="186">186</a>
 <a href="#187" id="187">187</a>
 <a href="#188" id="188">188</a>
-<a href="#189" id="189">189</a></pre></div><pre class="rust"><code><span class="kw">use crate</span>::{
+<a href="#189" id="189">189</a>
+<a href="#190" id="190">190</a>
+<a href="#191" id="191">191</a>
+<a href="#192" id="192">192</a></pre></div><pre class="rust"><code><span class="kw">use crate</span>::{
     error::Error,
     execution_result::{ContractExecutionResult, ExecutionResult},
     metadata::{
@@ -253,6 +256,9 @@
         };
 
         setup_runtime(|name| executor.find_symbol_ptr(name));
+
+        <span class="attr">#[cfg(feature = <span class="string">"with-debug-utils"</span>)]
+        </span><span class="kw">crate</span>::metadata::debug_utils::setup_runtime(|name| executor.find_symbol_ptr(name));
 
         <span class="prelude-val">Ok</span>(executor)
     }
