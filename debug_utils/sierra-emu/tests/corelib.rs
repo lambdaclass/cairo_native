@@ -18,6 +18,7 @@ use cairo_lang_test_plugin::{
     test_plugin_suite, TestCompilation, TestsCompilationConfig,
 };
 use common::value_to_felt;
+use rayon::iter::{IntoParallelIterator, ParallelIterator};
 use sierra_emu::{run_program, EntryPoint, ProgramTrace, Value};
 use tracing::info;
 use tracing_test::traced_test;
@@ -82,7 +83,7 @@ pub fn run_tests(compiled: TestCompilation) {
     let success = compiled
         .metadata
         .named_tests
-        .into_iter()
+        .into_par_iter()
         .filter(|(_, test)| !test.ignored)
         .map(|(name, test)| {
             let trace = run_program(
