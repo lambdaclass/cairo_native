@@ -341,6 +341,7 @@ jobs:
           df -h
       - name: build image
         run: docker build .
+
   build-sierra-emu:
     name: Build sierra-emu
     runs-on: ubuntu-latest
