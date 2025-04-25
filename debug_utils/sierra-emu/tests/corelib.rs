@@ -1,4 +1,4 @@
-use std::{panic::PanicHookInfo, path::Path, sync::Arc, u64};
+use std::{path::Path, sync::Arc, u64};
 
 use cairo_lang_compiler::{
     db::RootDatabase,
