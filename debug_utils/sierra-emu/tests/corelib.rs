@@ -18,7 +18,6 @@ use cairo_lang_test_plugin::{
     test_plugin_suite, TestCompilation, TestsCompilationConfig,
 };
 use common::value_to_felt;
-use rayon::iter::{IntoParallelIterator, IntoParallelRefIterator, ParallelIterator};
 use sierra_emu::{run_program, EntryPoint, ProgramTrace, Value};
 use tracing::info;
 use tracing_test::traced_test;
@@ -31,7 +30,7 @@ mod common;
 fn test_corelib() {
     let compiler_path = Path::new(&std::env::var("CARGO_MANIFEST_DIR").unwrap()).join("corelib");
 
-    check_compiler_path(false, &compiler_path).expect("Couldn't the corelib in the given path");
+    check_compiler_path(false, &compiler_path).expect("Couldn't find the corelib in the given path");
 
     let db = &mut {
         let mut b = RootDatabase::builder();
