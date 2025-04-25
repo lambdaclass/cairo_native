@@ -50,7 +50,7 @@ pub fn eval_and(
         smallvec![Value::Enum {
             self_ty,
             index: (lhs && rhs) as usize,
-            payload,
+            payload
         }],
     )
 }
@@ -74,7 +74,7 @@ pub fn eval_not(
         smallvec![Value::Enum {
             self_ty,
             index: (lhs == 0) as usize,
-            payload,
+            payload
         }],
     )
 }
@@ -105,7 +105,7 @@ pub fn eval_xor(
         smallvec![Value::Enum {
             self_ty,
             index: (lhs ^ rhs) as usize,
-            payload,
+            payload
         }],
     )
 }
@@ -136,7 +136,7 @@ pub fn eval_or(
         smallvec![Value::Enum {
             self_ty,
             index: (lhs || rhs) as usize,
-            payload,
+            payload
         }],
     )
 }
