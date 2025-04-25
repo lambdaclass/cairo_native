@@ -30,7 +30,8 @@ mod common;
 fn test_corelib() {
     let compiler_path = Path::new(&std::env::var("CARGO_MANIFEST_DIR").unwrap()).join("corelib");
 
-    check_compiler_path(false, &compiler_path).expect("Couldn't find the corelib in the given path");
+    check_compiler_path(false, &compiler_path)
+        .expect("Couldn't find the corelib in the given path");
 
     let db = &mut {
         let mut b = RootDatabase::builder();
