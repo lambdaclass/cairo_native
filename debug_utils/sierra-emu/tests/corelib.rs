@@ -229,7 +229,10 @@ fn display_results(results: &[TestResult]) {
                 info!("test {} ... FAILED: {}", r.test, err);
                 failed += 1
             }
-            _ => ignored += 1,
+            _ => {
+                info!("test {} ... IGNORED", r.test);
+                ignored += 1
+            }
         }
     }
 
