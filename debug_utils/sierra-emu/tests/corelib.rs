@@ -96,6 +96,8 @@ pub fn run_tests(compiled: TestCompilation) {
 
             assert_test_expectation(name, test.expectation, run_result)
         })
+        .collect::<Vec<_>>() // avoid map's short-circuiting
+        .into_iter()
         .all(|r| r);
 
     assert!(success, "Some tests from the corelib have failed");
