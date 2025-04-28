@@ -22,14 +22,17 @@ use smallvec::smallvec;
 use starknet_crypto::Felt;
 
 use crate::{
-    utils::{get_numberic_args_as_bigints, integer_range},
-    Value,
+    utils::{get_numberic_args_as_bigints, integer_range}, Value
 };
 
 use super::EvalAction;
 
-fn get_int_value_from_type(ty: &CoreTypeConcrete, value: BigInt) -> Value {
+fn get_int_value_from_type(registry: &ProgramRegistry<CoreType, CoreLibfunc>, ty: &CoreTypeConcrete, value: BigInt) -> Value {
     match ty {
+        CoreTypeConcrete::NonZero(info) => {
+            let ty = registry.get_type(&info.ty).unwrap();
+            get_int_value_from_type(registry, ty, value)
+        },
         CoreTypeConcrete::Sint8(_) => Value::I8(value.to_i8().unwrap()),
         CoreTypeConcrete::Sint16(_) => Value::I16(value.to_i16().unwrap()),
         CoreTypeConcrete::Sint32(_) => Value::I32(value.to_i32().unwrap()),
@@ -121,6 +124,7 @@ pub fn eval_i128(
     selector: &Sint128Concrete,
     args: Vec<Value>,
 ) -> EvalAction {
+
     match selector {
         Sint128Concrete::Const(info) => eval_const(registry, info, args),
         Sint128Concrete::Diff(info) => eval_diff(registry, info, args),
@@ -162,7 +166,7 @@ fn eval_const<T: IntTraits>(
         .get_type(&info.signature.branch_signatures[0].vars[0].ty)
         .unwrap();
 
-    EvalAction::NormalBranch(0, smallvec![get_int_value_from_type(int_ty, info.c.into())])
+    EvalAction::NormalBranch(0, smallvec![get_int_value_from_type(registry, int_ty, info.c.into())])
 }
 
 fn eval_bitwise(
@@ -173,12 +177,12 @@ fn eval_bitwise(
     let [lhs, rhs]: [BigInt; 2] = get_numberic_args_as_bigints(args).try_into().unwrap();
 
     let int_ty = registry
-        .get_type(&info.signature.branch_signatures[0].vars[0].ty)
+        .get_type(&info.signature.branch_signatures[0].vars[1].ty)
         .unwrap();
 
-    let and = get_int_value_from_type(int_ty, &lhs & &rhs);
-    let or = get_int_value_from_type(int_ty, &lhs | &rhs);
-    let xor = get_int_value_from_type(int_ty, &lhs ^ &rhs);
+    let and = get_int_value_from_type(registry, int_ty, &lhs & &rhs);
+    let or = get_int_value_from_type(registry, int_ty, &lhs | &rhs);
+    let xor = get_int_value_from_type(registry, int_ty, &lhs ^ &rhs);
 
     EvalAction::NormalBranch(
         0,
@@ -199,12 +203,12 @@ fn eval_diff(
     let [lhs, rhs]: [BigInt; 2] = get_numberic_args_as_bigints(args).try_into().unwrap();
 
     let int_ty = registry
-        .get_type(&info.signature.branch_signatures[0].vars[0].ty)
+        .get_type(&info.signature.branch_signatures[0].vars[1].ty)
         .unwrap();
 
     let overflow = (lhs >= rhs) as usize;
     let (res, _) = apply_wrapping_op(int_ty, lhs, rhs, IntOperator::OverflowingSub);
-    let res = get_int_value_from_type(int_ty, res);
+    let res = get_int_value_from_type(registry, int_ty, res);
 
     EvalAction::NormalBranch(
         overflow,
@@ -223,14 +227,14 @@ fn eval_divmod(
     let [lhs, rhs]: [BigInt; 2] = get_numberic_args_as_bigints(args).try_into().unwrap();
 
     let int_ty = registry
-        .get_type(&info.signature.branch_signatures[0].vars[0].ty)
+        .get_type(&info.signature.branch_signatures[0].vars[1].ty)
         .unwrap();
 
     let res = &lhs / &rhs;
     let rem = lhs % rhs;
 
-    let res = get_int_value_from_type(int_ty, res);
-    let rem = get_int_value_from_type(int_ty, rem);
+    let res = get_int_value_from_type(registry, int_ty, res);
+    let rem = get_int_value_from_type(registry, int_ty, rem);
 
     EvalAction::NormalBranch(
         0,
@@ -265,7 +269,7 @@ pub fn eval_from_felt(
     let half_prime = &prime / BigUint::from(2u8);
 
     let int_ty = registry
-        .get_type(&info.signature.branch_signatures[0].vars[0].ty)
+        .get_type(&info.signature.branch_signatures[0].vars[1].ty)
         .unwrap();
 
     let range = integer_range(int_ty, registry);
@@ -278,8 +282,8 @@ pub fn eval_from_felt(
         }
     };
 
-    if value >= range.lower || value <= range.upper {
-        let value = get_int_value_from_type(int_ty, value);
+    if value > range.lower || value <= range.upper {
+        let value = get_int_value_from_type(registry, int_ty, value);
         EvalAction::NormalBranch(0, smallvec![range_check, value])
     } else {
         EvalAction::NormalBranch(1, smallvec![range_check])
@@ -291,25 +295,17 @@ fn eval_is_zero(
     info: &SignatureOnlyConcreteLibfunc,
     args: Vec<Value>,
 ) -> EvalAction {
-    let [lhs, rhs]: [BigInt; 2] = get_numberic_args_as_bigints(args).try_into().unwrap();
+    let [value]: [BigInt; 1] = get_numberic_args_as_bigints(args).try_into().unwrap();
 
     let int_ty = registry
-        .get_type(&info.signature.branch_signatures[0].vars[0].ty)
+        .get_type(&info.signature.branch_signatures[1].vars[0].ty)
         .unwrap();
 
-    let and = get_int_value_from_type(int_ty, &lhs & &rhs);
-    let or = get_int_value_from_type(int_ty, &lhs | &rhs);
-    let xor = get_int_value_from_type(int_ty, &lhs ^ &rhs);
-
-    EvalAction::NormalBranch(
-        0,
-        smallvec![
-            Value::Unit, // bitwise
-            and,
-            xor,
-            or
-        ],
-    )
+    if value == 0.into() {
+        EvalAction::NormalBranch(0, smallvec![])
+    } else {
+        EvalAction::NormalBranch(1, smallvec![get_int_value_from_type(registry, int_ty, value)])
+    }
 }
 
 fn eval_operation(
@@ -320,11 +316,11 @@ fn eval_operation(
     let [lhs, rhs]: [BigInt; 2] = get_numberic_args_as_bigints(args).try_into().unwrap();
 
     let int_ty = registry
-        .get_type(&info.signature.branch_signatures[0].vars[0].ty)
+        .get_type(&info.signature.branch_signatures[0].vars[1].ty)
         .unwrap();
 
     let (res, overflow) = apply_wrapping_op(int_ty, lhs, rhs, info.operator);
-    let res = get_int_value_from_type(int_ty, res);
+    let res = get_int_value_from_type(registry, int_ty, res);
 
     EvalAction::NormalBranch(
         overflow,
@@ -343,7 +339,7 @@ fn eval_square_root(
     let [value]: [BigInt; 1] = get_numberic_args_as_bigints(args).try_into().unwrap();
 
     let int_ty = registry
-        .get_type(&info.signature.branch_signatures[0].vars[0].ty)
+        .get_type(&info.signature.branch_signatures[0].vars[1].ty)
         .unwrap();
 
     let res = value.sqrt();
@@ -352,7 +348,7 @@ fn eval_square_root(
         0,
         smallvec![
             Value::Unit, // range_check
-            get_int_value_from_type(int_ty, res)
+            get_int_value_from_type(registry, int_ty, res)
         ],
     )
 }
@@ -380,5 +376,5 @@ pub fn eval_widemul(
 
     let res = lhs * rhs;
 
-    EvalAction::NormalBranch(0, smallvec![get_int_value_from_type(int_ty, res)])
+    EvalAction::NormalBranch(0, smallvec![get_int_value_from_type(registry, int_ty, res)])
 }
