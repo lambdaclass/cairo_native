@@ -4,8 +4,7 @@ use cairo_lang_sierra::{
         int::{
             signed::{SintConcrete, SintTraits},
             unsigned::{UintConcrete, UintTraits},
-            IntConstConcreteLibfunc, IntMulTraits,
-            IntTraits,
+            IntConstConcreteLibfunc, IntMulTraits, IntOperator, IntTraits,
         },
         is_zero::IsZeroTraits,
         lib_func::SignatureOnlyConcreteLibfunc,
@@ -13,7 +12,10 @@ use cairo_lang_sierra::{
     program_registry::ProgramRegistry,
 };
 use num_bigint::BigInt;
-use num_traits::ToPrimitive;
+use num_traits::{
+    ops::overflowing::{OverflowingAdd, OverflowingSub},
+    ToPrimitive,
+};
 use smallvec::smallvec;
 use starknet_crypto::Felt;
 
@@ -37,21 +39,58 @@ fn get_int_value_from_type(ty: &CoreTypeConcrete, value: BigInt) -> Value {
     }
 }
 
-// fn apply_bin_op<T: Num>(lhs: Value, rhs: Value, op: impl Fn(BigInt, BigInt) -> BigInt) -> Value {
-//     match (lhs, rhs) {
-//         (Value::U8(l), Value::U8(r)) => Value::U8(op(l.into(), r.into()).to_u8().unwrap()),
-//         (Value::U16(l), Value::U16(r)) => Value::U16(op(l.into(), r.into()).to_u16().unwrap()),
-//         (Value::U32(l), Value::U32(r)) => Value::U32(op(l.into(), r.into()).to_u32().unwrap()),
-//         (Value::U64(l), Value::U64(r)) => Value::U64(op(l.into(), r.into()).to_u64().unwrap()),
-//         (Value::U128(l), Value::U128(r)) => Value::U128(op(l.into(), r.into()).to_u128().unwrap()),
-//         (Value::I8(l), Value::I8(r)) => Value::I8(op(l.into(), r.into()).to_i8().unwrap()),
-//         (Value::I16(l), Value::I16(r)) => Value::I16(op(l.into(), r.into()).to_i16().unwrap()),
-//         (Value::I32(l), Value::I32(r)) => Value::I32(op(l.into(), r.into()).to_i32().unwrap()),
-//         (Value::I64(l), Value::I64(r)) => Value::I64(op(l.into(), r.into()).to_i64().unwrap()),
-//         (Value::I128(l), Value::I128(r)) => Value::I128(op(l.into(), r.into()).to_i128().unwrap()),
-//         _ => panic!("Found Non-integer value"),
-//     }
-// }
+fn apply_wrapping_op(
+    ty: &CoreTypeConcrete,
+    lhs: BigInt,
+    rhs: BigInt,
+    op: IntOperator,
+) -> (BigInt, usize) {
+    fn wrapping<T>(lhs: T, rhs: T, op: IntOperator) -> (BigInt, usize)
+    where
+        T: OverflowingAdd + OverflowingSub + Into<BigInt>,
+    {
+        let (res, ovf) = match op {
+            IntOperator::OverflowingAdd => OverflowingAdd::overflowing_add(&lhs, &rhs),
+            IntOperator::OverflowingSub => OverflowingSub::overflowing_sub(&lhs, &rhs),
+        };
+
+        (res.into(), ovf as usize)
+    }
+
+    match ty {
+        CoreTypeConcrete::Sint8(_) => {
+            wrapping::<i8>(lhs.try_into().unwrap(), rhs.try_into().unwrap(), op)
+        }
+        CoreTypeConcrete::Sint16(_) => {
+            wrapping::<i16>(lhs.try_into().unwrap(), rhs.try_into().unwrap(), op)
+        }
+        CoreTypeConcrete::Sint32(_) => {
+            wrapping::<i32>(lhs.try_into().unwrap(), rhs.try_into().unwrap(), op)
+        }
+        CoreTypeConcrete::Sint64(_) => {
+            wrapping::<i64>(lhs.try_into().unwrap(), rhs.try_into().unwrap(), op)
+        }
+        CoreTypeConcrete::Sint128(_) => {
+            wrapping::<i128>(lhs.try_into().unwrap(), rhs.try_into().unwrap(), op)
+        }
+        CoreTypeConcrete::Uint8(_) => {
+            wrapping::<u8>(lhs.try_into().unwrap(), rhs.try_into().unwrap(), op)
+        }
+        CoreTypeConcrete::Uint16(_) => {
+            wrapping::<u16>(lhs.try_into().unwrap(), rhs.try_into().unwrap(), op)
+        }
+        CoreTypeConcrete::Uint32(_) => {
+            wrapping::<u32>(lhs.try_into().unwrap(), rhs.try_into().unwrap(), op)
+        }
+        CoreTypeConcrete::Uint64(_) => {
+            wrapping::<u64>(lhs.try_into().unwrap(), rhs.try_into().unwrap(), op)
+        }
+        CoreTypeConcrete::Uint128(_) => {
+            wrapping::<u128>(lhs.try_into().unwrap(), rhs.try_into().unwrap(), op)
+        }
+        _ => panic!("Found a non-numeric type"),
+    }
+}
 
 pub fn eval_signed<T>(
     registry: &ProgramRegistry<CoreType, CoreLibfunc>,
@@ -63,11 +102,11 @@ where
 {
     match selector {
         SintConcrete::Const(info) => eval_const(registry, info, args),
-        // SintConcrete::Operation(info) => eval_operation(registry, info, args),
-        SintConcrete::Equal(info) => eval_equal(registry, info, args),
-        SintConcrete::ToFelt252(info) => eval_to_felt(registry, info, args),
-        SintConcrete::FromFelt252(info) => eval_from_felt(registry, info, args),
         SintConcrete::Diff(info) => eval_diff(registry, info, args),
+        SintConcrete::Equal(info) => eval_equal(registry, info, args),
+        SintConcrete::FromFelt252(info) => eval_from_felt(registry, info, args),
+        // SintConcrete::Operation(info) => eval_operation(registry, info, args),
+        SintConcrete::ToFelt252(info) => eval_to_felt(registry, info, args),
         SintConcrete::WideMul(info) => eval_widemul(registry, info, args),
     }
 }
@@ -106,7 +145,7 @@ fn eval_const<T: IntTraits>(
     EvalAction::NormalBranch(0, smallvec![get_int_value_from_type(int_ty, info.c.into())])
 }
 
-fn eval_is_zero(
+fn eval_bitwise(
     registry: &ProgramRegistry<CoreType, CoreLibfunc>,
     info: &SignatureOnlyConcreteLibfunc,
     args: Vec<Value>,
@@ -132,7 +171,86 @@ fn eval_is_zero(
     )
 }
 
-fn eval_bitwise(
+fn eval_diff(
+    registry: &ProgramRegistry<CoreType, CoreLibfunc>,
+    info: &SignatureOnlyConcreteLibfunc,
+    args: Vec<Value>,
+) -> EvalAction {
+    let [lhs, rhs]: [BigInt; 2] = get_numberic_args_as_bigints(args).try_into().unwrap();
+
+    let int_ty = registry
+        .get_type(&info.signature.branch_signatures[0].vars[0].ty)
+        .unwrap();
+
+    let overflow = (&lhs >= &rhs) as usize;
+    let (res, _) = apply_wrapping_op(int_ty, lhs, rhs, IntOperator::OverflowingSub);
+    let res = get_int_value_from_type(int_ty, res);
+
+    EvalAction::NormalBranch(
+        overflow,
+        smallvec![
+            Value::Unit, // range_check
+            res
+        ],
+    )
+}
+
+fn eval_divmod(
+    registry: &ProgramRegistry<CoreType, CoreLibfunc>,
+    info: &SignatureOnlyConcreteLibfunc,
+    args: Vec<Value>,
+) -> EvalAction {
+    let [lhs, rhs]: [BigInt; 2] = get_numberic_args_as_bigints(args).try_into().unwrap();
+
+    let int_ty = registry
+        .get_type(&info.signature.branch_signatures[0].vars[0].ty)
+        .unwrap();
+
+    let res = &lhs / &rhs;
+    let rem = lhs % rhs;
+
+    let res = get_int_value_from_type(int_ty, res);
+    let rem = get_int_value_from_type(int_ty, rem);
+
+    EvalAction::NormalBranch(
+        0,
+        smallvec![
+            Value::Unit, // range_check
+            res,
+            rem
+        ],
+    )
+}
+
+fn eval_equal(
+    _registry: &ProgramRegistry<CoreType, CoreLibfunc>,
+    _info: &SignatureOnlyConcreteLibfunc,
+    args: Vec<Value>,
+) -> EvalAction {
+    let [lhs, rhs] = args.try_into().unwrap();
+
+    EvalAction::NormalBranch((lhs == rhs) as usize, smallvec![])
+}
+
+fn eval_from_felt(
+    registry: &ProgramRegistry<CoreType, CoreLibfunc>,
+    info: &SignatureOnlyConcreteLibfunc,
+    args: Vec<Value>,
+) -> EvalAction {
+    let [Value::Felt(val)]: [Value; 1] = args.try_into().unwrap() else {
+        panic!()
+    };
+
+    let bigint = val.to_bigint();
+
+    let int_ty = registry
+        .get_type(&info.signature.branch_signatures[0].vars[0].ty)
+        .unwrap();
+
+    EvalAction::NormalBranch(0, smallvec![get_int_value_from_type(int_ty, bigint)])
+}
+
+fn eval_is_zero(
     registry: &ProgramRegistry<CoreType, CoreLibfunc>,
     info: &SignatureOnlyConcreteLibfunc,
     args: Vec<Value>,
@@ -169,28 +287,18 @@ fn eval_square_root(
         .get_type(&info.signature.branch_signatures[0].vars[0].ty)
         .unwrap();
 
-    let value = value.sqrt();
+    let res = value.sqrt();
 
     EvalAction::NormalBranch(
         0,
         smallvec![
             Value::Unit, // range_check
-            get_int_value_from_type(int_ty, value)
+            get_int_value_from_type(int_ty, res)
         ],
     )
 }
 
-fn eval_equal<T: IntTraits>(
-    _registry: &ProgramRegistry<CoreType, CoreLibfunc>,
-    _info: &SignatureOnlyConcreteLibfunc,
-    args: Vec<Value>,
-) -> EvalAction {
-    let [lhs, rhs] = args.try_into().unwrap();
-
-    EvalAction::NormalBranch((lhs == rhs) as usize, smallvec![])
-}
-
-fn eval_to_felt<T: IntTraits>(
+fn eval_to_felt(
     _registry: &ProgramRegistry<CoreType, CoreLibfunc>,
     _info: &SignatureOnlyConcreteLibfunc,
     args: Vec<Value>,
@@ -200,20 +308,18 @@ fn eval_to_felt<T: IntTraits>(
     EvalAction::NormalBranch(0, smallvec![Value::Felt(Felt::from(val))])
 }
 
-fn eval_from_felt<T: IntTraits>(
+pub fn eval_widemul(
     registry: &ProgramRegistry<CoreType, CoreLibfunc>,
     info: &SignatureOnlyConcreteLibfunc,
     args: Vec<Value>,
 ) -> EvalAction {
-    let [Value::Felt(val)]: [Value; 1] = args.try_into().unwrap() else {
-        panic!()
-    };
-
-    let bigint = val.to_bigint();
+    let [lhs, rhs]: [BigInt; 2] = get_numberic_args_as_bigints(args).try_into().unwrap();
 
     let int_ty = registry
         .get_type(&info.signature.branch_signatures[0].vars[0].ty)
         .unwrap();
 
-    EvalAction::NormalBranch(0, smallvec![get_int_value_from_type(int_ty, bigint)])
+    let res = lhs * rhs;
+
+    EvalAction::NormalBranch(0, smallvec![get_int_value_from_type(int_ty, res)])
 }
