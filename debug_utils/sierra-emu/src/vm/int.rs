@@ -3,15 +3,17 @@ use cairo_lang_sierra::{
         core::{CoreLibfunc, CoreType, CoreTypeConcrete},
         int::{
             signed::{SintConcrete, SintTraits},
+            signed128::Sint128Concrete,
             unsigned::{UintConcrete, UintTraits},
-            IntConstConcreteLibfunc, IntMulTraits, IntOperator, IntTraits,
+            IntConstConcreteLibfunc, IntMulTraits, IntOperationConcreteLibfunc, IntOperator,
+            IntTraits,
         },
         is_zero::IsZeroTraits,
         lib_func::SignatureOnlyConcreteLibfunc,
     },
     program_registry::ProgramRegistry,
 };
-use num_bigint::BigInt;
+use num_bigint::{BigInt, BigUint, ToBigInt};
 use num_traits::{
     ops::overflowing::{OverflowingAdd, OverflowingSub},
     ToPrimitive,
@@ -19,7 +21,10 @@ use num_traits::{
 use smallvec::smallvec;
 use starknet_crypto::Felt;
 
-use crate::{utils::get_numberic_args_as_bigints, Value};
+use crate::{
+    utils::{get_numberic_args_as_bigints, integer_range},
+    Value,
+};
 
 use super::EvalAction;
 
@@ -105,9 +110,24 @@ where
         SintConcrete::Diff(info) => eval_diff(registry, info, args),
         SintConcrete::Equal(info) => eval_equal(registry, info, args),
         SintConcrete::FromFelt252(info) => eval_from_felt(registry, info, args),
-        // SintConcrete::Operation(info) => eval_operation(registry, info, args),
+        SintConcrete::Operation(info) => eval_operation(registry, info, args),
         SintConcrete::ToFelt252(info) => eval_to_felt(registry, info, args),
         SintConcrete::WideMul(info) => eval_widemul(registry, info, args),
+    }
+}
+
+pub fn eval_i128(
+    registry: &ProgramRegistry<CoreType, CoreLibfunc>,
+    selector: &Sint128Concrete,
+    args: Vec<Value>,
+) -> EvalAction {
+    match selector {
+        Sint128Concrete::Const(info) => eval_const(registry, info, args),
+        Sint128Concrete::Diff(info) => eval_diff(registry, info, args),
+        Sint128Concrete::Equal(info) => eval_equal(registry, info, args),
+        Sint128Concrete::FromFelt252(info) => eval_from_felt(registry, info, args),
+        Sint128Concrete::Operation(info) => eval_operation(registry, info, args),
+        Sint128Concrete::ToFelt252(info) => eval_to_felt(registry, info, args),
     }
 }
 
@@ -125,7 +145,7 @@ where
         UintConcrete::Divmod(info) => eval_divmod(registry, info, args),
         UintConcrete::Equal(info) => eval_equal(registry, info, args),
         UintConcrete::FromFelt252(info) => eval_from_felt(registry, info, args),
-        // UintConcrete::Operation(info) => eval_operation(registry, info, args),
+        UintConcrete::Operation(info) => eval_operation(registry, info, args),
         UintConcrete::IsZero(info) => eval_is_zero(registry, info, args),
         UintConcrete::SquareRoot(info) => eval_square_root(registry, info, args),
         UintConcrete::ToFelt252(info) => eval_to_felt(registry, info, args),
@@ -182,7 +202,7 @@ fn eval_diff(
         .get_type(&info.signature.branch_signatures[0].vars[0].ty)
         .unwrap();
 
-    let overflow = (&lhs >= &rhs) as usize;
+    let overflow = (lhs >= rhs) as usize;
     let (res, _) = apply_wrapping_op(int_ty, lhs, rhs, IntOperator::OverflowingSub);
     let res = get_int_value_from_type(int_ty, res);
 
@@ -232,22 +252,38 @@ fn eval_equal(
     EvalAction::NormalBranch((lhs == rhs) as usize, smallvec![])
 }
 
-fn eval_from_felt(
+pub fn eval_from_felt(
     registry: &ProgramRegistry<CoreType, CoreLibfunc>,
     info: &SignatureOnlyConcreteLibfunc,
     args: Vec<Value>,
 ) -> EvalAction {
-    let [Value::Felt(val)]: [Value; 1] = args.try_into().unwrap() else {
+    let [range_check @ Value::Unit, Value::Felt(value_felt)]: [Value; 2] = args.try_into().unwrap()
+    else {
         panic!()
     };
-
-    let bigint = val.to_bigint();
+    let prime = Felt::prime();
+    let half_prime = &prime / BigUint::from(2u8);
 
     let int_ty = registry
         .get_type(&info.signature.branch_signatures[0].vars[0].ty)
         .unwrap();
 
-    EvalAction::NormalBranch(0, smallvec![get_int_value_from_type(int_ty, bigint)])
+    let range = integer_range(int_ty, registry);
+
+    let value = {
+        if value_felt.to_biguint() > half_prime {
+            (prime - value_felt.to_biguint()).to_bigint().unwrap() * BigInt::from(-1)
+        } else {
+            value_felt.to_bigint()
+        }
+    };
+
+    if value >= range.lower || value <= range.upper {
+        let value = get_int_value_from_type(int_ty, value);
+        EvalAction::NormalBranch(0, smallvec![range_check, value])
+    } else {
+        EvalAction::NormalBranch(1, smallvec![range_check])
+    }
 }
 
 fn eval_is_zero(
@@ -272,6 +308,29 @@ fn eval_is_zero(
             and,
             xor,
             or
+        ],
+    )
+}
+
+fn eval_operation(
+    registry: &ProgramRegistry<CoreType, CoreLibfunc>,
+    info: &IntOperationConcreteLibfunc,
+    args: Vec<Value>,
+) -> EvalAction {
+    let [lhs, rhs]: [BigInt; 2] = get_numberic_args_as_bigints(args).try_into().unwrap();
+
+    let int_ty = registry
+        .get_type(&info.signature.branch_signatures[0].vars[0].ty)
+        .unwrap();
+
+    let (res, overflow) = apply_wrapping_op(int_ty, lhs, rhs, info.operator);
+    let res = get_int_value_from_type(int_ty, res);
+
+    EvalAction::NormalBranch(
+        overflow,
+        smallvec![
+            Value::Unit, // range_check
+            res
         ],
     )
 }

@@ -1,4 +1,13 @@
+use cairo_lang_sierra::{
+    extensions::{
+        core::{CoreLibfunc, CoreType, CoreTypeConcrete},
+        utils::Range,
+    },
+    program_registry::ProgramRegistry,
+};
 use num_bigint::BigInt;
+use num_traits::{Bounded, One};
+use starknet_types_core::felt::CAIRO_PRIME_BIGINT;
 
 use crate::Value;
 
@@ -24,4 +33,52 @@ pub fn get_numberic_args_as_bigints(args: Vec<Value>) -> Vec<BigInt> {
             value => panic!("{:?}", value),
         })
         .collect()
+}
+
+pub fn integer_range(
+    ty: &CoreTypeConcrete,
+    registry: &ProgramRegistry<CoreType, CoreLibfunc>,
+) -> Range {
+    fn range_of<T>() -> Range
+    where
+        T: Bounded + Into<BigInt>,
+    {
+        Range {
+            lower: T::min_value().into(),
+            upper: T::max_value().into() + BigInt::one(),
+        }
+    }
+
+    match ty {
+        CoreTypeConcrete::Uint8(_) => range_of::<u8>(),
+        CoreTypeConcrete::Uint16(_) => range_of::<u16>(),
+        CoreTypeConcrete::Uint32(_) => range_of::<u32>(),
+        CoreTypeConcrete::Uint64(_) => range_of::<u64>(),
+        CoreTypeConcrete::Uint128(_) => range_of::<u128>(),
+        CoreTypeConcrete::Felt252(_) => Range {
+            lower: BigInt::ZERO,
+            upper: CAIRO_PRIME_BIGINT.clone(),
+        },
+        CoreTypeConcrete::Sint8(_) => range_of::<i8>(),
+        CoreTypeConcrete::Sint16(_) => range_of::<i16>(),
+        CoreTypeConcrete::Sint32(_) => range_of::<i32>(),
+        CoreTypeConcrete::Sint64(_) => range_of::<i64>(),
+        CoreTypeConcrete::Sint128(_) => range_of::<i128>(),
+
+        CoreTypeConcrete::BoundedInt(info) => info.range.clone(),
+        CoreTypeConcrete::Bytes31(_) => Range {
+            lower: BigInt::ZERO,
+            upper: BigInt::one() << 248,
+        },
+        CoreTypeConcrete::Const(info) => {
+            let ty = registry.get_type(&info.inner_ty).unwrap();
+            integer_range(ty, registry)
+        }
+        CoreTypeConcrete::NonZero(info) => {
+            let ty = registry.get_type(&info.ty).unwrap();
+            integer_range(ty, registry)
+        }
+
+        _ => panic!("Non-numeric value"),
+    }
 }

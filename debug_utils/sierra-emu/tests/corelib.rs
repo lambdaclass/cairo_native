@@ -27,7 +27,6 @@ mod common;
 
 #[traced_test]
 #[test]
-#[ignore = "sierra-emu is not fully implemented yet"]
 fn test_corelib() {
     let compiler_path = Path::new(&std::env::var("CARGO_MANIFEST_DIR").unwrap()).join("corelib");
 
