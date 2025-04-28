@@ -73,10 +73,10 @@ impl GraphMappings {
 
         match instr.body {
             InstructionBody::AddAp(add_ap_instruction) => match add_ap_instruction.operand {
-                ResOperand::Deref(cell_ref) => todo!(),
-                ResOperand::DoubleDeref(cell_ref, _) => todo!(),
+                ResOperand::Deref(_) => todo!(),
+                ResOperand::DoubleDeref(_, _) => todo!(),
                 ResOperand::Immediate(_) => {}
-                ResOperand::BinOp(bin_op_operand) => todo!(),
+                ResOperand::BinOp(_) => todo!(),
             },
             InstructionBody::AssertEq(assert_eq_instruction) => {
                 process_cell_ref(assert_eq_instruction.a);
@@ -101,13 +101,13 @@ impl GraphMappings {
                 }
             }
             InstructionBody::Call(call_instruction) => match call_instruction.target {
-                DerefOrImmediate::Deref(cell_ref) => todo!(),
+                DerefOrImmediate::Deref(_) => todo!(),
                 DerefOrImmediate::Immediate(_) => {}
             },
             InstructionBody::Jnz(jnz_instruction) => {
                 process_cell_ref(jnz_instruction.condition);
                 match jnz_instruction.jump_offset {
-                    DerefOrImmediate::Deref(cell_ref) => todo!(),
+                    DerefOrImmediate::Deref(_) => todo!(),
                     DerefOrImmediate::Immediate(_) => {}
                 }
             }
@@ -118,13 +118,13 @@ impl GraphMappings {
                 DerefOrImmediate::Immediate(_) => {}
             },
             InstructionBody::Ret(_) => {}
-            InstructionBody::QM31AssertEq(assert_eq_instruction) => todo!(),
-            InstructionBody::Blake2sCompress(blake2s_compress_instruction) => todo!(),
+            InstructionBody::QM31AssertEq(_) => todo!(),
+            InstructionBody::Blake2sCompress(_) => todo!(),
         }
     }
 
     fn iter_hint_references(
-        memory: &Memory,
+        _memory: &Memory,
         trace: &RelocatedTraceEntry,
         hint: &Hint,
         mut callback: impl FnMut(usize),
@@ -149,7 +149,7 @@ impl GraphMappings {
                             ResOperand::Deref(cell_ref) => {
                                 process_cell_ref(*cell_ref);
                             }
-                            ResOperand::DoubleDeref(cell_ref, _) => todo!(),
+                            ResOperand::DoubleDeref(_, _) => todo!(),
                             ResOperand::Immediate(_) => {}
                             ResOperand::BinOp(bin_op_operand) => {
                                 process_cell_ref(bin_op_operand.a);
@@ -165,9 +165,9 @@ impl GraphMappings {
                             ResOperand::Deref(cell_ref) => {
                                 process_cell_ref(*cell_ref);
                             }
-                            ResOperand::DoubleDeref(cell_ref, _) => todo!(),
+                            ResOperand::DoubleDeref(_, _) => todo!(),
                             ResOperand::Immediate(_) => {}
-                            ResOperand::BinOp(bin_op_operand) => todo!(),
+                            ResOperand::BinOp(_) => todo!(),
                         }
                         process_cell_ref(*dst);
                     }
@@ -176,21 +176,21 @@ impl GraphMappings {
                             ResOperand::Deref(cell_ref) => {
                                 process_cell_ref(*cell_ref);
                             }
-                            ResOperand::DoubleDeref(cell_ref, _) => todo!(),
+                            ResOperand::DoubleDeref(_, _) => todo!(),
                             ResOperand::Immediate(_) => {}
-                            ResOperand::BinOp(bin_op_operand) => todo!(),
+                            ResOperand::BinOp(_) => todo!(),
                         }
                         match rhs {
                             ResOperand::Deref(cell_ref) => {
                                 process_cell_ref(*cell_ref);
                             }
-                            ResOperand::DoubleDeref(cell_ref, _) => todo!(),
+                            ResOperand::DoubleDeref(_, _) => todo!(),
                             ResOperand::Immediate(_) => {}
-                            ResOperand::BinOp(bin_op_operand) => todo!(),
+                            ResOperand::BinOp(_) => todo!(),
                         }
                         process_cell_ref(*dst);
                     }
-                    CoreHint::TestLessThanOrEqualAddress { lhs, rhs, dst } => todo!(),
+                    CoreHint::TestLessThanOrEqualAddress { .. } => todo!(),
                     CoreHint::WideMul128 {
                         lhs,
                         rhs,
@@ -201,17 +201,17 @@ impl GraphMappings {
                             ResOperand::Deref(cell_ref) => {
                                 process_cell_ref(*cell_ref);
                             }
-                            ResOperand::DoubleDeref(cell_ref, _) => todo!(),
+                            ResOperand::DoubleDeref(_, _) => todo!(),
                             ResOperand::Immediate(_) => {}
-                            ResOperand::BinOp(bin_op_operand) => todo!(),
+                            ResOperand::BinOp(_) => todo!(),
                         }
                         match rhs {
                             ResOperand::Deref(cell_ref) => {
                                 process_cell_ref(*cell_ref);
                             }
-                            ResOperand::DoubleDeref(cell_ref, _) => todo!(),
+                            ResOperand::DoubleDeref(_, _) => todo!(),
                             ResOperand::Immediate(_) => {}
-                            ResOperand::BinOp(bin_op_operand) => todo!(),
+                            ResOperand::BinOp(_) => todo!(),
                         }
                         process_cell_ref(*high);
                         process_cell_ref(*low);
@@ -226,17 +226,17 @@ impl GraphMappings {
                             ResOperand::Deref(cell_ref) => {
                                 process_cell_ref(*cell_ref);
                             }
-                            ResOperand::DoubleDeref(cell_ref, _) => todo!(),
+                            ResOperand::DoubleDeref(_, _) => todo!(),
                             ResOperand::Immediate(_) => {}
-                            ResOperand::BinOp(bin_op_operand) => todo!(),
+                            ResOperand::BinOp(_) => todo!(),
                         }
                         match rhs {
                             ResOperand::Deref(cell_ref) => {
                                 process_cell_ref(*cell_ref);
                             }
-                            ResOperand::DoubleDeref(cell_ref, _) => todo!(),
+                            ResOperand::DoubleDeref(_, _) => todo!(),
                             ResOperand::Immediate(_) => {}
-                            ResOperand::BinOp(bin_op_operand) => todo!(),
+                            ResOperand::BinOp(_) => todo!(),
                         }
                         process_cell_ref(*quotient);
                         process_cell_ref(*remainder);
@@ -255,63 +255,42 @@ impl GraphMappings {
                             ResOperand::Deref(cell_ref) => {
                                 process_cell_ref(*cell_ref);
                             }
-                            ResOperand::DoubleDeref(cell_ref, _) => todo!(),
+                            ResOperand::DoubleDeref(_, _) => todo!(),
                             ResOperand::Immediate(_) => {}
-                            ResOperand::BinOp(bin_op_operand) => todo!(),
+                            ResOperand::BinOp(_) => todo!(),
                         }
                         match dividend1 {
                             ResOperand::Deref(cell_ref) => {
                                 process_cell_ref(*cell_ref);
                             }
-                            ResOperand::DoubleDeref(cell_ref, _) => todo!(),
+                            ResOperand::DoubleDeref(_, _) => todo!(),
                             ResOperand::Immediate(_) => {}
-                            ResOperand::BinOp(bin_op_operand) => todo!(),
+                            ResOperand::BinOp(_) => todo!(),
                         }
                         match divisor0 {
                             ResOperand::Deref(cell_ref) => {
                                 process_cell_ref(*cell_ref);
                             }
-                            ResOperand::DoubleDeref(cell_ref, _) => todo!(),
+                            ResOperand::DoubleDeref(_, _) => todo!(),
                             ResOperand::Immediate(_) => {}
-                            ResOperand::BinOp(bin_op_operand) => todo!(),
+                            ResOperand::BinOp(_) => todo!(),
                         }
                         match divisor1 {
                             ResOperand::Deref(cell_ref) => {
                                 process_cell_ref(*cell_ref);
                             }
-                            ResOperand::DoubleDeref(cell_ref, _) => todo!(),
+                            ResOperand::DoubleDeref(_, _) => todo!(),
                             ResOperand::Immediate(_) => {}
-                            ResOperand::BinOp(bin_op_operand) => todo!(),
+                            ResOperand::BinOp(_) => todo!(),
                         }
                         process_cell_ref(*quotient0);
                         process_cell_ref(*quotient1);
                         process_cell_ref(*remainder0);
                         process_cell_ref(*remainder1);
                     }
-                    CoreHint::Uint512DivModByUint256 {
-                        dividend0,
-                        dividend1,
-                        dividend2,
-                        dividend3,
-                        divisor0,
-                        divisor1,
-                        quotient0,
-                        quotient1,
-                        quotient2,
-                        quotient3,
-                        remainder0,
-                        remainder1,
-                    } => todo!(),
-                    CoreHint::SquareRoot { value, dst } => todo!(),
-                    CoreHint::Uint256SquareRoot {
-                        value_low,
-                        value_high,
-                        sqrt0,
-                        sqrt1,
-                        remainder_low,
-                        remainder_high,
-                        sqrt_mul_2_minus_remainder_ge_u128,
-                    } => todo!(),
+                    CoreHint::Uint512DivModByUint256 { .. } => todo!(),
+                    CoreHint::SquareRoot { .. } => todo!(),
+                    CoreHint::Uint256SquareRoot { .. } => todo!(),
                     CoreHint::LinearSplit {
                         value,
                         scalar,
@@ -323,96 +302,55 @@ impl GraphMappings {
                             ResOperand::Deref(cell_ref) => {
                                 process_cell_ref(*cell_ref);
                             }
-                            ResOperand::DoubleDeref(cell_ref, _) => todo!(),
+                            ResOperand::DoubleDeref(_, _) => todo!(),
                             ResOperand::Immediate(_) => {}
-                            ResOperand::BinOp(bin_op_operand) => todo!(),
+                            ResOperand::BinOp(_) => todo!(),
                         }
                         match scalar {
-                            ResOperand::Deref(cell_ref) => todo!(),
-                            ResOperand::DoubleDeref(cell_ref, _) => todo!(),
+                            ResOperand::Deref(_) => todo!(),
+                            ResOperand::DoubleDeref(_, _) => todo!(),
                             ResOperand::Immediate(_) => {}
-                            ResOperand::BinOp(bin_op_operand) => todo!(),
+                            ResOperand::BinOp(_) => todo!(),
                         }
                         match max_x {
-                            ResOperand::Deref(cell_ref) => todo!(),
-                            ResOperand::DoubleDeref(cell_ref, _) => todo!(),
+                            ResOperand::Deref(_) => todo!(),
+                            ResOperand::DoubleDeref(_, _) => todo!(),
                             ResOperand::Immediate(_) => {}
-                            ResOperand::BinOp(bin_op_operand) => todo!(),
+                            ResOperand::BinOp(_) => todo!(),
                         }
                         process_cell_ref(*x);
                         process_cell_ref(*y);
                     }
-                    CoreHint::AllocFelt252Dict { segment_arena_ptr } => todo!(),
-                    CoreHint::Felt252DictEntryInit { dict_ptr, key } => todo!(),
-                    CoreHint::Felt252DictEntryUpdate { dict_ptr, value } => todo!(),
-                    CoreHint::GetSegmentArenaIndex {
-                        dict_end_ptr,
-                        dict_index,
-                    } => todo!(),
-                    CoreHint::InitSquashData {
-                        dict_accesses,
-                        ptr_diff,
-                        n_accesses,
-                        big_keys,
-                        first_key,
-                    } => todo!(),
-                    CoreHint::GetCurrentAccessIndex { range_check_ptr } => todo!(),
-                    CoreHint::ShouldSkipSquashLoop { should_skip_loop } => todo!(),
-                    CoreHint::GetCurrentAccessDelta { index_delta_minus1 } => todo!(),
-                    CoreHint::ShouldContinueSquashLoop { should_continue } => todo!(),
-                    CoreHint::GetNextDictKey { next_key } => todo!(),
-                    CoreHint::AssertLeFindSmallArcs {
-                        range_check_ptr,
-                        a,
-                        b,
-                    } => todo!(),
-                    CoreHint::AssertLeIsFirstArcExcluded {
-                        skip_exclude_a_flag,
-                    } => todo!(),
-                    CoreHint::AssertLeIsSecondArcExcluded {
-                        skip_exclude_b_minus_a,
-                    } => todo!(),
-                    CoreHint::RandomEcPoint { x, y } => todo!(),
-                    CoreHint::FieldSqrt { val, sqrt } => todo!(),
-                    CoreHint::DebugPrint { start, end } => todo!(),
-                    CoreHint::AllocConstantSize { size, dst } => todo!(),
-                    CoreHint::U256InvModN {
-                        b0,
-                        b1,
-                        n0,
-                        n1,
-                        g0_or_no_inv,
-                        g1_option,
-                        s_or_r0,
-                        s_or_r1,
-                        t_or_k0,
-                        t_or_k1,
-                    } => todo!(),
-                    CoreHint::EvalCircuit {
-                        n_add_mods,
-                        add_mod_builtin,
-                        n_mul_mods,
-                        mul_mod_builtin,
-                    } => todo!(),
+                    CoreHint::AllocFelt252Dict { .. } => todo!(),
+                    CoreHint::Felt252DictEntryInit { .. } => todo!(),
+                    CoreHint::Felt252DictEntryUpdate { .. } => todo!(),
+                    CoreHint::GetSegmentArenaIndex { .. } => todo!(),
+                    CoreHint::InitSquashData { .. } => todo!(),
+                    CoreHint::GetCurrentAccessIndex { .. } => todo!(),
+                    CoreHint::ShouldSkipSquashLoop { .. } => todo!(),
+                    CoreHint::GetCurrentAccessDelta { .. } => todo!(),
+                    CoreHint::ShouldContinueSquashLoop { .. } => todo!(),
+                    CoreHint::GetNextDictKey { .. } => todo!(),
+                    CoreHint::AssertLeFindSmallArcs { .. } => todo!(),
+                    CoreHint::AssertLeIsFirstArcExcluded { .. } => todo!(),
+                    CoreHint::AssertLeIsSecondArcExcluded { .. } => todo!(),
+                    CoreHint::RandomEcPoint { .. } => todo!(),
+                    CoreHint::FieldSqrt { .. } => todo!(),
+                    CoreHint::DebugPrint { .. } => todo!(),
+                    CoreHint::AllocConstantSize { .. } => todo!(),
+                    CoreHint::U256InvModN { .. } => todo!(),
+                    CoreHint::EvalCircuit { .. } => todo!(),
                 },
                 CoreHintBase::Deprecated(deprecated_hint) => match deprecated_hint {
                     DeprecatedHint::AssertCurrentAccessIndicesIsEmpty => todo!(),
-                    DeprecatedHint::AssertAllAccessesUsed { n_used_accesses } => {
+                    DeprecatedHint::AssertAllAccessesUsed { .. } => {
                         todo!()
                     }
                     DeprecatedHint::AssertAllKeysUsed => todo!(),
                     DeprecatedHint::AssertLeAssertThirdArcExcluded => todo!(),
-                    DeprecatedHint::AssertLtAssertValidInput { a, b } => todo!(),
-                    DeprecatedHint::Felt252DictRead {
-                        dict_ptr,
-                        key,
-                        value_dst,
-                    } => todo!(),
-                    DeprecatedHint::Felt252DictWrite {
-                        dict_ptr,
-                        key,
-                        value,
-                    } => todo!(),
+                    DeprecatedHint::AssertLtAssertValidInput { .. } => todo!(),
+                    DeprecatedHint::Felt252DictRead { .. } => todo!(),
+                    DeprecatedHint::Felt252DictWrite { .. } => todo!(),
                 },
             },
             Hint::Starknet(starknet_hint) => match starknet_hint {
@@ -420,29 +358,23 @@ impl GraphMappings {
                     ResOperand::Deref(cell_ref) => {
                         process_cell_ref(*cell_ref);
                     }
-                    ResOperand::DoubleDeref(cell_ref, _) => todo!(),
+                    ResOperand::DoubleDeref(_, _) => todo!(),
                     ResOperand::Immediate(_) => {}
                     ResOperand::BinOp(bin_op_operand) => {
                         process_cell_ref(bin_op_operand.a);
                         match bin_op_operand.b {
-                            DerefOrImmediate::Deref(cell_ref) => todo!(),
+                            DerefOrImmediate::Deref(_) => todo!(),
                             DerefOrImmediate::Immediate(_) => {}
                         }
                     }
                 },
-                StarknetHint::Cheatcode {
-                    selector,
-                    input_start,
-                    input_end,
-                    output_start,
-                    output_end,
-                } => todo!(),
+                StarknetHint::Cheatcode { .. } => todo!(),
             },
             Hint::External(external_hint) => match external_hint {
-                ExternalHint::AddRelocationRule { src, dst } => todo!(),
-                ExternalHint::WriteRunParam { index, dst } => todo!(),
-                ExternalHint::AddMarker { start, end } => todo!(),
-                ExternalHint::AddTrace { flag } => todo!(),
+                ExternalHint::AddRelocationRule { .. } => todo!(),
+                ExternalHint::WriteRunParam { .. } => todo!(),
+                ExternalHint::AddMarker { .. } => todo!(),
+                ExternalHint::AddTrace { .. } => todo!(),
             },
         }
     }

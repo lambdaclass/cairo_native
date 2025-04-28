@@ -3,7 +3,7 @@ use cairo_vm::serde::deserialize_program::HintParams;
 use clap::Parser;
 use serde_json::Value;
 use sierra2casm_dbg::{
-    decode_instruction, run_search_algorithm,
+    run_search_algorithm,
     search::{DfsQueue, NodeId},
     GraphMappings, Memory, Trace,
 };

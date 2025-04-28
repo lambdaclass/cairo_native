@@ -34,6 +34,7 @@ pub fn decode_instruction(memory: &Memory, offset: usize) -> Instruction {
             ap_update: ApUpdate::Add,
             fp_update: FpUpdate::Regular,
             opcode: Opcode::NOp,
+            opcode_extension: _,
         } => Instruction {
             body: InstructionBody::AddAp(AddApInstruction {
                 operand: decode_res_operand(ResDescription {
@@ -60,6 +61,7 @@ pub fn decode_instruction(memory: &Memory, offset: usize) -> Instruction {
             ap_update: ap_update @ (ApUpdate::Add1 | ApUpdate::Regular),
             fp_update: FpUpdate::Regular,
             opcode: Opcode::AssertEq,
+            opcode_extension: _,
         } => Instruction {
             body: InstructionBody::AssertEq(AssertEqInstruction {
                 a: CellRef {
@@ -97,6 +99,7 @@ pub fn decode_instruction(memory: &Memory, offset: usize) -> Instruction {
             ap_update: ApUpdate::Add2,
             fp_update: FpUpdate::APPlus2,
             opcode: Opcode::Call,
+            opcode_extension: _,
         } => Instruction {
             body: InstructionBody::Call(CallInstruction {
                 target: match op1_addr {
@@ -137,6 +140,7 @@ pub fn decode_instruction(memory: &Memory, offset: usize) -> Instruction {
             ap_update: ap_update @ (ApUpdate::Add1 | ApUpdate::Regular),
             fp_update: FpUpdate::Regular,
             opcode: Opcode::NOp,
+            opcode_extension: _,
         } => Instruction {
             body: InstructionBody::Jump(JumpInstruction {
                 target: match op1_addr {
@@ -181,6 +185,7 @@ pub fn decode_instruction(memory: &Memory, offset: usize) -> Instruction {
             ap_update: ap_update @ (ApUpdate::Add1 | ApUpdate::Regular),
             fp_update: FpUpdate::Regular,
             opcode: Opcode::NOp,
+            opcode_extension: _,
         } => Instruction {
             body: InstructionBody::Jnz(JnzInstruction {
                 jump_offset: match op1_addr {
@@ -227,6 +232,7 @@ pub fn decode_instruction(memory: &Memory, offset: usize) -> Instruction {
             ap_update: ApUpdate::Regular,
             fp_update: FpUpdate::Dst,
             opcode: Opcode::Ret,
+            opcode_extension: _,
         } => Instruction {
             body: InstructionBody::Ret(RetInstruction {}),
             inc_ap: false,

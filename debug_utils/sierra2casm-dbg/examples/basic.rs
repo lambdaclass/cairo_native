@@ -1,7 +1,6 @@
 use bincode::de::read::SliceReader;
 use sierra2casm_dbg::{decode_instruction, GraphMappings, Memory, Trace, ValueId};
-use starknet_types_core::felt::Felt;
-use std::{collections::HashMap, fs, str::FromStr};
+use std::{collections::HashMap, fs};
 
 fn main() {
     let memory = Memory::decode(SliceReader::new(&fs::read("memory-2.bin").unwrap()));

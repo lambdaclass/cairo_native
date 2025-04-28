@@ -144,11 +144,11 @@ where
 
                                 self.memory[curr_id.0].is_some_and(|value| {
                                     let min_value = 9919468708u64;
-                                    let max_value = 9997035710u64;
+                                    let _max_value = 9997035710u64;
 
                                     // Use half the min value to give some leeway for redeposited
                                     // gas.
-                                    (value >= (min_value >> 1).into())
+                                    value >= (min_value >> 1).into()
                                     // && (value <= (max_value << 1).into())
                                 })
                             })
