@@ -29,6 +29,9 @@ check:
 test: needs-cairo2
 	cargo test --all-features
 
+test-no-corelib: needs-cairo2
+	cargo test --all-features -- --skip test_corelib
+
 clean:
 	cargo clean
 

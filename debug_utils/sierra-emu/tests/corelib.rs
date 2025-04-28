@@ -20,8 +20,6 @@ use cairo_lang_test_plugin::{
 use common::value_to_felt;
 use rayon::iter::{IntoParallelIterator, ParallelIterator};
 use sierra_emu::{run_program, EntryPoint, ProgramTrace, Value};
-use tracing::info;
-use tracing_test::traced_test;
 
 mod common;
 
@@ -31,14 +29,7 @@ enum TestStatus {
     Ignored,
 }
 
-struct TestResult {
-    pub test: String,
-    pub status: TestStatus,
-}
-
-#[traced_test]
 #[test]
-#[ignore = "sierra-emu is not fully implemented yet"]
 fn test_corelib() {
     let compiler_path = Path::new(&std::env::var("CARGO_MANIFEST_DIR").unwrap()).join("corelib");
 
@@ -90,11 +81,11 @@ fn test_corelib() {
 
     assert!(results
         .iter()
-        .all(|t| matches!(t.status, TestStatus::Passed | TestStatus::Ignored)),);
+        .all(|s| matches!(s, TestStatus::Passed | TestStatus::Ignored)),);
 }
 
 /// Runs the tests and process the results for a summary.
-fn run_tests(compiled: TestCompilation) -> Vec<TestResult> {
+fn run_tests(compiled: TestCompilation) -> Vec<TestStatus> {
     let program = Arc::new(compiled.sierra_program.program);
 
     compiled
@@ -103,10 +94,8 @@ fn run_tests(compiled: TestCompilation) -> Vec<TestResult> {
         .into_par_iter()
         .map(|(name, test)| {
             if test.ignored {
-                return TestResult {
-                    test: name,
-                    status: TestStatus::Ignored,
-                };
+                println!("test {} ... Ignored", name);
+                return TestStatus::Ignored;
             }
 
             // catch any panic during the test run
@@ -130,9 +119,15 @@ fn run_tests(compiled: TestCompilation) -> Vec<TestResult> {
                 }
             };
 
-            TestResult { test: name, status }
+            match &status {
+                TestStatus::Passed => println!("test {} ... OK", name),
+                TestStatus::Failed(err) => println!("test {} ... FAILED: {}", name, err),
+                TestStatus::Ignored => {} // already handled before
+            };
+
+            status
         })
-        .collect::<Vec<TestResult>>()
+        .collect::<Vec<TestStatus>>()
 }
 
 fn trace_to_run_result(trace: ProgramTrace) -> RunResultValue {
@@ -214,35 +209,32 @@ fn assert_test_expectation(expectation: TestExpectation, result: RunResultValue)
     }
 }
 
-fn display_results(results: &[TestResult]) {
+fn display_results(results: &[TestStatus]) {
     let mut passed = 0;
     let mut failed = 0;
     let mut ignored = 0;
 
-    for r in results {
-        match &r.status {
+    for status in results {
+        match &status {
             TestStatus::Passed => {
-                info!("test {} ... OK", r.test);
                 passed += 1
             }
-            TestStatus::Failed(err) => {
-                info!("test {} ... FAILED: {}", r.test, err);
+            TestStatus::Failed(_) => {
                 failed += 1
             }
-            _ => {
-                info!("test {} ... IGNORED", r.test);
+            TestStatus::Ignored => {
                 ignored += 1
             }
         }
     }
 
     if failed > 0 {
-        info!(
+        println!(
             "\n\ntest result: FAILED. {} passed; {} failed; {} filtered out;",
             passed, failed, ignored
         );
     } else {
-        info!(
+        println!(
             "\n\ntest result: OK. {} passed; {} failed; {} filtered out;",
             passed, failed, ignored
         );

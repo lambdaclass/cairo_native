@@ -39,7 +39,6 @@ tempfile = "3.14.0"
 thiserror = "2.0.3"
 tracing = "0.1.41"
 tracing-subscriber = { version = "0.3.18", features = ["env-filter"] }
-tracing-test = { version = "0.2.5" }
 rayon = "1.10.0"
 
 [dev-dependencies]

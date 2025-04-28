@@ -358,8 +358,8 @@ jobs:
       run: cargo build --all-features --verbose
     - name: Run tests
       working-directory: ./debug_utils/sierra-emu
-      run: make test
+      run: make test-no-corelib
     - name: Run corelib's tests
       working-directory: ./debug_utils/sierra-emu
-      run: cargo test -- --ignored
+      run: cargo test test-corelib -- --nocapture
       continue-on-error: true # ignore result for now. When sierra-emu is fully implemented this should be removed
