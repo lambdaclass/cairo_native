@@ -58,7 +58,7 @@ build-dev: check-llvm
 .PHONY: check
 check: check-llvm
 	cargo fmt --all -- --check
-	cargo clippy --all-targets --all-features -- -D warnings
+	cargo clippy --workspace --all-targets --all-features -- -D warnings
 
 .PHONY: test
 test: check-llvm needs-cairo2 build-alexandria
