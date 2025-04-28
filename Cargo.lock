@@ -3359,7 +3359,6 @@ dependencies = [
  "cairo-lang-utils",
  "cairo-vm 2.0.1 (registry+https://github.com/rust-lang/crates.io-index)",
  "clap",
- "serde",
  "serde_json",
  "starknet-types-core",
 ]
