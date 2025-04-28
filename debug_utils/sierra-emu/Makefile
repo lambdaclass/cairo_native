@@ -13,11 +13,12 @@ endif
 
 usage:
 	@echo "Usage:"
-	@echo "    deps:		 Installs the necesarry dependencies."
-	@echo "    build:        Builds the cairo-native library and binaries."
-	@echo "    check:        Checks format and lints."
-	@echo "    test:         Runs all tests."
-	@echo "    clean:        Cleans the built artifacts."
+	@echo "    deps:		    Installs the necesarry dependencies."
+	@echo "    build:           Builds the cairo-native library and binaries."
+	@echo "    check:           Checks format and lints."
+	@echo "    test:            Runs all tests."
+	@echo "    test-no-corelib: Runs all tests except for the ones from the cairo's corelib."
+	@echo "    clean:           Cleans the built artifacts."
 
 build:
 	cargo build --release --all-features
