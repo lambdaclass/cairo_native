@@ -279,6 +279,9 @@ impl AotContractExecutor {
 
         setup_runtime(|x| executor.find_symbol_ptr(x));
 
+        #[cfg(feature = "with-debug-utils")]
+        crate::metadata::debug_utils::setup_runtime(|name| executor.find_symbol_ptr(name));
+
         Ok(Some(executor))
     }
 
