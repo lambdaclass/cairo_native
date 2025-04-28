@@ -6,10 +6,10 @@ edition = "2021"
 [dependencies]
 bincode = { version = "2.0.0-rc.3", default-features = false }
 clap = { version = "4.5.27", features = ["derive"] }
-cairo-lang-casm = { version = "=2.12.0-dev.0", default-features = false, features = [
+cairo-lang-casm = { version = "=2.12.0-dev.1", default-features = false, features = [
     "serde",
 ] }
-cairo-lang-utils = { version = "=2.12.0-dev.0", default-features = false }
+cairo-lang-utils = { version = "=2.12.0-dev.1", default-features = false }
 cairo-vm = { version = "2.0.1", default-features = false }
 serde = "1.0.217"
 serde_json = "1.0.138"
