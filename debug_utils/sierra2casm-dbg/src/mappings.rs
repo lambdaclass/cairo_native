@@ -118,6 +118,8 @@ impl GraphMappings {
                 DerefOrImmediate::Immediate(_) => {}
             },
             InstructionBody::Ret(_) => {}
+            InstructionBody::QM31AssertEq(assert_eq_instruction) => todo!(),
+            InstructionBody::Blake2sCompress(blake2s_compress_instruction) => todo!(),
         }
     }
 
@@ -439,6 +441,8 @@ impl GraphMappings {
             Hint::External(external_hint) => match external_hint {
                 ExternalHint::AddRelocationRule { src, dst } => todo!(),
                 ExternalHint::WriteRunParam { index, dst } => todo!(),
+                ExternalHint::AddMarker { start, end } => todo!(),
+                ExternalHint::AddTrace { flag } => todo!(),
             },
         }
     }
