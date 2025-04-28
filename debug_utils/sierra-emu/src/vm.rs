@@ -47,6 +47,7 @@ mod felt252_dict;
 mod felt252_dict_entry;
 mod function_call;
 mod gas;
+mod int;
 mod int128;
 mod int8;
 mod jump;
