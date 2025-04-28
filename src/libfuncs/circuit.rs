@@ -1456,6 +1456,7 @@ mod test {
     fn run_into_u96_guarantee() {
         let program = load_cairo!(
             use core::circuit::{into_u96_guarantee, U96Guarantee};
+            #[feature("bounded-int-utils")]
             use core::internal::bounded_int::BoundedInt;
 
             fn main() -> (U96Guarantee, U96Guarantee, U96Guarantee) {
