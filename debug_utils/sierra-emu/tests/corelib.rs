@@ -216,15 +216,9 @@ fn display_results(results: &[TestStatus]) {
 
     for status in results {
         match &status {
-            TestStatus::Passed => {
-                passed += 1
-            }
-            TestStatus::Failed(_) => {
-                failed += 1
-            }
-            TestStatus::Ignored => {
-                ignored += 1
-            }
+            TestStatus::Passed => passed += 1,
+            TestStatus::Failed(_) => failed += 1,
+            TestStatus::Ignored => ignored += 1,
         }
     }
 
