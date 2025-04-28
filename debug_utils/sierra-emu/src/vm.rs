@@ -519,5 +519,6 @@ fn eval<'a>(
         CoreConcreteLibfunc::QM31(_) => todo!(),
         CoreConcreteLibfunc::Felt252SquashedDict(_) => todo!(),
         CoreConcreteLibfunc::Trace(_) => todo!(),
+        CoreConcreteLibfunc::UnsafePanic(_) => todo!(),
     }
 }
