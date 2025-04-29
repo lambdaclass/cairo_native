@@ -32,7 +32,7 @@ impl TraceBinding {
         match self {
             TraceBinding::State => "cairo_native__trace_dump__add_to_state",
             TraceBinding::Push => "cairo_native__trace_dump__push_state",
-            TraceBinding::TraceId => "TRACE_DUMP__TRACE_ID",
+            TraceBinding::TraceId => "cairo_native__trace_dump__trace_id",
         }
     }
 
