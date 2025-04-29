@@ -59,6 +59,9 @@
 //! Both these elements must be properly setup before running the executor. See
 //! `cairo-native-run` for an example on how to do it. You can also check on
 //! this file's integration tests.
+//!
+//! When executing starknet contracts, then the trace id must be set right
+//! before each execution, restoring the previous trace id after the execution.
 
 use std::collections::HashMap;
 
