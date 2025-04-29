@@ -678,17 +678,19 @@ fn compile_func(
                     );
 
                     #[cfg(feature = "with-trace-dump")]
-                    crate::utils::trace_dump::build_state_snapshot(
-                        context,
-                        registry,
-                        module,
-                        block,
-                        location,
-                        metadata,
-                        statement_idx,
-                        &state,
-                        &var_types,
-                    );
+                    if !is_recursive || tailrec_state.is_some() {
+                        crate::utils::trace_dump::build_state_snapshot(
+                            context,
+                            registry,
+                            module,
+                            block,
+                            location,
+                            metadata,
+                            statement_idx,
+                            &state,
+                            &var_types,
+                        );
+                    }
 
                     let (_, mut values) = edit_state::take_args(state, var_ids.iter())?;
 
