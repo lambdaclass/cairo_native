@@ -1,29 +1,33 @@
-<div align="center">
+# ⚡ Cairo Sierra Emulator ⚡
 
-### ⚡ Cairo Sierra Emulator ⚡
-
-An Cairo emulator directly using the Cairo's intermediate representation "Sierra" instead of CASM.<br>
+An Cairo emulator directly using the Cairo's intermediate representation "Sierra" instead of CASM.
 An useful usecase is to aid in debugging other Cairo related VMs.
 
-[Report Bug](https://github.com/lambdaclass/sierra-emu/issues/new) · [Request Feature](https://github.com/lambdaclass/sierra-emu/issues/new)
+## Dependencies
 
-[![Telegram Chat][tg-badge]][tg-url]
-[![rust](https://github.com/lambdaclass/sierra-emu/actions/workflows/ci.yml/badge.svg)](https://github.com/lambdaclass/sierra-emu/actions/workflows/ci.yml)
-[![codecov](https://img.shields.io/codecov/c/github/lambdaclass/sierra-emu)](https://codecov.io/gh/lambdaclass/sierra-emu)
-[![license](https://img.shields.io/github/license/lambdaclass/sierra-emu)](/LICENSE)
-[![pr-welcome]](#-contributing)
+First, make sure to have all the dependencies from Cairo Native setup.
 
-
-[tg-badge]: https://img.shields.io/endpoint?url=https%3A%2F%2Ftg.sumanjay.workers.dev%2FLambdaStarkNet%2F&logo=telegram&label=chat&color=neon
-[tg-url]: https://t.me/LambdaStarkNet
-[pr-welcome]: https://img.shields.io/static/v1?color=orange&label=PRs&style=flat&message=welcome
-
-</div>
-
-
+Then, you can use the corelib recipe to make a symlink in the current directory.
+```bash
+make corelib
+```
 
 ## Running the Program
-`cargo run <SIERRA PROGRAM> <ENTRYPOINT ID>`
+
+To use the sierra emulator binary, we must first compile the target cairo program.
+
+```bash
+../../cairo2/bin/cairo-compile -rs ./programs/fibonacci.cairo > ./programs/fibonacci.sierra
+```
+
+Then, we can generate the ejecution trace with the sierra emulator:
+
+```bash
+cargo run -- ./programs/fibonacci.sierra fibonacci::fibonacci::main \
+    --available-gas 100000 --output ./programs/fibonacci.trace.json
+```
+
+The program trace will be generated to `./programs/fibonacci.trace.json`.
 
 ## Using the API
 
