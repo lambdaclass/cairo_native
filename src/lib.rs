@@ -31,6 +31,6 @@ pub mod module;
 mod runtime;
 pub mod starknet;
 pub mod starknet_stub;
-mod types;
+pub mod types;
 pub mod utils;
 mod values;
