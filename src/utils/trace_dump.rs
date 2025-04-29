@@ -1,4 +1,64 @@
 #![cfg(feature = "with-trace-dump")]
+//! The trace dump feature is used to generate the execution trace of a sierra program.
+//!
+//! Take, for example, the following sierra code:
+//!
+//! ```sierra
+//! const_as_immediate<Const<felt252, 10>>() -> ([0]);
+//! const_as_immediate<Const<felt252, 20>>() -> ([1]);
+//! store_temp<felt252>([0]) -> ([0]);
+//! felt252_add([0], [1]) -> ([2]);
+//! store_temp<felt252>([2]) -> ([2]);
+//! return([2]);
+//! ```
+//!
+//! The compiler will call `build_state_snapshot` right before each statement.
+//! Iterating every variable on the current scope and saving its value on a global
+//! static variable.
+//!
+//! At the end of the execution, the full trace dump can be retrieved, which
+//! looks something like this:
+//!
+//! ```json
+//! {
+//!   "states": [
+//!     {
+//!       "statementIdx": 0,
+//!       "preStateDump": {}
+//!     },
+//!     {
+//!       "statementIdx": 1,
+//!       "preStateDump": {
+//!         "0": { "Felt": "0xa" }
+//!       }
+//!     },
+//!     {
+//!       "statementIdx": 2,
+//!       "preStateDump": {
+//!         "0": { "Felt": "0xa" },
+//!         "1": { "Felt": "0x14" }
+//!       }
+//!     },
+//!     ...
+//!   ]
+//! }
+//! ```
+//!
+//! To support this feature even on the context of starknet contracts, then we
+//! must support building a trace dump for multiple programs at the same time, as
+//! starknet contracts can themselves call another contracts. To achieve this, we
+//! need two important elements.
+//!
+//! 1. The global static variable must me able to store multiple trace dumps at the
+//!    same time. We have a global static hashmap from trace id to trace dump content.
+//!    See `TRACE_DUMP`.
+//!
+//! 2. We must store somewhere the ID of the current trace dump, and update it
+//!    acordingly when switching between contract executors
+//!
+//! Both these elements must be properly setup before running the executor. See
+//! `cairo-native-run` for an example on how to do it. You can also check on
+//! this file's integration tests.
 
 use std::collections::HashMap;
 
