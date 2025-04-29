@@ -423,6 +423,7 @@ pub fn libfunc_to_name(value: &CoreConcreteLibfunc) -> &'static str {
         CoreConcreteLibfunc::Felt252SquashedDict(_) => todo!(),
         CoreConcreteLibfunc::Trace(_) => todo!(),
         CoreConcreteLibfunc::QM31(_) => todo!(),
+        CoreConcreteLibfunc::UnsafePanic(_) => todo!(),
     }
 }
 

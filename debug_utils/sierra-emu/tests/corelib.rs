@@ -151,24 +151,24 @@ fn trace_to_run_result(trace: ProgramTrace) -> RunResultValue {
                     match &**payload {
                         Value::Struct(fields) => {
                             for field in fields {
-                                let felt = value_to_felt(&field);
+                                let felt = value_to_felt(field);
                                 felts.extend(felt);
                             }
                         }
                         _ => panic!("unsuported return value in cairo-native"),
                     }
                 } else {
-                    felts.extend(value_to_felt(&*payload));
+                    felts.extend(value_to_felt(payload));
                 }
 
                 is_success
             } else {
-                felts.extend(value_to_felt(&outer_value));
+                felts.extend(value_to_felt(outer_value));
                 true
             }
         }
         x => {
-            felts.extend(value_to_felt(&x));
+            felts.extend(value_to_felt(x));
             true
         }
     };

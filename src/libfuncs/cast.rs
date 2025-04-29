@@ -399,7 +399,7 @@ mod test {
 
     lazy_static! {
         static ref DOWNCAST: (String, Program) = load_cairo! {
-            use core::integer::downcast;
+            extern const fn downcast<FromType, ToType>( x: FromType, ) -> Option<ToType> implicits(RangeCheck) nopanic;
 
             fn run_test(
                 v8: u8, v16: u16, v32: u32, v64: u64, v128: u128
@@ -420,7 +420,7 @@ mod test {
             }
         };
         static ref UPCAST: (String, Program) = load_cairo! {
-            use core::integer::upcast;
+            extern const fn upcast<FromType, ToType>(x: FromType) -> ToType nopanic;
 
             fn run_test(
                 v8: u8, v16: u16, v32: u32, v64: u64, v128: u128, v248: bytes31
