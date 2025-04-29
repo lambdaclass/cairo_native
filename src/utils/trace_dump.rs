@@ -41,10 +41,10 @@ pub fn build_state_snapshot(
 
         let layout = value_type.layout(registry).unwrap();
 
-        let ptr_value = block
+        let value_ptr = block
             .alloca1(context, location, value.r#type(), layout.align())
             .unwrap();
-        block.store(context, location, ptr_value, *value).unwrap();
+        block.store(context, location, value_ptr, *value).unwrap();
 
         trace_dump
             .build_state(
@@ -53,7 +53,7 @@ pub fn build_state_snapshot(
                 block,
                 var_id,
                 value_type_id,
-                ptr_value,
+                value_ptr,
                 location,
             )
             .unwrap();
