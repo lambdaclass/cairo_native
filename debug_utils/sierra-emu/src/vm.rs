@@ -23,7 +23,6 @@ use cairo_lang_starknet_classes::{
     contract_class::ContractEntryPoints,
 };
 use cairo_lang_utils::ordered_hash_map::OrderedHashMap;
-use num_traits::CheckedSub;
 use smallvec::{smallvec, SmallVec};
 use starknet_types_core::felt::Felt;
 use std::{cmp::Ordering, fmt::Debug, sync::Arc};

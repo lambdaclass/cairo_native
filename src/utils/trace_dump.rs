@@ -155,7 +155,7 @@ mod tests {
 
         let initial_gas = u64::MAX;
         let args = [];
-        vm.call_program(&entrypoint_function, initial_gas, args.into_iter());
+        vm.call_program(entrypoint_function, initial_gas, args.into_iter());
 
         let syscall_handler = &mut StubSyscallHandler::default();
         let emu_trace = vm.run_with_trace(syscall_handler);
