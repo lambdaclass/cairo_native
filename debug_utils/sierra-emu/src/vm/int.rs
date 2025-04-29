@@ -1,3 +1,5 @@
+use std::fmt::Debug;
+
 use cairo_lang_sierra::{
     extensions::{
         core::{CoreLibfunc, CoreType, CoreTypeConcrete},
@@ -58,10 +60,14 @@ fn apply_wrapping_op(
     rhs: BigInt,
     op: IntOperator,
 ) -> (BigInt, usize) {
-    fn wrapping<T>(lhs: T, rhs: T, op: IntOperator) -> (BigInt, usize)
+    fn wrapping<T>(lhs: BigInt, rhs: BigInt, op: IntOperator) -> (BigInt, usize)
     where
-        T: OverflowingAdd + OverflowingSub + Into<BigInt>,
+        T: OverflowingAdd + OverflowingSub + Into<BigInt> + TryFrom<BigInt>,
+        <T as TryFrom<BigInt>>::Error: Debug,
     {
+        let lhs: T = lhs.try_into().unwrap();
+        let rhs: T = rhs.try_into().unwrap();
+
         let (res, ovf) = match op {
             IntOperator::OverflowingAdd => OverflowingAdd::overflowing_add(&lhs, &rhs),
             IntOperator::OverflowingSub => OverflowingSub::overflowing_sub(&lhs, &rhs),
@@ -71,36 +77,16 @@ fn apply_wrapping_op(
     }
 
     match ty {
-        CoreTypeConcrete::Sint8(_) => {
-            wrapping::<i8>(lhs.try_into().unwrap(), rhs.try_into().unwrap(), op)
-        }
-        CoreTypeConcrete::Sint16(_) => {
-            wrapping::<i16>(lhs.try_into().unwrap(), rhs.try_into().unwrap(), op)
-        }
-        CoreTypeConcrete::Sint32(_) => {
-            wrapping::<i32>(lhs.try_into().unwrap(), rhs.try_into().unwrap(), op)
-        }
-        CoreTypeConcrete::Sint64(_) => {
-            wrapping::<i64>(lhs.try_into().unwrap(), rhs.try_into().unwrap(), op)
-        }
-        CoreTypeConcrete::Sint128(_) => {
-            wrapping::<i128>(lhs.try_into().unwrap(), rhs.try_into().unwrap(), op)
-        }
-        CoreTypeConcrete::Uint8(_) => {
-            wrapping::<u8>(lhs.try_into().unwrap(), rhs.try_into().unwrap(), op)
-        }
-        CoreTypeConcrete::Uint16(_) => {
-            wrapping::<u16>(lhs.try_into().unwrap(), rhs.try_into().unwrap(), op)
-        }
-        CoreTypeConcrete::Uint32(_) => {
-            wrapping::<u32>(lhs.try_into().unwrap(), rhs.try_into().unwrap(), op)
-        }
-        CoreTypeConcrete::Uint64(_) => {
-            wrapping::<u64>(lhs.try_into().unwrap(), rhs.try_into().unwrap(), op)
-        }
-        CoreTypeConcrete::Uint128(_) => {
-            wrapping::<u128>(lhs.try_into().unwrap(), rhs.try_into().unwrap(), op)
-        }
+        CoreTypeConcrete::Sint8(_) => wrapping::<u8>(lhs, rhs, op),
+        CoreTypeConcrete::Sint16(_) => wrapping::<i16>(lhs, rhs, op),
+        CoreTypeConcrete::Sint32(_) => wrapping::<i32>(lhs, rhs, op),
+        CoreTypeConcrete::Sint64(_) => wrapping::<i64>(lhs, rhs, op),
+        CoreTypeConcrete::Sint128(_) => wrapping::<i128>(lhs, rhs, op),
+        CoreTypeConcrete::Uint8(_) => wrapping::<u8>(lhs, rhs, op),
+        CoreTypeConcrete::Uint16(_) => wrapping::<u16>(lhs, rhs, op),
+        CoreTypeConcrete::Uint32(_) => wrapping::<u32>(lhs, rhs, op),
+        CoreTypeConcrete::Uint64(_) => wrapping::<u64>(lhs, rhs, op),
+        CoreTypeConcrete::Uint128(_) => wrapping::<u128>(lhs, rhs, op),
         _ => panic!("Found a non-numeric type"),
     }
 }
