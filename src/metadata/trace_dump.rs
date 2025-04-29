@@ -264,7 +264,10 @@ pub mod trace_dump_runtime {
         value_ptr: NonNull<()>,
     ) {
         let mut trace_dump = TRACE_DUMP.lock().unwrap();
-        let trace_dump = trace_dump.get_mut(&trace_id).unwrap();
+        let Some(trace_dump) = trace_dump.get_mut(&trace_id) else {
+            eprintln!("Could not find trace dump!");
+            return;
+        };
 
         let type_id = ConcreteTypeId::new(type_id);
         let value = read_value_ptr(
@@ -279,7 +282,10 @@ pub mod trace_dump_runtime {
 
     pub unsafe extern "C" fn push_state(trace_id: u64, statement_idx: u64) {
         let mut trace_dump = TRACE_DUMP.lock().unwrap();
-        let trace_dump = trace_dump.get_mut(&trace_id).unwrap();
+        let Some(trace_dump) = trace_dump.get_mut(&trace_id) else {
+            eprintln!("Could not find trace dump!");
+            return;
+        };
 
         let mut items = OrderedHashMap::default();
         swap(&mut items, &mut trace_dump.state);
