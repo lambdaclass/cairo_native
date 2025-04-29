@@ -359,3 +359,18 @@ jobs:
     - name: Run tests
       working-directory: ./debug_utils/sierra-emu
       run: make test
+  
+  build-sierra2casm-dbg:
+    name: Build sierra2casm-dbg
+    runs-on: ubuntu-latest
+
+    steps:
+    - uses: actions/checkout@v4
+    - name: Retreive cached dependecies
+      uses: Swatinem/rust-cache@v2
+    - name: Build
+      working-directory: ./debug_utils/sierra2casm-dbg
+      run: cargo build --all-features --verbose
+    - name: Run tests
+      working-directory: ./debug_utils/sierra2casm-dbg
+      run: cargo test
