@@ -9,15 +9,15 @@ readme = "README.md"
 keywords = ["starknet", "cairo", "compiler", "mlir"]
 
 [dependencies]
-cairo-lang-compiler = "=2.12.0-dev.1"
-cairo-lang-filesystem = "=2.12.0-dev.1"
-cairo-lang-runner = "=2.12.0-dev.1"
-cairo-lang-sierra = "=2.12.0-dev.1"
-cairo-lang-sierra-to-casm = "=2.12.0-dev.1"
-cairo-lang-sierra-ap-change = "=2.12.0-dev.1"
-cairo-lang-sierra-gas = "=2.12.0-dev.1"
-cairo-lang-starknet-classes = "=2.12.0-dev.1"
-cairo-lang-utils = "=2.12.0-dev.1"
+cairo-lang-compiler.workspace = true
+cairo-lang-filesystem.workspace = true
+cairo-lang-runner.workspace = true
+cairo-lang-sierra.workspace = true
+cairo-lang-sierra-to-casm.workspace = true
+cairo-lang-sierra-ap-change.workspace = true
+cairo-lang-sierra-gas.workspace = true
+cairo-lang-starknet-classes.workspace = true
+cairo-lang-utils.workspace = true
 clap = { version = "4.5.26", features = ["derive"] }
 k256 = "0.13.4"
 keccak = "0.1.5"
@@ -39,5 +39,5 @@ tracing = "0.1.41"
 tracing-subscriber = { version = "0.3.18", features = ["env-filter"] }
 
 [dev-dependencies]
-cairo-lang-compiler = "=2.12.0-dev.1"
-cairo-lang-starknet = "=2.12.0-dev.1"
+cairo-lang-compiler.workspace = true
+cairo-lang-starknet.workspace = true
