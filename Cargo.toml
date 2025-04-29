@@ -55,6 +55,7 @@ with-cheatcode = []
 with-debug-utils = []
 with-mem-tracing = []
 with-segfault-catcher = []
+with-trace-dump = []
 
 # the aquamarine dep is only used in docs and cannot be detected as used by cargo udeps
 [package.metadata.cargo-udeps.ignore]
