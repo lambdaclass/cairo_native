@@ -1071,6 +1071,7 @@ dependencies = [
  "serde",
  "serde_json",
  "sha2",
+ "sierra-emu",
  "starknet-curve",
  "starknet-types-core",
  "stats_alloc",

@@ -55,7 +55,7 @@ with-cheatcode = []
 with-debug-utils = []
 with-mem-tracing = []
 with-segfault-catcher = []
-with-trace-dump = []
+with-trace-dump = ["dep:sierra-emu"]
 
 # the aquamarine dep is only used in docs and cannot be detected as used by cargo udeps
 [package.metadata.cargo-udeps.ignore]
@@ -90,6 +90,7 @@ tempfile = "3.15.0"
 thiserror = "2.0.9"
 tracing = "0.1"
 utf8_iter = "1.0.4"
+sierra-emu = { path = "debug_utils/sierra-emu", optional = true }
 
 
 # CLI dependencies
