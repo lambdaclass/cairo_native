@@ -13,7 +13,7 @@ endif
 
 usage:
 	@echo "Usage:"
-	@echo "    deps:		    Installs the necesarry dependencies."
+	@echo "    deps:         Installs the necesarry dependencies."
 	@echo "    build:           Builds the cairo-native library and binaries."
 	@echo "    check:           Checks format and lints."
 	@echo "    test:            Runs all tests."
