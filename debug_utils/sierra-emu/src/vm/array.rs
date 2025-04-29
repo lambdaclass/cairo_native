@@ -33,7 +33,9 @@ pub fn eval(
         ArrayConcreteLibfunc::SnapshotMultiPopFront(info) => {
             eval_snapshot_multi_pop_front(registry, info, args)
         }
-        ArrayConcreteLibfunc::SnapshotMultiPopBack(info) => eval_snapshot_multi_pop_back(registry, info, args),
+        ArrayConcreteLibfunc::SnapshotMultiPopBack(info) => {
+            eval_snapshot_multi_pop_back(registry, info, args)
+        }
     }
 }
 
