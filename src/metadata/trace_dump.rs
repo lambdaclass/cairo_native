@@ -227,7 +227,7 @@ pub mod trace_dump_runtime {
         sync::{LazyLock, Mutex},
     };
 
-    use crate::starknet::ArrayAbi;
+    use crate::{starknet::ArrayAbi, types::TypeBuilder};
 
     use crate::runtime::FeltDict;
 
@@ -238,21 +238,14 @@ pub mod trace_dump_runtime {
         pub trace: ProgramTrace,
         state: OrderedHashMap<VarId, Value>,
         registry: ProgramRegistry<CoreType, CoreLibfunc>,
-
-        get_layout: fn(&CoreTypeConcrete, &ProgramRegistry<CoreType, CoreLibfunc>) -> Layout,
     }
 
     impl TraceDump {
-        pub fn new(
-            registry: ProgramRegistry<CoreType, CoreLibfunc>,
-            get_layout: fn(&CoreTypeConcrete, &ProgramRegistry<CoreType, CoreLibfunc>) -> Layout,
-        ) -> Self {
+        pub fn new(registry: ProgramRegistry<CoreType, CoreLibfunc>) -> Self {
             Self {
                 trace: ProgramTrace::default(),
                 state: OrderedHashMap::default(),
                 registry,
-
-                get_layout,
             }
         }
     }
@@ -270,12 +263,7 @@ pub mod trace_dump_runtime {
         };
 
         let type_id = ConcreteTypeId::new(type_id);
-        let value = read_value_ptr(
-            &trace_dump.registry,
-            &type_id,
-            value_ptr,
-            trace_dump.get_layout,
-        );
+        let value = read_value_ptr(&trace_dump.registry, &type_id, value_ptr);
 
         trace_dump.state.insert(VarId::new(var_id), value);
     }
@@ -299,7 +287,6 @@ pub mod trace_dump_runtime {
         registry: &ProgramRegistry<CoreType, CoreLibfunc>,
         type_id: &ConcreteTypeId,
         value_ptr: NonNull<()>,
-        get_layout: fn(&CoreTypeConcrete, &ProgramRegistry<CoreType, CoreLibfunc>) -> Layout,
     ) -> Value {
         let type_info = registry.get_type(type_id).unwrap();
         match type_info {
@@ -391,17 +378,18 @@ pub mod trace_dump_runtime {
             CoreTypeConcrete::Uninitialized(info) => Value::Uninitialized {
                 ty: info.ty.clone(),
             },
-            CoreTypeConcrete::Box(info) => read_value_ptr(
-                registry,
-                &info.ty,
-                value_ptr.cast::<NonNull<()>>().read(),
-                get_layout,
-            ),
+            CoreTypeConcrete::Box(info) => {
+                read_value_ptr(registry, &info.ty, value_ptr.cast::<NonNull<()>>().read())
+            }
             CoreTypeConcrete::Array(info) => {
                 let array = value_ptr.cast::<ArrayAbi<()>>().read();
 
-                let layout =
-                    get_layout(registry.get_type(&info.ty).unwrap(), registry).pad_to_align();
+                let layout = registry
+                    .get_type(&info.ty)
+                    .unwrap()
+                    .layout(registry)
+                    .unwrap()
+                    .pad_to_align();
 
                 let mut data = Vec::with_capacity((array.until - array.since) as usize);
 
@@ -414,7 +402,6 @@ pub mod trace_dump_runtime {
                             registry,
                             &info.ty,
                             NonNull::new(data_ptr.byte_add(layout.size() * index)).unwrap(),
-                            get_layout,
                         ));
                     }
                 }
@@ -430,13 +417,13 @@ pub mod trace_dump_runtime {
                 let mut members = Vec::with_capacity(info.members.len());
                 for member_ty in &info.members {
                     let type_info = registry.get_type(member_ty).unwrap();
-                    let member_layout = get_layout(type_info, registry);
+                    let member_layout = type_info.layout(registry).unwrap();
 
                     let offset;
                     (layout, offset) = layout.extend(member_layout).unwrap();
 
                     let current_ptr = value_ptr.byte_add(offset);
-                    members.push(read_value_ptr(registry, member_ty, current_ptr, get_layout));
+                    members.push(read_value_ptr(registry, member_ty, current_ptr));
                 }
 
                 Value::Struct(members)
@@ -469,17 +456,19 @@ pub mod trace_dump_runtime {
 
                 let payload = {
                     let (_, offset) = layout
-                        .extend(get_layout(
-                            registry.get_type(&info.variants[tag_value]).unwrap(),
-                            registry,
-                        ))
+                        .extend(
+                            registry
+                                .get_type(&info.variants[tag_value])
+                                .unwrap()
+                                .layout(registry)
+                                .unwrap(),
+                        )
                         .unwrap();
 
                     read_value_ptr(
                         registry,
                         &info.variants[tag_value],
                         value_ptr.byte_add(offset),
-                        get_layout,
                     )
                 };
 
@@ -491,7 +480,7 @@ pub mod trace_dump_runtime {
             }
 
             CoreTypeConcrete::NonZero(info) | CoreTypeConcrete::Snapshot(info) => {
-                read_value_ptr(registry, &info.ty, value_ptr, get_layout)
+                read_value_ptr(registry, &info.ty, value_ptr)
             }
 
             // Builtins and other unit types:
@@ -651,7 +640,7 @@ pub mod trace_dump_runtime {
             CoreTypeConcrete::Nullable(info) => {
                 let inner_ptr = value_ptr.cast::<*mut ()>().read();
                 match NonNull::new(inner_ptr) {
-                    Some(inner_ptr) => read_value_ptr(registry, &info.ty, inner_ptr, get_layout),
+                    Some(inner_ptr) => read_value_ptr(registry, &info.ty, inner_ptr),
                     None => Value::Uninitialized {
                         ty: info.ty.clone(),
                     },
@@ -669,9 +658,7 @@ pub mod trace_dump_runtime {
                             .elements
                             .byte_offset((value.layout.size() * i) as isize);
                         let v = match NonNull::new(p) {
-                            Some(value_ptr) => {
-                                read_value_ptr(registry, &info.ty, value_ptr.cast(), get_layout)
-                            }
+                            Some(value_ptr) => read_value_ptr(registry, &info.ty, value_ptr.cast()),
                             None => Value::Uninitialized {
                                 ty: info.ty.clone(),
                             },
@@ -700,9 +687,7 @@ pub mod trace_dump_runtime {
                             .elements
                             .byte_offset((value.dict.layout.size() * i) as isize);
                         let v = match NonNull::new(p) {
-                            Some(value_ptr) => {
-                                read_value_ptr(registry, &info.ty, value_ptr.cast(), get_layout)
-                            }
+                            Some(value_ptr) => read_value_ptr(registry, &info.ty, value_ptr.cast()),
                             None => Value::Uninitialized {
                                 ty: info.ty.clone(),
                             },

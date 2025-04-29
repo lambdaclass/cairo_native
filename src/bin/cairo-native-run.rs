@@ -143,14 +143,10 @@ fn main() -> anyhow::Result<()> {
     {
         use cairo_lang_sierra::program_registry::ProgramRegistry;
         use cairo_native::metadata::trace_dump::trace_dump_runtime::{TraceDump, TRACE_DUMP};
-        use cairo_native::types::TypeBuilder;
 
         TRACE_DUMP.lock().unwrap().insert(
             0,
-            TraceDump::new(
-                ProgramRegistry::new(&sierra_program).unwrap(),
-                |ty, registry| ty.layout(registry).unwrap(),
-            ),
+            TraceDump::new(ProgramRegistry::new(&sierra_program).unwrap()),
         );
     }
 

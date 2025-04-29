@@ -80,7 +80,6 @@ mod tests {
             trace_dump_runtime::{TraceDump, TRACE_DUMP},
             TraceBinding,
         },
-        types::TypeBuilder,
         utils::test::load_cairo,
         OptLevel,
     };
@@ -131,12 +130,10 @@ mod tests {
             unsafe { *trace_id = 0 };
         }
 
-        TRACE_DUMP.lock().unwrap().insert(
-            0,
-            TraceDump::new(ProgramRegistry::new(&program).unwrap(), |ty, registry| {
-                ty.layout(registry).unwrap()
-            }),
-        );
+        TRACE_DUMP
+            .lock()
+            .unwrap()
+            .insert(0, TraceDump::new(ProgramRegistry::new(&program).unwrap()));
 
         executor
             .invoke_dynamic(&entrypoint_function.id, &[], Some(u64::MAX))
