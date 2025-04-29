@@ -19,10 +19,10 @@ pub fn eval(
     match selector {
         ArrayConcreteLibfunc::New(info) => eval_new(registry, info, args),
         ArrayConcreteLibfunc::SpanFromTuple(info) => eval_span_from_tuple(registry, info, args),
-        ArrayConcreteLibfunc::TupleFromSpan(_) => todo!(),
+        ArrayConcreteLibfunc::TupleFromSpan(info) => eval_tuple_from_span(registry, info, args),
         ArrayConcreteLibfunc::Append(info) => eval_append(registry, info, args),
         ArrayConcreteLibfunc::PopFront(info) => eval_pop_front(registry, info, args),
-        ArrayConcreteLibfunc::PopFrontConsume(_) => todo!(),
+        ArrayConcreteLibfunc::PopFrontConsume(info) => eval_pop_front_consume(registry, info, args),
         ArrayConcreteLibfunc::Get(info) => eval_get(registry, info, args),
         ArrayConcreteLibfunc::Slice(info) => eval_slice(registry, info, args),
         ArrayConcreteLibfunc::Len(info) => eval_len(registry, info, args),
@@ -33,7 +33,7 @@ pub fn eval(
         ArrayConcreteLibfunc::SnapshotMultiPopFront(info) => {
             eval_snapshot_multi_pop_front(registry, info, args)
         }
-        ArrayConcreteLibfunc::SnapshotMultiPopBack(_) => todo!(),
+        ArrayConcreteLibfunc::SnapshotMultiPopBack(info) => eval_snapshot_multi_pop_back(registry, info, args),
     }
 }
 
@@ -59,6 +59,30 @@ fn eval_span_from_tuple(
     };
 
     EvalAction::NormalBranch(0, smallvec![value])
+}
+
+fn eval_tuple_from_span(
+    registry: &ProgramRegistry<CoreType, CoreLibfunc>,
+    info: &SignatureAndTypeConcreteLibfunc,
+    args: Vec<Value>,
+) -> EvalAction {
+    let [Value::Array { data, .. }]: [Value; 1] = args.try_into().unwrap() else {
+        panic!()
+    };
+
+    let tuple_len = {
+        let CoreTypeConcrete::Struct(param) = registry.get_type(&info.ty).unwrap() else {
+            panic!()
+        };
+
+        param.members.len()
+    };
+
+    if data.len() == tuple_len {
+        EvalAction::NormalBranch(0, smallvec![Value::Struct(data)])
+    } else {
+        EvalAction::NormalBranch(1, smallvec![])
+    }
 }
 
 pub fn eval_new(
@@ -175,6 +199,24 @@ pub fn eval_pop_front(
     }
 }
 
+pub fn eval_pop_front_consume(
+    _registry: &ProgramRegistry<CoreType, CoreLibfunc>,
+    _info: &SignatureAndTypeConcreteLibfunc,
+    args: Vec<Value>,
+) -> EvalAction {
+    let [Value::Array { mut data, ty }]: [Value; 1] = args.try_into().unwrap() else {
+        panic!()
+    };
+
+    if !data.is_empty() {
+        let new_data = data.split_off(1);
+        let value = data[0].clone();
+        EvalAction::NormalBranch(0, smallvec![Value::Array { data: new_data, ty }, value])
+    } else {
+        EvalAction::NormalBranch(1, smallvec![])
+    }
+}
+
 pub fn eval_snapshot_pop_front(
     registry: &ProgramRegistry<CoreType, CoreLibfunc>,
     info: &SignatureAndTypeConcreteLibfunc,
@@ -228,6 +270,32 @@ fn eval_snapshot_multi_pop_front(
 
     if data.len() >= popped_cty.members.len() {
         let new_data = data.split_off(popped_cty.members.len());
+        let value = Value::Struct(data);
+        assert!(value.is(registry, &info.popped_ty));
+        EvalAction::NormalBranch(
+            0,
+            smallvec![rangecheck, Value::Array { data: new_data, ty }, value],
+        )
+    } else {
+        EvalAction::NormalBranch(1, smallvec![rangecheck, Value::Array { data, ty }])
+    }
+}
+
+fn eval_snapshot_multi_pop_back(
+    registry: &ProgramRegistry<CoreType, CoreLibfunc>,
+    info: &cairo_lang_sierra::extensions::array::ConcreteMultiPopLibfunc,
+    args: Vec<Value>,
+) -> EvalAction {
+    let [rangecheck, Value::Array { mut data, ty }]: [Value; 2] = args.try_into().unwrap() else {
+        panic!()
+    };
+
+    let CoreTypeConcrete::Struct(popped_cty) = registry.get_type(&info.popped_ty).unwrap() else {
+        panic!()
+    };
+
+    if data.len() >= popped_cty.members.len() {
+        let new_data = data.split_off(data.len() - popped_cty.members.len());
         let value = Value::Struct(data);
         assert!(value.is(registry, &info.popped_ty));
         EvalAction::NormalBranch(
