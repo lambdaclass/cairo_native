@@ -68,6 +68,10 @@ pub enum Value {
     U32(u32),
     U64(u64),
     U8(u8),
+    IntRange {
+        x: Box<Value>,
+        y: Box<Value>,
+    },
     Uninitialized {
         ty: ConcreteTypeId,
     },
