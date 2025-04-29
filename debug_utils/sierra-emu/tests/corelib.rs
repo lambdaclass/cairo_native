@@ -1,4 +1,4 @@
-use std::{path::Path, sync::Arc, u64};
+use std::{path::Path, sync::Arc};
 
 use cairo_lang_compiler::{
     db::RootDatabase,
