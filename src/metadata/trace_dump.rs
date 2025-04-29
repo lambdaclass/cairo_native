@@ -263,7 +263,7 @@ pub mod trace_dump_runtime {
         };
 
         let type_id = ConcreteTypeId::new(type_id);
-        let value = read_value_ptr(&trace_dump.registry, &type_id, value_ptr);
+        let value = value_from_ptr(&trace_dump.registry, &type_id, value_ptr);
 
         trace_dump.state.insert(VarId::new(var_id), value);
     }
@@ -283,7 +283,8 @@ pub mod trace_dump_runtime {
             .push(StateDump::new(StatementIdx(statement_idx as usize), items));
     }
 
-    unsafe fn read_value_ptr(
+    /// TODO: Can we reuse `cairo_native::Value::from_ptr`?
+    unsafe fn value_from_ptr(
         registry: &ProgramRegistry<CoreType, CoreLibfunc>,
         type_id: &ConcreteTypeId,
         value_ptr: NonNull<()>,
@@ -379,7 +380,7 @@ pub mod trace_dump_runtime {
                 ty: info.ty.clone(),
             },
             CoreTypeConcrete::Box(info) => {
-                read_value_ptr(registry, &info.ty, value_ptr.cast::<NonNull<()>>().read())
+                value_from_ptr(registry, &info.ty, value_ptr.cast::<NonNull<()>>().read())
             }
             CoreTypeConcrete::Array(info) => {
                 let array = value_ptr.cast::<ArrayAbi<()>>().read();
@@ -398,7 +399,7 @@ pub mod trace_dump_runtime {
                     for index in (array.since)..array.until {
                         let index = index as usize;
 
-                        data.push(read_value_ptr(
+                        data.push(value_from_ptr(
                             registry,
                             &info.ty,
                             NonNull::new(data_ptr.byte_add(layout.size() * index)).unwrap(),
@@ -423,7 +424,7 @@ pub mod trace_dump_runtime {
                     (layout, offset) = layout.extend(member_layout).unwrap();
 
                     let current_ptr = value_ptr.byte_add(offset);
-                    members.push(read_value_ptr(registry, member_ty, current_ptr));
+                    members.push(value_from_ptr(registry, member_ty, current_ptr));
                 }
 
                 Value::Struct(members)
@@ -465,7 +466,7 @@ pub mod trace_dump_runtime {
                         )
                         .unwrap();
 
-                    read_value_ptr(
+                    value_from_ptr(
                         registry,
                         &info.variants[tag_value],
                         value_ptr.byte_add(offset),
@@ -480,7 +481,7 @@ pub mod trace_dump_runtime {
             }
 
             CoreTypeConcrete::NonZero(info) | CoreTypeConcrete::Snapshot(info) => {
-                read_value_ptr(registry, &info.ty, value_ptr)
+                value_from_ptr(registry, &info.ty, value_ptr)
             }
 
             // Builtins and other unit types:
@@ -640,7 +641,7 @@ pub mod trace_dump_runtime {
             CoreTypeConcrete::Nullable(info) => {
                 let inner_ptr = value_ptr.cast::<*mut ()>().read();
                 match NonNull::new(inner_ptr) {
-                    Some(inner_ptr) => read_value_ptr(registry, &info.ty, inner_ptr),
+                    Some(inner_ptr) => value_from_ptr(registry, &info.ty, inner_ptr),
                     None => Value::Uninitialized {
                         ty: info.ty.clone(),
                     },
@@ -658,7 +659,7 @@ pub mod trace_dump_runtime {
                             .elements
                             .byte_offset((value.layout.size() * i) as isize);
                         let v = match NonNull::new(p) {
-                            Some(value_ptr) => read_value_ptr(registry, &info.ty, value_ptr.cast()),
+                            Some(value_ptr) => value_from_ptr(registry, &info.ty, value_ptr.cast()),
                             None => Value::Uninitialized {
                                 ty: info.ty.clone(),
                             },
@@ -687,7 +688,7 @@ pub mod trace_dump_runtime {
                             .elements
                             .byte_offset((value.dict.layout.size() * i) as isize);
                         let v = match NonNull::new(p) {
-                            Some(value_ptr) => read_value_ptr(registry, &info.ty, value_ptr.cast()),
+                            Some(value_ptr) => value_from_ptr(registry, &info.ty, value_ptr.cast()),
                             None => Value::Uninitialized {
                                 ty: info.ty.clone(),
                             },
