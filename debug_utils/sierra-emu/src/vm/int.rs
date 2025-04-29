@@ -13,7 +13,7 @@ use cairo_lang_sierra::{
     },
     program_registry::ProgramRegistry,
 };
-use num_bigint::{BigInt, BigUint, ToBigInt};
+use num_bigint::BigInt;
 use num_traits::{
     ops::overflowing::{OverflowingAdd, OverflowingSub},
     ToPrimitive,
@@ -22,17 +22,22 @@ use smallvec::smallvec;
 use starknet_crypto::Felt;
 
 use crate::{
-    utils::{get_numberic_args_as_bigints, integer_range}, Value
+    utils::{get_numberic_args_as_bigints, integer_range},
+    Value,
 };
 
 use super::EvalAction;
 
-fn get_int_value_from_type(registry: &ProgramRegistry<CoreType, CoreLibfunc>, ty: &CoreTypeConcrete, value: BigInt) -> Value {
+fn get_int_value_from_type(
+    registry: &ProgramRegistry<CoreType, CoreLibfunc>,
+    ty: &CoreTypeConcrete,
+    value: BigInt,
+) -> Value {
     match ty {
         CoreTypeConcrete::NonZero(info) => {
             let ty = registry.get_type(&info.ty).unwrap();
             get_int_value_from_type(registry, ty, value)
-        },
+        }
         CoreTypeConcrete::Sint8(_) => Value::I8(value.to_i8().unwrap()),
         CoreTypeConcrete::Sint16(_) => Value::I16(value.to_i16().unwrap()),
         CoreTypeConcrete::Sint32(_) => Value::I32(value.to_i32().unwrap()),
@@ -124,7 +129,6 @@ pub fn eval_i128(
     selector: &Sint128Concrete,
     args: Vec<Value>,
 ) -> EvalAction {
-
     match selector {
         Sint128Concrete::Const(info) => eval_const(registry, info, args),
         Sint128Concrete::Diff(info) => eval_diff(registry, info, args),
@@ -166,7 +170,10 @@ fn eval_const<T: IntTraits>(
         .get_type(&info.signature.branch_signatures[0].vars[0].ty)
         .unwrap();
 
-    EvalAction::NormalBranch(0, smallvec![get_int_value_from_type(registry, int_ty, info.c.into())])
+    EvalAction::NormalBranch(
+        0,
+        smallvec![get_int_value_from_type(registry, int_ty, info.c.into())],
+    )
 }
 
 fn eval_bitwise(
@@ -265,8 +272,6 @@ pub fn eval_from_felt(
     else {
         panic!()
     };
-    let prime = Felt::prime();
-    let half_prime = &prime / BigUint::from(2u8);
 
     let int_ty = registry
         .get_type(&info.signature.branch_signatures[0].vars[1].ty)
@@ -274,15 +279,9 @@ pub fn eval_from_felt(
 
     let range = integer_range(int_ty, registry);
 
-    let value = {
-        if value_felt.to_biguint() > half_prime {
-            (prime - value_felt.to_biguint()).to_bigint().unwrap() * BigInt::from(-1)
-        } else {
-            value_felt.to_bigint()
-        }
-    };
+    let value = value_felt.to_bigint();
 
-    if value > range.lower || value <= range.upper {
+    if value > range.lower && value <= range.upper {
         let value = get_int_value_from_type(registry, int_ty, value);
         EvalAction::NormalBranch(0, smallvec![range_check, value])
     } else {
@@ -304,7 +303,10 @@ fn eval_is_zero(
     if value == 0.into() {
         EvalAction::NormalBranch(0, smallvec![])
     } else {
-        EvalAction::NormalBranch(1, smallvec![get_int_value_from_type(registry, int_ty, value)])
+        EvalAction::NormalBranch(
+            1,
+            smallvec![get_int_value_from_type(registry, int_ty, value)],
+        )
     }
 }
 
