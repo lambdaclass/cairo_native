@@ -1,4 +1,4 @@
-use std::{path::Path, sync::Arc, u64};
+use std::{path::Path, sync::Arc};
 
 use cairo_lang_compiler::{
     db::RootDatabase,
@@ -224,12 +224,12 @@ fn display_results(results: &[TestStatus]) {
 
     if failed > 0 {
         println!(
-            "\n\ntest result: FAILED. {} passed; {} failed; {} filtered out;",
+            "\n\ntest result: FAILED. {} PASSED; {} FAILED; {} FILTERED OUT;",
             passed, failed, ignored
         );
     } else {
         println!(
-            "\n\ntest result: OK. {} passed; {} failed; {} filtered out;",
+            "\n\ntest result: OK. {} PASSED; {} FAILED; {} FILTERED OUT;",
             passed, failed, ignored
         );
     }
