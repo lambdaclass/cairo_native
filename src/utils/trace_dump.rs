@@ -63,3 +63,103 @@ pub fn build_state_snapshot(
         .build_push(context, module, block, statement_idx, location)
         .unwrap();
 }
+
+#[cfg(test)]
+mod tests {
+    use std::sync::Arc;
+
+    use cairo_lang_sierra::{program::Program, program_registry::ProgramRegistry};
+    use pretty_assertions_sorted::assert_eq_sorted;
+    use rstest::{fixture, rstest};
+    use sierra_emu::{starknet::StubSyscallHandler, VirtualMachine};
+
+    use crate::{
+        context::NativeContext,
+        executor::AotNativeExecutor,
+        metadata::trace_dump::{
+            trace_dump_runtime::{TraceDump, TRACE_DUMP},
+            TraceBinding,
+        },
+        types::TypeBuilder,
+        utils::test::load_cairo,
+        OptLevel,
+    };
+
+    #[fixture]
+    fn program() -> Program {
+        let (_, program) = load_cairo! {
+            use core::felt252;
+
+            fn main() -> felt252 {
+                let n = 10;
+                let result = fib(1, 1, n);
+                result
+            }
+
+            fn fib(a: felt252, b: felt252, n: felt252) -> felt252 {
+                match n {
+                    0 => a,
+                    _ => fib(b, a + b, n - 1),
+                }
+            }
+        };
+        program
+    }
+
+    #[rstest]
+    fn test_program(program: Program) {
+        let entrypoint_function = &program
+            .funcs
+            .iter()
+            .find(|x| {
+                x.id.debug_name
+                    .as_ref()
+                    .map(|x| x.contains("main"))
+                    .unwrap_or_default()
+            })
+            .unwrap()
+            .clone();
+
+        let native_context = NativeContext::new();
+        let module = native_context
+            .compile(&program, false, Some(Default::default()))
+            .expect("failed to compile context");
+        let executor = AotNativeExecutor::from_native_module(module, OptLevel::default()).unwrap();
+
+        if let Some(trace_id) = executor.find_symbol_ptr(TraceBinding::TraceId.symbol()) {
+            let trace_id = trace_id.cast::<u64>();
+            unsafe { *trace_id = 0 };
+        }
+
+        TRACE_DUMP.lock().unwrap().insert(
+            0,
+            TraceDump::new(ProgramRegistry::new(&program).unwrap(), |ty, registry| {
+                ty.layout(registry).unwrap()
+            }),
+        );
+
+        executor
+            .invoke_dynamic(&entrypoint_function.id, &[], Some(u64::MAX))
+            .unwrap();
+
+        let native_trace = TRACE_DUMP
+            .lock()
+            .unwrap()
+            .values()
+            .next()
+            .unwrap()
+            .trace
+            .clone();
+
+        let mut vm = VirtualMachine::new(Arc::new(program));
+
+        let initial_gas = u64::MAX;
+        let args = [];
+        vm.call_program(&entrypoint_function, initial_gas, args.into_iter());
+
+        let syscall_handler = &mut StubSyscallHandler::default();
+        let emu_trace = vm.run_with_trace(syscall_handler);
+
+        assert_eq_sorted!(emu_trace, native_trace);
+    }
+}
