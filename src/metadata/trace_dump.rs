@@ -257,10 +257,6 @@ pub mod trace_dump_runtime {
         }
     }
 
-    pub extern "C" fn get_trace_dump_ptr() -> *const Mutex<HashMap<u64, TraceDump>> {
-        &*TRACE_DUMP as *const _
-    }
-
     pub unsafe extern "C" fn add_to_state(
         trace_id: u64,
         var_id: u64,
