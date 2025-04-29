@@ -439,10 +439,6 @@ where
     fn try_get_function_ap_change(&self, _function_id: &FunctionId) -> Option<SierraApChange> {
         todo!()
     }
-
-    fn as_type_specialization_context(&self) -> &dyn TypeSpecializationContext {
-        self
-    }
 }
 
 impl<T> TypeSpecializationContext for SierraGeneratorWrapper<'_, T>
