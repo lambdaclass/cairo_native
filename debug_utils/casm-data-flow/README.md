@@ -13,7 +13,7 @@ First, we need to compile the contract:
 ../../cairo2/bin/starknet-sierra-compile programs/fibonacci_starknet.sierra.json programs/fibonacci_starknet.casm.json
 ```
 
-First, we need to execute the contract. In this example, we are using [our Cairo VM](https://github.com/lambdaclass/cairo-vm).
+Then, we execute the contract. In this example, we are using [our Cairo VM](https://github.com/lambdaclass/cairo-vm).
 
 ```bash
 cargo run --example run-contract -- programs/fibonacci_starknet.casm.json programs/fibonacci_starknet.memory programs/fibonacci_starknet.trace
