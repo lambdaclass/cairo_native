@@ -99,6 +99,7 @@ impl Value {
                     .map(|member| Value::default_for_type(registry, member))
                     .collect(),
             ),
+            CoreTypeConcrete::Nullable(info) => Value::default_for_type(registry, &info.ty),
             x => panic!("type {:?} has no default value implementation", x.info()),
         }
     }
@@ -108,6 +109,7 @@ impl Value {
         registry: &ProgramRegistry<CoreType, CoreLibfunc>,
         type_id: &ConcreteTypeId,
     ) -> bool {
+        type_to_name(type_id, registry);
         let ty = registry.get_type(type_id).unwrap();
         let res = match ty {
             CoreTypeConcrete::Array(info) => {
@@ -196,7 +198,9 @@ impl Value {
             CoreTypeConcrete::Uint128MulGuarantee(_) => matches!(self, Self::Unit),
             CoreTypeConcrete::Sint16(_) => matches!(self, Self::I16(_)),
             CoreTypeConcrete::Sint64(_) => matches!(self, Self::I64(_)),
-            CoreTypeConcrete::Nullable(info) => self.is(registry, &info.ty),
+            CoreTypeConcrete::Nullable(info) => {
+                matches!(self, Value::Null) || self.is(registry, &info.ty)
+            }
             CoreTypeConcrete::Uninitialized(_) => matches!(self, Self::Uninitialized { .. }),
             CoreTypeConcrete::Felt252DictEntry(info) => {
                 matches!(self, Self::FeltDictEntry { ty, .. } if *ty == info.ty)

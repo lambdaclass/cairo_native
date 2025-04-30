@@ -23,7 +23,9 @@ pub fn eval(
             eval_nullable_from_box(registry, info, args)
         }
         NullableConcreteLibfunc::MatchNullable(info) => eval_match_nullable(registry, info, args),
-        NullableConcreteLibfunc::ForwardSnapshot(_) => todo!(),
+        NullableConcreteLibfunc::ForwardSnapshot(info) => {
+            eval_forward_snapshot(registry, info, args)
+        }
     }
 }
 
@@ -42,11 +44,9 @@ fn eval_nullable_from_box(
     _info: &SignatureAndTypeConcreteLibfunc,
     args: Vec<Value>,
 ) -> EvalAction {
-    let [builtin @ Value::Unit, value]: [Value; 2] = args.try_into().unwrap() else {
-        panic!();
-    };
+    let [value]: [Value; 1] = args.try_into().unwrap();
 
-    EvalAction::NormalBranch(0, smallvec![builtin, value])
+    EvalAction::NormalBranch(0, smallvec![value])
 }
 
 fn eval_match_nullable(
@@ -61,4 +61,14 @@ fn eval_match_nullable(
     } else {
         EvalAction::NormalBranch(1, smallvec![value])
     }
+}
+
+fn eval_forward_snapshot(
+    _registry: &ProgramRegistry<CoreType, CoreLibfunc>,
+    _info: &SignatureAndTypeConcreteLibfunc,
+    args: Vec<Value>,
+) -> EvalAction {
+    let [value]: [Value; 1] = args.try_into().unwrap();
+
+    EvalAction::NormalBranch(0, smallvec![value])
 }
