@@ -19,6 +19,19 @@ impl ProgramTrace {
     pub fn push(&mut self, state: StateDump) {
         self.states.push(state);
     }
+
+    pub fn return_value(&self) -> Value {
+        self.states
+            .last()
+            .unwrap()
+            .items
+            .values()
+            .cloned()
+            .collect::<Vec<_>>()
+            .last()
+            .cloned()
+            .unwrap_or(Value::Unit)
+    }
 }
 
 #[derive(Clone, Debug, Eq, PartialEq)]
