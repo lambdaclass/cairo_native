@@ -249,7 +249,7 @@ fn eval_equal(
     EvalAction::NormalBranch((lhs == rhs) as usize, smallvec![])
 }
 
-pub fn eval_from_felt(
+fn eval_from_felt(
     registry: &ProgramRegistry<CoreType, CoreLibfunc>,
     info: &SignatureOnlyConcreteLibfunc,
     args: Vec<Value>,
@@ -351,7 +351,7 @@ fn eval_to_felt(
     EvalAction::NormalBranch(0, smallvec![Value::Felt(Felt::from(val))])
 }
 
-pub fn eval_widemul(
+fn eval_widemul(
     registry: &ProgramRegistry<CoreType, CoreLibfunc>,
     info: &SignatureOnlyConcreteLibfunc,
     args: Vec<Value>,
