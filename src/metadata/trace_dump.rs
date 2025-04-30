@@ -30,16 +30,16 @@ pub enum TraceBinding {
 impl TraceBinding {
     pub const fn symbol(self) -> &'static str {
         match self {
-            TraceBinding::State => "cairo_native__trace_dump__add_to_state",
-            TraceBinding::Push => "cairo_native__trace_dump__push_state",
+            TraceBinding::State => "cairo_native__trace_dump__add_variable_to_state",
+            TraceBinding::Push => "cairo_native__trace_dump__push_state_to_trace_dump",
             TraceBinding::TraceId => "cairo_native__trace_dump__trace_id",
         }
     }
 
     const fn function_ptr(self) -> *const () {
         match self {
-            TraceBinding::State => trace_dump_runtime::add_to_state as *const (),
-            TraceBinding::Push => trace_dump_runtime::push_state as *const (),
+            TraceBinding::State => trace_dump_runtime::add_variable_to_state as *const (),
+            TraceBinding::Push => trace_dump_runtime::push_state_to_trace_dump as *const (),
             // it has no function pointer, as its a global constant
             TraceBinding::TraceId => ptr::null(),
         }
@@ -234,8 +234,11 @@ pub mod trace_dump_runtime {
     pub static TRACE_DUMP: LazyLock<Mutex<HashMap<u64, TraceDump>>> =
         LazyLock::new(|| Mutex::new(HashMap::new()));
 
+    /// An in-progress trace dump for a particular execution
     pub struct TraceDump {
         pub trace: ProgramTrace,
+        /// Represents the latest state. All values are added to
+        /// this state until pushed to the trace.
         state: OrderedHashMap<VarId, Value>,
         registry: ProgramRegistry<CoreType, CoreLibfunc>,
     }
@@ -250,7 +253,11 @@ pub mod trace_dump_runtime {
         }
     }
 
-    pub unsafe extern "C" fn add_to_state(
+    /// Adds a new variable to the current state of the trace dump with the
+    /// given identifier.
+    ///
+    /// Receives a pointer to the value, even if the value is a pointer itself.
+    pub unsafe extern "C" fn add_variable_to_state(
         trace_id: u64,
         var_id: u64,
         type_id: u64,
@@ -268,7 +275,10 @@ pub mod trace_dump_runtime {
         trace_dump.state.insert(VarId::new(var_id), value);
     }
 
-    pub unsafe extern "C" fn push_state(trace_id: u64, statement_idx: u64) {
+    /// Pushes the latest state to the trace dump with the given identifier.
+    ///
+    /// It is called after all variables have been added with `add_variable_to_state`.
+    pub unsafe extern "C" fn push_state_to_trace_dump(trace_id: u64, statement_idx: u64) {
         let mut trace_dump = TRACE_DUMP.lock().unwrap();
         let Some(trace_dump) = trace_dump.get_mut(&trace_id) else {
             eprintln!("Could not find trace dump!");
