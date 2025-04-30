@@ -177,7 +177,7 @@ name = "libfuncs"
 harness = false
 
 [workspace]
-members = ["debug_utils/sierra-emu"]
+members = ["debug_utils/sierra-emu", "debug_utils/sierra2casm-dbg"]
 
 [workspace.dependencies]
 cairo-lang-compiler = "=2.12.0-dev.1"

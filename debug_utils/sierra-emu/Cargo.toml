@@ -12,11 +12,13 @@ keywords = ["starknet", "cairo", "compiler", "mlir"]
 cairo-lang-compiler.workspace = true
 cairo-lang-filesystem.workspace = true
 cairo-lang-runner.workspace = true
-cairo-lang-sierra.workspace = true
-cairo-lang-sierra-to-casm.workspace = true
 cairo-lang-sierra-ap-change.workspace = true
 cairo-lang-sierra-gas.workspace = true
+cairo-lang-sierra-generator.workspace = true
+cairo-lang-sierra-to-casm.workspace = true
+cairo-lang-sierra.workspace = true
 cairo-lang-starknet-classes.workspace = true
+cairo-lang-test-plugin.workspace = true
 cairo-lang-utils.workspace = true
 clap = { version = "4.5.26", features = ["derive"] }
 k256 = "0.13.4"
@@ -37,6 +39,7 @@ tempfile = "3.14.0"
 thiserror = "2.0.3"
 tracing = "0.1.41"
 tracing-subscriber = { version = "0.3.18", features = ["env-filter"] }
+rayon = "1.10.0"
 
 [dev-dependencies]
 cairo-lang-compiler.workspace = true
