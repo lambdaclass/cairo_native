@@ -11,7 +11,7 @@ use cairo_lang_sierra::{
 use num_bigint::{BigInt, BigUint};
 use serde::Serialize;
 use starknet_types_core::felt::Felt;
-use std::{collections::HashMap, fmt::Debug, ops::Range};
+use std::{collections::HashMap, ops::Range};
 
 use crate::{debug::type_to_name, gas::BuiltinCosts};
 

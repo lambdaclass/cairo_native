@@ -2,7 +2,7 @@
 
 UNAME := $(shell uname)
 
-CAIRO_2_VERSION= 2.12.0-dev.0
+CAIRO_2_VERSION= 2.12.0-dev.1
 SCARB_VERSION = 2.11.2
 
 needs-cairo2:
@@ -13,11 +13,12 @@ endif
 
 usage:
 	@echo "Usage:"
-	@echo "    deps:		 Installs the necesarry dependencies."
-	@echo "    build:        Builds the cairo-native library and binaries."
-	@echo "    check:        Checks format and lints."
-	@echo "    test:         Runs all tests."
-	@echo "    clean:        Cleans the built artifacts."
+	@echo "    deps:            Installs the necesarry dependencies."
+	@echo "    build:           Builds the cairo-native library and binaries."
+	@echo "    check:           Checks format and lints."
+	@echo "    test:            Runs all tests."
+	@echo "    test-no-corelib: Runs all tests except for the ones from the cairo's corelib."
+	@echo "    clean:           Cleans the built artifacts."
 
 build:
 	cargo build --release --all-features
@@ -28,6 +29,9 @@ check:
 
 test: needs-cairo2
 	cargo test --all-features
+
+test-no-corelib: needs-cairo2
+	cargo test --all-features -- --skip test_corelib
 
 clean:
 	cargo clean
