@@ -19,6 +19,7 @@ use smallvec::smallvec;
 // and builds bigints out of them (since Bigints are used to represent bounded ints' values)
 fn get_numberic_args_as_bigints(args: Vec<Value>) -> Vec<BigInt> {
     args.into_iter()
+        // remove builtins, if any
         .filter(|v| !matches!(v, Value::Unit))
         .map(|v| match v {
             Value::BoundedInt { value, .. } => value,
