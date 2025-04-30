@@ -48,10 +48,12 @@ struct Args {
 
     #[cfg(feature = "with-trace-dump")]
     #[arg(long)]
+    /// The output path for the execution trace
     trace_output: Option<PathBuf>,
 
     #[cfg(feature = "with-trace-dump")]
     #[arg(long)]
+    /// The output path for the compiled sierra code
     sierra_output: Option<PathBuf>,
 }
 
