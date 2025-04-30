@@ -247,6 +247,7 @@ impl LibfuncBuilder for CoreConcreteLibfunc {
                 &info.signature.param_signatures,
             ),
             Self::QM31(_) => native_panic!("Implement QM31 libfunc"),
+            Self::UnsafePanic(_) => native_panic!("Implement unsafe_panic libfunc"),
         }
     }
 
