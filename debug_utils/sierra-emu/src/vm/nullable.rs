@@ -1,6 +1,8 @@
 use cairo_lang_sierra::{
     extensions::{
-        core::{CoreLibfunc, CoreType}, lib_func::{SignatureAndTypeConcreteLibfunc, SignatureOnlyConcreteLibfunc}, nullable::NullableConcreteLibfunc, pedersen::PedersenConcreteLibfunc
+        core::{CoreLibfunc, CoreType},
+        lib_func::{SignatureAndTypeConcreteLibfunc, SignatureOnlyConcreteLibfunc},
+        nullable::NullableConcreteLibfunc,
     },
     program_registry::ProgramRegistry,
 };
@@ -17,7 +19,9 @@ pub fn eval(
 ) -> EvalAction {
     match selector {
         NullableConcreteLibfunc::Null(info) => eval_null(registry, info, args),
-        NullableConcreteLibfunc::NullableFromBox(info) => eval_nullable_from_box(registry, info, args),
+        NullableConcreteLibfunc::NullableFromBox(info) => {
+            eval_nullable_from_box(registry, info, args)
+        }
         NullableConcreteLibfunc::MatchNullable(info) => eval_match_nullable(registry, info, args),
         NullableConcreteLibfunc::ForwardSnapshot(_) => todo!(),
     }
