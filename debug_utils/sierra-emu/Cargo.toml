@@ -13,11 +13,13 @@ cairo-lang-compiler = "=2.12.0-dev.1"
 cairo-lang-filesystem = "=2.12.0-dev.1"
 cairo-lang-runner = "=2.12.0-dev.1"
 cairo-lang-sierra = "=2.12.0-dev.1"
+cairo-lang-sierra-generator = "=2.12.0-dev.1"
 cairo-lang-sierra-to-casm = "=2.12.0-dev.1"
 cairo-lang-sierra-ap-change = "=2.12.0-dev.1"
 cairo-lang-sierra-gas = "=2.12.0-dev.1"
 cairo-lang-starknet-classes = "=2.12.0-dev.1"
 cairo-lang-utils = "=2.12.0-dev.1"
+cairo-lang-test-plugin = "=2.12.0-dev.1"
 clap = { version = "4.5.26", features = ["derive"] }
 k256 = "0.13.4"
 keccak = "0.1.5"
@@ -37,6 +39,7 @@ tempfile = "3.14.0"
 thiserror = "2.0.3"
 tracing = "0.1.41"
 tracing-subscriber = { version = "0.3.18", features = ["env-filter"] }
+rayon = "1.10.0"
 
 [dev-dependencies]
 cairo-lang-compiler = "=2.12.0-dev.1"
