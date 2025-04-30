@@ -123,7 +123,7 @@ The generated file will contain the state of all variables in the current scope,
 
 It is sometimes useful to take a look at the sierra program. You can use the `--sierra-output` flag to save the sierra program to disk.
 
-```
+```txt
 disable_ap_tracking() -> (); // 25
 const_as_immediate<Const<felt252, 1000>>() -> ([2]); // 26
 store_temp<RangeCheck>([0]) -> ([0]); // 27
