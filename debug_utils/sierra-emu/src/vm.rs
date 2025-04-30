@@ -50,6 +50,7 @@ mod gas;
 mod int128;
 mod jump;
 mod mem;
+mod nullable;
 mod pedersen;
 mod poseidon;
 mod snapshot_take;
@@ -488,7 +489,7 @@ fn eval<'a>(
             self::gas::eval(registry, selector, args, gas, *statement_idx, builtin_costs)
         }
         CoreConcreteLibfunc::Mem(selector) => self::mem::eval(registry, selector, args),
-        CoreConcreteLibfunc::Nullable(_) => todo!(),
+        CoreConcreteLibfunc::Nullable(selector) => self::nullable::eval(registry, selector, args),
         CoreConcreteLibfunc::Pedersen(selector) => self::pedersen::eval(registry, selector, args),
         CoreConcreteLibfunc::Poseidon(selector) => self::poseidon::eval(registry, selector, args),
         CoreConcreteLibfunc::Sint128(selector) => self::int128::eval(registry, selector, args),

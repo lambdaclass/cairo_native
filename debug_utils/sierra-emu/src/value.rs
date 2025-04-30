@@ -72,6 +72,7 @@ pub enum Value {
         ty: ConcreteTypeId,
     },
     BuiltinCosts(BuiltinCosts),
+    Null,
     Unit,
 }
 
