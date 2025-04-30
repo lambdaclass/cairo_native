@@ -74,6 +74,61 @@ export RUST_LOG="cairo_native=trace"
 }
 ```
 
+## Trace Dump Feature
+
+The `with-trace-dump` feature is used to generate the execution trace of a sierra program.
+
+First, make sure to compile with the feature enabled:
+```bash
+cargo build --release --features with-trace-dump
+```
+
+Then, use the `trace_output` flag to save the trace dump to disk:
+
+```bash
+target/release/cairo-native-run -s programs/recursion.cairo --trace-output programs/recursion.trace --available-gas 10000000
+```
+
+The generated file will contain the state of all variables in the current scope, for every statement executed:
+
+```json
+{
+  "states": [
+    {
+      "statementIdx": 25,
+      "preStateDump": {
+        "0": "Unit",
+        "1": { "U64": 9993660 }
+      }
+    },
+    {
+      "statementIdx": 26,
+      "preStateDump": {
+        "0": "Unit",
+        "1": { "U64": 9993660 }
+      }
+    },
+    {
+      "statementIdx": 27,
+      "preStateDump": {
+        "0": "Unit",
+        "1": { "U64": 9993660 },
+        "2": { "Felt": "0x3e8" }
+      }
+    },
+    ...
+  ]
+}
+```
+
+It is sometimes useful to take a look at the sierra program. You can use the `--sierra-output` flag to save the sierra program to disk.
+
+```
+disable_ap_tracking() -> (); // 25
+const_as_immediate<Const<felt252, 1000>>() -> ([2]); // 26
+store_temp<RangeCheck>([0]) -> ([0]); // 27
+```
+
 ## Debugging Contracts
 
 Contracts are difficult to debug for various reasons, including:
