@@ -78,9 +78,9 @@ libc = "0.2"
 llvm-sys = "191.0.0"
 melior = { version = "0.21.0", features = ["ods-dialects", "helpers"] }
 mlir-sys = { version = "0.4.1" }
-num-bigint = "0.4.6"
-num-traits = "0.2"
-starknet-types-core = { version = "0.1.7", default-features = false, features = [
+num-bigint.workspace = true
+num-traits.workspace = true
+starknet-types-core = { workspace = true, default-features = false, features = [
     "std",
     "serde",
     "num-traits",
@@ -121,11 +121,11 @@ ark-secp256k1 = "0.5.0"
 ark-secp256r1 = "0.5.0"
 ark-ec = "0.5.0"
 ark-ff = "0.5.0"
-num-integer = "0.1.46"
+num-integer.workspace = true
 
 # Runtime functions
 rand = "0.9.0"
-starknet-curve = "0.5.1"
+starknet-curve.workspace = true
 
 [dev-dependencies]
 cairo-vm = { git = "https://github.com/lambdaclass/cairo-vm", rev = "368e3fb311601a33ff8945e784eaa332f1fd499a", features = ["cairo-1-hints"] }
@@ -194,3 +194,9 @@ cairo-lang-starknet = "=2.12.0-dev.1"
 cairo-lang-starknet-classes = "=2.12.0-dev.1"
 cairo-lang-test-plugin = "=2.12.0-dev.1"
 cairo-lang-utils = "=2.12.0-dev.1"
+starknet-crypto = "0.7.3"
+starknet-curve = "0.5.1"
+starknet-types-core = { version = "0.1.7", default-features = false }
+num-bigint = "0.4.6"
+num-integer = "0.1.46"
+num-traits = "0.2"
