@@ -62,10 +62,9 @@ pub fn eval_from_bounded_int(
     let [Value::BoundedInt { range: _, value }]: [Value; 1] = args.try_into().unwrap() else {
         panic!()
     };
-    let self_ty = &info.branch_signatures()[0].vars[0].ty;
 
     let enm = Value::Enum {
-        self_ty: self_ty.clone(),
+        self_ty: info.branch_signatures()[0].vars[0].ty.clone(),
         index: value.try_into().unwrap(),
         payload: Box::new(Value::Struct(vec![])),
     };

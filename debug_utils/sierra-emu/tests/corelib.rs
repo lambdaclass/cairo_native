@@ -1,4 +1,4 @@
-use std::{path::Path, sync::Arc, u64};
+use std::{path::Path, sync::Arc};
 
 use cairo_lang_compiler::{
     db::RootDatabase,
@@ -20,18 +20,21 @@ use cairo_lang_test_plugin::{
 use common::value_to_felt;
 use rayon::iter::{IntoParallelIterator, ParallelIterator};
 use sierra_emu::{run_program, EntryPoint, ProgramTrace, Value};
-use tracing::info;
-use tracing_test::traced_test;
 
 mod common;
 
-#[traced_test]
+enum TestStatus {
+    Passed,
+    Failed(String),
+    Ignored,
+}
+
 #[test]
-#[ignore = "sierra-emu is not fully implemented yet"]
 fn test_corelib() {
     let compiler_path = Path::new(&std::env::var("CARGO_MANIFEST_DIR").unwrap()).join("corelib");
 
-    check_compiler_path(false, &compiler_path).expect("Couldn't the corelib in the given path");
+    check_compiler_path(false, &compiler_path)
+        .expect("Couldn't find the corelib in the given path");
 
     let db = &mut {
         let mut b = RootDatabase::builder();
@@ -49,8 +52,8 @@ fn test_corelib() {
     let test_crate_ids = main_crate_ids.clone();
     let test_config = TestsCompilationConfig {
         starknet: false,
-        add_statements_functions: true,
-        add_statements_code_locations: true,
+        add_statements_functions: false,
+        add_statements_code_locations: false,
         contract_declarations: None,
         contract_crate_ids: None,
         executable_crate_ids: None,
@@ -72,32 +75,59 @@ fn test_corelib() {
         Some(&filtered_tests),
     );
 
-    run_tests(compiled);
+    let results = run_tests(compiled);
+
+    display_results(&results);
+
+    assert!(results
+        .iter()
+        .all(|s| matches!(s, TestStatus::Passed | TestStatus::Ignored)),);
 }
 
 /// Runs the tests and process the results for a summary.
-pub fn run_tests(compiled: TestCompilation) {
+fn run_tests(compiled: TestCompilation) -> Vec<TestStatus> {
     let program = Arc::new(compiled.sierra_program.program);
-    let success = true;
 
     compiled
         .metadata
         .named_tests
         .into_par_iter()
-        .filter(|(_, test)| !test.ignored)
-        .for_each_with(success, |success, (name, test)| {
-            let trace = run_program(
-                program.clone(),
-                EntryPoint::String(name.clone()),
-                vec![],
-                u64::MAX,
-            );
-            let run_result = trace_to_run_result(trace);
+        .map(|(name, test)| {
+            if test.ignored {
+                println!("test {} ... Ignored", name);
+                return TestStatus::Ignored;
+            }
 
-            *success &= assert_test_expectation(name, test.expectation, run_result);
-        });
+            // catch any panic during the test run
+            let res = std::panic::catch_unwind(|| {
+                run_program(
+                    program.clone(),
+                    EntryPoint::String(name.clone()),
+                    vec![],
+                    u64::MAX,
+                )
+            });
 
-    assert!(success, "Some tests from the corelib have failed");
+            let status = match res {
+                Ok(trace) => {
+                    let run_result = trace_to_run_result(trace);
+
+                    assert_test_expectation(test.expectation, run_result)
+                }
+                Err(panic) => {
+                    TestStatus::Failed(format!("PANIC: {:?}", panic.downcast_ref::<String>()))
+                }
+            };
+
+            match &status {
+                TestStatus::Passed => println!("test {} ... OK", name),
+                TestStatus::Failed(err) => println!("test {} ... FAILED: {}", name, err),
+                TestStatus::Ignored => {} // already handled before
+            };
+
+            status
+        })
+        .collect::<Vec<TestStatus>>()
 }
 
 fn trace_to_run_result(trace: ProgramTrace) -> RunResultValue {
@@ -121,24 +151,24 @@ fn trace_to_run_result(trace: ProgramTrace) -> RunResultValue {
                     match &**payload {
                         Value::Struct(fields) => {
                             for field in fields {
-                                let felt = value_to_felt(&field);
+                                let felt = value_to_felt(field);
                                 felts.extend(felt);
                             }
                         }
                         _ => panic!("unsuported return value in cairo-native"),
                     }
                 } else {
-                    felts.extend(value_to_felt(&*payload));
+                    felts.extend(value_to_felt(payload));
                 }
 
                 is_success
             } else {
-                felts.extend(value_to_felt(&outer_value));
+                felts.extend(value_to_felt(outer_value));
                 true
             }
         }
         x => {
-            felts.extend(value_to_felt(&x));
+            felts.extend(value_to_felt(x));
             true
         }
     };
@@ -151,42 +181,58 @@ fn trace_to_run_result(trace: ProgramTrace) -> RunResultValue {
     }
 }
 
-fn assert_test_expectation(
-    name: String,
-    expectation: TestExpectation,
-    result: RunResultValue,
-) -> bool {
-    let mut success = true;
-
+fn assert_test_expectation(expectation: TestExpectation, result: RunResultValue) -> TestStatus {
     match result {
         RunResultValue::Success(r) => {
             if let TestExpectation::Panics(_) = expectation {
                 let err_msg = format_for_panic(r.into_iter());
-                info!("test {} ... FAILED: {}", name, err_msg);
-                success = false;
+                return TestStatus::Failed(err_msg);
             }
-            info!("test {} ... OK", name);
+            TestStatus::Passed
         }
         RunResultValue::Panic(e) => match expectation {
             TestExpectation::Success => {
                 let err_msg = format_for_panic(e.into_iter());
-                info!("test {} ... FAILED: {}", name, err_msg);
-                success = false;
+                TestStatus::Failed(err_msg)
             }
-            TestExpectation::Panics(panic_expect) => {
-                if let PanicExpectation::Exact(expected) = panic_expect {
+            TestExpectation::Panics(panic_expect) => match panic_expect {
+                PanicExpectation::Exact(expected) => {
                     if expected != e {
                         let err_msg = format_for_panic(e.into_iter());
-                        info!("test {} ... FAILED: {}", name, err_msg);
-                        success = false;
+                        return TestStatus::Failed(err_msg);
                     }
-                    info!("test {} ... OK", name);
+                    TestStatus::Passed
                 }
-            }
+                PanicExpectation::Any => TestStatus::Passed,
+            },
         },
     }
+}
 
-    success
+fn display_results(results: &[TestStatus]) {
+    let mut passed = 0;
+    let mut failed = 0;
+    let mut ignored = 0;
+
+    for status in results {
+        match &status {
+            TestStatus::Passed => passed += 1,
+            TestStatus::Failed(_) => failed += 1,
+            TestStatus::Ignored => ignored += 1,
+        }
+    }
+
+    if failed > 0 {
+        println!(
+            "\n\ntest result: FAILED. {} PASSED; {} FAILED; {} FILTERED OUT;",
+            passed, failed, ignored
+        );
+    } else {
+        println!(
+            "\n\ntest result: OK. {} PASSED; {} FAILED; {} FILTERED OUT;",
+            passed, failed, ignored
+        );
+    }
 }
 
 fn compile_tests(
@@ -198,6 +244,7 @@ fn compile_tests(
 ) -> TestCompilation {
     let mut compiled =
         compile_test_prepared_db(db, test_config, test_crate_ids.clone(), diag_reporter).unwrap();
+    // replace ids to have debug_names
     compiled.sierra_program.program =
         replace_sierra_ids_in_program(db, &compiled.sierra_program.program);
 
@@ -218,9 +265,7 @@ fn compile_tests(
                     case.ignored = true
                 }
             });
-
-        compiled
-    } else {
-        compiled
     }
+
+    compiled
 }
