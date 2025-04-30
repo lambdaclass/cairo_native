@@ -3354,6 +3354,19 @@ dependencies = [
 ]
 
 [[package]]
+name = "sierra2casm-dbg"
+version = "0.1.0"
+dependencies = [
+ "bincode 2.0.1",
+ "cairo-lang-casm",
+ "cairo-lang-utils",
+ "cairo-vm 2.0.1 (registry+https://github.com/rust-lang/crates.io-index)",
+ "clap",
+ "serde_json",
+ "starknet-types-core",
+]
+
+[[package]]
 name = "signature"
 version = "2.2.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
