@@ -87,7 +87,7 @@ fn eval_tuple_from_span(
     }
 }
 
-pub fn eval_new(
+fn eval_new(
     registry: &ProgramRegistry<CoreType, CoreLibfunc>,
     info: &SignatureOnlyConcreteLibfunc,
     args: Vec<Value>,
@@ -111,7 +111,7 @@ pub fn eval_new(
     )
 }
 
-pub fn eval_append(
+fn eval_append(
     registry: &ProgramRegistry<CoreType, CoreLibfunc>,
     info: &SignatureAndTypeConcreteLibfunc,
     args: Vec<Value>,
@@ -127,7 +127,7 @@ pub fn eval_append(
     EvalAction::NormalBranch(0, smallvec![Value::Array { ty, data }])
 }
 
-pub fn eval_get(
+fn eval_get(
     _registry: &ProgramRegistry<CoreType, CoreLibfunc>,
     _info: &SignatureAndTypeConcreteLibfunc,
     args: Vec<Value>,
@@ -144,7 +144,7 @@ pub fn eval_get(
     }
 }
 
-pub fn eval_slice(
+fn eval_slice(
     _registry: &ProgramRegistry<CoreType, CoreLibfunc>,
     _info: &SignatureAndTypeConcreteLibfunc,
     args: Vec<Value>,
@@ -170,7 +170,7 @@ pub fn eval_slice(
     }
 }
 
-pub fn eval_len(
+fn eval_len(
     _registry: &ProgramRegistry<CoreType, CoreLibfunc>,
     _info: &SignatureAndTypeConcreteLibfunc,
     args: Vec<Value>,
@@ -183,7 +183,7 @@ pub fn eval_len(
     EvalAction::NormalBranch(0, smallvec![Value::U32(array_len)])
 }
 
-pub fn eval_pop_front(
+fn eval_pop_front(
     _registry: &ProgramRegistry<CoreType, CoreLibfunc>,
     _info: &SignatureAndTypeConcreteLibfunc,
     args: Vec<Value>,
@@ -201,7 +201,7 @@ pub fn eval_pop_front(
     }
 }
 
-pub fn eval_pop_front_consume(
+fn eval_pop_front_consume(
     _registry: &ProgramRegistry<CoreType, CoreLibfunc>,
     _info: &SignatureAndTypeConcreteLibfunc,
     args: Vec<Value>,
@@ -219,7 +219,7 @@ pub fn eval_pop_front_consume(
     }
 }
 
-pub fn eval_snapshot_pop_front(
+fn eval_snapshot_pop_front(
     registry: &ProgramRegistry<CoreType, CoreLibfunc>,
     info: &SignatureAndTypeConcreteLibfunc,
     args: Vec<Value>,
@@ -238,7 +238,7 @@ pub fn eval_snapshot_pop_front(
     }
 }
 
-pub fn eval_snapshot_pop_back(
+fn eval_snapshot_pop_back(
     registry: &ProgramRegistry<CoreType, CoreLibfunc>,
     info: &SignatureAndTypeConcreteLibfunc,
     args: Vec<Value>,
