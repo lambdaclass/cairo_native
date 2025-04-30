@@ -182,7 +182,6 @@ fn inner(
                     self_ty: type_id.clone(),
                     index,
                     payload: Box::new(payload),
-                    debug_name: type_id.debug_name.as_ref().map(|s| s.to_string()),
                 }
             }
             _ => panic!("const data mismatch"),
