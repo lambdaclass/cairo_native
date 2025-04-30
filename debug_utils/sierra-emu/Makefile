@@ -6,8 +6,8 @@ usage:
 	@echo "    test:         Runs all tests."
 	@echo "    clean:        Cleans the built artifacts."
 
-corelib: ../../corelib
-	ln -s ../../corelib corelib
+corelib: ../../cairo2/corelib
+	ln -s ../../cairo2/corelib corelib
 
 build:
 	cargo build --release --all-features
