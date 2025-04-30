@@ -1,18 +1,13 @@
 use self::args::CmdArgs;
-use cairo_lang_sierra::{
-    extensions::{
-        circuit::CircuitTypeConcrete, core::CoreTypeConcrete, starknet::StarknetTypeConcrete,
-    },
-    ProgramParser,
-};
+use cairo_lang_sierra::ProgramParser;
 use clap::Parser;
-use sierra_emu::{starknet::StubSyscallHandler, Value, VirtualMachine};
+use sierra_emu::run_program;
 use std::{
     fs::{self, File},
     io::stdout,
     sync::Arc,
 };
-use tracing::{debug, info, Level};
+use tracing::{info, Level};
 use tracing_subscriber::{EnvFilter, FmtSubscriber};
 
 mod args;
@@ -37,57 +32,13 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
             .map_err(|e| e.to_string())?,
     );
 
-    info!("Preparing the virtual machine.");
-    let mut vm = VirtualMachine::new(program.clone());
-
-    debug!("Pushing the entry point's frame.");
-    let function = program
-        .funcs
-        .iter()
-        .find(|f| match &args.entry_point {
-            args::EntryPoint::Number(x) => f.id.id == *x,
-            args::EntryPoint::String(x) => f.id.debug_name.as_deref() == Some(x.as_str()),
-        })
-        .unwrap();
-
-    debug!(
-        "Entry point argument types: {:?}",
-        function.signature.param_types
-    );
-    let mut iter = args.args.into_iter();
-    vm.push_frame(
-        function.id.clone(),
-        function
-            .signature
-            .param_types
-            .iter()
-            .map(|type_id| {
-                let type_info = vm.registry().get_type(type_id).unwrap();
-                match type_info {
-                    CoreTypeConcrete::Felt252(_) => Value::parse_felt(&iter.next().unwrap()),
-                    CoreTypeConcrete::GasBuiltin(_) => Value::U64(args.available_gas.unwrap()),
-                    CoreTypeConcrete::RangeCheck(_)
-                    | CoreTypeConcrete::RangeCheck96(_)
-                    | CoreTypeConcrete::Bitwise(_)
-                    | CoreTypeConcrete::Pedersen(_)
-                    | CoreTypeConcrete::Poseidon(_)
-                    | CoreTypeConcrete::SegmentArena(_)
-                    | CoreTypeConcrete::Circuit(
-                        CircuitTypeConcrete::AddMod(_) | CircuitTypeConcrete::MulMod(_),
-                    ) => Value::Unit,
-                    CoreTypeConcrete::Starknet(inner) => match inner {
-                        StarknetTypeConcrete::System(_) => Value::Unit,
-                        _ => todo!(),
-                    },
-                    _ => todo!(),
-                }
-            })
-            .collect::<Vec<_>>(),
-    );
-
     info!("Running the program.");
-    let syscall_handler = &mut StubSyscallHandler::default();
-    let trace = vm.run_with_trace(syscall_handler);
+    let trace = run_program(
+        program,
+        args.entry_point,
+        args.args,
+        args.available_gas.unwrap_or_default(),
+    );
 
     match args.output {
         Some(path) => serde_json::to_writer(File::create(path)?, &trace)?,
