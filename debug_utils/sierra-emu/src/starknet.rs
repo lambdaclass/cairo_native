@@ -169,6 +169,21 @@ pub trait StarknetSyscallHandler {
         remaining_gas: &mut u64,
     ) -> SyscallResult<[u32; 8]>;
 
+    fn meta_tx_v0(
+        &mut self,
+        address: Felt,
+        entry_point_selector: Felt,
+        calldata: Vec<Felt>,
+        signature: Vec<Felt>,
+        remaining_gas: &mut u64,
+    ) -> SyscallResult<Vec<Felt>>;
+
+    fn get_class_hash_at(
+        &mut self,
+        contract_address: Felt,
+        remaining_gas: &mut u64,
+    ) -> SyscallResult<Felt>;
+
     fn cheatcode(&mut self, _selector: Felt, _input: Vec<Felt>) -> Vec<Felt> {
         unimplemented!()
     }
@@ -847,5 +862,24 @@ impl StarknetSyscallHandler for StubSyscallHandler {
         .unwrap();
         sha2::compress256(&mut state, &[data_as_bytes]);
         Ok(state)
+    }
+
+    fn meta_tx_v0(
+        &mut self,
+        _address: Felt,
+        _entry_point_selector: Felt,
+        _calldata: Vec<Felt>,
+        _signature: Vec<Felt>,
+        _remaining_gas: &mut u64,
+    ) -> SyscallResult<Vec<Felt>> {
+        unimplemented!()
+    }
+
+    fn get_class_hash_at(
+        &mut self,
+        _contract_address: Felt,
+        _remaining_gas: &mut u64,
+    ) -> SyscallResult<Felt> {
+        unimplemented!()
     }
 }
