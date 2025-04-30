@@ -12,6 +12,10 @@ build:
 	cargo build --release --all-features
 .PHONY: build
 
+check:
+	cargo fmt --all -- --check
+	cargo clippy --all-targets --all-features -- -D warnings
+
 test: corelib
 	cargo test --all-features
 .PHONY: test
