@@ -92,7 +92,7 @@ fn inner(
             _ => unreachable!(),
         },
         CoreTypeConcrete::Bytes31(_) => match inner_data {
-            [GenericArg::Value(value)] => Value::Bytes31(value.try_into().unwrap()),
+            [GenericArg::Value(value)] => Value::Bytes31(value.into()),
             _ => unreachable!(),
         },
         CoreTypeConcrete::Sint128(_) => match inner_data {
