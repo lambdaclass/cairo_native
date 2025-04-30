@@ -1,7 +1,6 @@
 # ⚡ Cairo Sierra Emulator ⚡
 
-An Cairo emulator directly using the Cairo's intermediate representation "Sierra" instead of CASM.
-An useful usecase is to aid in debugging other Cairo related VMs.
+An Cairo emulator directly using the Cairo's intermediate representation "Sierra" instead of CASM. An useful usecase is to aid in debugging Cairo Native.
 
 ## Dependencies
 
