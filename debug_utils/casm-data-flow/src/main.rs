@@ -1,5 +1,5 @@
 use bincode::de::read::SliceReader;
-use cairo_vm::serde::deserialize_program::HintParams;
+use cairo_lang_casm::hints::Hint;
 use casm_data_flow::{
     run_search_algorithm,
     search::{DfsQueue, NodeId},
@@ -53,20 +53,9 @@ fn main() {
                 .remove("hints")
                 .unwrap();
 
-            let hints: HashMap<usize, Vec<HintParams>> = serde_json::from_value(hints).unwrap();
-            hints
-                .into_iter()
-                .map(|(key, value)| {
-                    //
-                    (
-                        key,
-                        value
-                            .into_iter()
-                            .map(|hint_params| serde_json::from_str(&hint_params.code).unwrap())
-                            .collect(),
-                    )
-                })
-                .collect()
+            let hints: Vec<(usize, Vec<Hint>)> = serde_json::from_value(hints).unwrap();
+
+            hints.into_iter().collect()
         }
     };
 
