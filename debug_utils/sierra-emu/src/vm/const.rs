@@ -26,7 +26,7 @@ pub fn eval(
     }
 }
 
-pub fn eval_as_immediate(
+fn eval_as_immediate(
     registry: &ProgramRegistry<CoreType, CoreLibfunc>,
     info: &ConstAsImmediateConcreteLibfunc,
     args: Vec<Value>,
@@ -43,7 +43,7 @@ pub fn eval_as_immediate(
     )
 }
 
-pub fn eval_as_box(
+fn eval_as_box(
     registry: &ProgramRegistry<CoreType, CoreLibfunc>,
     info: &ConstAsBoxConcreteLibfunc,
     args: Vec<Value>,

@@ -22,7 +22,7 @@ pub fn eval(
     }
 }
 
-pub fn eval_downcast(
+fn eval_downcast(
     registry: &ProgramRegistry<CoreType, CoreLibfunc>,
     info: &DowncastConcreteLibfunc,
     args: Vec<Value>,
@@ -54,7 +54,7 @@ pub fn eval_downcast(
     }
 }
 
-pub fn eval_upcast(
+fn eval_upcast(
     registry: &ProgramRegistry<CoreType, CoreLibfunc>,
     info: &SignatureOnlyConcreteLibfunc,
     args: Vec<Value>,
