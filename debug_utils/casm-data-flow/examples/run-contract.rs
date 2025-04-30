@@ -63,6 +63,7 @@ pub fn main() {
         .collect();
 
     let initial_gas = MaybeRelocatable::from(usize::MAX);
+    println!("Starting Gas: {}", &initial_gas);
 
     let mut implicit_args = builtin_segment;
     implicit_args.extend([initial_gas]);
@@ -112,6 +113,7 @@ pub fn main() {
         .expect("failed to execute contract");
 
     let return_values = runner.vm.get_return_values(5).unwrap();
+    let final_gas = return_values[0].get_int().unwrap();
     let retdata_start = return_values[3].get_relocatable().unwrap();
     let retdata_end = return_values[4].get_relocatable().unwrap();
     let retdata: Vec<Felt> = runner
@@ -121,6 +123,8 @@ pub fn main() {
         .iter()
         .map(|c| c.clone().into_owned())
         .collect();
+
+    println!("Final Gas: {}", final_gas);
 
     assert_eq!(retdata, expected_retdata);
 
