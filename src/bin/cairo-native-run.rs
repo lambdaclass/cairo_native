@@ -11,7 +11,7 @@ use cairo_native::{
     starknet_stub::StubSyscallHandler,
 };
 use clap::{Parser, ValueEnum};
-use std::{fs::File, path::PathBuf};
+use std::path::PathBuf;
 use tracing_subscriber::{EnvFilter, FmtSubscriber};
 use utils::{find_function, result_to_runresult};
 
@@ -80,6 +80,7 @@ fn main() -> anyhow::Result<()> {
 
     #[cfg(feature = "with-trace-dump")]
     if let Some(sierra_output) = args.sierra_output {
+        use std::fs::File;
         use std::io::Write;
         let mut file = File::create(sierra_output).unwrap();
         write!(file, "{}", &sierra_program).unwrap();
