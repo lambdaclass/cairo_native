@@ -2,8 +2,8 @@ use num_bigint::BigInt;
 
 use crate::Value;
 
-/// Receives a vector of values, filters any which is non numeric and returns a `Vec<BigInt>`
-/// Useful when a binary operation takes generic values (like with bounded ints).
+/// Receives a vector of values, filters builtins and returns a `Vec<BigInt>`
+/// Useful, for example, in binary operations which take generic values (like with bounded ints).
 pub fn get_numberic_args_as_bigints(args: Vec<Value>) -> Vec<BigInt> {
     args.into_iter()
         .filter(|v| !matches!(v, Value::Unit))
