@@ -1,0 +1,1 @@
+window.SIDEBAR_ITEMS = {"enum":["NodeId"],"fn":["run_search_algorithm"],"struct":["BfsQueue","DfsQueue","SearchAlgorithmIter"],"trait":["QueueContainer"]};
