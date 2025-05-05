@@ -247,9 +247,7 @@ fn eval_is_zero(
     info: &SignatureOnlyConcreteLibfunc,
     args: Vec<Value>,
 ) -> EvalAction {
-    let [value]: [BigInt; 1] = get_numberic_args_as_bigints(&args)
-        .try_into()
-        .unwrap();
+    let [value]: [BigInt; 1] = get_numberic_args_as_bigints(&args).try_into().unwrap();
 
     let int_ty = registry
         .get_type(&info.signature.branch_signatures[1].vars[0].ty)

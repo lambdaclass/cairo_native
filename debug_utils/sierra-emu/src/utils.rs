@@ -1,5 +1,8 @@
 use cairo_lang_sierra::{
-    extensions::{core::{CoreLibfunc, CoreType, CoreTypeConcrete}, utils::Range},
+    extensions::{
+        core::{CoreLibfunc, CoreType, CoreTypeConcrete},
+        utils::Range,
+    },
     program_registry::ProgramRegistry,
 };
 use num_bigint::BigInt;
