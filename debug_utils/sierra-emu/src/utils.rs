@@ -1,13 +1,9 @@
 use cairo_lang_sierra::{
-    extensions::{
-        core::{CoreLibfunc, CoreType, CoreTypeConcrete},
-        utils::Range,
-    },
+    extensions::{core::{CoreLibfunc, CoreType, CoreTypeConcrete}, utils::Range},
     program_registry::ProgramRegistry,
 };
 use num_bigint::BigInt;
 use num_traits::{Bounded, One, ToPrimitive};
-use starknet_types_core::felt::CAIRO_PRIME_BIGINT;
 
 use crate::Value;
 
@@ -102,7 +98,6 @@ pub fn integer_range(
             let ty = registry.get_type(&info.ty).unwrap();
             integer_range(ty, registry)
         }
-
         _ => panic!("Non-numeric value"),
     }
 }
