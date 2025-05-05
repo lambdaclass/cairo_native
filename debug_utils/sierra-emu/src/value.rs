@@ -109,7 +109,6 @@ impl Value {
         registry: &ProgramRegistry<CoreType, CoreLibfunc>,
         type_id: &ConcreteTypeId,
     ) -> bool {
-        type_to_name(type_id, registry);
         let ty = registry.get_type(type_id).unwrap();
         let res = match ty {
             CoreTypeConcrete::Array(info) => {
