@@ -143,9 +143,7 @@ fn eval_bitwise(
     let bitwise @ Value::Unit: Value = args[0].clone() else {
         panic!()
     };
-    let [lhs, rhs]: [BigInt; 2] = get_numberic_args_as_bigints(&args[1..])
-        .try_into()
-        .unwrap();
+    let [lhs, rhs]: [BigInt; 2] = get_numberic_args_as_bigints(&args[1..]).try_into().unwrap();
 
     let int_ty = registry
         .get_type(&info.signature.branch_signatures[0].vars[1].ty)
@@ -166,9 +164,7 @@ fn eval_diff(
     let range_check @ Value::Unit: Value = args[0].clone() else {
         panic!()
     };
-    let [lhs, rhs]: [BigInt; 2] = get_numberic_args_as_bigints(&args[1..])
-        .try_into()
-        .unwrap();
+    let [lhs, rhs]: [BigInt; 2] = get_numberic_args_as_bigints(&args[1..]).try_into().unwrap();
 
     let int_ty = registry
         .get_type(&info.signature.branch_signatures[0].vars[1].ty)
@@ -189,9 +185,7 @@ fn eval_divmod(
     let range_check @ Value::Unit: Value = args[0].clone() else {
         panic!()
     };
-    let [lhs, rhs]: [BigInt; 2] = get_numberic_args_as_bigints(&args[1..])
-        .try_into()
-        .unwrap();
+    let [lhs, rhs]: [BigInt; 2] = get_numberic_args_as_bigints(&args[1..]).try_into().unwrap();
 
     let int_ty = registry
         .get_type(&info.signature.branch_signatures[0].vars[1].ty)
@@ -271,9 +265,7 @@ fn eval_operation(
     let range_check @ Value::Unit: Value = args[0].clone() else {
         panic!()
     };
-    let [lhs, rhs]: [BigInt; 2] = get_numberic_args_as_bigints(&args[1..])
-        .try_into()
-        .unwrap();
+    let [lhs, rhs]: [BigInt; 2] = get_numberic_args_as_bigints(&args[1..]).try_into().unwrap();
     let int_ty = registry
         .get_type(&info.signature.branch_signatures[0].vars[1].ty)
         .unwrap();
@@ -292,9 +284,7 @@ fn eval_square_root(
     let range_check @ Value::Unit: Value = args[0].clone() else {
         panic!()
     };
-    let [value]: [BigInt; 1] = get_numberic_args_as_bigints(&args[1..])
-        .try_into()
-        .unwrap();
+    let [value]: [BigInt; 1] = get_numberic_args_as_bigints(&args[1..]).try_into().unwrap();
 
     let int_ty = registry
         .get_type(&info.signature.branch_signatures[0].vars[1].ty)
