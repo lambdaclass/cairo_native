@@ -19,6 +19,7 @@ use smallvec::smallvec;
 // and builds bigints out of them (since Bigints are used to represent bounded ints' values)
 fn get_numberic_args_as_bigints(args: Vec<Value>) -> Vec<BigInt> {
     args.into_iter()
+        // remove builtins, if any
         .filter(|v| !matches!(v, Value::Unit))
         .map(|v| match v {
             Value::BoundedInt { value, .. } => value,
@@ -321,8 +322,8 @@ mod tests {
     #[test]
     fn test_bounded_int_sub() {
         let (_, program) = load_cairo!(
-            use core::internal::bounded_int::{SubHelper, BoundedInt};
-            use core::internal::bounded_int;
+            #[feature("bounded-int-utils")]
+            use core::internal::bounded_int::{self, SubHelper, BoundedInt};
 
             impl U8BISub of SubHelper<u8, u8> {
                 type Result = BoundedInt<-255, 255>;
@@ -343,8 +344,10 @@ mod tests {
     #[test]
     fn test_trim_i8() {
         let (_, program) = load_cairo!(
-            use core::internal::{OptionRev, bounded_int::BoundedInt};
-            use core::internal::bounded_int;
+            #[feature("bounded-int-utils")]
+            use core::internal::bounded_int::{self, BoundedInt};
+            use core::internal::OptionRev;
+
             fn main() -> BoundedInt<-127, 127> {
                 let num = match bounded_int::trim_min::<i8>(1) {
                     OptionRev::Some(n) => n,
@@ -368,8 +371,10 @@ mod tests {
     #[test]
     fn test_trim_u32() {
         let (_, program) = load_cairo!(
-            use core::internal::{OptionRev, bounded_int::BoundedInt};
-            use core::internal::bounded_int;
+            #[feature("bounded-int-utils")]
+            use core::internal::bounded_int::{self, BoundedInt};
+            use core::internal::OptionRev;
+
             fn main() -> BoundedInt<0, 4294967294> {
                 let num = match bounded_int::trim_max::<u32>(0xfffffffe) {
                     OptionRev::Some(n) => n,
@@ -393,8 +398,10 @@ mod tests {
     #[test]
     fn test_trim_none() {
         let (_, program) = load_cairo!(
-            use core::internal::{OptionRev, bounded_int::BoundedInt};
-            use core::internal::bounded_int;
+            #[feature("bounded-int-utils")]
+            use core::internal::bounded_int::{self, BoundedInt};
+            use core::internal::OptionRev;
+
             fn main() -> BoundedInt<-32767, 32767> {
                 let num = match bounded_int::trim_min::<i16>(-0x8000) {
                     OptionRev::Some(n) => n,

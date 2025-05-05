@@ -279,6 +279,9 @@ impl AotContractExecutor {
 
         setup_runtime(|x| executor.find_symbol_ptr(x));
 
+        #[cfg(feature = "with-debug-utils")]
+        crate::metadata::debug_utils::setup_runtime(|name| executor.find_symbol_ptr(name));
+
         Ok(Some(executor))
     }
 
@@ -875,7 +878,7 @@ mod tests {
             )
             .unwrap();
         assert_eq!(result.return_values, vec![Felt::from(3628800)]);
-        assert_eq!(result.remaining_gas, 18446744073709538315);
+        assert_eq!(result.remaining_gas, 18446744073709545475);
     }
 
     #[rstest]
