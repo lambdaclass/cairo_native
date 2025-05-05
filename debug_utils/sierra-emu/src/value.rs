@@ -171,8 +171,8 @@ impl Value {
             CoreTypeConcrete::Circuit(selector) => match selector {
                 CircuitTypeConcrete::Circuit(_)
                 | CircuitTypeConcrete::CircuitData(_)
-                | CircuitTypeConcrete::CircuitInputAccumulator(_)
-                | CircuitTypeConcrete::CircuitOutputs(_) => matches!(self, Self::Circuit(_)),
+                | CircuitTypeConcrete::CircuitInputAccumulator(_) => matches!(self, Self::Circuit(_)),
+                CircuitTypeConcrete::CircuitOutputs(_) => matches!(self, Self::CircuitOutputs { .. }),
                 CircuitTypeConcrete::CircuitModulus(_) => matches!(self, Self::CircuitModulus(_)),
                 CircuitTypeConcrete::U96Guarantee(_) => matches!(self, Self::U128(_)),
                 CircuitTypeConcrete::CircuitInput(_)
