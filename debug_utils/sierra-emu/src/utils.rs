@@ -4,26 +4,26 @@ use cairo_lang_sierra::{
 };
 use num_bigint::BigInt;
 use num_traits::{Bounded, One, ToPrimitive};
+use starknet_types_core::felt::CAIRO_PRIME_BIGINT;
 
 use crate::Value;
 
-/// Receives a vector of values, filters any which is non numeric and returns a `Vec<BigInt>`
+/// Receives a slice of values, filters any which is non numeric and returns a `Vec<BigInt>`
 /// Useful when a binary operation takes generic values (like with bounded ints).
-pub fn get_numberic_args_as_bigints(args: Vec<Value>) -> Vec<BigInt> {
+pub fn get_numberic_args_as_bigints(args: &[Value]) -> Vec<BigInt> {
     args.into_iter()
-        .filter(|v| !matches!(v, Value::Unit))
         .map(|v| match v {
-            Value::BoundedInt { value, .. } => value,
-            Value::I8(value) => BigInt::from(value),
-            Value::I16(value) => BigInt::from(value),
-            Value::I32(value) => BigInt::from(value),
-            Value::I64(value) => BigInt::from(value),
-            Value::I128(value) => BigInt::from(value),
-            Value::U8(value) => BigInt::from(value),
-            Value::U16(value) => BigInt::from(value),
-            Value::U32(value) => BigInt::from(value),
-            Value::U64(value) => BigInt::from(value),
-            Value::U128(value) => BigInt::from(value),
+            Value::BoundedInt { value, .. } => value.to_owned(),
+            Value::I8(value) => BigInt::from(*value),
+            Value::I16(value) => BigInt::from(*value),
+            Value::I32(value) => BigInt::from(*value),
+            Value::I64(value) => BigInt::from(*value),
+            Value::I128(value) => BigInt::from(*value),
+            Value::U8(value) => BigInt::from(*value),
+            Value::U16(value) => BigInt::from(*value),
+            Value::U32(value) => BigInt::from(*value),
+            Value::U64(value) => BigInt::from(*value),
+            Value::U128(value) => BigInt::from(*value),
             Value::Felt(value) => value.to_bigint(),
             Value::Bytes31(value) => value.to_bigint(),
             value => panic!("expected numeric value: {:?}", value),

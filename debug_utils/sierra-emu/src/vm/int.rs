@@ -143,7 +143,7 @@ fn eval_bitwise(
     let bitwise @ Value::Unit: Value = args[0].clone() else {
         panic!()
     };
-    let [lhs, rhs]: [BigInt; 2] = get_numberic_args_as_bigints(args[1..].to_vec())
+    let [lhs, rhs]: [BigInt; 2] = get_numberic_args_as_bigints(&args[1..].to_vec())
         .try_into()
         .unwrap();
 
@@ -166,7 +166,7 @@ fn eval_diff(
     let range_check @ Value::Unit: Value = args[0].clone() else {
         panic!()
     };
-    let [lhs, rhs]: [BigInt; 2] = get_numberic_args_as_bigints(args[1..].to_vec())
+    let [lhs, rhs]: [BigInt; 2] = get_numberic_args_as_bigints(&args[1..].to_vec())
         .try_into()
         .unwrap();
 
@@ -189,7 +189,7 @@ fn eval_divmod(
     let range_check @ Value::Unit: Value = args[0].clone() else {
         panic!()
     };
-    let [lhs, rhs]: [BigInt; 2] = get_numberic_args_as_bigints(args[1..].to_vec())
+    let [lhs, rhs]: [BigInt; 2] = get_numberic_args_as_bigints(&args[1..].to_vec())
         .try_into()
         .unwrap();
 
@@ -247,7 +247,7 @@ fn eval_is_zero(
     info: &SignatureOnlyConcreteLibfunc,
     args: Vec<Value>,
 ) -> EvalAction {
-    let [value]: [BigInt; 1] = get_numberic_args_as_bigints(args[1..].to_vec())
+    let [value]: [BigInt; 1] = get_numberic_args_as_bigints(&args)
         .try_into()
         .unwrap();
 
@@ -273,7 +273,7 @@ fn eval_operation(
     let range_check @ Value::Unit: Value = args[0].clone() else {
         panic!()
     };
-    let [lhs, rhs]: [BigInt; 2] = get_numberic_args_as_bigints(args[1..].to_vec())
+    let [lhs, rhs]: [BigInt; 2] = get_numberic_args_as_bigints(&args[1..].to_vec())
         .try_into()
         .unwrap();
     let int_ty = registry
@@ -294,7 +294,7 @@ fn eval_square_root(
     let range_check @ Value::Unit: Value = args[0].clone() else {
         panic!()
     };
-    let [value]: [BigInt; 1] = get_numberic_args_as_bigints(args[1..].to_vec())
+    let [value]: [BigInt; 1] = get_numberic_args_as_bigints(&args[1..].to_vec())
         .try_into()
         .unwrap();
 
@@ -315,7 +315,7 @@ fn eval_to_felt(
     _info: &SignatureOnlyConcreteLibfunc,
     args: Vec<Value>,
 ) -> EvalAction {
-    let [val]: [BigInt; 1] = get_numberic_args_as_bigints(args).try_into().unwrap();
+    let [val]: [BigInt; 1] = get_numberic_args_as_bigints(&args).try_into().unwrap();
 
     EvalAction::NormalBranch(0, smallvec![Value::Felt(Felt::from(val))])
 }
@@ -325,7 +325,7 @@ fn eval_widemul(
     info: &SignatureOnlyConcreteLibfunc,
     args: Vec<Value>,
 ) -> EvalAction {
-    let [lhs, rhs]: [BigInt; 2] = get_numberic_args_as_bigints(args).try_into().unwrap();
+    let [lhs, rhs]: [BigInt; 2] = get_numberic_args_as_bigints(&args).try_into().unwrap();
 
     let int_ty = registry
         .get_type(&info.signature.branch_signatures[0].vars[0].ty)
