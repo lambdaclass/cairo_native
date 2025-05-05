@@ -177,4 +177,4 @@ name = "libfuncs"
 harness = false
 
 [workspace]
-members = ["debug_utils/sierra-emu"]
+members = ["debug_utils/sierra-emu", "debug_utils/sierra2casm-dbg"]

@@ -144,6 +144,7 @@ impl Value {
                             .all(|(value, ty)| value.is(registry, ty))
                 )
             }
+            CoreTypeConcrete::Span(info) => self.is(registry, &info.ty),
             CoreTypeConcrete::Uint8(_) => matches!(self, Self::U8(_)),
             CoreTypeConcrete::Uint32(_) => matches!(self, Self::U32(_)),
             CoreTypeConcrete::Uint128(_) => {
@@ -159,7 +160,7 @@ impl Value {
             }
 
             // To do:
-            CoreTypeConcrete::Coupon(_) => todo!(),
+            CoreTypeConcrete::Coupon(_) => matches!(self, Self::Unit),
             CoreTypeConcrete::Bitwise(_) => matches!(self, Self::Unit),
             CoreTypeConcrete::Box(info) => self.is(registry, &info.ty),
 
@@ -185,7 +186,7 @@ impl Value {
                     matches!(self, Self::Unit)
                 }
             },
-            CoreTypeConcrete::Const(_) => todo!(),
+            CoreTypeConcrete::Const(info) => self.is(registry, &info.inner_ty),
             CoreTypeConcrete::EcOp(_) => matches!(self, Self::Unit),
             CoreTypeConcrete::EcPoint(_) => matches!(self, Self::EcPoint { .. }),
             CoreTypeConcrete::EcState(_) => matches!(self, Self::EcState { .. }),
@@ -205,7 +206,6 @@ impl Value {
             }
             CoreTypeConcrete::Pedersen(_) => matches!(self, Self::Unit),
             CoreTypeConcrete::Poseidon(_) => matches!(self, Self::Unit),
-            CoreTypeConcrete::Span(_) => todo!(),
             CoreTypeConcrete::Starknet(inner) => match inner {
                 StarknetTypeConcrete::ClassHash(_)
                 | StarknetTypeConcrete::ContractAddress(_)

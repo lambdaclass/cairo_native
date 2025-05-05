@@ -38,6 +38,7 @@ mod bytes31;
 mod cast;
 mod circuit;
 mod r#const;
+mod coupon;
 mod drop;
 mod dup;
 mod ec;
@@ -465,7 +466,7 @@ fn eval<'a>(
         CoreConcreteLibfunc::Cast(selector) => self::cast::eval(registry, selector, args),
         CoreConcreteLibfunc::Circuit(selector) => self::circuit::eval(registry, selector, args),
         CoreConcreteLibfunc::Const(selector) => self::r#const::eval(registry, selector, args),
-        CoreConcreteLibfunc::Coupon(_) => todo!(),
+        CoreConcreteLibfunc::Coupon(selector) => self::coupon::eval(registry, selector, args),
         CoreConcreteLibfunc::CouponCall(_) => todo!(),
         CoreConcreteLibfunc::Debug(_) => todo!(),
         CoreConcreteLibfunc::Drop(info) => self::drop::eval(registry, info, args),
