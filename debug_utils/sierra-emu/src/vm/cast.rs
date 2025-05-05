@@ -33,7 +33,7 @@ fn eval_downcast(
     let range_check @ Value::Unit: Value = args[0].clone() else {
         panic!()
     };
-    let [value] = get_numberic_args_as_bigints(&args[1..].to_vec())
+    let [value] = get_numberic_args_as_bigints(&args[1..])
         .try_into()
         .unwrap();
 
