@@ -104,7 +104,7 @@ fn run_tests(compiled: TestCompilation) -> Vec<TestStatus> {
                     program.clone(),
                     EntryPoint::String(name.clone()),
                     vec![],
-                    u64::MAX,
+                    test.available_gas.map(|g| g as u64).unwrap_or_default(),
                 )
             });
 
