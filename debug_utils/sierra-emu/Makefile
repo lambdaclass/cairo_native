@@ -1,11 +1,11 @@
 usage:
 	@echo "Usage:"
-	@echo "    corelib:	     Install the corelib."
-	@echo "    build:        Builds the sierra emu."
-	@echo "    check:        Checks format and lints."
-	@echo "    test:         Runs all tests."
+	@echo "    corelib:	        Install the corelib."
+	@echo "    build:           Builds the sierra emu."
+	@echo "    check:           Checks format and lints."
+	@echo "    test:            Runs all tests."
 	@echo "    test-no-corelib: Runs all tests except for the ones from the cairo's corelib."
-	@echo "    clean:        Cleans the built artifacts."
+	@echo "    clean:           Cleans the built artifacts."
 
 corelib: ../../cairo2/corelib
 	ln -s ../../cairo2/corelib corelib
