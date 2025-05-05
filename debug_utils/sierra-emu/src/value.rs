@@ -190,7 +190,7 @@ impl Value {
                 | CircuitTypeConcrete::MulModGate(_)
                 | CircuitTypeConcrete::SubModGate(_)
                 | CircuitTypeConcrete::U96LimbsLessThanGuarantee(_) => {
-                    matches!(self, Self::Unit)
+                    matches!(self, Self::Struct(_))
                 }
             },
             CoreTypeConcrete::Const(info) => self.is(registry, &info.inner_ty),

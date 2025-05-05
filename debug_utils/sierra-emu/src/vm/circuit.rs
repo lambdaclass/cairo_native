@@ -254,7 +254,7 @@ pub fn eval_u96_limbs_less_than_guarantee_verify(
         panic!()
     };
     let limb_count = info.limb_count;
-    let Value::Struct(gate) = garantee.get(0).unwrap() else {
+    let Value::Struct(gate) = garantee.first().unwrap() else {
         panic!();
     };
     let Value::Struct(modulus) = garantee.get(1).unwrap() else {
