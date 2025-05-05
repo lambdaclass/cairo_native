@@ -33,9 +33,7 @@ fn eval_downcast(
     let range_check @ Value::Unit: Value = args[0].clone() else {
         panic!()
     };
-    let [value] = get_numberic_args_as_bigints(&args[1..])
-        .try_into()
-        .unwrap();
+    let [value] = get_numberic_args_as_bigints(&args[1..]).try_into().unwrap();
 
     let int_ty = registry.get_type(&info.to_ty).unwrap();
     let range = info.to_range.lower.clone()..info.to_range.upper.clone();
