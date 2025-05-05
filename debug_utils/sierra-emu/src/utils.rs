@@ -31,7 +31,7 @@ pub fn get_numberic_args_as_bigints(args: Vec<Value>) -> Vec<BigInt> {
         .collect()
 }
 
-pub fn get_int_value_from_type(
+pub fn get_value_from_integer(
     registry: &ProgramRegistry<CoreType, CoreLibfunc>,
     ty: &CoreTypeConcrete,
     value: BigInt,
@@ -39,7 +39,7 @@ pub fn get_int_value_from_type(
     match ty {
         CoreTypeConcrete::NonZero(info) => {
             let ty = registry.get_type(&info.ty).unwrap();
-            get_int_value_from_type(registry, ty, value)
+            get_value_from_integer(registry, ty, value)
         }
         CoreTypeConcrete::Sint8(_) => Value::I8(value.to_i8().unwrap()),
         CoreTypeConcrete::Sint16(_) => Value::I16(value.to_i16().unwrap()),

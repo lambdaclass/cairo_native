@@ -11,7 +11,7 @@ use num_bigint::BigInt;
 use smallvec::smallvec;
 
 use crate::{
-    utils::{get_int_value_from_type, get_numberic_args_as_bigints},
+    utils::{get_numberic_args_as_bigints, get_value_from_integer},
     Value,
 };
 
@@ -39,19 +39,18 @@ fn eval_try_new(
 
     // if x >= y then the range is not valid and we return [y, y) (empty range)
     let range = if x < y {
-        let x = get_int_value_from_type(registry, int_ty, x);
-        let y = get_int_value_from_type(registry, int_ty, y);
+        let x = get_value_from_integer(registry, int_ty, x);
+        let y = get_value_from_integer(registry, int_ty, y);
 
         Value::IntRange {
             x: Box::new(x),
             y: Box::new(y),
         }
     } else {
-        let x = get_int_value_from_type(registry, int_ty, y.clone());
-        let y = get_int_value_from_type(registry, int_ty, y);
+        let y = get_value_from_integer(registry, int_ty, y);
 
         Value::IntRange {
-            x: Box::new(x),
+            x: Box::new(y.clone()),
             y: Box::new(y),
         }
     };
@@ -79,15 +78,15 @@ fn eval_pop_front(
     let int_ty = registry.get_type(&info.param_signatures()[1].ty).unwrap();
 
     if x < y {
-        let x_p_1 = get_int_value_from_type(registry, int_ty, &x + 1);
-        let x = get_int_value_from_type(registry, int_ty, x);
-        let y = get_int_value_from_type(registry, int_ty, y);
+        let x_plus_1 = get_value_from_integer(registry, int_ty, &x + 1);
+        let x = get_value_from_integer(registry, int_ty, x);
+        let y = get_value_from_integer(registry, int_ty, y);
 
         EvalAction::NormalBranch(
             0,
             smallvec![
                 Value::IntRange {
-                    x: Box::new(x_p_1),
+                    x: Box::new(x_plus_1),
                     y: Box::new(y)
                 },
                 x
