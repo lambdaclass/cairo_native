@@ -241,7 +241,6 @@ pub fn eval_get_output(
         smallvec![
             output_struct.clone(),
             Value::Struct(vec![output_struct, modulus]),
-            Value::Unit
         ],
     )
 }
