@@ -1,8 +1,8 @@
 usage:
 	@echo "Usage:"
-	@echo "    build:        Builds casm-data-flow."
-	@echo "    check:        Checks format and lints."
-	@echo "    clean:        Cleans the built artifacts."
+	@echo "    build: Builds casm-data-flow."
+	@echo "    check: Checks format and lints."
+	@echo "    clean: Cleans the built artifacts."
 .PHONY: usage
 
 build:
