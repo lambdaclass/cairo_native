@@ -12,7 +12,36 @@ use cairo_lang_sierra::{
     program_registry::ProgramRegistry,
 };
 use num_bigint::{BigInt, BigUint, Sign, ToBigInt};
+use num_traits::{One, Zero};
 use smallvec::smallvec;
+
+fn u384_to_struct(num: BigUint) -> Value {
+    let output_big = num.to_bigint().unwrap();
+
+    let mask: BigInt = BigInt::from_bytes_be(Sign::Plus, &[255; 12]);
+
+    let l0: BigInt = &output_big & &mask;
+    let l1: BigInt = (&output_big >> 96) & &mask;
+    let l2: BigInt = (&output_big >> 192) & &mask;
+    let l3: BigInt = (output_big >> 288) & &mask;
+
+    let range = BigInt::ZERO..(BigInt::from(1) << 96);
+    Value::Struct(vec![
+        Value::BoundedInt {
+            range: range.clone(),
+            value: l0,
+        },
+        Value::BoundedInt {
+            range: range.clone(),
+            value: l1,
+        },
+        Value::BoundedInt {
+            range: range.clone(),
+            value: l2,
+        },
+        Value::BoundedInt { range, value: l3 },
+    ])
+}
 
 pub fn eval(
     registry: &ProgramRegistry<CoreType, CoreLibfunc>,
@@ -57,7 +86,6 @@ pub fn eval_add_input(
     else {
         panic!()
     };
-    assert_ne!(values.len(), values.capacity());
 
     let [Value::U128(l0), Value::U128(l1), Value::U128(l2), Value::U128(l3)]: [Value; 4] =
         members.try_into().unwrap()
@@ -171,7 +199,14 @@ pub fn eval_eval(
     if success {
         EvalAction::NormalBranch(
             0,
-            smallvec![add_mod, mul_mod, Value::CircuitOutputs(values)],
+            smallvec![
+                add_mod,
+                mul_mod,
+                Value::CircuitOutputs {
+                    circuits: values,
+                    modulus
+                }
+            ],
         )
     } else {
         EvalAction::NormalBranch(1, smallvec![add_mod, mul_mod, Value::Unit, Value::Unit])
@@ -183,7 +218,11 @@ pub fn eval_get_output(
     _info: &ConcreteGetOutputLibFunc,
     args: Vec<Value>,
 ) -> EvalAction {
-    let [Value::CircuitOutputs(outputs)]: [Value; 1] = args.try_into().unwrap() else {
+    let [Value::CircuitOutputs {
+        circuits: outputs,
+        modulus,
+    }]: [Value; 1] = args.try_into().unwrap()
+    else {
         panic!()
     };
     let circuit_info = match _registry.get_type(&_info.circuit_ty).unwrap() {
@@ -193,41 +232,66 @@ pub fn eval_get_output(
     let gate_offset = *circuit_info.values.get(&_info.output_ty).unwrap();
     let output_idx = gate_offset - 1 - circuit_info.n_inputs;
     let output = outputs[output_idx].to_owned();
-    let output_big = output.to_bigint().unwrap();
 
-    let mask: BigInt = BigInt::from_bytes_be(Sign::Plus, &[255; 12]);
+    let output_struct = u384_to_struct(output);
+    let modulus = u384_to_struct(modulus);
 
-    let l0: BigInt = &output_big & &mask;
-    let l1: BigInt = (&output_big >> 96) & &mask;
-    let l2: BigInt = (&output_big >> 192) & &mask;
-    let l3: BigInt = (output_big >> 288) & &mask;
-
-    let range = BigInt::ZERO..(BigInt::from(1) << 96);
-    let vec_values = vec![
-        Value::BoundedInt {
-            range: range.clone(),
-            value: l0,
-        },
-        Value::BoundedInt {
-            range: range.clone(),
-            value: l1,
-        },
-        Value::BoundedInt {
-            range: range.clone(),
-            value: l2,
-        },
-        Value::BoundedInt { range, value: l3 },
-    ];
-
-    EvalAction::NormalBranch(0, smallvec![Value::Struct(vec_values), Value::Unit])
+    EvalAction::NormalBranch(
+        0,
+        smallvec![
+            output_struct.clone(),
+            Value::Struct(vec![output_struct, modulus]),
+            Value::Unit
+        ],
+    )
 }
 
 pub fn eval_u96_limbs_less_than_guarantee_verify(
     _registry: &ProgramRegistry<CoreType, CoreLibfunc>,
-    _info: &ConcreteU96LimbsLessThanGuaranteeVerifyLibfunc,
-    _args: Vec<Value>,
+    info: &ConcreteU96LimbsLessThanGuaranteeVerifyLibfunc,
+    args: Vec<Value>,
 ) -> EvalAction {
-    EvalAction::NormalBranch(0, smallvec![Value::Unit])
+    let [Value::Struct(garantee)]: [Value; 1] = args.try_into().unwrap() else {
+        panic!()
+    };
+    let limb_count = info.limb_count;
+    let Value::Struct(gate) = garantee.get(0).unwrap() else {
+        panic!();
+    };
+    let Value::Struct(modulus) = garantee.get(1).unwrap() else {
+        panic!();
+    };
+    let Value::BoundedInt {
+        value: gate_last_limb,
+        range: u96_range,
+    } = &gate[limb_count - 1]
+    else {
+        panic!();
+    };
+    let Value::BoundedInt {
+        value: modulus_last_limb,
+        ..
+    } = &modulus[limb_count - 1]
+    else {
+        panic!();
+    };
+    let diff = modulus_last_limb - gate_last_limb;
+
+    if (modulus_last_limb - gate_last_limb) != BigInt::zero() {
+        EvalAction::NormalBranch(
+            1,
+            smallvec![Value::BoundedInt {
+                range: u96_range.clone(),
+                value: diff
+            }],
+        )
+    } else {
+        // if there is no diff, build a new garantee, skipping the last limb
+        let new_gate = Value::Struct(gate[0..limb_count].to_vec());
+        let new_modulus = Value::Struct(modulus[0..limb_count].to_vec());
+
+        EvalAction::NormalBranch(0, smallvec![Value::Struct(vec![new_gate, new_modulus])])
+    }
 }
 
 pub fn eval_u96_single_limb_less_than_guarantee_verify(
@@ -331,11 +395,11 @@ pub fn eval_try_into_circuit_modulus(
 
     let value = l0 | (l1 << 96) | (l2 << 192) | (l3 << 288);
 
-    // a CircuitModulus must not be neither 0 nor 1
-    assert_ne!(value, 0_u8.into());
-    assert_ne!(value, 1_u8.into());
-
-    EvalAction::NormalBranch(0, smallvec![Value::CircuitModulus(value)])
+    if value > BigUint::one() {
+        EvalAction::NormalBranch(0, smallvec![Value::CircuitModulus(value)])
+    } else {
+        EvalAction::NormalBranch(1, smallvec![])
+    }
 }
 
 pub fn eval_into_u96_guarantee(
@@ -343,10 +407,15 @@ pub fn eval_into_u96_guarantee(
     _info: &SignatureAndTypeConcreteLibfunc,
     args: Vec<Value>,
 ) -> EvalAction {
-    let [Value::BoundedInt { range, value }]: [Value; 1] = args.try_into().unwrap() else {
+    let [Value::BoundedInt { range, mut value }]: [Value; 1] = args.try_into().unwrap() else {
         panic!()
     };
     assert_eq!(range, BigInt::ZERO..(BigInt::from(1) << 96));
+
+    // offset by the lower bound to get the actual value
+    if range.start > BigInt::ZERO {
+        value = range.start;
+    }
 
     EvalAction::NormalBranch(0, smallvec![Value::U128(value.try_into().unwrap())])
 }

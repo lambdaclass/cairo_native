@@ -20,7 +20,9 @@ pub fn value_to_felt(value: &Value) -> Vec<Felt> {
             costs.mul_mod.into(),
         ],
         Value::CircuitModulus(value) => vec![value.into()],
-        Value::Circuit(data) | Value::CircuitOutputs(data) => data.iter().map(Felt::from).collect(),
+        Value::Circuit(data) | Value::CircuitOutputs { circuits: data, .. } => {
+            data.iter().map(Felt::from).collect()
+        }
         Value::EcPoint { x, y } => {
             vec![*x, *y]
         }
