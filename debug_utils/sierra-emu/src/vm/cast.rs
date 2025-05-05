@@ -42,10 +42,7 @@ fn eval_downcast(
     if range.contains(&value) {
         EvalAction::NormalBranch(
             0,
-            smallvec![
-                range_check,
-                get_value_from_integer(registry, int_ty, value)
-            ],
+            smallvec![range_check, get_value_from_integer(registry, int_ty, value)],
         )
     } else {
         EvalAction::NormalBranch(1, smallvec![Value::Unit])
@@ -57,9 +54,7 @@ fn eval_upcast(
     info: &SignatureOnlyConcreteLibfunc,
     args: Vec<Value>,
 ) -> EvalAction {
-    let [value] = get_numberic_args_as_bigints(&args)
-        .try_into()
-        .unwrap();
+    let [value] = get_numberic_args_as_bigints(&args).try_into().unwrap();
     let int_ty = registry
         .get_type(&info.branch_signatures()[0].vars[0].ty)
         .unwrap();
