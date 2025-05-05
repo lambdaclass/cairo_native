@@ -14,7 +14,7 @@ use crate::Value;
 /// Receives a slice of values, filters any which is non numeric and returns a `Vec<BigInt>`
 /// Useful when a binary operation takes generic values (like with bounded ints).
 pub fn get_numberic_args_as_bigints(args: &[Value]) -> Vec<BigInt> {
-    args.into_iter()
+    args.iter()
         .map(|v| match v {
             Value::BoundedInt { value, .. } => value.to_owned(),
             Value::I8(value) => BigInt::from(*value),
