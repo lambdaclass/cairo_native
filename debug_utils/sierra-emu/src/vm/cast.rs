@@ -43,7 +43,7 @@ fn eval_downcast(
         EvalAction::NormalBranch(
             0,
             smallvec![
-                range_check, // range_check
+                range_check,
                 get_value_from_integer(registry, int_ty, value)
             ],
         )
