@@ -33,7 +33,7 @@ fn eval_downcast(
     let range_check @ Value::Unit: Value = args[0].clone() else {
         panic!()
     };
-    let [value] = get_numberic_args_as_bigints(args[1..].to_vec())
+    let [value] = get_numberic_args_as_bigints(&args[1..].to_vec())
         .try_into()
         .unwrap();
 
@@ -57,7 +57,7 @@ fn eval_upcast(
     info: &SignatureOnlyConcreteLibfunc,
     args: Vec<Value>,
 ) -> EvalAction {
-    let [value] = get_numberic_args_as_bigints(args[1..].to_vec())
+    let [value] = get_numberic_args_as_bigints(&args)
         .try_into()
         .unwrap();
     let int_ty = registry
