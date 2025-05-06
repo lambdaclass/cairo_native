@@ -25,7 +25,7 @@ pub fn get_numberic_args_as_bigints(args: &[Value]) -> Vec<BigInt> {
             Value::U128(value) => BigInt::from(*value),
             Value::Felt(value) => value.to_bigint(),
             Value::Bytes31(value) => value.to_bigint(),
-            value => panic!("expected numeric value: {:?}", value),
+            value => panic!("argument should be an integer: {:?}", value),
         })
         .collect()
 }
