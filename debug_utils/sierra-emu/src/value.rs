@@ -15,6 +15,7 @@ use std::{collections::HashMap, ops::Range};
 
 use crate::{debug::type_to_name, gas::BuiltinCosts};
 
+/// TODO: Can we reuse `cairo_native::Value::from_ptr`?
 #[derive(Clone, Debug, Eq, PartialEq, Serialize)]
 pub enum Value {
     Array {
