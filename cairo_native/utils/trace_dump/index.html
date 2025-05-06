@@ -1,0 +1,56 @@
+<!DOCTYPE html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1.0"><meta name="generator" content="rustdoc"><meta name="description" content="The trace dump feature is used to generate the execution trace of a sierra program."><title>cairo_native::utils::trace_dump - Rust</title><script>if(window.location.protocol!=="file:")document.head.insertAdjacentHTML("beforeend","SourceSerif4-Regular-6b053e98.ttf.woff2,FiraSans-Italic-81dc35de.woff2,FiraSans-Regular-0fe48ade.woff2,FiraSans-MediumItalic-ccf7e434.woff2,FiraSans-Medium-e1aa3f0a.woff2,SourceCodePro-Regular-8badfe75.ttf.woff2,SourceCodePro-Semibold-aa29a496.ttf.woff2".split(",").map(f=>`<link rel="preload" as="font" type="font/woff2" crossorigin href="../../../static.files/${f}">`).join(""))</script><link rel="stylesheet" href="../../../static.files/normalize-9960930a.css"><link rel="stylesheet" href="../../../static.files/rustdoc-6c3ea77c.css"><meta name="rustdoc-vars" data-root-path="../../../" data-static-root-path="../../../static.files/" data-current-crate="cairo_native" data-themes="" data-resource-suffix="" data-rustdoc-version="1.86.0 (05f9846f8 2025-03-31)" data-channel="1.86.0" data-search-js="search-581efc7a.js" data-settings-js="settings-6dad6058.js" ><script src="../../../static.files/storage-3a5871a4.js"></script><script defer src="../sidebar-items.js"></script><script defer src="../../../static.files/main-4d63596a.js"></script><noscript><link rel="stylesheet" href="../../../static.files/noscript-893ab5e7.css"></noscript><link rel="alternate icon" type="image/png" href="../../../static.files/favicon-32x32-6580c154.png"><link rel="icon" type="image/svg+xml" href="../../../static.files/favicon-044be391.svg"></head><body class="rustdoc mod"><!--[if lte IE 11]><div class="warning">This old browser is unsupported and will most likely display funky things.</div><![endif]--><nav class="mobile-topbar"><button class="sidebar-menu-toggle" title="show sidebar"></button></nav><nav class="sidebar"><div class="sidebar-crate"><h2><a href="../../../cairo_native/index.html">cairo_<wbr>native</a><span class="version">0.5.0-rc.5</span></h2></div><div class="sidebar-elems"><section id="rustdoc-toc"><h2 class="location"><a href="#">Module trace_<wbr>dump</a></h2><h3><a href="#functions">Module Items</a></h3><ul class="block"><li><a href="#functions" title="Functions">Functions</a></li></ul></section><div id="rustdoc-modnav"><h2><a href="../index.html">In cairo_<wbr>native::<wbr>utils</a></h2></div></div></nav><div class="sidebar-resizer"></div><main><div class="width-limiter"><rustdoc-search></rustdoc-search><section id="main-content" class="content"><div class="main-heading"><div class="rustdoc-breadcrumbs"><a href="../../index.html">cairo_native</a>::<wbr><a href="../index.html">utils</a></div><h1>Module <span>trace_dump</span><button id="copy-path" title="Copy item path to clipboard">Copy item path</button></h1><rustdoc-toolbar></rustdoc-toolbar><span class="sub-heading"><a class="src" href="../../../src/cairo_native/utils/trace_dump.rs.html#1-225">Source</a> </span></div><details class="toggle top-doc" open><summary class="hideme"><span>Expand description</span></summary><div class="docblock"><p>The trace dump feature is used to generate the execution trace of a sierra program.</p>
+<p>Take, for example, the following sierra code:</p>
+<div class="example-wrap"><pre class="language-sierra"><code>const_as_immediate&lt;Const&lt;felt252, 10&gt;&gt;() -&gt; ([0]);
+const_as_immediate&lt;Const&lt;felt252, 20&gt;&gt;() -&gt; ([1]);
+store_temp&lt;felt252&gt;([0]) -&gt; ([0]);
+felt252_add([0], [1]) -&gt; ([2]);
+store_temp&lt;felt252&gt;([2]) -&gt; ([2]);
+return([2]);</code></pre></div>
+<p>The compiler will call <code>build_state_snapshot</code> right before each statement.
+Iterating every variable on the current scope and saving its value on a global
+static variable.</p>
+<p>At the end of the execution, the full trace dump can be retrieved, which
+looks something like this:</p>
+<div class="example-wrap"><pre class="language-json"><code>{
+  &quot;states&quot;: [
+    {
+      &quot;statementIdx&quot;: 0,
+      &quot;preStateDump&quot;: {}
+    },
+    {
+      &quot;statementIdx&quot;: 1,
+      &quot;preStateDump&quot;: {
+        &quot;0&quot;: { &quot;Felt&quot;: &quot;0xa&quot; }
+      }
+    },
+    {
+      &quot;statementIdx&quot;: 2,
+      &quot;preStateDump&quot;: {
+        &quot;0&quot;: { &quot;Felt&quot;: &quot;0xa&quot; },
+        &quot;1&quot;: { &quot;Felt&quot;: &quot;0x14&quot; }
+      }
+    },
+    ...
+  ]
+}</code></pre></div>
+<p>To support this feature even on the context of starknet contracts, then we
+must support building a trace dump for multiple programs at the same time, as
+starknet contracts can themselves call another contracts. To achieve this, we
+need two important elements.</p>
+<ol>
+<li>
+<p>The global static variable must me able to store multiple trace dumps at the
+same time. We have a global static hashmap from trace id to trace dump content.
+See <code>TRACE_DUMP</code>.</p>
+</li>
+<li>
+<p>We must store somewhere the ID of the current trace dump, and update it
+acordingly when switching between contract executors</p>
+</li>
+</ol>
+<p>Both these elements must be properly setup before running the executor. See
+<code>cairo-native-run</code> for an example on how to do it. You can also check on
+this file’s integration tests.</p>
+<p>When executing starknet contracts, the trace id must be set right
+before each execution, restoring the previous trace id after the execution.</p>
+</div></details><h2 id="functions" class="section-header">Functions<a href="#functions" class="anchor">§</a></h2><dl class="item-table"><dt><a class="fn" href="fn.build_state_snapshot.html" title="fn cairo_native::utils::trace_dump::build_state_snapshot">build_<wbr>state_<wbr>snapshot</a></dt></dl></section></div></main></body></html>
