@@ -1,6 +1,6 @@
 usage:
 	@echo "Usage:"
-	@echo "    corelib:	        Install the corelib."
+	@echo "    corelib:         Install the corelib."
 	@echo "    build:           Builds the sierra emu."
 	@echo "    check:           Checks format and lints."
 	@echo "    test:            Runs all tests."
