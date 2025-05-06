@@ -1,5 +1,5 @@
 use super::EvalAction;
-use crate::Value;
+use crate::{debug::debug_signature, Value};
 use cairo_lang_sierra::{
     extensions::{
         circuit::{
@@ -12,7 +12,8 @@ use cairo_lang_sierra::{
     program_registry::ProgramRegistry,
 };
 use num_bigint::{BigInt, BigUint, Sign, ToBigInt};
-use num_traits::{One, Zero};
+use num_integer::{ExtendedGcd, Integer};
+use num_traits::{One, Signed, Zero};
 use smallvec::smallvec;
 
 fn u384_to_struct(num: BigUint) -> Value {
@@ -41,6 +42,31 @@ fn u384_to_struct(num: BigUint) -> Value {
         },
         Value::BoundedInt { range, value: l3 },
     ])
+}
+
+fn modular_inverse(num: &BigInt, modulus: &BigUint) -> (bool, BigUint) {
+    let ExtendedGcd { gcd, x, .. } = num
+        .to_bigint()
+        .unwrap()
+        .extended_gcd(&modulus.to_bigint().unwrap());
+    let gcd = gcd.to_biguint().unwrap();
+
+    if gcd.is_one() {
+        // calculate positive modulus
+        let num_mod = x.magnitude().mod_floor(modulus);
+
+        return (
+            true,
+            if num.is_negative() {
+                modulus - num_mod
+            } else {
+                num_mod
+            },
+        );
+    }
+
+    // If there's no inverse, find the value which nullifys the operation
+    (false, modulus / gcd)
 }
 
 pub fn eval(
@@ -172,14 +198,17 @@ pub fn eval_eval(
                         outputs[mul_gate.output] = Some((l * r) % &modulus);
                     }
                     (None, Some(r)) => {
-                        let res = match r.modinv(&modulus) {
-                            Some(inv) => inv,
-                            None => {
-                                panic!("attempt to divide by 0");
-                            }
-                        };
-                        // if it is a inv_gate the output index is store in lhs
-                        outputs[mul_gate.lhs] = Some(res);
+                        let r = r.to_bigint().unwrap();
+                        let (sucess, res) = modular_inverse(&r, &modulus);
+
+                        if sucess {
+                            // if it is a inv_gate the output index is store in lhs
+                            outputs[mul_gate.lhs] = Some(res);
+                        } else {
+                            // Since we don't calculate CircuitPartialOutputs
+                            // perform an early break
+                            break false;
+                        }
                     }
                     // this state should not be reached since it would mean that
                     // not all the circuit's inputs where filled
@@ -190,13 +219,13 @@ pub fn eval_eval(
         }
     };
 
-    let values = outputs
-        .into_iter()
-        .skip(1 + circ_info.n_inputs)
-        .collect::<Option<Vec<BigUint>>>()
-        .expect("The circuit cannot be calculated");
-
     if success {
+        let values = outputs
+            .into_iter()
+            .skip(1 + circ_info.n_inputs)
+            .collect::<Option<Vec<BigUint>>>()
+            .expect("The circuit cannot be calculated");
+
         EvalAction::NormalBranch(
             0,
             smallvec![
@@ -296,20 +325,23 @@ pub fn eval_u96_limbs_less_than_guarantee_verify(
 pub fn eval_u96_single_limb_less_than_guarantee_verify(
     _registry: &ProgramRegistry<CoreType, CoreLibfunc>,
     _info: &SignatureOnlyConcreteLibfunc,
-    _args: Vec<Value>,
+    args: Vec<Value>,
 ) -> EvalAction {
-    EvalAction::NormalBranch(0, smallvec![Value::U128(0)])
+    let [range_check_96 @ Value::Unit, garantee]: [Value; 2] = args.try_into().unwrap() else {
+        panic!()
+    };
+    EvalAction::NormalBranch(0, smallvec![range_check_96, garantee])
 }
 
 pub fn eval_u96_guarantee_verify(
     _registry: &ProgramRegistry<CoreType, CoreLibfunc>,
     _info: &SignatureOnlyConcreteLibfunc,
-    _args: Vec<Value>,
+    args: Vec<Value>,
 ) -> EvalAction {
-    let [range_check_96 @ Value::Unit, _]: [Value; 2] = _args.try_into().unwrap() else {
+    let [range_check_96 @ Value::Unit, garantee]: [Value; 2] = args.try_into().unwrap() else {
         panic!()
     };
-    EvalAction::NormalBranch(0, smallvec![range_check_96])
+    EvalAction::NormalBranch(0, smallvec![range_check_96, garantee])
 }
 
 pub fn eval_failure_guarantee_verify(
@@ -417,4 +449,45 @@ pub fn eval_into_u96_guarantee(
     }
 
     EvalAction::NormalBranch(0, smallvec![Value::U128(value.try_into().unwrap())])
+}
+
+#[cfg(test)]
+mod tests {
+    use crate::{load_cairo, test_utils::run_test_program};
+
+    #[test]
+    fn test_failure() {
+        let (_, program) = load_cairo!(
+            use core::circuit::{
+                AddInputResultTrait, AddMod, CircuitElement, CircuitInput, CircuitInputs,
+                CircuitModulus, CircuitOutputsTrait, EvalCircuitTrait, MulMod, RangeCheck96,
+                circuit_add, circuit_inverse, circuit_mul, circuit_sub, u384, u96,
+            };
+            use core::num::traits::Zero;
+            use core::traits::TryInto;
+
+            fn main() {
+                let _in0 = CircuitElement::<CircuitInput<0>> {};
+                let _out0 = circuit_inverse(_in0);
+
+                let _modulus = TryInto::<_, CircuitModulus>::try_into([55, 0, 0, 0]).unwrap();
+                (_out0,)
+                    .new_inputs()
+                    .next([11, 0, 0, 0])
+                    .done()
+                    .eval(_modulus)
+                    .unwrap_err();
+                (_out0,)
+                    .new_inputs()
+                    .next([11, 0, 0, 0])
+                    .done()
+                    .eval(_modulus)
+                    .unwrap_err();
+            }
+        );
+
+        //println!("{}", &program);
+
+        run_test_program(program);
+    }
 }

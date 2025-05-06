@@ -179,19 +179,21 @@ impl Value {
                 }
                 CircuitTypeConcrete::CircuitModulus(_) => matches!(self, Self::CircuitModulus(_)),
                 CircuitTypeConcrete::U96Guarantee(_) => matches!(self, Self::U128(_)),
-                CircuitTypeConcrete::CircuitInput(_)
+                CircuitTypeConcrete::CircuitInput(_) => {
+                    matches!(self, Self::Struct(_))
+                }
+                CircuitTypeConcrete::U96LimbsLessThanGuarantee(_) => {
+                    matches!(self, Self::Struct(_))
+                }
+                CircuitTypeConcrete::AddMod(_)
+                | CircuitTypeConcrete::MulMod(_)
                 | CircuitTypeConcrete::CircuitDescriptor(_)
                 | CircuitTypeConcrete::CircuitFailureGuarantee(_)
-                | CircuitTypeConcrete::AddMod(_)
-                | CircuitTypeConcrete::MulMod(_)
                 | CircuitTypeConcrete::AddModGate(_)
                 | CircuitTypeConcrete::CircuitPartialOutputs(_)
                 | CircuitTypeConcrete::InverseGate(_)
                 | CircuitTypeConcrete::MulModGate(_)
-                | CircuitTypeConcrete::SubModGate(_)
-                | CircuitTypeConcrete::U96LimbsLessThanGuarantee(_) => {
-                    matches!(self, Self::Struct(_))
-                }
+                | CircuitTypeConcrete::SubModGate(_) => matches!(self, Self::Unit),
             },
             CoreTypeConcrete::Const(info) => self.is(registry, &info.inner_ty),
             CoreTypeConcrete::EcOp(_) => matches!(self, Self::Unit),

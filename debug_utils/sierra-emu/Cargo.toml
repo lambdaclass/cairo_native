@@ -25,6 +25,7 @@ k256 = "0.13.4"
 keccak = "0.1.5"
 num-bigint = "0.4.6"
 num-traits = "0.2.19"
+num-integer = "0.1.46"
 p256 = "0.13.2"
 rand = "0.8.5"
 sec1 = { version = "0.7.3", features = ["std"] }

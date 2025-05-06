@@ -308,7 +308,7 @@ impl VirtualMachine {
         match &self.program.statements[frame.pc.0] {
             GenStatement::Invocation(invocation) => {
                 let libfunc = self.registry.get_libfunc(&invocation.libfunc_id).unwrap();
-                debug!(
+                dbg!(
                     "Executing invocation of libfunc: {}",
                     libfunc_to_name(libfunc)
                 );
