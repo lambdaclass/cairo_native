@@ -26,13 +26,13 @@ Starting Gas: 18446744073709551615
 Final Gas: 18446744073709544205
 ```
 
-We will need the trace and memory files generated, to find a path from the starting gas, to the final gas.
+We will need the trace and memory files generated, to find a path from the starting gas to the final gas.
 
 ```bash
 cargo run -- --program-path programs/fibonacci_starknet.casm.json --trace-path programs/fibonacci_starknet.trace --memory-path programs/fibonacci_starknet.memory -s 18446744073709551615 -t 18446744073709544205
 ```
 
-The binary prints the full path from the starting gas to the final gas. This is useful:
+The binary prints the full path from the starting gas to the final gas.
 
 ```
   [184] = 18446744073709551615
