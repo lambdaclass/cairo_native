@@ -1,5 +1,5 @@
 use super::EvalAction;
-use crate::Value;
+use crate::{debug::debug_signature, Value};
 use cairo_lang_sierra::{
     extensions::{
         circuit::{
@@ -7,7 +7,7 @@ use cairo_lang_sierra::{
             ConcreteU96LimbsLessThanGuaranteeVerifyLibfunc,
         },
         core::{CoreLibfunc, CoreType, CoreTypeConcrete},
-        lib_func::{SignatureAndTypeConcreteLibfunc, SignatureOnlyConcreteLibfunc},
+        lib_func::{SignatureAndTypeConcreteLibfunc, SignatureOnlyConcreteLibfunc}, ConcreteLibfunc,
     },
     program_registry::ProgramRegistry,
 };
@@ -327,10 +327,10 @@ pub fn eval_u96_single_limb_less_than_guarantee_verify(
     _info: &SignatureOnlyConcreteLibfunc,
     args: Vec<Value>,
 ) -> EvalAction {
-    let [range_check_96 @ Value::Unit, garantee]: [Value; 2] = args.try_into().unwrap() else {
-        panic!()
-    };
-    EvalAction::NormalBranch(0, smallvec![range_check_96, garantee])
+    debug_signature(_registry, _info.param_signatures(), _info.branch_signatures(), &args);
+    let [garantee]: [Value; 1] = args.try_into().unwrap();
+
+    EvalAction::NormalBranch(0, smallvec![garantee])
 }
 
 pub fn eval_u96_guarantee_verify(
@@ -345,8 +345,8 @@ pub fn eval_u96_guarantee_verify(
 }
 
 pub fn eval_failure_guarantee_verify(
-    _registry: &ProgramRegistry<CoreType, CoreLibfunc>,
-    _info: &SignatureOnlyConcreteLibfunc,
+    registry: &ProgramRegistry<CoreType, CoreLibfunc>,
+    info: &SignatureOnlyConcreteLibfunc,
     _args: Vec<Value>,
 ) -> EvalAction {
     let [rc96 @ Value::Unit, mul_mod @ Value::Unit, _, _, _]: [Value; 5] =
@@ -355,7 +355,30 @@ pub fn eval_failure_guarantee_verify(
         panic!()
     };
 
-    EvalAction::NormalBranch(0, smallvec![rc96, mul_mod, Value::Unit])
+    let limbs_cout = match registry
+        .get_type(&info.signature.branch_signatures[0].vars[2].ty)
+        .unwrap()
+    {
+        CoreTypeConcrete::Circuit(CircuitTypeConcrete::U96LimbsLessThanGuarantee(info)) => {
+            info.limb_count
+        }
+        _ => panic!(),
+    };
+
+    let zero_u96 = Value::BoundedInt {
+        range: BigInt::zero()..BigInt::one() << 96,
+        value: 0.into(),
+    };
+    let limbs_struct = Value::Struct(vec![zero_u96; limbs_cout]);
+
+    EvalAction::NormalBranch(
+        0,
+        smallvec![
+            rc96,
+            mul_mod,
+            Value::Struct(vec![limbs_struct.clone(), limbs_struct])
+        ],
+    )
 }
 
 pub fn eval_get_descriptor(
