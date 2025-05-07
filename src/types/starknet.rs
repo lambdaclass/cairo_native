@@ -33,14 +33,17 @@ use crate::{
 use cairo_lang_sierra::{
     extensions::{
         core::{CoreLibfunc, CoreType},
-        starknet::{secp256::Secp256PointTypeConcrete, StarkNetTypeConcrete},
+        starknet::{secp256::Secp256PointTypeConcrete, StarknetTypeConcrete},
         types::InfoOnlyConcreteType,
     },
     program_registry::ProgramRegistry,
 };
 use melior::{
     dialect::{func, llvm, ods},
-    ir::{attribute::IntegerAttribute, r#type::IntegerType, Block, Location, Module, Region, Type},
+    ir::{
+        attribute::IntegerAttribute, r#type::IntegerType, Block, BlockLike, Location, Module,
+        Region, Type,
+    },
     Context,
 };
 
@@ -52,52 +55,52 @@ pub fn build<'ctx>(
     module: &Module<'ctx>,
     registry: &ProgramRegistry<CoreType, CoreLibfunc>,
     metadata: &mut MetadataStorage,
-    selector: WithSelf<StarkNetTypeConcrete>,
+    selector: WithSelf<StarknetTypeConcrete>,
 ) -> Result<Type<'ctx>> {
     match &*selector {
-        StarkNetTypeConcrete::ClassHash(info) => build_class_hash(
+        StarknetTypeConcrete::ClassHash(info) => build_class_hash(
             context,
             module,
             registry,
             metadata,
             WithSelf::new(selector.self_ty(), info),
         ),
-        StarkNetTypeConcrete::ContractAddress(info) => build_contract_address(
+        StarknetTypeConcrete::ContractAddress(info) => build_contract_address(
             context,
             module,
             registry,
             metadata,
             WithSelf::new(selector.self_ty(), info),
         ),
-        StarkNetTypeConcrete::StorageBaseAddress(info) => build_storage_base_address(
+        StarknetTypeConcrete::StorageBaseAddress(info) => build_storage_base_address(
             context,
             module,
             registry,
             metadata,
             WithSelf::new(selector.self_ty(), info),
         ),
-        StarkNetTypeConcrete::StorageAddress(info) => build_storage_address(
+        StarknetTypeConcrete::StorageAddress(info) => build_storage_address(
             context,
             module,
             registry,
             metadata,
             WithSelf::new(selector.self_ty(), info),
         ),
-        StarkNetTypeConcrete::System(info) => build_system(
+        StarknetTypeConcrete::System(info) => build_system(
             context,
             module,
             registry,
             metadata,
             WithSelf::new(selector.self_ty(), info),
         ),
-        StarkNetTypeConcrete::Secp256Point(info) => build_secp256_point(
+        StarknetTypeConcrete::Secp256Point(info) => build_secp256_point(
             context,
             module,
             registry,
             metadata,
             WithSelf::new(selector.self_ty(), info),
         ),
-        StarkNetTypeConcrete::Sha256StateHandle(info) => build_sha256_state_handle(
+        StarknetTypeConcrete::Sha256StateHandle(info) => build_sha256_state_handle(
             context,
             module,
             registry,
@@ -215,13 +218,13 @@ pub fn build_sha256_state_handle<'ctx>(
         let k32 = block.const_int(context, location, 32, 64)?;
         let new_ptr = block.append_op_result(ReallocBindingsMeta::realloc(
             context, null_ptr, k32, location,
-        ))?;
+        )?)?;
 
         block.append_operation(
             ods::llvm::intr_memcpy_inline(
                 context,
                 new_ptr,
-                block.argument(0)?.into(),
+                block.arg(0)?,
                 IntegerAttribute::new(IntegerType::new(context, 64).into(), 32),
                 IntegerAttribute::new(IntegerType::new(context, 1).into(), 0),
                 location,
@@ -229,10 +232,7 @@ pub fn build_sha256_state_handle<'ctx>(
             .into(),
         );
 
-        block.append_operation(func::r#return(
-            &[block.argument(0)?.into(), new_ptr],
-            location,
-        ));
+        block.append_operation(func::r#return(&[block.arg(0)?, new_ptr], location));
         Ok(Some(region))
     })?;
     DropOverridesMeta::register_with(context, module, registry, metadata, info.self_ty(), |_| {
@@ -240,11 +240,7 @@ pub fn build_sha256_state_handle<'ctx>(
         let block =
             region.append_block(Block::new(&[(llvm::r#type::pointer(context, 0), location)]));
 
-        block.append_operation(ReallocBindingsMeta::free(
-            context,
-            block.argument(0)?.into(),
-            location,
-        ));
+        block.append_operation(ReallocBindingsMeta::free(context, block.arg(0)?, location)?);
 
         block.append_operation(func::r#return(&[], location));
         Ok(Some(region))

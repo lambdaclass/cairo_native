@@ -52,10 +52,12 @@ fn main() -> anyhow::Result<()> {
     check_compiler_path(args.single_file, &args.path)?;
 
     let native_context = NativeContext::new();
-    let sierra_program = cairo_to_sierra(&args.path);
+    let sierra_program = cairo_to_sierra(&args.path).unwrap();
 
     // Compile the sierra program into a MLIR module.
-    let native_module = native_context.compile(&sierra_program, false).unwrap();
+    let native_module = native_context
+        .compile(&sierra_program, false, Some(Default::default()))
+        .unwrap();
 
     let output_mlir = args
         .output_mlir

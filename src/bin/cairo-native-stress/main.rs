@@ -125,7 +125,7 @@ fn main() {
         let execution_result = {
             let now = Instant::now();
             let execution_result = executor
-                .invoke_contract_dynamic(&entry_point, &[], Some(u128::MAX), DummySyscallHandler)
+                .invoke_contract_dynamic(&entry_point, &[], Some(u64::MAX), DummySyscallHandler)
                 .expect("failed to execute contract");
             let elapsed = now.elapsed().as_millis();
             let result = execution_result.return_values[0];
@@ -280,7 +280,7 @@ where
     ) -> Arc<AotNativeExecutor> {
         let native_module = self
             .context
-            .compile(program, false)
+            .compile(program, false, Some(Default::default()))
             .expect("failed to compile program");
 
         let registry = ProgramRegistry::new(program).expect("failed to get program registry");
@@ -307,7 +307,12 @@ where
             }
         };
 
-        let executor = AotNativeExecutor::new(shared_library, registry, metadata);
+        let executor = AotNativeExecutor::new(
+            shared_library,
+            registry,
+            metadata,
+            native_module.metadata().get().cloned().unwrap_or_default(),
+        );
         let executor = Arc::new(executor);
 
         self.cache.insert(key, executor.clone());

@@ -1,5 +1,6 @@
 use crate::{
-    error,
+    error::Result,
+    native_panic,
     starknet::{ArrayAbi, Secp256k1Point, Secp256r1Point},
     types::TypeBuilder,
     utils::libc_malloc,
@@ -9,12 +10,15 @@ use bumpalo::Bump;
 use cairo_lang_sierra::{
     extensions::{
         core::{CoreLibfunc, CoreType, CoreTypeConcrete},
-        starknet::{secp256::Secp256PointTypeConcrete, StarkNetTypeConcrete},
+        starknet::{secp256::Secp256PointTypeConcrete, StarknetTypeConcrete},
     },
     ids::ConcreteTypeId,
     program_registry::ProgramRegistry,
 };
-use std::ptr::{null, NonNull};
+use std::{
+    ffi::c_void,
+    ptr::{null, NonNull},
+};
 
 mod aarch64;
 mod x86_64;
@@ -23,7 +27,11 @@ mod x86_64;
 pub trait AbiArgument {
     /// Serialize the argument into the buffer. This method should keep track of arch-dependent
     /// stuff like register vs stack allocation.
-    fn to_bytes(&self, buffer: &mut Vec<u8>) -> Result<(), error::Error>;
+    fn to_bytes(
+        &self,
+        buffer: &mut Vec<u8>,
+        find_dict_drop_override: impl Copy + Fn(&ConcreteTypeId) -> Option<extern "C" fn(*mut c_void)>,
+    ) -> Result<()>;
 }
 
 /// A wrapper that implements `AbiArgument` for `Value`s. It contains all the required stuff to
@@ -42,7 +50,7 @@ impl<'a> ValueWithInfoWrapper<'a> {
         &'b self,
         value: &'b Value,
         type_id: &'b ConcreteTypeId,
-    ) -> Result<ValueWithInfoWrapper<'b>, error::Error>
+    ) -> Result<ValueWithInfoWrapper<'b>>
     where
         'b: 'a,
     {
@@ -56,11 +64,20 @@ impl<'a> ValueWithInfoWrapper<'a> {
     }
 }
 
-impl<'a> AbiArgument for ValueWithInfoWrapper<'a> {
-    fn to_bytes(&self, buffer: &mut Vec<u8>) -> Result<(), error::Error> {
+impl AbiArgument for ValueWithInfoWrapper<'_> {
+    fn to_bytes(
+        &self,
+        buffer: &mut Vec<u8>,
+        find_dict_drop_override: impl Copy + Fn(&ConcreteTypeId) -> Option<extern "C" fn(*mut c_void)>,
+    ) -> Result<()> {
         match (self.value, self.info) {
             (value, CoreTypeConcrete::Box(info)) => {
-                let ptr = value.to_ptr(self.arena, self.registry, self.type_id)?;
+                let ptr = value.to_ptr(
+                    self.arena,
+                    self.registry,
+                    self.type_id,
+                    find_dict_drop_override,
+                )?;
 
                 let layout = self.registry.get_type(&info.ty)?.layout(self.registry)?;
                 let heap_ptr = unsafe {
@@ -69,13 +86,18 @@ impl<'a> AbiArgument for ValueWithInfoWrapper<'a> {
                     heap_ptr
                 };
 
-                heap_ptr.to_bytes(buffer)?;
+                heap_ptr.to_bytes(buffer, find_dict_drop_override)?;
             }
             (value, CoreTypeConcrete::Nullable(info)) => {
                 if matches!(value, Value::Null) {
-                    null::<()>().to_bytes(buffer)?;
+                    null::<()>().to_bytes(buffer, find_dict_drop_override)?;
                 } else {
-                    let ptr = value.to_ptr(self.arena, self.registry, self.type_id)?;
+                    let ptr = value.to_ptr(
+                        self.arena,
+                        self.registry,
+                        self.type_id,
+                        find_dict_drop_override,
+                    )?;
 
                     let layout = self.registry.get_type(&info.ty)?.layout(self.registry)?;
                     let heap_ptr = unsafe {
@@ -84,107 +106,150 @@ impl<'a> AbiArgument for ValueWithInfoWrapper<'a> {
                         heap_ptr
                     };
 
-                    heap_ptr.to_bytes(buffer)?;
+                    heap_ptr.to_bytes(buffer, find_dict_drop_override)?;
                 }
             }
-            (value, CoreTypeConcrete::NonZero(info) | CoreTypeConcrete::Snapshot(info)) => {
-                self.map(value, &info.ty)?.to_bytes(buffer)?
-            }
+            (value, CoreTypeConcrete::NonZero(info) | CoreTypeConcrete::Snapshot(info)) => self
+                .map(value, &info.ty)?
+                .to_bytes(buffer, find_dict_drop_override)?,
 
             (Value::Array(_), CoreTypeConcrete::Array(_)) => {
                 // TODO: Assert that `info.ty` matches all the values' types.
 
-                let abi_ptr = self.value.to_ptr(self.arena, self.registry, self.type_id)?;
+                let abi_ptr = self.value.to_ptr(
+                    self.arena,
+                    self.registry,
+                    self.type_id,
+                    find_dict_drop_override,
+                )?;
                 let abi = unsafe { abi_ptr.cast::<ArrayAbi<()>>().as_ref() };
 
-                abi.ptr.to_bytes(buffer)?;
-                abi.since.to_bytes(buffer)?;
-                abi.until.to_bytes(buffer)?;
-                abi.capacity.to_bytes(buffer)?;
+                abi.ptr.to_bytes(buffer, find_dict_drop_override)?;
+                abi.since.to_bytes(buffer, find_dict_drop_override)?;
+                abi.until.to_bytes(buffer, find_dict_drop_override)?;
+                abi.capacity.to_bytes(buffer, find_dict_drop_override)?;
             }
-            (Value::BoundedInt { .. }, CoreTypeConcrete::BoundedInt(_)) => todo!(),
-            (Value::Bytes31(value), CoreTypeConcrete::Bytes31(_)) => value.to_bytes(buffer)?,
+            (Value::BoundedInt { .. }, CoreTypeConcrete::BoundedInt(_)) => {
+                native_panic!("todo: implement AbiArgument for Value::BoundedInt case")
+            }
+            (Value::Bytes31(value), CoreTypeConcrete::Bytes31(_)) => {
+                value.to_bytes(buffer, find_dict_drop_override)?
+            }
             (Value::EcPoint(x, y), CoreTypeConcrete::EcPoint(_)) => {
-                x.to_bytes(buffer)?;
-                y.to_bytes(buffer)?;
+                x.to_bytes(buffer, find_dict_drop_override)?;
+                y.to_bytes(buffer, find_dict_drop_override)?;
             }
             (Value::EcState(x, y, x0, y0), CoreTypeConcrete::EcState(_)) => {
-                x.to_bytes(buffer)?;
-                y.to_bytes(buffer)?;
-                x0.to_bytes(buffer)?;
-                y0.to_bytes(buffer)?;
+                x.to_bytes(buffer, find_dict_drop_override)?;
+                y.to_bytes(buffer, find_dict_drop_override)?;
+                x0.to_bytes(buffer, find_dict_drop_override)?;
+                y0.to_bytes(buffer, find_dict_drop_override)?;
             }
             (Value::Enum { tag, value, .. }, CoreTypeConcrete::Enum(info)) => {
                 if self.info.is_memory_allocated(self.registry)? {
-                    let abi_ptr = self.value.to_ptr(self.arena, self.registry, self.type_id)?;
+                    let abi_ptr = self.value.to_ptr(
+                        self.arena,
+                        self.registry,
+                        self.type_id,
+                        find_dict_drop_override,
+                    )?;
 
                     let abi_ptr = unsafe { *abi_ptr.cast::<NonNull<()>>().as_ref() };
-                    abi_ptr.as_ptr().to_bytes(buffer)?;
+                    abi_ptr.as_ptr().to_bytes(buffer, find_dict_drop_override)?;
                 } else {
-                    match (info.variants.len().next_power_of_two().trailing_zeros() + 7) / 8 {
+                    match info
+                        .variants
+                        .len()
+                        .next_power_of_two()
+                        .trailing_zeros()
+                        .div_ceil(8)
+                    {
                         0 => {}
-                        _ => (*tag as u64).to_bytes(buffer)?,
+                        _ => (*tag as u64).to_bytes(buffer, find_dict_drop_override)?,
                     }
 
-                    self.map(value, &info.variants[*tag])?.to_bytes(buffer)?;
+                    self.map(value, &info.variants[*tag])?
+                        .to_bytes(buffer, find_dict_drop_override)?;
                 }
             }
             (
                 Value::Felt252(value),
                 CoreTypeConcrete::Felt252(_)
-                | CoreTypeConcrete::StarkNet(
-                    StarkNetTypeConcrete::ClassHash(_)
-                    | StarkNetTypeConcrete::ContractAddress(_)
-                    | StarkNetTypeConcrete::StorageAddress(_)
-                    | StarkNetTypeConcrete::StorageBaseAddress(_),
+                | CoreTypeConcrete::Starknet(
+                    StarknetTypeConcrete::ClassHash(_)
+                    | StarknetTypeConcrete::ContractAddress(_)
+                    | StarknetTypeConcrete::StorageAddress(_)
+                    | StarknetTypeConcrete::StorageBaseAddress(_),
                 ),
-            ) => value.to_bytes(buffer)?,
+            ) => value.to_bytes(buffer, find_dict_drop_override)?,
             (Value::Felt252Dict { .. }, CoreTypeConcrete::Felt252Dict(_)) => {
-                #[cfg(not(feature = "with-runtime"))]
-                unimplemented!("enable the `with-runtime` feature to use felt252 dicts");
-
                 // TODO: Assert that `info.ty` matches all the values' types.
 
                 self.value
-                    .to_ptr(self.arena, self.registry, self.type_id)?
+                    .to_ptr(
+                        self.arena,
+                        self.registry,
+                        self.type_id,
+                        find_dict_drop_override,
+                    )?
                     .as_ptr()
-                    .to_bytes(buffer)?
+                    .to_bytes(buffer, find_dict_drop_override)?
             }
             (
                 Value::Secp256K1Point(Secp256k1Point { x, y, is_infinity }),
-                CoreTypeConcrete::StarkNet(StarkNetTypeConcrete::Secp256Point(
+                CoreTypeConcrete::Starknet(StarknetTypeConcrete::Secp256Point(
                     Secp256PointTypeConcrete::K1(_),
                 )),
             )
             | (
                 Value::Secp256R1Point(Secp256r1Point { x, y, is_infinity }),
-                CoreTypeConcrete::StarkNet(StarkNetTypeConcrete::Secp256Point(
+                CoreTypeConcrete::Starknet(StarknetTypeConcrete::Secp256Point(
                     Secp256PointTypeConcrete::R1(_),
                 )),
             ) => {
-                x.to_bytes(buffer)?;
-                y.to_bytes(buffer)?;
-                is_infinity.to_bytes(buffer)?;
+                x.to_bytes(buffer, find_dict_drop_override)?;
+                y.to_bytes(buffer, find_dict_drop_override)?;
+                is_infinity.to_bytes(buffer, find_dict_drop_override)?;
             }
-            (Value::Sint128(value), CoreTypeConcrete::Sint128(_)) => value.to_bytes(buffer)?,
-            (Value::Sint16(value), CoreTypeConcrete::Sint16(_)) => value.to_bytes(buffer)?,
-            (Value::Sint32(value), CoreTypeConcrete::Sint32(_)) => value.to_bytes(buffer)?,
-            (Value::Sint64(value), CoreTypeConcrete::Sint64(_)) => value.to_bytes(buffer)?,
-            (Value::Sint8(value), CoreTypeConcrete::Sint8(_)) => value.to_bytes(buffer)?,
+            (Value::Sint128(value), CoreTypeConcrete::Sint128(_)) => {
+                value.to_bytes(buffer, find_dict_drop_override)?
+            }
+            (Value::Sint16(value), CoreTypeConcrete::Sint16(_)) => {
+                value.to_bytes(buffer, find_dict_drop_override)?
+            }
+            (Value::Sint32(value), CoreTypeConcrete::Sint32(_)) => {
+                value.to_bytes(buffer, find_dict_drop_override)?
+            }
+            (Value::Sint64(value), CoreTypeConcrete::Sint64(_)) => {
+                value.to_bytes(buffer, find_dict_drop_override)?
+            }
+            (Value::Sint8(value), CoreTypeConcrete::Sint8(_)) => {
+                value.to_bytes(buffer, find_dict_drop_override)?
+            }
             (Value::Struct { fields, .. }, CoreTypeConcrete::Struct(info)) => {
                 fields
                     .iter()
                     .zip(&info.members)
                     .map(|(value, type_id)| self.map(value, type_id))
-                    .try_for_each(|wrapper| wrapper?.to_bytes(buffer))?;
+                    .try_for_each(|wrapper| wrapper?.to_bytes(buffer, find_dict_drop_override))?;
             }
-            (Value::Uint128(value), CoreTypeConcrete::Uint128(_)) => value.to_bytes(buffer)?,
-            (Value::Uint16(value), CoreTypeConcrete::Uint16(_)) => value.to_bytes(buffer)?,
-            (Value::Uint32(value), CoreTypeConcrete::Uint32(_)) => value.to_bytes(buffer)?,
-            (Value::Uint64(value), CoreTypeConcrete::Uint64(_)) => value.to_bytes(buffer)?,
-            (Value::Uint8(value), CoreTypeConcrete::Uint8(_)) => value.to_bytes(buffer)?,
-            _ => todo!(
-                "abi argument unimplemented for ({:?}, {:?})",
+            (Value::Uint128(value), CoreTypeConcrete::Uint128(_)) => {
+                value.to_bytes(buffer, find_dict_drop_override)?
+            }
+            (Value::Uint16(value), CoreTypeConcrete::Uint16(_)) => {
+                value.to_bytes(buffer, find_dict_drop_override)?
+            }
+            (Value::Uint32(value), CoreTypeConcrete::Uint32(_)) => {
+                value.to_bytes(buffer, find_dict_drop_override)?
+            }
+            (Value::Uint64(value), CoreTypeConcrete::Uint64(_)) => {
+                value.to_bytes(buffer, find_dict_drop_override)?
+            }
+            (Value::Uint8(value), CoreTypeConcrete::Uint8(_)) => {
+                value.to_bytes(buffer, find_dict_drop_override)?
+            }
+            _ => native_panic!(
+                "todo: abi argument unimplemented for ({:?}, {:?})",
                 self.value,
                 self.type_id
             ),

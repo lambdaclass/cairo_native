@@ -44,7 +44,7 @@
 //!     info: &SignatureAndTypeConcreteLibfunc,
 //! ) -> Result<()>
 //! {
-//!     let array_val = entry.argument(0)?.into();
+//!     let array_val = entry.arg(0)?;
 //!     let elem_ty = registry.build_type(context, helper, registry, metadata, &info.ty)?;
 //!
 //!     #[cfg(feature = "with-debug-utils")]
@@ -61,7 +61,7 @@
 //!             .into();
 //!
 //!         metadata.get_mut::<DebugUtils>()
-//!             .unwrap()
+//!             .ok_or(Error::MissingMetadata)?
 //!             .print_pointer(context, helper, entry, array_ptr, location)?;
 //!     }
 //!
@@ -89,25 +89,25 @@ use crate::{
 };
 use melior::{
     dialect::{
-        arith, func,
-        llvm::{self, r#type::pointer},
+        arith,
+        llvm::{self},
         ods,
     },
     ir::{
         attribute::{FlatSymbolRefAttribute, IntegerAttribute, StringAttribute, TypeAttribute},
         operation::OperationBuilder,
-        r#type::{FunctionType, IntegerType},
-        Block, Identifier, Location, Module, Region, Value,
+        r#type::IntegerType,
+        Attribute, Block, BlockLike, Location, Module, Region, Value,
     },
-    Context, ExecutionEngine,
+    Context,
 };
 use num_bigint::BigUint;
-use std::collections::HashSet;
+use std::{collections::HashSet, ffi::c_void};
 
 #[derive(Clone, Copy, Debug, Hash, Eq, PartialEq)]
 enum DebugBinding {
     BreakpointMarker,
-    DebugPrint,
+    PrintStr,
     PrintI1,
     PrintI8,
     PrintI32,
@@ -118,12 +118,88 @@ enum DebugBinding {
     DumpMemRegion,
 }
 
+impl DebugBinding {
+    const fn symbol(self) -> &'static str {
+        match self {
+            DebugBinding::BreakpointMarker => "cairo_native__debug__breakpoint_marker_impl",
+            DebugBinding::PrintStr => "cairo_native__debug__print_str_impl",
+            DebugBinding::PrintI1 => "cairo_native__debug__print_i1_impl",
+            DebugBinding::PrintI8 => "cairo_native__debug__print_i8_impl",
+            DebugBinding::PrintI32 => "cairo_native__debug__print_i32_impl",
+            DebugBinding::PrintI64 => "cairo_native__debug__print_i64_impl",
+            DebugBinding::PrintI128 => "cairo_native__debug__print_i128_impl",
+            DebugBinding::PrintPointer => "cairo_native__debug__print_pointer_impl",
+            DebugBinding::PrintFelt252 => "cairo_native__debug__print_felt252_impl",
+            DebugBinding::DumpMemRegion => "cairo_native__debug__dump_mem_region_impl",
+        }
+    }
+    const fn function_ptr(self) -> *const () {
+        match self {
+            DebugBinding::BreakpointMarker => breakpoint_marker_impl as *const (),
+            DebugBinding::PrintStr => print_str_impl as *const (),
+            DebugBinding::PrintI1 => print_i1_impl as *const (),
+            DebugBinding::PrintI8 => print_i8_impl as *const (),
+            DebugBinding::PrintI32 => print_i32_impl as *const (),
+            DebugBinding::PrintI64 => print_i64_impl as *const (),
+            DebugBinding::PrintI128 => print_i128_impl as *const (),
+            DebugBinding::PrintPointer => print_pointer_impl as *const (),
+            DebugBinding::PrintFelt252 => print_felt252_impl as *const (),
+            DebugBinding::DumpMemRegion => dump_mem_region_impl as *const (),
+        }
+    }
+}
+
 #[derive(Debug, Default)]
 pub struct DebugUtils {
     active_map: HashSet<DebugBinding>,
 }
 
 impl DebugUtils {
+    /// Register the global for the given binding, if not yet registered, and return
+    /// a pointer to the stored function.
+    ///
+    /// For the function to be available, `setup_runtime` must be called before running the module
+    fn build_function<'c, 'a>(
+        &mut self,
+        context: &'c Context,
+        module: &Module,
+        block: &'a Block<'c>,
+        location: Location<'c>,
+        binding: DebugBinding,
+    ) -> Result<Value<'c, 'a>> {
+        if self.active_map.insert(binding) {
+            module.body().append_operation(
+                ods::llvm::mlir_global(
+                    context,
+                    Region::new(),
+                    TypeAttribute::new(llvm::r#type::pointer(context, 0)),
+                    StringAttribute::new(context, binding.symbol()),
+                    Attribute::parse(context, "#llvm.linkage<weak>")
+                        .ok_or(Error::ParseAttributeError)?,
+                    location,
+                )
+                .into(),
+            );
+        }
+
+        let global_address = block.append_op_result(
+            ods::llvm::mlir_addressof(
+                context,
+                llvm::r#type::pointer(context, 0),
+                FlatSymbolRefAttribute::new(context, binding.symbol()),
+                location,
+            )
+            .into(),
+        )?;
+
+        block.load(
+            context,
+            location,
+            global_address,
+            llvm::r#type::pointer(context, 0),
+        )
+    }
+
     pub fn breakpoint_marker(
         &mut self,
         context: &Context,
@@ -131,28 +207,25 @@ impl DebugUtils {
         block: &Block,
         location: Location,
     ) -> Result<()> {
-        if self.active_map.insert(DebugBinding::BreakpointMarker) {
-            module.body().append_operation(func::func(
-                context,
-                StringAttribute::new(context, "__debug__breakpoint_marker"),
-                TypeAttribute::new(FunctionType::new(context, &[], &[]).into()),
-                Region::new(),
-                &[(
-                    Identifier::new(context, "sym_visibility"),
-                    StringAttribute::new(context, "private").into(),
-                )],
-                Location::unknown(context),
-            ));
-        }
-
-        block.append_operation(func::call(
+        let function = self.build_function(
             context,
-            FlatSymbolRefAttribute::new(context, "__debug__breakpoint_marker"),
-            &[],
-            &[],
+            module,
+            block,
             location,
-        ));
+            DebugBinding::BreakpointMarker,
+        )?;
 
+        block.append_operation(
+            OperationBuilder::new("llvm.call", location)
+                .add_operands(&[function])
+                .build()?,
+        );
+
+        Ok(())
+    }
+
+    pub fn debug_breakpoint_trap(&self, block: &Block, location: Location) -> Result<()> {
+        block.append_operation(OperationBuilder::new("llvm.intr.debugtrap", location).build()?);
         Ok(())
     }
 
@@ -165,26 +238,8 @@ impl DebugUtils {
         message: &str,
         location: Location,
     ) -> Result<()> {
-        if self.active_map.insert(DebugBinding::DebugPrint) {
-            module.body().append_operation(func::func(
-                context,
-                StringAttribute::new(context, "__debug__debug_print_impl"),
-                TypeAttribute::new(
-                    FunctionType::new(
-                        context,
-                        &[pointer(context, 0), IntegerType::new(context, 64).into()],
-                        &[],
-                    )
-                    .into(),
-                ),
-                Region::new(),
-                &[(
-                    Identifier::new(context, "sym_visibility"),
-                    StringAttribute::new(context, "private").into(),
-                )],
-                Location::unknown(context),
-            ));
-        }
+        let function =
+            self.build_function(context, module, block, location, DebugBinding::PrintStr)?;
 
         let ty = llvm::r#type::array(
             IntegerType::new(context, 8).into(),
@@ -231,19 +286,13 @@ impl DebugUtils {
             .result(0)?
             .into();
 
-        block.append_operation(func::call(
-            context,
-            FlatSymbolRefAttribute::new(context, "__debug__debug_print_impl"),
-            &[ptr, len],
-            &[],
-            location,
-        ));
+        block.append_operation(
+            OperationBuilder::new("llvm.call", location)
+                .add_operands(&[function])
+                .add_operands(&[ptr, len])
+                .build()?,
+        );
 
-        Ok(())
-    }
-
-    pub fn debug_breakpoint_trap(&self, block: &Block, location: Location) -> Result<()> {
-        block.append_operation(OperationBuilder::new("llvm.intr.debugtrap", location).build()?);
         Ok(())
     }
 
@@ -255,27 +304,15 @@ impl DebugUtils {
         value: Value,
         location: Location,
     ) -> Result<()> {
-        if self.active_map.insert(DebugBinding::PrintPointer) {
-            module.body().append_operation(func::func(
-                context,
-                StringAttribute::new(context, "__debug__print_pointer"),
-                TypeAttribute::new(FunctionType::new(context, &[pointer(context, 0)], &[]).into()),
-                Region::new(),
-                &[(
-                    Identifier::new(context, "sym_visibility"),
-                    StringAttribute::new(context, "private").into(),
-                )],
-                Location::unknown(context),
-            ));
-        }
+        let function =
+            self.build_function(context, module, block, location, DebugBinding::PrintPointer)?;
 
-        block.append_operation(func::call(
-            context,
-            FlatSymbolRefAttribute::new(context, "__debug__print_pointer"),
-            &[value],
-            &[],
-            location,
-        ));
+        block.append_operation(
+            OperationBuilder::new("llvm.call", location)
+                .add_operands(&[function])
+                .add_operands(&[value])
+                .build()?,
+        );
 
         Ok(())
     }
@@ -288,29 +325,15 @@ impl DebugUtils {
         value: Value,
         location: Location,
     ) -> Result<()> {
-        if self.active_map.insert(DebugBinding::PrintI1) {
-            module.body().append_operation(func::func(
-                context,
-                StringAttribute::new(context, "__debug__print_i1"),
-                TypeAttribute::new(
-                    FunctionType::new(context, &[IntegerType::new(context, 1).into()], &[]).into(),
-                ),
-                Region::new(),
-                &[(
-                    Identifier::new(context, "sym_visibility"),
-                    StringAttribute::new(context, "private").into(),
-                )],
-                Location::unknown(context),
-            ));
-        }
+        let function =
+            self.build_function(context, module, block, location, DebugBinding::PrintI1)?;
 
-        block.append_operation(func::call(
-            context,
-            FlatSymbolRefAttribute::new(context, "__debug__print_i1"),
-            &[value],
-            &[],
-            location,
-        ));
+        block.append_operation(
+            OperationBuilder::new("llvm.call", location)
+                .add_operands(&[function])
+                .add_operands(&[value])
+                .build()?,
+        );
 
         Ok(())
     }
@@ -323,31 +346,8 @@ impl DebugUtils {
         value: Value,
         location: Location,
     ) -> Result<()> {
-        if self.active_map.insert(DebugBinding::PrintFelt252) {
-            module.body().append_operation(func::func(
-                context,
-                StringAttribute::new(context, "__debug__print_felt252"),
-                TypeAttribute::new(
-                    FunctionType::new(
-                        context,
-                        &[
-                            IntegerType::new(context, 64).into(),
-                            IntegerType::new(context, 64).into(),
-                            IntegerType::new(context, 64).into(),
-                            IntegerType::new(context, 64).into(),
-                        ],
-                        &[],
-                    )
-                    .into(),
-                ),
-                Region::new(),
-                &[(
-                    Identifier::new(context, "sym_visibility"),
-                    StringAttribute::new(context, "private").into(),
-                )],
-                Location::unknown(context),
-            ));
-        }
+        let function =
+            self.build_function(context, module, block, location, DebugBinding::PrintFelt252)?;
 
         let k64 = block
             .append_operation(arith::constant(
@@ -403,13 +403,12 @@ impl DebugUtils {
             .result(0)?
             .into();
 
-        block.append_operation(func::call(
-            context,
-            FlatSymbolRefAttribute::new(context, "__debug__print_felt252"),
-            &[l0, l1, l2, l3],
-            &[],
-            location,
-        ));
+        block.append_operation(
+            OperationBuilder::new("llvm.call", location)
+                .add_operands(&[function])
+                .add_operands(&[l0, l1, l2, l3])
+                .build()?,
+        );
 
         Ok(())
     }
@@ -422,29 +421,15 @@ impl DebugUtils {
         value: Value,
         location: Location,
     ) -> Result<()> {
-        if self.active_map.insert(DebugBinding::PrintI8) {
-            module.body().append_operation(func::func(
-                context,
-                StringAttribute::new(context, "__debug__print_i8"),
-                TypeAttribute::new(
-                    FunctionType::new(context, &[IntegerType::new(context, 8).into()], &[]).into(),
-                ),
-                Region::new(),
-                &[(
-                    Identifier::new(context, "sym_visibility"),
-                    StringAttribute::new(context, "private").into(),
-                )],
-                Location::unknown(context),
-            ));
-        }
+        let function =
+            self.build_function(context, module, block, location, DebugBinding::PrintI8)?;
 
-        block.append_operation(func::call(
-            context,
-            FlatSymbolRefAttribute::new(context, "__debug__print_i8"),
-            &[value],
-            &[],
-            location,
-        ));
+        block.append_operation(
+            OperationBuilder::new("llvm.call", location)
+                .add_operands(&[function])
+                .add_operands(&[value])
+                .build()?,
+        );
 
         Ok(())
     }
@@ -457,29 +442,15 @@ impl DebugUtils {
         value: Value,
         location: Location,
     ) -> Result<()> {
-        if self.active_map.insert(DebugBinding::PrintI32) {
-            module.body().append_operation(func::func(
-                context,
-                StringAttribute::new(context, "__debug__print_i32"),
-                TypeAttribute::new(
-                    FunctionType::new(context, &[IntegerType::new(context, 32).into()], &[]).into(),
-                ),
-                Region::new(),
-                &[(
-                    Identifier::new(context, "sym_visibility"),
-                    StringAttribute::new(context, "private").into(),
-                )],
-                Location::unknown(context),
-            ));
-        }
+        let function =
+            self.build_function(context, module, block, location, DebugBinding::PrintI32)?;
 
-        block.append_operation(func::call(
-            context,
-            FlatSymbolRefAttribute::new(context, "__debug__print_i32"),
-            &[value],
-            &[],
-            location,
-        ));
+        block.append_operation(
+            OperationBuilder::new("llvm.call", location)
+                .add_operands(&[function])
+                .add_operands(&[value])
+                .build()?,
+        );
 
         Ok(())
     }
@@ -492,29 +463,15 @@ impl DebugUtils {
         value: Value,
         location: Location,
     ) -> Result<()> {
-        if self.active_map.insert(DebugBinding::PrintI64) {
-            module.body().append_operation(func::func(
-                context,
-                StringAttribute::new(context, "__debug__print_i64"),
-                TypeAttribute::new(
-                    FunctionType::new(context, &[IntegerType::new(context, 64).into()], &[]).into(),
-                ),
-                Region::new(),
-                &[(
-                    Identifier::new(context, "sym_visibility"),
-                    StringAttribute::new(context, "private").into(),
-                )],
-                Location::unknown(context),
-            ));
-        }
+        let function =
+            self.build_function(context, module, block, location, DebugBinding::PrintI64)?;
 
-        block.append_operation(func::call(
-            context,
-            FlatSymbolRefAttribute::new(context, "__debug__print_i64"),
-            &[value],
-            &[],
-            location,
-        ));
+        block.append_operation(
+            OperationBuilder::new("llvm.call", location)
+                .add_operands(&[function])
+                .add_operands(&[value])
+                .build()?,
+        );
 
         Ok(())
     }
@@ -527,29 +484,8 @@ impl DebugUtils {
         value: Value,
         location: Location,
     ) -> Result<()> {
-        if self.active_map.insert(DebugBinding::PrintI128) {
-            module.body().append_operation(func::func(
-                context,
-                StringAttribute::new(context, "__debug__print_i128"),
-                TypeAttribute::new(
-                    FunctionType::new(
-                        context,
-                        &[
-                            IntegerType::new(context, 64).into(),
-                            IntegerType::new(context, 64).into(),
-                        ],
-                        &[],
-                    )
-                    .into(),
-                ),
-                Region::new(),
-                &[(
-                    Identifier::new(context, "sym_visibility"),
-                    StringAttribute::new(context, "private").into(),
-                )],
-                Location::unknown(context),
-            ));
-        }
+        let function =
+            self.build_function(context, module, block, location, DebugBinding::PrintI128)?;
 
         let i64_ty = IntegerType::new(context, 64).into();
         let k64 = block
@@ -574,13 +510,12 @@ impl DebugUtils {
             .result(0)?
             .into();
 
-        block.append_operation(func::call(
-            context,
-            FlatSymbolRefAttribute::new(context, "__debug__print_i128"),
-            &[value_lo, value_hi],
-            &[],
-            location,
-        ));
+        block.append_operation(
+            OperationBuilder::new("llvm.call", location)
+                .add_operands(&[function])
+                .add_operands(&[value_lo, value_hi])
+                .build()?,
+        );
 
         Ok(())
     }
@@ -597,131 +532,43 @@ impl DebugUtils {
         len: usize,
         location: Location,
     ) -> Result<()> {
-        if self.active_map.insert(DebugBinding::DumpMemRegion) {
-            module.body().append_operation(func::func(
-                context,
-                StringAttribute::new(context, "__debug__dump_mem"),
-                TypeAttribute::new(
-                    FunctionType::new(
-                        context,
-                        &[
-                            llvm::r#type::pointer(context, 0),
-                            IntegerType::new(context, 64).into(),
-                        ],
-                        &[],
-                    )
-                    .into(),
-                ),
-                Region::new(),
-                &[(
-                    Identifier::new(context, "sym_visibility"),
-                    StringAttribute::new(context, "private").into(),
-                )],
-                location,
-            ));
-        }
+        let function = self.build_function(
+            context,
+            module,
+            block,
+            location,
+            DebugBinding::DumpMemRegion,
+        )?;
 
         let len = block.const_int(context, location, len, 64)?;
-        block.append_operation(func::call(
-            context,
-            FlatSymbolRefAttribute::new(context, "__debug__dump_mem"),
-            &[ptr, len],
-            &[],
-            location,
-        ));
+
+        block.append_operation(
+            OperationBuilder::new("llvm.call", location)
+                .add_operands(&[function])
+                .add_operands(&[ptr, len])
+                .build()?,
+        );
 
         Ok(())
     }
+}
 
-    pub fn register_impls(&self, engine: &ExecutionEngine) {
-        if self.active_map.contains(&DebugBinding::BreakpointMarker) {
-            unsafe {
-                engine.register_symbol(
-                    "__debug__breakpoint_marker",
-                    breakpoint_marker_impl as *const fn() -> () as *mut (),
-                );
-            }
-        }
-
-        if self.active_map.contains(&DebugBinding::DebugPrint) {
-            unsafe {
-                engine.register_symbol(
-                    "__debug__debug_print_impl",
-                    debug_print_impl as *const fn(*const std::ffi::c_char) -> () as *mut (),
-                );
-            }
-        }
-
-        if self.active_map.contains(&DebugBinding::PrintI1) {
-            unsafe {
-                engine.register_symbol(
-                    "__debug__print_i1",
-                    print_i1_impl as *const fn(bool) -> () as *mut (),
-                );
-            }
-        }
-
-        if self.active_map.contains(&DebugBinding::PrintI8) {
-            unsafe {
-                engine.register_symbol(
-                    "__debug__print_i8",
-                    print_i8_impl as *const fn(u8) -> () as *mut (),
-                );
-            }
-        }
-
-        if self.active_map.contains(&DebugBinding::PrintI32) {
-            unsafe {
-                engine.register_symbol(
-                    "__debug__print_i32",
-                    print_i32_impl as *const fn(u8) -> () as *mut (),
-                );
-            }
-        }
-
-        if self.active_map.contains(&DebugBinding::PrintI64) {
-            unsafe {
-                engine.register_symbol(
-                    "__debug__print_i64",
-                    print_i64_impl as *const fn(u8) -> () as *mut (),
-                );
-            }
-        }
-
-        if self.active_map.contains(&DebugBinding::PrintI128) {
-            unsafe {
-                engine.register_symbol(
-                    "__debug__print_i128",
-                    print_i128_impl as *const fn(u64, u64) -> () as *mut (),
-                );
-            }
-        }
-
-        if self.active_map.contains(&DebugBinding::PrintPointer) {
-            unsafe {
-                engine.register_symbol(
-                    "__debug__print_pointer",
-                    print_pointer_impl as *const fn(*const ()) -> () as *mut (),
-                );
-            }
-        }
-
-        if self.active_map.contains(&DebugBinding::PrintFelt252) {
-            unsafe {
-                engine.register_symbol(
-                    "__debug__print_felt252",
-                    print_felt252 as *const fn(u64, u64, u64, u64) -> () as *mut (),
-                );
-            }
-        }
-
-        if self.active_map.contains(&DebugBinding::DumpMemRegion) {
-            unsafe {
-                engine.register_symbol(
-                    "__debug__dump_mem",
-                    dump_mem_impl as *const fn(*const (), u64) as *mut (),
-                );
-            }
+pub fn setup_runtime(find_symbol_ptr: impl Fn(&str) -> Option<*mut c_void>) {
+    for binding in [
+        DebugBinding::BreakpointMarker,
+        DebugBinding::PrintStr,
+        DebugBinding::PrintI1,
+        DebugBinding::PrintI8,
+        DebugBinding::PrintI32,
+        DebugBinding::PrintI64,
+        DebugBinding::PrintI128,
+        DebugBinding::PrintPointer,
+        DebugBinding::PrintFelt252,
+        DebugBinding::DumpMemRegion,
+    ] {
+        if let Some(global) = find_symbol_ptr(binding.symbol()) {
+            let global = global.cast::<*const ()>();
+            unsafe { *global = binding.function_ptr() };
         }
     }
 }
@@ -730,15 +577,15 @@ extern "C" fn breakpoint_marker_impl() {
     println!("[DEBUG] Breakpoint marker.");
 }
 
-extern "C" fn debug_print_impl(message: *const std::ffi::c_char, len: u64) {
+extern "C" fn print_str_impl(message: *const std::ffi::c_char, len: u64) {
     // llvm constant strings are not zero terminated
     let slice = unsafe { std::slice::from_raw_parts(message as *const u8, len as usize) };
     let message = std::str::from_utf8(slice);
 
     if let Ok(message) = message {
-        println!("[DEBUG] Message: {}", message);
+        println!("[DEBUG] {}", message);
     } else {
-        println!("[DEBUG] Message: {:?}", message);
+        println!("[DEBUG] {:?}", message);
     }
 }
 
@@ -767,10 +614,10 @@ extern "C" fn print_pointer_impl(value: *const ()) {
     println!("[DEBUG] {value:018x?}");
 }
 
-unsafe extern "C" fn dump_mem_impl(ptr: *const (), len: u64) {
+unsafe extern "C" fn dump_mem_region_impl(ptr: *const (), len: u64) {
     println!("[DEBUG] Memory dump at {ptr:?}:");
     for chunk in (0..len).step_by(8) {
-        print!("  {ptr:?}:");
+        print!("  {:?}:", ptr.byte_add(chunk as usize));
         for offset in chunk..chunk + 8 {
             print!(" {:02x}", ptr.byte_add(offset as usize).cast::<u8>().read());
         }
@@ -778,7 +625,7 @@ unsafe extern "C" fn dump_mem_impl(ptr: *const (), len: u64) {
     }
 }
 
-extern "C" fn print_felt252(l0: u64, l1: u64, l2: u64, l3: u64) {
+extern "C" fn print_felt252_impl(l0: u64, l1: u64, l2: u64, l3: u64) {
     println!(
         "[DEBUG] {}",
         BigUint::from_bytes_le(

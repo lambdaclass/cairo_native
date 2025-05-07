@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 
 # Configuration.
-ROOT_DIR="$(dirname "$(dirname "${0%/*}")")"
+ROOT_DIR="$(dirname "$(readlink -f "${0%/*}")")"
 MLIR_DIR="$MLIR_SYS_190_PREFIX"
 
 CAIRO_SRCS=$(find \
@@ -10,7 +10,7 @@ CAIRO_SRCS=$(find \
 IFS=$'\n' read -rd '' -a CAIRO_SRCS <<<"$CAIRO_SRCS"
 
 CAIRO_RUN="$ROOT_DIR/cairo2/bin/cairo-run"
-COMPILER_CLI="$ROOT_DIR/target/release/cairo-native-dump"
+COMPILER_CLI="$ROOT_DIR/target/release/cairo-native-compile"
 JIT_CLI="$ROOT_DIR/target/release/cairo-native-run"
 OUTPUT_DIR="$ROOT_DIR/target/bench-outputs"
 
@@ -39,66 +39,15 @@ mkdir -p "$OUTPUT_DIR"
 # Benchmarking code.
 run_bench() {
     base_path="${1%.cairo}"
-    base_name=$(basename $base_path)
+    base_name=$(basename "$base_path")
 
-    "$COMPILER_CLI" \
-        "$base_path.cairo" \
-        --output "$OUTPUT_DIR/$base_name.mlir" \
-        >> /dev/stderr
-
-    "$MLIR_DIR/bin/mlir-opt" \
-        --canonicalize \
-        --convert-scf-to-cf \
-        --canonicalize \
-        --cse \
-        --expand-strided-metadata \
-        --finalize-memref-to-llvm \
-        --convert-func-to-llvm \
-        --convert-index-to-llvm \
-        --reconcile-unrealized-casts \
-        "$OUTPUT_DIR/$base_name.mlir" \
-        -o "$OUTPUT_DIR/$base_name.opt.mlir" \
-        >> /dev/stderr
-
-    "$MLIR_DIR/bin/mlir-translate" \
-        --mlir-to-llvmir \
-        "$OUTPUT_DIR/$base_name.opt.mlir" \
-        -o "$OUTPUT_DIR/$base_name.ll" \
-        >> /dev/stderr
-
-    "$MLIR_DIR/bin/clang" \
-        -O3 \
-        -Wno-override-module \
-        "$base_path.c" \
-        "$OUTPUT_DIR/$base_name.ll" \
-        -L "target/release" \
-        -Wl,-rpath "$MLIR_DIR/lib" \
-        -Wl,-rpath "target/release" \
-        -o "$OUTPUT_DIR/$base_name" \
-        >> /dev/stderr
-
-    "$MLIR_DIR/bin/clang" \
-        -O3 \
-        -march=native \
-        -mtune=native \
-        -Wno-override-module \
-        "$base_path.c" \
-        "$OUTPUT_DIR/$base_name.ll" \
-        -L "target/release" \
-        -Wl,-rpath "$MLIR_DIR/lib" \
-        -Wl,-rpath "target/release" \
-        -o "$OUTPUT_DIR/$base_name-march-native" \
-        >> /dev/stderr
-
-     hyperfine \
+    hyperfine \
         --warmup 3 \
         --export-markdown "$OUTPUT_DIR/$base_name.md" \
         --export-json "$OUTPUT_DIR/$base_name.json" \
         -n "Cairo-vm (Rust, Cairo 1)" "$CAIRO_RUN --available-gas 18446744073709551615 -s $base_path.cairo" \
         -n "cairo-native (embedded AOT)" "$JIT_CLI --run-mode=aot -s $base_path.cairo --opt-level 3 --available-gas 18446744073709551615 " \
         -n "cairo-native (embedded JIT using LLVM's ORC Engine)" "$JIT_CLI --run-mode=jit -s $base_path.cairo --opt-level 3 --available-gas 18446744073709551615 " \
-        -n "cairo-native (standalone AOT)" "$OUTPUT_DIR/$base_name" \
-        -n "cairo-native (standalone AOT with -march=native)" "$OUTPUT_DIR/$base_name-march-native" \
         >> /dev/stderr
 }
 

@@ -3,7 +3,7 @@
 //! This is a "hotfix" for missing Rust interfaces to the C/C++ libraries we use, namely LLVM/MLIR
 //! APIs that are missing from melior.
 
-use crate::error::{Error, Result};
+use crate::error::{panic::ToNativeAssertError, Error, Result};
 use llvm_sys::{
     core::{
         LLVMContextCreate, LLVMContextDispose, LLVMDisposeMemoryBuffer, LLVMDisposeMessage,
@@ -29,15 +29,16 @@ use melior::ir::{Module, Type, TypeLike};
 use mlir_sys::{mlirLLVMStructTypeGetElementType, mlirTranslateModuleToLLVMIR};
 use std::{
     borrow::Cow,
-    env,
     ffi::{CStr, CString},
     io::Write,
     mem::MaybeUninit,
     path::Path,
     ptr::{addr_of_mut, null_mut},
     sync::OnceLock,
+    time::Instant,
 };
 use tempfile::NamedTempFile;
+use tracing::trace;
 
 /// For any `!llvm.struct<...>` type, return the MLIR type of the field at the requested index.
 pub fn get_struct_field_type_at<'c>(r#type: &Type<'c>, index: usize) -> Type<'c> {
@@ -110,7 +111,11 @@ pub fn module_to_object(module: &Module<'_>, opt_level: OptLevel) -> Result<Vec<
 
         let op = module.as_operation().to_raw();
 
+        trace!("starting mlir to llvm compilation");
+        let pre_mlir_instant = Instant::now();
         let llvm_module = mlirTranslateModuleToLLVMIR(op, llvm_context as *mut _) as *mut _;
+        let mlir_time = pre_mlir_instant.elapsed().as_millis();
+        trace!(time = mlir_time, "mlir to llvm finished");
 
         let mut null = null_mut();
         let mut error_buffer = addr_of_mut!(null);
@@ -159,8 +164,15 @@ pub fn module_to_object(module: &Module<'_>, opt_level: OptLevel) -> Result<Vec<
             OptLevel::Default => 2,
             OptLevel::Aggressive => 3,
         };
-        let passes = CString::new(format!("default<O{opt}>")).unwrap();
+        let passes = CString::new(format!("default<O{opt}>"))
+            .to_native_assert_error("only fails if the hardcoded string contains a null byte")?;
+
+        trace!("starting llvm passes");
+        let pre_passes_instant = Instant::now();
         let error = LLVMRunPasses(llvm_module, passes.as_ptr(), machine, opts);
+        let passes_time = pre_passes_instant.elapsed().as_millis();
+        trace!(time = passes_time, "llvm passes finished");
+
         if !error.is_null() {
             let msg = LLVMGetErrorMessage(error);
             let msg = CStr::from_ptr(msg);
@@ -171,12 +183,19 @@ pub fn module_to_object(module: &Module<'_>, opt_level: OptLevel) -> Result<Vec<
 
         let mut out_buf: MaybeUninit<LLVMMemoryBufferRef> = MaybeUninit::uninit();
 
+        trace!("starting llvm to object compilation");
+        let pre_llvm_compilation_instant = Instant::now();
         let ok = LLVMTargetMachineEmitToMemoryBuffer(
             machine,
             llvm_module,
             LLVMCodeGenFileType::LLVMObjectFile,
             error_buffer,
             out_buf.as_mut_ptr(),
+        );
+        let llvm_compilation_time = pre_llvm_compilation_instant.elapsed().as_millis();
+        trace!(
+            time = llvm_compilation_time,
+            "llvm to object compilation finished"
         );
 
         if ok != 0 {
@@ -223,28 +242,6 @@ pub fn object_to_shared_lib(object: &[u8], output_filename: &Path) -> Result<()>
         }
     }
 
-    let runtime_library_path = if let Ok(extra_dir) = std::env::var("CAIRO_NATIVE_RUNTIME_LIBRARY")
-    {
-        let path = Path::new(&extra_dir);
-        if path.is_absolute() {
-            extra_dir
-        } else {
-            let mut absolute_path = env::current_dir()
-                .expect("Failed to get the current directory")
-                .join(path);
-            absolute_path = absolute_path
-                .canonicalize()
-                .expect("Failed to cannonicalize path");
-            String::from(
-                absolute_path
-                    .to_str()
-                    .expect("Absolute path contains non-utf8 characters"),
-            )
-        }
-    } else {
-        String::from("libcairo_native_runtime.a")
-    };
-
     let args: Vec<Cow<'static, str>> = {
         #[cfg(target_os = "macos")]
         {
@@ -262,7 +259,6 @@ pub fn object_to_shared_lib(object: &[u8], output_filename: &Path) -> Result<()>
                 "-o".into(),
                 Cow::from(output_path),
                 "-lSystem".into(),
-                Cow::from(runtime_library_path),
             ]);
 
             args
@@ -271,7 +267,6 @@ pub fn object_to_shared_lib(object: &[u8], output_filename: &Path) -> Result<()>
         {
             let mut args: Vec<Cow<'static, str>> = vec![
                 "--hash-style=gnu".into(),
-                "--eh-frame-hdr".into(),
                 "-shared".into(),
                 "-L/lib/../lib64".into(),
                 "-L/usr/lib/../lib64".into(),
@@ -282,7 +277,6 @@ pub fn object_to_shared_lib(object: &[u8], output_filename: &Path) -> Result<()>
                 Cow::from(output_path),
                 "-lc".into(),
                 Cow::from(file_path),
-                Cow::from(runtime_library_path),
             ]);
 
             args
@@ -294,7 +288,13 @@ pub fn object_to_shared_lib(object: &[u8], output_filename: &Path) -> Result<()>
     };
 
     let mut linker = std::process::Command::new("ld");
+
+    trace!("starting linking");
+    let pre_linking_instant = Instant::now();
     let proc = linker.args(args.iter().map(|x| x.as_ref())).output()?;
+    let linking_time = pre_linking_instant.elapsed().as_millis();
+    trace!(time = linking_time, "linking finished");
+
     if proc.status.success() {
         Ok(())
     } else {

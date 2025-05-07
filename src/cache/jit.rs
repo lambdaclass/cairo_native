@@ -1,3 +1,4 @@
+use crate::error::Result;
 use crate::{context::NativeContext, executor::JitNativeExecutor, OptLevel};
 use cairo_lang_sierra::program::Program;
 use std::{
@@ -44,21 +45,20 @@ where
         key: K,
         program: &Program,
         opt_level: OptLevel,
-    ) -> Arc<JitNativeExecutor<'a>> {
+    ) -> Result<Arc<JitNativeExecutor<'a>>> {
         let module = self
             .context
-            .compile(program, false)
-            .expect("should compile");
-        let executor = JitNativeExecutor::from_native_module(module, opt_level);
+            .compile(program, false, Some(Default::default()))?;
+        let executor = JitNativeExecutor::from_native_module(module, opt_level)?;
 
         let executor = Arc::new(executor);
         self.cache.insert(key, executor.clone());
 
-        executor
+        Ok(executor)
     }
 }
 
-impl<'a, K> Debug for JitProgramCache<'a, K>
+impl<K> Debug for JitProgramCache<'_, K>
 where
     K: Eq + Hash + PartialEq,
 {
@@ -91,7 +91,9 @@ mod test {
         let mut cache: JitProgramCache<&'static str> = JitProgramCache::new(&context);
 
         let start = Instant::now();
-        cache.compile_and_insert("program1", &program1, Default::default());
+        cache
+            .compile_and_insert("program1", &program1, Default::default())
+            .unwrap();
         let diff_1 = Instant::now().duration_since(start);
 
         let start = Instant::now();
@@ -101,7 +103,9 @@ mod test {
         assert!(diff_2 < diff_1);
 
         let start = Instant::now();
-        cache.compile_and_insert("program2", &program2, Default::default());
+        cache
+            .compile_and_insert("program2", &program2, Default::default())
+            .unwrap();
         let diff_1 = Instant::now().duration_since(start);
 
         let start = Instant::now();

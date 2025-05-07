@@ -19,6 +19,22 @@ lazy_static! {
             dict.get(key)
         }
     };
+    static ref SNAPSHOT_LOOP: (String, Program, SierraCasmRunner) = load_cairo! {
+        use core::dict::Felt252Dict;
+
+        fn run_test() {
+            let mut dict: Felt252Dict<u64> = Default::default();
+
+            for number in 0..50_u64 {
+                let snapshot = @dict;
+
+                let key = number.try_into().unwrap();
+                dict.insert(key, number);
+
+                drop(snapshot)
+            }
+        }
+    };
 }
 
 proptest! {
@@ -28,7 +44,7 @@ proptest! {
         let result_vm = run_vm_program(
             program,
             "run_test",
-            &[Arg::Value(Felt::from_bytes_be(&a.clone().to_bytes_be())), Arg::Value(Felt::from_bytes_be(&b.clone().to_bytes_be()))],
+            vec![Arg::Value(Felt::from_bytes_be(&a.clone().to_bytes_be())), Arg::Value(Felt::from_bytes_be(&b.clone().to_bytes_be()))],
             Some(DEFAULT_GAS as usize),
         )
         .unwrap();
@@ -36,7 +52,7 @@ proptest! {
             program,
             "run_test",
             &[Value::Felt252(a), Value::Felt252(b)],
-            Some(DEFAULT_GAS as u128),
+            Some(DEFAULT_GAS),
             Option::<DummySyscallHandler>::None,
         );
 
@@ -47,4 +63,16 @@ proptest! {
             &result_native,
         )?;
     }
+}
+
+#[test]
+fn dict_snapshot_loop() {
+    let program = &SNAPSHOT_LOOP;
+    run_native_program(
+        program,
+        "run_test",
+        &[],
+        Some(DEFAULT_GAS),
+        Option::<DummySyscallHandler>::None,
+    );
 }

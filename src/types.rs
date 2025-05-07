@@ -6,13 +6,14 @@ use crate::{
     error::Error as CoreTypeBuilderError,
     libfuncs::LibfuncHelper,
     metadata::MetadataStorage,
+    native_panic,
     utils::{get_integer_layout, layout_repeat, BlockExt, RangeExt, PRIME},
 };
 use cairo_lang_sierra::{
     extensions::{
         circuit::CircuitTypeConcrete,
         core::{CoreLibfunc, CoreType, CoreTypeConcrete},
-        starknet::StarkNetTypeConcrete,
+        starknet::StarknetTypeConcrete,
         utils::Range,
     },
     ids::{ConcreteTypeId, UserTypeId},
@@ -28,22 +29,23 @@ use num_bigint::{BigInt, Sign};
 use num_traits::{Bounded, One};
 use std::{alloc::Layout, error::Error, ops::Deref, sync::OnceLock};
 
-mod array;
+pub mod array;
 mod bitwise;
 mod bounded_int;
 mod r#box;
 mod builtin_costs;
 mod bytes31;
-mod circuit;
+pub mod circuit;
 mod coupon;
 mod ec_op;
 mod ec_point;
 mod ec_state;
-pub(crate) mod r#enum;
+pub mod r#enum;
 mod felt252;
 mod felt252_dict;
 mod felt252_dict_entry;
 mod gas_builtin;
+mod int_range;
 mod non_zero;
 mod nullable;
 mod pedersen;
@@ -120,6 +122,7 @@ pub trait TypeBuilder {
         &self,
         registry: &ProgramRegistry<CoreType, CoreLibfunc>,
     ) -> Result<bool, Self::Error>;
+
     /// Return whether the type is a `felt252`, either directly or indirectly (ex. through
     /// `NonZero<BoundedInt<>>`).
     fn is_felt252(
@@ -131,9 +134,6 @@ pub trait TypeBuilder {
     ///
     /// TODO: How is it used?
     fn variants(&self) -> Option<&[ConcreteTypeId]>;
-
-    // If the type is a struct, return the field types.
-    fn fields(&self) -> Option<&[ConcreteTypeId]>;
 
     #[allow(clippy::too_many_arguments)]
     fn build_default<'ctx, 'this>(
@@ -196,7 +196,7 @@ impl TypeBuilder for CoreTypeConcrete {
                 metadata,
                 WithSelf::new(self_ty, info),
             ),
-            Self::Const(_) => todo!(),
+            Self::Const(_) => native_panic!("todo: Const type to MLIR type"),
             Self::EcOp(info) => self::ec_op::build(
                 context,
                 module,
@@ -344,7 +344,7 @@ impl TypeBuilder for CoreTypeConcrete {
                 metadata,
                 WithSelf::new(self_ty, info),
             ),
-            Self::Span(_) => todo!("implement span type"),
+            Self::Span(_) => native_panic!("todo: Span type to MLIR type"),
             Self::SquashedFelt252Dict(info) => self::squashed_felt252_dict::build(
                 context,
                 module,
@@ -352,7 +352,7 @@ impl TypeBuilder for CoreTypeConcrete {
                 metadata,
                 WithSelf::new(self_ty, info),
             ),
-            Self::StarkNet(selector) => self::starknet::build(
+            Self::Starknet(selector) => self::starknet::build(
                 context,
                 module,
                 registry,
@@ -429,6 +429,15 @@ impl TypeBuilder for CoreTypeConcrete {
                 metadata,
                 WithSelf::new(self_ty, info),
             ),
+            Self::IntRange(info) => self::int_range::build(
+                context,
+                module,
+                registry,
+                metadata,
+                WithSelf::new(self_ty, info),
+            ),
+            Self::Blake(_) => native_panic!("Build Blake type"),
+            CoreTypeConcrete::QM31(_) => native_panic!("Build QM31 type"),
         }
     }
 
@@ -444,7 +453,7 @@ impl TypeBuilder for CoreTypeConcrete {
                 | CoreTypeConcrete::Pedersen(_)
                 | CoreTypeConcrete::Poseidon(_)
                 | CoreTypeConcrete::Coupon(_)
-                | CoreTypeConcrete::StarkNet(StarkNetTypeConcrete::System(_))
+                | CoreTypeConcrete::Starknet(StarknetTypeConcrete::System(_))
                 | CoreTypeConcrete::SegmentArena(_)
                 | CoreTypeConcrete::Circuit(CircuitTypeConcrete::AddMod(_))
                 | CoreTypeConcrete::Circuit(CircuitTypeConcrete::MulMod(_))
@@ -459,13 +468,13 @@ impl TypeBuilder for CoreTypeConcrete {
             // Builtins.
             CoreTypeConcrete::Bitwise(_)
             | CoreTypeConcrete::EcOp(_)
-            | CoreTypeConcrete::GasBuiltin(_) // u128 is not complex
+            | CoreTypeConcrete::GasBuiltin(_)
             | CoreTypeConcrete::BuiltinCosts(_)
             | CoreTypeConcrete::RangeCheck(_)
             | CoreTypeConcrete::Pedersen(_)
             | CoreTypeConcrete::Poseidon(_)
             | CoreTypeConcrete::RangeCheck96(_)
-            | CoreTypeConcrete::StarkNet(StarkNetTypeConcrete::System(_)) // u64 is not complex
+            | CoreTypeConcrete::Starknet(StarknetTypeConcrete::System(_)) // u64 is not complex
             | CoreTypeConcrete::SegmentArena(_) => false,
 
             CoreTypeConcrete::Box(_)
@@ -491,11 +500,11 @@ impl TypeBuilder for CoreTypeConcrete {
 
             CoreTypeConcrete::Felt252(_)
             | CoreTypeConcrete::Bytes31(_)
-            | CoreTypeConcrete::StarkNet(
-                StarkNetTypeConcrete::ClassHash(_)
-                | StarkNetTypeConcrete::ContractAddress(_)
-                | StarkNetTypeConcrete::StorageAddress(_)
-                | StarkNetTypeConcrete::StorageBaseAddress(_)
+            | CoreTypeConcrete::Starknet(
+                StarknetTypeConcrete::ClassHash(_)
+                | StarknetTypeConcrete::ContractAddress(_)
+                | StarknetTypeConcrete::StorageAddress(_)
+                | StarknetTypeConcrete::StorageBaseAddress(_)
             ) => {
                 #[cfg(target_arch = "x86_64")]
                 let value = true;
@@ -526,13 +535,17 @@ impl TypeBuilder for CoreTypeConcrete {
 
                 value
             },
-            CoreTypeConcrete::Const(_) => todo!(),
-            CoreTypeConcrete::Span(_) => todo!(),
-            CoreTypeConcrete::StarkNet(StarkNetTypeConcrete::Secp256Point(_))
-            | CoreTypeConcrete::StarkNet(StarkNetTypeConcrete::Sha256StateHandle(_)) => todo!(),
+            CoreTypeConcrete::Const(_) => native_panic!("todo: check Const is complex"),
+            CoreTypeConcrete::Span(_) => native_panic!("todo: check Span is complex"),
+            CoreTypeConcrete::Starknet(StarknetTypeConcrete::Secp256Point(_))
+            | CoreTypeConcrete::Starknet(StarknetTypeConcrete::Sha256StateHandle(_)) => native_panic!("todo: check Sha256StateHandle is complex"),
             CoreTypeConcrete::Coupon(_) => false,
 
-            CoreTypeConcrete::Circuit(info) => circuit::is_complex(info)
+            CoreTypeConcrete::Circuit(info) => circuit::is_complex(info),
+
+            CoreTypeConcrete::IntRange(_info) => false,
+            CoreTypeConcrete::Blake(_info) => native_panic!("Implement is_complex for Blake type"),
+            CoreTypeConcrete::QM31(_info) => native_panic!("Implement is_complex for QM31 type"),
         })
     }
 
@@ -577,7 +590,7 @@ impl TypeBuilder for CoreTypeConcrete {
             | CoreTypeConcrete::Felt252Dict(_)
             | CoreTypeConcrete::Felt252DictEntry(_)
             | CoreTypeConcrete::SquashedFelt252Dict(_)
-            | CoreTypeConcrete::StarkNet(_)
+            | CoreTypeConcrete::Starknet(_)
             | CoreTypeConcrete::Nullable(_) => false,
 
             // Containers:
@@ -610,8 +623,15 @@ impl TypeBuilder for CoreTypeConcrete {
                 let type_info = registry.get_type(&info.inner_ty)?;
                 type_info.is_zst(registry)?
             }
-            CoreTypeConcrete::Span(_) => todo!(),
+            CoreTypeConcrete::Span(_) => native_panic!("todo: check Span is zero sized"),
             CoreTypeConcrete::Circuit(info) => circuit::is_zst(info),
+
+            CoreTypeConcrete::IntRange(info) => {
+                let type_info = registry.get_type(&info.ty)?;
+                type_info.is_zst(registry)?
+            }
+            CoreTypeConcrete::Blake(_info) => native_panic!("Implement is_zst for Blake type"),
+            CoreTypeConcrete::QM31(_info) => native_panic!("Implement is_zst for QM31 type"),
         })
     }
 
@@ -635,7 +655,7 @@ impl TypeBuilder for CoreTypeConcrete {
             CoreTypeConcrete::EcPoint(_) => layout_repeat(&get_integer_layout(252), 2)?.0,
             CoreTypeConcrete::EcState(_) => layout_repeat(&get_integer_layout(252), 4)?.0,
             CoreTypeConcrete::Felt252(_) => get_integer_layout(252),
-            CoreTypeConcrete::GasBuiltin(_) => get_integer_layout(128),
+            CoreTypeConcrete::GasBuiltin(_) => get_integer_layout(64),
             CoreTypeConcrete::BuiltinCosts(_) => Layout::new::<*const ()>(),
             CoreTypeConcrete::Uint8(_) => get_integer_layout(8),
             CoreTypeConcrete::Uint16(_) => get_integer_layout(16),
@@ -685,21 +705,21 @@ impl TypeBuilder for CoreTypeConcrete {
             CoreTypeConcrete::SquashedFelt252Dict(_) => Layout::new::<*mut std::ffi::c_void>(), // ptr
             CoreTypeConcrete::Pedersen(_) => Layout::new::<u64>(),
             CoreTypeConcrete::Poseidon(_) => Layout::new::<u64>(),
-            CoreTypeConcrete::Span(_) => todo!(),
-            CoreTypeConcrete::StarkNet(info) => match info {
-                StarkNetTypeConcrete::ClassHash(_) => get_integer_layout(252),
-                StarkNetTypeConcrete::ContractAddress(_) => get_integer_layout(252),
-                StarkNetTypeConcrete::StorageBaseAddress(_) => get_integer_layout(252),
-                StarkNetTypeConcrete::StorageAddress(_) => get_integer_layout(252),
-                StarkNetTypeConcrete::System(_) => Layout::new::<*mut ()>(),
-                StarkNetTypeConcrete::Secp256Point(_) => {
+            CoreTypeConcrete::Span(_) => native_panic!("todo: create layout for Span"),
+            CoreTypeConcrete::Starknet(info) => match info {
+                StarknetTypeConcrete::ClassHash(_) => get_integer_layout(252),
+                StarknetTypeConcrete::ContractAddress(_) => get_integer_layout(252),
+                StarknetTypeConcrete::StorageBaseAddress(_) => get_integer_layout(252),
+                StarknetTypeConcrete::StorageAddress(_) => get_integer_layout(252),
+                StarknetTypeConcrete::System(_) => Layout::new::<*mut ()>(),
+                StarknetTypeConcrete::Secp256Point(_) => {
                     get_integer_layout(256)
                         .extend(get_integer_layout(256))?
                         .0
                         .extend(get_integer_layout(1))?
                         .0
                 }
-                StarkNetTypeConcrete::Sha256StateHandle(_) => Layout::new::<*mut ()>(),
+                StarknetTypeConcrete::Sha256StateHandle(_) => Layout::new::<*mut ()>(),
             },
             CoreTypeConcrete::SegmentArena(_) => Layout::new::<u64>(),
             CoreTypeConcrete::Snapshot(info) => registry.get_type(&info.ty)?.layout(registry)?,
@@ -717,6 +737,13 @@ impl TypeBuilder for CoreTypeConcrete {
             CoreTypeConcrete::Coupon(_) => Layout::new::<()>(),
             CoreTypeConcrete::RangeCheck96(_) => get_integer_layout(64),
             CoreTypeConcrete::Circuit(info) => circuit::layout(registry, info)?,
+
+            CoreTypeConcrete::IntRange(info) => {
+                let inner = registry.get_type(&info.ty)?.layout(registry)?;
+                inner.extend(inner)?.0
+            }
+            CoreTypeConcrete::Blake(_info) => native_panic!("Implement layout for Blake type"),
+            CoreTypeConcrete::QM31(_info) => native_panic!("Implement layout for QM31 type"),
         }
         .pad_to_align())
     }
@@ -728,6 +755,10 @@ impl TypeBuilder for CoreTypeConcrete {
         // Right now, only enums and other structures which may end up passing a flattened enum as
         // arguments.
         Ok(match self {
+            CoreTypeConcrete::IntRange(_) => false,
+            CoreTypeConcrete::Blake(_info) => {
+                native_panic!("Implement is_memory_allocated for Blake type")
+            }
             CoreTypeConcrete::Array(_) => false,
             CoreTypeConcrete::Bitwise(_) => false,
             CoreTypeConcrete::Box(_) => false,
@@ -790,7 +821,7 @@ impl TypeBuilder for CoreTypeConcrete {
             CoreTypeConcrete::Pedersen(_) => false,
             CoreTypeConcrete::Poseidon(_) => false,
             CoreTypeConcrete::Span(_) => false,
-            CoreTypeConcrete::StarkNet(_) => false,
+            CoreTypeConcrete::Starknet(_) => false,
             CoreTypeConcrete::SegmentArena(_) => false,
             CoreTypeConcrete::Snapshot(info) => {
                 registry.get_type(&info.ty)?.is_memory_allocated(registry)?
@@ -803,6 +834,7 @@ impl TypeBuilder for CoreTypeConcrete {
                 .is_memory_allocated(registry)?,
             CoreTypeConcrete::Coupon(_) => false,
             CoreTypeConcrete::Circuit(_) => false,
+            CoreTypeConcrete::QM31(_) => native_panic!("Implement is_memory_allocated for QM31"),
         })
     }
 
@@ -881,13 +913,6 @@ impl TypeBuilder for CoreTypeConcrete {
         }
     }
 
-    fn fields(&self) -> Option<&[ConcreteTypeId]> {
-        match self {
-            Self::Struct(info) => Some(&info.members),
-            _ => None,
-        }
-    }
-
     fn build_default<'ctx, 'this>(
         &self,
         context: &'ctx Context,
@@ -921,7 +946,7 @@ impl TypeBuilder for CoreTypeConcrete {
 
                     entry.insert_value(context, location, value, tag, 0)?
                 }
-                _ => unimplemented!("unsupported dict value type"),
+                _ => native_panic!("unsupported dict value type"),
             },
             Self::Felt252(_) => entry.const_int(context, location, 0, 252)?,
             Self::Nullable(_) => {
@@ -932,7 +957,7 @@ impl TypeBuilder for CoreTypeConcrete {
             Self::Uint32(_) => entry.const_int(context, location, 0, 32)?,
             Self::Uint64(_) => entry.const_int(context, location, 0, 64)?,
             Self::Uint128(_) => entry.const_int(context, location, 0, 128)?,
-            _ => unimplemented!("unsupported dict value type"),
+            _ => native_panic!("unsupported dict value type"),
         })
     }
 }
@@ -944,22 +969,22 @@ pub struct WithSelf<'a, T> {
 }
 
 impl<'a, T> WithSelf<'a, T> {
-    pub fn new(self_ty: &'a ConcreteTypeId, inner: &'a T) -> Self {
+    pub const fn new(self_ty: &'a ConcreteTypeId, inner: &'a T) -> Self {
         Self { self_ty, inner }
     }
 
-    pub fn self_ty(&self) -> &ConcreteTypeId {
+    pub const fn self_ty(&self) -> &ConcreteTypeId {
         self.self_ty
     }
 }
 
-impl<'a, T> AsRef<T> for WithSelf<'a, T> {
+impl<T> AsRef<T> for WithSelf<'_, T> {
     fn as_ref(&self) -> &T {
         self.inner
     }
 }
 
-impl<'a, T> Deref for WithSelf<'a, T> {
+impl<T> Deref for WithSelf<'_, T> {
     type Target = T;
 
     fn deref(&self) -> &T {

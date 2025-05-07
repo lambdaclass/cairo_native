@@ -12,10 +12,12 @@ fn main() {
     let native_context = NativeContext::new();
 
     // Compile the cairo program to sierra.
-    let sierra_program = cairo_to_sierra(program_path);
+    let sierra_program = cairo_to_sierra(program_path).unwrap();
 
     // Compile the sierra program into a MLIR module.
-    let native_program = native_context.compile(&sierra_program, false).unwrap();
+    let native_program = native_context
+        .compile(&sierra_program, false, Some(Default::default()))
+        .unwrap();
 
     // The parameters of the entry point.
     let params = &[Value::Felt252(Felt::from_bytes_be_slice(b"user"))];
@@ -26,7 +28,8 @@ fn main() {
         .expect("entry point not found");
 
     // Instantiate the executor.
-    let native_executor = JitNativeExecutor::from_native_module(native_program, Default::default());
+    let native_executor =
+        JitNativeExecutor::from_native_module(native_program, Default::default()).unwrap();
 
     // Execute the program.
     let result = native_executor

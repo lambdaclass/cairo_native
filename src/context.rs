@@ -1,12 +1,9 @@
 use crate::{
-    error::Error,
+    error::{panic::ToNativeAssertError, Error},
     ffi::{get_data_layout_rep, get_target_triple},
-    metadata::{
-        gas::{GasMetadata, MetadataComputationConfig},
-        runtime_bindings::RuntimeBindingsMeta,
-        MetadataStorage,
-    },
+    metadata::{gas::GasMetadata, runtime_bindings::RuntimeBindingsMeta, MetadataStorage},
     module::NativeModule,
+    native_assert,
     utils::run_pass_manager,
 };
 use cairo_lang_sierra::{
@@ -14,6 +11,7 @@ use cairo_lang_sierra::{
     program::Program,
     program_registry::ProgramRegistry,
 };
+use cairo_lang_sierra_to_casm::metadata::MetadataComputationConfig;
 use llvm_sys::target::{
     LLVM_InitializeAllAsmPrinters, LLVM_InitializeAllTargetInfos, LLVM_InitializeAllTargetMCs,
     LLVM_InitializeAllTargets,
@@ -33,7 +31,8 @@ use mlir_sys::{
     mlirLLVMDIModuleAttrGet, MlirLLVMDIEmissionKind_MlirLLVMDIEmissionKindFull,
     MlirLLVMDINameTableKind_MlirLLVMDINameTableKindDefault,
 };
-use std::sync::OnceLock;
+use std::{sync::OnceLock, time::Instant};
+use tracing::trace;
 
 /// Context of IRs, dialects and passes for Cairo programs compilation.
 #[derive(Debug, Eq, PartialEq)]
@@ -56,7 +55,7 @@ impl NativeContext {
         Self { context }
     }
 
-    pub fn context(&self) -> &Context {
+    pub const fn context(&self) -> &Context {
         &self.context
     }
 
@@ -69,7 +68,11 @@ impl NativeContext {
         &self,
         program: &Program,
         ignore_debug_names: bool,
+        gas_metadata_config: Option<MetadataComputationConfig>,
     ) -> Result<NativeModule, Error> {
+        trace!("starting sierra to mlir compilation");
+        let pre_sierra_compilation_instant = Instant::now();
+
         static INITIALIZED: OnceLock<()> = OnceLock::new();
         INITIALIZED.get_or_init(|| unsafe {
             LLVM_InitializeAllTargets();
@@ -146,24 +149,17 @@ impl NativeContext {
         ])
         .add_regions([module_region])
         .build()?;
-        assert!(op.verify(), "module operation is not valid");
 
-        let mut module = Module::from_operation(op).expect("module failed to create");
+        native_assert!(op.verify(), "module operation should be valid");
 
-        let has_gas_builtin = program
-            .type_declarations
-            .iter()
-            .any(|decl| decl.long_id.generic_id.0.as_str() == "GasBuiltin");
+        let mut module = Module::from_operation(op)
+            .to_native_assert_error("value should be module operation")?;
 
         let mut metadata = MetadataStorage::new();
         // Make the runtime library available.
         metadata.insert(RuntimeBindingsMeta::default());
         // We assume that GasMetadata will be always present when the program uses the gas builtin.
-        let gas_metadata = if has_gas_builtin {
-            GasMetadata::new(program, Some(MetadataComputationConfig::default()))
-        } else {
-            GasMetadata::new(program, None)
-        }?;
+        let gas_metadata = GasMetadata::new(program, gas_metadata_config)?;
         // Unwrapping here is not necessary since the insertion will only fail if there was
         // already some metadata of the same type.
         metadata.insert(gas_metadata);
@@ -181,47 +177,51 @@ impl NativeContext {
             ignore_debug_names,
         )?;
 
+        let sierra_compilation_time = pre_sierra_compilation_instant.elapsed().as_millis();
+        trace!(
+            time = sierra_compilation_time,
+            "sierra to mlir compilation finished"
+        );
+
         if let Ok(x) = std::env::var("NATIVE_DEBUG_DUMP") {
             if x == "1" || x == "true" {
-                std::fs::write("dump-prepass.mlir", module.as_operation().to_string())
-                    .expect("should work");
+                std::fs::write("dump-prepass.mlir", module.as_operation().to_string())?;
                 std::fs::write(
                     "dump-prepass-debug-valid.mlir",
                     module.as_operation().to_string_with_flags(
                         OperationPrintingFlags::new().enable_debug_info(true, false),
                     )?,
-                )
-                .expect("failed to write dump-prepass-debug-valid.mlir");
+                )?;
                 std::fs::write(
                     "dump-prepass-debug-pretty.mlir",
                     module.as_operation().to_string_with_flags(
                         OperationPrintingFlags::new().enable_debug_info(true, false),
                     )?,
-                )
-                .expect("failed to writedump-prepass-debug-pretty.mlir");
+                )?;
             }
         }
 
+        trace!("starting mlir passes");
+        let pre_passes_instant = Instant::now();
         run_pass_manager(&self.context, &mut module)?;
+        let passes_time = pre_passes_instant.elapsed().as_millis();
+        trace!(time = passes_time, "mlir passes finished");
 
         if let Ok(x) = std::env::var("NATIVE_DEBUG_DUMP") {
             if x == "1" || x == "true" {
-                std::fs::write("dump.mlir", module.as_operation().to_string())
-                    .expect("should work");
+                std::fs::write("dump.mlir", module.as_operation().to_string())?;
                 std::fs::write(
                     "dump-debug-pretty.mlir",
                     module.as_operation().to_string_with_flags(
                         OperationPrintingFlags::new().enable_debug_info(true, false),
                     )?,
-                )
-                .expect("failed to write dump-debug-pretty.mlir");
+                )?;
                 std::fs::write(
                     "dump-debug.mlir",
                     module.as_operation().to_string_with_flags(
                         OperationPrintingFlags::new().enable_debug_info(true, false),
                     )?,
-                )
-                .expect("failed to write dump-debug.mlir");
+                )?;
             }
         }
 

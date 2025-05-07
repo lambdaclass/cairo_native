@@ -2,21 +2,25 @@
 
 use super::LibfuncHelper;
 use crate::{
-    error::Result,
-    metadata::{runtime_bindings::RuntimeBindingsMeta, MetadataStorage},
+    error::{panic::ToNativeAssertError, Result},
+    metadata::{
+        felt252_dict::Felt252DictOverrides, runtime_bindings::RuntimeBindingsMeta, MetadataStorage,
+    },
+    native_panic,
+    types::TypeBuilder,
     utils::BlockExt,
 };
 use cairo_lang_sierra::{
     extensions::{
-        core::{CoreLibfunc, CoreType},
+        core::{CoreLibfunc, CoreType, CoreTypeConcrete},
         felt252_dict::Felt252DictConcreteLibfunc,
         lib_func::SignatureOnlyConcreteLibfunc,
     },
     program_registry::ProgramRegistry,
 };
 use melior::{
-    dialect::arith,
-    ir::{r#type::IntegerType, Block, Location},
+    dialect::{llvm, ods},
+    ir::{Block, BlockLike, Location},
     Context,
 };
 
@@ -42,21 +46,62 @@ pub fn build<'ctx, 'this>(
 
 pub fn build_new<'ctx, 'this>(
     context: &'ctx Context,
-    _registry: &ProgramRegistry<CoreType, CoreLibfunc>,
+    registry: &ProgramRegistry<CoreType, CoreLibfunc>,
     entry: &'this Block<'ctx>,
     location: Location<'ctx>,
     helper: &LibfuncHelper<'ctx, 'this>,
     metadata: &mut MetadataStorage,
-    _info: &SignatureOnlyConcreteLibfunc,
+    info: &SignatureOnlyConcreteLibfunc,
 ) -> Result<()> {
-    let segment_arena =
-        super::increment_builtin_counter(context, entry, location, entry.argument(0)?.into())?;
+    let segment_arena = super::increment_builtin_counter(context, entry, location, entry.arg(0)?)?;
+
+    let value_type_id = match registry.get_type(&info.signature.branch_signatures[0].vars[1].ty)? {
+        CoreTypeConcrete::Felt252Dict(info) => &info.ty,
+        _ => native_panic!("entered unreachable code"),
+    };
+
+    let drop_fn = {
+        let mut dict_overrides = metadata
+            .remove::<Felt252DictOverrides>()
+            .unwrap_or_default();
+
+        let drop_fn = match dict_overrides.build_drop_fn(
+            context,
+            helper,
+            registry,
+            metadata,
+            value_type_id,
+        )? {
+            Some(drop_fn_symbol) => Some(
+                entry.append_op_result(
+                    ods::llvm::mlir_addressof(
+                        context,
+                        llvm::r#type::pointer(context, 0),
+                        drop_fn_symbol,
+                        location,
+                    )
+                    .into(),
+                )?,
+            ),
+            None => None,
+        };
+
+        metadata.insert(dict_overrides);
+
+        drop_fn
+    };
 
     let runtime_bindings = metadata
         .get_mut::<RuntimeBindingsMeta>()
-        .expect("Runtime library not available.");
-
-    let dict_ptr = runtime_bindings.dict_new(context, helper, entry, location)?;
+        .to_native_assert_error("runtime library should be available")?;
+    let dict_ptr = runtime_bindings.dict_new(
+        context,
+        helper,
+        entry,
+        location,
+        drop_fn,
+        registry.get_type(value_type_id)?.layout(registry)?,
+    )?;
 
     entry.append_operation(helper.br(0, &[segment_arena, dict_ptr], location));
     Ok(())
@@ -71,37 +116,25 @@ pub fn build_squash<'ctx, 'this>(
     metadata: &mut MetadataStorage,
     _info: &SignatureOnlyConcreteLibfunc,
 ) -> Result<()> {
-    let range_check =
-        super::increment_builtin_counter(context, entry, location, entry.argument(0)?.into())?;
-    let gas_builtin = entry.argument(1)?.into();
-    let segment_arena =
-        super::increment_builtin_counter(context, entry, location, entry.argument(2)?.into())?;
-    let dict_ptr = entry.argument(3)?.into();
+    let range_check = super::increment_builtin_counter(context, entry, location, entry.arg(0)?)?;
+    let gas_builtin = entry.arg(1)?;
+    let segment_arena = super::increment_builtin_counter(context, entry, location, entry.arg(2)?)?;
+    let dict_ptr = entry.arg(3)?;
 
     let runtime_bindings = metadata
         .get_mut::<RuntimeBindingsMeta>()
-        .expect("Runtime library not available.");
+        .to_native_assert_error("runtime library should be available")?;
 
     let gas_refund = runtime_bindings
         .dict_gas_refund(context, helper, entry, dict_ptr, location)?
         .result(0)?
         .into();
-    let gas_refund = entry.append_op_result(arith::extui(
-        gas_refund,
-        IntegerType::new(context, 128).into(),
-        location,
-    ))?;
 
-    let new_gas_builtin = entry.append_op_result(arith::addi(gas_builtin, gas_refund, location))?;
+    let new_gas_builtin = entry.addi(gas_builtin, gas_refund, location)?;
 
     entry.append_operation(helper.br(
         0,
-        &[
-            range_check,
-            new_gas_builtin,
-            segment_arena,
-            entry.argument(3)?.into(),
-        ],
+        &[range_check, new_gas_builtin, segment_arena, entry.arg(3)?],
         location,
     ));
 

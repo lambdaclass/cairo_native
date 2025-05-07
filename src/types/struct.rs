@@ -34,7 +34,7 @@
 
 use super::WithSelf;
 use crate::{
-    error::Result,
+    error::{Error, Result},
     metadata::{
         drop_overrides::DropOverridesMeta, dup_overrides::DupOverridesMeta, MetadataStorage,
     },
@@ -49,7 +49,7 @@ use cairo_lang_sierra::{
 };
 use melior::{
     dialect::{func, llvm},
-    ir::{Block, Location, Module, Region, Type},
+    ir::{Block, BlockLike, Location, Module, Region, Type},
     Context,
 };
 
@@ -74,10 +74,10 @@ pub fn build<'ctx>(
             // before calling this closure.
             let mut needs_override = false;
             for member in &info.members {
-                registry.build_type(context, module, registry, metadata, member)?;
+                registry.build_type(context, module, metadata, member)?;
                 if metadata
                     .get::<DupOverridesMeta>()
-                    .unwrap()
+                    .ok_or(Error::MissingMetadata)?
                     .is_overriden(member)
                 {
                     needs_override = true;
@@ -101,10 +101,10 @@ pub fn build<'ctx>(
             // before calling this closure.
             let mut needs_override = false;
             for member in &info.members {
-                registry.build_type(context, module, registry, metadata, member)?;
+                registry.build_type(context, module, metadata, member)?;
                 if metadata
                     .get::<DropOverridesMeta>()
-                    .unwrap()
+                    .ok_or(Error::MissingMetadata)?
                     .is_overriden(member)
                 {
                     needs_override = true;
@@ -121,7 +121,7 @@ pub fn build<'ctx>(
     let members = info
         .members
         .iter()
-        .map(|member| registry.build_type(context, module, registry, metadata, member))
+        .map(|member| registry.build_type(context, module, metadata, member))
         .collect::<Result<Vec<_>>>()?;
     Ok(llvm::r#type::r#struct(context, &members, false))
 }
@@ -135,22 +135,22 @@ fn build_dup<'ctx>(
 ) -> Result<Region<'ctx>> {
     let location = Location::unknown(context);
 
-    let self_ty = registry.build_type(context, module, registry, metadata, info.self_ty())?;
+    let self_ty = registry.build_type(context, module, metadata, info.self_ty())?;
 
     let region = Region::new();
     let entry = region.append_block(Block::new(&[(self_ty, location)]));
 
-    let mut src_value = entry.argument(0)?.into();
+    let mut src_value = entry.arg(0)?;
     let mut dst_value = entry.append_op_result(llvm::undef(self_ty, location))?;
 
     for (idx, member_id) in info.members.iter().enumerate() {
-        let member_ty = registry.build_type(context, module, registry, metadata, member_id)?;
+        let member_ty = registry.build_type(context, module, metadata, member_id)?;
         let member_val = entry.extract_value(context, location, src_value, member_ty, idx)?;
 
         // The following unwrap is unreachable because the registration logic will always insert it.
         let values = metadata
             .get::<DupOverridesMeta>()
-            .unwrap()
+            .ok_or(Error::MissingMetadata)?
             .invoke_override(context, &entry, location, member_id, member_val)?;
 
         src_value = entry.insert_value(context, location, src_value, values.0, idx)?;
@@ -170,20 +170,20 @@ fn build_drop<'ctx>(
 ) -> Result<Region<'ctx>> {
     let location = Location::unknown(context);
 
-    let self_ty = registry.build_type(context, module, registry, metadata, info.self_ty())?;
+    let self_ty = registry.build_type(context, module, metadata, info.self_ty())?;
 
     let region = Region::new();
     let entry = region.append_block(Block::new(&[(self_ty, location)]));
 
-    let value = entry.argument(0)?.into();
+    let value = entry.arg(0)?;
     for (idx, member_id) in info.members.iter().enumerate() {
-        let member_ty = registry.build_type(context, module, registry, metadata, member_id)?;
+        let member_ty = registry.build_type(context, module, metadata, member_id)?;
         let member_val = entry.extract_value(context, location, value, member_ty, idx)?;
 
         // The following unwrap is unreachable because the registration logic will always insert it.
         metadata
             .get::<DropOverridesMeta>()
-            .unwrap()
+            .ok_or(Error::MissingMetadata)?
             .invoke_override(context, &entry, location, member_id, member_val)?;
     }
 

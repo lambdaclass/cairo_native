@@ -106,8 +106,6 @@ lazy_static! {
     };
 }
 
-// Since comparing a felt to 1 to create boolean (uses felt252_is_zero and felt sub,add) has a bug,
-// we'll be using use u8 on other tests until this is fixed. The bug may be in felt subtraction.
 #[test]
 fn felt252_to_bool_bug() {
     let program = &FELT252_TO_BOOL;
@@ -115,7 +113,7 @@ fn felt252_to_bool_bug() {
     let result_vm = run_vm_program(
         program,
         "run_test",
-        &[Arg::Value(Felt::from(a))],
+        vec![Arg::Value(Felt::from(a))],
         Some(DEFAULT_GAS as usize),
     )
     .unwrap();
@@ -123,7 +121,7 @@ fn felt252_to_bool_bug() {
         program,
         "run_test",
         &[Value::Felt252(a.into())],
-        Some(DEFAULT_GAS as u128),
+        Some(DEFAULT_GAS),
         Option::<DummySyscallHandler>::None,
     );
 
@@ -139,7 +137,7 @@ fn felt252_to_bool_bug() {
     let result_vm = run_vm_program(
         program,
         "run_test",
-        &[Arg::Value(Felt::from(a))],
+        vec![Arg::Value(Felt::from(a))],
         Some(DEFAULT_GAS as usize),
     )
     .unwrap();
@@ -147,7 +145,7 @@ fn felt252_to_bool_bug() {
         program,
         "run_test",
         &[Value::Felt252(a.into())],
-        Some(DEFAULT_GAS as u128),
+        Some(DEFAULT_GAS),
         Option::<DummySyscallHandler>::None,
     );
 
@@ -164,14 +162,14 @@ proptest! {
     #[test]
     fn bool_to_felt252_proptest(a: bool) {
         let program = &BOOL_TO_FELT252;
-        let result_vm = run_vm_program(program, "run_test", &[
+        let result_vm = run_vm_program(program, "run_test", vec![
             Arg::Value(Felt::from(a)),
         ], Some(DEFAULT_GAS as usize)).unwrap();
         let result_native = run_native_program(
             program,
             "run_test",
             &[Value::Felt252(a.into())],
-            Some(DEFAULT_GAS as u128),
+            Some(DEFAULT_GAS),
             Option::<DummySyscallHandler>::None,
         );
 
@@ -187,14 +185,14 @@ proptest! {
     #[test]
     fn bool_not_proptest(a: bool) {
         let program = &BOOL_NOT;
-        let result_vm = run_vm_program(program, "run_test", &[
+        let result_vm = run_vm_program(program, "run_test", vec![
             Arg::Value(Felt::from(a)),
         ], Some(DEFAULT_GAS as usize)).unwrap();
         let result_native = run_native_program(
             program,
             "run_test",
             &[Value::Felt252(a.into())],
-            Some(DEFAULT_GAS as u128),
+            Some(DEFAULT_GAS),
             Option::<DummySyscallHandler>::None,
         );
 
@@ -210,7 +208,7 @@ proptest! {
     #[test]
     fn bool_and_proptest(a: bool, b: bool) {
         let program = &BOOL_AND;
-        let result_vm = run_vm_program(program, "run_test", &[
+        let result_vm = run_vm_program(program, "run_test", vec![
             Arg::Value(Felt::from(a)),
             Arg::Value(Felt::from(b))
         ], Some(DEFAULT_GAS as usize)).unwrap();
@@ -218,7 +216,7 @@ proptest! {
             program,
             "run_test",
             &[Value::Felt252(a.into()), Value::Felt252(b.into())],
-            Some(DEFAULT_GAS as u128),
+            Some(DEFAULT_GAS),
             Option::<DummySyscallHandler>::None,
         );
 
@@ -234,7 +232,7 @@ proptest! {
     #[test]
     fn bool_or_proptest(a: bool, b: bool) {
         let program = &BOOL_OR;
-        let result_vm = run_vm_program(program, "run_test", &[
+        let result_vm = run_vm_program(program, "run_test", vec![
             Arg::Value(Felt::from(a)),
             Arg::Value(Felt::from(b))
         ], Some(DEFAULT_GAS as usize)).unwrap();
@@ -242,7 +240,7 @@ proptest! {
             program,
             "run_test",
             &[Value::Felt252(a.into()), Value::Felt252(b.into())],
-            Some(DEFAULT_GAS as u128),
+            Some(DEFAULT_GAS),
             Option::<DummySyscallHandler>::None,
         );
 
@@ -258,7 +256,7 @@ proptest! {
     #[test]
     fn bool_xor_proptest(a: bool, b: bool) {
         let program = &BOOL_XOR;
-        let result_vm = run_vm_program(program, "run_test", &[
+        let result_vm = run_vm_program(program, "run_test", vec![
             Arg::Value(Felt::from(a)),
             Arg::Value(Felt::from(b))
         ], Some(DEFAULT_GAS as usize)).unwrap();
@@ -266,7 +264,7 @@ proptest! {
             program,
             "run_test",
             &[Value::Felt252(a.into()), Value::Felt252(b.into())],
-            Some(DEFAULT_GAS as u128),
+            Some(DEFAULT_GAS),
             Option::<DummySyscallHandler>::None,
         );
 

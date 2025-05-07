@@ -46,13 +46,14 @@
 
 use crate::{
     debug::libfunc_to_name,
-    error::Error,
+    error::{panic::ToNativeAssertError, Error},
     libfuncs::{BranchArg, LibfuncBuilder, LibfuncHelper},
     metadata::{
         gas::{GasCost, GasMetadata},
         tail_recursion::TailRecursionMeta,
         MetadataStorage,
     },
+    native_assert, native_panic,
     types::TypeBuilder,
     utils::{generate_function_name, BlockExt},
 };
@@ -74,7 +75,7 @@ use melior::{
         arith::CmpiPredicate,
         cf, func, index,
         llvm::{self, LoadStoreOptions},
-        memref, ods,
+        memref,
     },
     ir::{
         attribute::{
@@ -83,8 +84,8 @@ use melior::{
         },
         operation::OperationBuilder,
         r#type::{FunctionType, IntegerType, MemRefType},
-        Attribute, AttributeLike, Block, BlockRef, Identifier, Location, Module, Region, Type,
-        Value,
+        Attribute, AttributeLike, Block, BlockLike, BlockRef, Identifier, Location, Module, Region,
+        Type, Value,
     },
     Context,
 };
@@ -131,32 +132,8 @@ pub fn compile(
 ) -> Result<(), Error> {
     if let Ok(x) = std::env::var("NATIVE_DEBUG_DUMP") {
         if x == "1" || x == "true" {
-            std::fs::write("program.sierra", program.to_string()).expect("failed to dump sierra");
+            std::fs::write("program.sierra", program.to_string())?;
         }
-    }
-
-    {
-        // Add the builtin_costs global.
-        // We always add it because symbol look up otherwise can panic.
-        let region = Region::new();
-        let location = Location::unknown(context);
-        let block = region.append_block(Block::new(&[]));
-        let value = block.append_op_result(
-            ods::llvm::mlir_zero(context, llvm::r#type::pointer(context, 0), location).into(),
-        )?;
-        block.append_operation(melior::dialect::llvm::r#return(Some(value), location));
-
-        module.body().append_operation(
-            ods::llvm::mlir_global(
-                context,
-                region,
-                TypeAttribute::new(llvm::r#type::pointer(context, 0)),
-                StringAttribute::new(context, "builtin_costs"),
-                Attribute::parse(context, "#llvm.linkage<external>").unwrap(),
-                location,
-            )
-            .into(),
-        );
     }
 
     // Sierra programs have the following structure:
@@ -234,6 +211,9 @@ fn compile_func(
         metadata,
     )
     .collect::<Result<Vec<_>, _>>()?;
+
+    #[cfg(feature = "with-trace-dump")]
+    let mut var_types: HashMap<VarId, ConcreteTypeId> = HashMap::new();
 
     // Replace memory-allocated arguments with pointers.
     for (ty, type_info) in
@@ -438,6 +418,9 @@ fn compile_func(
                     value
                 },
             ));
+
+            #[cfg(feature = "with-trace-dump")]
+            var_types.insert(param.id.clone(), param.ty.clone());
         }
 
         values.into_iter()
@@ -545,6 +528,19 @@ fn compile_func(
                         format!("{}(stmt_idx={})", libfunc_to_name(libf), statement_idx)
                     };
 
+                    #[cfg(feature = "with-trace-dump")]
+                    crate::utils::trace_dump::build_state_snapshot(
+                        context,
+                        registry,
+                        module,
+                        block,
+                        location,
+                        metadata,
+                        statement_idx,
+                        &state,
+                        &var_types,
+                    );
+
                     let (state, _) = edit_state::take_args(state, invocation.args.iter())?;
 
                     let helper = LibfuncHelper {
@@ -610,7 +606,9 @@ fn compile_func(
                                         op0.result(0)?.into(),
                                         &entry_block,
                                     ))
-                                    .expect("tail recursion metadata shouldn't be inserted");
+                                    .to_native_assert_error(
+                                        "tail recursion metadata shouldn't be inserted",
+                                    )?;
                             }
                         }
                     }
@@ -623,7 +621,11 @@ fn compile_func(
                         &helper,
                         metadata,
                     )?;
-                    assert!(block.terminator().is_some());
+                    native_assert!(
+                        block.terminator().is_some(),
+                        "libfunc {} had no terminator",
+                        libfunc_name
+                    );
 
                     if let Some(tailrec_meta) = metadata.remove::<TailRecursionMeta>() {
                         if let Some(return_block) = tailrec_meta.return_target() {
@@ -631,24 +633,31 @@ fn compile_func(
                         }
                     }
 
+                    #[cfg(feature = "with-trace-dump")]
+                    for (branch_signature, branch_info) in
+                        libfunc.branch_signatures().iter().zip(&invocation.branches)
+                    {
+                        for (var_info, var_id) in
+                            branch_signature.vars.iter().zip(&branch_info.results)
+                        {
+                            var_types.insert(var_id.clone(), var_info.ty.clone());
+                        }
+                    }
+
                     StatementCompileResult::Processed(
                         invocation
                             .branches
                             .iter()
-                            .zip(helper.results())
+                            .zip(helper.results()?)
                             .map(|(branch_info, result_values)| {
-                                assert_eq!(
-                                    branch_info.results.len(),
-                                    result_values.len(),
+                                native_assert!(
+                                    branch_info.results.len() == result_values.len(),
                                     "Mismatched number of returned values from branch."
                                 );
 
                                 Ok(edit_state::put_results(
                                     state.clone(),
-                                    branch_info
-                                        .results
-                                        .iter()
-                                        .zip(result_values.iter().copied()),
+                                    branch_info.results.iter().zip(result_values.into_iter()),
                                 )?)
                             })
                             .collect::<Result<_, Error>>()?,
@@ -667,6 +676,21 @@ fn compile_func(
                             0,
                         ),
                     );
+
+                    #[cfg(feature = "with-trace-dump")]
+                    if !is_recursive || tailrec_state.is_some() {
+                        crate::utils::trace_dump::build_state_snapshot(
+                            context,
+                            registry,
+                            module,
+                            block,
+                            location,
+                            metadata,
+                            statement_idx,
+                            &state,
+                            &var_types,
+                        );
+                    }
 
                     let (_, mut values) = edit_state::take_args(state, var_ids.iter())?;
 
@@ -782,7 +806,7 @@ fn compile_func(
                                             }
                                         })
                                         .collect::<Result<Vec<_>, _>>()?,
-                                    None => todo!(),
+                                    None => native_panic!("not yet implemented"),
                                 };
 
                                 block.append_operation(cf::cond_br(
@@ -809,7 +833,7 @@ fn compile_func(
                     }
 
                     // Store the return value in the return pointer, if there's one.
-                    if let Some(true) = has_return_ptr {
+                    if Some(true) == has_return_ptr {
                         let (_ret_type_id, ret_type_info) = return_type_infos[0];
                         let ret_layout = ret_type_info.layout(registry)?;
 
@@ -817,7 +841,7 @@ fn compile_func(
                         block.append_operation(llvm::store(
                             context,
                             ptr,
-                            pre_entry_block.argument(0)?.into(),
+                            pre_entry_block.arg(0)?,
                             location,
                             LoadStoreOptions::new().align(Some(IntegerAttribute::new(
                                 IntegerType::new(context, 64).into(),
@@ -926,11 +950,13 @@ fn compile_func(
             ),
             (
                 Identifier::new(context, "linkage"),
-                Attribute::parse(context, "#llvm.linkage<private>").unwrap(),
+                Attribute::parse(context, "#llvm.linkage<private>")
+                    .ok_or(Error::ParseAttributeError)?,
             ),
             (
                 Identifier::new(context, "CConv"),
-                Attribute::parse(context, "#llvm.cconv<fastcc>").unwrap(),
+                Attribute::parse(context, "#llvm.cconv<fastcc>")
+                    .ok_or(Error::ParseAttributeError)?,
             ),
         ],
         Location::fused(
@@ -1007,9 +1033,9 @@ fn generate_function_structure<'c, 'a>(
                     e.insert(Block::new(&[]));
                     blocks
                         .get_mut(&statement_idx.0)
-                        .expect("the block should exist")
+                        .to_native_assert_error("block should exist")?
                 } else {
-                    panic!("statement index already present in block");
+                    native_panic!("statement index already present in block")
                 }
             };
 
@@ -1071,7 +1097,7 @@ fn generate_function_structure<'c, 'a>(
                                         Entry::Occupied(entry) => entry.into_mut(),
                                         Entry::Vacant(entry) => entry.insert((state.clone(), 0)),
                                     };
-                                assert!(
+                                native_assert!(
                                     prev_state.eq_unordered(&state),
                                     "Branch target states do not match."
                                 );
@@ -1088,7 +1114,7 @@ fn generate_function_structure<'c, 'a>(
                     );
 
                     let (state, types) = edit_state::take_args(state.clone(), var_ids.iter())?;
-                    assert!(
+                    native_assert!(
                         state.is_empty(),
                         "State must be empty after a return statement."
                     );
@@ -1357,7 +1383,8 @@ fn generate_entry_point_wrapper<'c>(
                 ),
                 (
                     Identifier::new(context, "CConv"),
-                    Attribute::parse(context, "#llvm.cconv<fastcc>").unwrap(),
+                    Attribute::parse(context, "#llvm.cconv<fastcc>")
+                        .ok_or(Error::ParseAttributeError)?,
                 ),
             ])
             .add_operands(&args)
@@ -1391,11 +1418,13 @@ fn generate_entry_point_wrapper<'c>(
             ),
             (
                 Identifier::new(context, "llvm.linkage"),
-                Attribute::parse(context, "#llvm.linkage<private>").unwrap(),
+                Attribute::parse(context, "#llvm.linkage<private>")
+                    .ok_or(Error::ParseAttributeError)?,
             ),
             (
                 Identifier::new(context, "llvm.CConv"),
-                Attribute::parse(context, "#llvm.cconv<fastcc>").unwrap(),
+                Attribute::parse(context, "#llvm.cconv<fastcc>")
+                    .ok_or(Error::ParseAttributeError)?,
             ),
             (
                 Identifier::new(context, "llvm.emit_c_interface"),

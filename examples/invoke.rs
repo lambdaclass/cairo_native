@@ -16,11 +16,13 @@ fn main() {
     let program_path = Path::new("programs/echo.cairo");
 
     // Compile the cairo program to sierra.
-    let sierra_program = cairo_native::utils::cairo_to_sierra(program_path);
+    let sierra_program = cairo_native::utils::cairo_to_sierra(program_path).unwrap();
 
     let native_context = NativeContext::new();
 
-    let native_program = native_context.compile(&sierra_program, false).unwrap();
+    let native_program = native_context
+        .compile(&sierra_program, false, Some(Default::default()))
+        .unwrap();
 
     // Call the echo function from the contract using the generated wrapper.
 
@@ -28,7 +30,8 @@ fn main() {
 
     let fn_id = &entry_point_fn.id;
 
-    let native_executor = JitNativeExecutor::from_native_module(native_program, Default::default());
+    let native_executor =
+        JitNativeExecutor::from_native_module(native_program, Default::default()).unwrap();
 
     let output = native_executor.invoke_dynamic(fn_id, &[Value::Felt252(1.into())], None);
 

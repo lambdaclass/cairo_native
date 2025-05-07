@@ -5,7 +5,7 @@
 //!
 //! However, types like an array need manual dropping.
 
-use super::LibfuncHelper;
+use super::{BlockExt, LibfuncHelper};
 use crate::{
     error::Result,
     metadata::{drop_overrides::DropOverridesMeta, MetadataStorage},
@@ -19,7 +19,7 @@ use cairo_lang_sierra::{
     program_registry::ProgramRegistry,
 };
 use melior::{
-    ir::{Block, Location},
+    ir::{Block, BlockLike, Location},
     Context,
 };
 
@@ -36,7 +36,6 @@ pub fn build<'ctx, 'this>(
     registry.build_type(
         context,
         helper,
-        registry,
         metadata,
         &info.signature.param_signatures[0].ty,
     )?;
@@ -47,7 +46,7 @@ pub fn build<'ctx, 'this>(
             entry,
             location,
             &info.signature.param_signatures[0].ty,
-            entry.argument(0)?.into(),
+            entry.arg(0)?,
         )?;
     }
 

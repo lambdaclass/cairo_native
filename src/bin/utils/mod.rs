@@ -134,7 +134,10 @@ fn jitvalue_to_felt(value: &Value) -> Vec<Felt> {
                     felts
                 }
             } else {
-                todo!()
+                // Assume its a regular enum.
+                let mut felts = vec![(*tag).into()];
+                felts.extend(jitvalue_to_felt(value));
+                felts
             }
         }
         Value::Felt252Dict { value, .. } => {
@@ -178,6 +181,7 @@ fn jitvalue_to_felt(value: &Value) -> Vec<Felt> {
             vec![x.lo.into(), x.hi.into(), y.lo.into(), y.hi.into()]
         }
         Value::Null => vec![0.into()],
+        Value::IntRange { x, y } => [jitvalue_to_felt(x), jitvalue_to_felt(y)].concat(),
     }
 }
 

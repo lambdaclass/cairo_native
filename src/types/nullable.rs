@@ -23,7 +23,7 @@ use cairo_lang_sierra::{
 };
 use melior::{
     dialect::{cf, func},
-    ir::Region,
+    ir::{BlockLike, Region},
 };
 use melior::{
     dialect::{llvm, ods},
@@ -97,7 +97,7 @@ fn build_dup<'ctx>(
         entry.append_op_result(llvm::zero(llvm::r#type::pointer(context, 0), location))?;
     let inner_len_val = entry.const_int(context, location, inner_len, 64)?;
 
-    let src_value = entry.argument(0)?.into();
+    let src_value = entry.arg(0)?;
     let src_is_null = entry.append_op_result(
         ods::llvm::icmp(
             context,
@@ -129,7 +129,7 @@ fn build_dup<'ctx>(
             null_ptr,
             inner_len_val,
             location,
-        ))?;
+        )?)?;
 
         match metadata.get::<DupOverridesMeta>() {
             Some(dup_override_meta) if dup_override_meta.is_overriden(&info.ty) => {
@@ -165,10 +165,7 @@ fn build_dup<'ctx>(
         block_realloc.append_operation(cf::br(&block_finish, &[dst_value], location));
     }
 
-    block_finish.append_operation(func::r#return(
-        &[src_value, block_finish.argument(0)?.into()],
-        location,
-    ));
+    block_finish.append_operation(func::r#return(&[src_value, block_finish.arg(0)?], location));
     Ok(region)
 }
 
@@ -184,7 +181,7 @@ fn build_drop<'ctx>(
         metadata.insert(ReallocBindingsMeta::new(context, module));
     }
 
-    let inner_ty = registry.build_type(context, module, registry, metadata, &info.ty)?;
+    let inner_ty = registry.build_type(context, module, metadata, &info.ty)?;
 
     let region = Region::new();
     let entry = region.append_block(Block::new(&[(llvm::r#type::pointer(context, 0), location)]));
@@ -192,7 +189,7 @@ fn build_drop<'ctx>(
     let null_ptr =
         entry.append_op_result(llvm::zero(llvm::r#type::pointer(context, 0), location))?;
 
-    let value = entry.argument(0)?.into();
+    let value = entry.arg(0)?;
     let is_null = entry.append_op_result(
         ods::llvm::icmp(
             context,
@@ -233,7 +230,7 @@ fn build_drop<'ctx>(
             _ => {}
         }
 
-        block_free.append_operation(ReallocBindingsMeta::free(context, value, location));
+        block_free.append_operation(ReallocBindingsMeta::free(context, value, location)?);
         block_free.append_operation(func::r#return(&[], location));
     }
 

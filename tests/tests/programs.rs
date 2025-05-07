@@ -118,7 +118,7 @@ fn fib() {
     let result_vm = run_vm_program(
         &FIB,
         "run_test",
-        &[Arg::Value(Felt::from(10))],
+        vec![Arg::Value(Felt::from(10))],
         Some(DEFAULT_GAS as usize),
     )
     .unwrap();
@@ -126,7 +126,7 @@ fn fib() {
         &FIB,
         "run_test",
         &[Value::Felt252(10.into())],
-        Some(DEFAULT_GAS as u128),
+        Some(DEFAULT_GAS),
         Option::<DummySyscallHandler>::None,
     );
 
@@ -144,7 +144,7 @@ fn logistic_map() {
     let result_vm = run_vm_program(
         &LOGISTIC_MAP,
         "run_test",
-        &[Arg::Value(Felt::from(1000))],
+        vec![Arg::Value(Felt::from(1000))],
         Some(DEFAULT_GAS as usize),
     )
     .unwrap();
@@ -152,7 +152,7 @@ fn logistic_map() {
         &LOGISTIC_MAP,
         "run_test",
         &[Value::Felt252(1000.into())],
-        Some(DEFAULT_GAS as u128),
+        Some(DEFAULT_GAS),
         Option::<DummySyscallHandler>::None,
     );
 
@@ -170,7 +170,7 @@ fn pedersen() {
     let result_vm = run_vm_program(
         &PEDERSEN,
         "run_test",
-        &[
+        vec![
             Arg::Value(
                 Felt::from_dec_str(
                     "2163739901324492107409690946633517860331020929182861814098856895601180685",
@@ -198,7 +198,7 @@ fn pedersen() {
                 "2392090257937917229310563411601744459500735555884672871108624696010915493156",
             )),
         ],
-        Some(DEFAULT_GAS as u128),
+        Some(DEFAULT_GAS),
         Option::<DummySyscallHandler>::None,
     );
 
@@ -216,7 +216,7 @@ fn factorial() {
     let result_vm = run_vm_program(
         &FACTORIAL,
         "run_test",
-        &[Arg::Value(Felt::from(13))],
+        vec![Arg::Value(Felt::from(13))],
         Some(DEFAULT_GAS as usize),
     )
     .unwrap();
@@ -224,7 +224,7 @@ fn factorial() {
         &FACTORIAL,
         "run_test",
         &[Value::Felt252(13.into())],
-        Some(DEFAULT_GAS as u128),
+        Some(DEFAULT_GAS),
         Option::<DummySyscallHandler>::None,
     );
 
@@ -243,7 +243,7 @@ proptest! {
         let result_vm = run_vm_program(
             &FIB,
             "run_test",
-            &[Arg::Value(Felt::from(n))],
+            vec![Arg::Value(Felt::from(n))],
             Some(DEFAULT_GAS as usize),
         )
         .unwrap();
@@ -251,7 +251,7 @@ proptest! {
             &FIB,
             "run_test",
             &[Value::Felt252(n.into())],
-            Some(DEFAULT_GAS as u128),
+            Some(DEFAULT_GAS),
             Option::<DummySyscallHandler>::None,
         );
 
@@ -268,7 +268,7 @@ proptest! {
         let result_vm = run_vm_program(
             &LOGISTIC_MAP,
             "run_test",
-            &[Arg::Value(Felt::from(n))],
+            vec![Arg::Value(Felt::from(n))],
             Some(DEFAULT_GAS as usize),
         )
         .unwrap();
@@ -276,7 +276,7 @@ proptest! {
             &LOGISTIC_MAP,
             "run_test",
             &[Value::Felt252(n.into())],
-            Some(DEFAULT_GAS as u128),
+            Some(DEFAULT_GAS),
             Option::<DummySyscallHandler>::None,
         );
 
@@ -293,7 +293,7 @@ proptest! {
         let result_vm = run_vm_program(
             &FACTORIAL,
             "run_test",
-            &[Arg::Value(Felt::from(n))],
+            vec![Arg::Value(Felt::from(n))],
             Some(DEFAULT_GAS as usize),
         )
         .unwrap();
@@ -301,7 +301,7 @@ proptest! {
             &FACTORIAL,
             "run_test",
             &[Value::Felt252(n.into())],
-            Some(DEFAULT_GAS as u128),
+            Some(DEFAULT_GAS),
             Option::<DummySyscallHandler>::None,
         );
 
@@ -318,7 +318,7 @@ proptest! {
         let result_vm = run_vm_program(
             &PEDERSEN,
             "run_test",
-            &[Arg::Value(Felt::from_bytes_be(&a.clone().to_bytes_be())), Arg::Value(Felt::from_bytes_be(&b.clone().to_bytes_be()))],
+            vec![Arg::Value(Felt::from_bytes_be(&a.clone().to_bytes_be())), Arg::Value(Felt::from_bytes_be(&b.clone().to_bytes_be()))],
             Some(DEFAULT_GAS as usize),
         )
         .unwrap();
@@ -327,7 +327,7 @@ proptest! {
             &PEDERSEN,
             "run_test",
             &[Value::Felt252(a), Value::Felt252(b)],
-            Some(DEFAULT_GAS as u128),
+            Some(DEFAULT_GAS),
             Option::<DummySyscallHandler>::None,
         );
 
@@ -344,7 +344,7 @@ proptest! {
         let result_vm = run_vm_program(
             &POSEIDON,
             "run_test",
-            &[Arg::Value(Felt::from_bytes_be(&a.clone().to_bytes_be())),
+            vec![Arg::Value(Felt::from_bytes_be(&a.clone().to_bytes_be())),
              Arg::Value(Felt::from_bytes_be(&b.clone().to_bytes_be())),
             Arg::Value(Felt::from_bytes_be(&c.clone().to_bytes_be()))],
             Some(DEFAULT_GAS as usize),
@@ -355,7 +355,7 @@ proptest! {
             &POSEIDON,
             "run_test",
             &[Value::Felt252(a), Value::Felt252(b), Value::Felt252(c)],
-            Some(DEFAULT_GAS as u128),
+            Some(DEFAULT_GAS),
             Option::<DummySyscallHandler>::None,
         );
 
@@ -373,7 +373,7 @@ fn self_referencing_struct() {
     let result_vm = run_vm_program(
         &SELF_REFERENCING,
         "run_test",
-        &[],
+        vec![],
         Some(DEFAULT_GAS as usize),
     )
     .unwrap();
@@ -381,7 +381,7 @@ fn self_referencing_struct() {
         &SELF_REFERENCING,
         "run_test",
         &[],
-        Some(DEFAULT_GAS as u128),
+        Some(DEFAULT_GAS),
         Option::<DummySyscallHandler>::None,
     );
 
@@ -396,12 +396,12 @@ fn self_referencing_struct() {
 
 #[test]
 fn no_op() {
-    let result_vm = run_vm_program(&NO_OP, "run_test", &[], Some(DEFAULT_GAS as usize)).unwrap();
+    let result_vm = run_vm_program(&NO_OP, "run_test", vec![], Some(DEFAULT_GAS as usize)).unwrap();
     let result_native = run_native_program(
         &NO_OP,
         "run_test",
         &[],
-        Some(DEFAULT_GAS as u128),
+        Some(DEFAULT_GAS),
         Option::<DummySyscallHandler>::None,
     );
 

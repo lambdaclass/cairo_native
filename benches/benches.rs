@@ -1,135 +1,95 @@
 use cairo_lang_compiler::{
     compile_prepared_db, db::RootDatabase, project::setup_project, CompilerConfig,
 };
+use cairo_lang_runner::{RunResultValue, SierraCasmRunner, StarknetState};
 use cairo_lang_sierra::program::Program;
+use cairo_lang_sierra_generator::replace_ids::DebugReplacer;
+use cairo_lang_starknet::contract::{find_contracts, get_contracts_info};
+use cairo_lang_utils::Upcast;
 use cairo_native::{
     cache::{AotProgramCache, JitProgramCache},
     context::NativeContext,
     utils::find_function_id,
-    OptLevel,
+    OptLevel, Value,
 };
 use criterion::{criterion_group, criterion_main, Criterion};
 use starknet_types_core::felt::Felt;
 use std::path::Path;
 
-fn criterion_benchmark(c: &mut Criterion) {
+fn compare(c: &mut Criterion, path: impl AsRef<Path>) {
     let context = NativeContext::new();
     let mut aot_cache = AotProgramCache::new(&context);
     let mut jit_cache = JitProgramCache::new(&context);
 
-    let factorial = load_contract("programs/benches/factorial_2M.cairo");
-    let fibonacci = load_contract("programs/benches/fib_2M.cairo");
-    let logistic_map = load_contract("programs/benches/logistic_map.cairo");
+    let stem = path
+        .as_ref()
+        .file_stem()
+        .unwrap()
+        .to_str()
+        .unwrap()
+        .to_string();
 
-    let aot_factorial = aot_cache.compile_and_insert(Felt::ZERO, &factorial, OptLevel::None);
-    let aot_fibonacci = aot_cache.compile_and_insert(Felt::ONE, &fibonacci, OptLevel::None);
-    let aot_logistic_map =
-        aot_cache.compile_and_insert(Felt::from(2), &logistic_map, OptLevel::None);
+    let program = load_contract(&path);
+    let aot_executor = aot_cache
+        .compile_and_insert(Felt::ZERO, &program, OptLevel::Aggressive)
+        .unwrap();
+    let jit_executor = jit_cache
+        .compile_and_insert(Felt::ZERO, &program, OptLevel::Aggressive)
+        .unwrap();
 
-    let jit_factorial = jit_cache.compile_and_insert(Felt::ZERO, &factorial, OptLevel::None);
-    let jit_fibonacci = jit_cache.compile_and_insert(Felt::ONE, &fibonacci, OptLevel::None);
-    let jit_logistic_map =
-        jit_cache.compile_and_insert(Felt::from(2), &logistic_map, OptLevel::None);
+    let main_name = format!("{stem}::{stem}::main");
+    let main_id = find_function_id(&program, &main_name).unwrap();
 
-    let factorial_function_id =
-        find_function_id(&factorial, "factorial_2M::factorial_2M::main").unwrap();
-    let fibonacci_function_id = find_function_id(&fibonacci, "fib_2M::fib_2M::main").unwrap();
-    let logistic_map_function_id =
-        find_function_id(&logistic_map, "logistic_map::logistic_map::main").unwrap();
+    let vm_runner = load_contract_for_vm(&path);
+    let vm_main_id = vm_runner
+        .find_function("main")
+        .expect("failed to find main function");
 
-    c.bench_function("Cached JIT factorial_2M", |b| {
-        b.iter(|| jit_factorial.invoke_dynamic(factorial_function_id, &[], Some(u128::MAX)));
-    });
-    c.bench_function("Cached JIT fib_2M", |b| {
-        b.iter(|| jit_fibonacci.invoke_dynamic(fibonacci_function_id, &[], Some(u128::MAX)));
-    });
-    c.bench_function("Cached JIT logistic_map", |b| {
-        b.iter(|| jit_logistic_map.invoke_dynamic(logistic_map_function_id, &[], Some(u128::MAX)));
-    });
+    let mut group = c.benchmark_group(stem);
 
-    c.bench_function("Cached AOT factorial_2M", |b| {
-        b.iter(|| aot_factorial.invoke_dynamic(factorial_function_id, &[], Some(u128::MAX)));
-    });
-    c.bench_function("Cached AOT fib_2M", |b| {
-        b.iter(|| aot_fibonacci.invoke_dynamic(fibonacci_function_id, &[], Some(u128::MAX)));
-    });
-    c.bench_function("Cached AOT logistic_map", |b| {
-        b.iter(|| aot_logistic_map.invoke_dynamic(logistic_map_function_id, &[], Some(u128::MAX)));
-    });
-
-    #[cfg(target_arch = "x86_64")]
-    {
-        use std::mem::MaybeUninit;
-
-        #[allow(dead_code)]
-        struct PanicResult {
-            tag: u8,
-            payload: MaybeUninit<(i32, i32, *mut [u64; 4])>,
-        }
-
-        let aot_factorial_fn = unsafe {
-            std::mem::transmute::<*const (), extern "C" fn(u128) -> (u128, PanicResult)>(
-                aot_factorial
-                    .find_function_ptr(factorial_function_id)
-                    .cast(),
-            )
-        };
-        let aot_fibonacci_fn = unsafe {
-            std::mem::transmute::<*const (), extern "C" fn(u128) -> (u128, PanicResult)>(
-                aot_fibonacci
-                    .find_function_ptr(fibonacci_function_id)
-                    .cast(),
-            )
-        };
-        let aot_logistic_map_fn = unsafe {
-            std::mem::transmute::<*const (), extern "C" fn(u128) -> (u128, PanicResult)>(
-                aot_logistic_map
-                    .find_function_ptr(logistic_map_function_id)
-                    .cast(),
-            )
-        };
-        let jit_factorial_fn = unsafe {
-            std::mem::transmute::<*const (), extern "C" fn(u128) -> (u128, PanicResult)>(
-                jit_factorial
-                    .find_function_ptr(factorial_function_id)
-                    .cast(),
-            )
-        };
-        let jit_fibonacci_fn = unsafe {
-            std::mem::transmute::<*const (), extern "C" fn(u128) -> (u128, PanicResult)>(
-                jit_fibonacci
-                    .find_function_ptr(fibonacci_function_id)
-                    .cast(),
-            )
-        };
-        let jit_logistic_map_fn = unsafe {
-            std::mem::transmute::<*const (), extern "C" fn(u128) -> (u128, PanicResult)>(
-                jit_logistic_map
-                    .find_function_ptr(logistic_map_function_id)
-                    .cast(),
-            )
-        };
-
-        c.bench_function("Cached JIT factorial_2M (direct invoke)", |b| {
-            b.iter(|| jit_factorial_fn(u128::MAX));
+    group.bench_function("Cached JIT", |b| {
+        b.iter(|| {
+            let result = jit_executor
+                .invoke_dynamic(main_id, &[], Some(u64::MAX))
+                .unwrap();
+            let value = result.return_value;
+            assert!(matches!(value, Value::Enum { tag: 0, .. }))
         });
-        c.bench_function("Cached JIT fib_2M (direct invoke)", |b| {
-            b.iter(|| jit_fibonacci_fn(u128::MAX));
+    });
+    group.bench_function("Cached AOT", |b| {
+        b.iter(|| {
+            let result = aot_executor
+                .invoke_dynamic(main_id, &[], Some(u64::MAX))
+                .unwrap();
+            let value = result.return_value;
+            assert!(matches!(value, Value::Enum { tag: 0, .. }))
         });
-        c.bench_function("Cached JIT logistic_map (direct invoke)", |b| {
-            b.iter(|| jit_logistic_map_fn(u128::MAX));
+    });
+    group.bench_function("VM", |b| {
+        b.iter(|| {
+            let result = vm_runner
+                .run_function_with_starknet_context(
+                    vm_main_id,
+                    vec![],
+                    Some(usize::MAX),
+                    StarknetState::default(),
+                )
+                .unwrap();
+            let value = result.value;
+            assert!(matches!(value, RunResultValue::Success(_)))
         });
+    });
 
-        c.bench_function("Cached AOT factorial_2M (direct invoke)", |b| {
-            b.iter(|| aot_factorial_fn(u128::MAX));
-        });
-        c.bench_function("Cached AOT fib_2M (direct invoke)", |b| {
-            b.iter(|| aot_fibonacci_fn(u128::MAX));
-        });
-        c.bench_function("Cached AOT logistic_map (direct invoke)", |b| {
-            b.iter(|| aot_logistic_map_fn(u128::MAX));
-        });
-    }
+    group.finish();
+}
+
+fn criterion_benchmark(c: &mut Criterion) {
+    compare(c, "programs/benches/dict_snapshot.cairo");
+    compare(c, "programs/benches/dict_insert.cairo");
+    compare(c, "programs/benches/factorial_2M.cairo");
+    compare(c, "programs/benches/fib_2M.cairo");
+    compare(c, "programs/benches/linear_search.cairo");
+    compare(c, "programs/benches/logistic_map.cairo");
 }
 
 fn load_contract(path: impl AsRef<Path>) -> Program {
@@ -146,6 +106,36 @@ fn load_contract(path: impl AsRef<Path>) -> Program {
     .unwrap();
 
     sirrra_program.program
+}
+
+fn load_contract_for_vm(path: impl AsRef<Path>) -> SierraCasmRunner {
+    let mut db = RootDatabase::builder()
+        .detect_corelib()
+        .build()
+        .expect("failed to build database");
+    let main_crate_ids = setup_project(&mut db, path.as_ref()).expect("failed to setup project");
+    let program = compile_prepared_db(
+        &db,
+        main_crate_ids.clone(),
+        CompilerConfig {
+            replace_ids: true,
+            ..Default::default()
+        },
+    )
+    .expect("failed to compile program");
+
+    let replacer = DebugReplacer { db: &db };
+    let contracts = find_contracts((db).upcast(), &main_crate_ids);
+    let contracts_info =
+        get_contracts_info(&db, contracts, &replacer).expect("failed to get contracts info");
+
+    SierraCasmRunner::new(
+        program.program.clone(),
+        Some(Default::default()),
+        contracts_info,
+        None,
+    )
+    .expect("failed to create runner")
 }
 
 criterion_group!(benches, criterion_benchmark);

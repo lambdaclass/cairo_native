@@ -5,6 +5,7 @@ use crate::{
     error::{Error, Result},
     libfuncs::{r#enum::build_enum_value, r#struct::build_struct_value},
     metadata::{realloc_bindings::ReallocBindingsMeta, MetadataStorage},
+    native_panic,
     types::TypeBuilder,
     utils::{BlockExt, ProgramRegistryExt, RangeExt, PRIME},
 };
@@ -16,13 +17,14 @@ use cairo_lang_sierra::{
             ConstConcreteType,
         },
         core::{CoreLibfunc, CoreType, CoreTypeConcrete},
+        starknet::StarknetTypeConcrete,
     },
     program::GenericArg,
     program_registry::ProgramRegistry,
 };
 use melior::{
     dialect::llvm::{self, r#type::pointer},
-    ir::{Block, Location, Value},
+    ir::{Block, BlockLike, Location, Value},
     Context,
 };
 use num_bigint::Sign;
@@ -66,7 +68,7 @@ pub fn build_const_as_box<'ctx, 'this>(
     // Create constant
     let const_type = match &const_type_outer {
         CoreTypeConcrete::Const(inner) => inner,
-        _ => unreachable!(),
+        _ => native_panic!("matched an unexpected CoreTypeConcrete that is not a Const"),
     };
 
     let value = build_const_type_value(
@@ -82,7 +84,7 @@ pub fn build_const_as_box<'ctx, 'this>(
     let ptr = entry.append_op_result(llvm::zero(pointer(context, 0), location))?;
     let ptr = entry.append_op_result(ReallocBindingsMeta::realloc(
         context, ptr, value_len, location,
-    ))?;
+    )?)?;
 
     // Store constant in box
     entry.store(context, location, ptr, value)?;
@@ -105,7 +107,7 @@ pub fn build_const_as_immediate<'ctx, 'this>(
 
     let const_type = match &const_ty {
         CoreTypeConcrete::Const(inner) => inner,
-        _ => unreachable!(),
+        _ => native_panic!("matched an unexpected CoreTypeConcrete that is not a Const"),
     };
 
     let value = build_const_type_value(
@@ -134,7 +136,7 @@ pub fn build_const_type_value<'ctx, 'this>(
     //   type of the const type must be the same as the corresponding enum variant type.
 
     let inner_type = registry.get_type(&info.inner_ty)?;
-    let inner_ty = registry.build_type(context, helper, registry, metadata, &info.inner_ty)?;
+    let inner_ty = registry.build_type(context, helper, metadata, &info.inner_ty)?;
 
     match inner_type {
         CoreTypeConcrete::Struct(_) => {
@@ -147,7 +149,9 @@ pub fn build_const_type_value<'ctx, 'this>(
 
                         let const_field_type = match &field_type {
                             CoreTypeConcrete::Const(inner) => inner,
-                            _ => unreachable!(),
+                            _ => native_panic!(
+                                "matched an unexpected CoreTypeConcrete that is not a Const"
+                            ),
                         };
 
                         let field_value = build_const_type_value(
@@ -181,7 +185,9 @@ pub fn build_const_type_value<'ctx, 'this>(
                 let payload_type = registry.get_type(payload_ty)?;
                 let const_payload_type = match payload_type {
                     CoreTypeConcrete::Const(inner) => inner,
-                    _ => unreachable!(),
+                    _ => {
+                        native_panic!("matched an unexpected CoreTypeConcrete that is not a Const")
+                    }
                 };
 
                 let payload_value = build_const_type_value(
@@ -218,7 +224,7 @@ pub fn build_const_type_value<'ctx, 'this>(
                 let inner_type = registry.get_type(inner)?;
                 let const_inner_type = match inner_type {
                     CoreTypeConcrete::Const(inner) => inner,
-                    _ => unreachable!(),
+                    _ => native_panic!("unreachable: unexpected CoreTypeConcrete found"),
                 };
 
                 build_const_type_value(
@@ -261,7 +267,23 @@ pub fn build_const_type_value<'ctx, 'this>(
                 _ => value,
             };
 
-            entry.const_int_from_type(context, location, value.clone(), inner_ty)
+            entry.const_int_from_type(context, location, value, inner_ty)
+        }
+        CoreTypeConcrete::Starknet(
+            StarknetTypeConcrete::ClassHash(_) | StarknetTypeConcrete::ContractAddress(_),
+        ) => {
+            let value = match &info.inner_data.as_slice() {
+                [GenericArg::Value(value)] => value.clone(),
+                _ => return Err(Error::ConstDataMismatch),
+            };
+
+            let (sign, value) = value.into_parts();
+            let value = match sign {
+                Sign::Minus => PRIME.clone() - value,
+                _ => value,
+            };
+
+            entry.const_int_from_type(context, location, value, inner_ty)
         }
         CoreTypeConcrete::Uint8(_)
         | CoreTypeConcrete::Uint16(_)
@@ -279,7 +301,7 @@ pub fn build_const_type_value<'ctx, 'this>(
             }
             _ => Err(Error::ConstDataMismatch),
         },
-        _ => todo!("const for type {}", info.inner_ty),
+        _ => native_panic!("const for type {} not implemented", info.inner_ty),
     }
 }
 

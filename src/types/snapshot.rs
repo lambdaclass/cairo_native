@@ -12,9 +12,9 @@
 //! pub struct Snapshot<T>(pub T);
 //! ```
 
-use super::{TypeBuilder, WithSelf};
+use super::{BlockExt, TypeBuilder, WithSelf};
 use crate::{
-    error::Result,
+    error::{Error, Result},
     metadata::{
         drop_overrides::DropOverridesMeta, dup_overrides::DupOverridesMeta,
         enum_snapshot_variants::EnumSnapshotVariantsMeta, MetadataStorage,
@@ -30,7 +30,7 @@ use cairo_lang_sierra::{
 };
 use melior::{
     dialect::func,
-    ir::{Block, Location, Module, Region, Type},
+    ir::{Block, BlockLike, Location, Module, Region, Type},
     Context,
 };
 
@@ -63,13 +63,13 @@ pub fn build<'ctx>(
         metadata,
         info.self_ty(),
         |metadata| {
-            registry.build_type(context, module, registry, metadata, &info.ty)?;
+            registry.build_type(context, module, metadata, &info.ty)?;
 
             // The following unwrap is unreachable because `register_with` will always insert it before
             // calling this closure.
             metadata
                 .get::<DupOverridesMeta>()
-                .unwrap()
+                .ok_or(Error::MissingMetadata)?
                 .is_overriden(&info.ty)
                 .then(|| build_dup(context, module, registry, metadata, &info))
                 .transpose()
@@ -83,20 +83,20 @@ pub fn build<'ctx>(
         metadata,
         info.self_ty(),
         |metadata| {
-            registry.build_type(context, module, registry, metadata, &info.ty)?;
+            registry.build_type(context, module, metadata, &info.ty)?;
 
             // The following unwrap is unreachable because `register_with` will always insert it before
             // calling this closure.
             metadata
                 .get::<DropOverridesMeta>()
-                .unwrap()
+                .ok_or(Error::MissingMetadata)?
                 .is_overriden(&info.ty)
                 .then(|| build_drop(context, module, registry, metadata, &info))
                 .transpose()
         },
     )?;
 
-    registry.build_type(context, module, registry, metadata, &info.ty)
+    registry.build_type(context, module, metadata, &info.ty)
 }
 
 fn build_dup<'ctx>(
@@ -108,7 +108,7 @@ fn build_dup<'ctx>(
 ) -> Result<Region<'ctx>> {
     let location = Location::unknown(context);
 
-    let inner_ty = registry.build_type(context, module, registry, metadata, &info.ty)?;
+    let inner_ty = registry.build_type(context, module, metadata, &info.ty)?;
 
     let region = Region::new();
     let entry = region.append_block(Block::new(&[(inner_ty, location)]));
@@ -116,14 +116,8 @@ fn build_dup<'ctx>(
     // The following unwrap is unreachable because the registration logic will always insert it.
     let values = metadata
         .get::<DupOverridesMeta>()
-        .unwrap()
-        .invoke_override(
-            context,
-            &entry,
-            location,
-            &info.ty,
-            entry.argument(0)?.into(),
-        )?;
+        .ok_or(Error::MissingMetadata)?
+        .invoke_override(context, &entry, location, &info.ty, entry.arg(0)?)?;
 
     entry.append_operation(func::r#return(&[values.0, values.1], location));
     Ok(region)
@@ -138,7 +132,7 @@ fn build_drop<'ctx>(
 ) -> Result<Region<'ctx>> {
     let location = Location::unknown(context);
 
-    let inner_ty = registry.build_type(context, module, registry, metadata, &info.ty)?;
+    let inner_ty = registry.build_type(context, module, metadata, &info.ty)?;
 
     let region = Region::new();
     let entry = region.append_block(Block::new(&[(inner_ty, location)]));
@@ -146,14 +140,8 @@ fn build_drop<'ctx>(
     // The following unwrap is unreachable because the registration logic will always insert it.
     metadata
         .get::<DropOverridesMeta>()
-        .unwrap()
-        .invoke_override(
-            context,
-            &entry,
-            location,
-            &info.ty,
-            entry.argument(0)?.into(),
-        )?;
+        .ok_or(Error::MissingMetadata)?
+        .invoke_override(context, &entry, location, &info.ty, entry.arg(0)?)?;
 
     entry.append_operation(func::r#return(&[], location));
     Ok(region)

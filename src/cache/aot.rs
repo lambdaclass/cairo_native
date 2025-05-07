@@ -1,6 +1,7 @@
+use crate::error::{Error, Result};
 use crate::{
-    context::NativeContext, executor::AotNativeExecutor, metadata::gas::GasMetadata,
-    module::NativeModule, utils::SHARED_LIBRARY_EXT, OptLevel,
+    context::NativeContext, executor::AotNativeExecutor, module::NativeModule,
+    utils::SHARED_LIBRARY_EXT, OptLevel,
 };
 use cairo_lang_sierra::program::Program;
 use libloading::Library;
@@ -39,43 +40,42 @@ where
         key: K,
         program: &Program,
         opt_level: OptLevel,
-    ) -> Arc<AotNativeExecutor> {
+    ) -> Result<Arc<AotNativeExecutor>> {
         let NativeModule {
             module,
             registry,
-            metadata,
+            mut metadata,
         } = self
             .context
-            .compile(program, false)
-            .expect("should compile");
+            .compile(program, false, Some(Default::default()))?;
 
         // Compile module into an object.
-        let object_data = crate::ffi::module_to_object(&module, opt_level).unwrap();
+        let object_data = crate::ffi::module_to_object(&module, opt_level)?;
 
         // Compile object into a shared library.
         let shared_library_path = tempfile::Builder::new()
             .prefix("lib")
             .suffix(SHARED_LIBRARY_EXT)
-            .tempfile()
-            .unwrap()
+            .tempfile()?
             .into_temp_path();
-        crate::ffi::object_to_shared_lib(&object_data, &shared_library_path).unwrap();
+        crate::ffi::object_to_shared_lib(&object_data, &shared_library_path)?;
 
-        let shared_library = unsafe { Library::new(shared_library_path).unwrap() };
+        let shared_library = unsafe { Library::new(shared_library_path)? };
         let executor = AotNativeExecutor::new(
             shared_library,
             registry,
-            metadata.get::<GasMetadata>().cloned().unwrap(),
+            metadata.remove().ok_or(Error::MissingMetadata)?,
+            metadata.remove().unwrap_or_default(),
         );
 
         let executor = Arc::new(executor);
         self.cache.insert(key, executor.clone());
 
-        executor
+        Ok(executor)
     }
 }
 
-impl<'a, K> Debug for AotProgramCache<'a, K>
+impl<K> Debug for AotProgramCache<'_, K>
 where
     K: PartialEq + Eq + Hash,
 {
@@ -104,7 +104,8 @@ mod tests {
         let function_id = &program.funcs.first().expect("should have a function").id;
         let executor = cache.compile_and_insert((), &program, OptLevel::default());
         let res = executor
-            .invoke_dynamic(function_id, &[], Some(u128::MAX))
+            .unwrap()
+            .invoke_dynamic(function_id, &[], Some(u64::MAX))
             .expect("should run");
 
         // After compiling and inserting the program, we should be able to run it.

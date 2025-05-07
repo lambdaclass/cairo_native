@@ -2,6 +2,7 @@ use super::{find_function, format_for_panic, result_to_runresult, RunArgs, RunMo
 use anyhow::Context;
 use cairo_lang_runner::RunResultValue;
 use cairo_lang_sierra::{extensions::gas::CostTokenType, ids::FunctionId, program::Program};
+use cairo_lang_sierra_to_casm::metadata::MetadataComputationConfig;
 use cairo_lang_test_plugin::{
     test_config::{PanicExpectation, TestExpectation},
     TestConfig,
@@ -11,7 +12,7 @@ use cairo_lang_utils::{casts::IntoOrPanic, ordered_hash_map::OrderedHashMap};
 use cairo_native::{
     context::NativeContext,
     executor::{AotNativeExecutor, JitNativeExecutor},
-    metadata::gas::{GasMetadata, MetadataComputationConfig},
+    metadata::gas::GasMetadata,
     starknet_stub::StubSyscallHandler,
 };
 use colored::Colorize;
@@ -136,12 +137,14 @@ pub fn run_tests(
     let native_context = NativeContext::new();
 
     // Compile the sierra program into a MLIR module.
-    let native_module = native_context.compile(&sierra_program, false).unwrap();
+    let native_module = native_context
+        .compile(&sierra_program, false, Some(Default::default()))
+        .unwrap();
 
     let native_executor: Box<dyn Fn(_, _, _, &mut StubSyscallHandler) -> _> = match args.run_mode {
         RunMode::Aot => {
             let executor =
-                AotNativeExecutor::from_native_module(native_module, args.opt_level.into());
+                AotNativeExecutor::from_native_module(native_module, args.opt_level.into())?;
             Box::new(move |function_id, args, gas, syscall_handler| {
                 executor.invoke_dynamic_with_syscall_handler(
                     function_id,
@@ -153,7 +156,7 @@ pub fn run_tests(
         }
         RunMode::Jit => {
             let executor =
-                JitNativeExecutor::from_native_module(native_module, args.opt_level.into());
+                JitNativeExecutor::from_native_module(native_module, args.opt_level.into())?;
             Box::new(move |function_id, args, gas, syscall_handler| {
                 executor.invoke_dynamic_with_syscall_handler(
                     function_id,
@@ -171,6 +174,8 @@ pub fn run_tests(
             function_set_costs,
             linear_ap_change_solver: true,
             linear_gas_solver: true,
+            skip_non_linear_solver_comparisons: false,
+            compute_runtime_costs: false,
         }),
     )
     .unwrap();

@@ -2,7 +2,7 @@
 
 use super::LibfuncHelper;
 use crate::{
-    error::Result,
+    error::{panic::ToNativeAssertError, Result},
     metadata::MetadataStorage,
     types::TypeBuilder,
     utils::{BlockExt, ProgramRegistryExt},
@@ -18,7 +18,7 @@ use cairo_lang_sierra::{
 };
 use melior::{
     dialect::{arith, llvm},
-    ir::{r#type::IntegerType, Block, Location},
+    ir::{r#type::IntegerType, Block, BlockLike, Location},
     Context,
 };
 
@@ -94,14 +94,14 @@ fn build_bool_binary<'ctx, 'this>(
     let enum_ty = registry.get_type(&info.param_signatures()[0].ty)?;
     let tag_bits = enum_ty
         .variants()
-        .expect("bool is a enum and has variants")
+        .to_native_assert_error("bool is a enum and has variants")?
         .len()
         .next_power_of_two()
         .trailing_zeros();
     let tag_ty = IntegerType::new(context, tag_bits).into();
 
-    let lhs = entry.argument(0)?.into();
-    let rhs = entry.argument(1)?.into();
+    let lhs = entry.arg(0)?;
+    let rhs = entry.arg(1)?;
 
     let lhs_tag = entry.extract_value(context, location, lhs, tag_ty, 0)?;
 
@@ -143,13 +143,13 @@ pub fn build_bool_not<'ctx, 'this>(
     let enum_ty = registry.get_type(&info.param_signatures()[0].ty)?;
     let tag_bits = enum_ty
         .variants()
-        .expect("bool is a enum and has variants")
+        .to_native_assert_error("bool is a enum and has variants")?
         .len()
         .next_power_of_two()
         .trailing_zeros();
     let tag_ty = IntegerType::new(context, tag_bits).into();
 
-    let value = entry.argument(0)?.into();
+    let value = entry.arg(0)?;
     let tag_value = entry.extract_value(context, location, value, tag_ty, 0)?;
 
     let const_1 = entry.const_int_from_type(context, location, 1, tag_ty)?;
@@ -186,23 +186,22 @@ pub fn build_bool_to_felt252<'ctx, 'this>(
     let felt252_ty = registry.build_type(
         context,
         helper,
-        registry,
         metadata,
         &info.branch_signatures()[0].vars[0].ty,
     )?;
 
     let tag_bits = enum_ty
         .variants()
-        .expect("bool is a enum and has variants")
+        .to_native_assert_error("bool is a enum and has variants")?
         .len()
         .next_power_of_two()
         .trailing_zeros();
     let tag_ty = IntegerType::new(context, tag_bits).into();
 
-    let value = entry.argument(0)?.into();
+    let value = entry.arg(0)?;
     let tag_value = entry.extract_value(context, location, value, tag_ty, 0)?;
 
-    let result = entry.append_op_result(arith::extui(tag_value, felt252_ty, location))?;
+    let result = entry.extui(tag_value, felt252_ty, location)?;
 
     entry.append_operation(helper.br(0, &[result], location));
     Ok(())

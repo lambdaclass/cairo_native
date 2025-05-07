@@ -55,7 +55,7 @@ fn array_get_test() {
     let result_vm = run_vm_program(
         program,
         "run_test",
-        &[Arg::Value(Felt::from(10)), Arg::Value(Felt::from(5))],
+        vec![Arg::Value(Felt::from(10)), Arg::Value(Felt::from(5))],
         Some(DEFAULT_GAS as usize),
     )
     .unwrap();
@@ -63,7 +63,7 @@ fn array_get_test() {
         program,
         "run_test",
         &[Value::Felt252(10.into()), Value::Felt252(5.into())],
-        Some(DEFAULT_GAS as u128),
+        Some(DEFAULT_GAS),
         Option::<DummySyscallHandler>::None,
     );
 
@@ -80,7 +80,7 @@ proptest! {
     #[test]
     fn array_get_test_proptest(value in any_felt(), idx in 0u32..26) {
         let program = &ARRAY_GET;
-        let result_vm = run_vm_program(program, "run_test", &[
+        let result_vm = run_vm_program(program, "run_test", vec![
             Arg::Value(Felt::from_bytes_be(&value.to_bytes_be())),
             Arg::Value(Felt::from(idx))
         ], Some(DEFAULT_GAS as usize)).unwrap();
@@ -88,7 +88,7 @@ proptest! {
             program,
             "run_test",
             &[Value::Felt252(value), Value::Felt252(idx.into())],
-            Some(DEFAULT_GAS as u128),
+            Some(DEFAULT_GAS),
             Option::<DummySyscallHandler>::None,
         );
 

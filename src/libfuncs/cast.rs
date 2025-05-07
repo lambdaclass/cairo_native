@@ -4,6 +4,7 @@ use super::LibfuncHelper;
 use crate::{
     error::Result,
     metadata::MetadataStorage,
+    native_assert, native_panic,
     types::TypeBuilder,
     utils::{BlockExt, RangeExt, HALF_PRIME, PRIME},
 };
@@ -18,7 +19,7 @@ use cairo_lang_sierra::{
 };
 use melior::{
     dialect::arith::{self, CmpiPredicate},
-    ir::{r#type::IntegerType, Block, Location, Value, ValueLike},
+    ir::{r#type::IntegerType, Block, BlockLike, Location, Value, ValueLike},
     Context,
 };
 use num_bigint::{BigInt, Sign};
@@ -54,9 +55,8 @@ pub fn build_downcast<'ctx, 'this>(
     _metadata: &mut MetadataStorage,
     info: &DowncastConcreteLibfunc,
 ) -> Result<()> {
-    let range_check =
-        super::increment_builtin_counter(context, entry, location, entry.argument(0)?.into())?;
-    let src_value: Value = entry.argument(1)?.into();
+    let range_check = super::increment_builtin_counter(context, entry, location, entry.arg(0)?)?;
+    let src_value: Value = entry.arg(1)?;
 
     if info.signature.param_signatures[1].ty == info.signature.branch_signatures[0].vars[1].ty {
         let k0 = entry.const_int(context, location, 0, 1)?;
@@ -109,17 +109,17 @@ pub fn build_downcast<'ctx, 'this>(
 
     let src_value = if compute_width > src_width {
         if is_signed && !src_ty.is_bounded_int(registry)? && !src_ty.is_felt252(registry)? {
-            entry.append_op_result(arith::extsi(
+            entry.extsi(
                 src_value,
                 IntegerType::new(context, compute_width).into(),
                 location,
-            ))?
+            )?
         } else {
-            entry.append_op_result(arith::extui(
+            entry.extui(
                 src_value,
                 IntegerType::new(context, compute_width).into(),
                 location,
-            ))?
+            )?
         }
     } else {
         src_value
@@ -137,13 +137,8 @@ pub fn build_downcast<'ctx, 'this>(
                 HALF_PRIME.clone(),
                 src_value.r#type(),
             )?;
-            let is_negative = entry.append_op_result(arith::cmpi(
-                context,
-                CmpiPredicate::Ugt,
-                src_value,
-                adj_offset,
-                location,
-            ))?;
+            let is_negative =
+                entry.cmpi(context, CmpiPredicate::Ugt, src_value, adj_offset, location)?;
 
             let k_prime =
                 entry.const_int_from_type(context, location, PRIME.clone(), src_value.r#type())?;
@@ -158,7 +153,7 @@ pub fn build_downcast<'ctx, 'this>(
             src_range.lower.clone(),
             src_value.r#type(),
         )?;
-        entry.append_op_result(arith::addi(src_value, dst_offset, location))?
+        entry.addi(src_value, dst_offset, location)?
     } else {
         src_value
     };
@@ -168,7 +163,7 @@ pub fn build_downcast<'ctx, 'this>(
             let dst_offset = entry.const_int_from_type(
                 context,
                 location,
-                dst_range.lower.clone(),
+                dst_range.lower,
                 src_value.r#type(),
             )?;
             entry.append_op_result(arith::subi(src_value, dst_offset, location))?
@@ -177,11 +172,11 @@ pub fn build_downcast<'ctx, 'this>(
         };
 
         let dst_value = if dst_width < compute_width {
-            entry.append_op_result(arith::trunci(
+            entry.trunci(
                 dst_value,
                 IntegerType::new(context, dst_width).into(),
                 location,
-            ))?
+            )?
         } else {
             dst_value
         };
@@ -203,7 +198,7 @@ pub fn build_downcast<'ctx, 'this>(
                 dst_range.lower.clone(),
                 src_value.r#type(),
             )?;
-            Some(entry.append_op_result(arith::cmpi(
+            Some(entry.cmpi(
                 context,
                 if !is_signed {
                     CmpiPredicate::Uge
@@ -213,7 +208,7 @@ pub fn build_downcast<'ctx, 'this>(
                 src_value,
                 dst_lower,
                 location,
-            ))?)
+            )?)
         } else {
             None
         };
@@ -224,7 +219,7 @@ pub fn build_downcast<'ctx, 'this>(
                 dst_range.upper.clone(),
                 src_value.r#type(),
             )?;
-            Some(entry.append_op_result(arith::cmpi(
+            Some(entry.cmpi(
                 context,
                 if !is_signed {
                     CmpiPredicate::Ult
@@ -234,7 +229,7 @@ pub fn build_downcast<'ctx, 'this>(
                 src_value,
                 dst_upper,
                 location,
-            ))?)
+            )?)
         } else {
             None
         };
@@ -246,14 +241,16 @@ pub fn build_downcast<'ctx, 'this>(
             (Some(lower_check), None) => lower_check,
             (None, Some(upper_check)) => upper_check,
             // its always in bounds since dst is larger than src (i.e no bounds checks needed)
-            (None, None) => unreachable!(),
+            (None, None) => {
+                native_panic!("matched an unreachable: no bounds checks are being performed")
+            }
         };
 
         let dst_value = if dst_ty.is_bounded_int(registry)? && dst_range.lower != BigInt::ZERO {
             let dst_offset = entry.const_int_from_type(
                 context,
                 location,
-                dst_range.lower.clone(),
+                dst_range.lower,
                 src_value.r#type(),
             )?;
             entry.append_op_result(arith::subi(src_value, dst_offset, location))?
@@ -262,11 +259,11 @@ pub fn build_downcast<'ctx, 'this>(
         };
 
         let dst_value = if dst_width < compute_width {
-            entry.append_op_result(arith::trunci(
+            entry.trunci(
                 dst_value,
                 IntegerType::new(context, dst_width).into(),
                 location,
-            ))?
+            )?
         } else {
             dst_value
         };
@@ -292,7 +289,7 @@ pub fn build_upcast<'ctx, 'this>(
     _metadata: &mut MetadataStorage,
     info: &SignatureOnlyConcreteLibfunc,
 ) -> Result<()> {
-    let src_value = entry.argument(0)?.into();
+    let src_value = entry.arg(0)?;
 
     if info.signature.param_signatures[0].ty == info.signature.branch_signatures[0].vars[0].ty {
         entry.append_operation(helper.br(0, &[src_value], location));
@@ -304,7 +301,7 @@ pub fn build_upcast<'ctx, 'this>(
 
     let src_range = src_ty.integer_range(registry)?;
     let dst_range = dst_ty.integer_range(registry)?;
-    assert!(
+    native_assert!(
         if dst_ty.is_felt252(registry)? {
             let alt_range = Range {
                 lower: BigInt::from_biguint(Sign::Minus, HALF_PRIME.clone()),
@@ -333,26 +330,27 @@ pub fn build_upcast<'ctx, 'this>(
     };
 
     // If the source can be negative, the target type must also contain negatives when upcasting.
-    assert!(
+    native_assert!(
         src_range.lower.sign() != Sign::Minus
             || dst_ty.is_felt252(registry)?
-            || dst_range.lower.sign() == Sign::Minus
+            || dst_range.lower.sign() == Sign::Minus,
+        "if the source range contains negatives, the target range must always contain negatives",
     );
     let is_signed = src_range.lower.sign() == Sign::Minus;
 
     let dst_value = if dst_width > src_width {
         if is_signed && !src_ty.is_bounded_int(registry)? {
-            entry.append_op_result(arith::extsi(
+            entry.extsi(
                 src_value,
                 IntegerType::new(context, dst_width).into(),
                 location,
-            ))?
+            )?
         } else {
-            entry.append_op_result(arith::extui(
+            entry.extui(
                 src_value,
                 IntegerType::new(context, dst_width).into(),
                 location,
-            ))?
+            )?
         }
     } else {
         src_value
@@ -369,23 +367,17 @@ pub fn build_upcast<'ctx, 'this>(
             },
             dst_value.r#type(),
         )?;
-        entry.append_op_result(arith::addi(dst_value, dst_offset, location))?
+        entry.addi(dst_value, dst_offset, location)?
     } else {
         dst_value
     };
 
     let dst_value = if dst_ty.is_felt252(registry)? && src_range.lower.sign() == Sign::Minus {
         let k0 = entry.const_int(context, location, 0, 252)?;
-        let is_negative = entry.append_op_result(arith::cmpi(
-            context,
-            CmpiPredicate::Slt,
-            dst_value,
-            k0,
-            location,
-        ))?;
+        let is_negative = entry.cmpi(context, CmpiPredicate::Slt, dst_value, k0, location)?;
 
         let k_prime = entry.const_int(context, location, PRIME.clone(), 252)?;
-        let adj_value = entry.append_op_result(arith::addi(dst_value, k_prime, location))?;
+        let adj_value = entry.addi(dst_value, k_prime, location)?;
 
         entry.append_op_result(arith::select(is_negative, adj_value, dst_value, location))?
     } else {
@@ -407,7 +399,7 @@ mod test {
 
     lazy_static! {
         static ref DOWNCAST: (String, Program) = load_cairo! {
-            use core::integer::downcast;
+            extern const fn downcast<FromType, ToType>( x: FromType, ) -> Option<ToType> implicits(RangeCheck) nopanic;
 
             fn run_test(
                 v8: u8, v16: u16, v32: u32, v64: u64, v128: u128
@@ -428,7 +420,7 @@ mod test {
             }
         };
         static ref UPCAST: (String, Program) = load_cairo! {
-            use core::integer::upcast;
+            extern const fn upcast<FromType, ToType>(x: FromType) -> ToType nopanic;
 
             fn run_test(
                 v8: u8, v16: u16, v32: u32, v64: u64, v128: u128, v248: bytes31

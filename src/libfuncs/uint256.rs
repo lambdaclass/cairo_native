@@ -1,6 +1,6 @@
 //! # `u256`-related libfuncs
 
-use super::LibfuncHelper;
+use super::{BlockExt, LibfuncHelper};
 use crate::{error::Result, metadata::MetadataStorage, utils::ProgramRegistryExt};
 use cairo_lang_sierra::{
     extensions::{
@@ -20,7 +20,7 @@ use melior::{
         attribute::{DenseI64ArrayAttribute, IntegerAttribute},
         operation::OperationBuilder,
         r#type::IntegerType,
-        Block, Location, Region, Value,
+        Block, BlockLike, Location, Region, Value,
     },
     Context,
 };
@@ -61,22 +61,16 @@ pub fn build_divmod<'ctx, 'this>(
     metadata: &mut MetadataStorage,
     info: &SignatureOnlyConcreteLibfunc,
 ) -> Result<()> {
-    let range_check =
-        super::increment_builtin_counter(context, entry, location, entry.argument(0)?.into())?;
+    let range_check = super::increment_builtin_counter(context, entry, location, entry.arg(0)?)?;
 
     let i128_ty = IntegerType::new(context, 128).into();
     let i256_ty = IntegerType::new(context, 256).into();
 
-    let guarantee_type = registry.build_type(
-        context,
-        helper,
-        registry,
-        metadata,
-        &info.output_types()[0][3],
-    )?;
+    let guarantee_type =
+        registry.build_type(context, helper, metadata, &info.output_types()[0][3])?;
 
-    let lhs_struct: Value = entry.argument(1)?.into();
-    let rhs_struct: Value = entry.argument(2)?.into();
+    let lhs_struct: Value = entry.arg(1)?;
+    let rhs_struct: Value = entry.arg(2)?;
 
     let lhs_lo = entry
         .append_operation(llvm::extract_value(
@@ -276,7 +270,7 @@ pub fn build_is_zero<'ctx, 'this>(
 ) -> Result<()> {
     let i128_ty = IntegerType::new(context, 128).into();
 
-    let val_struct = entry.argument(0)?.into();
+    let val_struct = entry.arg(0)?;
     let val_lo = entry
         .append_operation(llvm::extract_value(
             context,
@@ -352,13 +346,12 @@ pub fn build_square_root<'ctx, 'this>(
     _metadata: &mut MetadataStorage,
     _info: &SignatureOnlyConcreteLibfunc,
 ) -> Result<()> {
-    let range_check =
-        super::increment_builtin_counter(context, entry, location, entry.argument(0)?.into())?;
+    let range_check = super::increment_builtin_counter(context, entry, location, entry.arg(0)?)?;
 
     let i128_ty = IntegerType::new(context, 128).into();
     let i256_ty = IntegerType::new(context, 256).into();
 
-    let arg_struct = entry.argument(1)?.into();
+    let arg_struct = entry.arg(1)?;
     let arg_lo = entry
         .append_operation(llvm::extract_value(
             context,
@@ -509,11 +502,7 @@ pub fn build_square_root<'ctx, 'this>(
                             ]));
 
                             let result = block
-                                .append_operation(arith::shli(
-                                    block.argument(0)?.into(),
-                                    k1,
-                                    location,
-                                ))
+                                .append_operation(arith::shli(block.arg(0)?, k1, location))
                                 .result(0)?
                                 .into();
                             let large_candidate = block
@@ -531,18 +520,14 @@ pub fn build_square_root<'ctx, 'this>(
                                 .into();
 
                             let threshold = block
-                                .append_operation(arith::shrui(
-                                    arg_value,
-                                    block.argument(1)?.into(),
-                                    location,
-                                ))
+                                .append_operation(arith::shrui(arg_value, block.arg(1)?, location))
                                 .result(0)?
                                 .into();
                             let threshold_is_poison = block
                                 .append_operation(arith::cmpi(
                                     context,
                                     CmpiPredicate::Eq,
-                                    block.argument(1)?.into(),
+                                    block.arg(1)?,
                                     k128,
                                     location,
                                 ))
@@ -589,11 +574,7 @@ pub fn build_square_root<'ctx, 'this>(
                                 .into();
 
                             let shift_amount = block
-                                .append_operation(arith::subi(
-                                    block.argument(1)?.into(),
-                                    k2,
-                                    location,
-                                ))
+                                .append_operation(arith::subi(block.arg(1)?, k2, location))
                                 .result(0)?
                                 .into();
 
@@ -623,7 +604,7 @@ pub fn build_square_root<'ctx, 'this>(
                             ]));
 
                             block.append_operation(scf::r#yield(
-                                &[block.argument(0)?.into(), block.argument(1)?.into()],
+                                &[block.arg(0)?, block.argument(1)?.into()],
                                 location,
                             ));
 
@@ -665,7 +646,7 @@ pub fn build_u256_guarantee_inv_mod_n<'ctx, 'this>(
     let i128_ty = IntegerType::new(context, 128).into();
     let i256_ty = IntegerType::new(context, 256).into();
 
-    let lhs_struct = entry.argument(1)?.into();
+    let lhs_struct = entry.arg(1)?;
     let lhs_lo = entry
         .append_operation(llvm::extract_value(
             context,
@@ -687,7 +668,7 @@ pub fn build_u256_guarantee_inv_mod_n<'ctx, 'this>(
         .result(0)?
         .into();
 
-    let rhs_struct = entry.argument(2)?.into();
+    let rhs_struct = entry.arg(2)?;
     let rhs_lo = entry
         .append_operation(llvm::extract_value(
             context,
@@ -783,29 +764,25 @@ pub fn build_u256_guarantee_inv_mod_n<'ctx, 'this>(
             ]));
 
             let q = block
-                .append_operation(arith::divui(
-                    block.argument(1)?.into(),
-                    block.argument(0)?.into(),
-                    location,
-                ))
+                .append_operation(arith::divui(block.arg(1)?, block.arg(0)?, location))
                 .result(0)?
                 .into();
 
             let q_c = block
-                .append_operation(arith::muli(q, block.argument(0)?.into(), location))
+                .append_operation(arith::muli(q, block.arg(0)?, location))
                 .result(0)?
                 .into();
             let c = block
-                .append_operation(arith::subi(block.argument(1)?.into(), q_c, location))
+                .append_operation(arith::subi(block.arg(1)?, q_c, location))
                 .result(0)?
                 .into();
 
             let q_uc = block
-                .append_operation(arith::muli(q, block.argument(2)?.into(), location))
+                .append_operation(arith::muli(q, block.arg(2)?, location))
                 .result(0)?
                 .into();
             let u_c = block
-                .append_operation(arith::subi(block.argument(3)?.into(), q_uc, location))
+                .append_operation(arith::subi(block.arg(3)?, q_uc, location))
                 .result(0)?
                 .into();
 
@@ -815,7 +792,7 @@ pub fn build_u256_guarantee_inv_mod_n<'ctx, 'this>(
                 .into();
             block.append_operation(scf::condition(
                 should_continue,
-                &[c, block.argument(0)?.into(), u_c, block.argument(2)?.into()],
+                &[c, block.arg(0)?, u_c, block.argument(2)?.into()],
                 location,
             ));
 
@@ -831,12 +808,7 @@ pub fn build_u256_guarantee_inv_mod_n<'ctx, 'this>(
             ]));
 
             block.append_operation(scf::r#yield(
-                &[
-                    block.argument(0)?.into(),
-                    block.argument(1)?.into(),
-                    block.argument(2)?.into(),
-                    block.argument(3)?.into(),
-                ],
+                &[block.arg(0)?, block.arg(1)?, block.arg(2)?, block.arg(3)?],
                 location,
             ));
 
@@ -900,13 +872,7 @@ pub fn build_u256_guarantee_inv_mod_n<'ctx, 'this>(
         .result(0)?
         .into();
 
-    let return_ty = registry.build_type(
-        context,
-        helper,
-        registry,
-        metadata,
-        &info.output_types()[0][1],
-    )?;
+    let return_ty = registry.build_type(context, helper, metadata, &info.output_types()[0][1])?;
     let result_inv = entry
         .append_operation(llvm::undef(return_ty, location))
         .result(0)?
@@ -951,13 +917,8 @@ pub fn build_u256_guarantee_inv_mod_n<'ctx, 'this>(
         .result(0)?
         .into();
 
-    let guarantee_type = registry.build_type(
-        context,
-        helper,
-        registry,
-        metadata,
-        &info.output_types()[0][2],
-    )?;
+    let guarantee_type =
+        registry.build_type(context, helper, metadata, &info.output_types()[0][2])?;
     let op = entry.append_operation(llvm::undef(guarantee_type, location));
     let guarantee = op.result(0)?.into();
 
@@ -967,7 +928,7 @@ pub fn build_u256_guarantee_inv_mod_n<'ctx, 'this>(
         [0, 1],
         [
             &[
-                entry.argument(0)?.into(),
+                entry.arg(0)?,
                 result_inv,
                 guarantee,
                 guarantee,
@@ -978,7 +939,7 @@ pub fn build_u256_guarantee_inv_mod_n<'ctx, 'this>(
                 guarantee,
                 guarantee,
             ],
-            &[entry.argument(0)?.into(), guarantee, guarantee],
+            &[entry.arg(0)?, guarantee, guarantee],
         ],
         location,
     ));

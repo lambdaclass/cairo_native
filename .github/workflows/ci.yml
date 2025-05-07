@@ -21,7 +21,7 @@ jobs:
       TABLEGEN_190_PREFIX: /usr/lib/llvm-19/
     steps:
       - uses: actions/checkout@v4
-      - uses: dtolnay/rust-toolchain@1.81.0
+      - uses: dtolnay/rust-toolchain@1.84.1
         with:
           components: clippy, rustfmt
       - uses: Swatinem/rust-cache@v2
@@ -41,7 +41,7 @@ jobs:
     runs-on: ubuntu-24.04
     steps:
       - uses: actions/checkout@v4
-      - uses: dtolnay/rust-toolchain@1.81.0
+      - uses: dtolnay/rust-toolchain@1.84.1
         with:
           components: rustfmt
       - run: cargo fmt --all -- --check
@@ -134,7 +134,7 @@ jobs:
           sudo rm -rf /usr/local/lib/android
           df -h
       - name: Setup rust env
-        uses: dtolnay/rust-toolchain@1.81.0
+        uses: dtolnay/rust-toolchain@1.84.1
       - name: Retreive cached dependecies
         uses: Swatinem/rust-cache@v2
       - name: add llvm deb repository
@@ -166,7 +166,7 @@ jobs:
     steps:
       - uses: actions/checkout@v4
       - name: Rustup toolchain install
-        uses: dtolnay/rust-toolchain@1.81.0
+        uses: dtolnay/rust-toolchain@1.84.1
         with:
           components: clippy
       - name: Rust `$PATH` workaround.
@@ -175,7 +175,7 @@ jobs:
       - name: Install scarb
         uses: software-mansion/setup-scarb@v1
         with:
-          scarb-version: "2.8.4"
+          scarb-version: "2.11.2"
       - name: Install deps
         run: make deps
       - name: Run tests
@@ -225,7 +225,7 @@ jobs:
           sudo rm -rf /usr/local/lib/android
           df -h
       - name: Setup rust env
-        uses: dtolnay/rust-toolchain@1.81.0
+        uses: dtolnay/rust-toolchain@1.84.1
       - name: Retreive cached dependecies
         uses: Swatinem/rust-cache@v2
       - name: add llvm deb repository
@@ -243,14 +243,14 @@ jobs:
       - name: Install scarb
         uses: software-mansion/setup-scarb@v1
         with:
-          scarb-version: "2.8.4"
+          scarb-version: "2.11.2"
       - name: Install deps
         run: make deps
-      - name: Build runtime and alexandria
-        run: make runtime-ci && make check-llvm && make needs-cairo2 && make build-alexandria
+      - name: Build alexandria
+        run: make check-llvm && make needs-cairo2 && make build-alexandria
 
       - name: Run tests and generate coverage partition ${{ matrix.partition }}
-        run: cargo llvm-cov nextest --verbose --features=scarb --workspace --lcov --output-path ${{ matrix.output }} --partition count:${{ matrix.partition }}/4
+        run: cargo llvm-cov nextest --verbose --features=scarb --lcov --output-path ${{ matrix.output }} --partition count:${{ matrix.partition }}/4
 
       - name: test and generate coverage corelib
         if: ${{ matrix.partition == '1' }}
@@ -278,7 +278,7 @@ jobs:
     needs: [coverage]
     steps:
       - name: Setup rust env
-        uses: dtolnay/rust-toolchain@1.80.0
+        uses: dtolnay/rust-toolchain@1.84.1
       - name: Retreive cached dependencies
         uses: Swatinem/rust-cache@v2
       - name: Install testing tools
@@ -341,3 +341,42 @@ jobs:
           df -h
       - name: build image
         run: docker build .
+
+  build-sierra-emu:
+    name: Build sierra-emu
+    runs-on: ubuntu-latest
+
+    steps:
+    - uses: actions/checkout@v4
+    - name: Retreive cached dependecies
+      uses: Swatinem/rust-cache@v2
+    - name: Install dependencies
+      run: |
+        make build-cairo-2-compiler
+        cd ./debug_utils/sierra-emu
+        make corelib
+    - name: Build
+      working-directory: ./debug_utils/sierra-emu
+      run: cargo build --all-features --verbose
+    - name: Run tests
+      working-directory: ./debug_utils/sierra-emu
+      run: make test-no-corelib
+    - name: Run corelib's tests (WIP)
+      working-directory: ./debug_utils/sierra-emu
+      run: cargo test test_corelib -- --nocapture
+      continue-on-error: true # ignore result for now. When sierra-emu is fully implemented this should be removed
+
+  build-sierra2casm-dbg:
+    name: Build sierra2casm-dbg
+    runs-on: ubuntu-latest
+
+    steps:
+    - uses: actions/checkout@v4
+    - name: Retreive cached dependecies
+      uses: Swatinem/rust-cache@v2
+    - name: Build
+      working-directory: ./debug_utils/sierra2casm-dbg
+      run: cargo build --all-features --verbose
+    - name: Run tests
+      working-directory: ./debug_utils/sierra2casm-dbg
+      run: cargo test

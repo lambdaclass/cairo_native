@@ -1,0 +1,46 @@
+[package]
+name = "sierra-emu"
+version = "0.1.0"
+edition = "2021"
+license = "Apache-2.0"
+description = "A Cairo (Sierra) Virtual Machine."
+repository = "https://github.com/lambdaclass/sierra-emu"
+readme = "README.md"
+keywords = ["starknet", "cairo", "compiler", "mlir"]
+
+[dependencies]
+cairo-lang-compiler.workspace = true
+cairo-lang-filesystem.workspace = true
+cairo-lang-runner.workspace = true
+cairo-lang-sierra-ap-change.workspace = true
+cairo-lang-sierra-gas.workspace = true
+cairo-lang-sierra-generator.workspace = true
+cairo-lang-sierra-to-casm.workspace = true
+cairo-lang-sierra.workspace = true
+cairo-lang-starknet-classes.workspace = true
+cairo-lang-test-plugin.workspace = true
+cairo-lang-utils.workspace = true
+clap = { version = "4.5.26", features = ["derive"] }
+k256 = "0.13.4"
+keccak = "0.1.5"
+num-bigint.workspace = true
+num-traits.workspace = true
+p256 = "0.13.2"
+rand = "0.8.5"
+sec1 = { version = "0.7.3", features = ["std"] }
+serde = { version = "1.0.215", features = ["derive"] }
+serde_json = "1.0.133"
+sha2 = { version = "0.10.8", features = ["compress"] }
+smallvec = "1.13.2"
+starknet-crypto.workspace = true
+starknet-curve.workspace = true
+starknet-types-core.workspace = true
+tempfile = "3.14.0"
+thiserror = "2.0.3"
+tracing = "0.1.41"
+tracing-subscriber = { version = "0.3.18", features = ["env-filter"] }
+rayon = "1.10.0"
+
+[dev-dependencies]
+cairo-lang-compiler.workspace = true
+cairo-lang-starknet.workspace = true

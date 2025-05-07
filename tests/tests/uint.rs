@@ -442,7 +442,7 @@ proptest! {
         let result_vm = run_vm_program(
             program,
             "run_test",
-            &[Arg::Value(a.into()), Arg::Value(b.into())],
+            vec![Arg::Value(a.into()), Arg::Value(b.into())],
             Some(DEFAULT_GAS as usize),
         )
         .unwrap();
@@ -450,7 +450,7 @@ proptest! {
             program,
             "run_test",
             &[Value::Felt252(a.into()), Value::Felt252(b.into())],
-            Some(DEFAULT_GAS as u128),
+            Some(DEFAULT_GAS),
             Option::<DummySyscallHandler>::None,
         );
 
@@ -468,7 +468,7 @@ proptest! {
         let result_vm = run_vm_program(
             program,
             "run_test",
-            &[Arg::Value(a.into()), Arg::Value(b.into())],
+            vec![Arg::Value(a.into()), Arg::Value(b.into())],
             Some(DEFAULT_GAS as usize),
         )
         .unwrap();
@@ -476,7 +476,7 @@ proptest! {
             program,
             "run_test",
             &[Value::Felt252(a.into()), Value::Felt252(b.into())],
-            Some(DEFAULT_GAS as u128),
+            Some(DEFAULT_GAS),
             Option::<DummySyscallHandler>::None,
         );
 
@@ -494,7 +494,7 @@ proptest! {
         let result_vm = run_vm_program(
             program,
             "run_test",
-            &[Arg::Value(a.into()), Arg::Value(b.into())],
+            vec![Arg::Value(a.into()), Arg::Value(b.into())],
             Some(DEFAULT_GAS as usize),
         )
         .unwrap();
@@ -502,7 +502,7 @@ proptest! {
             program,
             "run_test",
             &[Value::Felt252(a.into()), Value::Felt252(b.into())],
-            Some(DEFAULT_GAS as u128),
+            Some(DEFAULT_GAS),
             Option::<DummySyscallHandler>::None,
         );
 
@@ -520,7 +520,7 @@ proptest! {
         let result_vm = run_vm_program(
             program,
             "run_test",
-            &[Arg::Value(a.into()), Arg::Value(b.into())],
+            vec![Arg::Value(a.into()), Arg::Value(b.into())],
             Some(DEFAULT_GAS as usize),
         )
         .unwrap();
@@ -528,7 +528,7 @@ proptest! {
             program,
             "run_test",
             &[Value::Felt252(a.into()), Value::Felt252(b.into())],
-            Some(DEFAULT_GAS as u128),
+            Some(DEFAULT_GAS),
             Option::<DummySyscallHandler>::None,
         );
 
@@ -546,7 +546,7 @@ proptest! {
         let result_vm = run_vm_program(
             program,
             "run_test",
-            &[Arg::Value(a.into())],
+            vec![Arg::Value(a.into())],
             Some(DEFAULT_GAS as usize),
         )
         .unwrap();
@@ -554,7 +554,7 @@ proptest! {
             program,
             "run_test",
             &[Value::Felt252(a.into())],
-            Some(DEFAULT_GAS as u128),
+            Some(DEFAULT_GAS),
             Option::<DummySyscallHandler>::None,
         );
 
@@ -574,7 +574,7 @@ proptest! {
         let result_vm = run_vm_program(
             program,
             "run_test",
-            &[Arg::Value(a.into()), Arg::Value(b.into())],
+            vec![Arg::Value(a.into()), Arg::Value(b.into())],
             Some(DEFAULT_GAS as usize),
         )
         .unwrap();
@@ -582,7 +582,7 @@ proptest! {
             program,
             "run_test",
             &[Value::Felt252(a.into()), Value::Felt252(b.into())],
-            Some(DEFAULT_GAS as u128),
+            Some(DEFAULT_GAS),
             Option::<DummySyscallHandler>::None,
         );
 
@@ -600,7 +600,7 @@ proptest! {
         let result_vm = run_vm_program(
             program,
             "run_test",
-            &[Arg::Value(a.into()), Arg::Value(b.into())],
+            vec![Arg::Value(a.into()), Arg::Value(b.into())],
             Some(DEFAULT_GAS as usize),
         )
         .unwrap();
@@ -608,7 +608,7 @@ proptest! {
             program,
             "run_test",
             &[Value::Felt252(a.into()), Value::Felt252(b.into())],
-            Some(DEFAULT_GAS as u128),
+            Some(DEFAULT_GAS),
             Option::<DummySyscallHandler>::None,
         );
 
@@ -626,7 +626,7 @@ proptest! {
         let result_vm = run_vm_program(
             program,
             "run_test",
-            &[Arg::Value(a.into()), Arg::Value(b.into())],
+            vec![Arg::Value(a.into()), Arg::Value(b.into())],
             Some(DEFAULT_GAS as usize),
         )
         .unwrap();
@@ -634,7 +634,7 @@ proptest! {
             program,
             "run_test",
             &[Value::Felt252(a.into()), Value::Felt252(b.into())],
-            Some(DEFAULT_GAS as u128),
+            Some(DEFAULT_GAS),
             Option::<DummySyscallHandler>::None,
         );
 
@@ -652,7 +652,7 @@ proptest! {
         let result_vm = run_vm_program(
             program,
             "run_test",
-            &[Arg::Value(a.into()), Arg::Value(b.into())],
+            vec![Arg::Value(a.into()), Arg::Value(b.into())],
             Some(DEFAULT_GAS as usize),
         )
         .unwrap();
@@ -660,7 +660,7 @@ proptest! {
             program,
             "run_test",
             &[Value::Felt252(a.into()), Value::Felt252(b.into())],
-            Some(DEFAULT_GAS as u128),
+            Some(DEFAULT_GAS),
             Option::<DummySyscallHandler>::None,
         );
 
@@ -678,7 +678,7 @@ proptest! {
         let result_vm = run_vm_program(
             program,
             "run_test",
-            &[Arg::Value(a.into())],
+            vec![Arg::Value(a.into())],
             Some(DEFAULT_GAS as usize),
         )
         .unwrap();
@@ -686,7 +686,7 @@ proptest! {
             program,
             "run_test",
             &[Value::Felt252(a.into())],
-            Some(DEFAULT_GAS as u128),
+            Some(DEFAULT_GAS),
             Option::<DummySyscallHandler>::None,
         );
 
@@ -706,7 +706,7 @@ proptest! {
         let result_vm = run_vm_program(
             program,
             "run_test",
-            &[Arg::Value(a.into()), Arg::Value(b.into())],
+            vec![Arg::Value(a.into()), Arg::Value(b.into())],
             Some(DEFAULT_GAS as usize),
         )
         .unwrap();
@@ -714,7 +714,7 @@ proptest! {
             program,
             "run_test",
             &[Value::Felt252(a.into()), Value::Felt252(b.into())],
-            Some(DEFAULT_GAS as u128),
+            Some(DEFAULT_GAS),
             Option::<DummySyscallHandler>::None,
         );
 
@@ -732,7 +732,7 @@ proptest! {
         let result_vm = run_vm_program(
             program,
             "run_test",
-            &[Arg::Value(a.into()), Arg::Value(b.into())],
+            vec![Arg::Value(a.into()), Arg::Value(b.into())],
             Some(DEFAULT_GAS as usize),
         )
         .unwrap();
@@ -740,7 +740,7 @@ proptest! {
             program,
             "run_test",
             &[Value::Felt252(a.into()), Value::Felt252(b.into())],
-            Some(DEFAULT_GAS as u128),
+            Some(DEFAULT_GAS),
             Option::<DummySyscallHandler>::None,
         );
 
@@ -758,7 +758,7 @@ proptest! {
         let result_vm = run_vm_program(
             program,
             "run_test",
-            &[Arg::Value(a.into()), Arg::Value(b.into())],
+            vec![Arg::Value(a.into()), Arg::Value(b.into())],
             Some(DEFAULT_GAS as usize),
         )
         .unwrap();
@@ -766,7 +766,7 @@ proptest! {
             program,
             "run_test",
             &[Value::Felt252(a.into()), Value::Felt252(b.into())],
-            Some(DEFAULT_GAS as u128),
+            Some(DEFAULT_GAS),
             Option::<DummySyscallHandler>::None,
         );
 
@@ -784,7 +784,7 @@ proptest! {
         let result_vm = run_vm_program(
             program,
             "run_test",
-            &[Arg::Value(a.into()), Arg::Value(b.into())],
+            vec![Arg::Value(a.into()), Arg::Value(b.into())],
             Some(DEFAULT_GAS as usize),
         )
         .unwrap();
@@ -792,7 +792,7 @@ proptest! {
             program,
             "run_test",
             &[Value::Felt252(a.into()), Value::Felt252(b.into())],
-            Some(DEFAULT_GAS as u128),
+            Some(DEFAULT_GAS),
             Option::<DummySyscallHandler>::None,
         );
 
@@ -810,7 +810,7 @@ proptest! {
         let result_vm = run_vm_program(
             program,
             "run_test",
-            &[Arg::Value(a.into())],
+            vec![Arg::Value(a.into())],
             Some(DEFAULT_GAS as usize),
         )
         .unwrap();
@@ -818,7 +818,7 @@ proptest! {
             program,
             "run_test",
             &[Value::Felt252(a.into())],
-            Some(DEFAULT_GAS as u128),
+            Some(DEFAULT_GAS),
             Option::<DummySyscallHandler>::None,
         );
 
@@ -838,7 +838,7 @@ proptest! {
         let result_vm = run_vm_program(
             program,
             "run_test",
-            &[Arg::Value(a.into()), Arg::Value(b.into())],
+            vec![Arg::Value(a.into()), Arg::Value(b.into())],
             Some(DEFAULT_GAS as usize),
         )
         .unwrap();
@@ -846,7 +846,7 @@ proptest! {
             program,
             "run_test",
             &[Value::Felt252(a.into()), Value::Felt252(b.into())],
-            Some(DEFAULT_GAS as u128),
+            Some(DEFAULT_GAS),
             Option::<DummySyscallHandler>::None,
         );
 
@@ -864,7 +864,7 @@ proptest! {
         let result_vm = run_vm_program(
             program,
             "run_test",
-            &[Arg::Value(a.into()), Arg::Value(b.into())],
+            vec![Arg::Value(a.into()), Arg::Value(b.into())],
             Some(DEFAULT_GAS as usize),
         )
         .unwrap();
@@ -872,7 +872,7 @@ proptest! {
             program,
             "run_test",
             &[Value::Felt252(a.into()), Value::Felt252(b.into())],
-            Some(DEFAULT_GAS as u128),
+            Some(DEFAULT_GAS),
             Option::<DummySyscallHandler>::None,
         );
 
@@ -890,7 +890,7 @@ proptest! {
         let result_vm = run_vm_program(
             program,
             "run_test",
-            &[Arg::Value(a.into()), Arg::Value(b.into())],
+            vec![Arg::Value(a.into()), Arg::Value(b.into())],
             Some(DEFAULT_GAS as usize),
         )
         .unwrap();
@@ -898,7 +898,7 @@ proptest! {
             program,
             "run_test",
             &[Value::Felt252(a.into()), Value::Felt252(b.into())],
-            Some(DEFAULT_GAS as u128),
+            Some(DEFAULT_GAS),
             Option::<DummySyscallHandler>::None,
         );
 
@@ -916,7 +916,7 @@ proptest! {
         let result_vm = run_vm_program(
             program,
             "run_test",
-            &[Arg::Value(a.into()), Arg::Value(b.into())],
+            vec![Arg::Value(a.into()), Arg::Value(b.into())],
             Some(DEFAULT_GAS as usize),
         )
         .unwrap();
@@ -924,7 +924,7 @@ proptest! {
             program,
             "run_test",
             &[Value::Felt252(a.into()), Value::Felt252(b.into())],
-            Some(DEFAULT_GAS as u128),
+            Some(DEFAULT_GAS),
             Option::<DummySyscallHandler>::None,
         );
 
@@ -942,7 +942,7 @@ proptest! {
         let result_vm = run_vm_program(
             program,
             "run_test",
-            &[Arg::Value(a.into())],
+            vec![Arg::Value(a.into())],
             Some(DEFAULT_GAS as usize),
         )
         .unwrap();
@@ -950,7 +950,7 @@ proptest! {
             program,
             "run_test",
             &[Value::Felt252(a.into())],
-            Some(DEFAULT_GAS as u128),
+            Some(DEFAULT_GAS),
             Option::<DummySyscallHandler>::None,
         );
 
@@ -970,7 +970,7 @@ proptest! {
         let result_vm = run_vm_program(
             program,
             "run_test",
-            &[Arg::Value(a.into()), Arg::Value(b.into())],
+            vec![Arg::Value(a.into()), Arg::Value(b.into())],
             Some(DEFAULT_GAS as usize),
         )
         .unwrap();
@@ -978,7 +978,7 @@ proptest! {
             program,
             "run_test",
             &[Value::Felt252(a.into()), Value::Felt252(b.into())],
-            Some(DEFAULT_GAS as u128),
+            Some(DEFAULT_GAS),
             Option::<DummySyscallHandler>::None,
         );
 
@@ -996,7 +996,7 @@ proptest! {
         let result_vm = run_vm_program(
             program,
             "run_test",
-            &[Arg::Value(a.into()), Arg::Value(b.into())],
+            vec![Arg::Value(a.into()), Arg::Value(b.into())],
             Some(DEFAULT_GAS as usize),
         )
         .unwrap();
@@ -1004,7 +1004,7 @@ proptest! {
             program,
             "run_test",
             &[Value::Felt252(a.into()), Value::Felt252(b.into())],
-            Some(DEFAULT_GAS as u128),
+            Some(DEFAULT_GAS),
             Option::<DummySyscallHandler>::None,
         );
 
@@ -1022,7 +1022,7 @@ proptest! {
         let result_vm = run_vm_program(
             program,
             "run_test",
-            &[Arg::Value(a.into()), Arg::Value(b.into())],
+            vec![Arg::Value(a.into()), Arg::Value(b.into())],
             Some(DEFAULT_GAS as usize),
         )
         .unwrap();
@@ -1030,7 +1030,7 @@ proptest! {
             program,
             "run_test",
             &[Value::Felt252(a.into()), Value::Felt252(b.into())],
-            Some(DEFAULT_GAS as u128),
+            Some(DEFAULT_GAS),
             Option::<DummySyscallHandler>::None,
         );
 
@@ -1048,7 +1048,7 @@ proptest! {
         let result_vm = run_vm_program(
             program,
             "run_test",
-            &[Arg::Value(a.into()), Arg::Value(b.into())],
+            vec![Arg::Value(a.into()), Arg::Value(b.into())],
             Some(DEFAULT_GAS as usize),
         )
         .unwrap();
@@ -1056,7 +1056,7 @@ proptest! {
             program,
             "run_test",
             &[Value::Felt252(a.into()), Value::Felt252(b.into())],
-            Some(DEFAULT_GAS as u128),
+            Some(DEFAULT_GAS),
             Option::<DummySyscallHandler>::None,
         );
 
@@ -1074,7 +1074,7 @@ proptest! {
         let result_vm = run_vm_program(
             program,
             "run_test",
-            &[Arg::Value(a.into())],
+            vec![Arg::Value(a.into())],
             Some(DEFAULT_GAS as usize),
         )
         .unwrap();
@@ -1082,7 +1082,7 @@ proptest! {
             program,
             "run_test",
             &[Value::Felt252(a.into())],
-            Some(DEFAULT_GAS as u128),
+            Some(DEFAULT_GAS),
             Option::<DummySyscallHandler>::None,
         );
 

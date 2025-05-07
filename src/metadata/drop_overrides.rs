@@ -21,7 +21,10 @@
 //! where `{type id}` is the numeric value of the `ConcreteTypeId`.
 
 use super::MetadataStorage;
-use crate::{error::Result, utils::ProgramRegistryExt};
+use crate::{
+    error::{Error, Result},
+    utils::ProgramRegistryExt,
+};
 use cairo_lang_sierra::{
     extensions::core::{CoreLibfunc, CoreType},
     ids::ConcreteTypeId,
@@ -32,7 +35,7 @@ use melior::{
     ir::{
         attribute::{FlatSymbolRefAttribute, StringAttribute, TypeAttribute},
         r#type::FunctionType,
-        Attribute, Block, Identifier, Location, Module, Region, Value,
+        Attribute, Block, BlockLike, Identifier, Location, Module, Region, Value,
     },
     Context,
 };
@@ -79,7 +82,7 @@ impl DropOverridesMeta {
 
         match f(metadata)? {
             Some(region) => {
-                let ty = registry.build_type(context, module, registry, metadata, id)?;
+                let ty = registry.build_type(context, module, metadata, id)?;
                 module.body().append_operation(func::func(
                     context,
                     StringAttribute::new(context, &format!("drop${}", id.id)),
@@ -92,11 +95,13 @@ impl DropOverridesMeta {
                         ),
                         (
                             Identifier::new(context, "llvm.CConv"),
-                            Attribute::parse(context, "#llvm.cconv<fastcc>").unwrap(),
+                            Attribute::parse(context, "#llvm.cconv<fastcc>")
+                                .ok_or(Error::ParseAttributeError)?,
                         ),
                         (
                             Identifier::new(context, "llvm.linkage"),
-                            Attribute::parse(context, "#llvm.linkage<private>").unwrap(),
+                            Attribute::parse(context, "#llvm.linkage<private>")
+                                .ok_or(Error::ParseAttributeError)?,
                         ),
                     ],
                     Location::unknown(context),

@@ -11,7 +11,7 @@
 
 use super::LibfuncHelper;
 use crate::{
-    error::Result,
+    error::{panic::ToNativeAssertError, Error, Result},
     metadata::{
         drop_overrides::DropOverridesMeta, runtime_bindings::RuntimeBindingsMeta, MetadataStorage,
     },
@@ -27,7 +27,7 @@ use cairo_lang_sierra::{
 };
 use melior::{
     dialect::{arith, cf, llvm},
-    ir::{r#type::IntegerType, Block, Location},
+    ir::{r#type::IntegerType, Block, BlockLike, Location},
     Context,
 };
 
@@ -61,37 +61,34 @@ pub fn build_print<'ctx>(
     let values_ptr = entry.extract_value(
         context,
         location,
-        entry.argument(0)?.into(),
+        entry.arg(0)?,
         llvm::r#type::pointer(context, 0),
         0,
     )?;
     let values_start = entry.extract_value(
         context,
         location,
-        entry.argument(0)?.into(),
+        entry.arg(0)?,
         IntegerType::new(context, 32).into(),
         1,
     )?;
     let values_end = entry.extract_value(
         context,
         location,
-        entry.argument(0)?.into(),
+        entry.arg(0)?,
         IntegerType::new(context, 32).into(),
         2,
     )?;
 
     let runtime_bindings = metadata
         .get_mut::<RuntimeBindingsMeta>()
-        .expect("Runtime library not available.");
+        .to_native_assert_error("runtime library should be available")?;
 
     let values_len = entry.append_op_result(arith::subi(values_end, values_start, location))?;
 
     let values_ptr = {
-        let values_start = entry.append_op_result(arith::extui(
-            values_start,
-            IntegerType::new(context, 64).into(),
-            location,
-        ))?;
+        let values_start =
+            entry.extui(values_start, IntegerType::new(context, 64).into(), location)?;
 
         entry.append_op_result(llvm::get_element_ptr_dynamic(
             context,
@@ -108,26 +105,15 @@ pub fn build_print<'ctx>(
     )?;
 
     let input_ty = &info.signature.param_signatures[0].ty;
-    registry.build_type(context, helper, registry, metadata, input_ty)?;
+    registry.build_type(context, helper, metadata, input_ty)?;
     metadata
         .get::<DropOverridesMeta>()
-        .unwrap()
-        .invoke_override(
-            context,
-            entry,
-            location,
-            input_ty,
-            entry.argument(0)?.into(),
-        )?;
+        .ok_or(Error::MissingMetadata)?
+        .invoke_override(context, entry, location, input_ty, entry.arg(0)?)?;
 
     let k0 = entry.const_int(context, location, 0, 32)?;
-    let return_code_is_ok = entry.append_op_result(arith::cmpi(
-        context,
-        arith::CmpiPredicate::Eq,
-        return_code,
-        k0,
-        location,
-    ))?;
+    let return_code_is_ok =
+        entry.cmpi(context, arith::CmpiPredicate::Eq, return_code, k0, location)?;
     cf::assert(
         context,
         return_code_is_ok,

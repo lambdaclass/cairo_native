@@ -3,7 +3,9 @@
 //! A Rusty interface to provide parameters to cairo-native entry point calls.
 
 use crate::{
-    error::{CompilerError, Error},
+    error::{panic::ToNativeAssertError, CompilerError, Error},
+    native_assert, native_panic,
+    runtime::FeltDict,
     starknet::{Secp256k1Point, Secp256r1Point},
     types::TypeBuilder,
     utils::{
@@ -13,19 +15,27 @@ use crate::{
 use bumpalo::Bump;
 use cairo_lang_sierra::{
     extensions::{
+        circuit::CircuitTypeConcrete,
         core::{CoreLibfunc, CoreType, CoreTypeConcrete},
-        starknet::{secp256::Secp256PointTypeConcrete, StarkNetTypeConcrete},
+        starknet::{secp256::Secp256PointTypeConcrete, StarknetTypeConcrete},
         utils::Range,
     },
     ids::ConcreteTypeId,
     program_registry::ProgramRegistry,
 };
-use cairo_native_runtime::FeltDict;
 use educe::Educe;
 use num_bigint::{BigInt, BigUint, Sign};
 use num_traits::{Euclid, One};
 use starknet_types_core::felt::Felt;
-use std::{alloc::Layout, collections::HashMap, ptr::NonNull, slice};
+use std::{
+    alloc::{alloc, Layout},
+    collections::HashMap,
+    ffi::c_void,
+    mem::forget,
+    ptr::{null_mut, NonNull},
+    rc::Rc,
+    slice,
+};
 
 /// A Value is a value that can be passed to either the JIT engine or a compiled program as an argument or received as a result.
 ///
@@ -76,76 +86,49 @@ pub enum Value {
         #[serde(with = "range_serde")]
         range: Range,
     },
+    IntRange {
+        x: Box<Value>,
+        y: Box<Value>,
+    },
     /// Used as return value for Nullables that are null.
     Null,
 }
 
 // Conversions
 
-impl From<Felt> for Value {
-    fn from(value: Felt) -> Self {
-        Self::Felt252(value)
-    }
+macro_rules! impl_conversions {
+    ( $( $t:ty as $i:ident ; )+ ) => { $(
+        impl From<$t> for Value {
+            fn from(value: $t) -> Self {
+                Self::$i(value)
+            }
+        }
+
+        impl TryFrom<Value> for $t {
+            type Error = Value;
+
+            fn try_from(value: Value) -> Result<Self, Self::Error> {
+                match value {
+                    Value::$i(value) => Ok(value),
+                    _ => Err(value),
+                }
+            }
+        }
+    )+ };
 }
 
-impl From<u8> for Value {
-    fn from(value: u8) -> Self {
-        Self::Uint8(value)
-    }
-}
-
-impl From<u16> for Value {
-    fn from(value: u16) -> Self {
-        Self::Uint16(value)
-    }
-}
-
-impl From<u32> for Value {
-    fn from(value: u32) -> Self {
-        Self::Uint32(value)
-    }
-}
-
-impl From<u64> for Value {
-    fn from(value: u64) -> Self {
-        Self::Uint64(value)
-    }
-}
-
-impl From<u128> for Value {
-    fn from(value: u128) -> Self {
-        Self::Uint128(value)
-    }
-}
-
-impl From<i8> for Value {
-    fn from(value: i8) -> Self {
-        Self::Sint8(value)
-    }
-}
-
-impl From<i16> for Value {
-    fn from(value: i16) -> Self {
-        Self::Sint16(value)
-    }
-}
-
-impl From<i32> for Value {
-    fn from(value: i32) -> Self {
-        Self::Sint32(value)
-    }
-}
-
-impl From<i64> for Value {
-    fn from(value: i64) -> Self {
-        Self::Sint64(value)
-    }
-}
-
-impl From<i128> for Value {
-    fn from(value: i128) -> Self {
-        Self::Sint128(value)
-    }
+impl_conversions! {
+    Felt as Felt252;
+    u8   as Uint8;
+    u16  as Uint16;
+    u32  as Uint32;
+    u64  as Uint64;
+    u128 as Uint128;
+    i8   as Sint8;
+    i16  as Sint16;
+    i32  as Sint32;
+    i64  as Sint64;
+    i128 as Sint128;
 }
 
 impl<T: Into<Value> + Clone> From<&[T]> for Value {
@@ -183,6 +166,7 @@ impl Value {
         arena: &Bump,
         registry: &ProgramRegistry<CoreType, CoreLibfunc>,
         type_id: &ConcreteTypeId,
+        find_dict_drop_override: impl Copy + Fn(&ConcreteTypeId) -> Option<extern "C" fn(*mut c_void)>,
     ) -> Result<NonNull<()>, Error> {
         let ty = registry.get_type(type_id)?;
 
@@ -230,23 +214,35 @@ impl Value {
                     ptr
                 }
 
-                Self::Bytes31(_) => todo!(),
+                Self::Bytes31(_) => native_panic!("todo: allocate type Bytes31"),
                 Self::Array(data) => {
                     if let CoreTypeConcrete::Array(info) = Self::resolve_type(ty, registry)? {
                         let elem_ty = registry.get_type(&info.ty)?;
                         let elem_layout = elem_ty.layout(registry)?.pad_to_align();
 
-                        let ptr: *mut () = match elem_layout.size() * data.len() {
-                            0 => std::ptr::null_mut(),
-                            len => libc_malloc(len).cast(),
-                        };
+                        let refcount_offset =
+                            crate::types::array::calc_data_prefix_offset(elem_layout);
                         let len: u32 = data
                             .len()
                             .try_into()
                             .map_err(|_| Error::IntegerConversion)?;
+                        let ptr: *mut () = match len {
+                            0 => std::ptr::null_mut(),
+                            _ => {
+                                let ptr: *mut () =
+                                    libc_malloc(elem_layout.size() * data.len() + refcount_offset)
+                                        .cast();
 
+                                // Write reference count.
+                                ptr.cast::<(u32, u32)>().write((1, len));
+                                ptr.byte_add(refcount_offset).cast()
+                            }
+                        };
+
+                        // Write the data.
                         for (idx, elem) in data.iter().enumerate() {
-                            let elem = elem.to_ptr(arena, registry, &info.ty)?;
+                            let elem =
+                                elem.to_ptr(arena, registry, &info.ty, find_dict_drop_override)?;
 
                             std::ptr::copy_nonoverlapping(
                                 elem.cast::<u8>().as_ptr(),
@@ -254,6 +250,15 @@ impl Value {
                                 elem_layout.size(),
                             );
                         }
+
+                        // Make double pointer.
+                        let ptr_ptr = if ptr.is_null() {
+                            null_mut()
+                        } else {
+                            let ptr_ptr: *mut *mut () = libc_malloc(8).cast();
+                            ptr_ptr.write(ptr);
+                            ptr_ptr
+                        };
 
                         let target = arena
                             .alloc_layout(
@@ -268,7 +273,7 @@ impl Value {
                             )
                             .as_ptr();
 
-                        *target.cast::<*mut ()>() = ptr;
+                        *target.cast::<*mut ()>() = ptr_ptr.cast();
 
                         let (layout, offset) =
                             Layout::new::<*mut NonNull<()>>().extend(Layout::new::<u32>())?;
@@ -305,7 +310,12 @@ impl Value {
                             };
                             layout = Some(new_layout);
 
-                            let member_ptr = member.to_ptr(arena, registry, member_type_id)?;
+                            let member_ptr = member.to_ptr(
+                                arena,
+                                registry,
+                                member_type_id,
+                                find_dict_drop_override,
+                            )?;
                             data.push((
                                 member_layout,
                                 offset,
@@ -348,23 +358,30 @@ impl Value {
                 }
                 Self::Enum { tag, value, .. } => {
                     if let CoreTypeConcrete::Enum(info) = Self::resolve_type(ty, registry)? {
-                        assert!(*tag < info.variants.len(), "Variant index out of range.");
+                        native_assert!(*tag < info.variants.len(), "Variant index out of range.");
 
                         let payload_type_id = &info.variants[*tag];
-                        let payload = value.to_ptr(arena, registry, payload_type_id)?;
+                        let payload = value.to_ptr(
+                            arena,
+                            registry,
+                            payload_type_id,
+                            find_dict_drop_override,
+                        )?;
 
                         let (layout, tag_layout, variant_layouts) =
-                            crate::types::r#enum::get_layout_for_variants(registry, &info.variants)
-                                .unwrap();
+                            crate::types::r#enum::get_layout_for_variants(
+                                registry,
+                                &info.variants,
+                            )?;
                         let ptr = arena.alloc_layout(layout).cast::<()>().as_ptr();
 
                         match tag_layout.size() {
-                            0 => panic!("An enum without variants cannot be instantiated."),
+                            0 => native_panic!("An enum without variants cannot be instantiated."),
                             1 => *ptr.cast::<u8>() = *tag as u8,
                             2 => *ptr.cast::<u16>() = *tag as u16,
                             4 => *ptr.cast::<u32>() = *tag as u32,
                             8 => *ptr.cast::<u64>() = *tag as u64,
-                            _ => unreachable!(),
+                            _ => native_panic!("reached the maximum size for an enum"),
                         }
 
                         std::ptr::copy_nonoverlapping(
@@ -388,29 +405,50 @@ impl Value {
                         let elem_ty = registry.get_type(&info.ty)?;
                         let elem_layout = elem_ty.layout(registry)?.pad_to_align();
 
-                        let mut value_map = Box::new(FeltDict {
-                            inner: HashMap::default(),
+                        // We need `find_dict_drop_override` to obtain the function pointers of drop
+                        // implementations (if any) for the value type. This is required to be able to drop
+                        // the dictionary automatically when their reference count drops to zero.
+                        let drop_fn = find_dict_drop_override(&info.ty);
+                        let mut value_map = FeltDict {
+                            mappings: HashMap::with_capacity(map.len()),
+
+                            layout: elem_layout,
+                            elements: if map.is_empty() {
+                                null_mut()
+                            } else {
+                                alloc(Layout::from_size_align_unchecked(
+                                    elem_layout.pad_to_align().size() * map.len(),
+                                    elem_layout.align(),
+                                ))
+                                .cast()
+                            },
+
+                            drop_fn,
+
                             count: 0,
-                            free_fn: crate::utils::libc_free,
-                        });
+                        };
 
                         // next key must be called before next_value
 
                         for (key, value) in map.iter() {
                             let key = key.to_bytes_le();
-                            let value = value.to_ptr(arena, registry, &info.ty)?;
+                            let value =
+                                value.to_ptr(arena, registry, &info.ty, find_dict_drop_override)?;
 
-                            let value_malloc_ptr = libc_malloc(elem_layout.size());
+                            let index = value_map.mappings.len();
+                            value_map.mappings.insert(key, index);
+
                             std::ptr::copy_nonoverlapping(
                                 value.cast::<u8>().as_ptr(),
-                                value_malloc_ptr.cast(),
+                                value_map
+                                    .elements
+                                    .byte_add(elem_layout.pad_to_align().size() * index)
+                                    .cast(),
                                 elem_layout.size(),
                             );
-
-                            value_map.inner.insert(key, value_malloc_ptr);
                         }
 
-                        NonNull::new_unchecked(Box::into_raw(value_map)).cast()
+                        NonNull::new_unchecked(Rc::into_raw(Rc::new(value_map)) as *mut ()).cast()
                     } else {
                         Err(Error::UnexpectedValue(format!(
                             "expected value of type {:?} but got a felt dict",
@@ -506,10 +544,44 @@ impl Value {
 
                     ptr
                 }
-                Self::Secp256K1Point { .. } => todo!(),
-                Self::Secp256R1Point { .. } => todo!(),
+                Self::Secp256K1Point { .. } => native_panic!("todo: allocate type Secp256K1Point"),
+                Self::Secp256R1Point { .. } => native_panic!("todo: allocate type Secp256R1Point"),
                 Self::Null => {
-                    unimplemented!("null is meant as return value for nullable for now")
+                    native_panic!(
+                        "unimplemented: null is meant as return value for nullable for now"
+                    )
+                }
+                Self::IntRange { x, y } => {
+                    if let CoreTypeConcrete::IntRange(info) = Self::resolve_type(ty, registry)? {
+                        let inner = registry.get_type(&info.ty)?;
+                        let inner_layout = inner.layout(registry)?;
+
+                        let x_ptr = x.to_ptr(arena, registry, &info.ty, find_dict_drop_override)?;
+
+                        let (struct_layout, y_offset) = inner_layout.extend(inner_layout)?;
+
+                        let y_ptr = y.to_ptr(arena, registry, &info.ty, find_dict_drop_override)?;
+
+                        let ptr = arena.alloc_layout(struct_layout.pad_to_align()).as_ptr();
+
+                        std::ptr::copy_nonoverlapping(
+                            x_ptr.cast::<u8>().as_ptr(),
+                            ptr,
+                            inner_layout.size(),
+                        );
+
+                        std::ptr::copy_nonoverlapping(
+                            y_ptr.cast::<u8>().as_ptr(),
+                            ptr.byte_add(y_offset),
+                            inner_layout.size(),
+                        );
+
+                        NonNull::new_unchecked(ptr).cast()
+                    } else {
+                        native_panic!(
+                            "an IntRange value should always have an IntRange CoreTypeConcrete"
+                        )
+                    }
                 }
             }
         })
@@ -520,6 +592,7 @@ impl Value {
         ptr: NonNull<()>,
         type_id: &ConcreteTypeId,
         registry: &ProgramRegistry<CoreType, CoreLibfunc>,
+        should_drop: bool,
     ) -> Result<Self, Error> {
         let ty = registry.get_type(type_id)?;
 
@@ -536,42 +609,108 @@ impl Value {
 
                     let (ptr_layout, offset) = ptr_layout.extend(len_layout)?;
                     let start_offset_value = *NonNull::new(ptr.as_ptr().byte_add(offset))
-                        .unwrap()
+                        .to_native_assert_error("tried to make a non-null ptr out of a null one")?
                         .cast::<u32>()
                         .as_ref();
                     let (_, offset) = ptr_layout.extend(len_layout)?;
                     let end_offset_value = *NonNull::new(ptr.as_ptr().byte_add(offset))
-                        .unwrap()
+                        .to_native_assert_error("tried to make a non-null ptr out of a null one")?
                         .cast::<u32>()
                         .as_ref();
 
-                    // this pointer can be null if the array has a size of 0.
-                    let init_data_ptr = *ptr.cast::<*mut ()>().as_ref();
-                    let data_ptr =
-                        init_data_ptr.byte_add(elem_stride * start_offset_value as usize);
+                    // This pointer can be null if the array is empty.
+                    let array_ptr_ptr = *ptr.cast::<*mut *mut ()>().as_ref();
 
-                    assert!(end_offset_value >= start_offset_value);
-                    let num_elems = (end_offset_value - start_offset_value) as usize;
-                    let mut array_value = Vec::with_capacity(num_elems);
+                    let refcount_offset = crate::types::array::calc_data_prefix_offset(elem_layout);
+                    let array_value = if array_ptr_ptr.is_null() {
+                        Vec::new()
+                    } else {
+                        let array_ptr = array_ptr_ptr.read();
+                        let ref_count = array_ptr
+                            .byte_sub(refcount_offset)
+                            .cast::<u32>()
+                            .as_mut()
+                            .to_native_assert_error("array data pointer should not be null")?;
+                        if should_drop {
+                            *ref_count -= 1;
+                        }
 
-                    for i in 0..num_elems {
-                        // safe to create a NonNull because if the array has elements, the init_data_ptr can't be null.
-                        let cur_elem_ptr =
-                            NonNull::new(data_ptr.byte_add(elem_stride * i)).unwrap();
+                        native_assert!(
+                            end_offset_value >= start_offset_value,
+                            "can't have an array with negative length"
+                        );
+                        let num_elems = (end_offset_value - start_offset_value) as usize;
 
-                        array_value.push(Self::from_ptr(cur_elem_ptr, &info.ty, registry)?);
-                    }
+                        if *ref_count == 0 {
+                            // Drop prefix elements.
+                            for i in 0..start_offset_value {
+                                let cur_elem_ptr =
+                                    NonNull::new(array_ptr.byte_add(elem_stride * i as usize))
+                                        .to_native_assert_error(
+                                            "tried to make a non-null ptr out of a null one",
+                                        )?;
+                                drop(Self::from_ptr(
+                                    cur_elem_ptr,
+                                    &info.ty,
+                                    registry,
+                                    should_drop,
+                                )?);
+                            }
+                        }
 
-                    if !init_data_ptr.is_null() {
-                        libc_free(init_data_ptr.cast());
-                    }
+                        let mut array_value = Vec::with_capacity(num_elems);
+                        for i in start_offset_value..end_offset_value {
+                            let cur_elem_ptr =
+                                NonNull::new(array_ptr.byte_add(elem_stride * i as usize))
+                                    .to_native_assert_error(
+                                        "tried to make a non-null ptr out of a null one",
+                                    )?;
+                            array_value.push(Self::from_ptr(
+                                cur_elem_ptr,
+                                &info.ty,
+                                registry,
+                                *ref_count == 0,
+                            )?);
+                        }
+
+                        if *ref_count == 0 {
+                            // Drop suffix elements.
+                            let array_max_len = array_ptr
+                                .byte_sub(refcount_offset - size_of::<u32>())
+                                .cast::<u32>()
+                                .read();
+                            for i in end_offset_value..array_max_len {
+                                let cur_elem_ptr =
+                                    NonNull::new(array_ptr.byte_add(elem_stride * i as usize))
+                                        .to_native_assert_error(
+                                            "tried to make a non-null ptr out of a null one",
+                                        )?;
+                                drop(Self::from_ptr(
+                                    cur_elem_ptr,
+                                    &info.ty,
+                                    registry,
+                                    should_drop,
+                                )?);
+                            }
+
+                            // Free array storage.
+                            libc_free(array_ptr.byte_sub(refcount_offset).cast());
+                            libc_free(array_ptr_ptr.cast());
+                        }
+
+                        array_value
+                    };
 
                     Self::Array(array_value)
                 }
                 CoreTypeConcrete::Box(info) => {
                     let inner = *ptr.cast::<NonNull<()>>().as_ptr();
-                    let value = Self::from_ptr(inner, &info.ty, registry)?;
-                    libc_free(inner.as_ptr().cast());
+                    let value = Self::from_ptr(inner, &info.ty, registry, should_drop)?;
+
+                    if should_drop {
+                        libc_free(inner.as_ptr().cast());
+                    }
+
                     value
                 }
                 CoreTypeConcrete::EcPoint(_) => {
@@ -608,13 +747,17 @@ impl Value {
                 CoreTypeConcrete::Uint32(_) => Self::Uint32(*ptr.cast::<u32>().as_ref()),
                 CoreTypeConcrete::Uint64(_) => Self::Uint64(*ptr.cast::<u64>().as_ref()),
                 CoreTypeConcrete::Uint128(_) => Self::Uint128(*ptr.cast::<u128>().as_ref()),
-                CoreTypeConcrete::Uint128MulGuarantee(_) => todo!(),
+                CoreTypeConcrete::Uint128MulGuarantee(_) => {
+                    native_panic!("todo: implement uint128mulguarantee from_ptr")
+                }
                 CoreTypeConcrete::Sint8(_) => Self::Sint8(*ptr.cast::<i8>().as_ref()),
                 CoreTypeConcrete::Sint16(_) => Self::Sint16(*ptr.cast::<i16>().as_ref()),
                 CoreTypeConcrete::Sint32(_) => Self::Sint32(*ptr.cast::<i32>().as_ref()),
                 CoreTypeConcrete::Sint64(_) => Self::Sint64(*ptr.cast::<i64>().as_ref()),
                 CoreTypeConcrete::Sint128(_) => Self::Sint128(*ptr.cast::<i128>().as_ref()),
-                CoreTypeConcrete::NonZero(info) => Self::from_ptr(ptr, &info.ty, registry)?,
+                CoreTypeConcrete::NonZero(info) => {
+                    Self::from_ptr(ptr, &info.ty, registry, should_drop)?
+                }
                 CoreTypeConcrete::Nullable(info) => {
                     let inner_ptr = *ptr.cast::<*mut ()>().as_ptr();
                     if inner_ptr.is_null() {
@@ -624,13 +767,18 @@ impl Value {
                             NonNull::new_unchecked(inner_ptr).cast(),
                             &info.ty,
                             registry,
+                            should_drop,
                         )?;
-                        libc_free(inner_ptr.cast());
+
+                        if should_drop {
+                            libc_free(inner_ptr.cast());
+                        }
+
                         value
                     }
                 }
                 CoreTypeConcrete::Uninitialized(_) => {
-                    todo!("implement uninit from_ptr or ignore the return value")
+                    native_panic!("todo: implement uninit from_ptr or ignore the return value")
                 }
                 CoreTypeConcrete::Enum(info) => {
                     let tag_layout = crate::utils::get_integer_layout(match info.variants.len() {
@@ -642,7 +790,7 @@ impl Value {
                     let tag_value = match info.variants.len() {
                         0 => {
                             // An enum without variants is basically the `!` (never) type in Rust.
-                            panic!("An enum without variants is not a valid type.")
+                            native_panic!("An enum without variants is not a valid type.")
                         }
                         1 => 0,
                         _ => match tag_layout.size() {
@@ -650,7 +798,7 @@ impl Value {
                             2 => *ptr.cast::<u16>().as_ref() as usize,
                             4 => *ptr.cast::<u32>().as_ref() as usize,
                             8 => *ptr.cast::<u64>().as_ref() as usize,
-                            _ => unreachable!(),
+                            _ => native_panic!("reached the maximum size for an enum"),
                         },
                     };
 
@@ -663,10 +811,16 @@ impl Value {
                     let payload_ty = registry.get_type(&info.variants[tag_value])?;
                     let payload_layout = payload_ty.layout(registry)?;
 
-                    let payload_ptr =
-                        NonNull::new(ptr.as_ptr().byte_add(tag_layout.extend(payload_layout)?.1))
-                            .unwrap();
-                    let payload = Self::from_ptr(payload_ptr, &info.variants[tag_value], registry)?;
+                    let payload_ptr = NonNull::new(
+                        ptr.as_ptr().byte_add(tag_layout.extend(payload_layout)?.1),
+                    )
+                    .to_native_assert_error("tried to make a non-null ptr out of a null one")?;
+                    let payload = Self::from_ptr(
+                        payload_ptr,
+                        &info.variants[tag_value],
+                        registry,
+                        should_drop,
+                    )?;
 
                     Self::Enum {
                         tag: tag_value,
@@ -689,9 +843,12 @@ impl Value {
                         layout = Some(new_layout);
 
                         members.push(Self::from_ptr(
-                            NonNull::new(ptr.as_ptr().byte_add(offset)).unwrap(),
+                            NonNull::new(ptr.as_ptr().byte_add(offset)).to_native_assert_error(
+                                "tried to make a non-null ptr out of a null one",
+                            )?,
                             member_ty,
                             registry,
+                            should_drop,
                         )?);
                     }
 
@@ -702,31 +859,38 @@ impl Value {
                 }
                 CoreTypeConcrete::Felt252Dict(info)
                 | CoreTypeConcrete::SquashedFelt252Dict(info) => {
-                    let FeltDict { inner, .. } = *Box::from_raw(
-                        ptr.cast::<NonNull<()>>()
-                            .as_ref()
-                            .cast::<FeltDict>()
-                            .as_ptr(),
-                    );
+                    let dict = Rc::from_raw(ptr.cast::<*const FeltDict>().read());
 
-                    let mut output_map = HashMap::with_capacity(inner.len());
-                    for (mut key, val_ptr) in inner.into_iter() {
-                        if val_ptr.is_null() {
-                            continue;
-                        }
-
+                    let mut output_map = HashMap::with_capacity(dict.mappings.len());
+                    for (&key, &index) in dict.mappings.iter() {
+                        let mut key = key;
                         key[31] &= 0x0F; // Filter out first 4 bits (they're outside an i252).
 
                         let key = Felt::from_bytes_le(&key);
+                        // The dictionary items are not being dropped here. They'll be dropped along
+                        // with the dictionary (if requested using `should_drop`).
                         output_map.insert(
                             key,
                             Self::from_ptr(
-                                NonNull::new(val_ptr).unwrap().cast(),
+                                NonNull::new(
+                                    dict.elements
+                                        .byte_add(dict.layout.pad_to_align().size() * index),
+                                )
+                                .to_native_assert_error(
+                                    "tried to make a non-null ptr out of a null one",
+                                )?
+                                .cast(),
                                 &info.ty,
                                 registry,
+                                false,
                             )?,
                         );
-                        libc_free(val_ptr);
+                    }
+
+                    if should_drop {
+                        drop(dict);
+                    } else {
+                        forget(dict);
                     }
 
                     Self::Felt252Dict {
@@ -735,7 +899,7 @@ impl Value {
                     }
                 }
                 CoreTypeConcrete::Felt252DictEntry(_) => {
-                    unimplemented!("shouldn't be possible to return")
+                    native_panic!("unimplemented: should be impossible to return")
                 }
                 CoreTypeConcrete::Pedersen(_)
                 | CoreTypeConcrete::Poseidon(_)
@@ -745,24 +909,24 @@ impl Value {
                 | CoreTypeConcrete::EcOp(_)
                 | CoreTypeConcrete::GasBuiltin(_)
                 | CoreTypeConcrete::SegmentArena(_) => {
-                    unreachable!("handled before: {:?}", type_id)
+                    native_panic!("handled before: {:?}", type_id)
                 }
                 // Does it make sense for programs to return this? Should it be implemented
-                CoreTypeConcrete::StarkNet(selector) => match selector {
-                    StarkNetTypeConcrete::ClassHash(_)
-                    | StarkNetTypeConcrete::ContractAddress(_)
-                    | StarkNetTypeConcrete::StorageBaseAddress(_)
-                    | StarkNetTypeConcrete::StorageAddress(_) => {
+                CoreTypeConcrete::Starknet(selector) => match selector {
+                    StarknetTypeConcrete::ClassHash(_)
+                    | StarknetTypeConcrete::ContractAddress(_)
+                    | StarknetTypeConcrete::StorageBaseAddress(_)
+                    | StarknetTypeConcrete::StorageAddress(_) => {
                         // felt values
                         let data = ptr.cast::<[u8; 32]>().as_mut();
                         data[31] &= 0x0F; // Filter out first 4 bits (they're outside an i252).
                         let data = Felt::from_bytes_le(data);
                         Self::Felt252(data)
                     }
-                    StarkNetTypeConcrete::System(_) => {
-                        unreachable!("should be handled before")
+                    StarknetTypeConcrete::System(_) => {
+                        native_panic!("should be handled before")
                     }
-                    StarkNetTypeConcrete::Secp256Point(info) => match info {
+                    StarknetTypeConcrete::Secp256Point(info) => match info {
                         Secp256PointTypeConcrete::K1(_) => {
                             let data = ptr.cast::<Secp256k1Point>().as_ref();
                             Self::Secp256K1Point(*data)
@@ -772,16 +936,20 @@ impl Value {
                             Self::Secp256R1Point(*data)
                         }
                     },
-                    StarkNetTypeConcrete::Sha256StateHandle(_) => todo!(),
+                    StarknetTypeConcrete::Sha256StateHandle(_) => {
+                        native_panic!("todo: implement Sha256StateHandle from_ptr")
+                    }
                 },
-                CoreTypeConcrete::Span(_) => todo!("implement span from_ptr"),
-                CoreTypeConcrete::Snapshot(info) => Self::from_ptr(ptr, &info.ty, registry)?,
+                CoreTypeConcrete::Span(_) => native_panic!("implement span from_ptr"),
+                CoreTypeConcrete::Snapshot(info) => {
+                    Self::from_ptr(ptr, &info.ty, registry, should_drop)?
+                }
                 CoreTypeConcrete::Bytes31(_) => {
                     let data = *ptr.cast::<[u8; 31]>().as_ref();
                     Self::Bytes31(data)
                 }
 
-                CoreTypeConcrete::Const(_) => todo!(),
+                CoreTypeConcrete::Const(_) => native_panic!("implement const from_ptr"),
                 CoreTypeConcrete::BoundedInt(info) => {
                     let mut data = BigInt::from_biguint(
                         Sign::Plus,
@@ -799,9 +967,57 @@ impl Value {
                         range: info.range.clone(),
                     }
                 }
+                CoreTypeConcrete::Circuit(CircuitTypeConcrete::U96Guarantee(_)) => {
+                    let data = BigInt::from_biguint(
+                        Sign::Plus,
+                        BigUint::from_bytes_le(slice::from_raw_parts(
+                            ptr.cast::<u8>().as_ptr(),
+                            12,
+                        )),
+                    );
+
+                    Self::BoundedInt {
+                        value: data.into(),
+                        range: Range {
+                            lower: BigInt::ZERO,
+                            upper: BigInt::one() << 96,
+                        },
+                    }
+                }
                 CoreTypeConcrete::Coupon(_)
                 | CoreTypeConcrete::Circuit(_)
-                | CoreTypeConcrete::RangeCheck96(_) => todo!(),
+                | CoreTypeConcrete::RangeCheck96(_) => native_panic!("implement from_ptr"),
+                CoreTypeConcrete::IntRange(info) => {
+                    let member = registry.get_type(&info.ty)?;
+                    let member_layout = member.layout(registry)?;
+
+                    let x = Self::from_ptr(
+                        NonNull::new(ptr.as_ptr()).to_native_assert_error(
+                            "tried to make a non-null ptr out of a null one",
+                        )?,
+                        &info.ty,
+                        registry,
+                        should_drop,
+                    )?;
+
+                    let y = Self::from_ptr(
+                        NonNull::new(
+                            ptr.as_ptr()
+                                .byte_add(member_layout.extend(member_layout)?.1),
+                        )
+                        .to_native_assert_error("tried to make a non-null ptr out of a null one")?,
+                        &info.ty,
+                        registry,
+                        should_drop,
+                    )?;
+
+                    Self::IntRange {
+                        x: x.into(),
+                        y: y.into(),
+                    }
+                }
+                CoreTypeConcrete::Blake(_) => native_panic!("Implement from_ptr for Blake type"),
+                CoreTypeConcrete::QM31(_) => native_panic!("Implement from_ptr for QM31 type"),
             }
         })
     }
@@ -979,7 +1195,12 @@ mod test {
         assert_eq!(
             unsafe {
                 *Value::Felt252(Felt::from(42))
-                    .to_ptr(&Bump::new(), &registry, &program.type_declarations[0].id)
+                    .to_ptr(
+                        &Bump::new(),
+                        &registry,
+                        &program.type_declarations[0].id,
+                        |_| todo!(),
+                    )
                     .unwrap()
                     .cast::<[u32; 8]>()
                     .as_ptr()
@@ -990,7 +1211,12 @@ mod test {
         assert_eq!(
             unsafe {
                 *Value::Felt252(Felt::MAX)
-                    .to_ptr(&Bump::new(), &registry, &program.type_declarations[0].id)
+                    .to_ptr(
+                        &Bump::new(),
+                        &registry,
+                        &program.type_declarations[0].id,
+                        |_| todo!(),
+                    )
                     .unwrap()
                     .cast::<[u32; 8]>()
                     .as_ptr()
@@ -1002,7 +1228,12 @@ mod test {
         assert_eq!(
             unsafe {
                 *Value::Felt252(Felt::MAX + Felt::ONE)
-                    .to_ptr(&Bump::new(), &registry, &program.type_declarations[0].id)
+                    .to_ptr(
+                        &Bump::new(),
+                        &registry,
+                        &program.type_declarations[0].id,
+                        |_| todo!(),
+                    )
                     .unwrap()
                     .cast::<[u32; 8]>()
                     .as_ptr()
@@ -1020,7 +1251,12 @@ mod test {
         assert_eq!(
             unsafe {
                 *Value::Uint8(9)
-                    .to_ptr(&Bump::new(), &registry, &program.type_declarations[0].id)
+                    .to_ptr(
+                        &Bump::new(),
+                        &registry,
+                        &program.type_declarations[0].id,
+                        |_| todo!(),
+                    )
                     .unwrap()
                     .cast::<u8>()
                     .as_ptr()
@@ -1038,7 +1274,12 @@ mod test {
         assert_eq!(
             unsafe {
                 *Value::Uint16(17)
-                    .to_ptr(&Bump::new(), &registry, &program.type_declarations[0].id)
+                    .to_ptr(
+                        &Bump::new(),
+                        &registry,
+                        &program.type_declarations[0].id,
+                        |_| todo!(),
+                    )
                     .unwrap()
                     .cast::<u16>()
                     .as_ptr()
@@ -1056,7 +1297,12 @@ mod test {
         assert_eq!(
             unsafe {
                 *Value::Uint32(33)
-                    .to_ptr(&Bump::new(), &registry, &program.type_declarations[0].id)
+                    .to_ptr(
+                        &Bump::new(),
+                        &registry,
+                        &program.type_declarations[0].id,
+                        |_| todo!(),
+                    )
                     .unwrap()
                     .cast::<u32>()
                     .as_ptr()
@@ -1074,7 +1320,12 @@ mod test {
         assert_eq!(
             unsafe {
                 *Value::Uint64(65)
-                    .to_ptr(&Bump::new(), &registry, &program.type_declarations[0].id)
+                    .to_ptr(
+                        &Bump::new(),
+                        &registry,
+                        &program.type_declarations[0].id,
+                        |_| todo!(),
+                    )
                     .unwrap()
                     .cast::<u64>()
                     .as_ptr()
@@ -1092,7 +1343,12 @@ mod test {
         assert_eq!(
             unsafe {
                 *Value::Uint128(129)
-                    .to_ptr(&Bump::new(), &registry, &program.type_declarations[0].id)
+                    .to_ptr(
+                        &Bump::new(),
+                        &registry,
+                        &program.type_declarations[0].id,
+                        |_| todo!(),
+                    )
                     .unwrap()
                     .cast::<u128>()
                     .as_ptr()
@@ -1110,7 +1366,12 @@ mod test {
         assert_eq!(
             unsafe {
                 *Value::Sint8(-9)
-                    .to_ptr(&Bump::new(), &registry, &program.type_declarations[0].id)
+                    .to_ptr(
+                        &Bump::new(),
+                        &registry,
+                        &program.type_declarations[0].id,
+                        |_| todo!(),
+                    )
                     .unwrap()
                     .cast::<i8>()
                     .as_ptr()
@@ -1128,7 +1389,12 @@ mod test {
         assert_eq!(
             unsafe {
                 *Value::Sint16(-17)
-                    .to_ptr(&Bump::new(), &registry, &program.type_declarations[0].id)
+                    .to_ptr(
+                        &Bump::new(),
+                        &registry,
+                        &program.type_declarations[0].id,
+                        |_| todo!(),
+                    )
                     .unwrap()
                     .cast::<i16>()
                     .as_ptr()
@@ -1146,7 +1412,12 @@ mod test {
         assert_eq!(
             unsafe {
                 *Value::Sint32(-33)
-                    .to_ptr(&Bump::new(), &registry, &program.type_declarations[0].id)
+                    .to_ptr(
+                        &Bump::new(),
+                        &registry,
+                        &program.type_declarations[0].id,
+                        |_| todo!(),
+                    )
                     .unwrap()
                     .cast::<i32>()
                     .as_ptr()
@@ -1164,7 +1435,12 @@ mod test {
         assert_eq!(
             unsafe {
                 *Value::Sint64(-65)
-                    .to_ptr(&Bump::new(), &registry, &program.type_declarations[0].id)
+                    .to_ptr(
+                        &Bump::new(),
+                        &registry,
+                        &program.type_declarations[0].id,
+                        |_| todo!(),
+                    )
                     .unwrap()
                     .cast::<i64>()
                     .as_ptr()
@@ -1182,7 +1458,12 @@ mod test {
         assert_eq!(
             unsafe {
                 *Value::Sint128(-129)
-                    .to_ptr(&Bump::new(), &registry, &program.type_declarations[0].id)
+                    .to_ptr(
+                        &Bump::new(),
+                        &registry,
+                        &program.type_declarations[0].id,
+                        |_| todo!(),
+                    )
                     .unwrap()
                     .cast::<i128>()
                     .as_ptr()
@@ -1202,7 +1483,12 @@ mod test {
         assert_eq!(
             unsafe {
                 *Value::EcPoint(Felt::from(1234), Felt::from(4321))
-                    .to_ptr(&Bump::new(), &registry, &program.type_declarations[0].id)
+                    .to_ptr(
+                        &Bump::new(),
+                        &registry,
+                        &program.type_declarations[0].id,
+                        |_| todo!(),
+                    )
                     .unwrap()
                     .cast::<[[u32; 8]; 2]>()
                     .as_ptr()
@@ -1227,7 +1513,12 @@ mod test {
                     Felt::from(3333),
                     Felt::from(4444),
                 )
-                .to_ptr(&Bump::new(), &registry, &program.type_declarations[0].id)
+                .to_ptr(
+                    &Bump::new(),
+                    &registry,
+                    &program.type_declarations[0].id,
+                    |_| todo!(),
+                )
                 .unwrap()
                 .cast::<[[u32; 8]; 4]>()
                 .as_ptr()
@@ -1260,7 +1551,12 @@ mod test {
             value: Box::new(Value::Uint8(10)),
             debug_name: None,
         }
-        .to_ptr(&Bump::new(), &registry, &program.type_declarations[1].id);
+        .to_ptr(
+            &Bump::new(),
+            &registry,
+            &program.type_declarations[1].id,
+            |_| todo!(),
+        );
 
         // Assertion to verify that the value returned by to_jit is not NULL
         assert!(result.is_ok());
@@ -1289,7 +1585,12 @@ mod test {
                         upper: BigInt::from(510),
                     },
                 }
-                .to_ptr(&Bump::new(), &registry, &program.type_declarations[1].id)
+                .to_ptr(
+                    &Bump::new(),
+                    &registry,
+                    &program.type_declarations[1].id,
+                    |_| todo!(),
+                )
                 .unwrap()
                 .cast::<[u32; 8]>()
                 .as_ptr()
@@ -1319,7 +1620,12 @@ mod test {
                 upper: BigInt::from(10),
             },
         }
-        .to_ptr(&Bump::new(), &registry, &program.type_declarations[1].id);
+        .to_ptr(
+            &Bump::new(),
+            &registry,
+            &program.type_declarations[1].id,
+            |_| todo!(),
+        );
 
         assert!(matches!(
             result,
@@ -1348,7 +1654,12 @@ mod test {
                 upper: BigInt::from(510),
             },
         }
-        .to_ptr(&Bump::new(), &registry, &program.type_declarations[1].id);
+        .to_ptr(
+            &Bump::new(),
+            &registry,
+            &program.type_declarations[1].id,
+            |_| todo!(),
+        );
 
         assert!(matches!(
             result,
@@ -1377,7 +1688,12 @@ mod test {
                 upper: BigInt::from(510),
             },
         }
-        .to_ptr(&Bump::new(), &registry, &program.type_declarations[1].id);
+        .to_ptr(
+            &Bump::new(),
+            &registry,
+            &program.type_declarations[1].id,
+            |_| todo!(),
+        );
 
         assert!(matches!(
             result,
@@ -1406,7 +1722,12 @@ mod test {
                 upper: BigInt::from(10),
             },
         }
-        .to_ptr(&Bump::new(), &registry, &program.type_declarations[1].id);
+        .to_ptr(
+            &Bump::new(),
+            &registry,
+            &program.type_declarations[1].id,
+            |_| todo!(),
+        );
 
         assert!(matches!(
             result,
@@ -1415,7 +1736,6 @@ mod test {
     }
 
     #[test]
-    #[should_panic(expected = "Variant index out of range.")]
     fn test_to_jit_enum_variant_out_of_range() {
         // Parse the program
         let program = ProgramParser::new()
@@ -1429,16 +1749,26 @@ mod test {
         let registry = ProgramRegistry::<CoreType, CoreLibfunc>::new(&program).unwrap();
 
         // Call to_jit to get the value of the enum with tag value out of range
-        let _ = Value::Enum {
+        let result = Value::Enum {
             tag: 2,
             value: Box::new(Value::Uint8(10)),
             debug_name: None,
         }
-        .to_ptr(&Bump::new(), &registry, &program.type_declarations[1].id);
+        .to_ptr(
+            &Bump::new(),
+            &registry,
+            &program.type_declarations[1].id,
+            |_| todo!(),
+        )
+        .unwrap_err();
+
+        let error = result.to_string().clone();
+        let error_msg = error.split("\n").collect::<Vec<&str>>()[0];
+
+        assert_eq!(error_msg, "Variant index out of range.");
     }
 
     #[test]
-    #[should_panic(expected = "An enum without variants cannot be instantiated.")]
     fn test_to_jit_enum_no_variant() {
         let program = ProgramParser::new()
             .parse(
@@ -1449,12 +1779,26 @@ mod test {
 
         let registry = ProgramRegistry::<CoreType, CoreLibfunc>::new(&program).unwrap();
 
-        let _ = Value::Enum {
+        let result = Value::Enum {
             tag: 0,
             value: Box::new(Value::Uint8(10)),
             debug_name: None,
         }
-        .to_ptr(&Bump::new(), &registry, &program.type_declarations[1].id);
+        .to_ptr(
+            &Bump::new(),
+            &registry,
+            &program.type_declarations[1].id,
+            |_| todo!(),
+        )
+        .unwrap_err();
+
+        let error = result.to_string().clone();
+        let error_msg = error.split("\n").collect::<Vec<&str>>()[0];
+
+        assert_eq!(
+            error_msg,
+            "An enum without variants cannot be instantiated."
+        );
     }
 
     #[test]
@@ -1480,7 +1824,12 @@ mod test {
             }),
             debug_name: None,
         }
-        .to_ptr(&Bump::new(), &registry, &program.type_declarations[0].id)
+        .to_ptr(
+            &Bump::new(),
+            &registry,
+            &program.type_declarations[0].id,
+            |_| todo!(),
+        )
         .unwrap_err(); // Unwrapping the error
 
         // Matching the error result to verify the error type and message.
@@ -1518,7 +1867,12 @@ mod test {
             fields: vec![Value::from(2u32)],
             debug_name: None,
         }
-        .to_ptr(&Bump::new(), &registry, &program.type_declarations[0].id)
+        .to_ptr(
+            &Bump::new(),
+            &registry,
+            &program.type_declarations[0].id,
+            |_| todo!(),
+        )
         .unwrap_err(); // Unwrapping the error
 
         // Matching the error result to verify the error type and message.

@@ -1,7 +1,9 @@
 use crate::{
     error::Error,
     execution_result::{ContractExecutionResult, ExecutionResult},
-    metadata::gas::GasMetadata,
+    metadata::{
+        felt252_dict::Felt252DictOverrides, gas::GasMetadata, runtime_bindings::setup_runtime,
+    },
     module::NativeModule,
     starknet::{DummySyscallHandler, StarknetSyscallHandler},
     utils::generate_function_name,
@@ -10,7 +12,7 @@ use crate::{
 };
 use cairo_lang_sierra::{
     extensions::core::{CoreLibfunc, CoreType},
-    ids::FunctionId,
+    ids::{ConcreteTypeId, FunctionId},
     program::FunctionSignature,
     program_registry::ProgramRegistry,
 };
@@ -18,6 +20,7 @@ use educe::Educe;
 use libc::c_void;
 use libloading::Library;
 use starknet_types_core::felt::Felt;
+use std::{io, mem::transmute};
 use tempfile::NamedTempFile;
 
 #[derive(Educe)]
@@ -29,6 +32,7 @@ pub struct AotNativeExecutor {
     registry: ProgramRegistry<CoreType, CoreLibfunc>,
 
     gas_metadata: GasMetadata,
+    dict_overrides: Felt252DictOverrides,
 }
 
 unsafe impl Send for AotNativeExecutor {}
@@ -39,39 +43,55 @@ impl AotNativeExecutor {
         library: Library,
         registry: ProgramRegistry<CoreType, CoreLibfunc>,
         gas_metadata: GasMetadata,
+        dict_overrides: Felt252DictOverrides,
     ) -> Self {
-        Self {
+        let executor = Self {
             library,
             registry,
             gas_metadata,
-        }
+            dict_overrides,
+        };
+
+        setup_runtime(|name| executor.find_symbol_ptr(name));
+
+        #[cfg(feature = "with-debug-utils")]
+        crate::metadata::debug_utils::setup_runtime(|name| executor.find_symbol_ptr(name));
+
+        #[cfg(feature = "with-trace-dump")]
+        crate::metadata::trace_dump::setup_runtime(|name| executor.find_symbol_ptr(name));
+
+        executor
     }
 
     /// Utility to convert a [`NativeModule`] into an [`AotNativeExecutor`].
-    pub fn from_native_module(module: NativeModule, opt_level: OptLevel) -> Self {
+    pub fn from_native_module(module: NativeModule, opt_level: OptLevel) -> Result<Self, Error> {
         let NativeModule {
             module,
             registry,
             mut metadata,
         } = module;
 
-        let library_path = NamedTempFile::new().unwrap().into_temp_path();
+        let library_path = NamedTempFile::new()?
+            .into_temp_path()
+            .keep()
+            .map_err(io::Error::from)?;
 
-        let object_data = crate::module_to_object(&module, opt_level).unwrap();
-        crate::object_to_shared_lib(&object_data, &library_path).unwrap();
+        let object_data = crate::module_to_object(&module, opt_level)?;
+        crate::object_to_shared_lib(&object_data, &library_path)?;
 
-        Self {
-            library: unsafe { Library::new(library_path).unwrap() },
+        Ok(Self::new(
+            unsafe { Library::new(&library_path)? },
             registry,
-            gas_metadata: metadata.remove().unwrap(),
-        }
+            metadata.remove().ok_or(Error::MissingMetadata)?,
+            metadata.remove().unwrap_or_default(),
+        ))
     }
 
     pub fn invoke_dynamic(
         &self,
         function_id: &FunctionId,
         args: &[Value],
-        gas: Option<u128>,
+        gas: Option<u64>,
     ) -> Result<ExecutionResult, Error> {
         let available_gas = self
             .gas_metadata
@@ -80,12 +100,12 @@ impl AotNativeExecutor {
 
         super::invoke_dynamic(
             &self.registry,
-            self.find_function_ptr(function_id),
-            self.find_symbol_ptr("builtin_costs"),
-            self.extract_signature(function_id),
+            self.find_function_ptr(function_id)?,
+            self.extract_signature(function_id)?,
             args,
             available_gas,
             Option::<DummySyscallHandler>::None,
+            self.build_find_dict_drop_override(),
         )
     }
 
@@ -93,7 +113,7 @@ impl AotNativeExecutor {
         &self,
         function_id: &FunctionId,
         args: &[Value],
-        gas: Option<u128>,
+        gas: Option<u64>,
         syscall_handler: impl StarknetSyscallHandler,
     ) -> Result<ExecutionResult, Error> {
         let available_gas = self
@@ -103,12 +123,12 @@ impl AotNativeExecutor {
 
         super::invoke_dynamic(
             &self.registry,
-            self.find_function_ptr(function_id),
-            self.find_symbol_ptr("builtin_costs"),
-            self.extract_signature(function_id),
+            self.find_function_ptr(function_id)?,
+            self.extract_signature(function_id)?,
             args,
             available_gas,
             Some(syscall_handler),
+            self.build_find_dict_drop_override(),
         )
     }
 
@@ -116,7 +136,7 @@ impl AotNativeExecutor {
         &self,
         function_id: &FunctionId,
         args: &[Felt],
-        gas: Option<u128>,
+        gas: Option<u64>,
         syscall_handler: impl StarknetSyscallHandler,
     ) -> Result<ContractExecutionResult, Error> {
         let available_gas = self
@@ -126,32 +146,31 @@ impl AotNativeExecutor {
 
         ContractExecutionResult::from_execution_result(super::invoke_dynamic(
             &self.registry,
-            self.find_function_ptr(function_id),
-            self.find_symbol_ptr("builtin_costs"),
-            self.extract_signature(function_id),
+            self.find_function_ptr(function_id)?,
+            self.extract_signature(function_id)?,
             &[Value::Struct {
                 fields: vec![Value::Array(
                     args.iter().cloned().map(Value::Felt252).collect(),
                 )],
-                // TODO: Populate `debug_name`.
                 debug_name: None,
             }],
             available_gas,
             Some(syscall_handler),
+            self.build_find_dict_drop_override(),
         )?)
     }
 
-    pub fn find_function_ptr(&self, function_id: &FunctionId) -> *mut c_void {
+    pub fn find_function_ptr(&self, function_id: &FunctionId) -> Result<*mut c_void, Error> {
         let function_name = generate_function_name(function_id, false);
         let function_name = format!("_mlir_ciface_{function_name}");
 
         // Arguments and return values are hardcoded since they'll be handled by the trampoline.
         unsafe {
-            self.library
-                .get::<extern "C" fn()>(function_name.as_bytes())
-                .unwrap()
+            Ok(self
+                .library
+                .get::<extern "C" fn()>(function_name.as_bytes())?
                 .into_raw()
-                .into_raw()
+                .into_raw())
         }
     }
 
@@ -164,8 +183,19 @@ impl AotNativeExecutor {
         }
     }
 
-    fn extract_signature(&self, function_id: &FunctionId) -> &FunctionSignature {
-        &self.registry.get_function(function_id).unwrap().signature
+    fn extract_signature(&self, function_id: &FunctionId) -> Result<&FunctionSignature, Error> {
+        Ok(&self.registry.get_function(function_id)?.signature)
+    }
+
+    fn build_find_dict_drop_override(
+        &self,
+    ) -> impl '_ + Copy + Fn(&ConcreteTypeId) -> Option<extern "C" fn(*mut c_void)> {
+        |type_id| {
+            self.dict_overrides
+                .get_drop_fn(type_id)
+                .and_then(|symbol| self.find_symbol_ptr(symbol))
+                .map(|ptr| unsafe { transmute(ptr as *const ()) })
+        }
     }
 }
 
@@ -183,7 +213,7 @@ mod tests {
     #[fixture]
     fn program() -> Program {
         let (_, program) = load_cairo! {
-            use core::starknet::{SyscallResultTrait, get_block_hash_syscall};
+            use starknet::{SyscallResultTrait, get_block_hash_syscall};
 
             fn run_test() -> felt252 {
                 42
@@ -227,15 +257,15 @@ mod tests {
     fn test_invoke_dynamic(program: Program, #[case] optlevel: OptLevel) {
         let native_context = NativeContext::new();
         let module = native_context
-            .compile(&program, false)
+            .compile(&program, false, Some(Default::default()))
             .expect("failed to compile context");
-        let executor = AotNativeExecutor::from_native_module(module, optlevel);
+        let executor = AotNativeExecutor::from_native_module(module, optlevel).unwrap();
 
         // The first function in the program is `run_test`.
         let entrypoint_function_id = &program.funcs.first().expect("should have a function").id;
 
         let result = executor
-            .invoke_dynamic(entrypoint_function_id, &[], Some(u128::MAX))
+            .invoke_dynamic(entrypoint_function_id, &[], Some(u64::MAX))
             .unwrap();
 
         assert_eq!(result.return_value, Value::Felt252(Felt::from(42)));
@@ -248,9 +278,9 @@ mod tests {
     fn test_invoke_dynamic_with_syscall_handler(program: Program, #[case] optlevel: OptLevel) {
         let native_context = NativeContext::new();
         let module = native_context
-            .compile(&program, false)
+            .compile(&program, false, Some(Default::default()))
             .expect("failed to compile context");
-        let executor = AotNativeExecutor::from_native_module(module, optlevel);
+        let executor = AotNativeExecutor::from_native_module(module, optlevel).unwrap();
 
         // The second function in the program is `get_block_hash`.
         let entrypoint_function_id = &program.funcs.get(1).expect("should have a function").id;
@@ -263,7 +293,7 @@ mod tests {
             .invoke_dynamic_with_syscall_handler(
                 entrypoint_function_id,
                 &[],
-                Some(u128::MAX),
+                Some(u64::MAX),
                 syscall_handler,
             )
             .unwrap();
@@ -287,14 +317,19 @@ mod tests {
     fn test_invoke_contract_dynamic(starknet_program: Program, #[case] optlevel: OptLevel) {
         let native_context = NativeContext::new();
         let module = native_context
-            .compile(&starknet_program, false)
+            .compile(&starknet_program, false, Some(Default::default()))
             .expect("failed to compile context");
-        let executor = AotNativeExecutor::from_native_module(module, optlevel);
+        let executor = AotNativeExecutor::from_native_module(module, optlevel).unwrap();
 
-        // The last function in the program is the `get` wrapper function.
         let entrypoint_function_id = &starknet_program
             .funcs
-            .last()
+            .iter()
+            .find(|f| {
+                f.id.debug_name
+                    .as_ref()
+                    .map(|name| name.contains("__wrapper__ISimpleStorageImpl__get"))
+                    .unwrap_or_default()
+            })
             .expect("should have a function")
             .id;
 
@@ -302,7 +337,7 @@ mod tests {
             .invoke_contract_dynamic(
                 entrypoint_function_id,
                 &[],
-                Some(u128::MAX),
+                Some(u64::MAX),
                 &mut StubSyscallHandler::default(),
             )
             .unwrap();

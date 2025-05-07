@@ -1,0 +1,130 @@
+name: Starknet Blocks
+
+on:
+  pull_request:
+    branches: [main]
+  merge_group:
+    types: [checks_requested]
+
+jobs:
+  run-blocks:
+    name: Run Blocks
+    runs-on: ubuntu-latest
+    env:
+      MLIR_SYS_190_PREFIX: /usr/lib/llvm-19/
+      LLVM_SYS_191_PREFIX: /usr/lib/llvm-19/
+      TABLEGEN_190_PREFIX: /usr/lib/llvm-19/
+      RPC_ENDPOINT_TESTNET: ${{ secrets.RPC_ENDPOINT_TESTNET }}
+      RPC_ENDPOINT_MAINNET: ${{ secrets.RPC_ENDPOINT_MAINNET }}
+    strategy:
+      matrix:
+        runner: [native, vm]
+        block: [742001, 769597, 779328, 801008, 803072]
+      fail-fast: false
+    defaults:
+      run:
+        shell: bash
+        working-directory: ./starknet-replay
+    steps:
+      # We checkout replay as it's the main repository for this workflow
+      - name: Checkout Replay
+        uses: actions/checkout@v4
+        with:
+          repository: lambdaclass/starknet-replay
+          path: starknet-replay
+          ref: 135ba7cd5b45fe137b11b7f75654dcd472363033
+      # We need native to use the linux deps ci action
+      - name: Checkout Native
+        uses: actions/checkout@v4
+        with:
+          path: cairo_native
+      - name: Checkout Sequencer
+        uses: actions/checkout@v4
+        with:
+          repository: lambdaclass/sequencer
+          path: sequencer
+          ref: b61262980394dab0e0a4c4cab85f12d31d0ce878
+
+      - name: Cache RPC Calls
+        uses: actions/cache@v4.2.0
+        with:
+          path: starknet-replay/rpc_cache
+          key: cache-${{matrix.block}}-${{matrix.runner}}
+
+      # Install dependencies
+      - uses: ./cairo_native/.github/actions/install-linux-deps
+      - name: Setup rust env
+        uses: dtolnay/rust-toolchain@1.84.1
+      - name: Retreive cached dependecies
+        uses: Swatinem/rust-cache@v2
+        with:
+          workspaces: |
+            starknet-replay
+            cairo_native
+
+      - name: Patch replay dependencies
+        run: |
+          # Updates sequencer dependency to local path
+          name='[[:alnum:]_-]+'
+          sequencer_url='"https:\/\/github.com\/lambdaclass\/sequencer\.git"'
+          rev='"[^"]+"'
+          new_path='"..\/sequencer\/crates\/\1"'
+          sed -i'' -r "s/^($name) = \{ git = $sequencer_url, (rev|branch) = $rev/\1 = { path = $new_path/" Cargo.toml
+
+          # Updates native dependency to local path
+          new_path='"..\/cairo_native"'
+          sed -i'' -r "s/^cairo-native = .*/cairo-native.path = $new_path/" Cargo.toml
+
+          git diff
+
+      - name: Patch sequencer dependencies
+        run: |
+          cd ../sequencer
+
+          # Updates native dependency to local path
+          new_path='"..\/cairo_native"'
+          sed -i'' -r "s/^cairo-native = .*/cairo-native.path = $new_path/" Cargo.toml
+
+          git diff
+
+      - name: Run with Native
+        if: ${{ matrix.runner == 'native' }}
+        run: |
+          cargo run --features state_dump block mainnet ${{ matrix.block }}
+
+      - name: Run with VM
+        if: ${{ matrix.runner == 'vm' }}
+        run: |
+          cargo run --features "state_dump,only_cairo_vm" block mainnet ${{ matrix.block }}
+
+      - name: Upload dumps
+        uses: actions/upload-artifact@v4
+        with:
+          name: dump-${{matrix.block}}-${{matrix.runner}}
+          path: starknet-replay/state_dumps/${{matrix.runner}}
+
+  compare-dumps:
+    name: Compare Dumps
+    needs: [run-blocks]
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Fetch Native dumps
+        uses: actions/download-artifact@v4
+        with:
+          pattern: dump-*-native
+          path: state_dumps/native
+          merge-multiple: true
+        continue-on-error: true
+      - name: Fetch VM dumps
+        uses: actions/download-artifact@v4
+        with:
+          pattern: dump-*-vm
+          path: state_dumps/vm
+          merge-multiple: true
+        continue-on-error: true
+
+      - name: Compare states
+        run: |
+          ./scripts/cmp_state_dumps.sh

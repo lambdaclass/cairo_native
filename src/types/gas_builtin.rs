@@ -1,7 +1,7 @@
 //! # Gas builtin type
 //!
 //! The gas builtin is just a number indicating how many
-//! gas units have been used.
+//! gas units currently remain.
 
 use super::WithSelf;
 use crate::{error::Result, metadata::MetadataStorage};
@@ -27,5 +27,5 @@ pub fn build<'ctx>(
     _metadata: &mut MetadataStorage,
     _info: WithSelf<InfoOnlyConcreteType>,
 ) -> Result<Type<'ctx>> {
-    Ok(IntegerType::new(context, 128).into())
+    Ok(IntegerType::new(context, 64).into())
 }
