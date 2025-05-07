@@ -212,6 +212,9 @@ fn compile_func(
     )
     .collect::<Result<Vec<_>, _>>()?;
 
+    #[cfg(feature = "with-trace-dump")]
+    let mut var_types: HashMap<VarId, ConcreteTypeId> = HashMap::new();
+
     // Replace memory-allocated arguments with pointers.
     for (ty, type_info) in
         arg_types
@@ -415,6 +418,9 @@ fn compile_func(
                     value
                 },
             ));
+
+            #[cfg(feature = "with-trace-dump")]
+            var_types.insert(param.id.clone(), param.ty.clone());
         }
 
         values.into_iter()
@@ -522,6 +528,19 @@ fn compile_func(
                         format!("{}(stmt_idx={})", libfunc_to_name(libf), statement_idx)
                     };
 
+                    #[cfg(feature = "with-trace-dump")]
+                    crate::utils::trace_dump::build_state_snapshot(
+                        context,
+                        registry,
+                        module,
+                        block,
+                        location,
+                        metadata,
+                        statement_idx,
+                        &state,
+                        &var_types,
+                    );
+
                     let (state, _) = edit_state::take_args(state, invocation.args.iter())?;
 
                     let helper = LibfuncHelper {
@@ -614,6 +633,17 @@ fn compile_func(
                         }
                     }
 
+                    #[cfg(feature = "with-trace-dump")]
+                    for (branch_signature, branch_info) in
+                        libfunc.branch_signatures().iter().zip(&invocation.branches)
+                    {
+                        for (var_info, var_id) in
+                            branch_signature.vars.iter().zip(&branch_info.results)
+                        {
+                            var_types.insert(var_id.clone(), var_info.ty.clone());
+                        }
+                    }
+
                     StatementCompileResult::Processed(
                         invocation
                             .branches
@@ -646,6 +676,21 @@ fn compile_func(
                             0,
                         ),
                     );
+
+                    #[cfg(feature = "with-trace-dump")]
+                    if !is_recursive || tailrec_state.is_some() {
+                        crate::utils::trace_dump::build_state_snapshot(
+                            context,
+                            registry,
+                            module,
+                            block,
+                            location,
+                            metadata,
+                            statement_idx,
+                            &state,
+                            &var_types,
+                        );
+                    }
 
                     let (_, mut values) = edit_state::take_args(state, var_ids.iter())?;
 
