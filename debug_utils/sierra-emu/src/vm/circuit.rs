@@ -364,6 +364,7 @@ fn eval_failure_guarantee_verify(
         range: BigInt::zero()..BigInt::one() << 96,
         value: 0.into(),
     };
+    // This should be changed with it correct value when we implement this libfunc in native
     let limbs_struct = Value::Struct(vec![zero_u96; limbs_cout]);
 
     EvalAction::NormalBranch(
