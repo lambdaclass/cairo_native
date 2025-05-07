@@ -1,6 +1,6 @@
 use super::EvalAction;
 use crate::{
-    utils::{get_numberic_args_as_bigints, get_value_from_integer},
+    utils::{get_numeric_args_as_bigints, get_value_from_integer},
     Value,
 };
 use cairo_lang_sierra::{
@@ -33,7 +33,7 @@ fn eval_downcast(
     let range_check @ Value::Unit: Value = args[0].clone() else {
         panic!()
     };
-    let [value] = get_numberic_args_as_bigints(&args[1..]).try_into().unwrap();
+    let [value] = get_numeric_args_as_bigints(&args[1..]).try_into().unwrap();
 
     let int_ty = registry.get_type(&info.to_ty).unwrap();
     let range = info.to_range.lower.clone()..info.to_range.upper.clone();
@@ -52,7 +52,7 @@ fn eval_upcast(
     info: &SignatureOnlyConcreteLibfunc,
     args: Vec<Value>,
 ) -> EvalAction {
-    let [value] = get_numberic_args_as_bigints(&args).try_into().unwrap();
+    let [value] = get_numeric_args_as_bigints(&args).try_into().unwrap();
     let int_ty = registry
         .get_type(&info.branch_signatures()[0].vars[0].ty)
         .unwrap();

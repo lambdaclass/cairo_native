@@ -1,5 +1,5 @@
 use super::EvalAction;
-use crate::{utils::get_numberic_args_as_bigints, Value};
+use crate::{utils::get_numeric_args_as_bigints, Value};
 use cairo_lang_sierra::{
     extensions::{
         bounded_int::{
@@ -39,7 +39,7 @@ pub fn eval_add(
     info: &SignatureOnlyConcreteLibfunc,
     args: Vec<Value>,
 ) -> EvalAction {
-    let [lhs, rhs]: [BigInt; 2] = get_numberic_args_as_bigints(&args).try_into().unwrap();
+    let [lhs, rhs]: [BigInt; 2] = get_numeric_args_as_bigints(&args).try_into().unwrap();
 
     let range = match registry
         .get_type(&info.signature.branch_signatures[0].vars[0].ty)
@@ -68,7 +68,7 @@ pub fn eval_sub(
     info: &SignatureOnlyConcreteLibfunc,
     args: Vec<Value>,
 ) -> EvalAction {
-    let [lhs, rhs]: [BigInt; 2] = get_numberic_args_as_bigints(&args).try_into().unwrap();
+    let [lhs, rhs]: [BigInt; 2] = get_numeric_args_as_bigints(&args).try_into().unwrap();
 
     let range = match registry
         .get_type(&info.signature.branch_signatures[0].vars[0].ty)
@@ -97,7 +97,7 @@ pub fn eval_mul(
     info: &SignatureOnlyConcreteLibfunc,
     args: Vec<Value>,
 ) -> EvalAction {
-    let [lhs, rhs]: [BigInt; 2] = get_numberic_args_as_bigints(&args).try_into().unwrap();
+    let [lhs, rhs]: [BigInt; 2] = get_numeric_args_as_bigints(&args).try_into().unwrap();
 
     let range = match registry
         .get_type(&info.signature.branch_signatures[0].vars[0].ty)
@@ -126,7 +126,7 @@ pub fn eval_div_rem(
     info: &BoundedIntDivRemConcreteLibfunc,
     args: Vec<Value>,
 ) -> EvalAction {
-    let [lhs, rhs]: [BigInt; 2] = get_numberic_args_as_bigints(&args).try_into().unwrap();
+    let [lhs, rhs]: [BigInt; 2] = get_numeric_args_as_bigints(&args).try_into().unwrap();
 
     let quo = &lhs / &rhs;
     let rem = lhs % rhs;
