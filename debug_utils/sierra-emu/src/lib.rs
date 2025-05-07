@@ -123,6 +123,12 @@ pub fn run_program(
                     ) => Value::Unit,
                     CoreTypeConcrete::Starknet(inner) => match inner {
                         StarknetTypeConcrete::System(_) => Value::Unit,
+                        StarknetTypeConcrete::ClassHash(_)
+                        | StarknetTypeConcrete::ContractAddress(_)
+                        | StarknetTypeConcrete::StorageBaseAddress(_)
+                        | StarknetTypeConcrete::StorageAddress(_) => {
+                            Value::parse_felt(&iter.next().unwrap())
+                        }
                         _ => todo!(),
                     },
                     _ => todo!(),
