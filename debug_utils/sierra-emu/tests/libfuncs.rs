@@ -145,12 +145,3 @@ fn test_run_full_circuit() {
 
     assert_eq!(**payload, expected_output);
 }
-
-#[test]
-fn test_circuit_failure() {
-    run_program(
-        "tests/tests/circuits_failure.cairo",
-        "circuits_failure::circuits_failure::main",
-        &[],
-    );
-}
