@@ -572,14 +572,18 @@ pub mod trace_dump_runtime {
 
                     let value_ptr = value_ptr.cast::<[u8; 48]>();
 
+                    let size = u384_layout.pad_to_align().size();
+
                     for i in 0..n_outputs {
-                        let size = u384_layout.pad_to_align().size();
                         let current_ptr = value_ptr.byte_add(size * i);
                         let current_value = current_ptr.as_ref();
                         values.push(BigUint::from_bytes_le(current_value));
                     }
 
-                    Value::CircuitOutputs(values)
+                    let current_ptr = value_ptr.byte_add(size * n_outputs);
+                    let modulus = BigUint::from_bytes_le(current_ptr.as_ref());
+
+                    Value::CircuitOutputs { circuits: values, modulus }
                 }
                 CircuitTypeConcrete::CircuitPartialOutputs(_) => {
                     todo!("CircuitTypeConcrete::CircuitPartialOutputs")
