@@ -60,7 +60,7 @@ fn eval_try_new(
         }
     };
 
-    EvalAction::NormalBranch(id_valid_range as usize, smallvec![range_check, range])
+    EvalAction::NormalBranch(is_valid_range as usize, smallvec![range_check, range])
 }
 
 fn eval_pop_front(
