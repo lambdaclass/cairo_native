@@ -5,7 +5,7 @@ use serde::{ser::SerializeMap, Serialize};
 use starknet_crypto::Felt;
 use std::collections::BTreeMap;
 
-#[derive(Clone, Debug, Default, Serialize)]
+#[derive(Clone, Debug, Default, Serialize, Eq, PartialEq)]
 pub struct ProgramTrace {
     pub states: Vec<StateDump>,
     // TODO: Syscall data.
@@ -34,7 +34,7 @@ impl ProgramTrace {
     }
 }
 
-#[derive(Clone, Debug)]
+#[derive(Clone, Debug, Eq, PartialEq)]
 pub struct StateDump {
     pub statement_idx: StatementIdx,
     pub items: BTreeMap<u64, Value>,
