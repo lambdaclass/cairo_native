@@ -90,6 +90,6 @@ pub fn value_to_felt(value: &Value) -> Vec<Felt> {
             felts.extend(felt);
             felts
         }
-        Value::Unit | Value::Uninitialized { .. } => vec![0.into()],
+        Value::Unit | Value::Null | Value::Uninitialized { .. } => vec![0.into()],
     }
 }
