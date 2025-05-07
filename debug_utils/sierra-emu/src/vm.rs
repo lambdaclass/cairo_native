@@ -229,6 +229,9 @@ impl VirtualMachine {
         I: IntoIterator<Item = Value>,
         I::IntoIter: ExactSizeIterator,
     {
+        let required_gas = self.gas.initial_required_gas(&function.id).unwrap();
+        let initial_gas = initial_gas.checked_sub(required_gas).unwrap();
+
         let mut iter = args.into_iter();
         self.push_frame(
             function.id.clone(),
