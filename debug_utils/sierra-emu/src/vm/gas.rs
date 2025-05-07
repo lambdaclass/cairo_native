@@ -29,7 +29,7 @@ pub fn eval(
         GasConcreteLibfunc::RedepositGas(info) => {
             eval_redeposit_gas(registry, info, args, gas, statement_idx, builtin_costs)
         }
-        GasConcreteLibfunc::GetAvailableGas(_) => todo!(),
+        GasConcreteLibfunc::GetAvailableGas(info) => eval_get_available_gas(registry, info, args),
         GasConcreteLibfunc::BuiltinWithdrawGas(info) => {
             eval_builtin_withdraw_gas(registry, info, args, gas, statement_idx)
         }
@@ -172,6 +172,18 @@ pub fn eval_redeposit_gas(
     let new_gas = gas.saturating_add(total_gas_cost);
 
     EvalAction::NormalBranch(0, smallvec![Value::U64(new_gas)])
+}
+
+pub fn eval_get_available_gas(
+    _registry: &ProgramRegistry<CoreType, CoreLibfunc>,
+    _info: &SignatureOnlyConcreteLibfunc,
+    args: Vec<Value>,
+) -> EvalAction {
+    let [gas_val @ Value::U64(gas)]: [Value; 1] = args.try_into().unwrap() else {
+        panic!();
+    };
+
+    EvalAction::NormalBranch(0, smallvec![gas_val, Value::U128(gas as u128)])
 }
 
 pub fn eval_get_builtin_costs(
