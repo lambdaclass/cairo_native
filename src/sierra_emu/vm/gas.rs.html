@@ -29,7 +29,7 @@
 <a href=#29 id=29 data-nosnippet>29</a>        GasConcreteLibfunc::RedepositGas(info) =&gt; {
 <a href=#30 id=30 data-nosnippet>30</a>            eval_redeposit_gas(registry, info, args, gas, statement_idx, builtin_costs)
 <a href=#31 id=31 data-nosnippet>31</a>        }
-<a href=#32 id=32 data-nosnippet>32</a>        GasConcreteLibfunc::GetAvailableGas(<span class="kw">_</span>) =&gt; <span class="macro">todo!</span>(),
+<a href=#32 id=32 data-nosnippet>32</a>        GasConcreteLibfunc::GetAvailableGas(info) =&gt; eval_get_available_gas(registry, info, args),
 <a href=#33 id=33 data-nosnippet>33</a>        GasConcreteLibfunc::BuiltinWithdrawGas(info) =&gt; {
 <a href=#34 id=34 data-nosnippet>34</a>            eval_builtin_withdraw_gas(registry, info, args, gas, statement_idx)
 <a href=#35 id=35 data-nosnippet>35</a>        }
@@ -40,7 +40,7 @@
 <a href=#40 id=40 data-nosnippet>40</a>    }
 <a href=#41 id=41 data-nosnippet>41</a>}
 <a href=#42 id=42 data-nosnippet>42</a>
-<a href=#43 id=43 data-nosnippet>43</a><span class="kw">pub fn </span>eval_builtin_withdraw_gas(
+<a href=#43 id=43 data-nosnippet>43</a><span class="kw">fn </span>eval_builtin_withdraw_gas(
 <a href=#44 id=44 data-nosnippet>44</a>    _registry: <span class="kw-2">&amp;</span>ProgramRegistry&lt;CoreType, CoreLibfunc&gt;,
 <a href=#45 id=45 data-nosnippet>45</a>    _info: <span class="kw-2">&amp;</span>SignatureOnlyConcreteLibfunc,
 <a href=#46 id=46 data-nosnippet>46</a>    args: Vec&lt;Value&gt;,
@@ -87,7 +87,7 @@
 <a href=#87 id=87 data-nosnippet>87</a>    }
 <a href=#88 id=88 data-nosnippet>88</a>}
 <a href=#89 id=89 data-nosnippet>89</a>
-<a href=#90 id=90 data-nosnippet>90</a><span class="kw">pub fn </span>eval_withdraw_gas(
+<a href=#90 id=90 data-nosnippet>90</a><span class="kw">fn </span>eval_withdraw_gas(
 <a href=#91 id=91 data-nosnippet>91</a>    _registry: <span class="kw-2">&amp;</span>ProgramRegistry&lt;CoreType, CoreLibfunc&gt;,
 <a href=#92 id=92 data-nosnippet>92</a>    _info: <span class="kw-2">&amp;</span>SignatureOnlyConcreteLibfunc,
 <a href=#93 id=93 data-nosnippet>93</a>    args: Vec&lt;Value&gt;,
@@ -133,7 +133,7 @@
 <a href=#133 id=133 data-nosnippet>133</a>    }
 <a href=#134 id=134 data-nosnippet>134</a>}
 <a href=#135 id=135 data-nosnippet>135</a>
-<a href=#136 id=136 data-nosnippet>136</a><span class="kw">pub fn </span>eval_redeposit_gas(
+<a href=#136 id=136 data-nosnippet>136</a><span class="kw">fn </span>eval_redeposit_gas(
 <a href=#137 id=137 data-nosnippet>137</a>    _registry: <span class="kw-2">&amp;</span>ProgramRegistry&lt;CoreType, CoreLibfunc&gt;,
 <a href=#138 id=138 data-nosnippet>138</a>    _info: <span class="kw-2">&amp;</span>SignatureOnlyConcreteLibfunc,
 <a href=#139 id=139 data-nosnippet>139</a>    args: Vec&lt;Value&gt;,
@@ -174,11 +174,23 @@
 <a href=#174 id=174 data-nosnippet>174</a>    EvalAction::NormalBranch(<span class="number">0</span>, <span class="macro">smallvec!</span>[Value::U64(new_gas)])
 <a href=#175 id=175 data-nosnippet>175</a>}
 <a href=#176 id=176 data-nosnippet>176</a>
-<a href=#177 id=177 data-nosnippet>177</a><span class="kw">pub fn </span>eval_get_builtin_costs(
+<a href=#177 id=177 data-nosnippet>177</a><span class="kw">fn </span>eval_get_available_gas(
 <a href=#178 id=178 data-nosnippet>178</a>    _registry: <span class="kw-2">&amp;</span>ProgramRegistry&lt;CoreType, CoreLibfunc&gt;,
 <a href=#179 id=179 data-nosnippet>179</a>    _info: <span class="kw-2">&amp;</span>SignatureOnlyConcreteLibfunc,
-<a href=#180 id=180 data-nosnippet>180</a>    _args: Vec&lt;Value&gt;,
-<a href=#181 id=181 data-nosnippet>181</a>    builtin_costs: BuiltinCosts,
-<a href=#182 id=182 data-nosnippet>182</a>) -&gt; EvalAction {
-<a href=#183 id=183 data-nosnippet>183</a>    EvalAction::NormalBranch(<span class="number">0</span>, <span class="macro">smallvec!</span>[Value::BuiltinCosts(builtin_costs)])
-<a href=#184 id=184 data-nosnippet>184</a>}</code></pre></div></section></main></body></html>
+<a href=#180 id=180 data-nosnippet>180</a>    args: Vec&lt;Value&gt;,
+<a href=#181 id=181 data-nosnippet>181</a>) -&gt; EvalAction {
+<a href=#182 id=182 data-nosnippet>182</a>    <span class="kw">let </span>[gas_val @ Value::U64(gas)]: [Value; <span class="number">1</span>] = args.try_into().unwrap() <span class="kw">else </span>{
+<a href=#183 id=183 data-nosnippet>183</a>        <span class="macro">panic!</span>();
+<a href=#184 id=184 data-nosnippet>184</a>    };
+<a href=#185 id=185 data-nosnippet>185</a>
+<a href=#186 id=186 data-nosnippet>186</a>    EvalAction::NormalBranch(<span class="number">0</span>, <span class="macro">smallvec!</span>[gas_val, Value::U128(gas <span class="kw">as </span>u128)])
+<a href=#187 id=187 data-nosnippet>187</a>}
+<a href=#188 id=188 data-nosnippet>188</a>
+<a href=#189 id=189 data-nosnippet>189</a><span class="kw">fn </span>eval_get_builtin_costs(
+<a href=#190 id=190 data-nosnippet>190</a>    _registry: <span class="kw-2">&amp;</span>ProgramRegistry&lt;CoreType, CoreLibfunc&gt;,
+<a href=#191 id=191 data-nosnippet>191</a>    _info: <span class="kw-2">&amp;</span>SignatureOnlyConcreteLibfunc,
+<a href=#192 id=192 data-nosnippet>192</a>    _args: Vec&lt;Value&gt;,
+<a href=#193 id=193 data-nosnippet>193</a>    builtin_costs: BuiltinCosts,
+<a href=#194 id=194 data-nosnippet>194</a>) -&gt; EvalAction {
+<a href=#195 id=195 data-nosnippet>195</a>    EvalAction::NormalBranch(<span class="number">0</span>, <span class="macro">smallvec!</span>[Value::BuiltinCosts(builtin_costs)])
+<a href=#196 id=196 data-nosnippet>196</a>}</code></pre></div></section></main></body></html>
