@@ -57,7 +57,7 @@ pub fn eval_get(
         let count = count + 1;
 
         EvalAction::NormalBranch(
-            0,
+            1,
             smallvec![
                 Value::FeltDictEntry {
                     ty,
