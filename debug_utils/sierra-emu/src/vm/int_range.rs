@@ -11,7 +11,7 @@ use num_bigint::BigInt;
 use smallvec::smallvec;
 
 use crate::{
-    utils::{get_numberic_args_as_bigints, get_value_from_integer},
+    utils::{get_numeric_args_as_bigints, get_value_from_integer},
     Value,
 };
 
@@ -33,7 +33,10 @@ fn eval_try_new(
     info: &SignatureOnlyConcreteLibfunc,
     args: Vec<Value>,
 ) -> EvalAction {
-    let [x, y]: [BigInt; 2] = get_numberic_args_as_bigints(args).try_into().unwrap();
+    let range_check @ Value::Unit: Value = args[0].clone() else {
+        panic!()
+    };
+    let [x, y]: [BigInt; 2] = get_numeric_args_as_bigints(&args[1..]).try_into().unwrap();
 
     let int_ty = registry.get_type(&info.param_signatures()[1].ty).unwrap();
 
@@ -55,13 +58,7 @@ fn eval_try_new(
         }
     };
 
-    EvalAction::NormalBranch(
-        1,
-        smallvec![
-            Value::Unit, //range_check
-            range
-        ],
-    )
+    EvalAction::NormalBranch(0, smallvec![range_check, range])
 }
 
 fn eval_pop_front(
@@ -72,9 +69,7 @@ fn eval_pop_front(
     let [Value::IntRange { x, y }]: [Value; 1] = args.try_into().unwrap() else {
         panic!()
     };
-    let [x, y]: [BigInt; 2] = get_numberic_args_as_bigints(vec![*x, *y])
-        .try_into()
-        .unwrap();
+    let [x, y]: [BigInt; 2] = get_numeric_args_as_bigints(&[*x, *y]).try_into().unwrap();
     let int_ty = registry.get_type(&info.param_signatures()[1].ty).unwrap();
 
     if x < y {
