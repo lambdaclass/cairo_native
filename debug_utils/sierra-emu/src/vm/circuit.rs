@@ -1,5 +1,5 @@
 use super::EvalAction;
-use crate::{debug::debug_signature, Value};
+use crate::Value;
 use cairo_lang_sierra::{
     extensions::{
         circuit::{
@@ -8,7 +8,6 @@ use cairo_lang_sierra::{
         },
         core::{CoreLibfunc, CoreType, CoreTypeConcrete},
         lib_func::{SignatureAndTypeConcreteLibfunc, SignatureOnlyConcreteLibfunc},
-        ConcreteLibfunc,
     },
     program_registry::ProgramRegistry,
 };
