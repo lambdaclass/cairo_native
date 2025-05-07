@@ -3335,6 +3335,7 @@ dependencies = [
  "k256",
  "keccak",
  "num-bigint",
+ "num-integer",
  "num-traits",
  "p256",
  "rand 0.8.5",

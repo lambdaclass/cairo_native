@@ -1,5 +1,5 @@
 use super::EvalAction;
-use crate::{debug::debug_signature, Value};
+use crate::Value;
 use cairo_lang_sierra::{
     extensions::{
         circuit::{
@@ -7,13 +7,13 @@ use cairo_lang_sierra::{
             ConcreteU96LimbsLessThanGuaranteeVerifyLibfunc,
         },
         core::{CoreLibfunc, CoreType, CoreTypeConcrete},
-        lib_func::{SignatureAndTypeConcreteLibfunc, SignatureOnlyConcreteLibfunc}, ConcreteLibfunc,
+        lib_func::{SignatureAndTypeConcreteLibfunc, SignatureOnlyConcreteLibfunc},
     },
     program_registry::ProgramRegistry,
 };
 use num_bigint::{BigInt, BigUint, Sign, ToBigInt};
 use num_integer::{ExtendedGcd, Integer};
-use num_traits::{One, Signed, Zero};
+use num_traits::{One, Zero};
 use smallvec::smallvec;
 
 fn u384_to_struct(num: BigUint) -> Value {
@@ -44,29 +44,39 @@ fn u384_to_struct(num: BigUint) -> Value {
     ])
 }
 
-fn modular_inverse(num: &BigInt, modulus: &BigUint) -> (bool, BigUint) {
-    let ExtendedGcd { gcd, x, .. } = num
+fn struct_to_u384(struct_members: Vec<Value>) -> BigUint {
+    let [Value::U128(l0), Value::U128(l1), Value::U128(l2), Value::U128(l3)]: [Value; 4] =
+        struct_members.try_into().unwrap()
+    else {
+        panic!()
+    };
+
+    let l0 = l0.to_le_bytes();
+    let l1 = l1.to_le_bytes();
+    let l2 = l2.to_le_bytes();
+    let l3 = l3.to_le_bytes();
+
+    BigUint::from_bytes_le(&[
+        l0[0], l0[1], l0[2], l0[3], l0[4], l0[5], l0[6], l0[7], l0[8], l0[9], l0[10],
+        l0[11], //
+        l1[0], l1[1], l1[2], l1[3], l1[4], l1[5], l1[6], l1[7], l1[8], l1[9], l1[10],
+        l1[11], //
+        l2[0], l2[1], l2[2], l2[3], l2[4], l2[5], l2[6], l2[7], l2[8], l2[9], l2[10],
+        l2[11], //
+        l3[0], l3[1], l3[2], l3[3], l3[4], l3[5], l3[6], l3[7], l3[8], l3[9], l3[10],
+        l3[11], //
+    ])
+}
+
+fn find_nullifier(num: &BigUint, modulus: &BigUint) -> BigUint {
+    let ExtendedGcd { gcd, .. } = num
         .to_bigint()
         .unwrap()
         .extended_gcd(&modulus.to_bigint().unwrap());
     let gcd = gcd.to_biguint().unwrap();
 
-    if gcd.is_one() {
-        // calculate positive modulus
-        let num_mod = x.magnitude().mod_floor(modulus);
-
-        return (
-            true,
-            if num.is_negative() {
-                modulus - num_mod
-            } else {
-                num_mod
-            },
-        );
-    }
-
     // If there's no inverse, find the value which nullifys the operation
-    (false, modulus / gcd)
+    modulus / gcd
 }
 
 pub fn eval(
@@ -103,7 +113,7 @@ pub fn eval(
     }
 }
 
-pub fn eval_add_input(
+fn eval_add_input(
     _registry: &ProgramRegistry<CoreType, CoreLibfunc>,
     _info: &SignatureAndTypeConcreteLibfunc,
     args: Vec<Value>,
@@ -113,26 +123,7 @@ pub fn eval_add_input(
         panic!()
     };
 
-    let [Value::U128(l0), Value::U128(l1), Value::U128(l2), Value::U128(l3)]: [Value; 4] =
-        members.try_into().unwrap()
-    else {
-        panic!()
-    };
-
-    let l0 = l0.to_le_bytes();
-    let l1 = l1.to_le_bytes();
-    let l2 = l2.to_le_bytes();
-    let l3 = l3.to_le_bytes();
-    values.push(BigUint::from_bytes_le(&[
-        l0[0], l0[1], l0[2], l0[3], l0[4], l0[5], l0[6], l0[7], l0[8], l0[9], l0[10],
-        l0[11], //
-        l1[0], l1[1], l1[2], l1[3], l1[4], l1[5], l1[6], l1[7], l1[8], l1[9], l1[10],
-        l1[11], //
-        l2[0], l2[1], l2[2], l2[3], l2[4], l2[5], l2[6], l2[7], l2[8], l2[9], l2[10],
-        l2[11], //
-        l3[0], l3[1], l3[2], l3[3], l3[4], l3[5], l3[6], l3[7], l3[8], l3[9], l3[10],
-        l3[11], //
-    ]));
+    values.push(struct_to_u384(members));
 
     EvalAction::NormalBranch(
         (values.len() != values.capacity()) as usize,
@@ -140,7 +131,7 @@ pub fn eval_add_input(
     )
 }
 
-pub fn eval_eval(
+fn eval_eval(
     _registry: &ProgramRegistry<CoreType, CoreLibfunc>,
     _info: &SignatureAndTypeConcreteLibfunc,
     _args: Vec<Value>,
@@ -198,16 +189,15 @@ pub fn eval_eval(
                         outputs[mul_gate.output] = Some((l * r) % &modulus);
                     }
                     (None, Some(r)) => {
-                        let r = r.to_bigint().unwrap();
-                        let (sucess, res) = modular_inverse(&r, &modulus);
-
-                        if sucess {
+                        match r.modinv(&modulus) {
                             // if it is a inv_gate the output index is store in lhs
-                            outputs[mul_gate.lhs] = Some(res);
-                        } else {
+                            Some(r) => outputs[mul_gate.lhs] = Some(r),
                             // Since we don't calculate CircuitPartialOutputs
                             // perform an early break
-                            break false;
+                            None => {
+                                outputs[mul_gate.lhs] = Some(find_nullifier(&r, &modulus));
+                                break false
+                            }
                         }
                     }
                     // this state should not be reached since it would mean that
@@ -242,7 +232,7 @@ pub fn eval_eval(
     }
 }
 
-pub fn eval_get_output(
+fn eval_get_output(
     _registry: &ProgramRegistry<CoreType, CoreLibfunc>,
     _info: &ConcreteGetOutputLibFunc,
     args: Vec<Value>,
@@ -274,7 +264,7 @@ pub fn eval_get_output(
     )
 }
 
-pub fn eval_u96_limbs_less_than_guarantee_verify(
+fn eval_u96_limbs_less_than_guarantee_verify(
     _registry: &ProgramRegistry<CoreType, CoreLibfunc>,
     info: &ConcreteU96LimbsLessThanGuaranteeVerifyLibfunc,
     args: Vec<Value>,
@@ -322,29 +312,29 @@ pub fn eval_u96_limbs_less_than_guarantee_verify(
     }
 }
 
-pub fn eval_u96_single_limb_less_than_guarantee_verify(
+fn eval_u96_single_limb_less_than_guarantee_verify(
     _registry: &ProgramRegistry<CoreType, CoreLibfunc>,
     _info: &SignatureOnlyConcreteLibfunc,
     args: Vec<Value>,
 ) -> EvalAction {
-    debug_signature(_registry, _info.param_signatures(), _info.branch_signatures(), &args);
-    let [garantee]: [Value; 1] = args.try_into().unwrap();
+    let [_garantee]: [Value; 1] = args.try_into().unwrap();
 
-    EvalAction::NormalBranch(0, smallvec![garantee])
+    EvalAction::NormalBranch(0, smallvec![Value::U128(0)])
 }
 
-pub fn eval_u96_guarantee_verify(
+fn eval_u96_guarantee_verify(
     _registry: &ProgramRegistry<CoreType, CoreLibfunc>,
     _info: &SignatureOnlyConcreteLibfunc,
     args: Vec<Value>,
 ) -> EvalAction {
-    let [range_check_96 @ Value::Unit, garantee]: [Value; 2] = args.try_into().unwrap() else {
-        panic!()
+    let [range_check_96 @ Value::Unit, _]: [Value; 2] = args.try_into().unwrap() else {
+        panic!();
     };
-    EvalAction::NormalBranch(0, smallvec![range_check_96, garantee])
+
+    EvalAction::NormalBranch(0, smallvec![range_check_96])
 }
 
-pub fn eval_failure_guarantee_verify(
+fn eval_failure_guarantee_verify(
     registry: &ProgramRegistry<CoreType, CoreLibfunc>,
     info: &SignatureOnlyConcreteLibfunc,
     _args: Vec<Value>,
@@ -381,7 +371,7 @@ pub fn eval_failure_guarantee_verify(
     )
 }
 
-pub fn eval_get_descriptor(
+fn eval_get_descriptor(
     _registry: &ProgramRegistry<CoreType, CoreLibfunc>,
     _info: &SignatureAndTypeConcreteLibfunc,
     _args: Vec<Value>,
@@ -389,7 +379,7 @@ pub fn eval_get_descriptor(
     EvalAction::NormalBranch(0, smallvec![Value::Unit])
 }
 
-pub fn eval_init_circuit_data(
+fn eval_init_circuit_data(
     _registry: &ProgramRegistry<CoreType, CoreLibfunc>,
     info: &SignatureAndTypeConcreteLibfunc,
     args: Vec<Value>,
@@ -412,7 +402,7 @@ pub fn eval_init_circuit_data(
     )
 }
 
-pub fn eval_try_into_circuit_modulus(
+fn eval_try_into_circuit_modulus(
     _registry: &ProgramRegistry<CoreType, CoreLibfunc>,
     _info: &SignatureOnlyConcreteLibfunc,
     args: Vec<Value>,
@@ -456,7 +446,7 @@ pub fn eval_try_into_circuit_modulus(
     }
 }
 
-pub fn eval_into_u96_guarantee(
+fn eval_into_u96_guarantee(
     _registry: &ProgramRegistry<CoreType, CoreLibfunc>,
     _info: &SignatureAndTypeConcreteLibfunc,
     args: Vec<Value>,
@@ -479,37 +469,33 @@ mod tests {
     use crate::{load_cairo, test_utils::run_test_program};
 
     #[test]
-    fn test_failure() {
+    fn test_inputs() {
         let (_, program) = load_cairo!(
             use core::circuit::{
-                AddInputResultTrait, AddMod, CircuitElement, CircuitInput, CircuitInputs,
-                CircuitModulus, CircuitOutputsTrait, EvalCircuitTrait, MulMod, RangeCheck96,
-                circuit_add, circuit_inverse, circuit_mul, circuit_sub, u384, u96,
+                AddInputResultTrait, AddMod, CircuitElement, CircuitInput, CircuitInputs, CircuitModulus,
+                CircuitOutputsTrait, EvalCircuitTrait, MulMod, RangeCheck96, circuit_add, circuit_inverse,
+                circuit_mul, circuit_sub, u384, u96,
             };
+            use core::result::ResultTrait;
             use core::num::traits::Zero;
             use core::traits::TryInto;
 
             fn main() {
-                let _in0 = CircuitElement::<CircuitInput<0>> {};
-                let _out0 = circuit_inverse(_in0);
+                let _in1 = CircuitElement::<CircuitInput<0>> {};
+                let _in2 = CircuitElement::<CircuitInput<1>> {};
+                let _add = circuit_add(_in1, _in2);
+
+                let mut _inputs: Array<[u96; 4]> = array![[1, 0, 0, 0], [2, 0, 0, 0]];
+                let mut _circuit_inputs = (_add,).new_inputs();
+
+                while let Some(_input) = _inputs.pop_front() {
+                    _circuit_inputs = _circuit_inputs.next(_input);
+                }
 
                 let _modulus = TryInto::<_, CircuitModulus>::try_into([55, 0, 0, 0]).unwrap();
-                (_out0,)
-                    .new_inputs()
-                    .next([11, 0, 0, 0])
-                    .done()
-                    .eval(_modulus)
-                    .unwrap_err();
-                (_out0,)
-                    .new_inputs()
-                    .next([11, 0, 0, 0])
-                    .done()
-                    .eval(_modulus)
-                    .unwrap_err();
+                let _res = ResultTrait::unwrap(_circuit_inputs.done().eval(_modulus));
             }
         );
-
-        //println!("{}", &program);
 
         run_test_program(program);
     }
