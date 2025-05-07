@@ -583,7 +583,10 @@ pub mod trace_dump_runtime {
                     let current_ptr = value_ptr.byte_add(size * n_outputs);
                     let modulus = BigUint::from_bytes_le(current_ptr.as_ref());
 
-                    Value::CircuitOutputs { circuits: values, modulus }
+                    Value::CircuitOutputs {
+                        circuits: values,
+                        modulus,
+                    }
                 }
                 CircuitTypeConcrete::CircuitPartialOutputs(_) => {
                     todo!("CircuitTypeConcrete::CircuitPartialOutputs")
