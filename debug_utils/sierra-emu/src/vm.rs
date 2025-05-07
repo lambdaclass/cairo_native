@@ -51,6 +51,7 @@ mod gas;
 mod int;
 mod jump;
 mod mem;
+mod nullable;
 mod pedersen;
 mod poseidon;
 mod snapshot_take;
@@ -229,6 +230,9 @@ impl VirtualMachine {
         I: IntoIterator<Item = Value>,
         I::IntoIter: ExactSizeIterator,
     {
+        let required_gas = self.gas.initial_required_gas(&function.id).unwrap();
+        let initial_gas = initial_gas.checked_sub(required_gas).unwrap();
+
         let mut iter = args.into_iter();
         self.push_frame(
             function.id.clone(),
@@ -485,7 +489,7 @@ fn eval<'a>(
             self::gas::eval(registry, selector, args, gas, *statement_idx, builtin_costs)
         }
         CoreConcreteLibfunc::Mem(selector) => self::mem::eval(registry, selector, args),
-        CoreConcreteLibfunc::Nullable(_) => todo!(),
+        CoreConcreteLibfunc::Nullable(selector) => self::nullable::eval(registry, selector, args),
         CoreConcreteLibfunc::Pedersen(selector) => self::pedersen::eval(registry, selector, args),
         CoreConcreteLibfunc::Poseidon(selector) => self::poseidon::eval(registry, selector, args),
         CoreConcreteLibfunc::Sint8(selector) => self::int::eval_signed(registry, selector, args),

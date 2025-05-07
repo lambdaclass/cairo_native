@@ -1,8 +1,5 @@
 use cairo_lang_sierra::{
-    extensions::{
-        core::{CoreLibfunc, CoreType, CoreTypeConcrete},
-        utils::Range,
-    },
+    extensions::{core::{CoreLibfunc, CoreType, CoreTypeConcrete}, utils::Range},
     program_registry::ProgramRegistry,
 };
 use num_bigint::BigInt;
@@ -11,9 +8,9 @@ use starknet_types_core::felt::CAIRO_PRIME_BIGINT;
 
 use crate::Value;
 
-/// Receives a slice of values, filters any which is non numeric and returns a `Vec<BigInt>`
+/// Receives a vector of values, filters any which is non numeric and returns a `Vec<BigInt>`
 /// Useful when a binary operation takes generic values (like with bounded ints).
-pub fn get_numberic_args_as_bigints(args: &[Value]) -> Vec<BigInt> {
+pub fn get_numeric_args_as_bigints(args: &[Value]) -> Vec<BigInt> {
     args.iter()
         .map(|v| match v {
             Value::BoundedInt { value, .. } => value.to_owned(),
@@ -29,7 +26,7 @@ pub fn get_numberic_args_as_bigints(args: &[Value]) -> Vec<BigInt> {
             Value::U128(value) => BigInt::from(*value),
             Value::Felt(value) => value.to_bigint(),
             Value::Bytes31(value) => value.to_bigint(),
-            value => panic!("expected numeric value: {:?}", value),
+            value => panic!("argument should be an integer: {:?}", value),
         })
         .collect()
 }
@@ -54,7 +51,7 @@ pub fn get_value_from_integer(
         CoreTypeConcrete::Uint32(_) => Value::U32(value.to_u32().unwrap()),
         CoreTypeConcrete::Uint64(_) => Value::U64(value.to_u64().unwrap()),
         CoreTypeConcrete::Uint128(_) => Value::U128(value.to_u128().unwrap()),
-        _ => panic!("Found a non-numeric type"),
+        _ => panic!("cannot get integer value for a non-integer type"),
     }
 }
 
@@ -87,7 +84,6 @@ pub fn integer_range(
         CoreTypeConcrete::Sint32(_) => range_of::<i32>(),
         CoreTypeConcrete::Sint64(_) => range_of::<i64>(),
         CoreTypeConcrete::Sint128(_) => range_of::<i128>(),
-
         CoreTypeConcrete::BoundedInt(info) => info.range.clone(),
         CoreTypeConcrete::Bytes31(_) => Range {
             lower: BigInt::ZERO,
@@ -101,6 +97,6 @@ pub fn integer_range(
             let ty = registry.get_type(&info.ty).unwrap();
             integer_range(ty, registry)
         }
-        _ => panic!("Non-numeric value"),
+        _ => panic!("cannot get integer range value for a non-integer type"),
     }
 }
