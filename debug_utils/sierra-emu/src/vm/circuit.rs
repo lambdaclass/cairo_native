@@ -1,5 +1,5 @@
 use super::EvalAction;
-use crate::Value;
+use crate::{debug::debug_signature, Value};
 use cairo_lang_sierra::{
     extensions::{
         circuit::{
@@ -8,6 +8,7 @@ use cairo_lang_sierra::{
         },
         core::{CoreLibfunc, CoreType, CoreTypeConcrete},
         lib_func::{SignatureAndTypeConcreteLibfunc, SignatureOnlyConcreteLibfunc},
+        ConcreteLibfunc,
     },
     program_registry::ProgramRegistry,
 };
@@ -114,8 +115,8 @@ pub fn eval(
 }
 
 fn eval_add_input(
-    _registry: &ProgramRegistry<CoreType, CoreLibfunc>,
-    _info: &SignatureAndTypeConcreteLibfunc,
+    registry: &ProgramRegistry<CoreType, CoreLibfunc>,
+    info: &SignatureAndTypeConcreteLibfunc,
     args: Vec<Value>,
 ) -> EvalAction {
     let [Value::Circuit(mut values), Value::Struct(members)]: [Value; 2] = args.try_into().unwrap()
@@ -123,10 +124,15 @@ fn eval_add_input(
         panic!()
     };
 
+    let n_inputs = match registry.get_type(&info.ty).unwrap() {
+        CoreTypeConcrete::Circuit(CircuitTypeConcrete::Circuit(info)) => info.circuit_info.n_inputs,
+        _ => panic!(),
+    };
+
     values.push(struct_to_u384(members));
 
     EvalAction::NormalBranch(
-        (values.len() != values.capacity()) as usize,
+        (values.len() != n_inputs) as usize,
         smallvec![Value::Circuit(values)],
     )
 }
@@ -196,7 +202,7 @@ fn eval_eval(
                             // perform an early break
                             None => {
                                 outputs[mul_gate.lhs] = Some(find_nullifier(&r, &modulus));
-                                break false
+                                break false;
                             }
                         }
                     }
@@ -472,9 +478,9 @@ mod tests {
     fn test_inputs() {
         let (_, program) = load_cairo!(
             use core::circuit::{
-                AddInputResultTrait, AddMod, CircuitElement, CircuitInput, CircuitInputs, CircuitModulus,
-                CircuitOutputsTrait, EvalCircuitTrait, MulMod, RangeCheck96, circuit_add, circuit_inverse,
-                circuit_mul, circuit_sub, u384, u96,
+                AddInputResultTrait, AddMod, CircuitElement, CircuitInput, CircuitInputs,
+                CircuitModulus, CircuitOutputsTrait, EvalCircuitTrait, MulMod, RangeCheck96,
+                circuit_add, circuit_inverse, circuit_mul, circuit_sub, u384, u96,
             };
             use core::result::ResultTrait;
             use core::num::traits::Zero;

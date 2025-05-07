@@ -36,23 +36,39 @@ pub fn eval_get(
     };
     assert_eq!(info.ty, ty);
 
-    let default_value = Value::default_for_type(registry, &info.ty);
-    data.insert(key, default_value.clone());
+    if data.contains_key(&key) {
+        let value = data.get(&key).unwrap().to_owned();
+        EvalAction::NormalBranch(
+            0,
+            smallvec![
+                Value::FeltDictEntry {
+                    ty,
+                    data,
+                    count,
+                    key
+                },
+                value,
+            ],
+        )
+    } else {
+        let default_value = Value::default_for_type(registry, &info.ty);
+        data.insert(key, default_value.clone());
 
-    let count = count + 1;
+        let count = count + 1;
 
-    EvalAction::NormalBranch(
-        0,
-        smallvec![
-            Value::FeltDictEntry {
-                ty,
-                data,
-                count,
-                key
-            },
-            default_value,
-        ],
-    )
+        EvalAction::NormalBranch(
+            0,
+            smallvec![
+                Value::FeltDictEntry {
+                    ty,
+                    data,
+                    count,
+                    key
+                },
+                default_value,
+            ],
+        )
+    }
 }
 
 pub fn eval_finalize(

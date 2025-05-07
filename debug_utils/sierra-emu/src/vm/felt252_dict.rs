@@ -82,3 +82,32 @@ pub fn eval_squash(
         ],
     )
 }
+
+#[cfg(test)]
+mod tests {
+    use crate::{load_cairo, test_utils::run_test_program};
+
+    #[test]
+    fn test_felt_dict() {
+        let (_, program) = load_cairo!(
+            use core::dict::{Felt252Dict, Felt252DictEntryTrait, SquashedFelt252DictImpl};
+            use core::nullable;
+
+            #[inline]
+            pub fn assert_eq<T, +PartialEq<T>>(a: @T, b: @T) {
+                assert(a == b, ' ');
+            }
+
+            fn main() -> (felt252,felt252,felt252) {
+                let mut _dict = Default::default();
+                _dict.insert(10, 110);
+                _dict.insert(11, 111);
+                (_dict[10],
+                _dict[11],
+                _dict[12])
+            }
+        );
+
+        dbg!(run_test_program(program));
+    }
+}
