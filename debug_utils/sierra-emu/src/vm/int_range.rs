@@ -40,8 +40,10 @@ fn eval_try_new(
 
     let int_ty = registry.get_type(&info.param_signatures()[1].ty).unwrap();
 
+    let is_valid_range = x < y;
+
     // if x >= y then the range is not valid and we return [y, y) (empty range)
-    let range = if x < y {
+    let range = if is_valid_range {
         let x = get_value_from_integer(registry, int_ty, x);
         let y = get_value_from_integer(registry, int_ty, y);
 
@@ -58,7 +60,7 @@ fn eval_try_new(
         }
     };
 
-    EvalAction::NormalBranch(0, smallvec![range_check, range])
+    EvalAction::NormalBranch(id_valid_range as usize, smallvec![range_check, range])
 }
 
 fn eval_pop_front(
