@@ -40,7 +40,7 @@ pub fn eval(
     }
 }
 
-pub fn eval_builtin_withdraw_gas(
+fn eval_builtin_withdraw_gas(
     _registry: &ProgramRegistry<CoreType, CoreLibfunc>,
     _info: &SignatureOnlyConcreteLibfunc,
     args: Vec<Value>,
@@ -87,7 +87,7 @@ pub fn eval_builtin_withdraw_gas(
     }
 }
 
-pub fn eval_withdraw_gas(
+fn eval_withdraw_gas(
     _registry: &ProgramRegistry<CoreType, CoreLibfunc>,
     _info: &SignatureOnlyConcreteLibfunc,
     args: Vec<Value>,
@@ -133,7 +133,7 @@ pub fn eval_withdraw_gas(
     }
 }
 
-pub fn eval_redeposit_gas(
+fn eval_redeposit_gas(
     _registry: &ProgramRegistry<CoreType, CoreLibfunc>,
     _info: &SignatureOnlyConcreteLibfunc,
     args: Vec<Value>,
@@ -174,7 +174,7 @@ pub fn eval_redeposit_gas(
     EvalAction::NormalBranch(0, smallvec![Value::U64(new_gas)])
 }
 
-pub fn eval_get_available_gas(
+fn eval_get_available_gas(
     _registry: &ProgramRegistry<CoreType, CoreLibfunc>,
     _info: &SignatureOnlyConcreteLibfunc,
     args: Vec<Value>,
@@ -186,7 +186,7 @@ pub fn eval_get_available_gas(
     EvalAction::NormalBranch(0, smallvec![gas_val, Value::U128(gas as u128)])
 }
 
-pub fn eval_get_builtin_costs(
+fn eval_get_builtin_costs(
     _registry: &ProgramRegistry<CoreType, CoreLibfunc>,
     _info: &SignatureOnlyConcreteLibfunc,
     _args: Vec<Value>,
