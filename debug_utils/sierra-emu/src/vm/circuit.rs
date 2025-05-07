@@ -13,7 +13,7 @@ use cairo_lang_sierra::{
 };
 use num_bigint::{BigInt, BigUint, Sign, ToBigInt};
 use num_integer::{ExtendedGcd, Integer};
-use num_traits::{One, Zero};
+use num_traits::{One, ToPrimitive, Zero};
 use smallvec::smallvec;
 
 fn u384_to_struct(num: BigUint) -> Value {
@@ -286,7 +286,7 @@ fn eval_u96_limbs_less_than_guarantee_verify(
     };
     let Value::BoundedInt {
         value: gate_last_limb,
-        range: u96_range,
+        ..
     } = &gate[limb_count - 1]
     else {
         panic!();
@@ -298,16 +298,10 @@ fn eval_u96_limbs_less_than_guarantee_verify(
     else {
         panic!();
     };
-    let diff = modulus_last_limb - gate_last_limb;
+    let diff = (modulus_last_limb - gate_last_limb).to_u128().unwrap();
 
-    if (modulus_last_limb - gate_last_limb) != BigInt::zero() {
-        EvalAction::NormalBranch(
-            1,
-            smallvec![Value::BoundedInt {
-                range: u96_range.clone(),
-                value: diff
-            }],
-        )
+    if diff != 0 {
+        EvalAction::NormalBranch(1, smallvec![Value::U128(diff)])
     } else {
         // if there is no diff, build a new garantee, skipping the last limb
         let new_gate = Value::Struct(gate[0..limb_count].to_vec());

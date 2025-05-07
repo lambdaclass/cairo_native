@@ -9,12 +9,10 @@ fn main() {
     let inv = circuit_inverse(in1);
 
     let modulus = TryInto::<_, CircuitModulus>::try_into([7, 0, 0, 0]).unwrap();
-    let outputs = (inv,)
+    (inv,)
         .new_inputs()
         .next([0, 0, 0, 0])
         .done()
         .eval(modulus)
-        .unwrap();
-    
-    outputs.get_output(inv);
+        .unwrap_err();
 }

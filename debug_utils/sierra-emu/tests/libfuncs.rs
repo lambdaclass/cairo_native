@@ -147,7 +147,6 @@ fn test_run_full_circuit() {
 }
 
 #[test]
-#[should_panic(expected = "attempt to divide by 0")]
 fn test_circuit_failure() {
     run_program(
         "tests/tests/circuits_failure.cairo",
