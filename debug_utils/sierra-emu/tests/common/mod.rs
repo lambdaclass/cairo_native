@@ -83,6 +83,6 @@ pub fn value_to_felt(value: &Value) -> Vec<Felt> {
         Value::U64(x) => vec![(*x).into()],
         Value::U128(x) => vec![(*x).into()],
         Value::U256(x, y) => vec![(*x).into(), (*y).into()],
-        Value::Unit | Value::Uninitialized { .. } => vec![0.into()],
+        Value::Unit | Value::Null | Value::Uninitialized { .. } => vec![0.into()],
     }
 }
