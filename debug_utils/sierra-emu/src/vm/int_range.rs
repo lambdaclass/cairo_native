@@ -41,32 +41,32 @@ fn eval_try_new(
     let int_ty = registry.get_type(&info.param_signatures()[1].ty).unwrap();
 
     // if x >= y then the range is not valid and we return [y, y) (empty range)
-        if x < y {
-            let x = get_value_from_integer(registry, int_ty, x);
-            let y = get_value_from_integer(registry, int_ty, y);
-            EvalAction::NormalBranch(
-                0,
-                smallvec![
-                    range_check,
-                    Value::IntRange {
-                        x: Box::new(x),
-                        y: Box::new(y),
-                    }
-                ],
-            )
-        } else {
-            let y = get_value_from_integer(registry, int_ty, y);
-            EvalAction::NormalBranch(
-                1,
-                smallvec![
-                    range_check,
-                    Value::IntRange {
-                        x: Box::new(y.clone()),
-                        y: Box::new(y),
-                    }
-                ],
-            )
-        }
+    if x < y {
+        let x = get_value_from_integer(registry, int_ty, x);
+        let y = get_value_from_integer(registry, int_ty, y);
+        EvalAction::NormalBranch(
+            0,
+            smallvec![
+                range_check,
+                Value::IntRange {
+                    x: Box::new(x),
+                    y: Box::new(y),
+                }
+            ],
+        )
+    } else {
+        let y = get_value_from_integer(registry, int_ty, y);
+        EvalAction::NormalBranch(
+            1,
+            smallvec![
+                range_check,
+                Value::IntRange {
+                    x: Box::new(y.clone()),
+                    y: Box::new(y),
+                }
+            ],
+        )
+    }
 }
 
 fn eval_pop_front(
