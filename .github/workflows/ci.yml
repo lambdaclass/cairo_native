@@ -375,8 +375,8 @@ jobs:
     - name: Retreive cached dependecies
       uses: Swatinem/rust-cache@v2
     - name: Build
-      working-directory: ./debug_utils/sierra2casm-dbg
+      working-directory: ./debug_utils/casm-data-flow
       run: cargo build --all-features --verbose
     - name: Run tests
-      working-directory: ./debug_utils/sierra2casm-dbg
+      working-directory: ./debug_utils/casm-data-flow
       run: cargo test
