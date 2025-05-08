@@ -1,5 +1,5 @@
 use bincode::de::read::SliceReader;
-use sierra2casm_dbg::{decode_instruction, GraphMappings, Memory, Trace, ValueId};
+use casm_data_flow::{decode_instruction, GraphMappings, Memory, Trace, ValueId};
 use std::{collections::HashMap, fs};
 
 fn main() {

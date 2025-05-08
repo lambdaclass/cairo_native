@@ -179,9 +179,10 @@ name = "libfuncs"
 harness = false
 
 [workspace]
-members = ["debug_utils/sierra-emu", "debug_utils/sierra2casm-dbg"]
+members = ["debug_utils/sierra-emu", "debug_utils/casm-data-flow"]
 
 [workspace.dependencies]
+cairo-lang-casm = "=2.12.0-dev.1"
 cairo-lang-compiler = "=2.12.0-dev.1"
 cairo-lang-defs = "=2.12.0-dev.1"
 cairo-lang-filesystem = "=2.12.0-dev.1"
