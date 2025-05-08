@@ -227,7 +227,7 @@ pub mod trace_dump_runtime {
         sync::{LazyLock, Mutex},
     };
 
-    use crate::{starknet::ArrayAbi, types::TypeBuilder};
+    use crate::{starknet::ArrayAbi, types::TypeBuilder, utils::layout_repeat};
 
     use crate::runtime::FeltDict;
 
