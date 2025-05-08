@@ -566,22 +566,36 @@ pub mod trace_dump_runtime {
                     };
 
                     let u384_layout = Layout::from_size_align(48, 16).unwrap();
+                    let u96_layout = Layout::from_size_align(12, 16).unwrap();
+
+                    let u384_layout_size = u384_layout.pad_to_align().size();
+                    let u96_layout_size = u96_layout.pad_to_align().size();
 
                     let n_outputs = circuit.circuit_info.values.len();
                     let mut values = Vec::with_capacity(n_outputs);
 
-                    let value_ptr = value_ptr.cast::<[u8; 48]>();
-
-                    let size = u384_layout.pad_to_align().size();
+                    let circuits_ptr = value_ptr.cast::<[u8; 48]>();
 
                     for i in 0..n_outputs {
-                        let current_ptr = value_ptr.byte_add(size * i);
+                        let current_ptr = circuits_ptr.byte_add(u384_layout_size * i);
                         let current_value = current_ptr.as_ref();
                         values.push(BigUint::from_bytes_le(current_value));
                     }
 
-                    let current_ptr = value_ptr.byte_add(size * n_outputs);
-                    let modulus = BigUint::from_bytes_le(current_ptr.as_ref());
+                    let (outputs_layout, _) = layout_repeat(&u384_layout, n_outputs).unwrap();
+                    let (_, modulus_start_offset) = outputs_layout.extend(u96_layout).unwrap();
+
+                    let modulus_ptr = value_ptr.byte_add(modulus_start_offset).cast::<[u8; 12]>();
+                    let modulus_values: &[u8] = &[];
+
+                    // A modulus is a struct of four limbs
+                    for i in 0..4 {
+                        let current_ptr = modulus_ptr.byte_add(u96_layout_size * i);
+                        let current_value = current_ptr.as_ref();
+                        [modulus_values, current_value].concat();
+                    }
+
+                    let modulus = BigUint::from_bytes_le(modulus_values);
 
                     Value::CircuitOutputs {
                         circuits: values,

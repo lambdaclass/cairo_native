@@ -274,14 +274,14 @@ fn eval_u96_limbs_less_than_guarantee_verify(
     info: &ConcreteU96LimbsLessThanGuaranteeVerifyLibfunc,
     args: Vec<Value>,
 ) -> EvalAction {
-    let [Value::Struct(garantee)]: [Value; 1] = args.try_into().unwrap() else {
+    let [Value::Struct(guarantee)]: [Value; 1] = args.try_into().unwrap() else {
         panic!()
     };
     let limb_count = info.limb_count;
-    let Value::Struct(gate) = garantee.first().unwrap() else {
+    let Value::Struct(gate) = &guarantee[0] else {
         panic!();
     };
-    let Value::Struct(modulus) = garantee.get(1).unwrap() else {
+    let Value::Struct(modulus) = &guarantee[1] else {
         panic!();
     };
     let Value::BoundedInt {
@@ -303,7 +303,7 @@ fn eval_u96_limbs_less_than_guarantee_verify(
     if diff != 0 {
         EvalAction::NormalBranch(1, smallvec![Value::U128(diff)])
     } else {
-        // if there is no diff, build a new garantee, skipping the last limb
+        // if there is no diff, build a new guarantee, skipping the last limb
         let new_gate = Value::Struct(gate[0..limb_count].to_vec());
         let new_modulus = Value::Struct(modulus[0..limb_count].to_vec());
 
@@ -316,7 +316,7 @@ fn eval_u96_single_limb_less_than_guarantee_verify(
     _info: &SignatureOnlyConcreteLibfunc,
     args: Vec<Value>,
 ) -> EvalAction {
-    let [_garantee]: [Value; 1] = args.try_into().unwrap();
+    let [_guarantee]: [Value; 1] = args.try_into().unwrap();
 
     EvalAction::NormalBranch(0, smallvec![Value::U128(0)])
 }
@@ -344,7 +344,7 @@ fn eval_failure_guarantee_verify(
         panic!()
     };
 
-    let limbs_cout = match registry
+    let limbs_count = match registry
         .get_type(&info.signature.branch_signatures[0].vars[2].ty)
         .unwrap()
     {
@@ -359,7 +359,7 @@ fn eval_failure_guarantee_verify(
         value: 0.into(),
     };
     // This should be changed with it correct value when we implement this libfunc in native
-    let limbs_struct = Value::Struct(vec![zero_u96; limbs_cout]);
+    let limbs_struct = Value::Struct(vec![zero_u96; limbs_count]);
 
     EvalAction::NormalBranch(
         0,
@@ -451,15 +451,10 @@ fn eval_into_u96_guarantee(
     _info: &SignatureAndTypeConcreteLibfunc,
     args: Vec<Value>,
 ) -> EvalAction {
-    let [Value::BoundedInt { range, mut value }]: [Value; 1] = args.try_into().unwrap() else {
+    let [Value::BoundedInt { range, value }]: [Value; 1] = args.try_into().unwrap() else {
         panic!()
     };
     assert_eq!(range, BigInt::ZERO..(BigInt::from(1) << 96));
-
-    // offset by the lower bound to get the actual value
-    if range.start > BigInt::ZERO {
-        value = range.start;
-    }
 
     EvalAction::NormalBranch(0, smallvec![Value::U128(value.try_into().unwrap())])
 }

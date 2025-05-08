@@ -23,7 +23,7 @@ cairo-lang-utils.workspace = true
 clap = { version = "4.5.26", features = ["derive"] }
 k256 = "0.13.4"
 keccak = "0.1.5"
-num-integer = "0.1.46"
+num-integer.workspace = true
 num-bigint.workspace = true
 num-traits.workspace = true
 p256 = "0.13.2"
