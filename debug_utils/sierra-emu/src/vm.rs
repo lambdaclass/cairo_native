@@ -57,7 +57,6 @@ mod poseidon;
 mod snapshot_take;
 mod starknet;
 mod r#struct;
-mod uint128;
 mod uint252;
 mod uint512;
 
@@ -501,7 +500,7 @@ fn eval<'a>(
         CoreConcreteLibfunc::Uint16(selector) => self::int::eval_unsigned(registry, selector, args),
         CoreConcreteLibfunc::Uint32(selector) => self::int::eval_unsigned(registry, selector, args),
         CoreConcreteLibfunc::Uint64(selector) => self::int::eval_unsigned(registry, selector, args),
-        CoreConcreteLibfunc::Uint128(selector) => self::uint128::eval(registry, selector, args),
+        CoreConcreteLibfunc::Uint128(selector) => self::int::eval_uint128(registry, selector, args),
         CoreConcreteLibfunc::Uint256(selector) => self::uint252::eval(registry, selector, args),
         CoreConcreteLibfunc::Uint512(selector) => self::uint512::eval(registry, selector, args),
         CoreConcreteLibfunc::Struct(selector) => self::r#struct::eval(registry, selector, args),
