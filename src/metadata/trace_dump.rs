@@ -565,37 +565,41 @@ pub mod trace_dump_runtime {
                         panic!("generic arg should be a Circuit");
                     };
 
-                    let u384_layout = Layout::from_size_align(48, 16).unwrap();
                     let u96_layout = Layout::from_size_align(12, 16).unwrap();
-
-                    let u384_layout_size = u384_layout.pad_to_align().size();
-                    let u96_layout_size = u96_layout.pad_to_align().size();
 
                     let n_outputs = circuit.circuit_info.values.len();
                     let mut values = Vec::with_capacity(n_outputs);
 
-                    let circuits_ptr = value_ptr.cast::<[u8; 48]>();
+                    let circuits_ptr = value_ptr.cast::<[u8; 12]>();
 
+                    let mut outputs_layout = Layout::new::<()>();
+                    let mut limb_offset;
+
+                    // get gate values
                     for i in 0..n_outputs {
-                        let current_ptr = circuits_ptr.byte_add(u384_layout_size * i);
-                        let current_value = current_ptr.as_ref();
-                        values.push(BigUint::from_bytes_le(current_value));
+                        let mut gate_value = [0u8; 48];
+                        for j in 0..4 {
+                            (outputs_layout, limb_offset) =
+                                outputs_layout.extend(u96_layout).unwrap();
+                            let current_ptr = circuits_ptr.byte_add(limb_offset);
+                            let current_value = current_ptr.as_ref();
+                            gate_value[(12 * j)..(12 + 12 * j)].copy_from_slice(current_value);
+                        }
+                        values.push(BigUint::from_bytes_le(&gate_value));
                     }
 
-                    let (outputs_layout, _) = layout_repeat(&u384_layout, n_outputs).unwrap();
-                    let (_, modulus_start_offset) = outputs_layout.extend(u96_layout).unwrap();
+                    let mut limb_offset;
+                    let mut modulus_value = [0u8; 48];
 
-                    let modulus_ptr = value_ptr.byte_add(modulus_start_offset).cast::<[u8; 12]>();
-                    let modulus_values: &[u8] = &[];
-
-                    // A modulus is a struct of four limbs
+                    // get modulus value
                     for i in 0..4 {
-                        let current_ptr = modulus_ptr.byte_add(u96_layout_size * i);
+                        (outputs_layout, limb_offset) = outputs_layout.extend(u96_layout).unwrap();
+                        let current_ptr = circuits_ptr.byte_add(limb_offset);
                         let current_value = current_ptr.as_ref();
-                        [modulus_values, current_value].concat();
+                        modulus_value[(12 * i)..(12 + 12 * i)].copy_from_slice(current_value);
                     }
 
-                    let modulus = BigUint::from_bytes_le(modulus_values);
+                    let modulus = BigUint::from_bytes_le(&modulus_value);
 
                     Value::CircuitOutputs {
                         circuits: values,
