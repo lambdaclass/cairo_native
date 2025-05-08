@@ -835,7 +835,7 @@ fn build_u96_single_limb_less_than_guarantee_verify<'ctx, 'this>(
     let guarantee = entry.arg(0)?;
 
     let u96_type = IntegerType::new(context, 96).into();
-    // we receive a struct with one attribute
+    // this libfunc will always receive gate and modulus with single limb
     let limb_struct_type = llvm::r#type::r#struct(context, &[u96_type; 1], false);
 
     // extract gate and modulus from input value
