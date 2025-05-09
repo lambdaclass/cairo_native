@@ -36,16 +36,21 @@ pub fn eval_get(
     };
     assert_eq!(info.ty, ty);
 
-    let value = data
-        .entry(key)
-        .or_insert_with(|| {
-            count += 1;
+    let _ = data.entry(key).or_insert_with(|| {
+        count += 1;
 
-            Value::default_for_type(registry, &ty)
-        })
-        .to_owned();
+        Value::default_for_type(registry, &ty)
+    });
 
-    EvalAction::NormalBranch(0, smallvec![Value::FeltDict { ty, data, count }, value])
+    EvalAction::NormalBranch(
+        0,
+        smallvec![Value::FeltDictEntry {
+            ty,
+            data,
+            count,
+            key
+        }],
+    )
 }
 
 pub fn eval_finalize(

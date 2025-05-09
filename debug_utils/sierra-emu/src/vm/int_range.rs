@@ -38,12 +38,12 @@ fn eval_try_new(
     };
     let [x, y]: [BigInt; 2] = get_numeric_args_as_bigints(&args[1..]).try_into().unwrap();
 
-    let int_ty = registry.get_type(&info.param_signatures()[1].ty).unwrap();
+    let int_ty_id = &info.param_signatures()[1].ty;
 
     // if x >= y then the range is not valid and we return [y, y) (empty range)
     if x < y {
-        let x = get_value_from_integer(registry, int_ty, x);
-        let y = get_value_from_integer(registry, int_ty, y);
+        let x = get_value_from_integer(registry, int_ty_id, x);
+        let y = get_value_from_integer(registry, int_ty_id, y);
         EvalAction::NormalBranch(
             0,
             smallvec![
@@ -55,7 +55,7 @@ fn eval_try_new(
             ],
         )
     } else {
-        let y = get_value_from_integer(registry, int_ty, y);
+        let y = get_value_from_integer(registry, int_ty_id, y);
         EvalAction::NormalBranch(
             1,
             smallvec![
@@ -78,12 +78,12 @@ fn eval_pop_front(
         panic!()
     };
     let [x, y]: [BigInt; 2] = get_numeric_args_as_bigints(&[*x, *y]).try_into().unwrap();
-    let int_ty = registry.get_type(&info.param_signatures()[1].ty).unwrap();
+    let int_ty_id = &info.param_signatures()[0].ty;
 
     if x < y {
-        let x_plus_1 = get_value_from_integer(registry, int_ty, &x + 1);
-        let x = get_value_from_integer(registry, int_ty, x);
-        let y = get_value_from_integer(registry, int_ty, y);
+        let x_plus_1 = get_value_from_integer(registry, int_ty_id, &x + 1);
+        let x = get_value_from_integer(registry, int_ty_id, x);
+        let y = get_value_from_integer(registry, int_ty_id, y);
 
         EvalAction::NormalBranch(
             0,

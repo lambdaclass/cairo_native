@@ -75,7 +75,7 @@ fn find_nullifier(num: &BigUint, modulus: &BigUint) -> BigUint {
         .extended_gcd(&modulus.to_bigint().unwrap());
     let gcd = gcd.to_biguint().unwrap();
 
-    // If there's no inverse, find the value which nullifys the operation
+    // If there's no inverse, find the value which nulifies the operation
     modulus / gcd
 }
 

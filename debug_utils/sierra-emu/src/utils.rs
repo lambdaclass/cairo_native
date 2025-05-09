@@ -1,11 +1,10 @@
 use cairo_lang_sierra::{
-    extensions::core::{CoreLibfunc, CoreType, CoreTypeConcrete},
-    program_registry::ProgramRegistry,
+    extensions::core::{CoreLibfunc, CoreType, CoreTypeConcrete}, ids::ConcreteTypeId, program_registry::ProgramRegistry
 };
 use num_bigint::BigInt;
 use num_traits::ToPrimitive;
 
-use crate::Value;
+use crate::{debug::type_to_name, Value};
 
 /// Receives a vector of values, filters any which is non numeric and returns a `Vec<BigInt>`
 /// Useful when a binary operation takes generic values (like with bounded ints).
@@ -32,13 +31,13 @@ pub fn get_numeric_args_as_bigints(args: &[Value]) -> Vec<BigInt> {
 
 pub fn get_value_from_integer(
     registry: &ProgramRegistry<CoreType, CoreLibfunc>,
-    ty: &CoreTypeConcrete,
+    ty_id: &ConcreteTypeId,
     value: BigInt,
 ) -> Value {
+    let ty = registry.get_type(ty_id).unwrap();
     match ty {
         CoreTypeConcrete::NonZero(info) => {
-            let ty = registry.get_type(&info.ty).unwrap();
-            get_value_from_integer(registry, ty, value)
+            get_value_from_integer(registry, &info.ty, value)
         }
         CoreTypeConcrete::Sint8(_) => Value::I8(value.to_i8().unwrap()),
         CoreTypeConcrete::Sint16(_) => Value::I16(value.to_i16().unwrap()),
@@ -50,6 +49,14 @@ pub fn get_value_from_integer(
         CoreTypeConcrete::Uint32(_) => Value::U32(value.to_u32().unwrap()),
         CoreTypeConcrete::Uint64(_) => Value::U64(value.to_u64().unwrap()),
         CoreTypeConcrete::Uint128(_) => Value::U128(value.to_u128().unwrap()),
-        _ => panic!("cannot get integer value for a non-integer type"),
+        CoreTypeConcrete::BoundedInt(info) => {
+            let range = &info.range;
+            Value::BoundedInt {
+                range: range.lower.clone()..range.upper.clone(),
+                value,
+            }
+        },
+        CoreTypeConcrete::Felt252(_) => Value::Felt(value.into()),
+        _ => panic!("cannot get integer value for a non-integer type: {}", type_to_name(ty_id, registry)),
     }
 }
