@@ -29,14 +29,12 @@ pub fn eval_get(
     let [Value::FeltDict {
         ty,
         mut data,
-        count,
+        mut count,
     }, Value::Felt(key)]: [Value; 2] = args.try_into().unwrap()
     else {
         panic!()
     };
     assert_eq!(info.ty, ty);
-
-    let mut count = count;
 
     let value = data
         .entry(key)
