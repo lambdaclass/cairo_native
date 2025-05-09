@@ -68,6 +68,8 @@ fn struct_to_u384(struct_members: Vec<Value>) -> BigUint {
     ])
 }
 
+/// If the value is non-invertible a nullifier is returned instead. A nullifier
+/// is value which satisfies this following equation: num * nullifier ≡ 0(modulus).
 fn find_nullifier(num: &BigUint, modulus: &BigUint) -> BigUint {
     let ExtendedGcd { gcd, .. } = num
         .to_bigint()
