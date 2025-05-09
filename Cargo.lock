@@ -1166,7 +1166,7 @@ dependencies = [
  "cairo-lang-starknet",
  "cairo-lang-starknet-classes",
  "generic-array",
- "hashbrown 0.15.2",
+ "hashbrown 0.15.3",
  "hex",
  "indoc",
  "keccak",
@@ -1184,7 +1184,7 @@ dependencies = [
  "sha3",
  "starknet-crypto",
  "starknet-types-core",
- "thiserror 2.0.12",
+ "thiserror",
  "zip",
 ]
 

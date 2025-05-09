@@ -208,7 +208,7 @@ pub mod trace_dump_runtime {
     };
     use cairo_lang_utils::ordered_hash_map::OrderedHashMap;
     use itertools::Itertools;
-    use num_bigint::{BigInt, BigUint};
+    use num_bigint::{BigInt, BigUint, Sign};
     use num_traits::One;
     use sierra_emu::{
         starknet::{
@@ -227,7 +227,7 @@ pub mod trace_dump_runtime {
         sync::{LazyLock, Mutex},
     };
 
-    use crate::{starknet::ArrayAbi, types::TypeBuilder, utils::layout_repeat};
+    use crate::{starknet::ArrayAbi, types::TypeBuilder};
 
     use crate::runtime::FeltDict;
 
@@ -576,7 +576,7 @@ pub mod trace_dump_runtime {
                     let mut limb_offset;
 
                     // get gate values
-                    for i in 0..n_outputs {
+                    for _i in 0..n_outputs {
                         let mut gate_value = [0u8; 48];
                         for j in 0..4 {
                             (outputs_layout, limb_offset) =
@@ -652,7 +652,6 @@ pub mod trace_dump_runtime {
                     let value = unsafe { value_ptr.as_ref() };
                     Value::CircuitModulus(BigUint::from_bytes_le(value))
                 }
-
                 CircuitTypeConcrete::InverseGate(_) => Value::Unit,
                 CircuitTypeConcrete::MulModGate(_) => Value::Unit,
                 CircuitTypeConcrete::SubModGate(_) => Value::Unit,
@@ -665,7 +664,49 @@ pub mod trace_dump_runtime {
 
                     Value::U128(u128::from_le_bytes(array_value))
                 }
-                CircuitTypeConcrete::U96LimbsLessThanGuarantee(_) => Value::Unit,
+                CircuitTypeConcrete::U96LimbsLessThanGuarantee(info) => {
+                    let u96_layout = Layout::from_size_align(12, 16).unwrap();
+
+                    let mut limb_value = [0u8; 16];
+
+                    let value_ptr = value_ptr.cast::<[u8; 12]>();
+
+                    let mut guarantee_layout = Layout::new::<()>();
+                    let mut limb_offset = 0;
+
+                    let output_limbs = (0..info.limb_count)
+                        .map(|_| {
+                            (guarantee_layout, limb_offset) =
+                                guarantee_layout.extend(u96_layout).unwrap();
+                            let current_ptr = value_ptr.byte_add(limb_offset);
+                            limb_value[..12].copy_from_slice(current_ptr.as_ref());
+
+                            Value::BoundedInt {
+                                range: 0.into()..BigInt::one() << 96,
+                                value: BigInt::from_bytes_le(Sign::Plus, &limb_value),
+                            }
+                        })
+                        .collect::<Vec<_>>();
+
+                    let modulus_limbs = (0..info.limb_count)
+                        .map(|_| {
+                            (guarantee_layout, limb_offset) =
+                                guarantee_layout.extend(u96_layout).unwrap();
+                            let current_ptr = value_ptr.byte_add(limb_offset);
+                            limb_value[..12].copy_from_slice(current_ptr.as_ref());
+
+                            Value::BoundedInt {
+                                range: 0.into()..BigInt::one() << 96,
+                                value: BigInt::from_bytes_le(Sign::Plus, &limb_value),
+                            }
+                        })
+                        .collect::<Vec<_>>();
+
+                    Value::Struct(vec![
+                        Value::Struct(output_limbs),
+                        Value::Struct(modulus_limbs),
+                    ])
+                }
             },
             CoreTypeConcrete::Const(_) => todo!("CoreTypeConcrete::Const"),
             CoreTypeConcrete::Sint8(_) => Value::I8(value_ptr.cast().read()),
