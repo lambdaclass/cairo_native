@@ -259,3 +259,38 @@ impl Value {
         })
     }
 }
+
+macro_rules! impl_conversions {
+    ( $( $t:ty as $i:ident ; )+ ) => { $(
+        impl From<$t> for Value {
+            fn from(value: $t) -> Self {
+                Self::$i(value)
+            }
+        }
+
+        impl TryFrom<Value> for $t {
+            type Error = Value;
+
+            fn try_from(value: Value) -> Result<Self, Self::Error> {
+                match value {
+                    Value::$i(value) => Ok(value),
+                    _ => Err(value),
+                }
+            }
+        }
+    )+ };
+}
+
+impl_conversions! {
+    Felt as Felt;
+    u8   as U8;
+    u16  as U16;
+    u32  as U32;
+    u64  as U64;
+    u128 as U128;
+    i8   as I8;
+    i16  as I16;
+    i32  as I32;
+    i64  as I64;
+    i128 as I128;
+}
