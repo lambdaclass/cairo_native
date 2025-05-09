@@ -28,13 +28,13 @@ use crate::{
 
 use super::EvalAction;
 
-fn apply_operation_for_type(
+fn apply_overflowing_op_for_type(
     ty: &CoreTypeConcrete,
     lhs: BigInt,
     rhs: BigInt,
     op: IntOperator,
 ) -> (BigInt, bool) {
-    fn operation<T>(lhs: BigInt, rhs: BigInt, op: IntOperator) -> (BigInt, bool)
+    fn overflowing_op<T>(lhs: BigInt, rhs: BigInt, op: IntOperator) -> (BigInt, bool)
     where
         T: OverflowingAdd + OverflowingSub + Into<BigInt> + TryFrom<BigInt>,
         <T as TryFrom<BigInt>>::Error: Debug,
@@ -51,16 +51,16 @@ fn apply_operation_for_type(
     }
 
     match ty {
-        CoreTypeConcrete::Sint8(_) => operation::<u8>(lhs, rhs, op),
-        CoreTypeConcrete::Sint16(_) => operation::<i16>(lhs, rhs, op),
-        CoreTypeConcrete::Sint32(_) => operation::<i32>(lhs, rhs, op),
-        CoreTypeConcrete::Sint64(_) => operation::<i64>(lhs, rhs, op),
-        CoreTypeConcrete::Sint128(_) => operation::<i128>(lhs, rhs, op),
-        CoreTypeConcrete::Uint8(_) => operation::<u8>(lhs, rhs, op),
-        CoreTypeConcrete::Uint16(_) => operation::<u16>(lhs, rhs, op),
-        CoreTypeConcrete::Uint32(_) => operation::<u32>(lhs, rhs, op),
-        CoreTypeConcrete::Uint64(_) => operation::<u64>(lhs, rhs, op),
-        CoreTypeConcrete::Uint128(_) => operation::<u128>(lhs, rhs, op),
+        CoreTypeConcrete::Sint8(_) => overflowing_op::<u8>(lhs, rhs, op),
+        CoreTypeConcrete::Sint16(_) => overflowing_op::<i16>(lhs, rhs, op),
+        CoreTypeConcrete::Sint32(_) => overflowing_op::<i32>(lhs, rhs, op),
+        CoreTypeConcrete::Sint64(_) => overflowing_op::<i64>(lhs, rhs, op),
+        CoreTypeConcrete::Sint128(_) => overflowing_op::<i128>(lhs, rhs, op),
+        CoreTypeConcrete::Uint8(_) => overflowing_op::<u8>(lhs, rhs, op),
+        CoreTypeConcrete::Uint16(_) => overflowing_op::<u16>(lhs, rhs, op),
+        CoreTypeConcrete::Uint32(_) => overflowing_op::<u32>(lhs, rhs, op),
+        CoreTypeConcrete::Uint64(_) => overflowing_op::<u64>(lhs, rhs, op),
+        CoreTypeConcrete::Uint128(_) => overflowing_op::<u128>(lhs, rhs, op),
         _ => panic!("cannot apply integer operation to non-integer type"),
     }
 }
@@ -193,7 +193,7 @@ fn eval_diff(
         .unwrap();
 
     let overflow = (lhs >= rhs) as usize;
-    let (res, _) = apply_operation_for_type(int_ty, lhs, rhs, IntOperator::OverflowingSub);
+    let (res, _) = apply_overflowing_op_for_type(int_ty, lhs, rhs, IntOperator::OverflowingSub);
     let res = get_value_from_integer(registry, int_ty, res);
 
     EvalAction::NormalBranch(overflow, smallvec![range_check, res])
@@ -292,7 +292,7 @@ fn eval_operation(
         .get_type(&info.signature.branch_signatures[0].vars[1].ty)
         .unwrap();
 
-    let (res, had_overflow) = apply_operation_for_type(int_ty, lhs, rhs, info.operator);
+    let (res, had_overflow) = apply_overflowing_op_for_type(int_ty, lhs, rhs, info.operator);
     let res = get_value_from_integer(registry, int_ty, res);
 
     EvalAction::NormalBranch(had_overflow as usize, smallvec![range_check, res])
