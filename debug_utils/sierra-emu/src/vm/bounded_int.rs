@@ -126,10 +126,7 @@ pub fn eval_div_rem(
     info: &BoundedIntDivRemConcreteLibfunc,
     args: Vec<Value>,
 ) -> EvalAction {
-    let range_check @ Value::Unit: Value = args[0].clone() else {
-        panic!()
-    };
-    let [lhs, rhs]: [BigInt; 2] = get_numeric_args_as_bigints(&args[1..]).try_into().unwrap();
+    let [lhs, rhs]: [BigInt; 2] = get_numeric_args_as_bigints(&args).try_into().unwrap();
 
     let quo = &lhs / &rhs;
     let rem = lhs % rhs;
@@ -154,7 +151,7 @@ pub fn eval_div_rem(
     EvalAction::NormalBranch(
         0,
         smallvec![
-            range_check,
+            Value::Unit, // range_check
             Value::BoundedInt {
                 range: quo_range,
                 value: quo,
