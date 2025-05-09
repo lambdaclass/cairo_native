@@ -48,7 +48,7 @@ mod felt252_dict;
 mod felt252_dict_entry;
 mod function_call;
 mod gas;
-mod int128;
+mod int;
 mod int_range;
 mod jump;
 mod mem;
@@ -58,13 +58,8 @@ mod poseidon;
 mod snapshot_take;
 mod starknet;
 mod r#struct;
-mod uint128;
-mod uint16;
-mod uint252;
-mod uint32;
+mod uint256;
 mod uint512;
-mod uint64;
-mod uint8;
 
 #[derive(Clone)]
 pub struct VirtualMachine {
@@ -497,23 +492,23 @@ fn eval<'a>(
         CoreConcreteLibfunc::Nullable(selector) => self::nullable::eval(registry, selector, args),
         CoreConcreteLibfunc::Pedersen(selector) => self::pedersen::eval(registry, selector, args),
         CoreConcreteLibfunc::Poseidon(selector) => self::poseidon::eval(registry, selector, args),
-        CoreConcreteLibfunc::Sint128(selector) => self::int128::eval(registry, selector, args),
-        CoreConcreteLibfunc::Sint16(_) => todo!(),
-        CoreConcreteLibfunc::Sint32(_) => todo!(),
-        CoreConcreteLibfunc::Sint64(_) => todo!(),
-        CoreConcreteLibfunc::Sint8(_) => todo!(),
+        CoreConcreteLibfunc::Sint8(selector) => self::int::eval_signed(registry, selector, args),
+        CoreConcreteLibfunc::Sint16(selector) => self::int::eval_signed(registry, selector, args),
+        CoreConcreteLibfunc::Sint32(selector) => self::int::eval_signed(registry, selector, args),
+        CoreConcreteLibfunc::Sint64(selector) => self::int::eval_signed(registry, selector, args),
+        CoreConcreteLibfunc::Sint128(selector) => self::int::eval_i128(registry, selector, args),
+        CoreConcreteLibfunc::Uint8(selector) => self::int::eval_unsigned(registry, selector, args),
+        CoreConcreteLibfunc::Uint16(selector) => self::int::eval_unsigned(registry, selector, args),
+        CoreConcreteLibfunc::Uint32(selector) => self::int::eval_unsigned(registry, selector, args),
+        CoreConcreteLibfunc::Uint64(selector) => self::int::eval_unsigned(registry, selector, args),
+        CoreConcreteLibfunc::Uint128(selector) => self::int::eval_uint128(registry, selector, args),
+        CoreConcreteLibfunc::Uint256(selector) => self::uint256::eval(registry, selector, args),
+        CoreConcreteLibfunc::Uint512(selector) => self::uint512::eval(registry, selector, args),
+        CoreConcreteLibfunc::Struct(selector) => self::r#struct::eval(registry, selector, args),
         CoreConcreteLibfunc::SnapshotTake(info) => self::snapshot_take::eval(registry, info, args),
         CoreConcreteLibfunc::Starknet(selector) => {
             self::starknet::eval(registry, selector, args, syscall_handler)
         }
-        CoreConcreteLibfunc::Struct(selector) => self::r#struct::eval(registry, selector, args),
-        CoreConcreteLibfunc::Uint128(selector) => self::uint128::eval(registry, selector, args),
-        CoreConcreteLibfunc::Uint16(selector) => self::uint16::eval(registry, selector, args),
-        CoreConcreteLibfunc::Uint256(selector) => self::uint252::eval(registry, selector, args),
-        CoreConcreteLibfunc::Uint32(selector) => self::uint32::eval(registry, selector, args),
-        CoreConcreteLibfunc::Uint512(selector) => self::uint512::eval(registry, selector, args),
-        CoreConcreteLibfunc::Uint64(selector) => self::uint64::eval(registry, selector, args),
-        CoreConcreteLibfunc::Uint8(selector) => self::uint8::eval(registry, selector, args),
         CoreConcreteLibfunc::UnconditionalJump(info) => self::jump::eval(registry, info, args),
         CoreConcreteLibfunc::UnwrapNonZero(_info) => {
             let [value] = args.try_into().unwrap();
