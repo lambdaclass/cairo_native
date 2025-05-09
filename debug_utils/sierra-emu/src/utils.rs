@@ -1,5 +1,7 @@
 use cairo_lang_sierra::{
-    extensions::core::{CoreLibfunc, CoreType, CoreTypeConcrete}, ids::ConcreteTypeId, program_registry::ProgramRegistry
+    extensions::core::{CoreLibfunc, CoreType, CoreTypeConcrete},
+    ids::ConcreteTypeId,
+    program_registry::ProgramRegistry,
 };
 use num_bigint::BigInt;
 use num_traits::ToPrimitive;
@@ -36,9 +38,7 @@ pub fn get_value_from_integer(
 ) -> Value {
     let ty = registry.get_type(ty_id).unwrap();
     match ty {
-        CoreTypeConcrete::NonZero(info) => {
-            get_value_from_integer(registry, &info.ty, value)
-        }
+        CoreTypeConcrete::NonZero(info) => get_value_from_integer(registry, &info.ty, value),
         CoreTypeConcrete::Sint8(_) => Value::I8(value.to_i8().unwrap()),
         CoreTypeConcrete::Sint16(_) => Value::I16(value.to_i16().unwrap()),
         CoreTypeConcrete::Sint32(_) => Value::I32(value.to_i32().unwrap()),
@@ -55,8 +55,11 @@ pub fn get_value_from_integer(
                 range: range.lower.clone()..range.upper.clone(),
                 value,
             }
-        },
+        }
         CoreTypeConcrete::Felt252(_) => Value::Felt(value.into()),
-        _ => panic!("cannot get integer value for a non-integer type: {}", type_to_name(ty_id, registry)),
+        _ => panic!(
+            "cannot get integer value for a non-integer type: {}",
+            type_to_name(ty_id, registry)
+        ),
     }
 }
