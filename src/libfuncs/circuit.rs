@@ -844,8 +844,7 @@ fn build_u96_single_limb_less_than_guarantee_verify<'ctx, 'this>(
 
     // extract the only limb from gate and modulus
     let gate_limb = entry.extract_value(context, location, gate, u96_type, 0)?;
-    let modulus_limb =
-        entry.extract_value(context, location, modulus, u96_type, 0)?;
+    let modulus_limb = entry.extract_value(context, location, modulus, u96_type, 0)?;
 
     // calcualte diff between limbs
     let diff = entry.append_op_result(arith::subi(modulus_limb, gate_limb, location))?;
