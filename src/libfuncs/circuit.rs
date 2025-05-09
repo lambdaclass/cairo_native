@@ -71,12 +71,10 @@ pub fn build<'ctx, 'this>(
         CircuitConcreteLibfunc::IntoU96Guarantee(info) => {
             build_into_u96_guarantee(context, registry, entry, location, helper, metadata, info)
         }
-        CircuitConcreteLibfunc::U96SingleLimbLessThanGuaranteeVerify(info) => {
-                    build_u96_single_limb_less_than_guarantee_verify(
-                        context, registry, entry, location, helper, metadata, info,
-                    )
-                }
-        CircuitConcreteLibfunc::U96GuaranteeVerify(SignatureOnlyConcreteLibfunc { signature }) => {
+        CircuitConcreteLibfunc::U96SingleLimbLessThanGuaranteeVerify(
+            SignatureOnlyConcreteLibfunc { signature, .. },
+        )
+        | CircuitConcreteLibfunc::U96GuaranteeVerify(SignatureOnlyConcreteLibfunc { signature }) => {
             super::build_noop::<1, true>(
                 context,
                 registry,
@@ -93,37 +91,6 @@ pub fn build<'ctx, 'this>(
             )
         }
     }
-}
-
-fn build_u96_single_limb_less_than_guarantee_verify<'ctx, 'this>(
-    context: &'ctx Context,
-    _registry: &ProgramRegistry<CoreType, CoreLibfunc>,
-    entry: &'this Block<'ctx>,
-    location: Location<'ctx>,
-    helper: &LibfuncHelper<'ctx, 'this>,
-    _metadata: &mut MetadataStorage,
-    _info: &SignatureOnlyConcreteLibfunc,
-) -> Result<()> {
-    let guarantee = entry.arg(0)?;
-
-    let u96_type = IntegerType::new(context, 96).into();
-    // this libfunc will always receive gate and modulus with single limb
-    let limb_struct_type = llvm::r#type::r#struct(context, &[u96_type; 1], false);
-
-    // extract gate and modulus from input value
-    let gate = entry.extract_value(context, location, guarantee, limb_struct_type, 0)?;
-    let modulus = entry.extract_value(context, location, guarantee, limb_struct_type, 1)?;
-
-    // extract the only limb from gate and modulus
-    let gate_limb = entry.extract_value(context, location, gate, u96_type, 0)?;
-    let modulus_limb = entry.extract_value(context, location, modulus, u96_type, 0)?;
-
-    // calcualte diff between limbs
-    let diff = entry.append_op_result(arith::subi(modulus_limb, gate_limb, location))?;
-
-    entry.append_operation(helper.br(0, &[diff], location));
-
-    Ok(())
 }
 
 /// Generate MLIR operations for the `init_circuit_data` libfunc.
