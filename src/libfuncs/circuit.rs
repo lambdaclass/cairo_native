@@ -75,7 +75,7 @@ pub fn build<'ctx, 'this>(
             SignatureOnlyConcreteLibfunc { signature, .. },
         )
         | CircuitConcreteLibfunc::U96GuaranteeVerify(SignatureOnlyConcreteLibfunc { signature }) => {
-            super::build_noop::<1, false>(
+            super::build_noop::<1, true>(
                 context,
                 registry,
                 entry,
