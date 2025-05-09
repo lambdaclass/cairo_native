@@ -36,20 +36,25 @@ pub fn eval_get(
     };
     assert_eq!(info.ty, ty);
 
-    let _ = data.entry(key).or_insert_with(|| {
-        count += 1;
-
-        Value::default_for_type(registry, &ty)
-    });
+    let value = data
+        .entry(key)
+        .or_insert_with(|| {
+            count += 1;
+            Value::default_for_type(registry, &ty)
+        })
+        .clone();
 
     EvalAction::NormalBranch(
         0,
-        smallvec![Value::FeltDictEntry {
-            ty,
-            data,
-            count,
-            key
-        }],
+        smallvec![
+            Value::FeltDictEntry {
+                ty,
+                data,
+                count,
+                key
+            },
+            value
+        ],
     )
 }
 
