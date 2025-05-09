@@ -36,39 +36,18 @@ pub fn eval_get(
     };
     assert_eq!(info.ty, ty);
 
-    if let std::collections::hash_map::Entry::Vacant(e) = data.entry(key) {
-        let default_value = Value::default_for_type(registry, &info.ty);
-        e.insert(default_value.clone());
+    let mut count = count;
 
-        let count = count + 1;
+    let value = data
+        .entry(key)
+        .or_insert_with(|| {
+            count += 1;
 
-        EvalAction::NormalBranch(
-            1,
-            smallvec![
-                Value::FeltDictEntry {
-                    ty,
-                    data,
-                    count,
-                    key
-                },
-                default_value,
-            ],
-        )
-    } else {
-        let value = data.get(&key).unwrap().to_owned();
-        EvalAction::NormalBranch(
-            0,
-            smallvec![
-                Value::FeltDictEntry {
-                    ty,
-                    data,
-                    count,
-                    key
-                },
-                value,
-            ],
-        )
-    }
+            Value::default_for_type(registry, &ty)
+        })
+        .to_owned();
+
+    EvalAction::NormalBranch(0, smallvec![Value::FeltDict { ty, data, count }, value])
 }
 
 pub fn eval_finalize(
