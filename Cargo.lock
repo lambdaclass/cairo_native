@@ -1153,6 +1153,42 @@ dependencies = [
 ]
 
 [[package]]
+name = "cairo-vm"
+version = "2.0.1"
+source = "git+https://github.com/lambdaclass/cairo-vm/?rev=3b36cd92f68f3dc26ddf5aba6c1f9a50ff3d303f#3b36cd92f68f3dc26ddf5aba6c1f9a50ff3d303f"
+dependencies = [
+ "anyhow",
+ "ark-ff 0.4.2",
+ "ark-std 0.4.0",
+ "bincode 2.0.1",
+ "bitvec",
+ "cairo-lang-casm",
+ "cairo-lang-starknet",
+ "cairo-lang-starknet-classes",
+ "generic-array",
+ "hashbrown 0.15.2",
+ "hex",
+ "indoc",
+ "keccak",
+ "lazy_static",
+ "nom",
+ "num-bigint",
+ "num-integer",
+ "num-prime",
+ "num-traits",
+ "rand 0.8.5",
+ "rust_decimal",
+ "serde",
+ "serde_json",
+ "sha2",
+ "sha3",
+ "starknet-crypto",
+ "starknet-types-core",
+ "thiserror 2.0.12",
+ "zip",
+]
+
+[[package]]
 name = "camino"
 version = "1.1.9"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -1168,6 +1204,20 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "8b6fd507454086c8edfd769ca6ada439193cdb209c7681712ef6275cccbfe5d8"
 dependencies = [
  "unicode-normalization",
+]
+
+[[package]]
+name = "casm-data-flow"
+version = "0.1.0"
+dependencies = [
+ "bincode 2.0.1",
+ "cairo-lang-casm",
+ "cairo-lang-starknet-classes",
+ "cairo-lang-utils",
+ "cairo-vm 2.0.1 (git+https://github.com/lambdaclass/cairo-vm/?rev=3b36cd92f68f3dc26ddf5aba6c1f9a50ff3d303f)",
+ "clap",
+ "serde_json",
+ "starknet-types-core",
 ]
 
 [[package]]
@@ -3352,19 +3402,6 @@ dependencies = [
  "thiserror 2.0.12",
  "tracing",
  "tracing-subscriber",
-]
-
-[[package]]
-name = "sierra2casm-dbg"
-version = "0.1.0"
-dependencies = [
- "bincode 2.0.1",
- "cairo-lang-casm",
- "cairo-lang-utils",
- "cairo-vm 2.0.1 (registry+https://github.com/rust-lang/crates.io-index)",
- "clap",
- "serde_json",
- "starknet-types-core",
 ]
 
 [[package]]
