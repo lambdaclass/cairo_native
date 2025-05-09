@@ -29,17 +29,19 @@ pub fn eval_get(
     let [Value::FeltDict {
         ty,
         mut data,
-        count,
+        mut count,
     }, Value::Felt(key)]: [Value; 2] = args.try_into().unwrap()
     else {
         panic!()
     };
     assert_eq!(info.ty, ty);
 
-    let default_value = Value::default_for_type(registry, &info.ty);
-    data.insert(key, default_value.clone());
+    let value = data
+        .entry(key)
+        .or_insert(Value::default_for_type(registry, &ty))
+        .clone();
 
-    let count = count + 1;
+    count += 1;
 
     EvalAction::NormalBranch(
         0,
@@ -50,7 +52,7 @@ pub fn eval_get(
                 count,
                 key
             },
-            default_value,
+            value
         ],
     )
 }
