@@ -227,7 +227,11 @@ pub mod trace_dump_runtime {
         sync::{LazyLock, Mutex},
     };
 
-    use crate::{starknet::ArrayAbi, types::TypeBuilder, utils::{get_integer_layout, layout_repeat}};
+    use crate::{
+        starknet::ArrayAbi,
+        types::TypeBuilder,
+        utils::{get_integer_layout, layout_repeat},
+    };
 
     use crate::runtime::FeltDict;
 
@@ -571,25 +575,29 @@ pub mod trace_dump_runtime {
                     let mut values = Vec::with_capacity(n_outputs);
 
                     let (u384_struct_layout, _) = layout_repeat(&u96_layout, 4).unwrap();
-                    let (gates_array_layout, _) = layout_repeat(&u384_struct_layout, n_outputs).unwrap();
-                    let (_, modulus_offset) = gates_array_layout.extend(u384_struct_layout).unwrap();
+                    let (gates_array_layout, _) =
+                        layout_repeat(&u384_struct_layout, n_outputs).unwrap();
+                    let (_, modulus_offset) =
+                        gates_array_layout.extend(u384_struct_layout).unwrap();
 
                     let value_ptr = value_ptr.cast::<[u8; 12]>();
 
                     // get gate values
                     for i in 0..n_outputs {
-                        let output_limbs = (0..4).flat_map(|j| {
-                            let offset = u96_layout.size() * j + u384_struct_layout.size() * i;
-                            *value_ptr.byte_add(offset).as_ref()
-                        }).collect::<Vec<u8>>();
+                        let output_limbs = (0..4)
+                            .flat_map(|j| {
+                                let offset = u96_layout.size() * j + u384_struct_layout.size() * i;
+                                *value_ptr.byte_add(offset).as_ref()
+                            })
+                            .collect::<Vec<u8>>();
                         values.push(BigUint::from_bytes_le(&output_limbs));
                     }
 
                     // get modulus value
                     let modulus_ptr = value_ptr.byte_add(modulus_offset);
-                    let modulus_value = (0..4).flat_map(|i| {
-                        *modulus_ptr.byte_add(u96_layout.size() * i).as_ref()
-                    }).collect::<Vec<u8>>();
+                    let modulus_value = (0..4)
+                        .flat_map(|i| *modulus_ptr.byte_add(u96_layout.size() * i).as_ref())
+                        .collect::<Vec<u8>>();
                     let modulus = BigUint::from_bytes_le(&modulus_value);
 
                     Value::CircuitOutputs {
@@ -659,25 +667,30 @@ pub mod trace_dump_runtime {
                     let value_ptr = value_ptr.cast::<[u8; 12]>();
 
                     let u96_layout = get_integer_layout(96);
-                    let (u384_struct_layout, _) = layout_repeat(&u96_layout, info.limb_count).unwrap();
+                    let (u384_struct_layout, _) =
+                        layout_repeat(&u96_layout, info.limb_count).unwrap();
 
-                    let output_limbs = (0..info.limb_count).map(|i| {
-                        let current_ptr = value_ptr.byte_add(u96_layout.size() * i);
-                        Value::BoundedInt {
-                            range: 0.into()..BigInt::one() << 96,
-                            value: BigInt::from_bytes_le(Sign::Plus, current_ptr.as_ref()),
-                        }
-                    }).collect::<Vec<_>>();
+                    let output_limbs = (0..info.limb_count)
+                        .map(|i| {
+                            let current_ptr = value_ptr.byte_add(u96_layout.size() * i);
+                            Value::BoundedInt {
+                                range: 0.into()..BigInt::one() << 96,
+                                value: BigInt::from_bytes_le(Sign::Plus, current_ptr.as_ref()),
+                            }
+                        })
+                        .collect::<Vec<_>>();
 
                     let modulus_ptr = value_ptr.byte_add(u384_struct_layout.size());
 
-                    let modulus_limbs = (0..info.limb_count).map(|i| {
-                        let current_ptr = modulus_ptr.byte_add(u96_layout.size() * i);
-                        Value::BoundedInt {
-                            range: 0.into()..BigInt::one() << 96,
-                            value: BigInt::from_bytes_le(Sign::Plus, current_ptr.as_ref()),
-                        }
-                    }).collect::<Vec<_>>();
+                    let modulus_limbs = (0..info.limb_count)
+                        .map(|i| {
+                            let current_ptr = modulus_ptr.byte_add(u96_layout.size() * i);
+                            Value::BoundedInt {
+                                range: 0.into()..BigInt::one() << 96,
+                                value: BigInt::from_bytes_le(Sign::Plus, current_ptr.as_ref()),
+                            }
+                        })
+                        .collect::<Vec<_>>();
 
                     Value::Struct(vec![
                         Value::Struct(output_limbs),

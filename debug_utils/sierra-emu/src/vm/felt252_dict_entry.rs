@@ -38,11 +38,10 @@ pub fn eval_get(
 
     let value = data
         .entry(key)
-        .or_insert_with(|| {
-            count += 1;
-            Value::default_for_type(registry, &ty)
-        })
+        .or_insert(Value::default_for_type(registry, &ty))
         .clone();
+
+    count += 1;
 
     EvalAction::NormalBranch(
         0,
