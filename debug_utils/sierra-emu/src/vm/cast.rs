@@ -54,7 +54,9 @@ fn eval_upcast(
     args: Vec<Value>,
 ) -> EvalAction {
     let [value] = get_numeric_args_as_bigints(&args).try_into().unwrap();
-    let int_ty = registry.get_type(&info.param_signatures()[1].ty).unwrap();
+    let int_ty = registry
+        .get_type(&info.branch_signatures()[0].vars[0].ty)
+        .unwrap();
 
     EvalAction::NormalBranch(
         0,
