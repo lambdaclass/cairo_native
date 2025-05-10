@@ -114,7 +114,7 @@ impl AbiArgument for ValueWithInfoWrapper<'_> {
                 .to_bytes(buffer, find_dict_drop_override)?,
 
             (Value::Array(_), CoreTypeConcrete::Array(_)) => {
-                // TODO: Assert that `info.ty` matches all the values' types.
+                // TODO: Assert that `info.ty` matches all the values' types. See: https://github.com/lambdaclass/cairo_native/issues/1216#issue-3052795891
 
                 let abi_ptr = self.value.to_ptr(
                     self.arena,
@@ -130,7 +130,7 @@ impl AbiArgument for ValueWithInfoWrapper<'_> {
                 abi.capacity.to_bytes(buffer, find_dict_drop_override)?;
             }
             (Value::BoundedInt { .. }, CoreTypeConcrete::BoundedInt(_)) => {
-                native_panic!("todo: implement AbiArgument for Value::BoundedInt case")
+                native_panic!("todo: implement AbiArgument for Value::BoundedInt case") // See: https://github.com/lambdaclass/cairo_native/issues/1217#issue-3052805863
             }
             (Value::Bytes31(value), CoreTypeConcrete::Bytes31(_)) => {
                 value.to_bytes(buffer, find_dict_drop_override)?
@@ -183,7 +183,7 @@ impl AbiArgument for ValueWithInfoWrapper<'_> {
                 ),
             ) => value.to_bytes(buffer, find_dict_drop_override)?,
             (Value::Felt252Dict { .. }, CoreTypeConcrete::Felt252Dict(_)) => {
-                // TODO: Assert that `info.ty` matches all the values' types.
+                // TODO: Assert that `info.ty` matches all the values' types. See: https://github.com/lambdaclass/cairo_native/issues/1216#issue-3052795891
 
                 self.value
                     .to_ptr(
@@ -249,7 +249,7 @@ impl AbiArgument for ValueWithInfoWrapper<'_> {
                 value.to_bytes(buffer, find_dict_drop_override)?
             }
             _ => native_panic!(
-                "todo: abi argument unimplemented for ({:?}, {:?})",
+                "todo: abi argument unimplemented for ({:?}, {:?})", // See: https://github.com/lambdaclass/cairo_native/issues/1218#issue-3052814195
                 self.value,
                 self.type_id
             ),
