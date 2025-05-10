@@ -68,6 +68,9 @@ impl<'m> JitNativeExecutor<'m> {
         #[cfg(feature = "with-debug-utils")]
         crate::metadata::debug_utils::setup_runtime(|name| executor.find_symbol_ptr(name));
 
+        #[cfg(feature = "with-trace-dump")]
+        crate::metadata::trace_dump::setup_runtime(|name| executor.find_symbol_ptr(name));
+
         Ok(executor)
     }
 

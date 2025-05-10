@@ -1,6 +1,6 @@
 use super::EvalAction;
 use crate::{
-    vm::uint252::{u256_to_biguint, u256_to_value, u516_to_value},
+    vm::uint256::{u256_to_biguint, u256_to_value, u516_to_value},
     Value,
 };
 use cairo_lang_sierra::{

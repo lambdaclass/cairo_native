@@ -1,12 +1,12 @@
 use bincode::de::read::SliceReader;
-use cairo_vm::serde::deserialize_program::HintParams;
-use clap::Parser;
-use serde_json::Value;
-use sierra2casm_dbg::{
+use cairo_lang_casm::hints::Hint;
+use casm_data_flow::{
     run_search_algorithm,
     search::{DfsQueue, NodeId},
     GraphMappings, Memory, Trace,
 };
+use clap::Parser;
+use serde_json::Value;
 use starknet_types_core::felt::Felt;
 use std::{collections::HashMap, fs, path::PathBuf, str::FromStr};
 
@@ -53,20 +53,9 @@ fn main() {
                 .remove("hints")
                 .unwrap();
 
-            let hints: HashMap<usize, Vec<HintParams>> = serde_json::from_value(hints).unwrap();
-            hints
-                .into_iter()
-                .map(|(key, value)| {
-                    //
-                    (
-                        key,
-                        value
-                            .into_iter()
-                            .map(|hint_params| serde_json::from_str(&hint_params.code).unwrap())
-                            .collect(),
-                    )
-                })
-                .collect()
+            let hints: Vec<(usize, Vec<Hint>)> = serde_json::from_value(hints).unwrap();
+
+            hints.into_iter().collect()
         }
     };
 

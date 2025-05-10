@@ -15,6 +15,7 @@ use std::{collections::HashMap, ops::Range};
 
 use crate::{debug::type_to_name, gas::BuiltinCosts};
 
+/// TODO: Can we reuse `cairo_native::Value::from_ptr`?
 #[derive(Clone, Debug, Eq, PartialEq, Serialize)]
 pub enum Value {
     Array {
@@ -68,10 +69,15 @@ pub enum Value {
     U32(u32),
     U64(u64),
     U8(u8),
+    IntRange {
+        x: Box<Value>,
+        y: Box<Value>,
+    },
     Uninitialized {
         ty: ConcreteTypeId,
     },
     BuiltinCosts(BuiltinCosts),
+    Null,
     Unit,
 }
 
@@ -98,6 +104,7 @@ impl Value {
                     .map(|member| Value::default_for_type(registry, member))
                     .collect(),
             ),
+            CoreTypeConcrete::Nullable(info) => Value::default_for_type(registry, &info.ty),
             x => panic!("type {:?} has no default value implementation", x.info()),
         }
     }
@@ -196,7 +203,9 @@ impl Value {
             CoreTypeConcrete::Uint128MulGuarantee(_) => matches!(self, Self::Unit),
             CoreTypeConcrete::Sint16(_) => matches!(self, Self::I16(_)),
             CoreTypeConcrete::Sint64(_) => matches!(self, Self::I64(_)),
-            CoreTypeConcrete::Nullable(info) => self.is(registry, &info.ty),
+            CoreTypeConcrete::Nullable(info) => {
+                matches!(self, Value::Null) || self.is(registry, &info.ty)
+            }
             CoreTypeConcrete::Uninitialized(_) => matches!(self, Self::Uninitialized { .. }),
             CoreTypeConcrete::Felt252DictEntry(info) => {
                 matches!(self, Self::FeltDictEntry { ty, .. } if *ty == info.ty)
@@ -215,7 +224,7 @@ impl Value {
                 StarknetTypeConcrete::Secp256Point(_) => matches!(self, Self::Struct(_)),
                 StarknetTypeConcrete::Sha256StateHandle(_) => matches!(self, Self::Struct { .. }),
             },
-            CoreTypeConcrete::IntRange(_) => todo!(),
+            CoreTypeConcrete::IntRange(_) => matches!(self, Self::IntRange { .. }),
             CoreTypeConcrete::Blake(_) => todo!(),
             CoreTypeConcrete::QM31(_) => todo!(),
         };
@@ -240,4 +249,39 @@ impl Value {
             Felt::from_dec_str(value).unwrap()
         })
     }
+}
+
+macro_rules! impl_conversions {
+    ( $( $t:ty as $i:ident ; )+ ) => { $(
+        impl From<$t> for Value {
+            fn from(value: $t) -> Self {
+                Self::$i(value)
+            }
+        }
+
+        impl TryFrom<Value> for $t {
+            type Error = Value;
+
+            fn try_from(value: Value) -> Result<Self, Self::Error> {
+                match value {
+                    Value::$i(value) => Ok(value),
+                    _ => Err(value),
+                }
+            }
+        }
+    )+ };
+}
+
+impl_conversions! {
+    Felt as Felt;
+    u8   as U8;
+    u16  as U16;
+    u32  as U32;
+    u64  as U64;
+    u128 as U128;
+    i8   as I8;
+    i16  as I16;
+    i32  as I32;
+    i64  as I64;
+    i128 as I128;
 }

@@ -37,6 +37,7 @@ mod range_ext;
 #[cfg(feature = "with-segfault-catcher")]
 pub mod safe_runner;
 pub mod sierra_gen;
+pub mod trace_dump;
 
 #[cfg(target_os = "macos")]
 pub const SHARED_LIBRARY_EXT: &str = "dylib";
