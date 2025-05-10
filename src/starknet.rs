@@ -53,7 +53,7 @@ impl From<&Felt252Abi> for Felt {
 }
 
 /// Binary representation of a `u256` (in MLIR).
-// TODO: This shouldn't need to be public.
+// TODO: This shouldn't need to be public. See: https://github.com/lambdaclass/cairo_native/issues/1221#issue-3053023949
 #[derive(
     Debug,
     Clone,
@@ -557,7 +557,7 @@ impl StarknetSyscallHandler for DummySyscallHandler {
     }
 }
 
-// TODO: Move to the correct place or remove if unused.
+// TODO: Move to the correct place or remove if unused. See: https://github.com/lambdaclass/cairo_native/issues/1222#issue-3053029798
 pub(crate) mod handler {
     use super::*;
     use crate::utils::{libc_free, libc_malloc};

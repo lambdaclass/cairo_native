@@ -681,7 +681,7 @@ mod tests {
     use rayon::iter::ParallelBridge;
     use rstest::*;
 
-    // todo add recursive contract test
+    // todo add recursive contract test See: https://github.com/lambdaclass/cairo_native/issues/1220#issue-3053012331
 
     #[fixture]
     fn starknet_program() -> ContractClass {
