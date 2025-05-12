@@ -575,7 +575,7 @@ pub mod trace_dump_runtime {
                     let mut values = Vec::with_capacity(n_outputs);
 
                     let (u384_struct_layout, _) = layout_repeat(&u96_layout, 4).unwrap();
-                    let (gates_array_layout, _) =
+                    let (gates_array_layout, gate_stride) =
                         layout_repeat(&u384_struct_layout, n_outputs).unwrap();
                     let (_, modulus_offset) =
                         gates_array_layout.extend(u384_struct_layout).unwrap();
@@ -584,7 +584,7 @@ pub mod trace_dump_runtime {
 
                     // get gate values
                     for i in 0..n_outputs {
-                        let gate_ptr = value_ptr.byte_add(u384_struct_layout.size() * i);
+                        let gate_ptr = value_ptr.byte_add(gate_stride * i);
                         values.push(u384_struct_to_bigint(gate_ptr, 4));
                     }
 
@@ -659,12 +659,12 @@ pub mod trace_dump_runtime {
                     let value_ptr = value_ptr.cast::<[u8; 12]>();
 
                     let u96_layout = get_integer_layout(96);
-                    let (u384_struct_layout, _) =
+                    let (u384_struct_layout, struct_stride) =
                         layout_repeat(&u96_layout, info.limb_count).unwrap();
 
                     let output_limbs = (0..info.limb_count)
                         .map(|i| {
-                            let current_ptr = value_ptr.byte_add(u96_layout.size() * i);
+                            let current_ptr = value_ptr.byte_add(struct_stride * i);
                             Value::BoundedInt {
                                 range: 0.into()..BigInt::one() << 96,
                                 value: BigInt::from_bytes_le(Sign::Plus, current_ptr.as_ref()),
@@ -822,10 +822,11 @@ pub mod trace_dump_runtime {
 
     unsafe fn u384_struct_to_bigint(value_ptr: NonNull<[u8; 12]>, limbs_count: usize) -> BigUint {
         let u96_layout = get_integer_layout(96);
+        let (_, elem_stride) = layout_repeat(&u96_layout, 4).unwrap();
 
         let output_limbs = (0..limbs_count)
             .flat_map(|i| {
-                let offset = u96_layout.size() * i;
+                let offset = elem_stride * i;
                 *value_ptr.byte_add(offset).as_ref()
             })
             .collect::<Vec<u8>>();
