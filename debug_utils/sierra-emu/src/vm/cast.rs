@@ -40,7 +40,10 @@ fn eval_downcast(
     if range.contains(&value) {
         EvalAction::NormalBranch(
             0,
-            smallvec![range_check, get_value_from_integer(registry, &info.to_ty, value)],
+            smallvec![
+                range_check,
+                get_value_from_integer(registry, &info.to_ty, value)
+            ],
         )
     } else {
         EvalAction::NormalBranch(1, smallvec![range_check])
