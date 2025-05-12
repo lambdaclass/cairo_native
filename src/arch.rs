@@ -253,7 +253,7 @@ impl AbiArgument for ValueWithInfoWrapper<'_> {
             // encountered yet. Adding support for additional input arguments
             // may require implementing this function for new combinations.
             _ => native_panic!(
-                "todo: abi argument unimplemented for ({:?}, {:?})",
+                "abi argument unimplemented for ({:?}, {:?})",
                 self.value,
                 self.type_id
             ),
