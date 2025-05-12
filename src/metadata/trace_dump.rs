@@ -584,21 +584,13 @@ pub mod trace_dump_runtime {
 
                     // get gate values
                     for i in 0..n_outputs {
-                        let output_limbs = (0..4)
-                            .flat_map(|j| {
-                                let offset = u96_layout.size() * j + u384_struct_layout.size() * i;
-                                *value_ptr.byte_add(offset).as_ref()
-                            })
-                            .collect::<Vec<u8>>();
-                        values.push(BigUint::from_bytes_le(&output_limbs));
+                        let gate_ptr = value_ptr.byte_add(u384_struct_layout.size() * i);
+                        values.push(u384_struct_to_bigint(gate_ptr, 4));
                     }
 
                     // get modulus value
                     let modulus_ptr = value_ptr.byte_add(modulus_offset);
-                    let modulus_value = (0..4)
-                        .flat_map(|i| *modulus_ptr.byte_add(u96_layout.size() * i).as_ref())
-                        .collect::<Vec<u8>>();
-                    let modulus = BigUint::from_bytes_le(&modulus_value);
+                    let modulus = u384_struct_to_bigint(modulus_ptr, 4);
 
                     Value::CircuitOutputs {
                         circuits: values,
@@ -826,6 +818,19 @@ pub mod trace_dump_runtime {
                 todo!()
             }
         }
+    }
+
+    unsafe fn u384_struct_to_bigint(value_ptr: NonNull<[u8; 12]>, limbs_count: usize) -> BigUint {
+        let u96_layout = get_integer_layout(96);
+
+        let output_limbs = (0..limbs_count)
+            .flat_map(|i| {
+                let offset = u96_layout.size() * i;
+                *value_ptr.byte_add(offset).as_ref()
+            })
+            .collect::<Vec<u8>>();
+
+        BigUint::from_bytes_le(&output_limbs)
     }
 
     #[derive(Debug)]
