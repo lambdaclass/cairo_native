@@ -101,13 +101,17 @@ impl Value {
                 index: 0,
                 payload: Box::new(Value::default_for_type(registry, &info.variants[0])),
             },
+            CoreTypeConcrete::Array(info) => Value::Array {
+                ty: info.ty.clone(),
+                data: vec![],
+            },
             CoreTypeConcrete::Struct(info) => Value::Struct(
                 info.members
                     .iter()
                     .map(|member| Value::default_for_type(registry, member))
                     .collect(),
             ),
-            CoreTypeConcrete::Nullable(info) => Value::default_for_type(registry, &info.ty),
+            CoreTypeConcrete::Nullable(_) => Value::Null,
             x => panic!("type {:?} has no default value implementation", x.info()),
         }
     }
