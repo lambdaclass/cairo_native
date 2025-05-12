@@ -103,7 +103,6 @@ fn main() {
         let before_round = Instant::now();
 
         let program = modify_starknet_contract(program.clone(), UNIQUE_CONTRACT_VALUE, round);
-        // TODO: use the program hash instead of round number. See: https://github.com/lambdaclass/cairo_native/issues/1215#issue-3052756022
         let hash = round;
 
         debug!(hash, "obtained test program");
