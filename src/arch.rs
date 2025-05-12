@@ -183,7 +183,7 @@ impl AbiArgument for ValueWithInfoWrapper<'_> {
                 ),
             ) => value.to_bytes(buffer, find_dict_drop_override)?,
             (Value::Felt252Dict { .. }, CoreTypeConcrete::Felt252Dict(_)) => {
-                // TODO: Assert that `info.ty` matches all the values' types. See: https://github.com/lambdaclass/cairo_native/issues/1216#issue-3052795891
+                // TODO: Assert that `info.ty` matches all the values' types.
 
                 self.value
                     .to_ptr(
