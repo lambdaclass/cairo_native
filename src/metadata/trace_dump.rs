@@ -676,7 +676,7 @@ pub mod trace_dump_runtime {
 
                     let modulus_limbs = (0..info.limb_count)
                         .map(|i| {
-                            let current_ptr = modulus_ptr.byte_add(u96_layout.size() * i);
+                            let current_ptr = modulus_ptr.byte_add(struct_stride * i);
                             Value::BoundedInt {
                                 range: 0.into()..BigInt::one() << 96,
                                 value: BigInt::from_bytes_le(Sign::Plus, current_ptr.as_ref()),
