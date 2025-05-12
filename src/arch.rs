@@ -249,7 +249,7 @@ impl AbiArgument for ValueWithInfoWrapper<'_> {
                 value.to_bytes(buffer, find_dict_drop_override)?
             }
             _ => native_panic!(
-                "todo: abi argument unimplemented for ({:?}, {:?})", // See: https://github.com/lambdaclass/cairo_native/issues/1218#issue-3052814195
+                "todo: abi argument unimplemented for ({:?}, {:?})",
                 self.value,
                 self.type_id
             ),
