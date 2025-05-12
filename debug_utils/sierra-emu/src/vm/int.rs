@@ -56,7 +56,7 @@ fn apply_overflowing_op_for_type(
     let ty = registry.get_type(ty).unwrap();
 
     match ty {
-        CoreTypeConcrete::Sint8(_) => overflowing_op::<u8>(lhs, rhs, op),
+        CoreTypeConcrete::Sint8(_) => overflowing_op::<i8>(lhs, rhs, op),
         CoreTypeConcrete::Sint16(_) => overflowing_op::<i16>(lhs, rhs, op),
         CoreTypeConcrete::Sint32(_) => overflowing_op::<i32>(lhs, rhs, op),
         CoreTypeConcrete::Sint64(_) => overflowing_op::<i64>(lhs, rhs, op),
