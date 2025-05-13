@@ -1,5 +1,5 @@
 use crate::{
-    debug::libfunc_to_name,
+    debug::{debug_signature, libfunc_to_name},
     gas::{BuiltinCosts, GasMetadata},
     starknet::StarknetSyscallHandler,
     ContractExecutionResult, ProgramTrace, StateDump, Value,
@@ -308,7 +308,7 @@ impl VirtualMachine {
         match &self.program.statements[frame.pc.0] {
             GenStatement::Invocation(invocation) => {
                 let libfunc = self.registry.get_libfunc(&invocation.libfunc_id).unwrap();
-                dbg!(
+                debug!(
                     "Executing invocation of libfunc: {}",
                     libfunc_to_name(libfunc)
                 );
@@ -483,9 +483,12 @@ fn eval<'a>(
         CoreConcreteLibfunc::Felt252DictEntry(selector) => {
             self::felt252_dict_entry::eval(registry, selector, args)
         }
-        CoreConcreteLibfunc::FunctionCall(info)
-        | CoreConcreteLibfunc::CouponCall(info) => {
-            self::function_call::eval(registry, info, args)
+        CoreConcreteLibfunc::FunctionCall(info) => {
+            self::function_call::eval_function_call(registry, info, args)
+        }
+        CoreConcreteLibfunc::CouponCall(info) => {
+            debug_signature(registry, info.param_signatures(), info.branch_signatures(), &args);
+            self::function_call::eval_coupon_call(registry, info, args)
         }
         CoreConcreteLibfunc::Gas(selector) => {
             self::gas::eval(registry, selector, args, gas, *statement_idx, builtin_costs)
