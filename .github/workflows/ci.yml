@@ -361,10 +361,9 @@ jobs:
     - name: Run tests
       working-directory: ./debug_utils/sierra-emu
       run: make test-no-corelib
-    - name: Run corelib's tests (WIP)
+    - name: Run corelib's tests
       working-directory: ./debug_utils/sierra-emu
       run: cargo test test_corelib -- --nocapture
-      continue-on-error: true # ignore result for now. When sierra-emu is fully implemented this should be removed
 
   build-sierra2casm-dbg:
     name: Build sierra2casm-dbg
