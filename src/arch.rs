@@ -248,8 +248,12 @@ impl AbiArgument for ValueWithInfoWrapper<'_> {
             (Value::Uint8(value), CoreTypeConcrete::Uint8(_)) => {
                 value.to_bytes(buffer, find_dict_drop_override)?
             }
+            // The catchall includes all unreachable combinations, as well
+            // as some combination that may be reachable, and haven't been
+            // encountered yet. Adding support for additional input arguments
+            // may require implementing this function for new combinations.
             _ => native_panic!(
-                "todo: abi argument unimplemented for ({:?}, {:?})",
+                "abi argument unimplemented for ({:?}, {:?})",
                 self.value,
                 self.type_id
             ),
