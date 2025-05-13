@@ -201,14 +201,25 @@ fn build_add_input<'ctx, 'this>(
         )?;
         middle_insert_block.store(context, location, accumulator_ptr, accumulator)?;
 
+        // Get pointer to accumulator array (field at index 1)
+        let accumulator_array_ptr = middle_insert_block.append_op_result(llvm::get_element_ptr(
+            context,
+            accumulator_ptr,
+            DenseI32ArrayAttribute::new(context, &[0, 1]),
+            accumulator.r#type(),
+            llvm::r#type::pointer(context, 0),
+            location,
+        ))?;
+        let accumulator_array_type =
+            llvm::r#type::array(IntegerType::new(context, 384).into(), n_inputs as u32 - 1);
+
         // Get pointer to next input to insert
-        let k0 = middle_insert_block.const_int(context, location, 0, 64)?;
         let next_input_ptr =
             middle_insert_block.append_op_result(llvm::get_element_ptr_dynamic(
                 context,
-                accumulator_ptr,
-                &[k0, k1, current_length],
-                accumulator.r#type(),
+                accumulator_array_ptr,
+                &[current_length],
+                accumulator_array_type,
                 llvm::r#type::pointer(context, 0),
                 location,
             ))?;
@@ -250,17 +261,14 @@ fn build_add_input<'ctx, 'this>(
         last_insert_block.store(context, location, accumulator_ptr, accumulator)?;
 
         // Get pointer to accumulator input
-        let k0 = last_insert_block.const_int(context, location, 0, 64)?;
-        let k1 = last_insert_block.const_int(context, location, 1, 64)?;
-        let accumulator_input_ptr =
-            last_insert_block.append_op_result(llvm::get_element_ptr_dynamic(
-                context,
-                accumulator_ptr,
-                &[k0, k1],
-                accumulator.r#type(),
-                llvm::r#type::pointer(context, 0),
-                location,
-            ))?;
+        let accumulator_input_ptr = last_insert_block.append_op_result(llvm::get_element_ptr(
+            context,
+            accumulator_ptr,
+            DenseI32ArrayAttribute::new(context, &[0, 1]),
+            accumulator.r#type(),
+            llvm::r#type::pointer(context, 0),
+            location,
+        ))?;
 
         // Copy accumulator input into return data
         let accumulator_input_length = last_insert_block.const_int(
