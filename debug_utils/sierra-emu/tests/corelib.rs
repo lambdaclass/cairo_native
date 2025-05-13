@@ -65,6 +65,7 @@ fn test_corelib() {
         "core::test::dict_test::test_array_from_squash_dict",
         "core::test::hash_test::test_blake2s",
         "core::test::testing_test::test_get_unspent_gas",
+        "core::test::qm31_test::",
     ];
 
     let compiled = compile_tests(
@@ -104,7 +105,7 @@ fn run_tests(compiled: TestCompilation) -> Vec<TestStatus> {
                     program.clone(),
                     EntryPoint::String(name.clone()),
                     vec![],
-                    u64::MAX,
+                    test.available_gas.map(|g| g as u64).unwrap_or_default(),
                 )
             });
 
