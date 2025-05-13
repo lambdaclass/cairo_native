@@ -34,11 +34,11 @@
 <a href=#34 id=34 data-nosnippet>34</a>        EcConcreteLibfunc::StateAddMul(info) =&gt; eval_state_add_mul(registry, info, args),
 <a href=#35 id=35 data-nosnippet>35</a>        EcConcreteLibfunc::PointFromX(info) =&gt; eval_point_from_x(registry, info, args),
 <a href=#36 id=36 data-nosnippet>36</a>        EcConcreteLibfunc::UnwrapPoint(info) =&gt; eval_unwrap_point(registry, info, args),
-<a href=#37 id=37 data-nosnippet>37</a>        EcConcreteLibfunc::Zero(<span class="kw">_</span>) =&gt; <span class="macro">todo!</span>(),
+<a href=#37 id=37 data-nosnippet>37</a>        EcConcreteLibfunc::Zero(info) =&gt; eval_zero(registry, info, args),
 <a href=#38 id=38 data-nosnippet>38</a>    }
 <a href=#39 id=39 data-nosnippet>39</a>}
 <a href=#40 id=40 data-nosnippet>40</a>
-<a href=#41 id=41 data-nosnippet>41</a><span class="kw">pub fn </span>eval_is_zero(
+<a href=#41 id=41 data-nosnippet>41</a><span class="kw">fn </span>eval_is_zero(
 <a href=#42 id=42 data-nosnippet>42</a>    _registry: <span class="kw-2">&amp;</span>ProgramRegistry&lt;CoreType, CoreLibfunc&gt;,
 <a href=#43 id=43 data-nosnippet>43</a>    _info: <span class="kw-2">&amp;</span>SignatureOnlyConcreteLibfunc,
 <a href=#44 id=44 data-nosnippet>44</a>    args: Vec&lt;Value&gt;,
@@ -55,7 +55,7 @@
 <a href=#55 id=55 data-nosnippet>55</a>    }
 <a href=#56 id=56 data-nosnippet>56</a>}
 <a href=#57 id=57 data-nosnippet>57</a>
-<a href=#58 id=58 data-nosnippet>58</a><span class="kw">pub fn </span>eval_unwrap_point(
+<a href=#58 id=58 data-nosnippet>58</a><span class="kw">fn </span>eval_unwrap_point(
 <a href=#59 id=59 data-nosnippet>59</a>    _registry: <span class="kw-2">&amp;</span>ProgramRegistry&lt;CoreType, CoreLibfunc&gt;,
 <a href=#60 id=60 data-nosnippet>60</a>    _info: <span class="kw-2">&amp;</span>SignatureOnlyConcreteLibfunc,
 <a href=#61 id=61 data-nosnippet>61</a>    args: Vec&lt;Value&gt;,
@@ -66,7 +66,7 @@
 <a href=#66 id=66 data-nosnippet>66</a>    EvalAction::NormalBranch(<span class="number">0</span>, <span class="macro">smallvec!</span>[Value::Felt(x), Value::Felt(y)])
 <a href=#67 id=67 data-nosnippet>67</a>}
 <a href=#68 id=68 data-nosnippet>68</a>
-<a href=#69 id=69 data-nosnippet>69</a><span class="kw">pub fn </span>eval_neg(
+<a href=#69 id=69 data-nosnippet>69</a><span class="kw">fn </span>eval_neg(
 <a href=#70 id=70 data-nosnippet>70</a>    _registry: <span class="kw-2">&amp;</span>ProgramRegistry&lt;CoreType, CoreLibfunc&gt;,
 <a href=#71 id=71 data-nosnippet>71</a>    _info: <span class="kw-2">&amp;</span>SignatureOnlyConcreteLibfunc,
 <a href=#72 id=72 data-nosnippet>72</a>    args: Vec&lt;Value&gt;,
@@ -86,7 +86,7 @@
 <a href=#86 id=86 data-nosnippet>86</a>    )
 <a href=#87 id=87 data-nosnippet>87</a>}
 <a href=#88 id=88 data-nosnippet>88</a>
-<a href=#89 id=89 data-nosnippet>89</a><span class="kw">pub fn </span>eval_new(
+<a href=#89 id=89 data-nosnippet>89</a><span class="kw">fn </span>eval_new(
 <a href=#90 id=90 data-nosnippet>90</a>    _registry: <span class="kw-2">&amp;</span>ProgramRegistry&lt;CoreType, CoreLibfunc&gt;,
 <a href=#91 id=91 data-nosnippet>91</a>    _info: <span class="kw-2">&amp;</span>SignatureOnlyConcreteLibfunc,
 <a href=#92 id=92 data-nosnippet>92</a>    args: Vec&lt;Value&gt;,
@@ -107,7 +107,7 @@
 <a href=#107 id=107 data-nosnippet>107</a>    }
 <a href=#108 id=108 data-nosnippet>108</a>}
 <a href=#109 id=109 data-nosnippet>109</a>
-<a href=#110 id=110 data-nosnippet>110</a><span class="kw">pub fn </span>eval_state_init(
+<a href=#110 id=110 data-nosnippet>110</a><span class="kw">fn </span>eval_state_init(
 <a href=#111 id=111 data-nosnippet>111</a>    _registry: <span class="kw-2">&amp;</span>ProgramRegistry&lt;CoreType, CoreLibfunc&gt;,
 <a href=#112 id=112 data-nosnippet>112</a>    _info: <span class="kw-2">&amp;</span>SignatureOnlyConcreteLibfunc,
 <a href=#113 id=113 data-nosnippet>113</a>    _args: Vec&lt;Value&gt;,
@@ -125,7 +125,7 @@
 <a href=#125 id=125 data-nosnippet>125</a>    )
 <a href=#126 id=126 data-nosnippet>126</a>}
 <a href=#127 id=127 data-nosnippet>127</a>
-<a href=#128 id=128 data-nosnippet>128</a><span class="kw">pub fn </span>eval_state_add(
+<a href=#128 id=128 data-nosnippet>128</a><span class="kw">fn </span>eval_state_add(
 <a href=#129 id=129 data-nosnippet>129</a>    _registry: <span class="kw-2">&amp;</span>ProgramRegistry&lt;CoreType, CoreLibfunc&gt;,
 <a href=#130 id=130 data-nosnippet>130</a>    _info: <span class="kw-2">&amp;</span>SignatureOnlyConcreteLibfunc,
 <a href=#131 id=131 data-nosnippet>131</a>    args: Vec&lt;Value&gt;,
@@ -153,7 +153,7 @@
 <a href=#153 id=153 data-nosnippet>153</a>    )
 <a href=#154 id=154 data-nosnippet>154</a>}
 <a href=#155 id=155 data-nosnippet>155</a>
-<a href=#156 id=156 data-nosnippet>156</a><span class="kw">pub fn </span>eval_state_add_mul(
+<a href=#156 id=156 data-nosnippet>156</a><span class="kw">fn </span>eval_state_add_mul(
 <a href=#157 id=157 data-nosnippet>157</a>    _registry: <span class="kw-2">&amp;</span>ProgramRegistry&lt;CoreType, CoreLibfunc&gt;,
 <a href=#158 id=158 data-nosnippet>158</a>    _info: <span class="kw-2">&amp;</span>SignatureOnlyConcreteLibfunc,
 <a href=#159 id=159 data-nosnippet>159</a>    args: Vec&lt;Value&gt;,
@@ -184,7 +184,7 @@
 <a href=#184 id=184 data-nosnippet>184</a>    )
 <a href=#185 id=185 data-nosnippet>185</a>}
 <a href=#186 id=186 data-nosnippet>186</a>
-<a href=#187 id=187 data-nosnippet>187</a><span class="kw">pub fn </span>eval_state_finalize(
+<a href=#187 id=187 data-nosnippet>187</a><span class="kw">fn </span>eval_state_finalize(
 <a href=#188 id=188 data-nosnippet>188</a>    _registry: <span class="kw-2">&amp;</span>ProgramRegistry&lt;CoreType, CoreLibfunc&gt;,
 <a href=#189 id=189 data-nosnippet>189</a>    _info: <span class="kw-2">&amp;</span>SignatureOnlyConcreteLibfunc,
 <a href=#190 id=190 data-nosnippet>190</a>    args: Vec&lt;Value&gt;,
@@ -211,7 +211,7 @@
 <a href=#211 id=211 data-nosnippet>211</a>    }
 <a href=#212 id=212 data-nosnippet>212</a>}
 <a href=#213 id=213 data-nosnippet>213</a>
-<a href=#214 id=214 data-nosnippet>214</a><span class="kw">pub fn </span>eval_point_from_x(
+<a href=#214 id=214 data-nosnippet>214</a><span class="kw">fn </span>eval_point_from_x(
 <a href=#215 id=215 data-nosnippet>215</a>    _registry: <span class="kw-2">&amp;</span>ProgramRegistry&lt;CoreType, CoreLibfunc&gt;,
 <a href=#216 id=216 data-nosnippet>216</a>    _info: <span class="kw-2">&amp;</span>SignatureOnlyConcreteLibfunc,
 <a href=#217 id=217 data-nosnippet>217</a>    args: Vec&lt;Value&gt;,
@@ -257,4 +257,18 @@
 <a href=#257 id=257 data-nosnippet>257</a>    };
 <a href=#258 id=258 data-nosnippet>258</a>
 <a href=#259 id=259 data-nosnippet>259</a>    AffinePoint::new(random_x, random_y).unwrap()
-<a href=#260 id=260 data-nosnippet>260</a>}</code></pre></div></section></main></body></html>
+<a href=#260 id=260 data-nosnippet>260</a>}
+<a href=#261 id=261 data-nosnippet>261</a>
+<a href=#262 id=262 data-nosnippet>262</a><span class="kw">fn </span>eval_zero(
+<a href=#263 id=263 data-nosnippet>263</a>    _registry: <span class="kw-2">&amp;</span>ProgramRegistry&lt;CoreType, CoreLibfunc&gt;,
+<a href=#264 id=264 data-nosnippet>264</a>    _info: <span class="kw-2">&amp;</span>SignatureOnlyConcreteLibfunc,
+<a href=#265 id=265 data-nosnippet>265</a>    _args: Vec&lt;Value&gt;,
+<a href=#266 id=266 data-nosnippet>266</a>) -&gt; EvalAction {
+<a href=#267 id=267 data-nosnippet>267</a>    EvalAction::NormalBranch(
+<a href=#268 id=268 data-nosnippet>268</a>        <span class="number">0</span>,
+<a href=#269 id=269 data-nosnippet>269</a>        <span class="macro">smallvec!</span>[Value::EcPoint {
+<a href=#270 id=270 data-nosnippet>270</a>            x: <span class="number">0</span>.into(),
+<a href=#271 id=271 data-nosnippet>271</a>            y: <span class="number">0</span>.into()
+<a href=#272 id=272 data-nosnippet>272</a>        }],
+<a href=#273 id=273 data-nosnippet>273</a>    )
+<a href=#274 id=274 data-nosnippet>274</a>}</code></pre></div></section></main></body></html>

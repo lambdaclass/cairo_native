@@ -54,52 +54,60 @@
 <a href=#54 id=54 data-nosnippet>54</a>        CoreTypeConcrete::Uint32(<span class="kw">_</span>) =&gt; Value::U32(value.to_u32().unwrap()),
 <a href=#55 id=55 data-nosnippet>55</a>        CoreTypeConcrete::Uint64(<span class="kw">_</span>) =&gt; Value::U64(value.to_u64().unwrap()),
 <a href=#56 id=56 data-nosnippet>56</a>        CoreTypeConcrete::Uint128(<span class="kw">_</span>) =&gt; Value::U128(value.to_u128().unwrap()),
-<a href=#57 id=57 data-nosnippet>57</a>        <span class="kw">_ </span>=&gt; <span class="macro">panic!</span>(<span class="string">"cannot get integer value for a non-integer type"</span>),
-<a href=#58 id=58 data-nosnippet>58</a>    }
-<a href=#59 id=59 data-nosnippet>59</a>}
-<a href=#60 id=60 data-nosnippet>60</a>
-<a href=#61 id=61 data-nosnippet>61</a><span class="kw">pub fn </span>integer_range(
-<a href=#62 id=62 data-nosnippet>62</a>    ty: <span class="kw-2">&amp;</span>CoreTypeConcrete,
-<a href=#63 id=63 data-nosnippet>63</a>    registry: <span class="kw-2">&amp;</span>ProgramRegistry&lt;CoreType, CoreLibfunc&gt;,
-<a href=#64 id=64 data-nosnippet>64</a>) -&gt; Range {
-<a href=#65 id=65 data-nosnippet>65</a>    <span class="kw">fn </span>range_of&lt;T&gt;() -&gt; Range
-<a href=#66 id=66 data-nosnippet>66</a>    <span class="kw">where
-<a href=#67 id=67 data-nosnippet>67</a>        </span>T: Bounded + Into&lt;BigInt&gt;,
-<a href=#68 id=68 data-nosnippet>68</a>    {
-<a href=#69 id=69 data-nosnippet>69</a>        Range {
-<a href=#70 id=70 data-nosnippet>70</a>            lower: T::min_value().into(),
-<a href=#71 id=71 data-nosnippet>71</a>            upper: T::max_value().into() + BigInt::one(),
-<a href=#72 id=72 data-nosnippet>72</a>        }
-<a href=#73 id=73 data-nosnippet>73</a>    }
-<a href=#74 id=74 data-nosnippet>74</a>
-<a href=#75 id=75 data-nosnippet>75</a>    <span class="kw">match </span>ty {
-<a href=#76 id=76 data-nosnippet>76</a>        CoreTypeConcrete::Uint8(<span class="kw">_</span>) =&gt; range_of::&lt;u8&gt;(),
-<a href=#77 id=77 data-nosnippet>77</a>        CoreTypeConcrete::Uint16(<span class="kw">_</span>) =&gt; range_of::&lt;u16&gt;(),
-<a href=#78 id=78 data-nosnippet>78</a>        CoreTypeConcrete::Uint32(<span class="kw">_</span>) =&gt; range_of::&lt;u32&gt;(),
-<a href=#79 id=79 data-nosnippet>79</a>        CoreTypeConcrete::Uint64(<span class="kw">_</span>) =&gt; range_of::&lt;u64&gt;(),
-<a href=#80 id=80 data-nosnippet>80</a>        CoreTypeConcrete::Uint128(<span class="kw">_</span>) =&gt; range_of::&lt;u128&gt;(),
-<a href=#81 id=81 data-nosnippet>81</a>        CoreTypeConcrete::Felt252(<span class="kw">_</span>) =&gt; Range {
-<a href=#82 id=82 data-nosnippet>82</a>            lower: BigInt::ZERO,
-<a href=#83 id=83 data-nosnippet>83</a>            upper: CAIRO_PRIME_BIGINT.clone(),
-<a href=#84 id=84 data-nosnippet>84</a>        },
-<a href=#85 id=85 data-nosnippet>85</a>        CoreTypeConcrete::Sint8(<span class="kw">_</span>) =&gt; range_of::&lt;i8&gt;(),
-<a href=#86 id=86 data-nosnippet>86</a>        CoreTypeConcrete::Sint16(<span class="kw">_</span>) =&gt; range_of::&lt;i16&gt;(),
-<a href=#87 id=87 data-nosnippet>87</a>        CoreTypeConcrete::Sint32(<span class="kw">_</span>) =&gt; range_of::&lt;i32&gt;(),
-<a href=#88 id=88 data-nosnippet>88</a>        CoreTypeConcrete::Sint64(<span class="kw">_</span>) =&gt; range_of::&lt;i64&gt;(),
-<a href=#89 id=89 data-nosnippet>89</a>        CoreTypeConcrete::Sint128(<span class="kw">_</span>) =&gt; range_of::&lt;i128&gt;(),
-<a href=#90 id=90 data-nosnippet>90</a>        CoreTypeConcrete::BoundedInt(info) =&gt; info.range.clone(),
-<a href=#91 id=91 data-nosnippet>91</a>        CoreTypeConcrete::Bytes31(<span class="kw">_</span>) =&gt; Range {
-<a href=#92 id=92 data-nosnippet>92</a>            lower: BigInt::ZERO,
-<a href=#93 id=93 data-nosnippet>93</a>            upper: BigInt::one() &lt;&lt; <span class="number">248</span>,
-<a href=#94 id=94 data-nosnippet>94</a>        },
-<a href=#95 id=95 data-nosnippet>95</a>        CoreTypeConcrete::Const(info) =&gt; {
-<a href=#96 id=96 data-nosnippet>96</a>            <span class="kw">let </span>ty = registry.get_type(<span class="kw-2">&amp;</span>info.inner_ty).unwrap();
-<a href=#97 id=97 data-nosnippet>97</a>            integer_range(ty, registry)
-<a href=#98 id=98 data-nosnippet>98</a>        }
-<a href=#99 id=99 data-nosnippet>99</a>        CoreTypeConcrete::NonZero(info) =&gt; {
-<a href=#100 id=100 data-nosnippet>100</a>            <span class="kw">let </span>ty = registry.get_type(<span class="kw-2">&amp;</span>info.ty).unwrap();
-<a href=#101 id=101 data-nosnippet>101</a>            integer_range(ty, registry)
-<a href=#102 id=102 data-nosnippet>102</a>        }
-<a href=#103 id=103 data-nosnippet>103</a>        <span class="kw">_ </span>=&gt; <span class="macro">panic!</span>(<span class="string">"cannot get integer range value for a non-integer type"</span>),
-<a href=#104 id=104 data-nosnippet>104</a>    }
-<a href=#105 id=105 data-nosnippet>105</a>}</code></pre></div></section></main></body></html>
+<a href=#57 id=57 data-nosnippet>57</a>        CoreTypeConcrete::BoundedInt(info) =&gt; {
+<a href=#58 id=58 data-nosnippet>58</a>            <span class="kw">let </span>range = <span class="kw-2">&amp;</span>info.range;
+<a href=#59 id=59 data-nosnippet>59</a>            Value::BoundedInt {
+<a href=#60 id=60 data-nosnippet>60</a>                range: range.lower.clone()..range.upper.clone(),
+<a href=#61 id=61 data-nosnippet>61</a>                value,
+<a href=#62 id=62 data-nosnippet>62</a>            }
+<a href=#63 id=63 data-nosnippet>63</a>        }
+<a href=#64 id=64 data-nosnippet>64</a>        CoreTypeConcrete::Felt252(<span class="kw">_</span>) =&gt; Value::Felt(value.into()),
+<a href=#65 id=65 data-nosnippet>65</a>        <span class="kw">_ </span>=&gt; <span class="macro">panic!</span>(<span class="string">"cannot get integer value for a non-integer type"</span>),
+<a href=#66 id=66 data-nosnippet>66</a>    }
+<a href=#67 id=67 data-nosnippet>67</a>}
+<a href=#68 id=68 data-nosnippet>68</a>
+<a href=#69 id=69 data-nosnippet>69</a><span class="kw">pub fn </span>integer_range(
+<a href=#70 id=70 data-nosnippet>70</a>    ty: <span class="kw-2">&amp;</span>CoreTypeConcrete,
+<a href=#71 id=71 data-nosnippet>71</a>    registry: <span class="kw-2">&amp;</span>ProgramRegistry&lt;CoreType, CoreLibfunc&gt;,
+<a href=#72 id=72 data-nosnippet>72</a>) -&gt; Range {
+<a href=#73 id=73 data-nosnippet>73</a>    <span class="kw">fn </span>range_of&lt;T&gt;() -&gt; Range
+<a href=#74 id=74 data-nosnippet>74</a>    <span class="kw">where
+<a href=#75 id=75 data-nosnippet>75</a>        </span>T: Bounded + Into&lt;BigInt&gt;,
+<a href=#76 id=76 data-nosnippet>76</a>    {
+<a href=#77 id=77 data-nosnippet>77</a>        Range {
+<a href=#78 id=78 data-nosnippet>78</a>            lower: T::min_value().into(),
+<a href=#79 id=79 data-nosnippet>79</a>            upper: T::max_value().into() + BigInt::one(),
+<a href=#80 id=80 data-nosnippet>80</a>        }
+<a href=#81 id=81 data-nosnippet>81</a>    }
+<a href=#82 id=82 data-nosnippet>82</a>
+<a href=#83 id=83 data-nosnippet>83</a>    <span class="kw">match </span>ty {
+<a href=#84 id=84 data-nosnippet>84</a>        CoreTypeConcrete::Uint8(<span class="kw">_</span>) =&gt; range_of::&lt;u8&gt;(),
+<a href=#85 id=85 data-nosnippet>85</a>        CoreTypeConcrete::Uint16(<span class="kw">_</span>) =&gt; range_of::&lt;u16&gt;(),
+<a href=#86 id=86 data-nosnippet>86</a>        CoreTypeConcrete::Uint32(<span class="kw">_</span>) =&gt; range_of::&lt;u32&gt;(),
+<a href=#87 id=87 data-nosnippet>87</a>        CoreTypeConcrete::Uint64(<span class="kw">_</span>) =&gt; range_of::&lt;u64&gt;(),
+<a href=#88 id=88 data-nosnippet>88</a>        CoreTypeConcrete::Uint128(<span class="kw">_</span>) =&gt; range_of::&lt;u128&gt;(),
+<a href=#89 id=89 data-nosnippet>89</a>        CoreTypeConcrete::Felt252(<span class="kw">_</span>) =&gt; Range {
+<a href=#90 id=90 data-nosnippet>90</a>            lower: BigInt::ZERO,
+<a href=#91 id=91 data-nosnippet>91</a>            upper: CAIRO_PRIME_BIGINT.clone(),
+<a href=#92 id=92 data-nosnippet>92</a>        },
+<a href=#93 id=93 data-nosnippet>93</a>        CoreTypeConcrete::Sint8(<span class="kw">_</span>) =&gt; range_of::&lt;i8&gt;(),
+<a href=#94 id=94 data-nosnippet>94</a>        CoreTypeConcrete::Sint16(<span class="kw">_</span>) =&gt; range_of::&lt;i16&gt;(),
+<a href=#95 id=95 data-nosnippet>95</a>        CoreTypeConcrete::Sint32(<span class="kw">_</span>) =&gt; range_of::&lt;i32&gt;(),
+<a href=#96 id=96 data-nosnippet>96</a>        CoreTypeConcrete::Sint64(<span class="kw">_</span>) =&gt; range_of::&lt;i64&gt;(),
+<a href=#97 id=97 data-nosnippet>97</a>        CoreTypeConcrete::Sint128(<span class="kw">_</span>) =&gt; range_of::&lt;i128&gt;(),
+<a href=#98 id=98 data-nosnippet>98</a>        CoreTypeConcrete::BoundedInt(info) =&gt; info.range.clone(),
+<a href=#99 id=99 data-nosnippet>99</a>        CoreTypeConcrete::Bytes31(<span class="kw">_</span>) =&gt; Range {
+<a href=#100 id=100 data-nosnippet>100</a>            lower: BigInt::ZERO,
+<a href=#101 id=101 data-nosnippet>101</a>            upper: BigInt::one() &lt;&lt; <span class="number">248</span>,
+<a href=#102 id=102 data-nosnippet>102</a>        },
+<a href=#103 id=103 data-nosnippet>103</a>        CoreTypeConcrete::Const(info) =&gt; {
+<a href=#104 id=104 data-nosnippet>104</a>            <span class="kw">let </span>ty = registry.get_type(<span class="kw-2">&amp;</span>info.inner_ty).unwrap();
+<a href=#105 id=105 data-nosnippet>105</a>            integer_range(ty, registry)
+<a href=#106 id=106 data-nosnippet>106</a>        }
+<a href=#107 id=107 data-nosnippet>107</a>        CoreTypeConcrete::NonZero(info) =&gt; {
+<a href=#108 id=108 data-nosnippet>108</a>            <span class="kw">let </span>ty = registry.get_type(<span class="kw-2">&amp;</span>info.ty).unwrap();
+<a href=#109 id=109 data-nosnippet>109</a>            integer_range(ty, registry)
+<a href=#110 id=110 data-nosnippet>110</a>        }
+<a href=#111 id=111 data-nosnippet>111</a>        <span class="kw">_ </span>=&gt; <span class="macro">panic!</span>(<span class="string">"cannot get integer range value for a non-integer type"</span>),
+<a href=#112 id=112 data-nosnippet>112</a>    }
+<a href=#113 id=113 data-nosnippet>113</a>}</code></pre></div></section></main></body></html>
