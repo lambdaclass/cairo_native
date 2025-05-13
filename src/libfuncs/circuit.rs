@@ -1167,9 +1167,8 @@ fn build_into_u96_guarantee<'ctx, 'this>(
 mod test {
 
     use crate::{
-        utils::{
-            felt252_str,
-            test::{jit_enum, jit_panic, jit_struct, load_cairo, run_program_assert_output},
+        utils::test::{
+            felt252_str, jit_enum, jit_panic, jit_struct, load_cairo, run_program_assert_output,
         },
         values::Value,
     };
