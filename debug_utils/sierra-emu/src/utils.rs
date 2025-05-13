@@ -54,6 +54,14 @@ pub fn get_value_from_integer(
         CoreTypeConcrete::Uint32(_) => Value::U32(value.to_u32().unwrap()),
         CoreTypeConcrete::Uint64(_) => Value::U64(value.to_u64().unwrap()),
         CoreTypeConcrete::Uint128(_) => Value::U128(value.to_u128().unwrap()),
+        CoreTypeConcrete::BoundedInt(info) => {
+            let range = &info.range;
+            Value::BoundedInt {
+                range: range.lower.clone()..range.upper.clone(),
+                value,
+            }
+        }
+        CoreTypeConcrete::Felt252(_) => Value::Felt(value.into()),
         _ => panic!("cannot get integer value for a non-integer type"),
     }
 }
