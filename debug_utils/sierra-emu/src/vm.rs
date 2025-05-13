@@ -1,5 +1,5 @@
 use crate::{
-    debug::{debug_signature, libfunc_to_name},
+    debug::libfunc_to_name,
     gas::{BuiltinCosts, GasMetadata},
     starknet::StarknetSyscallHandler,
     ContractExecutionResult, ProgramTrace, StateDump, Value,
@@ -487,7 +487,6 @@ fn eval<'a>(
             self::function_call::eval_function_call(registry, info, args)
         }
         CoreConcreteLibfunc::CouponCall(info) => {
-            debug_signature(registry, info.param_signatures(), info.branch_signatures(), &args);
             self::function_call::eval_coupon_call(registry, info, args)
         }
         CoreConcreteLibfunc::Gas(selector) => {
