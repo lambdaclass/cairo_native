@@ -10,7 +10,7 @@ use num_bigint::BigInt;
 use num_traits::{Bounded, One, ToPrimitive};
 use starknet_types_core::felt::CAIRO_PRIME_BIGINT;
 
-use crate::Value;
+use crate::{debug::type_to_name, Value};
 
 /// Receives a vector of values, filters any which is non numeric and returns a `Vec<BigInt>`
 /// Useful when a binary operation takes generic values (like with bounded ints).
@@ -30,7 +30,7 @@ pub fn get_numeric_args_as_bigints(args: &[Value]) -> Vec<BigInt> {
             Value::U128(value) => BigInt::from(*value),
             Value::Felt(value) => value.to_bigint(),
             Value::Bytes31(value) => value.to_bigint(),
-            value => panic!("argument should be an integer: {:?}", value),
+            value => panic!("Argument should be an integer: {:?}", value),
         })
         .collect()
 }
@@ -62,12 +62,15 @@ pub fn get_value_from_integer(
             }
         }
         CoreTypeConcrete::Felt252(_) => Value::Felt(value.into()),
-        _ => panic!("cannot get integer value for a non-integer type"),
+        _ => panic!(
+            "Cannot get integer value for a non-integer type: {}",
+            type_to_name(ty_id, registry)
+        ),
     }
 }
 
 pub fn integer_range(
-    ty: &ConcreteTypeId,
+    ty_id: &ConcreteTypeId,
     registry: &ProgramRegistry<CoreType, CoreLibfunc>,
 ) -> Range {
     fn range_of<T>() -> Range
@@ -80,7 +83,7 @@ pub fn integer_range(
         }
     }
 
-    let ty = registry.get_type(ty).unwrap();
+    let ty = registry.get_type(ty_id).unwrap();
 
     match ty {
         CoreTypeConcrete::Uint8(_) => range_of::<u8>(),
@@ -104,6 +107,9 @@ pub fn integer_range(
         },
         CoreTypeConcrete::Const(info) => integer_range(&info.inner_ty, registry),
         CoreTypeConcrete::NonZero(info) => integer_range(&info.ty, registry),
-        _ => panic!("cannot get integer range value for a non-integer type"),
+        _ => panic!(
+            "Cannot get integer range value for a non-integer type {}",
+            type_to_name(ty_id, registry)
+        ),
     }
 }
