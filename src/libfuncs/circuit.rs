@@ -115,7 +115,7 @@ fn build_init_circuit_data<'ctx, 'this>(
     )?;
 
     // Calculate full capacity for array.
-    let capacity = circuit_info.n_inputs - 1;
+    let capacity = circuit_info.n_inputs;
     let u384_layout = get_integer_layout(384);
     let capacity_bytes = layout_repeat(&u384_layout, capacity)?
         .0
