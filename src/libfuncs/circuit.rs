@@ -2,6 +2,8 @@
 //!
 //! Relevant casm code: https://github.com/starkware-libs/cairo/blob/v2.10.0/crates/cairo-lang-sierra-to-casm/src/invocations/circuit.rs
 
+#![allow(unused_variables, unreachable_code)]
+
 use super::{increment_builtin_counter_by, LibfuncHelper};
 use crate::{
     error::{Result, SierraAssertError},
@@ -46,6 +48,8 @@ pub fn build<'ctx, 'this>(
     metadata: &mut MetadataStorage,
     selector: &CircuitConcreteLibfunc,
 ) -> Result<()> {
+    native_panic!("circuit libfuncs are disabled at the moment, due to limitations in LLVM");
+
     match selector {
         CircuitConcreteLibfunc::AddInput(info) => {
             build_add_input(context, registry, entry, location, helper, metadata, info)
@@ -367,10 +371,6 @@ fn build_eval<'ctx, 'this>(
     let mul_mod = entry.arg(1)?;
     let circuit_data = entry.arg(3)?;
     let circuit_modulus = entry.arg(4)?;
-
-    if circuit_info.values.len() > 1000 {
-        native_panic!("big circuits are disabled at the moment, due to limitation in LLVM")
-    }
 
     // arguments 5 and 6 are used to build the gate 0 (with constant value 1)
     // let zero = entry.argument(5)?;
