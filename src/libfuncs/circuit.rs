@@ -376,9 +376,9 @@ fn build_eval<'ctx, 'this>(
             let value_ptr = ok_block.gep(
                 context,
                 location,
-                circuit_data,
+                outputs_ptr,
                 &[GepIndex::Const(i as i32)],
-                IntegerType::new(context, 384).into(),
+                build_u384_struct_type(context),
             )?;
             ok_block.store(context, location, value_ptr, gate)?;
         }
