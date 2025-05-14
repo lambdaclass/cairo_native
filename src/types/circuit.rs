@@ -232,7 +232,7 @@ pub const fn is_zst(info: &CircuitTypeConcrete) -> bool {
 }
 
 pub fn layout(
-    registry: &ProgramRegistry<CoreType, CoreLibfunc>,
+    _registry: &ProgramRegistry<CoreType, CoreLibfunc>,
     info: &CircuitTypeConcrete,
 ) -> Result<Layout> {
     match info {
@@ -252,64 +252,18 @@ pub fn layout(
         | CircuitTypeConcrete::CircuitDescriptor(_)
         | CircuitTypeConcrete::CircuitFailureGuarantee(_) => Ok(Layout::new::<()>()),
 
-        CircuitTypeConcrete::CircuitData(info) => {
-            let Some(GenericArg::Type(circuit_type_id)) = info.info.long_id.generic_args.first()
-            else {
-                return Err(SierraAssertError::BadTypeInfo.into());
-            };
-            let CoreTypeConcrete::Circuit(CircuitTypeConcrete::Circuit(circuit)) =
-                registry.get_type(circuit_type_id)?
-            else {
-                return Err(SierraAssertError::BadTypeInfo.into());
-            };
+        CircuitTypeConcrete::CircuitData(_) => Ok(Layout::new::<*mut ()>()),
+        CircuitTypeConcrete::CircuitOutputs(_) => {
+            let u384_struct_layout = layout_repeat(&get_integer_layout(96), 4)?.0;
+            let pointer_layout = Layout::new::<*mut ()>();
 
-            let n_inputs = circuit.circuit_info.n_inputs;
-
-            let u384_layout = get_integer_layout(384);
-
-            let layout = layout_repeat(&u384_layout, n_inputs)?.0;
-
-            Ok(layout)
+            Ok(pointer_layout.extend(u384_struct_layout)?.0)
         }
-        CircuitTypeConcrete::CircuitOutputs(info) => {
-            let Some(GenericArg::Type(circuit_type_id)) = info.info.long_id.generic_args.first()
-            else {
-                return Err(SierraAssertError::BadTypeInfo.into());
-            };
-            let CoreTypeConcrete::Circuit(CircuitTypeConcrete::Circuit(circuit)) =
-                registry.get_type(circuit_type_id)?
-            else {
-                return Err(SierraAssertError::BadTypeInfo.into());
-            };
+        CircuitTypeConcrete::CircuitInputAccumulator(_) => {
+            let integer_layout = get_integer_layout(64);
+            let pointer_layout = Layout::new::<*mut ()>();
 
-            let n_gates = circuit.circuit_info.values.len();
-
-            let u384_layout = get_integer_layout(384);
-
-            let layout = layout_repeat(&u384_layout, n_gates)?.0;
-
-            Ok(layout)
-        }
-        CircuitTypeConcrete::CircuitInputAccumulator(info) => {
-            let Some(GenericArg::Type(circuit_type_id)) = info.info.long_id.generic_args.first()
-            else {
-                return Err(SierraAssertError::BadTypeInfo.into());
-            };
-            let CoreTypeConcrete::Circuit(CircuitTypeConcrete::Circuit(circuit)) =
-                registry.get_type(circuit_type_id)?
-            else {
-                return Err(SierraAssertError::BadTypeInfo.into());
-            };
-
-            let n_inputs = circuit.circuit_info.n_inputs;
-
-            let length_layout = get_integer_layout(64);
-
-            let u384_layout = get_integer_layout(384);
-            let inputs_layout = layout_repeat(&u384_layout, n_inputs - 1)?.0;
-            let layout = length_layout.extend(inputs_layout)?.0;
-
-            Ok(layout)
+            Ok(integer_layout.extend(pointer_layout)?.0)
         }
         CircuitTypeConcrete::CircuitPartialOutputs(_) => Ok(Layout::new::<()>()),
     }
