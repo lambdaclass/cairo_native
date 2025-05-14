@@ -88,78 +88,78 @@ pub fn build<'ctx>(
     }
 }
 
+/// Builds the circuit accumulator type.
+///
+/// ## Layout:
+///
+/// Holds up to N_INPUTS - 1 elements. Where each element is an u384.
+///
+/// ```rust
+/// struct {
+///     size: u64,
+///     data: *u384,
+/// }
+/// ```
 pub fn build_circuit_accumulator<'ctx>(
     context: &'ctx Context,
     _module: &Module<'ctx>,
-    registry: &ProgramRegistry<CoreType, CoreLibfunc>,
+    _registry: &ProgramRegistry<CoreType, CoreLibfunc>,
     _metadata: &mut MetadataStorage,
-    info: WithSelf<InfoOnlyConcreteType>,
+    _info: WithSelf<InfoOnlyConcreteType>,
 ) -> Result<Type<'ctx>> {
-    let Some(GenericArg::Type(circuit_type_id)) = info.info.long_id.generic_args.first() else {
-        return Err(SierraAssertError::BadTypeInfo.into());
-    };
-    let CoreTypeConcrete::Circuit(CircuitTypeConcrete::Circuit(circuit)) =
-        registry.get_type(circuit_type_id)?
-    else {
-        return Err(SierraAssertError::BadTypeInfo.into());
-    };
-
-    let n_inputs = circuit.circuit_info.n_inputs;
-
     let fields = vec![
         IntegerType::new(context, 64).into(),
-        llvm::r#type::array(IntegerType::new(context, 384).into(), n_inputs as u32 - 1),
+        llvm::r#type::pointer(context, 0),
     ];
 
     Ok(llvm::r#type::r#struct(context, &fields, false))
 }
 
+/// Builds the circuit data type.
+///
+/// ## Layout:
+///
+/// Holds N_INPUTS elements. Where each element is an u384.
+///
+/// ```rust
+/// struct {
+///     data: *u384,
+/// }
+/// ```
 pub fn build_circuit_data<'ctx>(
     context: &'ctx Context,
     _module: &Module<'ctx>,
-    registry: &ProgramRegistry<CoreType, CoreLibfunc>,
+    _registry: &ProgramRegistry<CoreType, CoreLibfunc>,
     _metadata: &mut MetadataStorage,
-    info: WithSelf<InfoOnlyConcreteType>,
+    _info: WithSelf<InfoOnlyConcreteType>,
 ) -> Result<Type<'ctx>> {
-    let Some(GenericArg::Type(circuit_type_id)) = info.info.long_id.generic_args.first() else {
-        return Err(SierraAssertError::BadTypeInfo.into());
-    };
-    let CoreTypeConcrete::Circuit(CircuitTypeConcrete::Circuit(circuit)) =
-        registry.get_type(circuit_type_id)?
-    else {
-        return Err(SierraAssertError::BadTypeInfo.into());
-    };
-
-    let n_inputs = circuit.circuit_info.n_inputs;
-
-    Ok(llvm::r#type::array(
-        IntegerType::new(context, 384).into(),
-        n_inputs as u32,
-    ))
+    Ok(llvm::r#type::pointer(context, 0))
 }
 
+/// Builds the circuit outputs type.
+///
+/// ## Layout:
+///
+/// Holds N_VALUES elements, where each element is a struct-shaped u384,
+/// A struct-shaped u384 contains 4 limbs, each a u96.
+///
+/// ```rust
+/// struct {
+///     data: *u384_struct,
+///     modulus: u384_struct,
+/// };
+/// ```
 pub fn build_circuit_outputs<'ctx>(
     context: &'ctx Context,
     _module: &Module<'ctx>,
-    registry: &ProgramRegistry<CoreType, CoreLibfunc>,
+    _registry: &ProgramRegistry<CoreType, CoreLibfunc>,
     _metadata: &mut MetadataStorage,
-    info: WithSelf<InfoOnlyConcreteType>,
+    _info: WithSelf<InfoOnlyConcreteType>,
 ) -> Result<Type<'ctx>> {
-    let Some(GenericArg::Type(circuit_type_id)) = info.info.long_id.generic_args.first() else {
-        return Err(SierraAssertError::BadTypeInfo.into());
-    };
-    let CoreTypeConcrete::Circuit(CircuitTypeConcrete::Circuit(circuit)) =
-        registry.get_type(circuit_type_id)?
-    else {
-        return Err(SierraAssertError::BadTypeInfo.into());
-    };
-
-    let n_gates = circuit.circuit_info.values.len();
-
     Ok(llvm::r#type::r#struct(
         context,
         &[
-            llvm::r#type::array(build_u384_struct_type(context), n_gates as u32),
+            llvm::r#type::pointer(context, 0),
             build_u384_struct_type(context),
         ],
         false,
