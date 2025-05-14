@@ -7,6 +7,7 @@ use crate::{
     error::{Result, SierraAssertError},
     libfuncs::r#struct::build_struct_value,
     metadata::MetadataStorage,
+    native_panic,
     types::{circuit::build_u384_struct_type, TypeBuilder},
     utils::{get_integer_layout, layout_repeat, BlockExt, ProgramRegistryExt},
 };
@@ -33,6 +34,7 @@ use melior::{
     },
     Context,
 };
+use num_traits::Signed;
 
 /// Select and call the correct libfunc builder function from the selector.
 pub fn build<'ctx, 'this>(
@@ -66,14 +68,15 @@ pub fn build<'ctx, 'this>(
         CircuitConcreteLibfunc::FailureGuaranteeVerify(info) => build_failure_guarantee_verify(
             context, registry, entry, location, helper, metadata, info,
         ),
-        CircuitConcreteLibfunc::IntoU96Guarantee(SignatureAndTypeConcreteLibfunc {
-            signature,
-            ..
-        })
-        | CircuitConcreteLibfunc::U96SingleLimbLessThanGuaranteeVerify(
-            SignatureOnlyConcreteLibfunc { signature, .. },
-        )
-        | CircuitConcreteLibfunc::U96GuaranteeVerify(SignatureOnlyConcreteLibfunc { signature }) => {
+        CircuitConcreteLibfunc::IntoU96Guarantee(info) => {
+            build_into_u96_guarantee(context, registry, entry, location, helper, metadata, info)
+        }
+        CircuitConcreteLibfunc::U96SingleLimbLessThanGuaranteeVerify(info) => {
+            build_u96_single_limb_less_than_guarantee_verify(
+                context, registry, entry, location, helper, metadata, info,
+            )
+        }
+        CircuitConcreteLibfunc::U96GuaranteeVerify(SignatureOnlyConcreteLibfunc { signature }) => {
             super::build_noop::<1, true>(
                 context,
                 registry,
@@ -820,6 +823,37 @@ fn build_u96_limbs_less_than_guarantee_verify<'ctx, 'this>(
     Ok(())
 }
 
+fn build_u96_single_limb_less_than_guarantee_verify<'ctx, 'this>(
+    context: &'ctx Context,
+    _registry: &ProgramRegistry<CoreType, CoreLibfunc>,
+    entry: &'this Block<'ctx>,
+    location: Location<'ctx>,
+    helper: &LibfuncHelper<'ctx, 'this>,
+    _metadata: &mut MetadataStorage,
+    _info: &SignatureOnlyConcreteLibfunc,
+) -> Result<()> {
+    let guarantee = entry.arg(0)?;
+
+    let u96_type = IntegerType::new(context, 96).into();
+    // this libfunc will always receive gate and modulus with single limb
+    let limb_struct_type = llvm::r#type::r#struct(context, &[u96_type; 1], false);
+
+    // extract gate and modulus from input value
+    let gate = entry.extract_value(context, location, guarantee, limb_struct_type, 0)?;
+    let modulus = entry.extract_value(context, location, guarantee, limb_struct_type, 1)?;
+
+    // extract the only limb from gate and modulus
+    let gate_limb = entry.extract_value(context, location, gate, u96_type, 0)?;
+    let modulus_limb = entry.extract_value(context, location, modulus, u96_type, 0)?;
+
+    // calcualte diff between limbs
+    let diff = entry.append_op_result(arith::subi(modulus_limb, gate_limb, location))?;
+
+    entry.append_operation(helper.br(0, &[diff], location));
+
+    Ok(())
+}
+
 /// Generate MLIR operations for the `get_circuit_output` libfunc.
 #[allow(clippy::too_many_arguments)]
 fn build_get_output<'ctx, 'this>(
@@ -1083,6 +1117,52 @@ fn build_array_slice<'ctx>(
     )
 }
 
+/// Converts input to an U96Guarantee.
+/// Input type must fit inside of an u96.
+///
+/// # Signature
+/// ```cairo
+/// extern fn into_u96_guarantee<T>(val: T) -> U96Guarantee nopanic;
+/// ```
+fn build_into_u96_guarantee<'ctx, 'this>(
+    context: &'ctx Context,
+    registry: &ProgramRegistry<CoreType, CoreLibfunc>,
+    entry: &'this Block<'ctx>,
+    location: Location<'ctx>,
+    helper: &LibfuncHelper<'ctx, 'this>,
+    _metadata: &mut MetadataStorage,
+    info: &SignatureAndTypeConcreteLibfunc,
+) -> Result<()> {
+    let src = entry.argument(0)?.into();
+
+    let src_ty = registry.get_type(&info.param_signatures()[0].ty)?;
+
+    let src_range = src_ty.integer_range(registry)?;
+
+    // We expect the input value to be unsigned, but we check it just in case.
+    if src_range.lower.is_negative() {
+        native_panic!("into_u96_guarantee expects an unsigned integer")
+    }
+
+    // Extend the input value to an u96
+    let mut dst = entry.extui(src, IntegerType::new(context, 96).into(), location)?;
+
+    // If the lower bound is positive, we offset the value by the lower bound
+    // to obtain the actual value.
+    if src_range.lower.is_positive() {
+        let klower = entry.const_int_from_type(
+            context,
+            location,
+            src_range.lower,
+            IntegerType::new(context, 96).into(),
+        )?;
+        dst = entry.addi(dst, klower, location)?
+    }
+
+    entry.append_operation(helper.br(0, &[dst], location));
+    Ok(())
+}
+
 #[cfg(test)]
 mod test {
 
@@ -1094,8 +1174,8 @@ mod test {
         values::Value,
     };
     use cairo_lang_sierra::extensions::utils::Range;
-    use num_bigint::BigUint;
-    use num_traits::Num;
+    use num_bigint::{BigInt, BigUint};
+    use num_traits::{Num, One};
     use starknet_types_core::felt::Felt;
 
     fn u384(limbs: [&str; 4]) -> Value {
@@ -1401,6 +1481,48 @@ mod test {
                     "0xaf4bed7eef975ff1941fdf3d",
                     "0x7"
                 ]))
+            ),
+        );
+    }
+
+    #[test]
+    fn run_into_u96_guarantee() {
+        let program = load_cairo!(
+            use core::circuit::{into_u96_guarantee, U96Guarantee};
+            #[feature("bounded-int-utils")]
+            use core::internal::bounded_int::BoundedInt;
+
+            fn main() -> (U96Guarantee, U96Guarantee, U96Guarantee) {
+                (
+                    into_u96_guarantee::<BoundedInt<0, 79228162514264337593543950335>>(123),
+                    into_u96_guarantee::<BoundedInt<100, 1000>>(123),
+                    into_u96_guarantee::<u8>(123),
+                )
+            }
+        );
+
+        let range = Range {
+            lower: BigInt::ZERO,
+            upper: BigInt::one() << 96,
+        };
+
+        run_program_assert_output(
+            &program,
+            "main",
+            &[],
+            jit_struct!(
+                Value::BoundedInt {
+                    value: 123.into(),
+                    range: range.clone()
+                },
+                Value::BoundedInt {
+                    value: 123.into(),
+                    range: range.clone()
+                },
+                Value::BoundedInt {
+                    value: 123.into(),
+                    range: range.clone()
+                }
             ),
         );
     }

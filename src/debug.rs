@@ -416,5 +416,6 @@ pub const fn libfunc_to_name(value: &CoreConcreteLibfunc) -> &'static str {
         },
         CoreConcreteLibfunc::Blake(_) => "blake",
         CoreConcreteLibfunc::QM31(_) => "qm31",
+        CoreConcreteLibfunc::UnsafePanic(_) => "unsafe_panic",
     }
 }
