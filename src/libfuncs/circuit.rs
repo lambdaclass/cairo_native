@@ -6,7 +6,7 @@ use super::{increment_builtin_counter_by, LibfuncHelper};
 use crate::{
     error::{Result, SierraAssertError},
     libfuncs::r#struct::build_struct_value,
-    metadata::MetadataStorage,
+    metadata::{realloc_bindings::ReallocBindingsMeta, MetadataStorage},
     native_panic,
     types::{circuit::build_u384_struct_type, TypeBuilder},
     utils::{get_integer_layout, layout_repeat, BlockExt, ProgramRegistryExt},
@@ -104,14 +104,39 @@ fn build_init_circuit_data<'ctx, 'this>(
     metadata: &mut MetadataStorage,
     info: &SignatureAndTypeConcreteLibfunc,
 ) -> Result<()> {
-    let rc_usage = match registry.get_type(&info.ty)? {
-        CoreTypeConcrete::Circuit(CircuitTypeConcrete::Circuit(info)) => {
-            info.circuit_info.rc96_usage()
-        }
+    let circuit_info = match registry.get_type(&info.ty)? {
+        CoreTypeConcrete::Circuit(CircuitTypeConcrete::Circuit(info)) => &info.circuit_info,
         _ => return Err(SierraAssertError::BadTypeInfo.into()),
     };
-    let rc = increment_builtin_counter_by(context, entry, location, entry.arg(0)?, rc_usage)?;
 
+    let rc = increment_builtin_counter_by(
+        context,
+        entry,
+        location,
+        entry.arg(0)?,
+        circuit_info.rc96_usage(),
+    )?;
+
+    // Calculate full capacity for array.
+    let capacity = circuit_info.n_inputs - 1;
+    let u384_layout = get_integer_layout(384);
+    let capacity_bytes = layout_repeat(&u384_layout, capacity)?
+        .0
+        .pad_to_align()
+        .size();
+    let capacity_bytes_value = entry.const_int(context, location, capacity_bytes, 64)?;
+
+    // Alloc memory for array.
+    let ptr_ty = llvm::r#type::pointer(context, 0);
+    let ptr = entry.append_op_result(llvm::zero(ptr_ty, location))?;
+    let ptr = entry.append_op_result(ReallocBindingsMeta::realloc(
+        context,
+        ptr,
+        capacity_bytes_value,
+        location,
+    )?)?;
+
+    // Create accumulator struct.
     let k0 = entry.const_int(context, location, 0, 64)?;
     let accumulator_ty = &info.branch_signatures()[0].vars[1].ty;
     let accumulator = build_struct_value(
@@ -122,7 +147,7 @@ fn build_init_circuit_data<'ctx, 'this>(
         helper,
         metadata,
         accumulator_ty,
-        &[k0],
+        &[k0, ptr],
     )?;
 
     entry.append_operation(helper.br(0, &[rc, accumulator], location));
