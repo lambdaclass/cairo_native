@@ -368,6 +368,10 @@ fn build_eval<'ctx, 'this>(
     let circuit_data = entry.arg(3)?;
     let circuit_modulus = entry.arg(4)?;
 
+    if circuit_info.values.len() > 1000 {
+        native_panic!("big circuits are disabled at the moment, due to limitation in LLVM")
+    }
+
     // arguments 5 and 6 are used to build the gate 0 (with constant value 1)
     // let zero = entry.argument(5)?;
     // let one = entry.argument(6)?;
