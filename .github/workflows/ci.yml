@@ -152,7 +152,6 @@ jobs:
         run: make test-ci
       - name: test-cairo
         run: |
-          echo > corelib/src/test/circuit_test.cairo
           make test-cairo
 
   test_macos:
@@ -184,7 +183,6 @@ jobs:
         run: make test-ci
       - name: test-cairo
         run: |
-          echo > corelib/src/test/circuit_test.cairo
           make test-cairo
 
   coverage:

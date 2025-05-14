@@ -2,8 +2,6 @@
 //!
 //! Relevant casm code: https://github.com/starkware-libs/cairo/blob/v2.10.0/crates/cairo-lang-sierra-to-casm/src/invocations/circuit.rs
 
-#![allow(unused_variables, unreachable_code)]
-
 use super::{increment_builtin_counter_by, LibfuncHelper};
 use crate::{
     error::{Result, SierraAssertError},
@@ -48,8 +46,6 @@ pub fn build<'ctx, 'this>(
     metadata: &mut MetadataStorage,
     selector: &CircuitConcreteLibfunc,
 ) -> Result<()> {
-    native_panic!("circuit libfuncs are disabled at the moment, due to limitations in LLVM");
-
     match selector {
         CircuitConcreteLibfunc::AddInput(info) => {
             build_add_input(context, registry, entry, location, helper, metadata, info)
@@ -1183,7 +1179,6 @@ mod test {
     }
 
     #[test]
-    #[ignore]
     fn run_add_circuit() {
         let program = load_cairo!(
             use core::circuit::{
@@ -1220,7 +1215,6 @@ mod test {
     }
 
     #[test]
-    #[ignore]
     fn run_sub_circuit() {
         let program = load_cairo!(
             use core::circuit::{
@@ -1257,7 +1251,6 @@ mod test {
     }
 
     #[test]
-    #[ignore]
     fn run_mul_circuit() {
         let program = load_cairo!(
             use core::circuit::{
@@ -1294,7 +1287,6 @@ mod test {
     }
 
     #[test]
-    #[ignore]
     fn run_inverse_circuit() {
         let program = load_cairo!(
             use core::circuit::{
@@ -1329,7 +1321,6 @@ mod test {
     }
 
     #[test]
-    #[ignore]
     fn run_no_coprime_circuit() {
         let program = load_cairo!(
             use core::circuit::{
@@ -1366,7 +1357,6 @@ mod test {
     }
 
     #[test]
-    #[ignore]
     fn run_mul_overflow_circuit() {
         let program = load_cairo!(
             use core::circuit::{
@@ -1412,7 +1402,6 @@ mod test {
     }
 
     #[test]
-    #[ignore]
     fn run_full_circuit() {
         let program = load_cairo!(
             use core::circuit::{
@@ -1464,7 +1453,6 @@ mod test {
     }
 
     #[test]
-    #[ignore]
     fn run_into_u96_guarantee() {
         let program = load_cairo!(
             use core::circuit::{into_u96_guarantee, U96Guarantee};
