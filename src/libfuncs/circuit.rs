@@ -193,14 +193,14 @@ fn build_add_input<'ctx, 'this>(
         1,
     )?;
     // Get pointer to next input to insert
-    let next_input_ptr = entry.append_op_result(llvm::get_element_ptr_dynamic(
+    let next_input_ptr = entry.gep(
         context,
-        inputs_ptr,
-        &[current_length],
-        accumulator.r#type(),
-        llvm::r#type::pointer(context, 0),
         location,
-    ))?;
+        inputs_ptr,
+        &[GepIndex::Value(current_length)],
+        IntegerType::new(context, 384).into(),
+    )?;
+
     // Interpret u384 struct (input) as u384 integer
     let u384_struct = entry.arg(1)?;
     let new_input = u384_struct_to_integer(context, entry, location, u384_struct)?;
