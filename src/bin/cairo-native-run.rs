@@ -3,10 +3,11 @@ use cairo_lang_compiler::{
     compile_prepared_db, db::RootDatabase, project::setup_project, CompilerConfig,
 };
 use cairo_lang_runner::short_string::as_cairo_short_string;
+use cairo_lang_sierra_to_casm::metadata::MetadataComputationConfig;
 use cairo_native::{
     context::NativeContext,
     executor::{AotNativeExecutor, JitNativeExecutor},
-    metadata::gas::{GasMetadata, MetadataComputationConfig},
+    metadata::gas::GasMetadata,
     starknet_stub::StubSyscallHandler,
 };
 use clap::{Parser, ValueEnum};
@@ -44,6 +45,16 @@ struct Args {
     /// Optimization level, Valid: 0, 1, 2, 3. Values higher than 3 are considered as 3.
     #[arg(short = 'O', long, default_value_t = 0)]
     opt_level: u8,
+
+    #[cfg(feature = "with-trace-dump")]
+    #[arg(long)]
+    /// The output path for the execution trace
+    trace_output: Option<PathBuf>,
+
+    #[cfg(feature = "with-trace-dump")]
+    #[arg(long)]
+    /// The output path for the compiled sierra code
+    sierra_output: Option<PathBuf>,
 }
 
 fn main() -> anyhow::Result<()> {
@@ -69,6 +80,14 @@ fn main() -> anyhow::Result<()> {
     )?
     .program;
 
+    #[cfg(feature = "with-trace-dump")]
+    if let Some(sierra_output) = args.sierra_output {
+        use std::fs::File;
+        use std::io::Write;
+        let mut file = File::create(sierra_output).unwrap();
+        write!(file, "{}", &sierra_program).unwrap();
+    }
+
     let native_context = NativeContext::new();
 
     // Compile the sierra program into a MLIR module.
@@ -80,6 +99,16 @@ fn main() -> anyhow::Result<()> {
         RunMode::Aot => {
             let executor =
                 AotNativeExecutor::from_native_module(native_module, args.opt_level.into())?;
+
+            #[cfg(feature = "with-trace-dump")]
+            {
+                use cairo_native::metadata::trace_dump::TraceBinding;
+                if let Some(trace_id) = executor.find_symbol_ptr(TraceBinding::TraceId.symbol()) {
+                    let trace_id = trace_id.cast::<u64>();
+                    unsafe { *trace_id = 0 };
+                }
+            }
+
             Box::new(move |function_id, args, gas, syscall_handler| {
                 executor.invoke_dynamic_with_syscall_handler(
                     function_id,
@@ -92,6 +121,16 @@ fn main() -> anyhow::Result<()> {
         RunMode::Jit => {
             let executor =
                 JitNativeExecutor::from_native_module(native_module, args.opt_level.into())?;
+
+            #[cfg(feature = "with-trace-dump")]
+            {
+                use cairo_native::metadata::trace_dump::TraceBinding;
+                if let Some(trace_id) = executor.find_symbol_ptr(TraceBinding::TraceId.symbol()) {
+                    let trace_id = trace_id.cast::<u64>();
+                    unsafe { *trace_id = 0 };
+                }
+            }
+
             Box::new(move |function_id, args, gas, syscall_handler| {
                 executor.invoke_dynamic_with_syscall_handler(
                     function_id,
@@ -102,6 +141,17 @@ fn main() -> anyhow::Result<()> {
             })
         }
     };
+
+    #[cfg(feature = "with-trace-dump")]
+    {
+        use cairo_lang_sierra::program_registry::ProgramRegistry;
+        use cairo_native::metadata::trace_dump::trace_dump_runtime::{TraceDump, TRACE_DUMP};
+
+        TRACE_DUMP.lock().unwrap().insert(
+            0,
+            TraceDump::new(ProgramRegistry::new(&sierra_program).unwrap()),
+        );
+    }
 
     let gas_metadata =
         GasMetadata::new(&sierra_program, Some(MetadataComputationConfig::default())).unwrap();
@@ -136,6 +186,21 @@ fn main() -> anyhow::Result<()> {
     }
     if let Some(gas) = result.remaining_gas {
         println!("Remaining gas: {gas}");
+    }
+
+    #[cfg(feature = "with-trace-dump")]
+    if let Some(trace_output) = args.trace_output {
+        let traces = cairo_native::metadata::trace_dump::trace_dump_runtime::TRACE_DUMP
+            .lock()
+            .unwrap();
+        assert_eq!(traces.len(), 1);
+
+        let trace_dump = traces.values().next().unwrap();
+        serde_json::to_writer_pretty(
+            std::fs::File::create(trace_output).unwrap(),
+            &trace_dump.trace,
+        )
+        .unwrap();
     }
 
     Ok(())

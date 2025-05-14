@@ -37,6 +37,7 @@ mod range_ext;
 #[cfg(feature = "with-segfault-catcher")]
 pub mod safe_runner;
 pub mod sierra_gen;
+pub mod trace_dump;
 
 #[cfg(target_os = "macos")]
 pub const SHARED_LIBRARY_EXT: &str = "dylib";
@@ -303,11 +304,6 @@ pub fn create_engine(
 ) -> ExecutionEngine {
     // Create the JIT engine.
     let engine = ExecutionEngine::new(module, opt_level.into(), &[], false);
-    #[cfg(feature = "with-debug-utils")]
-    _metadata
-        .get::<crate::metadata::debug_utils::DebugUtils>()
-        .unwrap()
-        .register_impls(&engine);
 
     #[cfg(feature = "with-mem-tracing")]
     self::mem_tracing::register_bindings(&engine);
