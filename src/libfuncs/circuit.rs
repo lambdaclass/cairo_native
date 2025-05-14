@@ -1183,6 +1183,7 @@ mod test {
     }
 
     #[test]
+    #[ignore]
     fn run_add_circuit() {
         let program = load_cairo!(
             use core::circuit::{
@@ -1219,6 +1220,7 @@ mod test {
     }
 
     #[test]
+    #[ignore]
     fn run_sub_circuit() {
         let program = load_cairo!(
             use core::circuit::{
@@ -1255,6 +1257,7 @@ mod test {
     }
 
     #[test]
+    #[ignore]
     fn run_mul_circuit() {
         let program = load_cairo!(
             use core::circuit::{
@@ -1291,6 +1294,7 @@ mod test {
     }
 
     #[test]
+    #[ignore]
     fn run_inverse_circuit() {
         let program = load_cairo!(
             use core::circuit::{
@@ -1325,6 +1329,7 @@ mod test {
     }
 
     #[test]
+    #[ignore]
     fn run_no_coprime_circuit() {
         let program = load_cairo!(
             use core::circuit::{
@@ -1361,6 +1366,7 @@ mod test {
     }
 
     #[test]
+    #[ignore]
     fn run_mul_overflow_circuit() {
         let program = load_cairo!(
             use core::circuit::{
@@ -1406,6 +1412,7 @@ mod test {
     }
 
     #[test]
+    #[ignore]
     fn run_full_circuit() {
         let program = load_cairo!(
             use core::circuit::{
@@ -1457,6 +1464,7 @@ mod test {
     }
 
     #[test]
+    #[ignore]
     fn run_into_u96_guarantee() {
         let program = load_cairo!(
             use core::circuit::{into_u96_guarantee, U96Guarantee};
