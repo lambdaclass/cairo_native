@@ -2,7 +2,7 @@
 
 UNAME := $(shell uname)
 SCARB_VERSION = 2.11.2
-CAIRO_2_VERSION = 2.12.0-dev.0
+CAIRO_2_VERSION = 2.12.0-dev.1
 
 # Usage is the default target for newcomers running `make`.
 .PHONY: usage
@@ -58,7 +58,7 @@ build-dev: check-llvm
 .PHONY: check
 check: check-llvm
 	cargo fmt --all -- --check
-	cargo clippy --all-targets --all-features -- -D warnings
+	cargo clippy --workspace --all-targets --all-features -- -D warnings
 
 .PHONY: test
 test: check-llvm needs-cairo2 build-alexandria
