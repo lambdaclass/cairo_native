@@ -823,12 +823,11 @@ fn build_get_output<'ctx, 'this>(
 
     let outputs = entry.arg(0)?;
 
-    let n_gates = circuit_info.values.len();
-    let output_gates = entry.extract_value(
+    let values_ptr = entry.extract_value(
         context,
         location,
         outputs,
-        llvm::r#type::array(build_u384_struct_type(context), n_gates as u32),
+        llvm::r#type::pointer(context, 0),
         0,
     )?;
     let modulus_struct = entry.extract_value(
@@ -838,12 +837,20 @@ fn build_get_output<'ctx, 'this>(
         build_u384_struct_type(context),
         1,
     )?;
-    let output_struct = entry.extract_value(
+
+    let output_struct_ptr = entry.gep(
         context,
         location,
-        output_gates,
+        values_ptr,
+        &[GepIndex::Const(output_idx as i32)],
         build_u384_struct_type(context),
-        output_idx,
+    )?;
+
+    let output_struct = entry.load(
+        context,
+        location,
+        output_struct_ptr,
+        build_u384_struct_type(context),
     )?;
 
     let guarantee_type_id = &info.branch_signatures()[0].vars[1].ty;
