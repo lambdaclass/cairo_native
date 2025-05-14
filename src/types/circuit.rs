@@ -93,7 +93,7 @@ pub fn build<'ctx>(
 ///
 /// Holds up to N_INPUTS - 1 elements. Where each element is an u384.
 ///
-/// ```rust
+/// ```ignore
 /// struct {
 ///     size: u64,
 ///     data: *u384,
@@ -120,7 +120,7 @@ pub fn build_circuit_accumulator<'ctx>(
 ///
 /// Holds N_INPUTS elements. Where each element is an u384.
 ///
-/// ```rust
+/// ```ignore
 /// struct {
 ///     data: *u384,
 /// }
@@ -142,7 +142,7 @@ pub fn build_circuit_data<'ctx>(
 /// Holds N_VALUES elements, where each element is a struct-shaped u384,
 /// A struct-shaped u384 contains 4 limbs, each a u96.
 ///
-/// ```rust
+/// ```ignore
 /// struct {
 ///     data: *u384_struct,
 ///     modulus: u384_struct,
