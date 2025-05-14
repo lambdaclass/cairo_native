@@ -9,7 +9,7 @@ use crate::{
     metadata::{realloc_bindings::ReallocBindingsMeta, MetadataStorage},
     native_panic,
     types::{circuit::build_u384_struct_type, TypeBuilder},
-    utils::{get_integer_layout, layout_repeat, BlockExt, ProgramRegistryExt},
+    utils::{get_integer_layout, layout_repeat, BlockExt, GepIndex, ProgramRegistryExt},
 };
 use cairo_lang_sierra::{
     extensions::{
@@ -352,12 +352,36 @@ fn build_eval<'ctx, 'this>(
             .map(|value| u384_integer_to_struct(context, ok_block, location, value))
             .collect::<Result<Vec<_>>>()?;
 
-        let n_gates = circuit_info.values.len();
-        let gates_array = ok_block.append_op_result(llvm::undef(
-            llvm::r#type::array(build_u384_struct_type(context), n_gates as u32),
+        // Calculate full capacity for array.
+        let outputs_capacity = circuit_info.values.len();
+        let u384_struct_layout = layout_repeat(&get_integer_layout(96), 4)?.0;
+        let outputs_capacity_bytes = layout_repeat(&u384_struct_layout, outputs_capacity)?
+            .0
+            .pad_to_align()
+            .size();
+        let outputs_capacity_bytes_value =
+            ok_block.const_int(context, location, outputs_capacity_bytes, 64)?;
+
+        // Alloc memory for array.
+        let ptr_ty = llvm::r#type::pointer(context, 0);
+        let outputs_ptr = ok_block.append_op_result(llvm::zero(ptr_ty, location))?;
+        let outputs_ptr = ok_block.append_op_result(ReallocBindingsMeta::realloc(
+            context,
+            outputs_ptr,
+            outputs_capacity_bytes_value,
             location,
-        ))?;
-        let gates_array = ok_block.insert_values(context, location, gates_array, &gates)?;
+        )?)?;
+
+        for (i, gate) in gates.into_iter().enumerate() {
+            let value_ptr = ok_block.gep(
+                context,
+                location,
+                circuit_data,
+                &[GepIndex::Const(i as i32)],
+                IntegerType::new(context, 384).into(),
+            )?;
+            ok_block.store(context, location, value_ptr, gate)?;
+        }
 
         let modulus_struct = u384_integer_to_struct(context, ok_block, location, circuit_modulus)?;
 
@@ -371,7 +395,7 @@ fn build_eval<'ctx, 'this>(
             helper,
             metadata,
             outputs_type_id,
-            &[gates_array, modulus_struct],
+            &[outputs_ptr, modulus_struct],
         )?;
 
         ok_block.append_operation(helper.br(0, &[add_mod, mul_mod, outputs], location));
@@ -427,12 +451,18 @@ fn build_gate_evaluation<'ctx, 'this>(
     let mut values = vec![None; 1 + circuit_info.n_inputs + circuit_info.values.len()];
     values[0] = Some(block.const_int(context, location, 1, 384)?);
     for i in 0..circuit_info.n_inputs {
-        values[i + 1] = Some(block.extract_value(
+        let value_ptr = block.gep(
             context,
             location,
             circuit_data,
+            &[GepIndex::Const(i as i32)],
             IntegerType::new(context, 384).into(),
-            i,
+        )?;
+        values[i + 1] = Some(block.load(
+            context,
+            location,
+            value_ptr,
+            IntegerType::new(context, 384).into(),
         )?);
     }
 
