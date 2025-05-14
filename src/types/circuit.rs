@@ -11,10 +11,9 @@ use crate::{
 use cairo_lang_sierra::{
     extensions::{
         circuit::{CircuitTypeConcrete, ConcreteU96LimbsLessThanGuarantee},
-        core::{CoreLibfunc, CoreType, CoreTypeConcrete},
+        core::{CoreLibfunc, CoreType},
         types::InfoOnlyConcreteType,
     },
-    program::GenericArg,
     program_registry::ProgramRegistry,
 };
 use melior::{

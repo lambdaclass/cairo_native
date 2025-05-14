@@ -28,10 +28,7 @@ use melior::{
         arith::{self, CmpiPredicate},
         cf, llvm,
     },
-    ir::{
-        attribute::DenseI32ArrayAttribute, r#type::IntegerType, Block, BlockLike, Location, Type,
-        Value, ValueLike,
-    },
+    ir::{r#type::IntegerType, Block, BlockLike, Location, Type, Value, ValueLike},
     Context,
 };
 use num_traits::Signed;
@@ -163,16 +160,13 @@ fn build_add_input<'ctx, 'this>(
     entry: &'this Block<'ctx>,
     location: Location<'ctx>,
     helper: &LibfuncHelper<'ctx, 'this>,
-    metadata: &mut MetadataStorage,
+    _metadata: &mut MetadataStorage,
     info: &SignatureAndTypeConcreteLibfunc,
 ) -> Result<()> {
     let n_inputs = match registry.get_type(&info.ty)? {
         CoreTypeConcrete::Circuit(CircuitTypeConcrete::Circuit(info)) => info.circuit_info.n_inputs,
         _ => return Err(SierraAssertError::BadTypeInfo.into()),
     };
-    let accumulator_type_id = &info.param_signatures()[0].ty;
-    let accumulator_ctype = registry.get_type(accumulator_type_id)?;
-    let accumulator_layout = accumulator_ctype.layout(registry)?;
 
     let accumulator: Value = entry.arg(0)?;
 
@@ -184,14 +178,42 @@ fn build_add_input<'ctx, 'this>(
         IntegerType::new(context, 64).into(),
         0,
     )?;
+    // Calculate next length: next_length = current_length + 1
+    let k1 = entry.const_int(context, location, 1, 64)?;
+    let next_length = entry.addi(current_length, k1, location)?;
+    // Insert next_length into accumulator
+    let accumulator = entry.insert_value(context, location, accumulator, next_length, 0)?;
 
-    // Check if last_insert: current_length == number_of_inputs - 1
-    let n_inputs_minus_1 = entry.const_int(context, location, n_inputs - 1, 64)?;
+    // Get pointer to inputs array
+    let inputs_ptr = entry.extract_value(
+        context,
+        location,
+        accumulator,
+        llvm::r#type::pointer(context, 0),
+        1,
+    )?;
+    // Get pointer to next input to insert
+    let next_input_ptr = entry.append_op_result(llvm::get_element_ptr_dynamic(
+        context,
+        inputs_ptr,
+        &[current_length],
+        accumulator.r#type(),
+        llvm::r#type::pointer(context, 0),
+        location,
+    ))?;
+    // Interpret u384 struct (input) as u384 integer
+    let u384_struct = entry.arg(1)?;
+    let new_input = u384_struct_to_integer(context, entry, location, u384_struct)?;
+    // Store the u384 into next input pointer
+    entry.store(context, location, next_input_ptr, new_input)?;
+
+    // Check if last_insert: next_length == number_of_inputs
+    let n_inputs = entry.const_int(context, location, n_inputs, 64)?;
     let last_insert = entry.cmpi(
         context,
         arith::CmpiPredicate::Eq,
-        current_length,
-        n_inputs_minus_1,
+        next_length,
+        n_inputs,
         location,
     )?;
 
@@ -207,124 +229,23 @@ fn build_add_input<'ctx, 'this>(
         location,
     ));
 
-    // If not last insert, then:
+    // If not last insert, then return accumulator
     {
-        // Calculate next length: next_length = current_length + 1
-        let k1 = middle_insert_block.const_int(context, location, 1, 64)?;
-        let next_length = middle_insert_block.addi(current_length, k1, location)?;
-
-        // Insert next_length into accumulator
-        let accumulator =
-            middle_insert_block.insert_value(context, location, accumulator, next_length, 0)?;
-
-        // Get pointer to accumulator with alloc and store
-        let accumulator_ptr = helper.init_block().alloca1(
-            context,
-            location,
-            accumulator.r#type(),
-            accumulator_layout.align(),
-        )?;
-        middle_insert_block.store(context, location, accumulator_ptr, accumulator)?;
-
-        // Get pointer to next input to insert
-        let k0 = middle_insert_block.const_int(context, location, 0, 64)?;
-        let next_input_ptr =
-            middle_insert_block.append_op_result(llvm::get_element_ptr_dynamic(
-                context,
-                accumulator_ptr,
-                &[k0, k1, current_length],
-                accumulator.r#type(),
-                llvm::r#type::pointer(context, 0),
-                location,
-            ))?;
-
-        // Interpret u384 struct (input) as u384 integer
-        let u384_struct = entry.arg(1)?;
-        let new_input =
-            u384_struct_to_integer(context, middle_insert_block, location, u384_struct)?;
-
-        // Store the u384 into next input pointer
-        middle_insert_block.store(context, location, next_input_ptr, new_input)?;
-
-        // Load accumulator from pointer
-        let accumulator =
-            middle_insert_block.load(context, location, accumulator_ptr, accumulator.r#type())?;
-
         middle_insert_block.append_operation(helper.br(1, &[accumulator], location));
     }
 
-    // If is last insert, then:
+    // If is last insert, then return accumulator.pointer
     {
-        let data_type_id = &info.branch_signatures()[0].vars[0].ty;
-        let (data_type, data_layout) =
-            registry.build_type_with_layout(context, helper, metadata, data_type_id)?;
-
-        // Alloc return data
-        let data_ptr =
-            helper
-                .init_block()
-                .alloca1(context, location, data_type, data_layout.align())?;
-
-        // Get pointer to accumulator with alloc and store
-        let accumulator_ptr = helper.init_block().alloca1(
+        // Get pointer to inputs array
+        let inputs_ptr = last_insert_block.extract_value(
             context,
             location,
-            accumulator.r#type(),
-            accumulator_layout.align(),
-        )?;
-        last_insert_block.store(context, location, accumulator_ptr, accumulator)?;
-
-        // Get pointer to accumulator input
-        let k0 = last_insert_block.const_int(context, location, 0, 64)?;
-        let k1 = last_insert_block.const_int(context, location, 1, 64)?;
-        let accumulator_input_ptr =
-            last_insert_block.append_op_result(llvm::get_element_ptr_dynamic(
-                context,
-                accumulator_ptr,
-                &[k0, k1],
-                accumulator.r#type(),
-                llvm::r#type::pointer(context, 0),
-                location,
-            ))?;
-
-        // Copy accumulator input into return data
-        let accumulator_input_length = last_insert_block.const_int(
-            context,
-            location,
-            layout_repeat(&get_integer_layout(384), n_inputs - 1)?
-                .0
-                .size(),
-            64,
-        )?;
-        last_insert_block.memcpy(
-            context,
-            location,
-            accumulator_input_ptr,
-            data_ptr,
-            accumulator_input_length,
-        );
-
-        // Interpret u384 struct (input) as u384 integer
-        let u384_struct = entry.arg(1)?;
-        let new_input = u384_struct_to_integer(context, last_insert_block, location, u384_struct)?;
-
-        // Get pointer to data end
-        let data_end_ptr = last_insert_block.append_op_result(llvm::get_element_ptr(
-            context,
-            data_ptr,
-            DenseI32ArrayAttribute::new(context, &[0, n_inputs as i32 - 1]),
-            data_type,
+            accumulator,
             llvm::r#type::pointer(context, 0),
-            location,
-        ))?;
+            1,
+        )?;
 
-        // Store the u384 into next input pointer
-        last_insert_block.store(context, location, data_end_ptr, new_input)?;
-
-        // Load data from pointer
-        let data = last_insert_block.load(context, location, data_ptr, data_type)?;
-
-        last_insert_block.append_operation(helper.br(0, &[data], location));
+        last_insert_block.append_operation(helper.br(0, &[inputs_ptr], location));
     }
 
     Ok(())
