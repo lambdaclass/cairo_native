@@ -170,7 +170,7 @@ mod test {
     use starknet_types_core::felt::Felt;
 
     lazy_static! {
-        // TODO: Test `bytes31_const` once the compiler supports it. See: https://github.com/lambdaclass/cairo_native/issues/1224#issue-3053717697
+        // TODO: Test `bytes31_const` once the compiler supports it. See: https://github.com/lambdaclass/cairo_native/issues/1224
         static ref BYTES31_ROUNDTRIP: (String, Program) = load_cairo! {
             use core::bytes_31::{bytes31_try_from_felt252, bytes31_to_felt252};
 
