@@ -95,10 +95,10 @@ pub fn build<'ctx>(
 ///
 /// ## Layout:
 ///
-/// Holds up to N_INPUTS - 1 elements. Where each element is an u384.
+/// Holds up to N_INPUTS elements. Where each element is an u384 integer.
 ///
-/// ```ignore
-/// struct {
+/// ```txt
+/// type = struct {
 ///     size: u64,
 ///     data: *u384,
 /// }
@@ -200,10 +200,8 @@ pub fn build_circuit_accumulator<'ctx>(
 ///
 /// Holds N_INPUTS elements. Where each element is an u384.
 ///
-/// ```ignore
-/// struct {
-///     data: *u384,
-/// }
+/// ```txt
+/// type = *u384
 /// ```
 pub fn build_circuit_data<'ctx>(
     context: &'ctx Context,
@@ -279,14 +277,21 @@ pub fn build_circuit_data<'ctx>(
 ///
 /// ## Layout:
 ///
-/// Holds N_VALUES elements, where each element is a struct-shaped u384,
-/// A struct-shaped u384 contains 4 limbs, each a u96.
+/// Holds N_VALUES elements, where each element is a u384 struct,
+/// A u384 struct contains 4 limbs, each a u96 integer.
 ///
-/// ```ignore
-/// struct {
-///     data: *u384_struct,
-///     modulus: u384_struct,
+/// ```txt
+/// type = struct {
+///     data: *u384s,
+///     modulus: u384s,
 /// };
+///
+/// u384s = struct {
+///     limb1: u96,
+///     limb2: u96,
+///     limb3: u96,
+///     limb4: u96,
+/// }
 /// ```
 pub fn build_circuit_outputs<'ctx>(
     context: &'ctx Context,
