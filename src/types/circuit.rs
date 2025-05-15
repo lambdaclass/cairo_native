@@ -142,7 +142,7 @@ pub fn build_circuit_accumulator<'ctx>(
 
             let u384_layout = get_integer_layout(384);
 
-            let new_inputs_ptr = dup_array(
+            let new_inputs_ptr = build_array_dup(
                 context,
                 &entry,
                 location,
@@ -235,7 +235,7 @@ pub fn build_circuit_data<'ctx>(
 
             let u384_layout = get_integer_layout(384);
 
-            let new_data_ptr = dup_array(
+            let new_data_ptr = build_array_dup(
                 context,
                 &entry,
                 location,
@@ -332,7 +332,7 @@ pub fn build_circuit_outputs<'ctx>(
 
             let u384_struct_layout = layout_repeat(&get_integer_layout(96), 4)?.0;
 
-            let new_gates_ptr = dup_array(
+            let new_gates_ptr = build_array_dup(
                 context,
                 &entry,
                 location,
@@ -402,6 +402,33 @@ pub fn build_u96_limbs_less_than_guarantee<'ctx>(
         &[limb_struct_type, limb_struct_type],
         false,
     ))
+}
+
+pub fn build_array_dup<'ctx, 'this>(
+    context: &'ctx Context,
+    block: &'this Block<'ctx>,
+    location: Location<'ctx>,
+    ptr: Value<'ctx, 'this>,
+    capacity: usize,
+    layout: Layout,
+) -> Result<Value<'ctx, 'this>> {
+    let capacity_bytes = layout_repeat(&layout, capacity)?.0.pad_to_align().size();
+    let capacity_bytes_value = block.const_int(context, location, capacity_bytes, 64)?;
+
+    let new_inputs_ptr = {
+        let ptr_ty = llvm::r#type::pointer(context, 0);
+        let new_inputs_ptr = block.append_op_result(llvm::zero(ptr_ty, location))?;
+        block.append_op_result(ReallocBindingsMeta::realloc(
+            context,
+            new_inputs_ptr,
+            capacity_bytes_value,
+            location,
+        )?)?
+    };
+
+    block.memcpy(context, location, ptr, new_inputs_ptr, capacity_bytes_value);
+
+    Ok(new_inputs_ptr)
 }
 
 pub const fn is_complex(info: &CircuitTypeConcrete) -> bool {
@@ -486,33 +513,6 @@ pub fn layout(
         }
         CircuitTypeConcrete::CircuitPartialOutputs(_) => Ok(Layout::new::<()>()),
     }
-}
-
-pub fn dup_array<'ctx, 'this>(
-    context: &'ctx Context,
-    block: &'this Block<'ctx>,
-    location: Location<'ctx>,
-    ptr: Value<'ctx, 'this>,
-    capacity: usize,
-    layout: Layout,
-) -> Result<Value<'ctx, 'this>> {
-    let capacity_bytes = layout_repeat(&layout, capacity)?.0.pad_to_align().size();
-    let capacity_bytes_value = block.const_int(context, location, capacity_bytes, 64)?;
-
-    let new_inputs_ptr = {
-        let ptr_ty = llvm::r#type::pointer(context, 0);
-        let new_inputs_ptr = block.append_op_result(llvm::zero(ptr_ty, location))?;
-        block.append_op_result(ReallocBindingsMeta::realloc(
-            context,
-            new_inputs_ptr,
-            capacity_bytes_value,
-            location,
-        )?)?
-    };
-
-    block.memcpy(context, location, ptr, new_inputs_ptr, capacity_bytes_value);
-
-    Ok(new_inputs_ptr)
 }
 
 pub fn build_u384_struct_type(context: &Context) -> Type<'_> {
