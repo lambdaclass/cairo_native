@@ -19,7 +19,7 @@
 //! ## Secp256Point
 //! TODO
 
-// TODO: Maybe the types used here can be i251 instead of i252. See https://github.com/lambdaclass/cairo_native/issues/1226#issue-3053977191
+// TODO: Maybe the types used here can be i251 instead of i252. See https://github.com/lambdaclass/cairo_native/issues/1226
 
 use super::WithSelf;
 use crate::{
