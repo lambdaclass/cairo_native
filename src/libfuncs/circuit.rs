@@ -6,7 +6,9 @@ use super::{increment_builtin_counter_by, LibfuncHelper};
 use crate::{
     error::{Result, SierraAssertError},
     libfuncs::r#struct::build_struct_value,
-    metadata::{realloc_bindings::ReallocBindingsMeta, MetadataStorage},
+    metadata::{
+        drop_overrides::DropOverridesMeta, realloc_bindings::ReallocBindingsMeta, MetadataStorage,
+    },
     native_panic,
     types::{circuit::build_u384_struct_type, TypeBuilder},
     utils::{get_integer_layout, layout_repeat, BlockExt, GepIndex, ProgramRegistryExt},
@@ -338,6 +340,17 @@ fn build_eval<'ctx, 'this>(
 
     // Ok case
     {
+        // We drop circuit_data, as its consumed by this libfunc.
+        if let Some(drop_overrides_meta) = metadata.get::<DropOverridesMeta>() {
+            drop_overrides_meta.invoke_override(
+                context,
+                ok_block,
+                location,
+                &info.signature.param_signatures[3].ty,
+                circuit_data,
+            )?;
+        }
+
         let mul_mod = increment_builtin_counter_by(
             context,
             ok_block,
@@ -403,6 +416,17 @@ fn build_eval<'ctx, 'this>(
 
     // Error case
     {
+        // We drop circuit_data, as its consumed by this libfunc.
+        if let Some(drop_overrides_meta) = metadata.get::<DropOverridesMeta>() {
+            drop_overrides_meta.invoke_override(
+                context,
+                err_block,
+                location,
+                &info.signature.param_signatures[3].ty,
+                circuit_data,
+            )?;
+        }
+
         // We only consider mul gates evaluated before failure
         let mul_mod = {
             let mul_mod_usage = err_block.muli(
