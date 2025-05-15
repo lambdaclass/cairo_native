@@ -265,7 +265,7 @@ fn invoke_dynamic(
             _ if type_info.is_builtin() => {
                 if !type_info.is_zst(registry)? {
                     if let CoreTypeConcrete::BuiltinCosts(_) = type_info {
-                        // todo: should we use this value? See: https://github.com/lambdaclass/cairo_native/issues/1219#issue-3052919995
+                        // todo: should we use this value? See: https://github.com/lambdaclass/cairo_native/issues/1219
                         let _value = match &mut return_ptr {
                             Some(return_ptr) => unsafe { *read_value::<*mut u64>(return_ptr) },
                             None => ret_registers[0] as *mut u64,
