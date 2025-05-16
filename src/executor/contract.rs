@@ -81,6 +81,7 @@ use std::{
     path::{Path, PathBuf},
     ptr::{self, NonNull},
     sync::Arc,
+    time::Instant,
 };
 use tempfile::NamedTempFile;
 
@@ -179,6 +180,9 @@ impl AotContractExecutor {
             None => return Ok(None),
         };
 
+        let mut stats = Statistics::builder();
+        let pre_compilation_instant = Instant::now();
+
         let context = NativeContext::new();
 
         let no_eq_solver = match sierra_version.major.cmp(&1) {
@@ -186,8 +190,6 @@ impl AotContractExecutor {
             Ordering::Equal => sierra_version.minor >= 4,
             Ordering::Greater => true,
         };
-
-        let mut stats = Statistics::builder();
 
         stats.sierra_type_count = Some(program.type_declarations.len());
         stats.sierra_libfunc_count = Some(program.libfunc_declarations.len());
@@ -249,6 +251,9 @@ impl AotContractExecutor {
 
         // Build the shared library into the lockfile, to avoid using a tmp file.
         crate::object_to_shared_lib(&object_data, &lock_file.0, Some(&mut stats))?;
+
+        let compilation_time = pre_compilation_instant.elapsed().as_millis();
+        stats.compilation_total_time_ms = Some(compilation_time);
 
         // Write the contract info.
         fs::write(
