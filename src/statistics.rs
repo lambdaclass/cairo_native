@@ -12,6 +12,7 @@ pub struct Statistics {
     pub compilation_mlir_to_llvm_time_ms: u128,
     pub compilation_llvm_to_object_time_ms: u128,
     pub compilation_linking_time_ms: u128,
+    pub object_size_bytes: usize,
 }
 
 impl Statistics {
@@ -33,6 +34,7 @@ pub struct StatisticsBuilder {
     pub compilation_llvm_passes_time_ms: Option<u128>,
     pub compilation_llvm_to_object_time_ms: Option<u128>,
     pub compilation_linking_time_ms: Option<u128>,
+    pub object_size_bytes: Option<usize>,
 }
 
 impl StatisticsBuilder {
@@ -48,6 +50,7 @@ impl StatisticsBuilder {
             compilation_mlir_to_llvm_time_ms: self.compilation_mlir_to_llvm_time_ms?,
             compilation_llvm_to_object_time_ms: self.compilation_llvm_to_object_time_ms?,
             compilation_linking_time_ms: self.compilation_linking_time_ms?,
+            object_size_bytes: self.object_size_bytes?,
         })
     }
 }

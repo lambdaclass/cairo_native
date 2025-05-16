@@ -248,6 +248,7 @@ impl AotContractExecutor {
         .collect::<Result<BTreeMap<_, _>>>()?;
 
         let object_data = crate::module_to_object(&module, opt_level, Some(&mut stats))?;
+        stats.object_size_bytes = Some(object_data.len());
 
         // Build the shared library into the lockfile, to avoid using a tmp file.
         crate::object_to_shared_lib(&object_data, &lock_file.0, Some(&mut stats))?;
