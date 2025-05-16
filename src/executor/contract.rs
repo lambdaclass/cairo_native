@@ -218,6 +218,7 @@ impl AotContractExecutor {
                 skip_non_linear_solver_comparisons: false,
                 compute_runtime_costs: false,
             }),
+            None,
         )?;
 
         // Generate mappings between the entry point's selectors and their function indexes.

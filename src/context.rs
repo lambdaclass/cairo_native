@@ -4,6 +4,7 @@ use crate::{
     metadata::{gas::GasMetadata, runtime_bindings::RuntimeBindingsMeta, MetadataStorage},
     module::NativeModule,
     native_assert,
+    statistics::StatisticsBuilder,
     utils::run_pass_manager,
 };
 use cairo_lang_sierra::{
@@ -69,6 +70,7 @@ impl NativeContext {
         program: &Program,
         ignore_debug_names: bool,
         gas_metadata_config: Option<MetadataComputationConfig>,
+        _stats: Option<&mut StatisticsBuilder>,
     ) -> Result<NativeModule, Error> {
         trace!("starting sierra to mlir compilation");
         let pre_sierra_compilation_instant = Instant::now();

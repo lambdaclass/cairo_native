@@ -47,7 +47,7 @@ where
             mut metadata,
         } = self
             .context
-            .compile(program, false, Some(Default::default()))?;
+            .compile(program, false, Some(Default::default()), None)?;
 
         // Compile module into an object.
         let object_data = crate::ffi::module_to_object(&module, opt_level)?;
