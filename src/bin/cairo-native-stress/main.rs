@@ -299,7 +299,7 @@ where
             let shared_library_name = format!("lib{key}{SHARED_LIBRARY_EXT}");
             let shared_library_path = shared_library_dir.join(shared_library_name);
 
-            object_to_shared_lib(&object_data, &shared_library_path)
+            object_to_shared_lib(&object_data, &shared_library_path, None)
                 .expect("failed to link object into shared library");
 
             unsafe {

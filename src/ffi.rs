@@ -3,7 +3,10 @@
 //! This is a "hotfix" for missing Rust interfaces to the C/C++ libraries we use, namely LLVM/MLIR
 //! APIs that are missing from melior.
 
-use crate::error::{panic::ToNativeAssertError, Error, Result};
+use crate::{
+    error::{panic::ToNativeAssertError, Error, Result},
+    statistics::StatisticsBuilder,
+};
 use llvm_sys::{
     core::{
         LLVMContextCreate, LLVMContextDispose, LLVMDisposeMemoryBuffer, LLVMDisposeMessage,
@@ -225,7 +228,11 @@ pub fn module_to_object(module: &Module<'_>, opt_level: OptLevel) -> Result<Vec<
 }
 
 /// Links the passed object into a shared library, stored on the given path.
-pub fn object_to_shared_lib(object: &[u8], output_filename: &Path) -> Result<()> {
+pub fn object_to_shared_lib(
+    object: &[u8],
+    output_filename: &Path,
+    stats: Option<&mut StatisticsBuilder>,
+) -> Result<()> {
     // linker seems to need a file and doesn't accept stdin
     let mut file = NamedTempFile::new()?;
     file.write_all(object)?;

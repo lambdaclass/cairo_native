@@ -81,7 +81,8 @@ fn main() -> anyhow::Result<()> {
 
     let object_data = module_to_object(native_module.module(), args.opt_level.into())
         .context("Failed to convert module to object.")?;
-    object_to_shared_lib(&object_data, &output_lib).context("Failed to write shared library.")?;
+    object_to_shared_lib(&object_data, &output_lib, None)
+        .context("Failed to write shared library.")?;
 
     Ok(())
 }

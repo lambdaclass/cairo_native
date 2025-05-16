@@ -58,7 +58,7 @@ where
             .suffix(SHARED_LIBRARY_EXT)
             .tempfile()?
             .into_temp_path();
-        crate::ffi::object_to_shared_lib(&object_data, &shared_library_path)?;
+        crate::ffi::object_to_shared_lib(&object_data, &shared_library_path, None)?;
 
         let shared_library = unsafe { Library::new(shared_library_path)? };
         let executor = AotNativeExecutor::new(
