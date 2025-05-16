@@ -101,7 +101,7 @@ impl From<u8> for OptLevel {
 pub fn module_to_object(
     module: &Module<'_>,
     opt_level: OptLevel,
-    _stats: Option<&mut StatisticsBuilder>,
+    stats: Option<&mut StatisticsBuilder>,
 ) -> Result<Vec<u8>> {
     static INITIALIZED: OnceLock<()> = OnceLock::new();
 
@@ -118,11 +118,12 @@ pub fn module_to_object(
 
         let op = module.as_operation().to_raw();
 
-        trace!("starting mlir to llvm compilation");
-        let pre_mlir_instant = Instant::now();
+        let pre_mlir_to_llvm_instant = Instant::now();
         let llvm_module = mlirTranslateModuleToLLVMIR(op, llvm_context as *mut _) as *mut _;
-        let mlir_time = pre_mlir_instant.elapsed().as_millis();
-        trace!(time = mlir_time, "mlir to llvm finished");
+        let mlir_to_llvm_time = pre_mlir_to_llvm_instant.elapsed().as_millis();
+        if let Some(&mut ref mut stats) = stats {
+            stats.compilation_mlir_to_llvm_time_ms = Some(mlir_to_llvm_time);
+        }
 
         let mut null = null_mut();
         let mut error_buffer = addr_of_mut!(null);
@@ -174,11 +175,12 @@ pub fn module_to_object(
         let passes = CString::new(format!("default<O{opt}>"))
             .to_native_assert_error("only fails if the hardcoded string contains a null byte")?;
 
-        trace!("starting llvm passes");
-        let pre_passes_instant = Instant::now();
+        let pre_llvm_passes_instant = Instant::now();
         let error = LLVMRunPasses(llvm_module, passes.as_ptr(), machine, opts);
-        let passes_time = pre_passes_instant.elapsed().as_millis();
-        trace!(time = passes_time, "llvm passes finished");
+        let llvm_passes_time = pre_llvm_passes_instant.elapsed().as_millis();
+        if let Some(&mut ref mut stats) = stats {
+            stats.compilation_llvm_passes_time_ms = Some(llvm_passes_time);
+        }
 
         if !error.is_null() {
             let msg = LLVMGetErrorMessage(error);
@@ -191,7 +193,7 @@ pub fn module_to_object(
         let mut out_buf: MaybeUninit<LLVMMemoryBufferRef> = MaybeUninit::uninit();
 
         trace!("starting llvm to object compilation");
-        let pre_llvm_compilation_instant = Instant::now();
+        let pre_llvm_to_object_instant = Instant::now();
         let ok = LLVMTargetMachineEmitToMemoryBuffer(
             machine,
             llvm_module,
@@ -199,11 +201,10 @@ pub fn module_to_object(
             error_buffer,
             out_buf.as_mut_ptr(),
         );
-        let llvm_compilation_time = pre_llvm_compilation_instant.elapsed().as_millis();
-        trace!(
-            time = llvm_compilation_time,
-            "llvm to object compilation finished"
-        );
+        let llvm_to_object_time = pre_llvm_to_object_instant.elapsed().as_millis();
+        if let Some(&mut ref mut stats) = stats {
+            stats.compilation_llvm_to_object_time_ms = Some(llvm_to_object_time);
+        }
 
         if ok != 0 {
             let error = CStr::from_ptr(*error_buffer);

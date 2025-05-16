@@ -9,8 +9,8 @@ pub struct Statistics {
     // pub compilation_total_time_ms: u128,
     pub compilation_sierra_to_mlir_time_ms: u128,
     pub compilation_mlir_passes_time_ms: u128,
-    // pub compilation_mlir_to_llvm_time_ms: u128,
-    // pub compilation_llvm_to_object_time_ms: u128,
+    pub compilation_mlir_to_llvm_time_ms: u128,
+    pub compilation_llvm_to_object_time_ms: u128,
     pub compilation_linking_time_ms: u128,
 }
 
@@ -30,6 +30,7 @@ pub struct StatisticsBuilder {
     pub compilation_sierra_to_mlir_time_ms: Option<u128>,
     pub compilation_mlir_passes_time_ms: Option<u128>,
     pub compilation_mlir_to_llvm_time_ms: Option<u128>,
+    pub compilation_llvm_passes_time_ms: Option<u128>,
     pub compilation_llvm_to_object_time_ms: Option<u128>,
     pub compilation_linking_time_ms: Option<u128>,
 }
@@ -44,8 +45,8 @@ impl StatisticsBuilder {
             // compilation_total_time_ms: self.compilation_total_time_ms?,
             compilation_sierra_to_mlir_time_ms: self.compilation_sierra_to_mlir_time_ms?,
             compilation_mlir_passes_time_ms: self.compilation_mlir_passes_time_ms?,
-            // compilation_mlir_to_llvm_time_ms: self.compilation_mlir_to_llvm_time_ms?,
-            // compilation_llvm_to_object_time_ms: self.compilation_llvm_to_object_time_ms?,
+            compilation_mlir_to_llvm_time_ms: self.compilation_mlir_to_llvm_time_ms?,
+            compilation_llvm_to_object_time_ms: self.compilation_llvm_to_object_time_ms?,
             compilation_linking_time_ms: self.compilation_linking_time_ms?,
         })
     }
