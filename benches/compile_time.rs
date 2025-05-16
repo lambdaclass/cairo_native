@@ -50,7 +50,7 @@ pub fn bench_compile_time(c: &mut Criterion) {
                     let module = native_context
                         .compile(black_box(program), false, Some(Default::default()), None)
                         .unwrap();
-                    let object = module_to_object(module.module(), OptLevel::None)
+                    let object = module_to_object(module.module(), OptLevel::None, None)
                         .expect("to compile correctly to a object file");
                     black_box(object)
                 })
@@ -69,7 +69,7 @@ pub fn bench_compile_time(c: &mut Criterion) {
                     let module = native_context
                         .compile(black_box(program), false, Some(Default::default()), None)
                         .unwrap();
-                    let object = module_to_object(module.module(), OptLevel::None)
+                    let object = module_to_object(module.module(), OptLevel::None, None)
                         .expect("to compile correctly to a object file");
                     black_box(object)
                 })
@@ -88,7 +88,7 @@ pub fn bench_compile_time(c: &mut Criterion) {
                     let module = native_context
                         .compile(black_box(program), false, Some(Default::default()), None)
                         .unwrap();
-                    let object = module_to_object(module.module(), OptLevel::Aggressive)
+                    let object = module_to_object(module.module(), OptLevel::Aggressive, None)
                         .expect("to compile correctly to a object file");
                     black_box(object)
                 })

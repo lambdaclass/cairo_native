@@ -98,7 +98,11 @@ impl From<u8> for OptLevel {
 }
 
 /// Converts a MLIR module to a compile object, that can be linked with a linker.
-pub fn module_to_object(module: &Module<'_>, opt_level: OptLevel) -> Result<Vec<u8>> {
+pub fn module_to_object(
+    module: &Module<'_>,
+    opt_level: OptLevel,
+    _stats: Option<&mut StatisticsBuilder>,
+) -> Result<Vec<u8>> {
     static INITIALIZED: OnceLock<()> = OnceLock::new();
 
     INITIALIZED.get_or_init(|| unsafe {

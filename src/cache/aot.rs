@@ -50,7 +50,7 @@ where
             .compile(program, false, Some(Default::default()), None)?;
 
         // Compile module into an object.
-        let object_data = crate::ffi::module_to_object(&module, opt_level)?;
+        let object_data = crate::ffi::module_to_object(&module, opt_level, None)?;
 
         // Compile object into a shared library.
         let shared_library_path = tempfile::Builder::new()

@@ -291,7 +291,7 @@ where
             .expect("module should have gas metadata");
 
         let shared_library = {
-            let object_data = module_to_object(native_module.module(), opt_level)
+            let object_data = module_to_object(native_module.module(), opt_level, None)
                 .expect("failed to convert MLIR to object");
 
             let shared_library_dir = Path::new(AOT_CACHE_DIR);
