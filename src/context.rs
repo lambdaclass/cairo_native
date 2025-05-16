@@ -33,7 +33,6 @@ use mlir_sys::{
     MlirLLVMDINameTableKind_MlirLLVMDINameTableKindDefault,
 };
 use std::{sync::OnceLock, time::Instant};
-use tracing::trace;
 
 /// Context of IRs, dialects and passes for Cairo programs compilation.
 #[derive(Debug, Eq, PartialEq)]
@@ -70,11 +69,8 @@ impl NativeContext {
         program: &Program,
         ignore_debug_names: bool,
         gas_metadata_config: Option<MetadataComputationConfig>,
-        _stats: Option<&mut StatisticsBuilder>,
+        stats: Option<&mut StatisticsBuilder>,
     ) -> Result<NativeModule, Error> {
-        trace!("starting sierra to mlir compilation");
-        let pre_sierra_compilation_instant = Instant::now();
-
         static INITIALIZED: OnceLock<()> = OnceLock::new();
         INITIALIZED.get_or_init(|| unsafe {
             LLVM_InitializeAllTargets();
@@ -169,6 +165,7 @@ impl NativeContext {
         // Create the Sierra program registry
         let registry = ProgramRegistry::<CoreType, CoreLibfunc>::new(program)?;
 
+        let pre_sierra_to_mlir_instant = Instant::now();
         crate::compile(
             &self.context,
             &module,
@@ -178,12 +175,10 @@ impl NativeContext {
             unsafe { Attribute::from_raw(di_unit_id) },
             ignore_debug_names,
         )?;
-
-        let sierra_compilation_time = pre_sierra_compilation_instant.elapsed().as_millis();
-        trace!(
-            time = sierra_compilation_time,
-            "sierra to mlir compilation finished"
-        );
+        let sierra_to_mlir_time = pre_sierra_to_mlir_instant.elapsed().as_millis();
+        if let Some(&mut ref mut stats) = stats {
+            stats.compilation_sierra_to_mlir_time_ms = Some(sierra_to_mlir_time);
+        }
 
         if let Ok(x) = std::env::var("NATIVE_DEBUG_DUMP") {
             if x == "1" || x == "true" {
@@ -203,11 +198,12 @@ impl NativeContext {
             }
         }
 
-        trace!("starting mlir passes");
-        let pre_passes_instant = Instant::now();
+        let pre_mlir_passes_instant = Instant::now();
         run_pass_manager(&self.context, &mut module)?;
-        let passes_time = pre_passes_instant.elapsed().as_millis();
-        trace!(time = passes_time, "mlir passes finished");
+        let mlir_passes_time = pre_mlir_passes_instant.elapsed().as_millis();
+        if let Some(&mut ref mut stats) = stats {
+            stats.compilation_mlir_passes_time_ms = Some(mlir_passes_time);
+        }
 
         if let Ok(x) = std::env::var("NATIVE_DEBUG_DUMP") {
             if x == "1" || x == "true" {

@@ -6,6 +6,8 @@ pub struct Statistics {
     pub sierra_libfunc_count: usize,
     pub sierra_statement_count: usize,
     pub sierra_func_count: usize,
+    pub compilation_sierra_to_mlir_time_ms: u128,
+    pub compilation_mlir_passes_time_ms: u128,
 }
 
 impl Statistics {
@@ -20,6 +22,8 @@ pub struct StatisticsBuilder {
     pub sierra_libfunc_count: Option<usize>,
     pub sierra_statement_count: Option<usize>,
     pub sierra_func_count: Option<usize>,
+    pub compilation_sierra_to_mlir_time_ms: Option<u128>,
+    pub compilation_mlir_passes_time_ms: Option<u128>,
 }
 
 impl StatisticsBuilder {
@@ -29,6 +33,8 @@ impl StatisticsBuilder {
             sierra_libfunc_count: self.sierra_libfunc_count?,
             sierra_statement_count: self.sierra_statement_count?,
             sierra_func_count: self.sierra_func_count?,
+            compilation_sierra_to_mlir_time_ms: self.compilation_sierra_to_mlir_time_ms?,
+            compilation_mlir_passes_time_ms: self.compilation_mlir_passes_time_ms?,
         })
     }
 }
