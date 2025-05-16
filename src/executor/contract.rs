@@ -248,7 +248,7 @@ impl AotContractExecutor {
         let object_data = crate::module_to_object(&module, opt_level)?;
 
         // Build the shared library into the lockfile, to avoid using a tmp file.
-        crate::object_to_shared_lib(&object_data, &lock_file.0, None)?;
+        crate::object_to_shared_lib(&object_data, &lock_file.0, Some(&mut stats))?;
 
         // Write the contract info.
         fs::write(

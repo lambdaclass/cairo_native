@@ -296,11 +296,12 @@ pub fn object_to_shared_lib(
 
     let mut linker = std::process::Command::new("ld");
 
-    trace!("starting linking");
     let pre_linking_instant = Instant::now();
     let proc = linker.args(args.iter().map(|x| x.as_ref())).output()?;
     let linking_time = pre_linking_instant.elapsed().as_millis();
-    trace!(time = linking_time, "linking finished");
+    if let Some(&mut ref mut stats) = stats {
+        stats.compilation_linking_time_ms = Some(linking_time);
+    }
 
     if proc.status.success() {
         Ok(())
