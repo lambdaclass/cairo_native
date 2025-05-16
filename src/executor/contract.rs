@@ -41,6 +41,7 @@ use crate::{
     module::NativeModule,
     native_assert, native_panic,
     starknet::{handler::StarknetSyscallHandlerCallbacks, StarknetSyscallHandler},
+    statistics::Statistics,
     types::TypeBuilder,
     utils::{
         decode_error_message, generate_function_name, get_integer_layout, libc_free, libc_malloc,
@@ -186,6 +187,13 @@ impl AotContractExecutor {
             Ordering::Greater => true,
         };
 
+        let mut stats = Statistics::builder();
+
+        stats.sierra_type_count = Some(program.type_declarations.len());
+        stats.sierra_libfunc_count = Some(program.libfunc_declarations.len());
+        stats.sierra_statement_count = Some(program.statements.len());
+        stats.sierra_func_count = Some(program.funcs.len());
+
         // Compile the Sierra program.
         let NativeModule {
             module, registry, ..
@@ -248,6 +256,15 @@ impl AotContractExecutor {
                 version: ContractInfoVersion::V0,
                 entry_points: entry_point_mappings,
             })?,
+        )?;
+
+        // Write the compilation stats.
+        let stats = stats
+            .build()
+            .to_native_assert_error("failed to build stats")?;
+        fs::write(
+            output_path.with_extension("stats.json"),
+            serde_json::to_string(&stats)?,
         )?;
 
         // Atomically move the built shared library to the correct path. This will avoid data races
