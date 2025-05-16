@@ -1,4 +1,6 @@
-#[derive(Default)]
+use serde::Serialize;
+
+#[derive(Default, Serialize)]
 pub struct Statistics {
     pub sierra_type_count: usize,
     pub sierra_libfunc_count: usize,
