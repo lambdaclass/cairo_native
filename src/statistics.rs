@@ -25,6 +25,7 @@ impl Statistics {
             && self.sierra_libfunc_count.is_some()
             && self.sierra_statement_count.is_some()
             && self.sierra_func_count.is_some()
+            && !self.sierra_libfunc_frequency.is_empty()
             && self.compilation_total_time_ms.is_some()
             && self.compilation_sierra_to_mlir_time_ms.is_some()
             && self.compilation_mlir_passes_time_ms.is_some()
