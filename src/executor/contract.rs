@@ -227,8 +227,9 @@ impl AotContractExecutor {
         {
             unsafe extern "C" fn callback(
                 _: mlir_sys::MlirOperation,
-                data: &mut u128,
+                data: *mut c_void,
             ) -> mlir_sys::MlirWalkResult {
+                let data = data.cast::<u128>().as_mut().unwrap();
                 *data += 1;
                 0
             }
@@ -236,7 +237,7 @@ impl AotContractExecutor {
             unsafe {
                 mlir_sys::mlirOperationWalk(
                     module.as_operation().to_raw(),
-                    std::mem::transmute(NonNull::new_unchecked(callback as *mut ())),
+                    Some(callback),
                     data.as_mut() as *mut _ as *mut c_void,
                     mlir_sys::MlirWalkOrder_MlirWalkPreOrder,
                 );
