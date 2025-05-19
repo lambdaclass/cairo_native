@@ -38,6 +38,7 @@ mod range_ext;
 pub mod safe_runner;
 pub mod sierra_gen;
 pub mod trace_dump;
+pub mod walk_ir;
 
 #[cfg(target_os = "macos")]
 pub const SHARED_LIBRARY_EXT: &str = "dylib";

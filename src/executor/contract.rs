@@ -46,7 +46,7 @@ use crate::{
     types::TypeBuilder,
     utils::{
         decode_error_message, generate_function_name, get_integer_layout, libc_free, libc_malloc,
-        BuiltinCosts,
+        walk_ir::walk_mlir_operations, BuiltinCosts,
     },
     OptLevel,
 };
@@ -233,16 +233,8 @@ impl AotContractExecutor {
                 *data += 1;
                 0
             }
-            let mut data = Box::<u128>::new(0);
-            unsafe {
-                mlir_sys::mlirOperationWalk(
-                    module.as_operation().to_raw(),
-                    Some(callback),
-                    data.as_mut() as *mut _ as *mut c_void,
-                    mlir_sys::MlirWalkOrder_MlirWalkPreOrder,
-                );
-            }
-            stats.mlir_operation_count = Some(*data)
+            let data = walk_mlir_operations(module.as_operation(), callback, 0);
+            stats.mlir_operation_count = Some(data)
         }
 
         for statement in &program.statements {
