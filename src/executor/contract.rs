@@ -224,6 +224,26 @@ impl AotContractExecutor {
             Some(&mut stats),
         )?;
 
+        {
+            unsafe extern "C" fn callback(
+                _: mlir_sys::MlirOperation,
+                data: &mut u128,
+            ) -> mlir_sys::MlirWalkResult {
+                *data += 1;
+                0
+            }
+            let mut data = Box::<u128>::new(0);
+            unsafe {
+                mlir_sys::mlirOperationWalk(
+                    module.as_operation().to_raw(),
+                    std::mem::transmute(NonNull::new_unchecked(callback as *mut ())),
+                    data.as_mut() as *mut _ as *mut c_void,
+                    mlir_sys::MlirWalkOrder_MlirWalkPreOrder,
+                );
+            }
+            stats.mlir_operation_count = Some(*data)
+        }
+
         for statement in &program.statements {
             if let GenStatement::Invocation(invocation) = statement {
                 let libfunc = registry.get_libfunc(&invocation.libfunc_id)?;
