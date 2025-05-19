@@ -34,6 +34,7 @@
 use crate::{
     arch::AbiArgument,
     context::NativeContext,
+    debug::libfunc_to_name,
     error::{panic::ToNativeAssertError, Error, Result},
     execution_result::{BuiltinStats, ContractExecutionResult},
     executor::{invoke_trampoline, BuiltinCostsGuard},
@@ -58,7 +59,7 @@ use cairo_lang_sierra::{
         starknet::StarknetTypeConcrete,
     },
     ids::FunctionId,
-    program::{GenFunction, Program, StatementIdx},
+    program::{GenFunction, GenStatement, Program, StatementIdx},
     program_registry::ProgramRegistry,
 };
 use cairo_lang_sierra_to_casm::metadata::MetadataComputationConfig;
@@ -222,6 +223,14 @@ impl AotContractExecutor {
             }),
             Some(&mut stats),
         )?;
+
+        for statement in &program.statements {
+            if let GenStatement::Invocation(invocation) = statement {
+                let libfunc = registry.get_libfunc(&invocation.libfunc_id)?;
+                let name = libfunc_to_name(libfunc).to_string();
+                *stats.sierra_libfunc_frequency.entry(name).or_insert(0) += 1;
+            }
+        }
 
         // Generate mappings between the entry point's selectors and their function indexes.
         let entry_point_mappings = chain!(
