@@ -4,7 +4,7 @@ use crate::{
     metadata::{gas::GasMetadata, runtime_bindings::RuntimeBindingsMeta, MetadataStorage},
     module::NativeModule,
     native_assert,
-    statistics::StatisticsBuilder,
+    statistics::Statistics,
     utils::run_pass_manager,
 };
 use cairo_lang_sierra::{
@@ -69,7 +69,7 @@ impl NativeContext {
         program: &Program,
         ignore_debug_names: bool,
         gas_metadata_config: Option<MetadataComputationConfig>,
-        stats: Option<&mut StatisticsBuilder>,
+        stats: Option<&mut Statistics>,
     ) -> Result<NativeModule, Error> {
         static INITIALIZED: OnceLock<()> = OnceLock::new();
         INITIALIZED.get_or_init(|| unsafe {

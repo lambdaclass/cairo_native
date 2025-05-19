@@ -5,7 +5,7 @@
 
 use crate::{
     error::{panic::ToNativeAssertError, Error, Result},
-    statistics::StatisticsBuilder,
+    statistics::Statistics,
 };
 use llvm_sys::{
     core::{
@@ -101,7 +101,7 @@ impl From<u8> for OptLevel {
 pub fn module_to_object(
     module: &Module<'_>,
     opt_level: OptLevel,
-    stats: Option<&mut StatisticsBuilder>,
+    stats: Option<&mut Statistics>,
 ) -> Result<Vec<u8>> {
     static INITIALIZED: OnceLock<()> = OnceLock::new();
 
@@ -236,7 +236,7 @@ pub fn module_to_object(
 pub fn object_to_shared_lib(
     object: &[u8],
     output_filename: &Path,
-    stats: Option<&mut StatisticsBuilder>,
+    stats: Option<&mut Statistics>,
 ) -> Result<()> {
     // linker seems to need a file and doesn't accept stdin
     let mut file = NamedTempFile::new()?;

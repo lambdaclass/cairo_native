@@ -180,7 +180,7 @@ impl AotContractExecutor {
             None => return Ok(None),
         };
 
-        let mut stats = Statistics::builder();
+        let mut stats = Statistics::default();
         let pre_compilation_instant = Instant::now();
 
         let context = NativeContext::new();
@@ -266,9 +266,7 @@ impl AotContractExecutor {
         )?;
 
         // Write the compilation stats.
-        let stats = stats
-            .build()
-            .to_native_assert_error("failed to build stats")?;
+        native_assert!(stats.validate(), "some statistics are missing");
         fs::write(
             output_path.with_extension("stats.json"),
             serde_json::to_string(&stats)?,
