@@ -132,15 +132,17 @@ pub fn module_to_object(
             let mut llvmir_virtual_register_count = 0;
 
             walk_llvm_instructions(llvm_module, |instruction| {
-                // Increase total instruction count
+                // Increase total instruction count.
                 llvmir_instruction_count += 1;
 
-                // Update opcode frequency map
+                // Debug string looks like "LLVM{OP}".
                 let full_opcode = format!("{:?}", LLVMGetInstructionOpcode(instruction));
+                // Strip leading "LLVM".
                 let opcode = full_opcode
                     .strip_prefix("LLVM")
                     .map(str::to_string)
                     .unwrap_or(full_opcode);
+                // Update opcode frequency map.
                 *stats.llvmir_opcode_frequency.entry(opcode).or_insert(0) += 1;
 
                 // Increase virtual register count, only if the
