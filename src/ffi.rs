@@ -10,7 +10,9 @@ use crate::{
 use llvm_sys::{
     core::{
         LLVMContextCreate, LLVMContextDispose, LLVMDisposeMemoryBuffer, LLVMDisposeMessage,
-        LLVMDisposeModule, LLVMGetBufferSize, LLVMGetBufferStart,
+        LLVMDisposeModule, LLVMGetBufferSize, LLVMGetBufferStart, LLVMGetFirstBasicBlock,
+        LLVMGetFirstFunction, LLVMGetFirstInstruction, LLVMGetInstructionOpcode,
+        LLVMGetNextBasicBlock, LLVMGetNextFunction, LLVMGetNextInstruction,
     },
     error::LLVMGetErrorMessage,
     prelude::LLVMMemoryBufferRef,
@@ -27,6 +29,7 @@ use llvm_sys::{
     transforms::pass_builder::{
         LLVMCreatePassBuilderOptions, LLVMDisposePassBuilderOptions, LLVMRunPasses,
     },
+    LLVMBasicBlock, LLVMValue,
 };
 use melior::ir::{Module, Type, TypeLike};
 use mlir_sys::{mlirLLVMStructTypeGetElementType, mlirTranslateModuleToLLVMIR};
@@ -123,6 +126,51 @@ pub fn module_to_object(
         let mlir_to_llvm_time = pre_mlir_to_llvm_instant.elapsed().as_millis();
         if let Some(&mut ref mut stats) = stats {
             stats.compilation_mlir_to_llvm_time_ms = Some(mlir_to_llvm_time);
+        }
+
+        if let Some(&mut ref mut stats) = stats {
+            let mut count = 0;
+
+            let new_value = |function_ptr: *mut LLVMValue| {
+                if function_ptr.is_null() {
+                    None
+                } else {
+                    Some(function_ptr)
+                }
+            };
+            let new_block = |function_ptr: *mut LLVMBasicBlock| {
+                if function_ptr.is_null() {
+                    None
+                } else {
+                    Some(function_ptr)
+                }
+            };
+
+            let mut current_function = new_value(LLVMGetFirstFunction(llvm_module));
+            while let Some(function) = current_function {
+                let mut current_block = new_block(LLVMGetFirstBasicBlock(function));
+                while let Some(block) = current_block {
+                    let mut current_instruction = new_value(LLVMGetFirstInstruction(block));
+                    while let Some(instruction) = current_instruction {
+                        // Increase total instruction count
+                        count += 1;
+
+                        // Update opcode frequency map
+                        let full_opcode = format!("{:?}", LLVMGetInstructionOpcode(instruction));
+                        let opcode = full_opcode
+                            .strip_prefix("LLVM")
+                            .map(str::to_string)
+                            .unwrap_or(full_opcode);
+                        *stats.llvmir_opcode_frequency.entry(opcode).or_insert(0) += 1;
+
+                        current_instruction = new_value(LLVMGetNextInstruction(instruction));
+                    }
+                    current_block = new_block(LLVMGetNextBasicBlock(block));
+                }
+                current_function = new_value(LLVMGetNextFunction(function));
+            }
+
+            stats.llvmir_instruction_count = Some(count)
         }
 
         let mut null = null_mut();
