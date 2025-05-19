@@ -11,6 +11,7 @@ pub struct Statistics {
     pub sierra_libfunc_frequency: BTreeMap<String, u128>,
     pub mlir_operation_count: Option<u128>,
     pub llvmir_instruction_count: Option<u128>,
+    pub llvmir_virtual_register_count: Option<u128>,
     pub llvmir_opcode_frequency: BTreeMap<String, u128>,
     pub compilation_total_time_ms: Option<u128>,
     pub compilation_sierra_to_mlir_time_ms: Option<u128>,
@@ -31,6 +32,7 @@ impl Statistics {
             && !self.sierra_libfunc_frequency.is_empty()
             && self.mlir_operation_count.is_some()
             && self.llvmir_instruction_count.is_some()
+            && self.llvmir_virtual_register_count.is_some()
             && !self.llvmir_opcode_frequency.is_empty()
             && self.compilation_total_time_ms.is_some()
             && self.compilation_sierra_to_mlir_time_ms.is_some()

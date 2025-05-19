@@ -11,7 +11,7 @@ use llvm_sys::{
     core::{
         LLVMContextCreate, LLVMContextDispose, LLVMDisposeMemoryBuffer, LLVMDisposeMessage,
         LLVMDisposeModule, LLVMGetBufferSize, LLVMGetBufferStart, LLVMGetFirstBasicBlock,
-        LLVMGetFirstFunction, LLVMGetFirstInstruction, LLVMGetInstructionOpcode,
+        LLVMGetFirstFunction, LLVMGetFirstInstruction, LLVMGetFirstUse, LLVMGetInstructionOpcode,
         LLVMGetNextBasicBlock, LLVMGetNextFunction, LLVMGetNextInstruction,
     },
     error::LLVMGetErrorMessage,
@@ -129,7 +129,8 @@ pub fn module_to_object(
         }
 
         if let Some(&mut ref mut stats) = stats {
-            let mut count = 0;
+            let mut llvmir_instruction_count = 0;
+            let mut llvmir_virtual_register_count = 0;
 
             let new_value = |function_ptr: *mut LLVMValue| {
                 if function_ptr.is_null() {
@@ -153,7 +154,7 @@ pub fn module_to_object(
                     let mut current_instruction = new_value(LLVMGetFirstInstruction(block));
                     while let Some(instruction) = current_instruction {
                         // Increase total instruction count
-                        count += 1;
+                        llvmir_instruction_count += 1;
 
                         // Update opcode frequency map
                         let full_opcode = format!("{:?}", LLVMGetInstructionOpcode(instruction));
@@ -163,6 +164,13 @@ pub fn module_to_object(
                             .unwrap_or(full_opcode);
                         *stats.llvmir_opcode_frequency.entry(opcode).or_insert(0) += 1;
 
+                        // Increase virtual register count, only if the
+                        // instruction value is used somewhere.
+                        let first_use = LLVMGetFirstUse(instruction);
+                        if !first_use.is_null() {
+                            llvmir_virtual_register_count += 1;
+                        }
+
                         current_instruction = new_value(LLVMGetNextInstruction(instruction));
                     }
                     current_block = new_block(LLVMGetNextBasicBlock(block));
@@ -170,7 +178,8 @@ pub fn module_to_object(
                 current_function = new_value(LLVMGetNextFunction(function));
             }
 
-            stats.llvmir_instruction_count = Some(count)
+            stats.llvmir_instruction_count = Some(llvmir_instruction_count);
+            stats.llvmir_virtual_register_count = Some(llvmir_virtual_register_count)
         }
 
         let mut null = null_mut();
