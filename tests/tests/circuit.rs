@@ -72,7 +72,6 @@ lazy_static! {
 }
 
 #[test]
-#[ignore]
 fn circuit_guarantee_first_limb() {
     let program = &TEST;
 
@@ -111,7 +110,6 @@ fn circuit_guarantee_first_limb() {
 }
 
 #[test]
-#[ignore]
 fn circuit_guarantee_last_limb() {
     let program = &TEST;
 
@@ -150,7 +148,6 @@ fn circuit_guarantee_last_limb() {
 }
 
 #[test]
-#[ignore]
 fn circuit_guarantee_middle_limb() {
     let program = &TEST;
 
