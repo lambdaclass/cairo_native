@@ -56,7 +56,7 @@ use crate::{
     native_assert, native_panic,
     statistics::Statistics,
     types::TypeBuilder,
-    utils::{generate_function_name, BlockExt},
+    utils::{generate_function_name, walk_ir::walk_mlir_block, BlockExt},
 };
 use bumpalo::Bump;
 use cairo_lang_sierra::{
@@ -99,6 +99,7 @@ use mlir_sys::{
 use std::{
     cell::Cell,
     collections::{hash_map::Entry, BTreeMap, HashMap, HashSet},
+    ffi::c_void,
     ops::Deref,
 };
 
@@ -192,7 +193,7 @@ fn compile_func(
     di_compile_unit_id: Attribute,
     sierra_stmt_start_offset: usize,
     ignore_debug_names: bool,
-    _stats: Option<&mut Statistics>,
+    stats: Option<&mut Statistics>,
 ) -> Result<(), Error> {
     let fn_location = Location::new(
         context,
@@ -630,6 +631,23 @@ fn compile_func(
                         &helper,
                         metadata,
                     )?;
+
+                    if let Some(&mut ref mut stats) = stats {
+                        unsafe extern "C" fn callback(
+                            _: mlir_sys::MlirOperation,
+                            data: *mut c_void,
+                        ) -> mlir_sys::MlirWalkResult {
+                            let data = data.cast::<u128>().as_mut().unwrap();
+                            *data += 1;
+                            0
+                        }
+                        let data = walk_mlir_block(*block, *helper.last_block.get(), callback, 0);
+
+                        let name = libfunc_to_name(libfunc).to_string();
+
+                        *stats.mlir_operations_by_libfunc.entry(name).or_insert(0) += data;
+                    }
+
                     native_assert!(
                         block.terminator().is_some(),
                         "libfunc {} had no terminator",

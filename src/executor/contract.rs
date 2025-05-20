@@ -46,7 +46,7 @@ use crate::{
     types::TypeBuilder,
     utils::{
         decode_error_message, generate_function_name, get_integer_layout, libc_free, libc_malloc,
-        walk_ir::walk_mlir_operations, BuiltinCosts,
+        BuiltinCosts,
     },
     OptLevel,
 };
@@ -223,19 +223,6 @@ impl AotContractExecutor {
             }),
             Some(&mut stats),
         )?;
-
-        {
-            unsafe extern "C" fn callback(
-                _: mlir_sys::MlirOperation,
-                data: *mut c_void,
-            ) -> mlir_sys::MlirWalkResult {
-                let data = data.cast::<u128>().as_mut().unwrap();
-                *data += 1;
-                0
-            }
-            let data = walk_mlir_operations(module.as_operation(), callback, 0);
-            stats.mlir_operation_count = Some(data)
-        }
 
         for statement in &program.statements {
             if let GenStatement::Invocation(invocation) = statement {

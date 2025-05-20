@@ -10,6 +10,7 @@ pub struct Statistics {
     pub sierra_func_count: Option<usize>,
     pub sierra_libfunc_frequency: BTreeMap<String, u128>,
     pub mlir_operation_count: Option<u128>,
+    pub mlir_operations_by_libfunc: BTreeMap<String, u128>,
     pub llvmir_instruction_count: Option<u128>,
     pub llvmir_virtual_register_count: Option<u128>,
     pub llvmir_opcode_frequency: BTreeMap<String, u128>,

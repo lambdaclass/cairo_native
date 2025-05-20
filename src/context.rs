@@ -5,7 +5,7 @@ use crate::{
     module::NativeModule,
     native_assert,
     statistics::Statistics,
-    utils::run_pass_manager,
+    utils::{run_pass_manager, walk_ir::walk_mlir_operations},
 };
 use cairo_lang_sierra::{
     extensions::core::{CoreLibfunc, CoreType},
@@ -32,7 +32,7 @@ use mlir_sys::{
     mlirLLVMDIModuleAttrGet, MlirLLVMDIEmissionKind_MlirLLVMDIEmissionKindFull,
     MlirLLVMDINameTableKind_MlirLLVMDINameTableKindDefault,
 };
-use std::{sync::OnceLock, time::Instant};
+use std::{ffi::c_void, sync::OnceLock, time::Instant};
 
 /// Context of IRs, dialects and passes for Cairo programs compilation.
 #[derive(Debug, Eq, PartialEq)]
@@ -200,6 +200,19 @@ impl NativeContext {
                     )?,
                 )?;
             }
+        }
+
+        if let Some(&mut ref mut stats) = stats {
+            unsafe extern "C" fn callback(
+                _: mlir_sys::MlirOperation,
+                data: *mut c_void,
+            ) -> mlir_sys::MlirWalkResult {
+                let data = data.cast::<u128>().as_mut().unwrap();
+                *data += 1;
+                0
+            }
+            let data = walk_mlir_operations(module.as_operation(), callback, 0);
+            stats.mlir_operation_count = Some(data)
         }
 
         let pre_mlir_passes_instant = Instant::now();

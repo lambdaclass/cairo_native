@@ -8,7 +8,7 @@ use llvm_sys::{
     prelude::{LLVMModuleRef, LLVMValueRef},
     LLVMBasicBlock, LLVMValue,
 };
-use melior::ir::OperationRef;
+use melior::ir::{BlockLike, BlockRef, OperationRef};
 use mlir_sys::{MlirOperation, MlirWalkResult};
 
 type OperationWalkCallback =
@@ -31,6 +31,49 @@ pub fn walk_mlir_operations<T: Sized>(
             mlir_sys::MlirWalkOrder_MlirWalkPreOrder,
         );
     };
+    *data
+}
+
+pub fn walk_mlir_block<T: Sized>(
+    start_block: BlockRef,
+    end_block: BlockRef,
+    f: OperationWalkCallback,
+    initial: T,
+) -> T {
+    let mut data = Box::new(initial);
+
+    let mut current_block = start_block;
+    loop {
+        let mut next_operation = current_block.first_operation();
+
+        while let Some(operation) = next_operation {
+            unsafe {
+                mlir_sys::mlirOperationWalk(
+                    operation.to_raw(),
+                    Some(f),
+                    data.as_mut() as *mut _ as *mut c_void,
+                    mlir_sys::MlirWalkOrder_MlirWalkPreOrder,
+                );
+            };
+
+            // we have to convert it to raw, and back to ref to bypass borrow checker.
+            next_operation = unsafe {
+                operation
+                    .next_in_block()
+                    .map(OperationRef::to_raw)
+                    .map(|op| OperationRef::from_raw(op))
+            }
+        }
+
+        if current_block == end_block {
+            break;
+        }
+
+        current_block = current_block
+            .next_in_region()
+            .expect("should always reach `end_block`");
+    }
+
     *data
 }
 
