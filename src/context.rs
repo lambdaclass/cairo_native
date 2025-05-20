@@ -174,6 +174,10 @@ impl NativeContext {
             &mut metadata,
             unsafe { Attribute::from_raw(di_unit_id) },
             ignore_debug_names,
+            match stats {
+                None => None,
+                Some(&mut ref mut s) => Some(s),
+            },
         )?;
         let sierra_to_mlir_time = pre_sierra_to_mlir_instant.elapsed().as_millis();
         if let Some(&mut ref mut stats) = stats {
