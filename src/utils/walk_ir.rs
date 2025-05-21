@@ -14,6 +14,11 @@ use mlir_sys::{MlirOperation, MlirWalkResult};
 type OperationWalkCallback =
     unsafe extern "C" fn(MlirOperation, *mut ::std::os::raw::c_void) -> MlirWalkResult;
 
+/// Traverses the given operation tree in preorder.
+///
+/// Calls `f` on each operation encountered. The second argument to `f` should
+/// be interpreted as a pointer to a value of type `T`.
+///
 /// TODO: Can we receive a closure instead?
 /// We may need to save a pointer to the closure
 /// inside of the callback data.
@@ -34,6 +39,14 @@ pub fn walk_mlir_operations<T: Sized>(
     *data
 }
 
+/// Traverses from start block to end block (including) in preorder.
+///
+/// Calls `f` on each operation encountered. The second argument to `f` should
+/// be interpreted as a pointer to a value of type `T`.
+///
+/// TODO: Can we receive a closure instead?
+/// We may need to save a pointer to the closure
+/// inside of the callback data.
 pub fn walk_mlir_block<T: Sized>(
     start_block: BlockRef,
     end_block: BlockRef,
@@ -77,6 +90,10 @@ pub fn walk_mlir_block<T: Sized>(
     *data
 }
 
+/// Traverses the whole LLVM Module, calling `f` on each instruction.
+///
+/// As this function receives a closure rather than a function, there is no need
+/// to receive initial data, and can instead modify the captured environment.
 pub unsafe fn walk_llvm_instructions(llvm_module: LLVMModuleRef, mut f: impl FnMut(LLVMValueRef)) {
     let new_value = |function_ptr: *mut LLVMValue| {
         if function_ptr.is_null() {
