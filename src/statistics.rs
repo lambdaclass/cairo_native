@@ -2,6 +2,8 @@ use std::collections::BTreeMap;
 
 use serde::Serialize;
 
+/// A set of compilation statistics gathered during the compilation.
+/// It should be completely filled at the end of the compilation.
 #[derive(Default, Serialize)]
 pub struct Statistics {
     pub sierra_type_count: Option<usize>,
