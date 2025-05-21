@@ -32,6 +32,7 @@ impl Statistics {
             && self.sierra_func_count.is_some()
             && !self.sierra_libfunc_frequency.is_empty()
             && self.mlir_operation_count.is_some()
+            && !self.mlir_operations_by_libfunc.is_empty()
             && self.llvmir_instruction_count.is_some()
             && self.llvmir_virtual_register_count.is_some()
             && !self.llvmir_opcode_frequency.is_empty()
