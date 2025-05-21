@@ -45,6 +45,7 @@
 //! [BFS algorithm]: https://en.wikipedia.org/wiki/Breadth-first_search
 
 use crate::{
+    clone_option_mut,
     debug::libfunc_to_name,
     error::{panic::ToNativeAssertError, Error},
     libfuncs::{BranchArg, LibfuncBuilder, LibfuncHelper},
@@ -152,7 +153,6 @@ pub fn compile(
 
     for function in &program.funcs {
         tracing::info!("Compiling function `{}`.", function.id);
-
         compile_func(
             context,
             module,
@@ -163,10 +163,7 @@ pub fn compile(
             di_compile_unit_id,
             sierra_stmt_start_offset,
             ignore_debug_names,
-            match stats {
-                None => None,
-                Some(&mut ref mut s) => Some(s),
-            },
+            clone_option_mut!(stats),
         )?;
     }
 
@@ -632,6 +629,8 @@ fn compile_func(
                         metadata,
                     )?;
 
+                    // When statistics are enabled, we iterate from the start
+                    // to the end block of the compiled libfunc, and count all the operations.
                     if let Some(&mut ref mut stats) = stats {
                         unsafe extern "C" fn callback(
                             _: mlir_sys::MlirOperation,
@@ -642,9 +641,7 @@ fn compile_func(
                             0
                         }
                         let data = walk_mlir_block(*block, *helper.last_block.get(), callback, 0);
-
                         let name = libfunc_to_name(libfunc).to_string();
-
                         *stats.mlir_operations_by_libfunc.entry(name).or_insert(0) += data;
                     }
 

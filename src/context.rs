@@ -1,4 +1,5 @@
 use crate::{
+    clone_option_mut,
     error::{panic::ToNativeAssertError, Error},
     ffi::{get_data_layout_rep, get_target_triple},
     metadata::{gas::GasMetadata, runtime_bindings::RuntimeBindingsMeta, MetadataStorage},
@@ -174,10 +175,7 @@ impl NativeContext {
             &mut metadata,
             unsafe { Attribute::from_raw(di_unit_id) },
             ignore_debug_names,
-            match stats {
-                None => None,
-                Some(&mut ref mut s) => Some(s),
-            },
+            clone_option_mut!(stats),
         )?;
         let sierra_to_mlir_time = pre_sierra_to_mlir_instant.elapsed().as_millis();
         if let Some(&mut ref mut stats) = stats {
