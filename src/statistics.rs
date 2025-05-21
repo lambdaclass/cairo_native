@@ -45,3 +45,28 @@ impl Statistics {
             && self.object_size_bytes.is_some()
     }
 }
+
+/// Clones a variable of type `Option<&mut T>` without consuming self
+///
+/// # Example
+///
+/// The following example would fail to compile otherwise.
+///
+/// ```
+/// # use cairo_native::clone_option_mut;
+/// fn consume(v: Option<&mut Vec<u8>>) {}
+///
+/// let mut vec = Vec::new();
+/// let option = Some(&mut vec);
+/// consume(clone_option_mut!(option));
+/// consume(option);
+/// ```
+#[macro_export]
+macro_rules! clone_option_mut {
+    ( $var:ident ) => {
+        match $var {
+            None => None,
+            Some(&mut ref mut s) => Some(s),
+        }
+    };
+}
