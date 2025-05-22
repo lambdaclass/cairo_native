@@ -14,12 +14,12 @@ pub fn compile_library() -> Result<(), Box<dyn Error>> {
         }
     };
 
-    let module = context.compile(&program.1, false, Some(Default::default()))?;
+    let module = context.compile(&program.1, false, Some(Default::default()), None)?;
 
-    let object = cairo_native::module_to_object(module.module(), Default::default())?;
+    let object = cairo_native::module_to_object(module.module(), Default::default(), None)?;
 
     let file = NamedTempFile::new()?.into_temp_path();
-    cairo_native::object_to_shared_lib(&object, &file)?;
+    cairo_native::object_to_shared_lib(&object, &file, None)?;
 
     Ok(())
 }

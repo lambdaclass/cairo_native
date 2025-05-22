@@ -14,7 +14,7 @@ fn run_program(program: &Program, entry_point: &str, args: &[Value]) -> Executio
 
     let context = NativeContext::new();
     let module = context
-        .compile(program, false, Some(Default::default()))
+        .compile(program, false, Some(Default::default()), None)
         .unwrap();
     // FIXME: There are some bugs with non-zero LLVM optimization levels.
     let executor = JitNativeExecutor::from_native_module(module, OptLevel::None).unwrap();

@@ -3,11 +3,16 @@
 //! This is a "hotfix" for missing Rust interfaces to the C/C++ libraries we use, namely LLVM/MLIR
 //! APIs that are missing from melior.
 
-use crate::error::{panic::ToNativeAssertError, Error, Result};
+use crate::{
+    error::{panic::ToNativeAssertError, Error, Result},
+    statistics::Statistics,
+    utils::walk_ir::walk_llvm_instructions,
+};
 use llvm_sys::{
     core::{
         LLVMContextCreate, LLVMContextDispose, LLVMDisposeMemoryBuffer, LLVMDisposeMessage,
-        LLVMDisposeModule, LLVMGetBufferSize, LLVMGetBufferStart,
+        LLVMDisposeModule, LLVMGetBufferSize, LLVMGetBufferStart, LLVMGetFirstUse,
+        LLVMGetInstructionOpcode,
     },
     error::LLVMGetErrorMessage,
     prelude::LLVMMemoryBufferRef,
@@ -95,7 +100,11 @@ impl From<u8> for OptLevel {
 }
 
 /// Converts a MLIR module to a compile object, that can be linked with a linker.
-pub fn module_to_object(module: &Module<'_>, opt_level: OptLevel) -> Result<Vec<u8>> {
+pub fn module_to_object(
+    module: &Module<'_>,
+    opt_level: OptLevel,
+    stats: Option<&mut Statistics>,
+) -> Result<Vec<u8>> {
     static INITIALIZED: OnceLock<()> = OnceLock::new();
 
     INITIALIZED.get_or_init(|| unsafe {
@@ -111,11 +120,42 @@ pub fn module_to_object(module: &Module<'_>, opt_level: OptLevel) -> Result<Vec<
 
         let op = module.as_operation().to_raw();
 
-        trace!("starting mlir to llvm compilation");
-        let pre_mlir_instant = Instant::now();
+        let pre_mlir_to_llvm_instant = Instant::now();
         let llvm_module = mlirTranslateModuleToLLVMIR(op, llvm_context as *mut _) as *mut _;
-        let mlir_time = pre_mlir_instant.elapsed().as_millis();
-        trace!(time = mlir_time, "mlir to llvm finished");
+        let mlir_to_llvm_time = pre_mlir_to_llvm_instant.elapsed().as_millis();
+        if let Some(&mut ref mut stats) = stats {
+            stats.compilation_mlir_to_llvm_time_ms = Some(mlir_to_llvm_time);
+        }
+
+        if let Some(&mut ref mut stats) = stats {
+            let mut llvmir_instruction_count = 0;
+            let mut llvmir_virtual_register_count = 0;
+
+            walk_llvm_instructions(llvm_module, |instruction| {
+                // Increase total instruction count.
+                llvmir_instruction_count += 1;
+
+                // Debug string looks like "LLVM{OP}".
+                let full_opcode = format!("{:?}", LLVMGetInstructionOpcode(instruction));
+                // Strip leading "LLVM".
+                let opcode = full_opcode
+                    .strip_prefix("LLVM")
+                    .map(str::to_string)
+                    .unwrap_or(full_opcode);
+                // Update opcode frequency map.
+                *stats.llvmir_opcode_frequency.entry(opcode).or_insert(0) += 1;
+
+                // Increase virtual register count, only if the
+                // instruction value is used somewhere.
+                let first_use = LLVMGetFirstUse(instruction);
+                if !first_use.is_null() {
+                    llvmir_virtual_register_count += 1;
+                }
+            });
+
+            stats.llvmir_instruction_count = Some(llvmir_instruction_count);
+            stats.llvmir_virtual_register_count = Some(llvmir_virtual_register_count)
+        }
 
         let mut null = null_mut();
         let mut error_buffer = addr_of_mut!(null);
@@ -167,11 +207,12 @@ pub fn module_to_object(module: &Module<'_>, opt_level: OptLevel) -> Result<Vec<
         let passes = CString::new(format!("default<O{opt}>"))
             .to_native_assert_error("only fails if the hardcoded string contains a null byte")?;
 
-        trace!("starting llvm passes");
-        let pre_passes_instant = Instant::now();
+        let pre_llvm_passes_instant = Instant::now();
         let error = LLVMRunPasses(llvm_module, passes.as_ptr(), machine, opts);
-        let passes_time = pre_passes_instant.elapsed().as_millis();
-        trace!(time = passes_time, "llvm passes finished");
+        let llvm_passes_time = pre_llvm_passes_instant.elapsed().as_millis();
+        if let Some(&mut ref mut stats) = stats {
+            stats.compilation_llvm_passes_time_ms = Some(llvm_passes_time);
+        }
 
         if !error.is_null() {
             let msg = LLVMGetErrorMessage(error);
@@ -184,7 +225,7 @@ pub fn module_to_object(module: &Module<'_>, opt_level: OptLevel) -> Result<Vec<
         let mut out_buf: MaybeUninit<LLVMMemoryBufferRef> = MaybeUninit::uninit();
 
         trace!("starting llvm to object compilation");
-        let pre_llvm_compilation_instant = Instant::now();
+        let pre_llvm_to_object_instant = Instant::now();
         let ok = LLVMTargetMachineEmitToMemoryBuffer(
             machine,
             llvm_module,
@@ -192,11 +233,10 @@ pub fn module_to_object(module: &Module<'_>, opt_level: OptLevel) -> Result<Vec<
             error_buffer,
             out_buf.as_mut_ptr(),
         );
-        let llvm_compilation_time = pre_llvm_compilation_instant.elapsed().as_millis();
-        trace!(
-            time = llvm_compilation_time,
-            "llvm to object compilation finished"
-        );
+        let llvm_to_object_time = pre_llvm_to_object_instant.elapsed().as_millis();
+        if let Some(&mut ref mut stats) = stats {
+            stats.compilation_llvm_to_object_time_ms = Some(llvm_to_object_time);
+        }
 
         if ok != 0 {
             let error = CStr::from_ptr(*error_buffer);
@@ -225,7 +265,11 @@ pub fn module_to_object(module: &Module<'_>, opt_level: OptLevel) -> Result<Vec<
 }
 
 /// Links the passed object into a shared library, stored on the given path.
-pub fn object_to_shared_lib(object: &[u8], output_filename: &Path) -> Result<()> {
+pub fn object_to_shared_lib(
+    object: &[u8],
+    output_filename: &Path,
+    stats: Option<&mut Statistics>,
+) -> Result<()> {
     // linker seems to need a file and doesn't accept stdin
     let mut file = NamedTempFile::new()?;
     file.write_all(object)?;
@@ -289,11 +333,12 @@ pub fn object_to_shared_lib(object: &[u8], output_filename: &Path) -> Result<()>
 
     let mut linker = std::process::Command::new("ld");
 
-    trace!("starting linking");
     let pre_linking_instant = Instant::now();
     let proc = linker.args(args.iter().map(|x| x.as_ref())).output()?;
     let linking_time = pre_linking_instant.elapsed().as_millis();
-    trace!(time = linking_time, "linking finished");
+    if let Some(&mut ref mut stats) = stats {
+        stats.compilation_linking_time_ms = Some(linking_time);
+    }
 
     if proc.status.success() {
         Ok(())

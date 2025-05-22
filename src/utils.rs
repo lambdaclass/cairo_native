@@ -38,6 +38,7 @@ mod range_ext;
 pub mod safe_runner;
 pub mod sierra_gen;
 pub mod trace_dump;
+pub mod walk_ir;
 
 #[cfg(target_os = "macos")]
 pub const SHARED_LIBRARY_EXT: &str = "dylib";
@@ -608,7 +609,7 @@ pub mod test {
         let context = NativeContext::new();
 
         let module = context
-            .compile(program, false, Some(Default::default()))
+            .compile(program, false, Some(Default::default()), None)
             .expect("Could not compile test program to MLIR.");
 
         let executor = JitNativeExecutor::from_native_module(module, OptLevel::Less).unwrap();

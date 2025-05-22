@@ -947,7 +947,7 @@ mod test {
             .map_err(|e| e.to_string())?;
 
         let context = NativeContext::new();
-        let module = context.compile(&program, false, None)?;
+        let module = context.compile(&program, false, None, None)?;
         let executor = JitNativeExecutor::from_native_module(module, OptLevel::default())?;
 
         let data = [T::min_value(), T::zero(), T::one(), T::max_value()];
@@ -993,7 +993,7 @@ mod test {
             .map_err(|e| e.to_string())?;
 
         let context = NativeContext::new();
-        let module = context.compile(&program, false, None)?;
+        let module = context.compile(&program, false, None, None)?;
         let executor = JitNativeExecutor::from_native_module(module, OptLevel::default())?;
 
         let data = [0u128, 1u128, u128::MAX];
@@ -1073,7 +1073,7 @@ mod test {
         };
 
         let context = NativeContext::new();
-        let module = context.compile(&program, false, None)?;
+        let module = context.compile(&program, false, None, None)?;
         let executor = JitNativeExecutor::from_native_module(module, OptLevel::default())?;
 
         if min.is_zero() {
@@ -1161,7 +1161,7 @@ mod test {
             .map_err(|e| e.to_string())?;
 
         let context = NativeContext::new();
-        let module = context.compile(&program, false, None)?;
+        let module = context.compile(&program, false, None, None)?;
         let executor = JitNativeExecutor::from_native_module(module, OptLevel::default())?;
 
         let data = [T::min_value(), T::zero(), T::one(), T::max_value()];
@@ -1238,7 +1238,7 @@ mod test {
             .map_err(|e| e.to_string())?;
 
         let context = NativeContext::new();
-        let module = context.compile(&program, false, None)?;
+        let module = context.compile(&program, false, None, None)?;
         let executor = JitNativeExecutor::from_native_module(module, OptLevel::default())?;
 
         let data = [T::min_value(), T::zero(), T::one(), T::max_value()];
@@ -1305,7 +1305,7 @@ mod test {
             .map_err(|e| e.to_string())?;
 
         let context = NativeContext::new();
-        let module = context.compile(&program, false, None)?;
+        let module = context.compile(&program, false, None, None)?;
         let executor = JitNativeExecutor::from_native_module(module, OptLevel::default())?;
 
         let data = [T::min_value(), T::zero(), T::one(), T::max_value()];
@@ -1374,7 +1374,7 @@ mod test {
             .map_err(|e| e.to_string())?;
 
         let context = NativeContext::new();
-        let module = context.compile(&program, false, None)?;
+        let module = context.compile(&program, false, None, None)?;
         let executor = JitNativeExecutor::from_native_module(module, OptLevel::default())?;
 
         let data = [
@@ -1447,7 +1447,7 @@ mod test {
             .map_err(|e| e.to_string())?;
 
         let context = NativeContext::new();
-        let module = context.compile(&program, false, None)?;
+        let module = context.compile(&program, false, None, None)?;
         let executor = JitNativeExecutor::from_native_module(module, OptLevel::default())?;
 
         let data = [0u128, 1u128, u128::MAX];
@@ -1528,7 +1528,7 @@ mod test {
             .map_err(|e| e.to_string())?;
 
         let context = NativeContext::new();
-        let module = context.compile(&program, false, None)?;
+        let module = context.compile(&program, false, None, None)?;
         let executor = JitNativeExecutor::from_native_module(module, OptLevel::default())?;
 
         let data = [T::min_value(), T::zero(), T::one(), T::max_value()];
@@ -1619,7 +1619,7 @@ mod test {
             .map_err(|e| e.to_string())?;
 
         let context = NativeContext::new();
-        let module = context.compile(&program, false, None)?;
+        let module = context.compile(&program, false, None, None)?;
         let executor = JitNativeExecutor::from_native_module(module, OptLevel::default())?;
 
         let data = [T::min_value(), T::zero(), T::one(), T::max_value()];
@@ -1691,7 +1691,7 @@ mod test {
             .map_err(|e| e.to_string())?;
 
         let context = NativeContext::new();
-        let module = context.compile(&program, false, None)?;
+        let module = context.compile(&program, false, None, None)?;
         let executor = JitNativeExecutor::from_native_module(module, OptLevel::default())?;
 
         let data = [T::min_value(), T::zero(), T::one(), T::max_value()];
@@ -1750,7 +1750,7 @@ mod test {
             .map_err(|e| e.to_string())?;
 
         let context = NativeContext::new();
-        let module = context.compile(&program, false, None)?;
+        let module = context.compile(&program, false, None, None)?;
         let executor = JitNativeExecutor::from_native_module(module, OptLevel::default())?;
 
         let data = [T::min_value(), T::zero(), T::one(), T::max_value()];
@@ -1794,7 +1794,7 @@ mod test {
             .map_err(|e| e.to_string())?;
 
         let context = NativeContext::new();
-        let module = context.compile(&program, false, None)?;
+        let module = context.compile(&program, false, None, None)?;
         let executor = JitNativeExecutor::from_native_module(module, OptLevel::default())?;
 
         let data = [
@@ -1864,7 +1864,7 @@ mod test {
             .map_err(|e| e.to_string())?;
 
         let context = NativeContext::new();
-        let module = context.compile(&program, false, None)?;
+        let module = context.compile(&program, false, None, None)?;
         let executor = JitNativeExecutor::from_native_module(module, OptLevel::default())?;
 
         let data = [T::min_value(), T::zero(), T::one(), T::max_value()];

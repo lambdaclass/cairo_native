@@ -720,7 +720,7 @@ mod tests {
     fn test_invoke_dynamic_aot_native_executor(program: Program) {
         let native_context = NativeContext::new();
         let module = native_context
-            .compile(&program, false, Some(Default::default()))
+            .compile(&program, false, Some(Default::default()), None)
             .expect("failed to compile context");
         let executor = AotNativeExecutor::from_native_module(module, OptLevel::default()).unwrap();
 
@@ -738,7 +738,7 @@ mod tests {
     fn test_invoke_dynamic_jit_native_executor(program: Program) {
         let native_context = NativeContext::new();
         let module = native_context
-            .compile(&program, false, None)
+            .compile(&program, false, None, None)
             .expect("failed to compile context");
         let executor = JitNativeExecutor::from_native_module(module, OptLevel::default()).unwrap();
 
@@ -756,7 +756,7 @@ mod tests {
     fn test_invoke_contract_dynamic_aot(starknet_program: Program) {
         let native_context = NativeContext::new();
         let module = native_context
-            .compile(&starknet_program, false, Some(Default::default()))
+            .compile(&starknet_program, false, Some(Default::default()), None)
             .expect("failed to compile context");
         let executor = AotNativeExecutor::from_native_module(module, OptLevel::default()).unwrap();
 
@@ -788,7 +788,7 @@ mod tests {
     fn test_invoke_contract_dynamic_jit(starknet_program: Program) {
         let native_context = NativeContext::new();
         let module = native_context
-            .compile(&starknet_program, false, Some(Default::default()))
+            .compile(&starknet_program, false, Some(Default::default()), None)
             .expect("failed to compile context");
         let executor = JitNativeExecutor::from_native_module(module, OptLevel::default()).unwrap();
 

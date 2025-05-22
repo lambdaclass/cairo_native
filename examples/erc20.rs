@@ -322,7 +322,7 @@ fn main() {
     let native_context = NativeContext::new();
 
     let native_program = native_context
-        .compile(&sierra_program, false, Some(Default::default()))
+        .compile(&sierra_program, false, Some(Default::default()), None)
         .unwrap();
 
     let entry_point_fn =
