@@ -33,6 +33,7 @@ fn main() -> anyhow::Result<()> {
         sierra_version,
         args.output.clone(),
         args.opt_level.into(),
+        None,
     )
     .context("Error compiling Sierra program.")?
     .with_context(|| format!("Failed to take lock on path {}", args.output.display()))?;

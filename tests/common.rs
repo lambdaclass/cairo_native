@@ -456,6 +456,7 @@ pub fn run_native_starknet_aot_contract(
         &contract.entry_points_by_type,
         sierra_version,
         Default::default(),
+        None,
     )
     .unwrap();
     native_executor

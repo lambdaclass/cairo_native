@@ -33,6 +33,7 @@
 
 use crate::{
     arch::AbiArgument,
+    clone_option_mut,
     context::NativeContext,
     debug::libfunc_to_name,
     error::{panic::ToNativeAssertError, Error, Result},
@@ -142,6 +143,7 @@ impl AotContractExecutor {
         entry_points: &ContractEntryPoints,
         sierra_version: VersionId,
         opt_level: OptLevel,
+        stats: Option<&mut Statistics>,
     ) -> Result<Self> {
         let output_path = NamedTempFile::new()?
             .into_temp_path()
@@ -154,6 +156,7 @@ impl AotContractExecutor {
             sierra_version,
             output_path,
             opt_level,
+            stats,
         )?
         .to_native_assert_error("temporary contract path collision")?;
 
@@ -174,6 +177,7 @@ impl AotContractExecutor {
         sierra_version: VersionId,
         output_path: impl Into<PathBuf>,
         opt_level: OptLevel,
+        stats: Option<&mut Statistics>,
     ) -> Result<Option<Self>> {
         let output_path = output_path.into();
         let lock_file = match LockFile::new(&output_path)? {
@@ -181,7 +185,6 @@ impl AotContractExecutor {
             None => return Ok(None),
         };
 
-        let mut stats = Statistics::default();
         let pre_compilation_instant = Instant::now();
 
         let context = NativeContext::new();
@@ -192,10 +195,12 @@ impl AotContractExecutor {
             Ordering::Greater => true,
         };
 
-        stats.sierra_type_count = Some(program.type_declarations.len());
-        stats.sierra_libfunc_count = Some(program.libfunc_declarations.len());
-        stats.sierra_statement_count = Some(program.statements.len());
-        stats.sierra_func_count = Some(program.funcs.len());
+        if let Some(&mut ref mut stats) = stats {
+            stats.sierra_type_count = Some(program.type_declarations.len());
+            stats.sierra_libfunc_count = Some(program.libfunc_declarations.len());
+            stats.sierra_statement_count = Some(program.statements.len());
+            stats.sierra_func_count = Some(program.funcs.len());
+        }
 
         // Compile the Sierra program.
         let NativeModule {
@@ -221,14 +226,16 @@ impl AotContractExecutor {
                 skip_non_linear_solver_comparisons: false,
                 compute_runtime_costs: false,
             }),
-            Some(&mut stats),
+            clone_option_mut!(stats),
         )?;
 
-        for statement in &program.statements {
-            if let GenStatement::Invocation(invocation) = statement {
-                let libfunc = registry.get_libfunc(&invocation.libfunc_id)?;
-                let name = libfunc_to_name(libfunc).to_string();
-                *stats.sierra_libfunc_frequency.entry(name).or_insert(0) += 1;
+        if let Some(&mut ref mut stats) = stats {
+            for statement in &program.statements {
+                if let GenStatement::Invocation(invocation) = statement {
+                    let libfunc = registry.get_libfunc(&invocation.libfunc_id)?;
+                    let name = libfunc_to_name(libfunc).to_string();
+                    *stats.sierra_libfunc_frequency.entry(name).or_insert(0) += 1;
+                }
             }
         }
 
@@ -256,14 +263,18 @@ impl AotContractExecutor {
         })
         .collect::<Result<BTreeMap<_, _>>>()?;
 
-        let object_data = crate::module_to_object(&module, opt_level, Some(&mut stats))?;
-        stats.object_size_bytes = Some(object_data.len());
+        let object_data = crate::module_to_object(&module, opt_level, clone_option_mut!(stats))?;
+        if let Some(&mut ref mut stats) = stats {
+            stats.object_size_bytes = Some(object_data.len());
+        }
 
         // Build the shared library into the lockfile, to avoid using a tmp file.
-        crate::object_to_shared_lib(&object_data, &lock_file.0, Some(&mut stats))?;
+        crate::object_to_shared_lib(&object_data, &lock_file.0, clone_option_mut!(stats))?;
 
         let compilation_time = pre_compilation_instant.elapsed().as_millis();
-        stats.compilation_total_time_ms = Some(compilation_time);
+        if let Some(&mut ref mut stats) = stats {
+            stats.compilation_total_time_ms = Some(compilation_time);
+        }
 
         // Write the contract info.
         fs::write(
@@ -274,12 +285,9 @@ impl AotContractExecutor {
             })?,
         )?;
 
-        // Write the compilation stats.
-        native_assert!(stats.validate(), "some statistics are missing");
-        fs::write(
-            output_path.with_extension("stats.json"),
-            serde_json::to_string(&stats)?,
-        )?;
+        if let Some(&mut ref mut stats) = stats {
+            native_assert!(stats.validate(), "some statistics are missing");
+        }
 
         // Atomically move the built shared library to the correct path. This will avoid data races
         // when loading contracts.
@@ -812,6 +820,7 @@ mod tests {
                 &starknet_program.entry_points_by_type,
                 sierra_version,
                 optlevel,
+                None,
             )
             .unwrap(),
         );
@@ -851,6 +860,7 @@ mod tests {
             &starknet_program.entry_points_by_type,
             sierra_version,
             optlevel,
+            None,
         )
         .unwrap();
 
@@ -890,6 +900,7 @@ mod tests {
             &starknet_program_factorial.entry_points_by_type,
             sierra_version,
             optlevel,
+            None,
         )
         .unwrap();
 
@@ -930,6 +941,7 @@ mod tests {
             &starknet_program_empty.entry_points_by_type,
             sierra_version,
             optlevel,
+            None,
         )
         .unwrap();
 
