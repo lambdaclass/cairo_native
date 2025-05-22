@@ -24,6 +24,7 @@ struct Args {
     output: PathBuf,
 
     #[arg(long)]
+    /// Output path for compilation statistics
     stats: Option<PathBuf>,
 }
 

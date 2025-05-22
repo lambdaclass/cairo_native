@@ -138,6 +138,9 @@ impl BuiltinType {
 
 impl AotContractExecutor {
     /// Compile and load a program using a temporary shared library.
+    ///
+    /// When enabled, compilation stats will be saved to the `stats`. The
+    /// initial statistics can be build using the default builder.
     pub fn new(
         program: &Program,
         entry_points: &ContractEntryPoints,
@@ -171,6 +174,9 @@ impl AotContractExecutor {
     /// attempt to compile a program while the `output_path` is already locked will result in
     /// `Ok(None)` being returned. When this happens, the user should wait until the lock is
     /// released, at which point they can use `AotContractExecutor::from_path` to load it.
+    ///
+    /// When enabled, compilation stats will be saved to the `stats`. The
+    /// initial statistics can be build using the default builder.
     pub fn new_into(
         program: &Program,
         entry_points: &ContractEntryPoints,
