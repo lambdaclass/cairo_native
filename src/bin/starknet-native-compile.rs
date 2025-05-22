@@ -33,10 +33,7 @@ fn main() -> anyhow::Result<()> {
     let (contract_class, sierra_program, sierra_version) =
         load_sierra_program_from_file(&args.path)?;
 
-    let mut stats_with_path = match args.stats {
-        Some(path) => Some((Statistics::default(), path)),
-        None => None,
-    };
+    let mut stats_with_path = args.stats.map(|path| (Statistics::default(), path));
     let stats = stats_with_path.as_mut().map(|v| &mut v.0);
 
     AotContractExecutor::new_into(
