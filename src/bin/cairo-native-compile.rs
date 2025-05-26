@@ -56,7 +56,7 @@ fn main() -> anyhow::Result<()> {
 
     // Compile the sierra program into a MLIR module.
     let native_module = native_context
-        .compile(&sierra_program, false, Some(Default::default()))
+        .compile(&sierra_program, false, Some(Default::default()), None)
         .unwrap();
 
     let output_mlir = args
@@ -79,9 +79,10 @@ fn main() -> anyhow::Result<()> {
         })
     });
 
-    let object_data = module_to_object(native_module.module(), args.opt_level.into())
+    let object_data = module_to_object(native_module.module(), args.opt_level.into(), None)
         .context("Failed to convert module to object.")?;
-    object_to_shared_lib(&object_data, &output_lib).context("Failed to write shared library.")?;
+    object_to_shared_lib(&object_data, &output_lib, None)
+        .context("Failed to write shared library.")?;
 
     Ok(())
 }

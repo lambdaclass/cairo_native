@@ -647,7 +647,7 @@ mod test {
 
         let native_context = NativeContext::new();
         native_context
-            .compile(&program, false, Some(Default::default()))
+            .compile(&program, false, Some(Default::default()), None)
             .unwrap();
     }
 }
