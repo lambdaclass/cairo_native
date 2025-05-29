@@ -71,6 +71,9 @@ impl<'m> JitNativeExecutor<'m> {
         #[cfg(feature = "with-trace-dump")]
         crate::metadata::trace_dump::setup_runtime(|name| executor.find_symbol_ptr(name));
 
+        #[cfg(feature = "with-libfunc-profiling")]
+        crate::metadata::profiler::setup_runtime(|name| executor.find_symbol_ptr(name));
+
         Ok(executor)
     }
 
@@ -93,9 +96,6 @@ impl<'m> JitNativeExecutor<'m> {
             .gas_metadata
             .get_initial_available_gas(function_id, gas)
             .map_err(crate::error::Error::GasMetadataError)?;
-
-        #[cfg(feature = "with-profiler")]
-        self.setup_profiling();
 
         super::invoke_dynamic(
             &self.registry,
@@ -121,9 +121,6 @@ impl<'m> JitNativeExecutor<'m> {
             .get_initial_available_gas(function_id, gas)
             .map_err(crate::error::Error::GasMetadataError)?;
 
-        #[cfg(feature = "with-profiler")]
-        self.setup_profiling();
-
         super::invoke_dynamic(
             &self.registry,
             self.find_function_ptr(function_id),
@@ -146,9 +143,6 @@ impl<'m> JitNativeExecutor<'m> {
             .gas_metadata
             .get_initial_available_gas(function_id, gas)
             .map_err(crate::error::Error::GasMetadataError)?;
-
-        #[cfg(feature = "with-profiler")]
-        self.setup_profiling();
 
         ContractExecutionResult::from_execution_result(super::invoke_dynamic(
             &self.registry,
@@ -199,16 +193,6 @@ impl<'m> JitNativeExecutor<'m> {
                 .get_drop_fn(type_id)
                 .and_then(|symbol| self.find_symbol_ptr(symbol))
                 .map(|ptr| unsafe { transmute(ptr as *const ()) })
-        }
-    }
-
-    #[cfg(feature = "with-profiler")]
-    fn setup_profiling(&self) {
-        unsafe {
-            let callback_ptr: *mut extern "C" fn(u64, u64) =
-                self.engine.lookup("__profiler_callback").cast();
-
-            *callback_ptr = crate::metadata::profiler::ProfilerImpl::callback;
         }
     }
 }

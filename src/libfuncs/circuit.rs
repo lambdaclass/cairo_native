@@ -233,7 +233,7 @@ fn build_add_input<'ctx, 'this>(
 
     // If not last insert, then return accumulator
     {
-        helper.br(middle_insert_block, 1, &[accumulator], location);
+        helper.br(middle_insert_block, 1, &[accumulator], location)?;
     }
 
     // If is last insert, then return accumulator.pointer
@@ -247,7 +247,7 @@ fn build_add_input<'ctx, 'this>(
             1,
         )?;
 
-        helper.br(last_insert_block, 0, &[inputs_ptr], location);
+        helper.br(last_insert_block, 0, &[inputs_ptr], location)?;
     }
 
     Ok(())
@@ -853,9 +853,7 @@ fn build_u96_single_limb_less_than_guarantee_verify<'ctx, 'this>(
     // calcualte diff between limbs
     let diff = entry.append_op_result(arith::subi(modulus_limb, gate_limb, location))?;
 
-    helper.br(entry, 0, &[diff], location);
-
-    Ok(())
+    helper.br(entry, 0, &[diff], location)
 }
 
 /// Generate MLIR operations for the `get_circuit_output` libfunc.
@@ -941,7 +939,7 @@ fn build_get_output<'ctx, 'this>(
         )?;
     }
 
-    helper.br(entry, 0, &[output_struct, guarantee], location);
+    helper.br(entry, 0, &[output_struct, guarantee], location)?;
 
     Ok(())
 }
@@ -1185,8 +1183,7 @@ fn build_into_u96_guarantee<'ctx, 'this>(
         dst = entry.addi(dst, klower, location)?
     }
 
-    helper.br(entry, 0, &[dst], location);
-    Ok(())
+    helper.br(entry, 0, &[dst], location)
 }
 
 #[cfg(test)]

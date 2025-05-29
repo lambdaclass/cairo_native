@@ -164,11 +164,8 @@ impl NativeContext {
         // already some metadata of the same type.
         metadata.insert(gas_metadata);
 
-        #[cfg(feature = "with-profiler")]
-        metadata.insert(crate::metadata::profiler::ProfilerMeta::new(
-            &self.context,
-            &module,
-        )?);
+        #[cfg(feature = "with-libfunc-profiling")]
+        metadata.insert(crate::metadata::profiler::ProfilerMeta::new()?);
 
         // Create the Sierra program registry
         let registry = ProgramRegistry::<CoreType, CoreLibfunc>::new(program)?;

@@ -2320,8 +2320,9 @@ pub fn build_meta_tx_v0<'ctx, 'this>(
         IntegerType::new(context, 64).into(),
     )?;
 
-    entry.append_operation(helper.cond_br(
+    helper.cond_br(
         context,
+        entry,
         result_tag,
         [1, 0],
         [
@@ -2329,8 +2330,7 @@ pub fn build_meta_tx_v0<'ctx, 'this>(
             &[remaining_gas, entry.arg(1)?, payload_ok],
         ],
         location,
-    ));
-    Ok(())
+    )
 }
 
 pub fn build_replace_class<'ctx, 'this>(

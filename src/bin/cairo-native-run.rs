@@ -46,10 +46,10 @@ struct Args {
     #[arg(short = 'O', long, default_value_t = 0)]
     opt_level: u8,
 
-    #[cfg(feature = "with-profiler")]
+    #[cfg(feature = "with-libfunc-profiling")]
     #[arg(long)]
     /// The output path for the libfunc profilling results
-    profiler_output: Option<PathBuf>,
+    profiler_output: PathBuf,
 
     #[cfg(feature = "with-trace-dump")]
     #[arg(long)]
@@ -193,8 +193,8 @@ fn main() -> anyhow::Result<()> {
         println!("Remaining gas: {gas}");
     }
 
-    #[cfg(feature = "with-profiler")]
-    if let Some(profiler_output) = args.profiler_output {
+    #[cfg(feature = "with-libfunc-profiling")]
+    {
         use cairo_lang_sierra::{ids::ConcreteLibfuncId, program::Statement};
         use std::{collections::HashMap, fs::File, io::Write};
 
@@ -279,7 +279,7 @@ fn main() -> anyhow::Result<()> {
                 .unwrap()
         });
 
-        let mut output = File::create(profiler_output)?;
+        let mut output = File::create(args.profiler_output)?;
 
         for (libfunc_id, (n_samples, sum, quartiles, average, std_dev)) in trace {
             writeln!(output, "{libfunc_id}")?;

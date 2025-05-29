@@ -1,11 +1,14 @@
-#![cfg(feature = "with-profiler")]
+#![cfg(feature = "with-libfunc-profiling")]
 
-use crate::{error::Result, utils::BlockExt};
+use crate::{
+    error::{Error, Result},
+    utils::BlockExt,
+};
 use cairo_lang_sierra::program::StatementIdx;
 use melior::{
     dialect::{
         arith::{self, CmpiPredicate},
-        llvm::{self, attributes::Linkage},
+        llvm::{self},
         ods,
     },
     ir::{
@@ -16,45 +19,94 @@ use melior::{
     },
     Context,
 };
-use std::{cell::UnsafeCell, mem};
+use std::{
+    cell::{RefCell, UnsafeCell},
+    collections::HashSet,
+    ffi::c_void,
+    mem,
+};
+
+#[derive(Clone, Copy, Debug, Hash, PartialEq, Eq)]
+pub enum ProfilerBinding {
+    CallBack,
+}
+
+impl ProfilerBinding {
+    pub const fn symbol(self) -> &'static str {
+        match self {
+            ProfilerBinding::CallBack => "cairo_native__profiler__callback",
+        }
+    }
+
+    const fn function_ptr(self) -> *const () {
+        match self {
+            ProfilerBinding::CallBack => ProfilerImpl::callback as *const (),
+        }
+    }
+}
 
 #[derive(Clone)]
 pub struct ProfilerMeta {
+    active_map: RefCell<HashSet<ProfilerBinding>>,
     _private: (),
 }
 
 impl ProfilerMeta {
-    pub fn new(context: &Context, module: &Module) -> Result<Self> {
-        // Generate the file descriptor holder.
-        module.body().append_operation(
-            ods::llvm::mlir_global(
-                context,
-                {
-                    let region = Region::new();
-                    let block = region.append_block(Block::new(&[]));
-
-                    let null_ptr = block.append_op_result(llvm::zero(
-                        llvm::r#type::pointer(context, 0),
-                        Location::unknown(context),
-                    ))?;
-
-                    block.append_operation(llvm::r#return(
-                        Some(null_ptr),
-                        Location::unknown(context),
-                    ));
-                    region
-                },
-                TypeAttribute::new(llvm::r#type::pointer(context, 0)),
-                StringAttribute::new(context, "__profiler_callback"),
-                llvm::attributes::linkage(context, Linkage::Common),
-                Location::unknown(context),
-            )
-            .into(),
-        );
-
-        Ok(Self { _private: () })
+    pub fn new() -> Result<Self> {
+        Ok(Self {
+            active_map: RefCell::new(HashSet::new()),
+            _private: (),
+        })
     }
 
+    /// Register the global for the given binding, if not yet registered, and return
+    /// a pointer to the stored value.
+    ///
+    /// For the function to be available, `setup_runtime` must be called before running the module
+    fn build_function<'c, 'a>(
+        &self,
+        context: &'c Context,
+        module: &Module,
+        block: &'a Block<'c>,
+        location: Location<'c>,
+        binding: ProfilerBinding,
+    ) -> Result<Value<'c, 'a>> {
+        if !self.active_map.borrow().contains(&binding) {
+            self.active_map.borrow_mut().insert(binding);
+
+            module.body().append_operation(
+                ods::llvm::mlir_global(
+                    context,
+                    Region::new(),
+                    TypeAttribute::new(llvm::r#type::pointer(context, 0)),
+                    StringAttribute::new(context, binding.symbol()),
+                    Attribute::parse(context, "#llvm.linkage<weak>")
+                        .ok_or(Error::ParseAttributeError)?,
+                    location,
+                )
+                .into(),
+            );
+        }
+
+        let global_address = block.append_op_result(
+            ods::llvm::mlir_addressof(
+                context,
+                llvm::r#type::pointer(context, 0),
+                FlatSymbolRefAttribute::new(context, binding.symbol()),
+                location,
+            )
+            .into(),
+        )?;
+
+        block.load(
+            context,
+            location,
+            global_address,
+            llvm::r#type::pointer(context, 0),
+        )
+    }
+
+    /// Get the timestamp
     #[cfg(target_arch = "x86_64")]
     pub fn measure_timestamp<'c, 'a>(
         &self,
@@ -103,6 +155,7 @@ impl ProfilerMeta {
         Ok((value, core_idx))
     }
 
+    /// Get the timestamp
     #[cfg(target_arch = "aarch64")]
     pub fn measure_timestamp<'c, 'a>(
         &self,
@@ -136,9 +189,14 @@ impl ProfilerMeta {
         Ok((value, core_idx))
     }
 
+    /// Receives two timestamps, if they were originated in the same statement index
+    /// the delta time between these two is calculated. If not, then the delta time is
+    /// assigned to -1. Then it pushes the frame, which is made of the statement index
+    /// the delta time.
     pub fn push_frame<'c>(
         &self,
         context: &'c Context,
+        module: &Module,
         block: &Block<'c>,
         statement_idx: usize,
         t0: (Value<'c, '_>, Value<'c, '_>),
@@ -165,21 +223,8 @@ impl ProfilerMeta {
             location,
         ))?;
 
-        let callback_ptr = block.append_op_result(
-            ods::llvm::mlir_addressof(
-                context,
-                llvm::r#type::pointer(context, 0),
-                FlatSymbolRefAttribute::new(context, "__profiler_callback"),
-                location,
-            )
-            .into(),
-        )?;
-        let callback_ptr = block.load(
-            context,
-            location,
-            callback_ptr,
-            llvm::r#type::pointer(context, 0),
-        )?;
+        let callback_ptr =
+            self.build_function(context, module, block, location, ProfilerBinding::CallBack)?;
 
         block.append_operation(
             ods::llvm::call(
@@ -217,6 +262,7 @@ impl ProfilerImpl {
         })
     }
 
+    // Push a profiler frame
     pub extern "C" fn callback(statement_idx: u64, tick_delta: u64) {
         PROFILER_IMPL.with(|x| {
             let x = unsafe { &mut *x.get() };
@@ -224,5 +270,16 @@ impl ProfilerImpl {
             x.trace
                 .push((StatementIdx(statement_idx as usize), tick_delta));
         });
+    }
+}
+
+pub fn setup_runtime(find_symbol_ptr: impl Fn(&str) -> Option<*mut c_void>) {
+    let bindings = &[ProfilerBinding::CallBack];
+
+    for binding in bindings {
+        if let Some(global) = find_symbol_ptr(binding.symbol()) {
+            let global = global.cast::<*const ()>();
+            unsafe { *global = binding.function_ptr() };
+        }
     }
 }

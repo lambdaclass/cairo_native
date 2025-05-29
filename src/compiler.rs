@@ -613,7 +613,7 @@ fn compile_func(
                             .map(|x| vec![Cell::new(None); x.results.len()])
                             .collect::<Vec<_>>(),
 
-                        #[cfg(feature = "with-profiler")]
+                        #[cfg(feature = "with-libfunc-profiling")]
                         profiler: match libfunc {
                             CoreConcreteLibfunc::FunctionCall(_) => {
                                 // Tail-recursive function calls are broken. Also it'd include the entire function which
@@ -646,7 +646,7 @@ fn compile_func(
                         libfunc_name
                     );
 
-                    #[cfg(feature = "with-profiler")]
+                    #[cfg(feature = "with-libfunc-profiling")]
                     if let Some((profiler_meta, _, _)) = helper.profiler.take() {
                         metadata.insert(profiler_meta);
                     }

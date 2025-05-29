@@ -280,7 +280,7 @@ where
     pub branches: Vec<(&'this Block<'ctx>, Vec<BranchArg<'ctx, 'this>>)>,
     pub results: Vec<Vec<Cell<Option<Value<'ctx, 'this>>>>>,
 
-    #[cfg(feature = "with-profiler")]
+    #[cfg(feature = "with-libfunc-profiling")]
     pub profiler: Option<(
         crate::metadata::profiler::ProfilerMeta,
         cairo_lang_sierra::program::StatementIdx,
@@ -357,8 +357,13 @@ where
             })
             .collect::<Vec<_>>();
 
-        #[cfg(feature = "with-profiler")]
-        self.push_profiler_frame(unsafe { self.context().to_ref() }, block, location)?;
+        #[cfg(feature = "with-libfunc-profiling")]
+        self.push_profiler_frame(
+            unsafe { self.context().to_ref() },
+            self.module,
+            block,
+            location,
+        )?;
 
         block.append_operation(cf::br(successor, &destination_operands, location));
         Ok(())
@@ -420,8 +425,8 @@ where
             (*successor, destination_operands)
         };
 
-        #[cfg(feature = "with-profiler")]
-        self.push_profiler_frame(context, block, location)?;
+        #[cfg(feature = "with-libfunc-profiling")]
+        self.push_profiler_frame(context, self.module, block, location)?;
 
         block.append_operation(cf::cond_br(
             context,
@@ -435,10 +440,11 @@ where
         Ok(())
     }
 
-    #[cfg(feature = "with-profiler")]
+    #[cfg(feature = "with-libfunc-profiling")]
     fn push_profiler_frame(
         &self,
         context: &'ctx Context,
+        module: &'this Module,
         block: &'this Block<'ctx>,
         location: Location<'ctx>,
     ) -> Result<()> {
@@ -446,7 +452,7 @@ where
             let t0 = *t0;
             let t1 = profiler_meta.measure_timestamp(context, block, location)?;
 
-            profiler_meta.push_frame(context, block, statement_idx.0, t0, t1, location)?;
+            profiler_meta.push_frame(context, module, block, statement_idx.0, t0, t1, location)?;
         }
 
         Ok(())

@@ -120,7 +120,7 @@ pub fn build_get<'ctx, 'this>(
                 branches: Vec::new(),
                 results: Vec::new(),
 
-                #[cfg(feature = "with-profiler")]
+                #[cfg(feature = "with-libfunc-profiling")]
                 profiler: helper.profiler.clone(),
             };
 

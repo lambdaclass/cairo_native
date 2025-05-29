@@ -1,0 +1,784 @@
+alloc_local<Felt252Dict<u32>>
+    Samples  : 17971
+    Sum      : 9456
+    Average  : 0.5261810695008625
+    Deviation: 0.2559919763396106
+    Quartiles: [0, 0, 1, 1, 2]
+
+finalize_locals
+    Samples  : 17971
+    Sum      : 9619
+    Average  : 0.5352512381058372
+    Deviation: 0.25565735577658016
+    Quartiles: [0, 0, 1, 1, 2]
+
+disable_ap_tracking
+    Samples  : 29303
+    Sum      : 15636
+    Average  : 0.5335972426031464
+    Deviation: 0.2554234554364996
+    Quartiles: [0, 0, 1, 1, 2]
+
+felt252_dict_new<u32>
+    Samples  : 2
+    Sum      : 16
+    Average  : 8
+    Deviation: 1
+    Quartiles: [7, 7, 9, 9, 9]
+
+const_as_immediate<Const<u32, 0>>
+    Samples  : 3
+    Sum      : 4
+    Average  : 1.3333333333333333
+    Deviation: 0.2222222222222222
+    Quartiles: [1, 1, 1, 2, 2]
+
+store_temp<RangeCheck>
+    Samples  : 75706
+    Sum      : 40078
+    Average  : 0.5293900087179352
+    Deviation: 0.25494818416773257
+    Quartiles: [0, 0, 1, 1, 2]
+
+store_temp<SegmentArena>
+    Samples  : 17979
+    Sum      : 9604
+    Average  : 0.5341787641136881
+    Deviation: 0.256173710965694
+    Quartiles: [0, 0, 1, 1, 2]
+
+store_temp<GasBuiltin>
+    Samples  : 59871
+    Sum      : 31870
+    Average  : 0.5323111356082243
+    Deviation: 0.25560361624449
+    Quartiles: [0, 0, 1, 1, 2]
+
+store_temp<u32>
+    Samples  : 89921
+    Sum      : 47698
+    Average  : 0.5304433891971841
+    Deviation: 0.2560571081507784
+    Quartiles: [0, 0, 1, 1, 2]
+
+store_temp<Snapshot<Array<u8>>>
+    Samples  : 17970
+    Sum      : 9639
+    Average  : 0.5363939899833056
+    Deviation: 0.2543516043713494
+    Quartiles: [0, 0, 1, 1, 2]
+
+store_temp<Felt252Dict<u32>>
+    Samples  : 50808
+    Sum      : 27185
+    Average  : 0.5350535348763974
+    Deviation: 0.2589664945362802
+    Quartiles: [0, 0, 1, 1, 2]
+
+enum_match<core::panics::PanicResult::<(core::dict::Felt252Dict::<core::integer::u32>, core::integer::u32, core::dict::Felt252Dict::<core::integer::u32>, core::integer::u32, ())>>
+    Samples  : 1
+    Sum      : 2
+    Average  : 2
+    Deviation: 0
+    Quartiles: [2, 2, 2, 2, 2]
+
+branch_align
+    Samples  : 153550
+    Sum      : 81486
+    Average  : 0.5306805600781505
+    Deviation: 0.2550632620083703
+    Quartiles: [0, 0, 1, 1, 2]
+
+redeposit_gas
+    Samples  : 27243
+    Sum      : 27243
+    Average  : 1
+    Deviation: 0
+    Quartiles: [1, 1, 1, 1, 1]
+
+struct_deconstruct<Tuple<Felt252Dict<u32>, u32, Felt252Dict<u32>, u32, Unit>>
+    Samples  : 1
+    Sum      : 1
+    Average  : 1
+    Deviation: 0
+    Quartiles: [1, 1, 1, 1, 1]
+
+drop<u32>
+    Samples  : 17982
+    Sum      : 9482
+    Average  : 0.5273050828606384
+    Deviation: 0.25759610745836947
+    Quartiles: [0, 0, 1, 1, 2]
+
+drop<Unit>
+    Samples  : 1
+    Sum      : 1
+    Average  : 1
+    Deviation: 0
+    Quartiles: [1, 1, 1, 1, 1]
+
+store_local<Felt252Dict<u32>>
+    Samples  : 17969
+    Sum      : 9448
+    Average  : 0.5257944237297568
+    Deviation: 0.2570145408538225
+    Quartiles: [0, 0, 1, 1, 2]
+
+drop<SquashedFelt252Dict<u32>>
+    Samples  : 2
+    Sum      : 112
+    Average  : 56
+    Deviation: 4
+    Quartiles: [54, 54, 58, 58, 58]
+
+drop<Uninitialized<Felt252Dict<u32>>>
+    Samples  : 2
+    Sum      : 1
+    Average  : 0.5
+    Deviation: 0.25
+    Quartiles: [0, 0, 1, 1, 1]
+
+alloc_local<Tuple<core::panics::Panic, Array<felt252>>>
+    Samples  : 53836
+    Sum      : 28640
+    Average  : 0.5319860316516829
+    Deviation: 0.2558124684872828
+    Quartiles: [0, 0, 1, 1, 2]
+
+alloc_local<Felt252Dict<u8>>
+    Samples  : 2
+    Sum      : 2
+    Average  : 1
+    Deviation: 0
+    Quartiles: [1, 1, 1, 1, 1]
+
+felt252_dict_new<u8>
+    Samples  : 1
+    Sum      : 36
+    Average  : 36
+    Deviation: 0
+    Quartiles: [36, 36, 36, 36, 36]
+
+dup<Snapshot<Array<u8>>>
+    Samples  : 35936
+    Sum      : 25857
+    Average  : 0.7195291629563668
+    Deviation: 0.2659209270213051
+    Quartiles: [0, 0, 1, 1, 2]
+
+store_local<Felt252Dict<u8>>
+    Samples  : 2
+    Sum      : 2
+    Average  : 1
+    Deviation: 0
+    Quartiles: [1, 1, 1, 1, 1]
+
+drop<Uninitialized<Tuple<core::panics::Panic, Array<felt252>>>>
+    Samples  : 53838
+    Sum      : 28537
+    Average  : 0.5300531223299528
+    Deviation: 0.25478052765827014
+    Quartiles: [0, 0, 1, 1, 2]
+
+const_as_immediate<Const<felt252, 0>>
+    Samples  : 1
+    Sum      : 1
+    Average  : 1
+    Deviation: 0
+    Quartiles: [1, 1, 1, 1, 1]
+
+store_temp<felt252>
+    Samples  : 35791
+    Sum      : 18952
+    Average  : 0.5295185940599592
+    Deviation: 0.25320789040172226
+    Quartiles: [0, 0, 1, 1, 2]
+
+store_temp<Felt252Dict<u8>>
+    Samples  : 59649
+    Sum      : 31672
+    Average  : 0.5309728578852957
+    Deviation: 0.25396951575154986
+    Quartiles: [0, 0, 1, 1, 2]
+
+store_temp<core::option::Option::<core::array::Span::<core::integer::u8>>>
+    Samples  : 17897
+    Sum      : 9435
+    Average  : 0.5271833268145499
+    Deviation: 0.25373108965213514
+    Quartiles: [0, 0, 1, 1, 2]
+
+enum_match<core::panics::PanicResult::<(core::felt252, core::dict::Felt252Dict::<core::integer::u8>, core::dict::Felt252Dict::<core::integer::u32>, core::integer::u32, ())>>
+    Samples  : 1
+    Sum      : 4
+    Average  : 4
+    Deviation: 0
+    Quartiles: [4, 4, 4, 4, 4]
+
+struct_deconstruct<Tuple<felt252, Felt252Dict<u8>, Felt252Dict<u32>, u32, Unit>>
+    Samples  : 1
+    Sum      : 1
+    Average  : 1
+    Deviation: 0
+    Quartiles: [1, 1, 1, 1, 1]
+
+drop<felt252>
+    Samples  : 1
+    Sum      : 0
+    Average  : 0
+    Deviation: 0
+    Quartiles: [0, 0, 0, 0, 0]
+
+drop<SquashedFelt252Dict<u8>>
+    Samples  : 1
+    Sum      : 43
+    Average  : 43
+    Deviation: 0
+    Quartiles: [43, 43, 43, 43, 43]
+
+struct_construct<Tuple<Unit>>
+    Samples  : 1
+    Sum      : 1
+    Average  : 1
+    Deviation: 0
+    Quartiles: [1, 1, 1, 1, 1]
+
+enum_init<core::panics::PanicResult::<((),)>, 0>
+    Samples  : 1
+    Sum      : 3
+    Average  : 3
+    Deviation: 0
+    Quartiles: [3, 3, 3, 3, 3]
+
+store_temp<core::panics::PanicResult::<((),)>>
+    Samples  : 1
+    Sum      : 1
+    Average  : 1
+    Deviation: 0
+    Quartiles: [1, 1, 1, 1, 1]
+
+drop<core::option::Option::<core::array::Span::<core::integer::u8>>>
+    Samples  : 1
+    Sum      : 5
+    Average  : 5
+    Deviation: 0
+    Quartiles: [5, 5, 5, 5, 5]
+
+drop<Snapshot<Array<u8>>>
+    Samples  : 2
+    Sum      : 21
+    Average  : 10.5
+    Deviation: 72.25
+    Quartiles: [2, 2, 19, 19, 19]
+
+alloc_local<Array<u8>>
+    Samples  : 1
+    Sum      : 1
+    Average  : 1
+    Deviation: 0
+    Quartiles: [1, 1, 1, 1, 1]
+
+array_new<u8>
+    Samples  : 1
+    Sum      : 2
+    Average  : 2
+    Deviation: 0
+    Quartiles: [2, 2, 2, 2, 2]
+
+const_as_immediate<Const<u8, 43>>
+    Samples  : 12607
+    Sum      : 6587
+    Average  : 0.5224875069405885
+    Deviation: 0.25409493073554057
+    Quartiles: [0, 0, 1, 1, 2]
+
+store_temp<u8>
+    Samples  : 29954
+    Sum      : 15998
+    Average  : 0.5340855979168058
+    Deviation: 0.2562495361061688
+    Quartiles: [0, 0, 1, 1, 2]
+
+array_append<u8>
+    Samples  : 69
+    Sum      : 104
+    Average  : 1.5072463768115942
+    Deviation: 0.24994749002310435
+    Quartiles: [1, 1, 2, 2, 2]
+
+const_as_immediate<Const<u8, 91>>
+    Samples  : 3390
+    Sum      : 1841
+    Average  : 0.5430678466076696
+    Deviation: 0.2652543051313595
+    Quartiles: [0, 0, 1, 1, 2]
+
+const_as_immediate<Const<u8, 45>>
+    Samples  : 11951
+    Sum      : 6346
+    Average  : 0.5310015898251192
+    Deviation: 0.2557329019302809
+    Quartiles: [0, 0, 1, 1, 2]
+
+const_as_immediate<Const<u8, 62>>
+    Samples  : 17910
+    Sum      : 9545
+    Average  : 0.5329424902289224
+    Deviation: 0.25460993471613236
+    Quartiles: [0, 0, 1, 1, 2]
+
+const_as_immediate<Const<u8, 60>>
+    Samples  : 15255
+    Sum      : 7924
+    Average  : 0.5194362504097018
+    Deviation: 0.254079787070113
+    Quartiles: [0, 0, 1, 1, 2]
+
+const_as_immediate<Const<u8, 93>>
+    Samples  : 1397
+    Sum      : 773
+    Average  : 0.5533285612025769
+    Deviation: 0.2729255706445331
+    Quartiles: [0, 0, 1, 1, 2]
+
+const_as_immediate<Const<u8, 46>>
+    Samples  : 3338
+    Sum      : 1745
+    Average  : 0.5227681246255242
+    Deviation: 0.2524774183728151
+    Quartiles: [0, 0, 1, 1, 2]
+
+store_local<Array<u8>>
+    Samples  : 1
+    Sum      : 1
+    Average  : 1
+    Deviation: 0
+    Quartiles: [1, 1, 1, 1, 1]
+
+snapshot_take<Array<u8>>
+    Samples  : 1
+    Sum      : 2
+    Average  : 2
+    Deviation: 0
+    Quartiles: [2, 2, 2, 2, 2]
+
+drop<Array<u8>>
+    Samples  : 1
+    Sum      : 2
+    Average  : 2
+    Deviation: 0
+    Quartiles: [2, 2, 2, 2, 2]
+
+struct_construct<Unit>
+    Samples  : 3
+    Sum      : 3
+    Average  : 1
+    Deviation: 0
+    Quartiles: [1, 1, 1, 1, 1]
+
+enum_init<core::option::Option::<core::array::Span::<core::integer::u8>>, 1>
+    Samples  : 1
+    Sum      : 2
+    Average  : 2
+    Deviation: 0
+    Quartiles: [2, 2, 2, 2, 2]
+
+withdraw_gas
+    Samples  : 13622
+    Sum      : 13622
+    Average  : 1
+    Deviation: 0
+    Quartiles: [1, 1, 1, 1, 1]
+
+array_len<u8>
+    Samples  : 17969
+    Sum      : 12448
+    Average  : 0.6927486226278591
+    Deviation: 0.2623777141481627
+    Quartiles: [0, 0, 1, 1, 2]
+
+dup<u32>
+    Samples  : 37949
+    Sum      : 20268
+    Average  : 0.534085219636881
+    Deviation: 0.2559003074757288
+    Quartiles: [0, 0, 1, 1, 2]
+
+u32_overflowing_sub
+    Samples  : 19295
+    Sum      : 11080
+    Average  : 0.5742420316144079
+    Deviation: 0.25931061361559266
+    Quartiles: [0, 0, 1, 1, 2]
+
+struct_construct<Tuple<Felt252Dict<u32>, u32, Felt252Dict<u32>, u32, Unit>>
+    Samples  : 1
+    Sum      : 1
+    Average  : 1
+    Deviation: 0
+    Quartiles: [1, 1, 1, 1, 1]
+
+enum_init<core::panics::PanicResult::<(core::dict::Felt252Dict::<core::integer::u32>, core::integer::u32, core::dict::Felt252Dict::<core::integer::u32>, core::integer::u32, ())>, 0>
+    Samples  : 1
+    Sum      : 2
+    Average  : 2
+    Deviation: 0
+    Quartiles: [2, 2, 2, 2, 2]
+
+store_temp<core::panics::PanicResult::<(core::dict::Felt252Dict::<core::integer::u32>, core::integer::u32, core::dict::Felt252Dict::<core::integer::u32>, core::integer::u32, ())>>
+    Samples  : 1
+    Sum      : 2
+    Average  : 2
+    Deviation: 0
+    Quartiles: [2, 2, 2, 2, 2]
+
+array_get<u8>
+    Samples  : 17950
+    Sum      : 23619
+    Average  : 1.3158217270194985
+    Deviation: 0.2927357453775038
+    Quartiles: [0, 1, 1, 2, 3]
+
+store_temp<Box<u8>>
+    Samples  : 17968
+    Sum      : 9565
+    Average  : 0.5323352626892253
+    Deviation: 0.2566347513567351
+    Quartiles: [0, 0, 1, 1, 2]
+
+unbox<u8>
+    Samples  : 17176
+    Sum      : 30899
+    Average  : 1.7989636702375407
+    Deviation: 0.39362025811193857
+    Quartiles: [0, 1, 2, 2, 3]
+
+rename<u8>
+    Samples  : 17968
+    Sum      : 9534
+    Average  : 0.5306099732858415
+    Deviation: 0.25618680513651393
+    Quartiles: [0, 0, 1, 1, 2]
+
+enable_ap_tracking
+    Samples  : 11330
+    Sum      : 6114
+    Average  : 0.5396293027360989
+    Deviation: 0.25478432860300737
+    Quartiles: [0, 0, 1, 1, 2]
+
+dup<u8>
+    Samples  : 80292
+    Sum      : 42478
+    Average  : 0.5290439894385492
+    Deviation: 0.2539140813114104
+    Quartiles: [0, 0, 1, 1, 2]
+
+u8_eq
+    Samples  : 69089
+    Sum      : 38660
+    Average  : 0.5595680933288946
+    Deviation: 0.25701772368834486
+    Quartiles: [0, 0, 1, 1, 2]
+
+jump
+    Samples  : 61087
+    Sum      : 32261
+    Average  : 0.5281156383518588
+    Deviation: 0.2549717843584459
+    Quartiles: [0, 0, 1, 1, 2]
+
+u32_to_felt252
+    Samples  : 2002
+    Sum      : 1137
+    Average  : 0.567932067932068
+    Deviation: 0.2563742451354904
+    Quartiles: [0, 0, 1, 1, 2]
+
+felt252_dict_entry_get<u32>
+    Samples  : 1755
+    Sum      : 18119
+    Average  : 10.324216524216524
+    Deviation: 3.628786779328069
+    Quartiles: [7, 9, 10, 11, 16]
+
+felt252_dict_entry_finalize<u32>
+    Samples  : 2002
+    Sum      : 1133
+    Average  : 0.5659340659340659
+    Deviation: 0.26263571593240775
+    Quartiles: [0, 0, 1, 1, 2]
+
+drop<u8>
+    Samples  : 27167
+    Sum      : 14386
+    Average  : 0.5295395148525784
+    Deviation: 0.2546488217076357
+    Quartiles: [0, 0, 1, 1, 2]
+
+const_as_immediate<Const<u32, 1>>
+    Samples  : 19292
+    Sum      : 10256
+    Average  : 0.5316193240721543
+    Deviation: 0.25501307341473545
+    Quartiles: [0, 0, 1, 1, 2]
+
+u32_overflowing_add
+    Samples  : 17968
+    Sum      : 10513
+    Average  : 0.5850957257346393
+    Deviation: 0.25689495967005
+    Quartiles: [0, 0, 1, 1, 2]
+
+felt252_dict_squash<u32>
+    Samples  : 2
+    Sum      : 709
+    Average  : 354.5
+    Deviation: 112560.25
+    Quartiles: [19, 19, 690, 690, 690]
+
+store_temp<SquashedFelt252Dict<u32>>
+    Samples  : 2
+    Sum      : 2
+    Average  : 1
+    Deviation: 1
+    Quartiles: [0, 0, 2, 2, 2]
+
+alloc_local<Felt252DictEntry<u32>>
+    Samples  : 17897
+    Sum      : 9454
+    Average  : 0.528244957255406
+    Deviation: 0.25423099816210254
+    Quartiles: [0, 0, 1, 1, 2]
+
+alloc_local<u8>
+    Samples  : 17897
+    Sum      : 9462
+    Average  : 0.5286919595462927
+    Deviation: 0.253758544938931
+    Quartiles: [0, 0, 1, 1, 2]
+
+drop<Uninitialized<u8>>
+    Samples  : 1
+    Sum      : 1
+    Average  : 1
+    Deviation: 0
+    Quartiles: [1, 1, 1, 1, 1]
+
+drop<Uninitialized<Felt252DictEntry<u32>>>
+    Samples  : 16572
+    Sum      : 8730
+    Average  : 0.5267921795800145
+    Deviation: 0.2539889133639719
+    Quartiles: [0, 0, 1, 1, 2]
+
+struct_construct<Tuple<felt252, Felt252Dict<u8>, Felt252Dict<u32>, u32, Unit>>
+    Samples  : 1
+    Sum      : 0
+    Average  : 0
+    Deviation: 0
+    Quartiles: [0, 0, 0, 0, 0]
+
+enum_init<core::panics::PanicResult::<(core::felt252, core::dict::Felt252Dict::<core::integer::u8>, core::dict::Felt252Dict::<core::integer::u32>, core::integer::u32, ())>, 0>
+    Samples  : 1
+    Sum      : 5
+    Average  : 5
+    Deviation: 0
+    Quartiles: [5, 5, 5, 5, 5]
+
+store_temp<core::panics::PanicResult::<(core::felt252, core::dict::Felt252Dict::<core::integer::u8>, core::dict::Felt252Dict::<core::integer::u32>, core::integer::u32, ())>>
+    Samples  : 1
+    Sum      : 1
+    Average  : 1
+    Deviation: 0
+    Quartiles: [1, 1, 1, 1, 1]
+
+store_local<u8>
+    Samples  : 17896
+    Sum      : 9397
+    Average  : 0.5250894054537327
+    Deviation: 0.2531702535176324
+    Quartiles: [0, 0, 1, 1, 2]
+
+const_as_immediate<Const<u8, 44>>
+    Samples  : 3315
+    Sum      : 1776
+    Average  : 0.5357466063348416
+    Deviation: 0.25354872613856855
+    Quartiles: [0, 0, 1, 1, 2]
+
+array_new<felt252>
+    Samples  : 13
+    Sum      : 8
+    Average  : 0.6153846153846154
+    Deviation: 0.23668639053254445
+    Quartiles: [0, 0, 1, 1, 1]
+
+array_append<felt252>
+    Samples  : 12
+    Sum      : 21
+    Average  : 1.75
+    Deviation: 0.5208333333333334
+    Quartiles: [1, 1, 2, 2, 3]
+
+u8_to_felt252
+    Samples  : 13
+    Sum      : 5
+    Average  : 0.38461538461538464
+    Deviation: 0.23668639053254442
+    Quartiles: [0, 0, 0, 1, 1]
+
+store_local<Felt252DictEntry<u32>>
+    Samples  : 1324
+    Sum      : 694
+    Average  : 0.5241691842900302
+    Deviation: 0.25545814660326177
+    Quartiles: [0, 0, 1, 1, 2]
+
+dup<felt252>
+    Samples  : 20541
+    Sum      : 10881
+    Average  : 0.5297210457134511
+    Deviation: 0.25310867540982385
+    Quartiles: [0, 0, 1, 1, 2]
+
+felt252_dict_entry_get<u8>
+    Samples  : 19046
+    Sum      : 207205
+    Average  : 10.879187230914628
+    Deviation: 6.024100063968452
+    Quartiles: [7, 9, 10, 12, 19]
+
+felt252_dict_entry_finalize<u8>
+    Samples  : 20540
+    Sum      : 11574
+    Average  : 0.5634858812074002
+    Deviation: 0.2570698350003962
+    Quartiles: [0, 0, 1, 1, 2]
+
+u8_is_zero
+    Samples  : 1990
+    Sum      : 1024
+    Average  : 0.5145728643216081
+    Deviation: 0.2558177823792311
+    Quartiles: [0, 0, 1, 1, 2]
+
+drop<NonZero<u8>>
+    Samples  : 1325
+    Sum      : 719
+    Average  : 0.5426415094339623
+    Deviation: 0.25723830544677345
+    Quartiles: [0, 0, 1, 1, 2]
+
+rename<RangeCheck>
+    Samples  : 37133
+    Sum      : 19586
+    Average  : 0.5274553631540678
+    Deviation: 0.2540397828685643
+    Quartiles: [0, 0, 1, 1, 2]
+
+rename<GasBuiltin>
+    Samples  : 37132
+    Sum      : 19515
+    Average  : 0.5255574706452656
+    Deviation: 0.25435597221676814
+    Quartiles: [0, 0, 1, 1, 2]
+
+rename<Felt252Dict<u8>>
+    Samples  : 37133
+    Sum      : 19697
+    Average  : 0.5304446179947755
+    Deviation: 0.25343582148908145
+    Quartiles: [0, 0, 1, 1, 2]
+
+rename<Felt252Dict<u32>>
+    Samples  : 37133
+    Sum      : 19668
+    Average  : 0.5296636415048609
+    Deviation: 0.2535904855218947
+    Quartiles: [0, 0, 1, 1, 2]
+
+rename<u32>
+    Samples  : 37133
+    Sum      : 19751
+    Average  : 0.5318988500794442
+    Deviation: 0.2535606014077435
+    Quartiles: [0, 0, 1, 1, 2]
+
+store_temp<Array<felt252>>
+    Samples  : 13
+    Sum      : 5
+    Average  : 0.38461538461538464
+    Deviation: 0.23668639053254442
+    Quartiles: [0, 0, 0, 1, 1]
+
+print
+    Samples  : 12
+    Sum      : 885
+    Average  : 73.75
+    Deviation: 159.02083333333334
+    Quartiles: [63, 64, 69, 88, 101]
+
+const_as_immediate<Const<u8, 1>>
+    Samples  : 9268
+    Sum      : 4882
+    Average  : 0.5267587397496764
+    Deviation: 0.2531683030365071
+    Quartiles: [0, 0, 1, 1, 2]
+
+u8_overflowing_sub
+    Samples  : 8602
+    Sum      : 4959
+    Average  : 0.5764938386421763
+    Deviation: 0.2578664327102487
+    Quartiles: [0, 0, 1, 1, 2]
+
+u8_overflowing_add
+    Samples  : 667
+    Sum      : 383
+    Average  : 0.5742128935532234
+    Deviation: 0.280474455425957
+    Quartiles: [0, 0, 1, 1, 2]
+
+const_as_immediate<Const<felt252, 1>>
+    Samples  : 5299
+    Sum      : 2842
+    Average  : 0.5363276089828269
+    Deviation: 0.25245460186278157
+    Quartiles: [0, 0, 1, 1, 2]
+
+felt252_sub
+    Samples  : 2648
+    Sum      : 1578
+    Average  : 0.5959214501510574
+    Deviation: 0.26421297268188015
+    Quartiles: [0, 0, 1, 1, 2]
+
+rename<felt252>
+    Samples  : 15245
+    Sum      : 8124
+    Average  : 0.5328960314857331
+    Deviation: 0.2529847582951311
+    Quartiles: [0, 0, 1, 1, 2]
+
+felt252_add
+    Samples  : 2651
+    Sum      : 1574
+    Average  : 0.5937382119954734
+    Deviation: 0.26007395485445434
+    Quartiles: [0, 0, 1, 1, 2]
+
+felt252_dict_squash<u8>
+    Samples  : 1
+    Sum      : 2
+    Average  : 2
+    Deviation: 0
+    Quartiles: [2, 2, 2, 2, 2]
+
+store_temp<SquashedFelt252Dict<u8>>
+    Samples  : 1
+    Sum      : 1
+    Average  : 1
+    Deviation: 0
+    Quartiles: [1, 1, 1, 1, 1]
+
