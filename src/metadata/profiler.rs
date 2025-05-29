@@ -189,6 +189,7 @@ impl ProfilerMeta {
         Ok((value, core_idx))
     }
 
+    #[allow(clippy::too_many_arguments)]
     /// Receives two timestamps, if they were originated in the same statement index
     /// the delta time between these two is calculated. If not, then the delta time is
     /// assigned to -1. Then it pushes the frame, which is made of the statement index
