@@ -1,6 +1,6 @@
 [package]
 name = "cairo-native"
-version = "0.3.1"
+version = "0.5.0-rc.5"
 edition = "2021"
 license = "Apache-2.0"
 description = "A compiler to convert Cairo's IR Sierra code to MLIR and execute it."
@@ -56,6 +56,7 @@ with-debug-utils = []
 with-mem-tracing = []
 with-profiler = []
 with-segfault-catcher = []
+with-trace-dump = ["dep:sierra-emu"]
 
 # the aquamarine dep is only used in docs and cannot be detected as used by cargo udeps
 [package.metadata.cargo-udeps.ignore]
@@ -64,13 +65,14 @@ normal = ["aquamarine"]
 [dependencies]
 aquamarine = "0.6.0"
 bumpalo = "3.16.0"
-cairo-lang-compiler = "2.10.0-rc.1"
-cairo-lang-defs = "2.10.0-rc.1"
-cairo-lang-filesystem = "2.10.0-rc.1"
-cairo-lang-runner = "2.10.0-rc.1"
-cairo-lang-semantic = "2.10.0-rc.1"
-cairo-lang-sierra = "2.10.0-rc.1"
-cairo-lang-sierra-generator = "2.10.0-rc.1"
+cairo-lang-compiler.workspace = true
+cairo-lang-defs.workspace = true
+cairo-lang-filesystem.workspace = true
+cairo-lang-runner.workspace = true
+cairo-lang-semantic.workspace = true
+cairo-lang-sierra.workspace = true
+cairo-lang-sierra-generator.workspace = true
+cairo-lang-sierra-to-casm.workspace = true
 educe = "0.5.11" # can't update until https://github.com/magiclen/educe/issues/27
 itertools = "0.14.0"
 lazy_static = "1.5"
@@ -78,9 +80,9 @@ libc = "0.2"
 llvm-sys = "191.0.0"
 melior = { version = "0.21.0", features = ["ods-dialects", "helpers"] }
 mlir-sys = { version = "0.4.1" }
-num-bigint = "0.4.6"
-num-traits = "0.2"
-starknet-types-core = { version = "0.1.7", default-features = false, features = [
+num-bigint.workspace = true
+num-traits.workspace = true
+starknet-types-core = { workspace = true, default-features = false, features = [
     "std",
     "serde",
     "num-traits",
@@ -89,14 +91,15 @@ tempfile = "3.15.0"
 thiserror = "2.0.9"
 tracing = "0.1"
 utf8_iter = "1.0.4"
+sierra-emu = { path = "debug_utils/sierra-emu", optional = true }
 
 
 # CLI dependencies
-cairo-lang-sierra-ap-change = "2.10.0-rc.1"
-cairo-lang-sierra-gas = "2.10.0-rc.1"
-cairo-lang-starknet = "2.10.0-rc.1"
-cairo-lang-utils = "2.10.0-rc.1"
-cairo-lang-starknet-classes = "2.10.0-rc.1"
+cairo-lang-sierra-ap-change.workspace = true
+cairo-lang-sierra-gas.workspace = true
+cairo-lang-starknet.workspace = true
+cairo-lang-utils.workspace = true
+cairo-lang-starknet-classes.workspace = true
 clap = { version = "4.5.23", features = ["derive"], optional = true }
 libloading = "0.8.6"
 tracing-subscriber = { version = "0.3.19", features = [
@@ -106,7 +109,7 @@ tracing-subscriber = { version = "0.3.19", features = [
 ], optional = true }
 serde = { version = "1.0", features = ["derive"] }
 anyhow = { version = "1.0", optional = true }
-cairo-lang-test-plugin = { version = "2.10.0-rc.1", optional = true }
+cairo-lang-test-plugin = { workspace = true, optional = true }
 colored = { version = "2.1.0", optional = true }
 # needed to interface with cairo-lang-*
 keccak = "0.1.5"
@@ -121,15 +124,15 @@ ark-secp256k1 = "0.5.0"
 ark-secp256r1 = "0.5.0"
 ark-ec = "0.5.0"
 ark-ff = "0.5.0"
-num-integer = "0.1.46"
+num-integer.workspace = true
 
 # Runtime functions
 rand = "0.9.0"
-starknet-curve = "0.5.1"
+starknet-curve.workspace = true
 
 [dev-dependencies]
-cairo-vm = { version = "2.0.0-rc3", features = ["cairo-1-hints"] }
-cairo-lang-semantic = { version = "2.10.0-rc.1", features = ["testing"] }
+cairo-vm = { git = "https://github.com/lambdaclass/cairo-vm", rev = "368e3fb311601a33ff8945e784eaa332f1fd499a", features = ["cairo-1-hints"] }
+cairo-lang-semantic = { workspace = true, features = ["testing"] }
 criterion = { version = "0.5.1", features = ["html_reports"] }
 lambdaworks-math = "0.11.0"
 pretty_assertions_sorted = "1.2.3"
@@ -175,3 +178,29 @@ harness = false
 [[bench]]
 name = "libfuncs"
 harness = false
+
+[workspace]
+members = ["debug_utils/sierra-emu", "debug_utils/casm-data-flow"]
+
+[workspace.dependencies]
+cairo-lang-casm = "=2.12.0-dev.1"
+cairo-lang-compiler = "=2.12.0-dev.1"
+cairo-lang-defs = "=2.12.0-dev.1"
+cairo-lang-filesystem = "=2.12.0-dev.1"
+cairo-lang-runner = "=2.12.0-dev.1"
+cairo-lang-semantic = "=2.12.0-dev.1"
+cairo-lang-sierra = "=2.12.0-dev.1"
+cairo-lang-sierra-ap-change = "=2.12.0-dev.1"
+cairo-lang-sierra-gas = "=2.12.0-dev.1"
+cairo-lang-sierra-generator = "=2.12.0-dev.1"
+cairo-lang-sierra-to-casm = "=2.12.0-dev.1"
+cairo-lang-starknet = "=2.12.0-dev.1"
+cairo-lang-starknet-classes = "=2.12.0-dev.1"
+cairo-lang-test-plugin = "=2.12.0-dev.1"
+cairo-lang-utils = "=2.12.0-dev.1"
+starknet-crypto = "0.7.3"
+starknet-curve = "0.5.1"
+starknet-types-core = { version = "0.1.7", default-features = false }
+num-bigint = "0.4.6"
+num-integer = "0.1.46"
+num-traits = "0.2"

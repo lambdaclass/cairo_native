@@ -1,11 +1,7 @@
 use crate::{
     error::{panic::ToNativeAssertError, Error},
     ffi::{get_data_layout_rep, get_target_triple},
-    metadata::{
-        gas::{GasMetadata, MetadataComputationConfig},
-        runtime_bindings::RuntimeBindingsMeta,
-        MetadataStorage,
-    },
+    metadata::{gas::GasMetadata, runtime_bindings::RuntimeBindingsMeta, MetadataStorage},
     module::NativeModule,
     native_assert,
     utils::run_pass_manager,
@@ -15,6 +11,7 @@ use cairo_lang_sierra::{
     program::Program,
     program_registry::ProgramRegistry,
 };
+use cairo_lang_sierra_to_casm::metadata::MetadataComputationConfig;
 use llvm_sys::target::{
     LLVM_InitializeAllAsmPrinters, LLVM_InitializeAllTargetInfos, LLVM_InitializeAllTargetMCs,
     LLVM_InitializeAllTargets,

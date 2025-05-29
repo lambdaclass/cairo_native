@@ -3,7 +3,6 @@ mod alexandria {
 
     use alexandria_encoding::reversible::ReversibleBytes;
     use alexandria_encoding::reversible::ReversibleBits;
-    use core::option::OptionTrait;
 
     fn fib() -> felt252 {
         alexandria_math::fibonacci::fib(16, 10, 1)
@@ -53,7 +52,7 @@ mod alexandria {
         (top, stack.pop(), stack.pop(), stack.is_empty())
     }
 
-    use alexandria_data_structures::queue::{Queue, QueueTrait};
+    use alexandria_data_structures::queue::{QueueTrait};
     fn queue() -> (Option<felt252>, Option<felt252>, Option<felt252>, bool) {
         let mut queue = QueueTrait::<felt252>::new();
         queue.enqueue(3);
@@ -74,7 +73,7 @@ mod alexandria {
     }
 
     // Alexandria Encoding
-    use alexandria_encoding::base64::{Encoder, Decoder, Base64Encoder, Base64Decoder};
+    use alexandria_encoding::base64::{Base64Encoder, Base64Decoder};
     use core::array::ArrayTrait;
     fn base64_encode() -> (Array<u8>, Array<u8>) {
         let mut input = ArrayTrait::<u8>::new();

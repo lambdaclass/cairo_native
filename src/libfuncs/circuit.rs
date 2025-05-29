@@ -1,14 +1,17 @@
 //! # Circuit libfuncs
 //!
-//! Relevant casm code: https://github.com/starkware-libs/cairo/blob/v2.10.0-rc.1/crates/cairo-lang-sierra-to-casm/src/invocations/circuit.rs
+//! Relevant casm code: https://github.com/starkware-libs/cairo/blob/v2.10.0/crates/cairo-lang-sierra-to-casm/src/invocations/circuit.rs
 
 use super::{increment_builtin_counter_by, LibfuncHelper};
 use crate::{
     error::{Result, SierraAssertError},
     libfuncs::r#struct::build_struct_value,
-    metadata::MetadataStorage,
+    metadata::{
+        drop_overrides::DropOverridesMeta, realloc_bindings::ReallocBindingsMeta, MetadataStorage,
+    },
+    native_panic,
     types::{circuit::build_u384_struct_type, TypeBuilder},
-    utils::{get_integer_layout, layout_repeat, BlockExt, ProgramRegistryExt},
+    utils::{get_integer_layout, layout_repeat, BlockExt, GepIndex, ProgramRegistryExt},
 };
 use cairo_lang_sierra::{
     extensions::{
@@ -27,12 +30,10 @@ use melior::{
         arith::{self, CmpiPredicate},
         cf, llvm,
     },
-    ir::{
-        attribute::DenseI32ArrayAttribute, r#type::IntegerType, Block, BlockLike, Location, Type,
-        Value, ValueLike,
-    },
+    ir::{r#type::IntegerType, Block, BlockLike, Location, Type, Value, ValueLike},
     Context,
 };
+use num_traits::Signed;
 
 /// Select and call the correct libfunc builder function from the selector.
 pub fn build<'ctx, 'this>(
@@ -66,14 +67,15 @@ pub fn build<'ctx, 'this>(
         CircuitConcreteLibfunc::FailureGuaranteeVerify(info) => build_failure_guarantee_verify(
             context, registry, entry, location, helper, metadata, info,
         ),
-        CircuitConcreteLibfunc::IntoU96Guarantee(SignatureAndTypeConcreteLibfunc {
-            signature,
-            ..
-        })
-        | CircuitConcreteLibfunc::U96SingleLimbLessThanGuaranteeVerify(
-            SignatureOnlyConcreteLibfunc { signature, .. },
-        )
-        | CircuitConcreteLibfunc::U96GuaranteeVerify(SignatureOnlyConcreteLibfunc { signature }) => {
+        CircuitConcreteLibfunc::IntoU96Guarantee(info) => {
+            build_into_u96_guarantee(context, registry, entry, location, helper, metadata, info)
+        }
+        CircuitConcreteLibfunc::U96SingleLimbLessThanGuaranteeVerify(info) => {
+            build_u96_single_limb_less_than_guarantee_verify(
+                context, registry, entry, location, helper, metadata, info,
+            )
+        }
+        CircuitConcreteLibfunc::U96GuaranteeVerify(SignatureOnlyConcreteLibfunc { signature }) => {
             super::build_noop::<1, true>(
                 context,
                 registry,
@@ -103,14 +105,39 @@ fn build_init_circuit_data<'ctx, 'this>(
     metadata: &mut MetadataStorage,
     info: &SignatureAndTypeConcreteLibfunc,
 ) -> Result<()> {
-    let rc_usage = match registry.get_type(&info.ty)? {
-        CoreTypeConcrete::Circuit(CircuitTypeConcrete::Circuit(info)) => {
-            info.circuit_info.rc96_usage()
-        }
+    let circuit_info = match registry.get_type(&info.ty)? {
+        CoreTypeConcrete::Circuit(CircuitTypeConcrete::Circuit(info)) => &info.circuit_info,
         _ => return Err(SierraAssertError::BadTypeInfo.into()),
     };
-    let rc = increment_builtin_counter_by(context, entry, location, entry.arg(0)?, rc_usage)?;
 
+    let rc = increment_builtin_counter_by(
+        context,
+        entry,
+        location,
+        entry.arg(0)?,
+        circuit_info.rc96_usage(),
+    )?;
+
+    // Calculate full capacity for array.
+    let capacity = circuit_info.n_inputs;
+    let u384_layout = get_integer_layout(384);
+    let capacity_bytes = layout_repeat(&u384_layout, capacity)?
+        .0
+        .pad_to_align()
+        .size();
+    let capacity_bytes_value = entry.const_int(context, location, capacity_bytes, 64)?;
+
+    // Alloc memory for array.
+    let ptr_ty = llvm::r#type::pointer(context, 0);
+    let ptr = entry.append_op_result(llvm::zero(ptr_ty, location))?;
+    let ptr = entry.append_op_result(ReallocBindingsMeta::realloc(
+        context,
+        ptr,
+        capacity_bytes_value,
+        location,
+    )?)?;
+
+    // Create accumulator struct.
     let k0 = entry.const_int(context, location, 0, 64)?;
     let accumulator_ty = &info.branch_signatures()[0].vars[1].ty;
     let accumulator = build_struct_value(
@@ -121,7 +148,7 @@ fn build_init_circuit_data<'ctx, 'this>(
         helper,
         metadata,
         accumulator_ty,
-        &[k0],
+        &[k0, ptr],
     )?;
 
     helper.br(entry, 0, &[rc, accumulator], location)
@@ -135,16 +162,13 @@ fn build_add_input<'ctx, 'this>(
     entry: &'this Block<'ctx>,
     location: Location<'ctx>,
     helper: &LibfuncHelper<'ctx, 'this>,
-    metadata: &mut MetadataStorage,
+    _metadata: &mut MetadataStorage,
     info: &SignatureAndTypeConcreteLibfunc,
 ) -> Result<()> {
     let n_inputs = match registry.get_type(&info.ty)? {
         CoreTypeConcrete::Circuit(CircuitTypeConcrete::Circuit(info)) => info.circuit_info.n_inputs,
         _ => return Err(SierraAssertError::BadTypeInfo.into()),
     };
-    let accumulator_type_id = &info.param_signatures()[0].ty;
-    let accumulator_ctype = registry.get_type(accumulator_type_id)?;
-    let accumulator_layout = accumulator_ctype.layout(registry)?;
 
     let accumulator: Value = entry.arg(0)?;
 
@@ -156,14 +180,42 @@ fn build_add_input<'ctx, 'this>(
         IntegerType::new(context, 64).into(),
         0,
     )?;
+    // Calculate next length: next_length = current_length + 1
+    let k1 = entry.const_int(context, location, 1, 64)?;
+    let next_length = entry.addi(current_length, k1, location)?;
+    // Insert next_length into accumulator
+    let accumulator = entry.insert_value(context, location, accumulator, next_length, 0)?;
 
-    // Check if last_insert: current_length == number_of_inputs - 1
-    let n_inputs_minus_1 = entry.const_int(context, location, n_inputs - 1, 64)?;
+    // Get pointer to inputs array
+    let inputs_ptr = entry.extract_value(
+        context,
+        location,
+        accumulator,
+        llvm::r#type::pointer(context, 0),
+        1,
+    )?;
+    // Get pointer to next input to insert
+    let next_input_ptr = entry.gep(
+        context,
+        location,
+        inputs_ptr,
+        &[GepIndex::Value(current_length)],
+        IntegerType::new(context, 384).into(),
+    )?;
+
+    // Interpret u384 struct (input) as u384 integer
+    let u384_struct = entry.arg(1)?;
+    let new_input = u384_struct_to_integer(context, entry, location, u384_struct)?;
+    // Store the u384 into next input pointer
+    entry.store(context, location, next_input_ptr, new_input)?;
+
+    // Check if last_insert: next_length == number_of_inputs
+    let n_inputs = entry.const_int(context, location, n_inputs, 64)?;
     let last_insert = entry.cmpi(
         context,
         arith::CmpiPredicate::Eq,
-        current_length,
-        n_inputs_minus_1,
+        next_length,
+        n_inputs,
         location,
     )?;
 
@@ -179,124 +231,23 @@ fn build_add_input<'ctx, 'this>(
         location,
     ));
 
-    // If not last insert, then:
+    // If not last insert, then return accumulator
     {
-        // Calculate next length: next_length = current_length + 1
-        let k1 = middle_insert_block.const_int(context, location, 1, 64)?;
-        let next_length = middle_insert_block.addi(current_length, k1, location)?;
-
-        // Insert next_length into accumulator
-        let accumulator =
-            middle_insert_block.insert_value(context, location, accumulator, next_length, 0)?;
-
-        // Get pointer to accumulator with alloc and store
-        let accumulator_ptr = helper.init_block().alloca1(
-            context,
-            location,
-            accumulator.r#type(),
-            accumulator_layout.align(),
-        )?;
-        middle_insert_block.store(context, location, accumulator_ptr, accumulator)?;
-
-        // Get pointer to next input to insert
-        let k0 = middle_insert_block.const_int(context, location, 0, 64)?;
-        let next_input_ptr =
-            middle_insert_block.append_op_result(llvm::get_element_ptr_dynamic(
-                context,
-                accumulator_ptr,
-                &[k0, k1, current_length],
-                accumulator.r#type(),
-                llvm::r#type::pointer(context, 0),
-                location,
-            ))?;
-
-        // Interpret u384 struct (input) as u384 integer
-        let u384_struct = entry.arg(1)?;
-        let new_input =
-            u384_struct_to_integer(context, middle_insert_block, location, u384_struct)?;
-
-        // Store the u384 into next input pointer
-        middle_insert_block.store(context, location, next_input_ptr, new_input)?;
-
-        // Load accumulator from pointer
-        let accumulator =
-            middle_insert_block.load(context, location, accumulator_ptr, accumulator.r#type())?;
-
-        helper.br(middle_insert_block, 1, &[accumulator], location)?;
+        helper.br(middle_insert_block, 1, &[accumulator], location);
     }
 
-    // If is last insert, then:
+    // If is last insert, then return accumulator.pointer
     {
-        let data_type_id = &info.branch_signatures()[0].vars[0].ty;
-        let (data_type, data_layout) =
-            registry.build_type_with_layout(context, helper, metadata, data_type_id)?;
-
-        // Alloc return data
-        let data_ptr =
-            helper
-                .init_block()
-                .alloca1(context, location, data_type, data_layout.align())?;
-
-        // Get pointer to accumulator with alloc and store
-        let accumulator_ptr = helper.init_block().alloca1(
+        // Get pointer to inputs array
+        let inputs_ptr = last_insert_block.extract_value(
             context,
             location,
-            accumulator.r#type(),
-            accumulator_layout.align(),
-        )?;
-        last_insert_block.store(context, location, accumulator_ptr, accumulator)?;
-
-        // Get pointer to accumulator input
-        let k0 = last_insert_block.const_int(context, location, 0, 64)?;
-        let k1 = last_insert_block.const_int(context, location, 1, 64)?;
-        let accumulator_input_ptr =
-            last_insert_block.append_op_result(llvm::get_element_ptr_dynamic(
-                context,
-                accumulator_ptr,
-                &[k0, k1],
-                accumulator.r#type(),
-                llvm::r#type::pointer(context, 0),
-                location,
-            ))?;
-
-        // Copy accumulator input into return data
-        let accumulator_input_length = last_insert_block.const_int(
-            context,
-            location,
-            layout_repeat(&get_integer_layout(384), n_inputs - 1)?
-                .0
-                .size(),
-            64,
-        )?;
-        last_insert_block.memcpy(
-            context,
-            location,
-            accumulator_input_ptr,
-            data_ptr,
-            accumulator_input_length,
-        );
-
-        // Interpret u384 struct (input) as u384 integer
-        let u384_struct = entry.arg(1)?;
-        let new_input = u384_struct_to_integer(context, last_insert_block, location, u384_struct)?;
-
-        // Get pointer to data end
-        let data_end_ptr = last_insert_block.append_op_result(llvm::get_element_ptr(
-            context,
-            data_ptr,
-            DenseI32ArrayAttribute::new(context, &[0, n_inputs as i32 - 1]),
-            data_type,
+            accumulator,
             llvm::r#type::pointer(context, 0),
-            location,
-        ))?;
+            1,
+        )?;
 
-        // Store the u384 into next input pointer
-        last_insert_block.store(context, location, data_end_ptr, new_input)?;
-
-        // Load data from pointer
-        let data = last_insert_block.load(context, location, data_ptr, data_type)?;
-
-        helper.br(last_insert_block, 0, &[data], location)?;
+        helper.br(last_insert_block, 0, &[inputs_ptr], location);
     }
 
     Ok(())
@@ -392,6 +343,17 @@ fn build_eval<'ctx, 'this>(
 
     // Ok case
     {
+        // We drop circuit_data, as its consumed by this libfunc.
+        if let Some(drop_overrides_meta) = metadata.get::<DropOverridesMeta>() {
+            drop_overrides_meta.invoke_override(
+                context,
+                ok_block,
+                location,
+                &info.signature.param_signatures[3].ty,
+                circuit_data,
+            )?;
+        }
+
         let mul_mod = increment_builtin_counter_by(
             context,
             ok_block,
@@ -406,12 +368,36 @@ fn build_eval<'ctx, 'this>(
             .map(|value| u384_integer_to_struct(context, ok_block, location, value))
             .collect::<Result<Vec<_>>>()?;
 
-        let n_gates = circuit_info.values.len();
-        let gates_array = ok_block.append_op_result(llvm::undef(
-            llvm::r#type::array(build_u384_struct_type(context), n_gates as u32),
+        // Calculate full capacity for array.
+        let outputs_capacity = circuit_info.values.len();
+        let u384_struct_layout = layout_repeat(&get_integer_layout(96), 4)?.0;
+        let outputs_capacity_bytes = layout_repeat(&u384_struct_layout, outputs_capacity)?
+            .0
+            .pad_to_align()
+            .size();
+        let outputs_capacity_bytes_value =
+            ok_block.const_int(context, location, outputs_capacity_bytes, 64)?;
+
+        // Alloc memory for array.
+        let ptr_ty = llvm::r#type::pointer(context, 0);
+        let outputs_ptr = ok_block.append_op_result(llvm::zero(ptr_ty, location))?;
+        let outputs_ptr = ok_block.append_op_result(ReallocBindingsMeta::realloc(
+            context,
+            outputs_ptr,
+            outputs_capacity_bytes_value,
             location,
-        ))?;
-        let gates_array = ok_block.insert_values(context, location, gates_array, &gates)?;
+        )?)?;
+
+        for (i, gate) in gates.into_iter().enumerate() {
+            let value_ptr = ok_block.gep(
+                context,
+                location,
+                outputs_ptr,
+                &[GepIndex::Const(i as i32)],
+                build_u384_struct_type(context),
+            )?;
+            ok_block.store(context, location, value_ptr, gate)?;
+        }
 
         let modulus_struct = u384_integer_to_struct(context, ok_block, location, circuit_modulus)?;
 
@@ -425,7 +411,7 @@ fn build_eval<'ctx, 'this>(
             helper,
             metadata,
             outputs_type_id,
-            &[gates_array, modulus_struct],
+            &[outputs_ptr, modulus_struct],
         )?;
 
         helper.br(ok_block, 0, &[add_mod, mul_mod, outputs], location)?;
@@ -433,6 +419,17 @@ fn build_eval<'ctx, 'this>(
 
     // Error case
     {
+        // We drop circuit_data, as its consumed by this libfunc.
+        if let Some(drop_overrides_meta) = metadata.get::<DropOverridesMeta>() {
+            drop_overrides_meta.invoke_override(
+                context,
+                err_block,
+                location,
+                &info.signature.param_signatures[3].ty,
+                circuit_data,
+            )?;
+        }
+
         // We only consider mul gates evaluated before failure
         let mul_mod = {
             let mul_mod_usage = err_block.muli(
@@ -486,12 +483,18 @@ fn build_gate_evaluation<'ctx, 'this>(
     let mut values = vec![None; 1 + circuit_info.n_inputs + circuit_info.values.len()];
     values[0] = Some(block.const_int(context, location, 1, 384)?);
     for i in 0..circuit_info.n_inputs {
-        values[i + 1] = Some(block.extract_value(
+        let value_ptr = block.gep(
             context,
             location,
             circuit_data,
+            &[GepIndex::Const(i as i32)],
             IntegerType::new(context, 384).into(),
-            i,
+        )?;
+        values[i + 1] = Some(block.load(
+            context,
+            location,
+            value_ptr,
+            IntegerType::new(context, 384).into(),
         )?);
     }
 
@@ -824,6 +827,37 @@ fn build_u96_limbs_less_than_guarantee_verify<'ctx, 'this>(
     Ok(())
 }
 
+fn build_u96_single_limb_less_than_guarantee_verify<'ctx, 'this>(
+    context: &'ctx Context,
+    _registry: &ProgramRegistry<CoreType, CoreLibfunc>,
+    entry: &'this Block<'ctx>,
+    location: Location<'ctx>,
+    helper: &LibfuncHelper<'ctx, 'this>,
+    _metadata: &mut MetadataStorage,
+    _info: &SignatureOnlyConcreteLibfunc,
+) -> Result<()> {
+    let guarantee = entry.arg(0)?;
+
+    let u96_type = IntegerType::new(context, 96).into();
+    // this libfunc will always receive gate and modulus with single limb
+    let limb_struct_type = llvm::r#type::r#struct(context, &[u96_type; 1], false);
+
+    // extract gate and modulus from input value
+    let gate = entry.extract_value(context, location, guarantee, limb_struct_type, 0)?;
+    let modulus = entry.extract_value(context, location, guarantee, limb_struct_type, 1)?;
+
+    // extract the only limb from gate and modulus
+    let gate_limb = entry.extract_value(context, location, gate, u96_type, 0)?;
+    let modulus_limb = entry.extract_value(context, location, modulus, u96_type, 0)?;
+
+    // calcualte diff between limbs
+    let diff = entry.append_op_result(arith::subi(modulus_limb, gate_limb, location))?;
+
+    helper.br(entry, 0, &[diff], location);
+
+    Ok(())
+}
+
 /// Generate MLIR operations for the `get_circuit_output` libfunc.
 #[allow(clippy::too_many_arguments)]
 fn build_get_output<'ctx, 'this>(
@@ -850,12 +884,11 @@ fn build_get_output<'ctx, 'this>(
 
     let outputs = entry.arg(0)?;
 
-    let n_gates = circuit_info.values.len();
-    let output_gates = entry.extract_value(
+    let values_ptr = entry.extract_value(
         context,
         location,
         outputs,
-        llvm::r#type::array(build_u384_struct_type(context), n_gates as u32),
+        llvm::r#type::pointer(context, 0),
         0,
     )?;
     let modulus_struct = entry.extract_value(
@@ -865,12 +898,20 @@ fn build_get_output<'ctx, 'this>(
         build_u384_struct_type(context),
         1,
     )?;
-    let output_struct = entry.extract_value(
+
+    let output_struct_ptr = entry.gep(
         context,
         location,
-        output_gates,
+        values_ptr,
+        &[GepIndex::Const(output_idx as i32)],
         build_u384_struct_type(context),
-        output_idx,
+    )?;
+
+    let output_struct = entry.load(
+        context,
+        location,
+        output_struct_ptr,
+        build_u384_struct_type(context),
     )?;
 
     let guarantee_type_id = &info.branch_signatures()[0].vars[1].ty;
@@ -885,7 +926,24 @@ fn build_get_output<'ctx, 'this>(
         &[output_struct, modulus_struct],
     )?;
 
-    helper.br(entry, 0, &[output_struct, guarantee], location)
+    // We drop the circuit outputs value, as its consumed by this libfunc.
+    // NOTE: As this libfunc consumes circuit_outputs, this implies that
+    // calling it multiple times involves duplicating the circuit outputs
+    // each time. This could be fixed by implementing a reference counter,
+    // like we do with regular arrays.
+    if let Some(drop_overrides_meta) = metadata.get::<DropOverridesMeta>() {
+        drop_overrides_meta.invoke_override(
+            context,
+            entry,
+            location,
+            &info.signature.param_signatures[0].ty,
+            outputs,
+        )?;
+    }
+
+    helper.br(entry, 0, &[output_struct, guarantee], location);
+
+    Ok(())
 }
 
 fn u384_struct_to_integer<'a>(
@@ -1085,6 +1143,52 @@ fn build_array_slice<'ctx>(
     )
 }
 
+/// Converts input to an U96Guarantee.
+/// Input type must fit inside of an u96.
+///
+/// # Signature
+/// ```cairo
+/// extern fn into_u96_guarantee<T>(val: T) -> U96Guarantee nopanic;
+/// ```
+fn build_into_u96_guarantee<'ctx, 'this>(
+    context: &'ctx Context,
+    registry: &ProgramRegistry<CoreType, CoreLibfunc>,
+    entry: &'this Block<'ctx>,
+    location: Location<'ctx>,
+    helper: &LibfuncHelper<'ctx, 'this>,
+    _metadata: &mut MetadataStorage,
+    info: &SignatureAndTypeConcreteLibfunc,
+) -> Result<()> {
+    let src = entry.argument(0)?.into();
+
+    let src_ty = registry.get_type(&info.param_signatures()[0].ty)?;
+
+    let src_range = src_ty.integer_range(registry)?;
+
+    // We expect the input value to be unsigned, but we check it just in case.
+    if src_range.lower.is_negative() {
+        native_panic!("into_u96_guarantee expects an unsigned integer")
+    }
+
+    // Extend the input value to an u96
+    let mut dst = entry.extui(src, IntegerType::new(context, 96).into(), location)?;
+
+    // If the lower bound is positive, we offset the value by the lower bound
+    // to obtain the actual value.
+    if src_range.lower.is_positive() {
+        let klower = entry.const_int_from_type(
+            context,
+            location,
+            src_range.lower,
+            IntegerType::new(context, 96).into(),
+        )?;
+        dst = entry.addi(dst, klower, location)?
+    }
+
+    helper.br(entry, 0, &[dst], location);
+    Ok(())
+}
+
 #[cfg(test)]
 mod test {
 
@@ -1096,8 +1200,8 @@ mod test {
         values::Value,
     };
     use cairo_lang_sierra::extensions::utils::Range;
-    use num_bigint::BigUint;
-    use num_traits::Num;
+    use num_bigint::{BigInt, BigUint};
+    use num_traits::{Num, One};
     use starknet_types_core::felt::Felt;
 
     fn u384(limbs: [&str; 4]) -> Value {
@@ -1403,6 +1507,48 @@ mod test {
                     "0xaf4bed7eef975ff1941fdf3d",
                     "0x7"
                 ]))
+            ),
+        );
+    }
+
+    #[test]
+    fn run_into_u96_guarantee() {
+        let program = load_cairo!(
+            use core::circuit::{into_u96_guarantee, U96Guarantee};
+            #[feature("bounded-int-utils")]
+            use core::internal::bounded_int::BoundedInt;
+
+            fn main() -> (U96Guarantee, U96Guarantee, U96Guarantee) {
+                (
+                    into_u96_guarantee::<BoundedInt<0, 79228162514264337593543950335>>(123),
+                    into_u96_guarantee::<BoundedInt<100, 1000>>(123),
+                    into_u96_guarantee::<u8>(123),
+                )
+            }
+        );
+
+        let range = Range {
+            lower: BigInt::ZERO,
+            upper: BigInt::one() << 96,
+        };
+
+        run_program_assert_output(
+            &program,
+            "main",
+            &[],
+            jit_struct!(
+                Value::BoundedInt {
+                    value: 123.into(),
+                    range: range.clone()
+                },
+                Value::BoundedInt {
+                    value: 123.into(),
+                    range: range.clone()
+                },
+                Value::BoundedInt {
+                    value: 123.into(),
+                    range: range.clone()
+                }
             ),
         );
     }

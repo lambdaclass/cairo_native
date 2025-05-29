@@ -65,6 +65,12 @@ impl<'m> JitNativeExecutor<'m> {
 
         setup_runtime(|name| executor.find_symbol_ptr(name));
 
+        #[cfg(feature = "with-debug-utils")]
+        crate::metadata::debug_utils::setup_runtime(|name| executor.find_symbol_ptr(name));
+
+        #[cfg(feature = "with-trace-dump")]
+        crate::metadata::trace_dump::setup_runtime(|name| executor.find_symbol_ptr(name));
+
         Ok(executor)
     }
 
@@ -98,7 +104,7 @@ impl<'m> JitNativeExecutor<'m> {
             args,
             available_gas,
             Option::<DummySyscallHandler>::None,
-            self.build_find_dict_overrides(),
+            self.build_find_dict_drop_override(),
         )
     }
 
@@ -125,7 +131,7 @@ impl<'m> JitNativeExecutor<'m> {
             args,
             available_gas,
             Some(syscall_handler),
-            self.build_find_dict_overrides(),
+            self.build_find_dict_drop_override(),
         )
     }
 
@@ -156,7 +162,7 @@ impl<'m> JitNativeExecutor<'m> {
             }],
             available_gas,
             Some(syscall_handler),
-            self.build_find_dict_overrides(),
+            self.build_find_dict_drop_override(),
         )?)
     }
 
@@ -185,27 +191,14 @@ impl<'m> JitNativeExecutor<'m> {
             .map(|func| &func.signature)?)
     }
 
-    fn build_find_dict_overrides(
+    fn build_find_dict_drop_override(
         &self,
-    ) -> impl '_
-           + Copy
-           + Fn(
-        &ConcreteTypeId,
-    ) -> (
-        Option<extern "C" fn(*mut c_void, *mut c_void)>,
-        Option<extern "C" fn(*mut c_void)>,
-    ) {
+    ) -> impl '_ + Copy + Fn(&ConcreteTypeId) -> Option<extern "C" fn(*mut c_void)> {
         |type_id| {
-            (
-                self.dict_overrides
-                    .get_dup_fn(type_id)
-                    .and_then(|symbol| self.find_symbol_ptr(symbol))
-                    .map(|ptr| unsafe { transmute(ptr as *const ()) }),
-                self.dict_overrides
-                    .get_drop_fn(type_id)
-                    .and_then(|symbol| self.find_symbol_ptr(symbol))
-                    .map(|ptr| unsafe { transmute(ptr as *const ()) }),
-            )
+            self.dict_overrides
+                .get_drop_fn(type_id)
+                .and_then(|symbol| self.find_symbol_ptr(symbol))
+                .map(|ptr| unsafe { transmute(ptr as *const ()) })
         }
     }
 

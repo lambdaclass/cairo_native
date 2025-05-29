@@ -192,7 +192,7 @@ pub fn build_finalize<'ctx, 'this>(
 
 #[cfg(test)]
 mod test {
-    use crate::utils::test::{jit_dict, load_cairo, run_program_assert_output};
+    use crate::utils::test::{jit_dict, load_cairo, run_program, run_program_assert_output};
 
     #[test]
     fn run_dict_insert() {
@@ -279,5 +279,24 @@ mod test {
         );
 
         run_program_assert_output(&program, "run_test", &[], 1345432_u32.into());
+    }
+
+    #[test]
+    fn run_dict_clone_ptr_update() {
+        let program = load_cairo!(
+            use core::dict::Felt252Dict;
+
+            fn run_test() {
+                let mut dict: Felt252Dict<u64> = Default::default();
+
+                let snapshot = @dict;
+                dict.insert(1, 1);
+                drop(snapshot);
+
+                dict.insert(2, 2);
+            }
+        );
+
+        run_program(&program, "run_test", &[]);
     }
 }

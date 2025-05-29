@@ -15,8 +15,9 @@ use crate::{
 use bumpalo::Bump;
 use cairo_lang_sierra::{
     extensions::{
+        circuit::CircuitTypeConcrete,
         core::{CoreLibfunc, CoreType, CoreTypeConcrete},
-        starknet::{secp256::Secp256PointTypeConcrete, StarkNetTypeConcrete},
+        starknet::{secp256::Secp256PointTypeConcrete, StarknetTypeConcrete},
         utils::Range,
     },
     ids::ConcreteTypeId,
@@ -165,13 +166,7 @@ impl Value {
         arena: &Bump,
         registry: &ProgramRegistry<CoreType, CoreLibfunc>,
         type_id: &ConcreteTypeId,
-        find_dict_overrides: impl Copy
-            + Fn(
-                &ConcreteTypeId,
-            ) -> (
-                Option<extern "C" fn(*mut c_void, *mut c_void)>,
-                Option<extern "C" fn(*mut c_void)>,
-            ),
+        find_dict_drop_override: impl Copy + Fn(&ConcreteTypeId) -> Option<extern "C" fn(*mut c_void)>,
     ) -> Result<NonNull<()>, Error> {
         let ty = registry.get_type(type_id)?;
 
@@ -225,31 +220,29 @@ impl Value {
                         let elem_ty = registry.get_type(&info.ty)?;
                         let elem_layout = elem_ty.layout(registry)?.pad_to_align();
 
-                        let refcount_offset = get_integer_layout(32)
-                            .align_to(elem_layout.align())
-                            .unwrap()
-                            .pad_to_align()
-                            .size();
-                        let ptr = match elem_layout.size() * data.len() {
-                            0 => std::ptr::null_mut(),
-                            len => {
-                                let ptr: *mut () = libc_malloc(len + refcount_offset).cast();
-
-                                // Write reference count.
-                                ptr.cast::<u32>().write(1);
-
-                                ptr.byte_add(refcount_offset)
-                            }
-                        };
+                        let refcount_offset =
+                            crate::types::array::calc_data_prefix_offset(elem_layout);
                         let len: u32 = data
                             .len()
                             .try_into()
                             .map_err(|_| Error::IntegerConversion)?;
+                        let ptr: *mut () = match len {
+                            0 => std::ptr::null_mut(),
+                            _ => {
+                                let ptr: *mut () =
+                                    libc_malloc(elem_layout.size() * data.len() + refcount_offset)
+                                        .cast();
+
+                                // Write reference count.
+                                ptr.cast::<(u32, u32)>().write((1, len));
+                                ptr.byte_add(refcount_offset).cast()
+                            }
+                        };
 
                         // Write the data.
                         for (idx, elem) in data.iter().enumerate() {
                             let elem =
-                                elem.to_ptr(arena, registry, &info.ty, find_dict_overrides)?;
+                                elem.to_ptr(arena, registry, &info.ty, find_dict_drop_override)?;
 
                             std::ptr::copy_nonoverlapping(
                                 elem.cast::<u8>().as_ptr(),
@@ -257,6 +250,15 @@ impl Value {
                                 elem_layout.size(),
                             );
                         }
+
+                        // Make double pointer.
+                        let ptr_ptr = if ptr.is_null() {
+                            null_mut()
+                        } else {
+                            let ptr_ptr: *mut *mut () = libc_malloc(8).cast();
+                            ptr_ptr.write(ptr);
+                            ptr_ptr
+                        };
 
                         let target = arena
                             .alloc_layout(
@@ -271,7 +273,7 @@ impl Value {
                             )
                             .as_ptr();
 
-                        *target.cast::<*mut ()>() = ptr;
+                        *target.cast::<*mut ()>() = ptr_ptr.cast();
 
                         let (layout, offset) =
                             Layout::new::<*mut NonNull<()>>().extend(Layout::new::<u32>())?;
@@ -312,7 +314,7 @@ impl Value {
                                 arena,
                                 registry,
                                 member_type_id,
-                                find_dict_overrides,
+                                find_dict_drop_override,
                             )?;
                             data.push((
                                 member_layout,
@@ -359,8 +361,12 @@ impl Value {
                         native_assert!(*tag < info.variants.len(), "Variant index out of range.");
 
                         let payload_type_id = &info.variants[*tag];
-                        let payload =
-                            value.to_ptr(arena, registry, payload_type_id, find_dict_overrides)?;
+                        let payload = value.to_ptr(
+                            arena,
+                            registry,
+                            payload_type_id,
+                            find_dict_drop_override,
+                        )?;
 
                         let (layout, tag_layout, variant_layouts) =
                             crate::types::r#enum::get_layout_for_variants(
@@ -399,10 +405,10 @@ impl Value {
                         let elem_ty = registry.get_type(&info.ty)?;
                         let elem_layout = elem_ty.layout(registry)?.pad_to_align();
 
-                        // We need `find_dict_overrides` to obtain the function pointers of the dup and drop
-                        // implementations (if any) for the value type. This is required to be able to clone and drop
+                        // We need `find_dict_drop_override` to obtain the function pointers of drop
+                        // implementations (if any) for the value type. This is required to be able to drop
                         // the dictionary automatically when their reference count drops to zero.
-                        let (dup_fn, drop_fn) = find_dict_overrides(&info.ty);
+                        let drop_fn = find_dict_drop_override(&info.ty);
                         let mut value_map = FeltDict {
                             mappings: HashMap::with_capacity(map.len()),
 
@@ -417,7 +423,6 @@ impl Value {
                                 .cast()
                             },
 
-                            dup_fn,
                             drop_fn,
 
                             count: 0,
@@ -428,7 +433,7 @@ impl Value {
                         for (key, value) in map.iter() {
                             let key = key.to_bytes_le();
                             let value =
-                                value.to_ptr(arena, registry, &info.ty, find_dict_overrides)?;
+                                value.to_ptr(arena, registry, &info.ty, find_dict_drop_override)?;
 
                             let index = value_map.mappings.len();
                             value_map.mappings.insert(key, index);
@@ -551,11 +556,11 @@ impl Value {
                         let inner = registry.get_type(&info.ty)?;
                         let inner_layout = inner.layout(registry)?;
 
-                        let x_ptr = x.to_ptr(arena, registry, &info.ty, find_dict_overrides)?;
+                        let x_ptr = x.to_ptr(arena, registry, &info.ty, find_dict_drop_override)?;
 
                         let (struct_layout, y_offset) = inner_layout.extend(inner_layout)?;
 
-                        let y_ptr = y.to_ptr(arena, registry, &info.ty, find_dict_overrides)?;
+                        let y_ptr = y.to_ptr(arena, registry, &info.ty, find_dict_drop_override)?;
 
                         let ptr = arena.alloc_layout(struct_layout.pad_to_align()).as_ptr();
 
@@ -614,56 +619,87 @@ impl Value {
                         .as_ref();
 
                     // This pointer can be null if the array is empty.
-                    let init_data_ptr = *ptr.cast::<*mut ()>().as_ref();
-                    let data_ptr =
-                        init_data_ptr.byte_add(elem_stride * start_offset_value as usize);
+                    let array_ptr_ptr = *ptr.cast::<*mut *mut ()>().as_ref();
 
-                    let refcount_offset = get_integer_layout(32)
-                        .align_to(elem_layout.align())
-                        .unwrap()
-                        .pad_to_align()
-                        .size();
-                    let should_drop = if !init_data_ptr.is_null()
-                        && init_data_ptr.byte_sub(refcount_offset).cast::<u32>().read() == 1
-                    {
-                        should_drop
+                    let refcount_offset = crate::types::array::calc_data_prefix_offset(elem_layout);
+                    let array_value = if array_ptr_ptr.is_null() {
+                        Vec::new()
                     } else {
-                        if !init_data_ptr.is_null() && should_drop {
-                            *init_data_ptr
-                                .byte_sub(refcount_offset)
-                                .cast::<u32>()
-                                .as_mut()
-                                .unwrap() -= 1;
+                        let array_ptr = array_ptr_ptr.read();
+                        let ref_count = array_ptr
+                            .byte_sub(refcount_offset)
+                            .cast::<u32>()
+                            .as_mut()
+                            .to_native_assert_error("array data pointer should not be null")?;
+                        if should_drop {
+                            *ref_count -= 1;
                         }
 
-                        false
+                        native_assert!(
+                            end_offset_value >= start_offset_value,
+                            "can't have an array with negative length"
+                        );
+                        let num_elems = (end_offset_value - start_offset_value) as usize;
+
+                        if *ref_count == 0 {
+                            // Drop prefix elements.
+                            for i in 0..start_offset_value {
+                                let cur_elem_ptr =
+                                    NonNull::new(array_ptr.byte_add(elem_stride * i as usize))
+                                        .to_native_assert_error(
+                                            "tried to make a non-null ptr out of a null one",
+                                        )?;
+                                drop(Self::from_ptr(
+                                    cur_elem_ptr,
+                                    &info.ty,
+                                    registry,
+                                    should_drop,
+                                )?);
+                            }
+                        }
+
+                        let mut array_value = Vec::with_capacity(num_elems);
+                        for i in start_offset_value..end_offset_value {
+                            let cur_elem_ptr =
+                                NonNull::new(array_ptr.byte_add(elem_stride * i as usize))
+                                    .to_native_assert_error(
+                                        "tried to make a non-null ptr out of a null one",
+                                    )?;
+                            array_value.push(Self::from_ptr(
+                                cur_elem_ptr,
+                                &info.ty,
+                                registry,
+                                *ref_count == 0,
+                            )?);
+                        }
+
+                        if *ref_count == 0 {
+                            // Drop suffix elements.
+                            let array_max_len = array_ptr
+                                .byte_sub(refcount_offset - size_of::<u32>())
+                                .cast::<u32>()
+                                .read();
+                            for i in end_offset_value..array_max_len {
+                                let cur_elem_ptr =
+                                    NonNull::new(array_ptr.byte_add(elem_stride * i as usize))
+                                        .to_native_assert_error(
+                                            "tried to make a non-null ptr out of a null one",
+                                        )?;
+                                drop(Self::from_ptr(
+                                    cur_elem_ptr,
+                                    &info.ty,
+                                    registry,
+                                    should_drop,
+                                )?);
+                            }
+
+                            // Free array storage.
+                            libc_free(array_ptr.byte_sub(refcount_offset).cast());
+                            libc_free(array_ptr_ptr.cast());
+                        }
+
+                        array_value
                     };
-
-                    native_assert!(
-                        end_offset_value >= start_offset_value,
-                        "can't have an array with negative length"
-                    );
-                    let num_elems = (end_offset_value - start_offset_value) as usize;
-                    let mut array_value = Vec::with_capacity(num_elems);
-
-                    for i in 0..num_elems {
-                        // safe to create a NonNull because if the array has elements, the init_data_ptr can't be null.
-                        let cur_elem_ptr = NonNull::new(data_ptr.byte_add(elem_stride * i))
-                            .to_native_assert_error(
-                                "tried to make a non-null ptr out of a null one",
-                            )?;
-
-                        array_value.push(Self::from_ptr(
-                            cur_elem_ptr,
-                            &info.ty,
-                            registry,
-                            should_drop,
-                        )?);
-                    }
-
-                    if should_drop && !init_data_ptr.is_null() {
-                        libc_free(init_data_ptr.byte_sub(refcount_offset).cast());
-                    }
 
                     Self::Array(array_value)
                 }
@@ -876,21 +912,21 @@ impl Value {
                     native_panic!("handled before: {:?}", type_id)
                 }
                 // Does it make sense for programs to return this? Should it be implemented
-                CoreTypeConcrete::StarkNet(selector) => match selector {
-                    StarkNetTypeConcrete::ClassHash(_)
-                    | StarkNetTypeConcrete::ContractAddress(_)
-                    | StarkNetTypeConcrete::StorageBaseAddress(_)
-                    | StarkNetTypeConcrete::StorageAddress(_) => {
+                CoreTypeConcrete::Starknet(selector) => match selector {
+                    StarknetTypeConcrete::ClassHash(_)
+                    | StarknetTypeConcrete::ContractAddress(_)
+                    | StarknetTypeConcrete::StorageBaseAddress(_)
+                    | StarknetTypeConcrete::StorageAddress(_) => {
                         // felt values
                         let data = ptr.cast::<[u8; 32]>().as_mut();
                         data[31] &= 0x0F; // Filter out first 4 bits (they're outside an i252).
                         let data = Felt::from_bytes_le(data);
                         Self::Felt252(data)
                     }
-                    StarkNetTypeConcrete::System(_) => {
+                    StarknetTypeConcrete::System(_) => {
                         native_panic!("should be handled before")
                     }
-                    StarkNetTypeConcrete::Secp256Point(info) => match info {
+                    StarknetTypeConcrete::Secp256Point(info) => match info {
                         Secp256PointTypeConcrete::K1(_) => {
                             let data = ptr.cast::<Secp256k1Point>().as_ref();
                             Self::Secp256K1Point(*data)
@@ -900,7 +936,7 @@ impl Value {
                             Self::Secp256R1Point(*data)
                         }
                     },
-                    StarkNetTypeConcrete::Sha256StateHandle(_) => {
+                    StarknetTypeConcrete::Sha256StateHandle(_) => {
                         native_panic!("todo: implement Sha256StateHandle from_ptr")
                     }
                 },
@@ -929,6 +965,23 @@ impl Value {
                     Self::BoundedInt {
                         value: data.into(),
                         range: info.range.clone(),
+                    }
+                }
+                CoreTypeConcrete::Circuit(CircuitTypeConcrete::U96Guarantee(_)) => {
+                    let data = BigInt::from_biguint(
+                        Sign::Plus,
+                        BigUint::from_bytes_le(slice::from_raw_parts(
+                            ptr.cast::<u8>().as_ptr(),
+                            12,
+                        )),
+                    );
+
+                    Self::BoundedInt {
+                        value: data.into(),
+                        range: Range {
+                            lower: BigInt::ZERO,
+                            upper: BigInt::one() << 96,
+                        },
                     }
                 }
                 CoreTypeConcrete::Coupon(_)
@@ -963,6 +1016,8 @@ impl Value {
                         y: y.into(),
                     }
                 }
+                CoreTypeConcrete::Blake(_) => native_panic!("Implement from_ptr for Blake type"),
+                CoreTypeConcrete::QM31(_) => native_panic!("Implement from_ptr for QM31 type"),
             }
         })
     }

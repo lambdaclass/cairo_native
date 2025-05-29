@@ -25,6 +25,7 @@ pub mod profiler;
 pub mod realloc_bindings;
 pub mod runtime_bindings;
 pub mod tail_recursion;
+pub mod trace_dump;
 
 /// Metadata container.
 #[cfg_attr(not(feature = "with-debug-utils"), derive(Default))]

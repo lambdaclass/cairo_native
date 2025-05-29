@@ -11,7 +11,7 @@
 
 use super::LibfuncHelper;
 use crate::{
-    error::{Error, Result},
+    error::{panic::ToNativeAssertError, Error, Result},
     metadata::{
         drop_overrides::DropOverridesMeta, runtime_bindings::RuntimeBindingsMeta, MetadataStorage,
     },
@@ -82,7 +82,7 @@ pub fn build_print<'ctx, 'this>(
 
     let runtime_bindings = metadata
         .get_mut::<RuntimeBindingsMeta>()
-        .expect("Runtime library not available.");
+        .to_native_assert_error("runtime library should be available")?;
 
     let values_len = entry.append_op_result(arith::subi(values_end, values_start, location))?;
 

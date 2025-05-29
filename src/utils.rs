@@ -5,7 +5,7 @@ pub(crate) use self::{
     program_registry_ext::ProgramRegistryExt,
     range_ext::RangeExt,
 };
-use crate::{metadata::MetadataStorage, OptLevel};
+use crate::{error::Result as NativeResult, metadata::MetadataStorage, native_panic, OptLevel};
 use cairo_lang_compiler::CompilerConfig;
 use cairo_lang_runner::token_gas_cost;
 use cairo_lang_sierra::{
@@ -36,6 +36,8 @@ mod program_registry_ext;
 mod range_ext;
 #[cfg(feature = "with-segfault-catcher")]
 pub mod safe_runner;
+pub mod sierra_gen;
+pub mod trace_dump;
 
 #[cfg(target_os = "macos")]
 pub const SHARED_LIBRARY_EXT: &str = "dylib";
@@ -54,8 +56,12 @@ pub static HALF_PRIME: LazyLock<BigUint> = LazyLock::new(|| {
         .expect("hardcoded half prime constant should be valid")
 });
 
-// Order matters, for the libfunc impl
-// https://github.com/starkware-libs/sequencer/blob/1b7252f8a30244d39614d7666aa113b81291808e/crates/blockifier/src/execution/entry_point_execution.rs#L208
+/// Represents the gas cost of each cost token type
+///
+/// See `crate::metadata::gas` for more documentation.
+///
+/// Order matters, for the libfunc impl
+/// https://github.com/starkware-libs/sequencer/blob/1b7252f8a30244d39614d7666aa113b81291808e/crates/blockifier/src/execution/entry_point_execution.rs#L208
 #[derive(Debug, Clone, Copy, Deserialize, Serialize)]
 #[repr(C)]
 pub struct BuiltinCosts {
@@ -66,6 +72,23 @@ pub struct BuiltinCosts {
     pub poseidon: u64,
     pub add_mod: u64,
     pub mul_mod: u64,
+}
+
+impl BuiltinCosts {
+    pub fn index_for_token_type(token_type: &CostTokenType) -> NativeResult<usize> {
+        let index = match token_type {
+            CostTokenType::Const => 0,
+            CostTokenType::Pedersen => 1,
+            CostTokenType::Bitwise => 2,
+            CostTokenType::EcOp => 3,
+            CostTokenType::Poseidon => 4,
+            CostTokenType::AddMod => 5,
+            CostTokenType::MulMod => 6,
+            _ => native_panic!("matched an unexpected CostTokenType which is not being used"),
+        };
+
+        Ok(index)
+    }
 }
 
 impl Default for BuiltinCosts {
@@ -86,21 +109,18 @@ impl crate::arch::AbiArgument for BuiltinCosts {
     fn to_bytes(
         &self,
         buffer: &mut Vec<u8>,
-        find_dict_overrides: impl Copy
+        find_dict_drop_override: impl Copy
             + Fn(
                 &cairo_lang_sierra::ids::ConcreteTypeId,
-            ) -> (
-                Option<extern "C" fn(*mut std::ffi::c_void, *mut std::ffi::c_void)>,
-                Option<extern "C" fn(*mut std::ffi::c_void)>,
-            ),
+            ) -> Option<extern "C" fn(*mut std::ffi::c_void)>,
     ) -> crate::error::Result<()> {
-        self.r#const.to_bytes(buffer, find_dict_overrides)?;
-        self.pedersen.to_bytes(buffer, find_dict_overrides)?;
-        self.bitwise.to_bytes(buffer, find_dict_overrides)?;
-        self.ecop.to_bytes(buffer, find_dict_overrides)?;
-        self.poseidon.to_bytes(buffer, find_dict_overrides)?;
-        self.add_mod.to_bytes(buffer, find_dict_overrides)?;
-        self.mul_mod.to_bytes(buffer, find_dict_overrides)?;
+        self.r#const.to_bytes(buffer, find_dict_drop_override)?;
+        self.pedersen.to_bytes(buffer, find_dict_drop_override)?;
+        self.bitwise.to_bytes(buffer, find_dict_drop_override)?;
+        self.ecop.to_bytes(buffer, find_dict_drop_override)?;
+        self.poseidon.to_bytes(buffer, find_dict_drop_override)?;
+        self.add_mod.to_bytes(buffer, find_dict_drop_override)?;
+        self.mul_mod.to_bytes(buffer, find_dict_drop_override)?;
 
         Ok(())
     }
@@ -175,7 +195,7 @@ pub fn get_integer_layout(width: u32) -> Layout {
     } else {
         // According to the docs this should never return an error.
         Layout::from_size_align((width as usize).next_multiple_of(8) >> 3, 16)
-            .expect("only fails if size is greater than ISIZE::MAX")
+            .expect("layout size rounded up to the next multiple of 16 should never be greater than ISIZE::MAX")
     }
 }
 
@@ -284,11 +304,6 @@ pub fn create_engine(
 ) -> ExecutionEngine {
     // Create the JIT engine.
     let engine = ExecutionEngine::new(module, opt_level.into(), &[], false);
-    #[cfg(feature = "with-debug-utils")]
-    _metadata
-        .get::<crate::metadata::debug_utils::DebugUtils>()
-        .unwrap()
-        .register_impls(&engine);
 
     #[cfg(feature = "with-mem-tracing")]
     self::mem_tracing::register_bindings(&engine);
@@ -497,7 +512,7 @@ pub mod test {
         compile_program(
             program_str,
             RootDatabase::builder()
-                .with_plugin_suite(starknet_plugin_suite())
+                .with_default_plugin_suite(starknet_plugin_suite())
                 .build()
                 .unwrap(),
         )
@@ -507,7 +522,7 @@ pub mod test {
         compile_contract(
             program_str,
             RootDatabase::builder()
-                .with_plugin_suite(starknet_plugin_suite())
+                .with_default_plugin_suite(starknet_plugin_suite())
                 .build()
                 .unwrap(),
         )

@@ -175,7 +175,7 @@ jobs:
       - name: Install scarb
         uses: software-mansion/setup-scarb@v1
         with:
-          scarb-version: "2.9.2"
+          scarb-version: "2.11.2"
       - name: Install deps
         run: make deps
       - name: Run tests
@@ -243,14 +243,14 @@ jobs:
       - name: Install scarb
         uses: software-mansion/setup-scarb@v1
         with:
-          scarb-version: "2.9.2"
+          scarb-version: "2.11.2"
       - name: Install deps
         run: make deps
       - name: Build alexandria
         run: make check-llvm && make needs-cairo2 && make build-alexandria
 
       - name: Run tests and generate coverage partition ${{ matrix.partition }}
-        run: cargo llvm-cov nextest --verbose --features=scarb --workspace --lcov --output-path ${{ matrix.output }} --partition count:${{ matrix.partition }}/4
+        run: cargo llvm-cov nextest --verbose --features=scarb --lcov --output-path ${{ matrix.output }} --partition count:${{ matrix.partition }}/4
 
       - name: test and generate coverage corelib
         if: ${{ matrix.partition == '1' }}
@@ -341,3 +341,42 @@ jobs:
           df -h
       - name: build image
         run: docker build .
+
+  build-sierra-emu:
+    name: Build sierra-emu
+    runs-on: ubuntu-latest
+
+    steps:
+    - uses: actions/checkout@v4
+    - name: Retreive cached dependecies
+      uses: Swatinem/rust-cache@v2
+    - name: Install dependencies
+      run: |
+        make build-cairo-2-compiler
+        cd ./debug_utils/sierra-emu
+        make corelib
+    - name: Build
+      working-directory: ./debug_utils/sierra-emu
+      run: cargo build --all-features --verbose
+    - name: Run tests
+      working-directory: ./debug_utils/sierra-emu
+      run: make test-no-corelib
+    - name: Run corelib's tests (WIP)
+      working-directory: ./debug_utils/sierra-emu
+      run: cargo test test_corelib -- --nocapture
+      continue-on-error: true # ignore result for now. When sierra-emu is fully implemented this should be removed
+
+  build-sierra2casm-dbg:
+    name: Build sierra2casm-dbg
+    runs-on: ubuntu-latest
+
+    steps:
+    - uses: actions/checkout@v4
+    - name: Retreive cached dependecies
+      uses: Swatinem/rust-cache@v2
+    - name: Build
+      working-directory: ./debug_utils/casm-data-flow
+      run: cargo build --all-features --verbose
+    - name: Run tests
+      working-directory: ./debug_utils/casm-data-flow
+      run: cargo test

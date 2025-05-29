@@ -53,7 +53,7 @@ use crate::{
         tail_recursion::TailRecursionMeta,
         MetadataStorage,
     },
-    native_panic,
+    native_assert, native_panic,
     types::TypeBuilder,
     utils::{generate_function_name, BlockExt},
 };
@@ -211,6 +211,9 @@ fn compile_func(
         metadata,
     )
     .collect::<Result<Vec<_>, _>>()?;
+
+    #[cfg(feature = "with-trace-dump")]
+    let mut var_types: HashMap<VarId, ConcreteTypeId> = HashMap::new();
 
     // Replace memory-allocated arguments with pointers.
     for (ty, type_info) in
@@ -415,6 +418,9 @@ fn compile_func(
                     value
                 },
             ));
+
+            #[cfg(feature = "with-trace-dump")]
+            var_types.insert(param.id.clone(), param.ty.clone());
         }
 
         values.into_iter()
@@ -522,6 +528,19 @@ fn compile_func(
                         format!("{}(stmt_idx={})", libfunc_to_name(libf), statement_idx)
                     };
 
+                    #[cfg(feature = "with-trace-dump")]
+                    crate::utils::trace_dump::build_state_snapshot(
+                        context,
+                        registry,
+                        module,
+                        block,
+                        location,
+                        metadata,
+                        statement_idx,
+                        &state,
+                        &var_types,
+                    );
+
                     let (state, _) = edit_state::take_args(state, invocation.args.iter())?;
 
                     let libfunc = registry.get_libfunc(&invocation.libfunc_id)?;
@@ -621,7 +640,7 @@ fn compile_func(
                         &helper,
                         metadata,
                     )?;
-                    assert!(
+                    native_assert!(
                         block.terminator().is_some(),
                         "libfunc {} had no terminator",
                         libfunc_name
@@ -638,15 +657,25 @@ fn compile_func(
                         }
                     }
 
+                    #[cfg(feature = "with-trace-dump")]
+                    for (branch_signature, branch_info) in
+                        libfunc.branch_signatures().iter().zip(&invocation.branches)
+                    {
+                        for (var_info, var_id) in
+                            branch_signature.vars.iter().zip(&branch_info.results)
+                        {
+                            var_types.insert(var_id.clone(), var_info.ty.clone());
+                        }
+                    }
+
                     StatementCompileResult::Processed(
                         invocation
                             .branches
                             .iter()
                             .zip(helper.results()?)
                             .map(|(branch_info, result_values)| {
-                                assert_eq!(
-                                    branch_info.results.len(),
-                                    result_values.len(),
+                                native_assert!(
+                                    branch_info.results.len() == result_values.len(),
                                     "Mismatched number of returned values from branch."
                                 );
 
@@ -671,6 +700,21 @@ fn compile_func(
                             0,
                         ),
                     );
+
+                    #[cfg(feature = "with-trace-dump")]
+                    if !is_recursive || tailrec_state.is_some() {
+                        crate::utils::trace_dump::build_state_snapshot(
+                            context,
+                            registry,
+                            module,
+                            block,
+                            location,
+                            metadata,
+                            statement_idx,
+                            &state,
+                            &var_types,
+                        );
+                    }
 
                     let (_, mut values) = edit_state::take_args(state, var_ids.iter())?;
 
@@ -1077,7 +1121,7 @@ fn generate_function_structure<'c, 'a>(
                                         Entry::Occupied(entry) => entry.into_mut(),
                                         Entry::Vacant(entry) => entry.insert((state.clone(), 0)),
                                     };
-                                assert!(
+                                native_assert!(
                                     prev_state.eq_unordered(&state),
                                     "Branch target states do not match."
                                 );
@@ -1094,7 +1138,7 @@ fn generate_function_structure<'c, 'a>(
                     );
 
                     let (state, types) = edit_state::take_args(state.clone(), var_ids.iter())?;
-                    assert!(
+                    native_assert!(
                         state.is_empty(),
                         "State must be empty after a return statement."
                     );

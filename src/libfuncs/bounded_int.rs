@@ -828,8 +828,10 @@ mod test {
     #[test]
     fn test_trim_some_pos_i8() {
         let (_, program) = load_cairo!(
-            use core::internal::{OptionRev, bounded_int::BoundedInt};
-            use core::internal::bounded_int;
+            #[feature("bounded-int-utils")]
+            use core::internal::bounded_int::{self, BoundedInt};
+            use core::internal::OptionRev;
+
             fn main() -> BoundedInt<-128, 126> {
                 let num = match bounded_int::trim_max::<i8>(1) {
                     OptionRev::Some(n) => n,
@@ -859,8 +861,10 @@ mod test {
     #[test]
     fn test_trim_some_neg_i8() {
         let (_, program) = load_cairo!(
-            use core::internal::{OptionRev, bounded_int::BoundedInt};
-            use core::internal::bounded_int;
+            #[feature("bounded-int-utils")]
+            use core::internal::bounded_int::{self, BoundedInt};
+            use core::internal::OptionRev;
+
             fn main() -> BoundedInt<-127, 127> {
                 let num = match bounded_int::trim_min::<i8>(1) {
                     OptionRev::Some(n) => n,
@@ -890,8 +894,10 @@ mod test {
     #[test]
     fn test_trim_some_u32() {
         let (_, program) = load_cairo!(
-            use core::internal::{OptionRev, bounded_int::BoundedInt};
-            use core::internal::bounded_int;
+            #[feature("bounded-int-utils")]
+            use core::internal::bounded_int::{self, BoundedInt};
+            use core::internal::OptionRev;
+
             fn main() -> BoundedInt<0, 4294967294> {
                 let num = match bounded_int::trim_max::<u32>(0xfffffffe) {
                     OptionRev::Some(n) => n,
@@ -921,8 +927,10 @@ mod test {
     #[test]
     fn test_trim_none() {
         let (_, program) = load_cairo!(
-            use core::internal::{OptionRev, bounded_int::BoundedInt};
-            use core::internal::bounded_int;
+            #[feature("bounded-int-utils")]
+            use core::internal::bounded_int::{self, BoundedInt};
+            use core::internal::OptionRev;
+
             fn main() -> BoundedInt<-32767, 32767> {
                 let num = match bounded_int::trim_min::<i16>(-0x8000) {
                     OptionRev::Some(n) => n,

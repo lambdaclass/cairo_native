@@ -94,7 +94,7 @@ pub fn build_signed<'ctx, 'this, T>(
     selector: &SintConcrete<T>,
 ) -> Result<()>
 where
-    T: IntMulTraits + IsZeroTraits + SintTraits,
+    T: IntMulTraits + SintTraits,
 {
     match selector {
         SintConcrete::Const(info) => {
@@ -108,9 +108,6 @@ where
         }
         SintConcrete::FromFelt252(info) => {
             build_from_felt252(context, registry, entry, location, helper, metadata, info)
-        }
-        SintConcrete::IsZero(info) => {
-            build_is_zero(context, registry, entry, location, helper, metadata, info)
         }
         SintConcrete::Operation(info) => {
             build_operation(context, registry, entry, location, helper, metadata, info)
@@ -194,9 +191,6 @@ pub fn build_i128<'ctx, 'this>(
         }
         Sint128Concrete::FromFelt252(info) => {
             build_from_felt252(context, registry, entry, location, helper, metadata, info)
-        }
-        Sint128Concrete::IsZero(info) => {
-            build_is_zero(context, registry, entry, location, helper, metadata, info)
         }
         Sint128Concrete::Operation(info) => {
             build_operation(context, registry, entry, location, helper, metadata, info)
@@ -871,8 +865,7 @@ fn build_wide_mul<'ctx, 'this>(
 
     let ext_fn = if registry
         .get_type(&info.signature.param_signatures[0].ty)?
-        .integer_range(registry)
-        .unwrap()
+        .integer_range(registry)?
         .lower
         .is_zero()
     {
@@ -1477,73 +1470,6 @@ mod test {
         Ok(())
     }
 
-    fn test_is_zero<T>() -> Result<(), Box<dyn std::error::Error>>
-    where
-        T: Bounded + Copy + Num,
-        Value: From<T>,
-    {
-        let n_bits = 8 * mem::size_of::<T>();
-        let type_id = format!(
-            "{}{n_bits}",
-            if T::min_value().is_zero() { 'u' } else { 'i' }
-        );
-
-        let program = ProgramParser::new()
-            .parse(&format!(
-                r#"
-                    type {type_id} = {type_id};
-                    type Unit = Struct<ut@Tuple>;
-                    type NonZero<{type_id}> = NonZero<{type_id}>;
-                    type IsZeroResult<{type_id}> = Enum<ut@core::zeroable::IsZeroResult::<core::integer::{type_id}>, Unit, NonZero<{type_id}>>;
-
-                    libfunc {type_id}_is_zero = {type_id}_is_zero;
-                    libfunc branch_align = branch_align;
-                    libfunc struct_construct<Unit> = struct_construct<Unit>;
-                    libfunc enum_init<IsZeroResult<{type_id}>, 0> = enum_init<IsZeroResult<{type_id}>, 0>;
-                    libfunc enum_init<IsZeroResult<{type_id}>, 1> = enum_init<IsZeroResult<{type_id}>, 1>;
-
-                    {type_id}_is_zero([0]) {{ fallthrough() 5([2]) }};
-                    branch_align() -> ();
-                    struct_construct<Unit>() -> ([2]);
-                    enum_init<IsZeroResult<{type_id}>, 0>([2]) -> ([3]);
-                    return([3]);
-                    branch_align() -> ();
-                    enum_init<IsZeroResult<{type_id}>, 1>([2]) -> ([3]);
-                    return([3]);
-
-                    [0]@0([0]: {type_id}) -> (IsZeroResult<{type_id}>);
-                "#,
-            ))
-            .map_err(|e| e.to_string())?;
-
-        let context = NativeContext::new();
-        let module = context.compile(&program, false, None)?;
-        let executor = JitNativeExecutor::from_native_module(module, OptLevel::default())?;
-
-        let data = [T::min_value(), T::zero(), T::one(), T::max_value()];
-        for value in data.into_iter() {
-            let result = executor.invoke_dynamic(&program.funcs[0].id, &[value.into()], None)?;
-
-            assert_eq!(
-                result.return_value,
-                Value::Enum {
-                    tag: !value.is_zero() as usize,
-                    value: Box::new(if value.is_zero() {
-                        Value::Struct {
-                            fields: Vec::new(),
-                            debug_name: None,
-                        }
-                    } else {
-                        value.into()
-                    }),
-                    debug_name: None,
-                },
-            );
-        }
-
-        Ok(())
-    }
-
     fn test_unsigned_operation<T>() -> Result<(), Box<dyn std::error::Error>>
     where
         T: Bounded + Copy + Num + OverflowingAdd + OverflowingSub,
@@ -2042,18 +1968,6 @@ mod test {
             i32 as i32_from_felt252,
             i64 as i64_from_felt252,
             i128 as i128_from_felt252;
-
-        test_is_zero for
-            u8 as u8_is_zero,
-            u16 as u16_is_zero,
-            u32 as u32_is_zero,
-            u64 as u64_is_zero,
-            u128 as u128_is_zero,
-            i8 as i8_is_zero,
-            i16 as i16_is_zero,
-            i32 as i32_is_zero,
-            i64 as i64_is_zero,
-            i128 as i128_is_zero;
 
         test_unsigned_operation for
             u8 as u8_operation,

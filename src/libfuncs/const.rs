@@ -17,7 +17,7 @@ use cairo_lang_sierra::{
             ConstConcreteType,
         },
         core::{CoreLibfunc, CoreType, CoreTypeConcrete},
-        starknet::StarkNetTypeConcrete,
+        starknet::StarknetTypeConcrete,
     },
     program::GenericArg,
     program_registry::ProgramRegistry,
@@ -267,8 +267,8 @@ pub fn build_const_type_value<'ctx, 'this>(
 
             entry.const_int_from_type(context, location, value, inner_ty)
         }
-        CoreTypeConcrete::StarkNet(
-            StarkNetTypeConcrete::ClassHash(_) | StarkNetTypeConcrete::ContractAddress(_),
+        CoreTypeConcrete::Starknet(
+            StarknetTypeConcrete::ClassHash(_) | StarknetTypeConcrete::ContractAddress(_),
         ) => {
             let value = match &info.inner_data.as_slice() {
                 [GenericArg::Value(value)] => value.clone(),

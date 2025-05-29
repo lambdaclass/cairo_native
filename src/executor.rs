@@ -20,7 +20,7 @@ use cairo_lang_sierra::{
     extensions::{
         circuit::CircuitTypeConcrete,
         core::{CoreLibfunc, CoreType, CoreTypeConcrete},
-        starknet::StarkNetTypeConcrete,
+        starknet::StarknetTypeConcrete,
         ConcreteType,
     },
     ids::ConcreteTypeId,
@@ -72,13 +72,7 @@ fn invoke_dynamic(
     args: &[Value],
     gas: u64,
     mut syscall_handler: Option<impl StarknetSyscallHandler>,
-    find_dict_overrides: impl Copy
-        + Fn(
-            &ConcreteTypeId,
-        ) -> (
-            Option<extern "C" fn(*mut c_void, *mut c_void)>,
-            Option<extern "C" fn(*mut c_void)>,
-        ),
+    find_dict_drop_override: impl Copy + Fn(&ConcreteTypeId) -> Option<extern "C" fn(*mut c_void)>,
 ) -> Result<ExecutionResult, Error> {
     tracing::info!("Invoking function with signature: {function_signature:?}.");
     let arena = Bump::new();
@@ -168,7 +162,7 @@ fn invoke_dynamic(
             CoreTypeConcrete::GasBuiltin(_) => {
                 gas.to_bytes(&mut invoke_data, |_| unreachable!())?
             }
-            CoreTypeConcrete::StarkNet(StarkNetTypeConcrete::System(_)) => {
+            CoreTypeConcrete::Starknet(StarknetTypeConcrete::System(_)) => {
                 let syscall_handler = syscall_handler
                     .as_mut()
                     .to_native_assert_error("syscall handler should be available")?;
@@ -192,7 +186,7 @@ fn invoke_dynamic(
                 arena: &arena,
                 registry,
             }
-            .to_bytes(&mut invoke_data, find_dict_overrides)?,
+            .to_bytes(&mut invoke_data, find_dict_drop_override)?,
         }
     }
 
@@ -260,7 +254,7 @@ fn invoke_dynamic(
                     }
                 });
             }
-            CoreTypeConcrete::StarkNet(StarkNetTypeConcrete::System(_)) => {
+            CoreTypeConcrete::Starknet(StarknetTypeConcrete::System(_)) => {
                 if let Some(return_ptr) = &mut return_ptr {
                     unsafe {
                         let ptr = return_ptr.cast::<*mut ()>();
@@ -426,11 +420,11 @@ fn parse_result(
             true,
         )?),
         CoreTypeConcrete::Felt252(_)
-        | CoreTypeConcrete::StarkNet(
-            StarkNetTypeConcrete::ClassHash(_)
-            | StarkNetTypeConcrete::ContractAddress(_)
-            | StarkNetTypeConcrete::StorageAddress(_)
-            | StarkNetTypeConcrete::StorageBaseAddress(_),
+        | CoreTypeConcrete::Starknet(
+            StarknetTypeConcrete::ClassHash(_)
+            | StarknetTypeConcrete::ContractAddress(_)
+            | StarknetTypeConcrete::StorageAddress(_)
+            | StarknetTypeConcrete::StorageBaseAddress(_),
         ) => match return_ptr {
             Some(return_ptr) => Ok(Value::from_ptr(return_ptr, type_id, registry, true)?),
             None => {
@@ -648,7 +642,7 @@ fn parse_result(
         | CoreTypeConcrete::Pedersen(_)
         | CoreTypeConcrete::Poseidon(_)
         | CoreTypeConcrete::SegmentArena(_)
-        | CoreTypeConcrete::StarkNet(StarkNetTypeConcrete::System(_)) => {
+        | CoreTypeConcrete::Starknet(StarknetTypeConcrete::System(_)) => {
             native_panic!("builtins should have been handled before")
         }
 
@@ -656,12 +650,18 @@ fn parse_result(
         | CoreTypeConcrete::Span(_)
         | CoreTypeConcrete::Uninitialized(_)
         | CoreTypeConcrete::Coupon(_)
-        | CoreTypeConcrete::StarkNet(_)
+        | CoreTypeConcrete::Starknet(_)
         | CoreTypeConcrete::Uint128MulGuarantee(_)
         | CoreTypeConcrete::Circuit(_)
-        | CoreTypeConcrete::RangeCheck96(_) => native_panic!("not yet implemented as results"),
+        | CoreTypeConcrete::RangeCheck96(_) => {
+            native_panic!("range check 96 not yet implemented as results")
+        }
         // 2.9.0
-        CoreTypeConcrete::IntRange(_) => native_panic!("not yet implemented as results"),
+        CoreTypeConcrete::IntRange(_) => native_panic!("int range not yet implemented as results"),
+        // 2.11.1
+        CoreTypeConcrete::Blake(_) => native_panic!("blake not yet implemented as results"),
+        // 2.12.0
+        CoreTypeConcrete::QM31(_) => native_panic!("qm31 not yet implemented as results"),
     }
 }
 
@@ -679,7 +679,7 @@ mod tests {
     #[fixture]
     fn program() -> Program {
         let (_, program) = load_cairo! {
-            use core::starknet::{SyscallResultTrait, get_block_hash_syscall};
+            use starknet::{SyscallResultTrait, get_block_hash_syscall};
 
             fn run_test() -> felt252 {
                 42
@@ -760,10 +760,15 @@ mod tests {
             .expect("failed to compile context");
         let executor = AotNativeExecutor::from_native_module(module, OptLevel::default()).unwrap();
 
-        // The last function in the program is the `get` wrapper function.
         let entrypoint_function_id = &starknet_program
             .funcs
-            .last()
+            .iter()
+            .find(|f| {
+                f.id.debug_name
+                    .as_ref()
+                    .map(|name| name.contains("__wrapper__ISimpleStorageImpl__get"))
+                    .unwrap_or_default()
+            })
             .expect("should have a function")
             .id;
 
@@ -787,10 +792,15 @@ mod tests {
             .expect("failed to compile context");
         let executor = JitNativeExecutor::from_native_module(module, OptLevel::default()).unwrap();
 
-        // The last function in the program is the `get` wrapper function.
         let entrypoint_function_id = &starknet_program
             .funcs
-            .last()
+            .iter()
+            .find(|f| {
+                f.id.debug_name
+                    .as_ref()
+                    .map(|name| name.contains("__wrapper__ISimpleStorageImpl__get"))
+                    .unwrap_or_default()
+            })
             .expect("should have a function")
             .id;
 

@@ -54,6 +54,12 @@ impl AotNativeExecutor {
 
         setup_runtime(|name| executor.find_symbol_ptr(name));
 
+        #[cfg(feature = "with-debug-utils")]
+        crate::metadata::debug_utils::setup_runtime(|name| executor.find_symbol_ptr(name));
+
+        #[cfg(feature = "with-trace-dump")]
+        crate::metadata::trace_dump::setup_runtime(|name| executor.find_symbol_ptr(name));
+
         executor
     }
 
@@ -99,7 +105,7 @@ impl AotNativeExecutor {
             args,
             available_gas,
             Option::<DummySyscallHandler>::None,
-            self.build_find_dict_overrides(),
+            self.build_find_dict_drop_override(),
         )
     }
 
@@ -122,7 +128,7 @@ impl AotNativeExecutor {
             args,
             available_gas,
             Some(syscall_handler),
-            self.build_find_dict_overrides(),
+            self.build_find_dict_drop_override(),
         )
     }
 
@@ -150,7 +156,7 @@ impl AotNativeExecutor {
             }],
             available_gas,
             Some(syscall_handler),
-            self.build_find_dict_overrides(),
+            self.build_find_dict_drop_override(),
         )?)
     }
 
@@ -181,27 +187,14 @@ impl AotNativeExecutor {
         Ok(&self.registry.get_function(function_id)?.signature)
     }
 
-    fn build_find_dict_overrides(
+    fn build_find_dict_drop_override(
         &self,
-    ) -> impl '_
-           + Copy
-           + Fn(
-        &ConcreteTypeId,
-    ) -> (
-        Option<extern "C" fn(*mut c_void, *mut c_void)>,
-        Option<extern "C" fn(*mut c_void)>,
-    ) {
+    ) -> impl '_ + Copy + Fn(&ConcreteTypeId) -> Option<extern "C" fn(*mut c_void)> {
         |type_id| {
-            (
-                self.dict_overrides
-                    .get_dup_fn(type_id)
-                    .and_then(|symbol| self.find_symbol_ptr(symbol))
-                    .map(|ptr| unsafe { transmute(ptr as *const ()) }),
-                self.dict_overrides
-                    .get_drop_fn(type_id)
-                    .and_then(|symbol| self.find_symbol_ptr(symbol))
-                    .map(|ptr| unsafe { transmute(ptr as *const ()) }),
-            )
+            self.dict_overrides
+                .get_drop_fn(type_id)
+                .and_then(|symbol| self.find_symbol_ptr(symbol))
+                .map(|ptr| unsafe { transmute(ptr as *const ()) })
         }
     }
 }
@@ -220,7 +213,7 @@ mod tests {
     #[fixture]
     fn program() -> Program {
         let (_, program) = load_cairo! {
-            use core::starknet::{SyscallResultTrait, get_block_hash_syscall};
+            use starknet::{SyscallResultTrait, get_block_hash_syscall};
 
             fn run_test() -> felt252 {
                 42
@@ -328,10 +321,15 @@ mod tests {
             .expect("failed to compile context");
         let executor = AotNativeExecutor::from_native_module(module, optlevel).unwrap();
 
-        // The last function in the program is the `get` wrapper function.
         let entrypoint_function_id = &starknet_program
             .funcs
-            .last()
+            .iter()
+            .find(|f| {
+                f.id.debug_name
+                    .as_ref()
+                    .map(|name| name.contains("__wrapper__ISimpleStorageImpl__get"))
+                    .unwrap_or_default()
+            })
             .expect("should have a function")
             .id;
 
