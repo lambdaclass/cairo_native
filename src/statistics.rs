@@ -6,13 +6,13 @@ use serde::Serialize;
 /// It should be completely filled at the end of the compilation.
 #[derive(Default, Serialize)]
 pub struct Statistics {
-    /// Number of types defined in the sierra.
+    /// Number of types defined in the Sierra code.
     pub sierra_type_count: Option<usize>,
-    /// Number of libfuncs defined in the sierra.
+    /// Number of libfuncs defined in the Sierra code.
     pub sierra_libfunc_count: Option<usize>,
-    /// Number of statements contained in the sierra.
+    /// Number of statements contained in the Sierra code.
     pub sierra_statement_count: Option<usize>,
-    /// Number of user functions defined in the sierra.
+    /// Number of user functions defined in the Sierra code.
     pub sierra_func_count: Option<usize>,
     /// Number of statements for each distinct libfunc.
     pub sierra_libfunc_frequency: BTreeMap<String, u128>,
