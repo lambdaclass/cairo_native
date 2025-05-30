@@ -35,13 +35,15 @@ fn eval_downcast(
     };
     let [value] = get_numeric_args_as_bigints(&args[1..]).try_into().unwrap();
 
-    let int_ty = registry.get_type(&info.to_ty).unwrap();
-
     let range = info.to_range.lower.clone()..info.to_range.upper.clone();
+
     if range.contains(&value) {
         EvalAction::NormalBranch(
             0,
-            smallvec![range_check, get_value_from_integer(registry, int_ty, value)],
+            smallvec![
+                range_check,
+                get_value_from_integer(registry, &info.to_ty, value)
+            ],
         )
     } else {
         EvalAction::NormalBranch(1, smallvec![range_check])
@@ -54,12 +56,10 @@ fn eval_upcast(
     args: Vec<Value>,
 ) -> EvalAction {
     let [value] = get_numeric_args_as_bigints(&args).try_into().unwrap();
-    let int_ty = registry
-        .get_type(&info.branch_signatures()[0].vars[0].ty)
-        .unwrap();
+    let int_ty_id = &info.branch_signatures()[0].vars[0].ty;
 
     EvalAction::NormalBranch(
         0,
-        smallvec![get_value_from_integer(registry, int_ty, value)],
+        smallvec![get_value_from_integer(registry, int_ty_id, value)],
     )
 }

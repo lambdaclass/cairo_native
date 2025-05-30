@@ -471,7 +471,6 @@ fn eval<'a>(
         CoreConcreteLibfunc::Circuit(selector) => self::circuit::eval(registry, selector, args),
         CoreConcreteLibfunc::Const(selector) => self::r#const::eval(registry, selector, args),
         CoreConcreteLibfunc::Coupon(selector) => self::coupon::eval(registry, selector, args),
-        CoreConcreteLibfunc::CouponCall(_) => todo!(),
         CoreConcreteLibfunc::Debug(_) => todo!(),
         CoreConcreteLibfunc::Drop(info) => self::drop::eval(registry, info, args),
         CoreConcreteLibfunc::Dup(info) => self::dup::eval(registry, info, args),
@@ -484,7 +483,12 @@ fn eval<'a>(
         CoreConcreteLibfunc::Felt252DictEntry(selector) => {
             self::felt252_dict_entry::eval(registry, selector, args)
         }
-        CoreConcreteLibfunc::FunctionCall(info) => self::function_call::eval(registry, info, args),
+        CoreConcreteLibfunc::FunctionCall(info) => {
+            self::function_call::eval_function_call(registry, info, args)
+        }
+        CoreConcreteLibfunc::CouponCall(info) => {
+            self::function_call::eval_coupon_call(registry, info, args)
+        }
         CoreConcreteLibfunc::Gas(selector) => {
             self::gas::eval(registry, selector, args, gas, *statement_idx, builtin_costs)
         }

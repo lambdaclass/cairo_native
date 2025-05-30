@@ -14,12 +14,14 @@ use cairo_lang_sierra::{
         is_zero::IsZeroTraits,
         lib_func::SignatureOnlyConcreteLibfunc,
     },
+    ids::ConcreteTypeId,
     program_registry::ProgramRegistry,
 };
-use num_bigint::{BigInt, BigUint};
+use num_bigint::{BigInt, BigUint, ToBigInt};
 use num_traits::ops::overflowing::{OverflowingAdd, OverflowingSub};
 use smallvec::smallvec;
 use starknet_crypto::Felt;
+use starknet_types_core::felt::NonZeroFelt;
 
 use crate::{
     utils::{get_numeric_args_as_bigints, get_value_from_integer, integer_range},
@@ -29,7 +31,8 @@ use crate::{
 use super::EvalAction;
 
 fn apply_overflowing_op_for_type(
-    ty: &CoreTypeConcrete,
+    registry: &ProgramRegistry<CoreType, CoreLibfunc>,
+    ty: &ConcreteTypeId,
     lhs: BigInt,
     rhs: BigInt,
     op: IntOperator,
@@ -50,8 +53,10 @@ fn apply_overflowing_op_for_type(
         (result.into(), had_overflow)
     }
 
+    let ty = registry.get_type(ty).unwrap();
+
     match ty {
-        CoreTypeConcrete::Sint8(_) => overflowing_op::<u8>(lhs, rhs, op),
+        CoreTypeConcrete::Sint8(_) => overflowing_op::<i8>(lhs, rhs, op),
         CoreTypeConcrete::Sint16(_) => overflowing_op::<i16>(lhs, rhs, op),
         CoreTypeConcrete::Sint32(_) => overflowing_op::<i32>(lhs, rhs, op),
         CoreTypeConcrete::Sint64(_) => overflowing_op::<i64>(lhs, rhs, op),
@@ -132,7 +137,7 @@ pub fn eval_uint128(
         Uint128Concrete::SquareRoot(info) => eval_square_root(registry, info, args),
         Uint128Concrete::Equal(info) => eval_equal(registry, info, args),
         Uint128Concrete::ToFelt252(info) => eval_to_felt(registry, info, args),
-        Uint128Concrete::FromFelt252(info) => eval_from_felt(registry, info, args),
+        Uint128Concrete::FromFelt252(info) => eval_u128_from_felt(registry, info, args),
         Uint128Concrete::IsZero(info) => eval_is_zero(registry, info, args),
         Uint128Concrete::Divmod(info) => eval_divmod(registry, info, args),
         Uint128Concrete::Bitwise(info) => eval_bitwise(registry, info, args),
@@ -147,9 +152,7 @@ fn eval_const<T: IntTraits>(
     info: &IntConstConcreteLibfunc<T>,
     _args: Vec<Value>,
 ) -> EvalAction {
-    let int_ty = registry
-        .get_type(&info.signature.branch_signatures[0].vars[0].ty)
-        .unwrap();
+    let int_ty = &info.signature.branch_signatures[0].vars[0].ty;
 
     EvalAction::NormalBranch(
         0,
@@ -167,9 +170,7 @@ fn eval_bitwise(
     };
     let [lhs, rhs]: [BigInt; 2] = get_numeric_args_as_bigints(&args[1..]).try_into().unwrap();
 
-    let int_ty = registry
-        .get_type(&info.signature.branch_signatures[0].vars[1].ty)
-        .unwrap();
+    let int_ty = &info.signature.branch_signatures[0].vars[1].ty;
 
     let and = get_value_from_integer(registry, int_ty, &lhs & &rhs);
     let or = get_value_from_integer(registry, int_ty, &lhs | &rhs);
@@ -188,15 +189,13 @@ fn eval_diff(
     };
     let [lhs, rhs]: [BigInt; 2] = get_numeric_args_as_bigints(&args[1..]).try_into().unwrap();
 
-    let int_ty = registry
-        .get_type(&info.signature.branch_signatures[0].vars[1].ty)
-        .unwrap();
+    let int_ty = &info.signature.branch_signatures[0].vars[1].ty;
 
-    let overflow = (lhs >= rhs) as usize;
-    let (res, _) = apply_overflowing_op_for_type(int_ty, lhs, rhs, IntOperator::OverflowingSub);
+    let (res, had_overflow) =
+        apply_overflowing_op_for_type(registry, int_ty, lhs, rhs, IntOperator::OverflowingSub);
     let res = get_value_from_integer(registry, int_ty, res);
 
-    EvalAction::NormalBranch(overflow, smallvec![range_check, res])
+    EvalAction::NormalBranch(had_overflow as usize, smallvec![range_check, res])
 }
 
 fn eval_divmod(
@@ -209,9 +208,7 @@ fn eval_divmod(
     };
     let [lhs, rhs]: [BigInt; 2] = get_numeric_args_as_bigints(&args[1..]).try_into().unwrap();
 
-    let int_ty = registry
-        .get_type(&info.signature.branch_signatures[0].vars[1].ty)
-        .unwrap();
+    let int_ty = &info.signature.branch_signatures[0].vars[1].ty;
 
     let res = &lhs / &rhs;
     let rem = lhs % rhs;
@@ -242,19 +239,53 @@ fn eval_from_felt(
         panic!()
     };
 
-    let int_ty = registry
-        .get_type(&info.signature.branch_signatures[0].vars[1].ty)
-        .unwrap();
+    let prime = Felt::prime();
+    let half_prime = &prime / BigUint::from(2u8);
+
+    let int_ty = &info.signature.branch_signatures[0].vars[1].ty;
 
     let range = integer_range(int_ty, registry);
 
-    let value = value_felt.to_bigint();
-
-    if value > range.lower && value <= range.upper {
+    let value = {
+        let value_bigint = value_felt.to_biguint();
+        if value_bigint > half_prime {
+            (prime - value_bigint).to_bigint().unwrap() * BigInt::from(-1)
+        } else {
+            value_felt.to_bigint()
+        }
+    };
+    if value >= range.lower && value < range.upper {
         let value = get_value_from_integer(registry, int_ty, value);
         EvalAction::NormalBranch(0, smallvec![range_check, value])
     } else {
         EvalAction::NormalBranch(1, smallvec![range_check])
+    }
+}
+
+pub fn eval_u128_from_felt(
+    _registry: &ProgramRegistry<CoreType, CoreLibfunc>,
+    _info: &SignatureOnlyConcreteLibfunc,
+    args: Vec<Value>,
+) -> EvalAction {
+    let [range_check @ Value::Unit, Value::Felt(value)]: [Value; 2] = args.try_into().unwrap()
+    else {
+        panic!()
+    };
+
+    let bound = Felt::from(u128::MAX) + 1;
+
+    if value < bound {
+        let value: u128 = value.to_biguint().try_into().unwrap();
+        EvalAction::NormalBranch(0, smallvec![range_check, Value::U128(value)])
+    } else {
+        let (new_value, overflow) = value.div_rem(&NonZeroFelt::try_from(bound).unwrap());
+
+        let overflow: u128 = overflow.to_biguint().try_into().unwrap();
+        let new_value: u128 = new_value.to_biguint().try_into().unwrap();
+        EvalAction::NormalBranch(
+            1,
+            smallvec![range_check, Value::U128(new_value), Value::U128(overflow)],
+        )
     }
 }
 
@@ -265,9 +296,7 @@ fn eval_is_zero(
 ) -> EvalAction {
     let [value]: [BigInt; 1] = get_numeric_args_as_bigints(&args).try_into().unwrap();
 
-    let int_ty = registry
-        .get_type(&info.signature.branch_signatures[1].vars[0].ty)
-        .unwrap();
+    let int_ty = &info.signature.branch_signatures[1].vars[0].ty;
 
     if value == 0.into() {
         EvalAction::NormalBranch(0, smallvec![])
@@ -288,11 +317,10 @@ fn eval_operation(
         panic!()
     };
     let [lhs, rhs]: [BigInt; 2] = get_numeric_args_as_bigints(&args[1..]).try_into().unwrap();
-    let int_ty = registry
-        .get_type(&info.signature.branch_signatures[0].vars[1].ty)
-        .unwrap();
+    let int_ty = &info.signature.branch_signatures[0].vars[1].ty;
 
-    let (res, had_overflow) = apply_overflowing_op_for_type(int_ty, lhs, rhs, info.operator);
+    let (res, had_overflow) =
+        apply_overflowing_op_for_type(registry, int_ty, lhs, rhs, info.operator);
     let res = get_value_from_integer(registry, int_ty, res);
 
     EvalAction::NormalBranch(had_overflow as usize, smallvec![range_check, res])
@@ -308,9 +336,7 @@ fn eval_square_root(
     };
     let [value]: [BigInt; 1] = get_numeric_args_as_bigints(&args[1..]).try_into().unwrap();
 
-    let int_ty = registry
-        .get_type(&info.signature.branch_signatures[0].vars[1].ty)
-        .unwrap();
+    let int_ty = &info.signature.branch_signatures[0].vars[1].ty;
 
     let res = value.sqrt();
 
@@ -337,9 +363,7 @@ fn eval_widemul(
 ) -> EvalAction {
     let [lhs, rhs]: [BigInt; 2] = get_numeric_args_as_bigints(&args).try_into().unwrap();
 
-    let int_ty = registry
-        .get_type(&info.signature.branch_signatures[0].vars[0].ty)
-        .unwrap();
+    let int_ty = &info.signature.branch_signatures[0].vars[0].ty;
 
     let res = lhs * rhs;
 
