@@ -126,5 +126,4 @@ jobs:
         continue-on-error: true
 
       - name: Compare states
-        run: |
-          ./scripts/cmp_state_dumps.sh
+        run: python ./scripts/cmp_state_dumps.py
