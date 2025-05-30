@@ -46,6 +46,11 @@ struct Args {
     #[arg(short = 'O', long, default_value_t = 0)]
     opt_level: u8,
 
+    #[cfg(feature = "with-libfunc-profiling")]
+    #[arg(long)]
+    /// The output path for the libfunc profilling results
+    profiler_output: PathBuf,
+
     #[cfg(feature = "with-trace-dump")]
     #[arg(long)]
     /// The output path for the execution trace
@@ -131,6 +136,17 @@ fn main() -> anyhow::Result<()> {
                 }
             }
 
+            #[cfg(feature = "with-libfunc-profiling")]
+            {
+                use cairo_native::metadata::profiler::ProfilerBinding;
+
+                if let Some(trace_id) = executor.find_symbol_ptr(ProfilerBinding::TraceId.symbol())
+                {
+                    let trace_id = trace_id.cast::<u64>();
+                    unsafe { *trace_id = 0 };
+                }
+            }
+
             Box::new(move |function_id, args, gas, syscall_handler| {
                 executor.invoke_dynamic_with_syscall_handler(
                     function_id,
@@ -151,6 +167,16 @@ fn main() -> anyhow::Result<()> {
             0,
             TraceDump::new(ProgramRegistry::new(&sierra_program).unwrap()),
         );
+    }
+
+    #[cfg(feature = "with-libfunc-profiling")]
+    {
+        use cairo_native::metadata::profiler::{ProfileImpl, LIBFUNC_PROFILE};
+
+        LIBFUNC_PROFILE
+            .lock()
+            .unwrap()
+            .insert(0, ProfileImpl::new(sierra_program.clone()));
     }
 
     let gas_metadata =
@@ -186,6 +212,31 @@ fn main() -> anyhow::Result<()> {
     }
     if let Some(gas) = result.remaining_gas {
         println!("Remaining gas: {gas}");
+    }
+
+    #[cfg(feature = "with-libfunc-profiling")]
+    {
+        use std::{fs::File, io::Write};
+
+        let profile = cairo_native::metadata::profiler::LIBFUNC_PROFILE
+            .lock()
+            .unwrap();
+
+        assert_eq!(profile.values().len(), 1);
+
+        let profile = profile.values().next().unwrap();
+
+        let mut output = File::create(args.profiler_output)?;
+
+        for (libfunc_id, (n_samples, sum, quartiles, average, std_dev)) in profile.process() {
+            writeln!(output, "{libfunc_id}")?;
+            writeln!(output, "    Samples  : {n_samples}")?;
+            writeln!(output, "    Sum      : {sum}")?;
+            writeln!(output, "    Average  : {average}")?;
+            writeln!(output, "    Deviation: {std_dev}")?;
+            writeln!(output, "    Quartiles: {quartiles:?}")?;
+            writeln!(output)?;
+        }
     }
 
     #[cfg(feature = "with-trace-dump")]
