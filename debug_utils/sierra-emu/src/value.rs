@@ -27,8 +27,11 @@ pub enum Value {
         value: BigInt,
     },
     Circuit(Vec<BigUint>),
+    CircuitOutputs {
+        circuits: Vec<BigUint>,
+        modulus: BigUint,
+    },
     CircuitModulus(BigUint),
-    CircuitOutputs(Vec<BigUint>),
     Enum {
         self_ty: ConcreteTypeId,
         index: usize,
@@ -173,25 +176,31 @@ impl Value {
 
             // Circuit related types
             CoreTypeConcrete::Circuit(selector) => match selector {
-                CircuitTypeConcrete::Circuit(_) => matches!(self, Self::Circuit(_)),
-                CircuitTypeConcrete::CircuitData(_) => matches!(self, Self::Circuit(_)),
-                CircuitTypeConcrete::CircuitOutputs(_) => matches!(self, Self::CircuitOutputs(_)),
-                CircuitTypeConcrete::CircuitInput(_) => matches!(self, Self::Unit),
-                CircuitTypeConcrete::CircuitInputAccumulator(_) => matches!(self, Self::Circuit(_)),
+                CircuitTypeConcrete::Circuit(_)
+                | CircuitTypeConcrete::CircuitData(_)
+                | CircuitTypeConcrete::CircuitInputAccumulator(_) => {
+                    matches!(self, Self::Circuit(_))
+                }
+                CircuitTypeConcrete::CircuitOutputs(_) => {
+                    matches!(self, Self::CircuitOutputs { .. })
+                }
                 CircuitTypeConcrete::CircuitModulus(_) => matches!(self, Self::CircuitModulus(_)),
                 CircuitTypeConcrete::U96Guarantee(_) => matches!(self, Self::U128(_)),
-                CircuitTypeConcrete::CircuitDescriptor(_)
-                | CircuitTypeConcrete::CircuitFailureGuarantee(_)
-                | CircuitTypeConcrete::AddMod(_)
+                CircuitTypeConcrete::CircuitInput(_) => {
+                    matches!(self, Self::Struct(_))
+                }
+                CircuitTypeConcrete::U96LimbsLessThanGuarantee(_) => {
+                    matches!(self, Self::Struct(_))
+                }
+                CircuitTypeConcrete::AddMod(_)
                 | CircuitTypeConcrete::MulMod(_)
+                | CircuitTypeConcrete::CircuitDescriptor(_)
+                | CircuitTypeConcrete::CircuitFailureGuarantee(_)
                 | CircuitTypeConcrete::AddModGate(_)
                 | CircuitTypeConcrete::CircuitPartialOutputs(_)
                 | CircuitTypeConcrete::InverseGate(_)
                 | CircuitTypeConcrete::MulModGate(_)
-                | CircuitTypeConcrete::SubModGate(_)
-                | CircuitTypeConcrete::U96LimbsLessThanGuarantee(_) => {
-                    matches!(self, Self::Unit)
-                }
+                | CircuitTypeConcrete::SubModGate(_) => matches!(self, Self::Unit),
             },
             CoreTypeConcrete::Const(info) => self.is(registry, &info.inner_ty),
             CoreTypeConcrete::EcOp(_) => matches!(self, Self::Unit),

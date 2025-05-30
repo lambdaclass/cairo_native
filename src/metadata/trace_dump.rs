@@ -208,7 +208,7 @@ pub mod trace_dump_runtime {
     };
     use cairo_lang_utils::ordered_hash_map::OrderedHashMap;
     use itertools::Itertools;
-    use num_bigint::{BigInt, BigUint};
+    use num_bigint::{BigInt, BigUint, Sign};
     use num_traits::One;
     use sierra_emu::{
         starknet::{
@@ -227,7 +227,11 @@ pub mod trace_dump_runtime {
         sync::{LazyLock, Mutex},
     };
 
-    use crate::{starknet::ArrayAbi, types::TypeBuilder};
+    use crate::{
+        starknet::ArrayAbi,
+        types::TypeBuilder,
+        utils::{get_integer_layout, layout_repeat},
+    };
 
     use crate::runtime::FeltDict;
 
@@ -565,21 +569,33 @@ pub mod trace_dump_runtime {
                         panic!("generic arg should be a Circuit");
                     };
 
-                    let u384_layout = Layout::from_size_align(48, 16).unwrap();
+                    let u96_layout = get_integer_layout(96);
 
                     let n_outputs = circuit.circuit_info.values.len();
                     let mut values = Vec::with_capacity(n_outputs);
 
-                    let value_ptr = value_ptr.cast::<[u8; 48]>();
+                    let (u384_struct_layout, _) = layout_repeat(&u96_layout, 4).unwrap();
+                    let (gates_array_layout, gate_stride) =
+                        layout_repeat(&u384_struct_layout, n_outputs).unwrap();
+                    let (_, modulus_offset) =
+                        gates_array_layout.extend(u384_struct_layout).unwrap();
 
+                    let value_ptr = value_ptr.cast::<[u8; 12]>();
+
+                    // get gate values
                     for i in 0..n_outputs {
-                        let size = u384_layout.pad_to_align().size();
-                        let current_ptr = value_ptr.byte_add(size * i);
-                        let current_value = current_ptr.as_ref();
-                        values.push(BigUint::from_bytes_le(current_value));
+                        let gate_ptr = value_ptr.byte_add(gate_stride * i);
+                        values.push(u384_struct_to_bigint(gate_ptr, 4));
                     }
 
-                    Value::CircuitOutputs(values)
+                    // get modulus value
+                    let modulus_ptr = value_ptr.byte_add(modulus_offset);
+                    let modulus = u384_struct_to_bigint(modulus_ptr, 4);
+
+                    Value::CircuitOutputs {
+                        circuits: values,
+                        modulus,
+                    }
                 }
                 CircuitTypeConcrete::CircuitPartialOutputs(_) => {
                     todo!("CircuitTypeConcrete::CircuitPartialOutputs")
@@ -627,7 +643,6 @@ pub mod trace_dump_runtime {
                     let value = unsafe { value_ptr.as_ref() };
                     Value::CircuitModulus(BigUint::from_bytes_le(value))
                 }
-
                 CircuitTypeConcrete::InverseGate(_) => Value::Unit,
                 CircuitTypeConcrete::MulModGate(_) => Value::Unit,
                 CircuitTypeConcrete::SubModGate(_) => Value::Unit,
@@ -640,7 +655,40 @@ pub mod trace_dump_runtime {
 
                     Value::U128(u128::from_le_bytes(array_value))
                 }
-                CircuitTypeConcrete::U96LimbsLessThanGuarantee(_) => Value::Unit,
+                CircuitTypeConcrete::U96LimbsLessThanGuarantee(info) => {
+                    let value_ptr = value_ptr.cast::<[u8; 12]>();
+
+                    let u96_layout = get_integer_layout(96);
+                    let (u384_struct_layout, struct_stride) =
+                        layout_repeat(&u96_layout, info.limb_count).unwrap();
+
+                    let output_limbs = (0..info.limb_count)
+                        .map(|i| {
+                            let current_ptr = value_ptr.byte_add(struct_stride * i);
+                            Value::BoundedInt {
+                                range: 0.into()..BigInt::one() << 96,
+                                value: BigInt::from_bytes_le(Sign::Plus, current_ptr.as_ref()),
+                            }
+                        })
+                        .collect::<Vec<_>>();
+
+                    let modulus_ptr = value_ptr.byte_add(u384_struct_layout.size());
+
+                    let modulus_limbs = (0..info.limb_count)
+                        .map(|i| {
+                            let current_ptr = modulus_ptr.byte_add(struct_stride * i);
+                            Value::BoundedInt {
+                                range: 0.into()..BigInt::one() << 96,
+                                value: BigInt::from_bytes_le(Sign::Plus, current_ptr.as_ref()),
+                            }
+                        })
+                        .collect::<Vec<_>>();
+
+                    Value::Struct(vec![
+                        Value::Struct(output_limbs),
+                        Value::Struct(modulus_limbs),
+                    ])
+                }
             },
             CoreTypeConcrete::Const(_) => todo!("CoreTypeConcrete::Const"),
             CoreTypeConcrete::Sint8(_) => Value::I8(value_ptr.cast().read()),
@@ -770,6 +818,20 @@ pub mod trace_dump_runtime {
                 todo!()
             }
         }
+    }
+
+    unsafe fn u384_struct_to_bigint(value_ptr: NonNull<[u8; 12]>, limbs_count: usize) -> BigUint {
+        let u96_layout = get_integer_layout(96);
+        let (_, elem_stride) = layout_repeat(&u96_layout, 4).unwrap();
+
+        let output_limbs = (0..limbs_count)
+            .flat_map(|i| {
+                let offset = elem_stride * i;
+                *value_ptr.byte_add(offset).as_ref()
+            })
+            .collect::<Vec<u8>>();
+
+        BigUint::from_bytes_le(&output_limbs)
     }
 
     #[derive(Debug)]
