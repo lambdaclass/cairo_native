@@ -136,6 +136,17 @@ fn main() -> anyhow::Result<()> {
                 }
             }
 
+            #[cfg(feature = "with-libfunc-profiling")]
+            {
+                use cairo_native::metadata::profiler::ProfilerBinding;
+
+                if let Some(trace_id) = executor.find_symbol_ptr(ProfilerBinding::TraceId.symbol())
+                {
+                    let trace_id = trace_id.cast::<u64>();
+                    unsafe { *trace_id = 0 };
+                }
+            }
+
             Box::new(move |function_id, args, gas, syscall_handler| {
                 executor.invoke_dynamic_with_syscall_handler(
                     function_id,
@@ -156,6 +167,16 @@ fn main() -> anyhow::Result<()> {
             0,
             TraceDump::new(ProgramRegistry::new(&sierra_program).unwrap()),
         );
+    }
+
+    #[cfg(feature = "with-libfunc-profiling")]
+    {
+        use cairo_native::metadata::profiler::{ProfileImpl, LIBFUNC_PROFILE};
+
+        LIBFUNC_PROFILE
+            .lock()
+            .unwrap()
+            .insert(0, ProfileImpl::new(sierra_program.clone()));
     }
 
     let gas_metadata =
@@ -195,93 +216,19 @@ fn main() -> anyhow::Result<()> {
 
     #[cfg(feature = "with-libfunc-profiling")]
     {
-        use cairo_lang_sierra::{ids::ConcreteLibfuncId, program::Statement};
-        use std::{collections::HashMap, fs::File, io::Write};
+        use std::{fs::File, io::Write};
 
-        let mut trace = HashMap::<ConcreteLibfuncId, (Vec<u64>, u64)>::new();
+        let profile = cairo_native::metadata::profiler::LIBFUNC_PROFILE
+            .lock()
+            .unwrap();
 
-        for (statement_idx, tick_delta) in cairo_native::metadata::profiler::ProfilerImpl::take() {
-            if let Statement::Invocation(invocation) = &sierra_program.statements[statement_idx.0] {
-                let (tick_deltas, extra_count) =
-                    trace.entry(invocation.libfunc_id.clone()).or_default();
+        assert_eq!(profile.values().len(), 1);
 
-                if tick_delta != u64::MAX {
-                    tick_deltas.push(tick_delta);
-                } else {
-                    *extra_count += 1;
-                }
-            }
-        }
-
-        let mut trace = trace
-            .into_iter()
-            .map(|(libfunc_id, (mut tick_deltas, extra_count))| {
-                tick_deltas.sort();
-
-                // Drop outliers.
-                {
-                    let q1 = tick_deltas[tick_deltas.len() / 4];
-                    let q3 = tick_deltas[3 * tick_deltas.len() / 4];
-                    let iqr = q3 - q1;
-
-                    let q1_thr = q1.saturating_sub(iqr + iqr / 2);
-                    let q3_thr = q3 + (iqr + iqr / 2);
-
-                    tick_deltas.retain(|x| *x >= q1_thr && *x <= q3_thr);
-                }
-
-                // Compute the quartiles.
-                let quartiles = [
-                    *tick_deltas.first().unwrap(),
-                    tick_deltas[tick_deltas.len() / 4],
-                    tick_deltas[tick_deltas.len() / 2],
-                    tick_deltas[3 * tick_deltas.len() / 4],
-                    *tick_deltas.last().unwrap(),
-                ];
-
-                // Compuite the average.
-                let average =
-                    tick_deltas.iter().copied().sum::<u64>() as f64 / tick_deltas.len() as f64;
-
-                // Compute the standard deviation.
-                let std_dev = {
-                    let sum = tick_deltas
-                        .iter()
-                        .copied()
-                        .map(|x| x as f64)
-                        .map(|x| (x - average))
-                        .map(|x| x * x)
-                        .sum::<f64>();
-                    sum / (tick_deltas.len() as u64 + extra_count) as f64
-                };
-
-                (
-                    libfunc_id,
-                    (
-                        tick_deltas.len() as u64 + extra_count,
-                        tick_deltas.iter().sum::<u64>()
-                            + (extra_count as f64 * average).round() as u64,
-                        quartiles,
-                        average,
-                        std_dev,
-                    ),
-                )
-            })
-            .collect::<Vec<_>>();
-
-        // Sort libfuncs by the order in which they are declared.
-        trace.sort_by_key(|(libfunc_id, _)| {
-            sierra_program
-                .libfunc_declarations
-                .iter()
-                .enumerate()
-                .find_map(|(i, x)| (&x.id == libfunc_id).then_some(i))
-                .unwrap()
-        });
+        let profile = profile.values().next().unwrap();
 
         let mut output = File::create(args.profiler_output)?;
 
-        for (libfunc_id, (n_samples, sum, quartiles, average, std_dev)) in trace {
+        for (libfunc_id, (n_samples, sum, quartiles, average, std_dev)) in profile.process() {
             writeln!(output, "{libfunc_id}")?;
             writeln!(output, "    Samples  : {n_samples}")?;
             writeln!(output, "    Sum      : {sum}")?;

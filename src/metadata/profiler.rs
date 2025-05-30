@@ -4,43 +4,50 @@ use crate::{
     error::{Error, Result},
     utils::BlockExt,
 };
-use cairo_lang_sierra::program::StatementIdx;
+use cairo_lang_sierra::{
+    ids::ConcreteLibfuncId,
+    program::{Program, Statement, StatementIdx},
+};
 use melior::{
     dialect::{
         arith::{self, CmpiPredicate},
         llvm::{self},
-        ods,
+        memref, ods,
     },
     ir::{
         attribute::{FlatSymbolRefAttribute, StringAttribute, TypeAttribute},
         operation::OperationBuilder,
-        r#type::IntegerType,
+        r#type::{IntegerType, MemRefType},
         Attribute, Block, BlockLike, Identifier, Location, Module, Region, Value,
     },
     Context,
 };
 use std::{
-    cell::{RefCell, UnsafeCell},
-    collections::HashSet,
+    cell::RefCell,
+    collections::{HashMap, HashSet},
     ffi::c_void,
-    mem,
+    ptr,
+    sync::{LazyLock, Mutex},
 };
 
 #[derive(Clone, Copy, Debug, Hash, PartialEq, Eq)]
 pub enum ProfilerBinding {
-    CallBack,
+    PushStmt,
+    TraceId,
 }
 
 impl ProfilerBinding {
     pub const fn symbol(self) -> &'static str {
         match self {
-            ProfilerBinding::CallBack => "cairo_native__profiler__callback",
+            ProfilerBinding::PushStmt => "cairo_native__profiler__push_stmt",
+            ProfilerBinding::TraceId => "cairo_native__profiler__trace_id",
         }
     }
 
     const fn function_ptr(self) -> *const () {
         match self {
-            ProfilerBinding::CallBack => ProfilerImpl::callback as *const (),
+            ProfilerBinding::PushStmt => ProfileImpl::push_stmt as *const (),
+            ProfilerBinding::TraceId => ptr::null(),
         }
     }
 }
@@ -71,9 +78,7 @@ impl ProfilerMeta {
         location: Location<'c>,
         binding: ProfilerBinding,
     ) -> Result<Value<'c, 'a>> {
-        if !self.active_map.borrow().contains(&binding) {
-            self.active_map.borrow_mut().insert(binding);
-
+        if self.active_map.borrow_mut().insert(binding) {
             module.body().append_operation(
                 ods::llvm::mlir_global(
                     context,
@@ -104,6 +109,42 @@ impl ProfilerMeta {
             global_address,
             llvm::r#type::pointer(context, 0),
         )
+    }
+
+    pub fn build_trace_id<'c, 'a>(
+        &self,
+        context: &'c Context,
+        module: &Module,
+        block: &'a Block<'c>,
+        location: Location<'c>,
+    ) -> Result<Value<'c, 'a>> {
+        if self
+            .active_map
+            .borrow_mut()
+            .insert(ProfilerBinding::TraceId)
+        {
+            module.body().append_operation(memref::global(
+                context,
+                ProfilerBinding::TraceId.symbol(),
+                None,
+                MemRefType::new(IntegerType::new(context, 64).into(), &[], None, None),
+                None,
+                false,
+                None,
+                location,
+            ));
+        }
+
+        let trace_id_ptr = block
+            .append_op_result(memref::get_global(
+                context,
+                ProfilerBinding::TraceId.symbol(),
+                MemRefType::new(IntegerType::new(context, 64).into(), &[], None, None),
+                location,
+            ))
+            .unwrap();
+
+        block.append_op_result(memref::load(trace_id_ptr, &[], location))
     }
 
     /// Get the timestamp
@@ -210,6 +251,8 @@ impl ProfilerMeta {
         // If core idx does not match:
         //   Write statement idx and -1.
 
+        let trace_id = self.build_trace_id(context, module, block, location)?;
+
         let i64_ty = IntegerType::new(context, 64).into();
 
         let statement_idx = block.const_int_from_type(context, location, statement_idx, i64_ty)?;
@@ -225,12 +268,12 @@ impl ProfilerMeta {
         ))?;
 
         let callback_ptr =
-            self.build_function(context, module, block, location, ProfilerBinding::CallBack)?;
+            self.build_function(context, module, block, location, ProfilerBinding::PushStmt)?;
 
         block.append_operation(
             ods::llvm::call(
                 context,
-                &[callback_ptr, statement_idx, delta_value],
+                &[callback_ptr, trace_id, statement_idx, delta_value],
                 location,
             )
             .into(),
@@ -239,43 +282,131 @@ impl ProfilerMeta {
     }
 }
 
-thread_local! {
-    static PROFILER_IMPL: UnsafeCell<ProfilerImpl> = const { UnsafeCell::new(ProfilerImpl::new()) };
+pub static LIBFUNC_PROFILE: LazyLock<Mutex<HashMap<u64, ProfileImpl>>> =
+    LazyLock::new(|| Mutex::new(HashMap::new()));
+
+/// This represents a libfunc's profile, which has the following structure:
+///
+/// `Vec<(libfunc_id, (samples_number, total_execution_time, quartiles, average_execution_time, standard_deviations))>``
+type ProfileInfo = Vec<(ConcreteLibfuncId, (u64, u64, [u64; 5], f64, f64))>;
+
+pub struct ProfileImpl {
+    pub trace: Vec<(StatementIdx, u64)>,
+    sierra_program: Program,
 }
 
-pub struct ProfilerImpl {
-    trace: Vec<(StatementIdx, u64)>,
-}
-
-impl ProfilerImpl {
-    const fn new() -> Self {
-        Self { trace: Vec::new() }
-    }
-
-    pub fn take() -> Vec<(StatementIdx, u64)> {
-        PROFILER_IMPL.with(|x| {
-            let x = unsafe { &mut *x.get() };
-
-            let mut trace = Vec::new();
-            mem::swap(&mut x.trace, &mut trace);
-
-            trace
-        })
+impl ProfileImpl {
+    pub fn new(sierra_program: Program) -> Self {
+        Self {
+            trace: Vec::new(),
+            sierra_program,
+        }
     }
 
     // Push a profiler frame
-    pub extern "C" fn callback(statement_idx: u64, tick_delta: u64) {
-        PROFILER_IMPL.with(|x| {
-            let x = unsafe { &mut *x.get() };
+    pub extern "C" fn push_stmt(trace_id: u64, statement_idx: u64, tick_delta: u64) {
+        let mut profiler = LIBFUNC_PROFILE.lock().unwrap();
 
-            x.trace
-                .push((StatementIdx(statement_idx as usize), tick_delta));
+        let Some(profiler) = profiler.get_mut(&trace_id) else {
+            eprintln!("Could not find libfunc profiler!");
+            return;
+        };
+
+        profiler
+            .trace
+            .push((StatementIdx(statement_idx as usize), tick_delta));
+    }
+
+    pub fn process(&self) -> ProfileInfo {
+        let mut trace = HashMap::<ConcreteLibfuncId, (Vec<u64>, u64)>::new();
+
+        for (statement_idx, tick_delta) in self.trace.iter() {
+            if let Statement::Invocation(invocation) =
+                &self.sierra_program.statements[statement_idx.0]
+            {
+                let (tick_deltas, extra_count) =
+                    trace.entry(invocation.libfunc_id.clone()).or_default();
+
+                if *tick_delta != u64::MAX {
+                    tick_deltas.push(*tick_delta);
+                } else {
+                    *extra_count += 1;
+                }
+            }
+        }
+
+        let mut trace = trace
+            .into_iter()
+            .map(|(libfunc_id, (mut tick_deltas, extra_count))| {
+                tick_deltas.sort();
+
+                // Drop outliers.
+                {
+                    let q1 = tick_deltas[tick_deltas.len() / 4];
+                    let q3 = tick_deltas[3 * tick_deltas.len() / 4];
+                    let iqr = q3 - q1;
+
+                    let q1_thr = q1.saturating_sub(iqr + iqr / 2);
+                    let q3_thr = q3 + (iqr + iqr / 2);
+
+                    tick_deltas.retain(|x| *x >= q1_thr && *x <= q3_thr);
+                }
+
+                // Compute the quartiles.
+                let quartiles = [
+                    *tick_deltas.first().unwrap(),
+                    tick_deltas[tick_deltas.len() / 4],
+                    tick_deltas[tick_deltas.len() / 2],
+                    tick_deltas[3 * tick_deltas.len() / 4],
+                    *tick_deltas.last().unwrap(),
+                ];
+
+                // Compuite the average.
+                let average =
+                    tick_deltas.iter().copied().sum::<u64>() as f64 / tick_deltas.len() as f64;
+
+                // Compute the standard deviation.
+                let std_dev = {
+                    let sum = tick_deltas
+                        .iter()
+                        .copied()
+                        .map(|x| x as f64)
+                        .map(|x| (x - average))
+                        .map(|x| x * x)
+                        .sum::<f64>();
+                    sum / (tick_deltas.len() as u64 + extra_count) as f64
+                };
+
+                (
+                    libfunc_id,
+                    (
+                        tick_deltas.len() as u64 + extra_count,
+                        tick_deltas.iter().sum::<u64>()
+                            + (extra_count as f64 * average).round() as u64,
+                        quartiles,
+                        average,
+                        std_dev,
+                    ),
+                )
+            })
+            .collect::<Vec<_>>();
+
+        // Sort libfuncs by the order in which they are declared.
+        trace.sort_by_key(|(libfunc_id, _)| {
+            self.sierra_program
+                .libfunc_declarations
+                .iter()
+                .enumerate()
+                .find_map(|(i, x)| (&x.id == libfunc_id).then_some(i))
+                .unwrap()
         });
+
+        trace
     }
 }
 
 pub fn setup_runtime(find_symbol_ptr: impl Fn(&str) -> Option<*mut c_void>) {
-    let bindings = &[ProfilerBinding::CallBack];
+    let bindings = &[ProfilerBinding::PushStmt];
 
     for binding in bindings {
         if let Some(global) = find_symbol_ptr(binding.symbol()) {
