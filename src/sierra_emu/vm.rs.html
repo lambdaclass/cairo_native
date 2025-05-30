@@ -471,55 +471,59 @@
 <a href=#471 id=471 data-nosnippet>471</a>        CoreConcreteLibfunc::Circuit(selector) =&gt; <span class="self">self</span>::circuit::eval(registry, selector, args),
 <a href=#472 id=472 data-nosnippet>472</a>        CoreConcreteLibfunc::Const(selector) =&gt; <span class="self">self</span>::r#const::eval(registry, selector, args),
 <a href=#473 id=473 data-nosnippet>473</a>        CoreConcreteLibfunc::Coupon(selector) =&gt; <span class="self">self</span>::coupon::eval(registry, selector, args),
-<a href=#474 id=474 data-nosnippet>474</a>        CoreConcreteLibfunc::CouponCall(<span class="kw">_</span>) =&gt; <span class="macro">todo!</span>(),
-<a href=#475 id=475 data-nosnippet>475</a>        CoreConcreteLibfunc::Debug(<span class="kw">_</span>) =&gt; <span class="macro">todo!</span>(),
-<a href=#476 id=476 data-nosnippet>476</a>        CoreConcreteLibfunc::Drop(info) =&gt; <span class="self">self</span>::drop::eval(registry, info, args),
-<a href=#477 id=477 data-nosnippet>477</a>        CoreConcreteLibfunc::Dup(info) =&gt; <span class="self">self</span>::dup::eval(registry, info, args),
-<a href=#478 id=478 data-nosnippet>478</a>        CoreConcreteLibfunc::Ec(selector) =&gt; <span class="self">self</span>::ec::eval(registry, selector, args),
-<a href=#479 id=479 data-nosnippet>479</a>        CoreConcreteLibfunc::Enum(selector) =&gt; <span class="self">self</span>::r#enum::eval(registry, selector, args),
-<a href=#480 id=480 data-nosnippet>480</a>        CoreConcreteLibfunc::Felt252(selector) =&gt; <span class="self">self</span>::felt252::eval(registry, selector, args),
-<a href=#481 id=481 data-nosnippet>481</a>        CoreConcreteLibfunc::Felt252Dict(selector) =&gt; {
-<a href=#482 id=482 data-nosnippet>482</a>            <span class="self">self</span>::felt252_dict::eval(registry, selector, args)
-<a href=#483 id=483 data-nosnippet>483</a>        }
-<a href=#484 id=484 data-nosnippet>484</a>        CoreConcreteLibfunc::Felt252DictEntry(selector) =&gt; {
-<a href=#485 id=485 data-nosnippet>485</a>            <span class="self">self</span>::felt252_dict_entry::eval(registry, selector, args)
-<a href=#486 id=486 data-nosnippet>486</a>        }
-<a href=#487 id=487 data-nosnippet>487</a>        CoreConcreteLibfunc::FunctionCall(info) =&gt; <span class="self">self</span>::function_call::eval(registry, info, args),
-<a href=#488 id=488 data-nosnippet>488</a>        CoreConcreteLibfunc::Gas(selector) =&gt; {
-<a href=#489 id=489 data-nosnippet>489</a>            <span class="self">self</span>::gas::eval(registry, selector, args, gas, <span class="kw-2">*</span>statement_idx, builtin_costs)
-<a href=#490 id=490 data-nosnippet>490</a>        }
-<a href=#491 id=491 data-nosnippet>491</a>        CoreConcreteLibfunc::Mem(selector) =&gt; <span class="self">self</span>::mem::eval(registry, selector, args),
-<a href=#492 id=492 data-nosnippet>492</a>        CoreConcreteLibfunc::Nullable(selector) =&gt; <span class="self">self</span>::nullable::eval(registry, selector, args),
-<a href=#493 id=493 data-nosnippet>493</a>        CoreConcreteLibfunc::Pedersen(selector) =&gt; <span class="self">self</span>::pedersen::eval(registry, selector, args),
-<a href=#494 id=494 data-nosnippet>494</a>        CoreConcreteLibfunc::Poseidon(selector) =&gt; <span class="self">self</span>::poseidon::eval(registry, selector, args),
-<a href=#495 id=495 data-nosnippet>495</a>        CoreConcreteLibfunc::Sint8(selector) =&gt; <span class="self">self</span>::int::eval_signed(registry, selector, args),
-<a href=#496 id=496 data-nosnippet>496</a>        CoreConcreteLibfunc::Sint16(selector) =&gt; <span class="self">self</span>::int::eval_signed(registry, selector, args),
-<a href=#497 id=497 data-nosnippet>497</a>        CoreConcreteLibfunc::Sint32(selector) =&gt; <span class="self">self</span>::int::eval_signed(registry, selector, args),
-<a href=#498 id=498 data-nosnippet>498</a>        CoreConcreteLibfunc::Sint64(selector) =&gt; <span class="self">self</span>::int::eval_signed(registry, selector, args),
-<a href=#499 id=499 data-nosnippet>499</a>        CoreConcreteLibfunc::Sint128(selector) =&gt; <span class="self">self</span>::int::eval_i128(registry, selector, args),
-<a href=#500 id=500 data-nosnippet>500</a>        CoreConcreteLibfunc::Uint8(selector) =&gt; <span class="self">self</span>::int::eval_unsigned(registry, selector, args),
-<a href=#501 id=501 data-nosnippet>501</a>        CoreConcreteLibfunc::Uint16(selector) =&gt; <span class="self">self</span>::int::eval_unsigned(registry, selector, args),
-<a href=#502 id=502 data-nosnippet>502</a>        CoreConcreteLibfunc::Uint32(selector) =&gt; <span class="self">self</span>::int::eval_unsigned(registry, selector, args),
-<a href=#503 id=503 data-nosnippet>503</a>        CoreConcreteLibfunc::Uint64(selector) =&gt; <span class="self">self</span>::int::eval_unsigned(registry, selector, args),
-<a href=#504 id=504 data-nosnippet>504</a>        CoreConcreteLibfunc::Uint128(selector) =&gt; <span class="self">self</span>::int::eval_uint128(registry, selector, args),
-<a href=#505 id=505 data-nosnippet>505</a>        CoreConcreteLibfunc::Uint256(selector) =&gt; <span class="self">self</span>::uint256::eval(registry, selector, args),
-<a href=#506 id=506 data-nosnippet>506</a>        CoreConcreteLibfunc::Uint512(selector) =&gt; <span class="self">self</span>::uint512::eval(registry, selector, args),
-<a href=#507 id=507 data-nosnippet>507</a>        CoreConcreteLibfunc::Struct(selector) =&gt; <span class="self">self</span>::r#struct::eval(registry, selector, args),
-<a href=#508 id=508 data-nosnippet>508</a>        CoreConcreteLibfunc::SnapshotTake(info) =&gt; <span class="self">self</span>::snapshot_take::eval(registry, info, args),
-<a href=#509 id=509 data-nosnippet>509</a>        CoreConcreteLibfunc::Starknet(selector) =&gt; {
-<a href=#510 id=510 data-nosnippet>510</a>            <span class="self">self</span>::starknet::eval(registry, selector, args, syscall_handler)
-<a href=#511 id=511 data-nosnippet>511</a>        }
-<a href=#512 id=512 data-nosnippet>512</a>        CoreConcreteLibfunc::UnconditionalJump(info) =&gt; <span class="self">self</span>::jump::eval(registry, info, args),
-<a href=#513 id=513 data-nosnippet>513</a>        CoreConcreteLibfunc::UnwrapNonZero(_info) =&gt; {
-<a href=#514 id=514 data-nosnippet>514</a>            <span class="kw">let </span>[value] = args.try_into().unwrap();
-<a href=#515 id=515 data-nosnippet>515</a>
-<a href=#516 id=516 data-nosnippet>516</a>            EvalAction::NormalBranch(<span class="number">0</span>, <span class="macro">smallvec!</span>[value])
-<a href=#517 id=517 data-nosnippet>517</a>        }
-<a href=#518 id=518 data-nosnippet>518</a>        CoreConcreteLibfunc::IntRange(selector) =&gt; <span class="self">self</span>::int_range::eval(registry, selector, args),
-<a href=#519 id=519 data-nosnippet>519</a>        CoreConcreteLibfunc::Blake(<span class="kw">_</span>) =&gt; <span class="macro">todo!</span>(),
-<a href=#520 id=520 data-nosnippet>520</a>        CoreConcreteLibfunc::QM31(<span class="kw">_</span>) =&gt; <span class="macro">todo!</span>(),
-<a href=#521 id=521 data-nosnippet>521</a>        CoreConcreteLibfunc::Felt252SquashedDict(<span class="kw">_</span>) =&gt; <span class="macro">todo!</span>(),
-<a href=#522 id=522 data-nosnippet>522</a>        CoreConcreteLibfunc::Trace(<span class="kw">_</span>) =&gt; <span class="macro">todo!</span>(),
-<a href=#523 id=523 data-nosnippet>523</a>        CoreConcreteLibfunc::UnsafePanic(<span class="kw">_</span>) =&gt; <span class="macro">todo!</span>(),
-<a href=#524 id=524 data-nosnippet>524</a>    }
-<a href=#525 id=525 data-nosnippet>525</a>}</code></pre></div></section></main></body></html>
+<a href=#474 id=474 data-nosnippet>474</a>        CoreConcreteLibfunc::Debug(<span class="kw">_</span>) =&gt; <span class="macro">todo!</span>(),
+<a href=#475 id=475 data-nosnippet>475</a>        CoreConcreteLibfunc::Drop(info) =&gt; <span class="self">self</span>::drop::eval(registry, info, args),
+<a href=#476 id=476 data-nosnippet>476</a>        CoreConcreteLibfunc::Dup(info) =&gt; <span class="self">self</span>::dup::eval(registry, info, args),
+<a href=#477 id=477 data-nosnippet>477</a>        CoreConcreteLibfunc::Ec(selector) =&gt; <span class="self">self</span>::ec::eval(registry, selector, args),
+<a href=#478 id=478 data-nosnippet>478</a>        CoreConcreteLibfunc::Enum(selector) =&gt; <span class="self">self</span>::r#enum::eval(registry, selector, args),
+<a href=#479 id=479 data-nosnippet>479</a>        CoreConcreteLibfunc::Felt252(selector) =&gt; <span class="self">self</span>::felt252::eval(registry, selector, args),
+<a href=#480 id=480 data-nosnippet>480</a>        CoreConcreteLibfunc::Felt252Dict(selector) =&gt; {
+<a href=#481 id=481 data-nosnippet>481</a>            <span class="self">self</span>::felt252_dict::eval(registry, selector, args)
+<a href=#482 id=482 data-nosnippet>482</a>        }
+<a href=#483 id=483 data-nosnippet>483</a>        CoreConcreteLibfunc::Felt252DictEntry(selector) =&gt; {
+<a href=#484 id=484 data-nosnippet>484</a>            <span class="self">self</span>::felt252_dict_entry::eval(registry, selector, args)
+<a href=#485 id=485 data-nosnippet>485</a>        }
+<a href=#486 id=486 data-nosnippet>486</a>        CoreConcreteLibfunc::FunctionCall(info) =&gt; {
+<a href=#487 id=487 data-nosnippet>487</a>            <span class="self">self</span>::function_call::eval_function_call(registry, info, args)
+<a href=#488 id=488 data-nosnippet>488</a>        }
+<a href=#489 id=489 data-nosnippet>489</a>        CoreConcreteLibfunc::CouponCall(info) =&gt; {
+<a href=#490 id=490 data-nosnippet>490</a>            <span class="self">self</span>::function_call::eval_coupon_call(registry, info, args)
+<a href=#491 id=491 data-nosnippet>491</a>        }
+<a href=#492 id=492 data-nosnippet>492</a>        CoreConcreteLibfunc::Gas(selector) =&gt; {
+<a href=#493 id=493 data-nosnippet>493</a>            <span class="self">self</span>::gas::eval(registry, selector, args, gas, <span class="kw-2">*</span>statement_idx, builtin_costs)
+<a href=#494 id=494 data-nosnippet>494</a>        }
+<a href=#495 id=495 data-nosnippet>495</a>        CoreConcreteLibfunc::Mem(selector) =&gt; <span class="self">self</span>::mem::eval(registry, selector, args),
+<a href=#496 id=496 data-nosnippet>496</a>        CoreConcreteLibfunc::Nullable(selector) =&gt; <span class="self">self</span>::nullable::eval(registry, selector, args),
+<a href=#497 id=497 data-nosnippet>497</a>        CoreConcreteLibfunc::Pedersen(selector) =&gt; <span class="self">self</span>::pedersen::eval(registry, selector, args),
+<a href=#498 id=498 data-nosnippet>498</a>        CoreConcreteLibfunc::Poseidon(selector) =&gt; <span class="self">self</span>::poseidon::eval(registry, selector, args),
+<a href=#499 id=499 data-nosnippet>499</a>        CoreConcreteLibfunc::Sint8(selector) =&gt; <span class="self">self</span>::int::eval_signed(registry, selector, args),
+<a href=#500 id=500 data-nosnippet>500</a>        CoreConcreteLibfunc::Sint16(selector) =&gt; <span class="self">self</span>::int::eval_signed(registry, selector, args),
+<a href=#501 id=501 data-nosnippet>501</a>        CoreConcreteLibfunc::Sint32(selector) =&gt; <span class="self">self</span>::int::eval_signed(registry, selector, args),
+<a href=#502 id=502 data-nosnippet>502</a>        CoreConcreteLibfunc::Sint64(selector) =&gt; <span class="self">self</span>::int::eval_signed(registry, selector, args),
+<a href=#503 id=503 data-nosnippet>503</a>        CoreConcreteLibfunc::Sint128(selector) =&gt; <span class="self">self</span>::int::eval_i128(registry, selector, args),
+<a href=#504 id=504 data-nosnippet>504</a>        CoreConcreteLibfunc::Uint8(selector) =&gt; <span class="self">self</span>::int::eval_unsigned(registry, selector, args),
+<a href=#505 id=505 data-nosnippet>505</a>        CoreConcreteLibfunc::Uint16(selector) =&gt; <span class="self">self</span>::int::eval_unsigned(registry, selector, args),
+<a href=#506 id=506 data-nosnippet>506</a>        CoreConcreteLibfunc::Uint32(selector) =&gt; <span class="self">self</span>::int::eval_unsigned(registry, selector, args),
+<a href=#507 id=507 data-nosnippet>507</a>        CoreConcreteLibfunc::Uint64(selector) =&gt; <span class="self">self</span>::int::eval_unsigned(registry, selector, args),
+<a href=#508 id=508 data-nosnippet>508</a>        CoreConcreteLibfunc::Uint128(selector) =&gt; <span class="self">self</span>::int::eval_uint128(registry, selector, args),
+<a href=#509 id=509 data-nosnippet>509</a>        CoreConcreteLibfunc::Uint256(selector) =&gt; <span class="self">self</span>::uint256::eval(registry, selector, args),
+<a href=#510 id=510 data-nosnippet>510</a>        CoreConcreteLibfunc::Uint512(selector) =&gt; <span class="self">self</span>::uint512::eval(registry, selector, args),
+<a href=#511 id=511 data-nosnippet>511</a>        CoreConcreteLibfunc::Struct(selector) =&gt; <span class="self">self</span>::r#struct::eval(registry, selector, args),
+<a href=#512 id=512 data-nosnippet>512</a>        CoreConcreteLibfunc::SnapshotTake(info) =&gt; <span class="self">self</span>::snapshot_take::eval(registry, info, args),
+<a href=#513 id=513 data-nosnippet>513</a>        CoreConcreteLibfunc::Starknet(selector) =&gt; {
+<a href=#514 id=514 data-nosnippet>514</a>            <span class="self">self</span>::starknet::eval(registry, selector, args, syscall_handler)
+<a href=#515 id=515 data-nosnippet>515</a>        }
+<a href=#516 id=516 data-nosnippet>516</a>        CoreConcreteLibfunc::UnconditionalJump(info) =&gt; <span class="self">self</span>::jump::eval(registry, info, args),
+<a href=#517 id=517 data-nosnippet>517</a>        CoreConcreteLibfunc::UnwrapNonZero(_info) =&gt; {
+<a href=#518 id=518 data-nosnippet>518</a>            <span class="kw">let </span>[value] = args.try_into().unwrap();
+<a href=#519 id=519 data-nosnippet>519</a>
+<a href=#520 id=520 data-nosnippet>520</a>            EvalAction::NormalBranch(<span class="number">0</span>, <span class="macro">smallvec!</span>[value])
+<a href=#521 id=521 data-nosnippet>521</a>        }
+<a href=#522 id=522 data-nosnippet>522</a>        CoreConcreteLibfunc::IntRange(selector) =&gt; <span class="self">self</span>::int_range::eval(registry, selector, args),
+<a href=#523 id=523 data-nosnippet>523</a>        CoreConcreteLibfunc::Blake(<span class="kw">_</span>) =&gt; <span class="macro">todo!</span>(),
+<a href=#524 id=524 data-nosnippet>524</a>        CoreConcreteLibfunc::QM31(<span class="kw">_</span>) =&gt; <span class="macro">todo!</span>(),
+<a href=#525 id=525 data-nosnippet>525</a>        CoreConcreteLibfunc::Felt252SquashedDict(<span class="kw">_</span>) =&gt; <span class="macro">todo!</span>(),
+<a href=#526 id=526 data-nosnippet>526</a>        CoreConcreteLibfunc::Trace(<span class="kw">_</span>) =&gt; <span class="macro">todo!</span>(),
+<a href=#527 id=527 data-nosnippet>527</a>        CoreConcreteLibfunc::UnsafePanic(<span class="kw">_</span>) =&gt; <span class="macro">todo!</span>(),
+<a href=#528 id=528 data-nosnippet>528</a>    }
+<a href=#529 id=529 data-nosnippet>529</a>}</code></pre></div></section></main></body></html>
