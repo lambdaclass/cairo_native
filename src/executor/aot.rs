@@ -76,8 +76,8 @@ impl AotNativeExecutor {
             .keep()
             .map_err(io::Error::from)?;
 
-        let object_data = crate::module_to_object(&module, opt_level)?;
-        crate::object_to_shared_lib(&object_data, &library_path)?;
+        let object_data = crate::module_to_object(&module, opt_level, None)?;
+        crate::object_to_shared_lib(&object_data, &library_path, None)?;
 
         Ok(Self::new(
             unsafe { Library::new(&library_path)? },
@@ -257,7 +257,7 @@ mod tests {
     fn test_invoke_dynamic(program: Program, #[case] optlevel: OptLevel) {
         let native_context = NativeContext::new();
         let module = native_context
-            .compile(&program, false, Some(Default::default()))
+            .compile(&program, false, Some(Default::default()), None)
             .expect("failed to compile context");
         let executor = AotNativeExecutor::from_native_module(module, optlevel).unwrap();
 
@@ -278,7 +278,7 @@ mod tests {
     fn test_invoke_dynamic_with_syscall_handler(program: Program, #[case] optlevel: OptLevel) {
         let native_context = NativeContext::new();
         let module = native_context
-            .compile(&program, false, Some(Default::default()))
+            .compile(&program, false, Some(Default::default()), None)
             .expect("failed to compile context");
         let executor = AotNativeExecutor::from_native_module(module, optlevel).unwrap();
 
@@ -317,7 +317,7 @@ mod tests {
     fn test_invoke_contract_dynamic(starknet_program: Program, #[case] optlevel: OptLevel) {
         let native_context = NativeContext::new();
         let module = native_context
-            .compile(&starknet_program, false, Some(Default::default()))
+            .compile(&starknet_program, false, Some(Default::default()), None)
             .expect("failed to compile context");
         let executor = AotNativeExecutor::from_native_module(module, optlevel).unwrap();
 

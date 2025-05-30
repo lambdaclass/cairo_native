@@ -16,7 +16,7 @@ fn main() {
 
     // Compile the sierra program into a MLIR module.
     let native_program = native_context
-        .compile(&sierra_program, false, Some(Default::default()))
+        .compile(&sierra_program, false, Some(Default::default()), None)
         .unwrap();
 
     // The parameters of the entry point.

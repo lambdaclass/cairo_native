@@ -199,8 +199,7 @@ jobs:
         continue-on-error: true
 
       - name: Compare states
-        run: |
-          ./scripts/cmp_state_dumps.sh | tee output
+        run: python ./scripts/cmp_state_dumps.py | tee output
 
       - name: Upload Compare Results
         id: upload_compare_results

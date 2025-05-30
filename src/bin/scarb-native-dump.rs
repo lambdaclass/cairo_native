@@ -41,6 +41,7 @@ fn main() -> anyhow::Result<()> {
                         &compiled.into_v1().unwrap().program,
                         false,
                         Some(Default::default()),
+                        None,
                     )
                     .unwrap();
 
