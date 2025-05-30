@@ -48,6 +48,10 @@ fn eval_inv_mod_n(
     let modulo = u256_to_biguint(mod_lo, mod_hi);
 
     match x.modinv(&modulo) {
+        None => EvalAction::NormalBranch(1, smallvec![range_check, Value::Unit, Value::Unit]),
+        Some(r) if r == 0u8.into() => {
+            EvalAction::NormalBranch(1, smallvec![range_check, Value::Unit, Value::Unit])
+        }
         Some(r) => EvalAction::NormalBranch(
             0,
             smallvec![
@@ -63,7 +67,6 @@ fn eval_inv_mod_n(
                 Value::Unit
             ],
         ),
-        None => EvalAction::NormalBranch(1, smallvec![range_check, Value::Unit, Value::Unit]),
     }
 }
 
@@ -104,8 +107,10 @@ pub fn u516_to_value(value: BigUint) -> Value {
     let upper_u256: BigUint = &value >> 256u32;
     let hi1: u128 = (&upper_u256 >> 128u32).try_into().unwrap();
     let lo1: u128 = (upper_u256 & BigUint::from(u128::MAX)).try_into().unwrap();
-    let hi: u128 = (&value >> 128u32).try_into().unwrap();
-    let lo: u128 = (value & BigUint::from(u128::MAX)).try_into().unwrap();
+    let lower_mask = BigUint::from_bytes_le(&[0xFF; 32]);
+    let lower_u256: BigUint = value & lower_mask;
+    let hi: u128 = (&lower_u256 >> 128u32).try_into().unwrap();
+    let lo: u128 = (lower_u256 & BigUint::from(u128::MAX)).try_into().unwrap();
     Value::Struct(vec![
         Value::U128(lo),
         Value::U128(hi),
