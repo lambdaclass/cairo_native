@@ -297,13 +297,10 @@ fn eval_snapshot_multi_pop_back(
     };
 
     if data.len() >= popped_cty.members.len() {
-        let new_data = data.split_off(data.len() - popped_cty.members.len());
-        let value = Value::Struct(data);
+        let popped_data = data.split_off(data.len() - popped_cty.members.len());
+        let value = Value::Struct(popped_data);
         assert!(value.is(registry, &info.popped_ty));
-        EvalAction::NormalBranch(
-            0,
-            smallvec![rangecheck, Value::Array { data: new_data, ty }, value],
-        )
+        EvalAction::NormalBranch(0, smallvec![rangecheck, Value::Array { data, ty }, value])
     } else {
         EvalAction::NormalBranch(1, smallvec![rangecheck, Value::Array { data, ty }])
     }

@@ -3,13 +3,14 @@ use cairo_lang_sierra::{
         core::{CoreLibfunc, CoreType, CoreTypeConcrete},
         utils::Range,
     },
+    ids::ConcreteTypeId,
     program_registry::ProgramRegistry,
 };
 use num_bigint::BigInt;
 use num_traits::{Bounded, One, ToPrimitive};
 use starknet_types_core::felt::CAIRO_PRIME_BIGINT;
 
-use crate::Value;
+use crate::{debug::type_to_name, Value};
 
 /// Receives a vector of values, filters any which is non numeric and returns a `Vec<BigInt>`
 /// Useful when a binary operation takes generic values (like with bounded ints).
@@ -29,21 +30,20 @@ pub fn get_numeric_args_as_bigints(args: &[Value]) -> Vec<BigInt> {
             Value::U128(value) => BigInt::from(*value),
             Value::Felt(value) => value.to_bigint(),
             Value::Bytes31(value) => value.to_bigint(),
-            value => panic!("argument should be an integer: {:?}", value),
+            value => panic!("Argument should be an integer: {:?}", value),
         })
         .collect()
 }
 
 pub fn get_value_from_integer(
     registry: &ProgramRegistry<CoreType, CoreLibfunc>,
-    ty: &CoreTypeConcrete,
+    ty_id: &ConcreteTypeId,
     value: BigInt,
 ) -> Value {
+    let ty = registry.get_type(ty_id).unwrap();
+
     match ty {
-        CoreTypeConcrete::NonZero(info) => {
-            let ty = registry.get_type(&info.ty).unwrap();
-            get_value_from_integer(registry, ty, value)
-        }
+        CoreTypeConcrete::NonZero(info) => get_value_from_integer(registry, &info.ty, value),
         CoreTypeConcrete::Sint8(_) => Value::I8(value.to_i8().unwrap()),
         CoreTypeConcrete::Sint16(_) => Value::I16(value.to_i16().unwrap()),
         CoreTypeConcrete::Sint32(_) => Value::I32(value.to_i32().unwrap()),
@@ -62,12 +62,15 @@ pub fn get_value_from_integer(
             }
         }
         CoreTypeConcrete::Felt252(_) => Value::Felt(value.into()),
-        _ => panic!("cannot get integer value for a non-integer type"),
+        _ => panic!(
+            "Cannot get integer value for a non-integer type: {}",
+            type_to_name(ty_id, registry)
+        ),
     }
 }
 
 pub fn integer_range(
-    ty: &CoreTypeConcrete,
+    ty_id: &ConcreteTypeId,
     registry: &ProgramRegistry<CoreType, CoreLibfunc>,
 ) -> Range {
     fn range_of<T>() -> Range
@@ -79,6 +82,8 @@ pub fn integer_range(
             upper: T::max_value().into() + BigInt::one(),
         }
     }
+
+    let ty = registry.get_type(ty_id).unwrap();
 
     match ty {
         CoreTypeConcrete::Uint8(_) => range_of::<u8>(),
@@ -100,14 +105,11 @@ pub fn integer_range(
             lower: BigInt::ZERO,
             upper: BigInt::one() << 248,
         },
-        CoreTypeConcrete::Const(info) => {
-            let ty = registry.get_type(&info.inner_ty).unwrap();
-            integer_range(ty, registry)
-        }
-        CoreTypeConcrete::NonZero(info) => {
-            let ty = registry.get_type(&info.ty).unwrap();
-            integer_range(ty, registry)
-        }
-        _ => panic!("cannot get integer range value for a non-integer type"),
+        CoreTypeConcrete::Const(info) => integer_range(&info.inner_ty, registry),
+        CoreTypeConcrete::NonZero(info) => integer_range(&info.ty, registry),
+        _ => panic!(
+            "Cannot get integer range value for a non-integer type {}",
+            type_to_name(ty_id, registry)
+        ),
     }
 }

@@ -1,5 +1,8 @@
 use super::EvalAction;
-use crate::{utils::get_numeric_args_as_bigints, Value};
+use crate::{
+    utils::{get_numeric_args_as_bigints, get_value_from_integer},
+    Value,
+};
 use cairo_lang_sierra::{
     extensions::{
         bounded_int::{
@@ -126,8 +129,10 @@ pub fn eval_div_rem(
     info: &BoundedIntDivRemConcreteLibfunc,
     args: Vec<Value>,
 ) -> EvalAction {
-    let [lhs, rhs]: [BigInt; 2] = get_numeric_args_as_bigints(&args).try_into().unwrap();
-
+    let range_check @ Value::Unit: Value = args[0].clone() else {
+        panic!()
+    };
+    let [lhs, rhs]: [BigInt; 2] = get_numeric_args_as_bigints(&args[1..]).try_into().unwrap();
     let quo = &lhs / &rhs;
     let rem = lhs % rhs;
 
@@ -151,7 +156,7 @@ pub fn eval_div_rem(
     EvalAction::NormalBranch(
         0,
         smallvec![
-            Value::Unit, // range_check
+            range_check,
             Value::BoundedInt {
                 range: quo_range,
                 value: quo,
@@ -169,14 +174,10 @@ pub fn eval_constrain(
     info: &BoundedIntConstrainConcreteLibfunc,
     args: Vec<Value>,
 ) -> EvalAction {
-    let [range_check @ Value::Unit, value]: [Value; 2] = args.try_into().unwrap() else {
+    let range_check @ Value::Unit: Value = args[0].clone() else {
         panic!()
     };
-
-    let value = match value {
-        Value::I8(value) => value.into(),
-        _ => todo!(),
-    };
+    let [value]: [BigInt; 1] = get_numeric_args_as_bigints(&args[1..]).try_into().unwrap();
 
     if value < info.boundary {
         let range = match registry
@@ -224,19 +225,19 @@ pub fn eval_constrain(
 }
 
 pub fn eval_is_zero(
-    _registry: &ProgramRegistry<CoreType, CoreLibfunc>,
-    _info: &SignatureOnlyConcreteLibfunc,
+    registry: &ProgramRegistry<CoreType, CoreLibfunc>,
+    info: &SignatureOnlyConcreteLibfunc,
     args: Vec<Value>,
 ) -> EvalAction {
-    let [value] = args.try_into().unwrap();
-    let is_zero = match value {
-        Value::I8(value) => value == 0,
-        _ => todo!(),
-    };
+    let [value] = get_numeric_args_as_bigints(&args).try_into().unwrap();
+    let is_zero = value == 0.into();
+
+    let int_ty = &info.branch_signatures()[1].vars[0].ty;
 
     if is_zero {
         EvalAction::NormalBranch(0, smallvec![])
     } else {
+        let value = get_value_from_integer(registry, int_ty, value);
         EvalAction::NormalBranch(1, smallvec![value])
     }
 }
