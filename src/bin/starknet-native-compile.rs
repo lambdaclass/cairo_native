@@ -1,4 +1,6 @@
 use anyhow::{anyhow, bail, Context};
+use cairo_native::statistics::Statistics;
+use std::fs;
 use std::path::PathBuf;
 
 use cairo_lang_sierra::program::Program;
@@ -20,6 +22,10 @@ struct Args {
     opt_level: u8,
     /// The output file path.
     output: PathBuf,
+
+    #[arg(long)]
+    /// Output path for compilation statistics
+    stats: Option<PathBuf>,
 }
 
 fn main() -> anyhow::Result<()> {
@@ -27,15 +33,24 @@ fn main() -> anyhow::Result<()> {
     let (contract_class, sierra_program, sierra_version) =
         load_sierra_program_from_file(&args.path)?;
 
+    let mut stats_with_path = args.stats.map(|path| (Statistics::default(), path));
+    let stats = stats_with_path.as_mut().map(|v| &mut v.0);
+
     AotContractExecutor::new_into(
         &sierra_program,
         &contract_class.entry_points_by_type,
         sierra_version,
         args.output.clone(),
         args.opt_level.into(),
+        stats,
     )
     .context("Error compiling Sierra program.")?
     .with_context(|| format!("Failed to take lock on path {}", args.output.display()))?;
+
+    if let Some((stats, path)) = stats_with_path {
+        fs::write(path.with_extension("json"), serde_json::to_string(&stats)?)?;
+    }
+
     Ok(())
 }
 
