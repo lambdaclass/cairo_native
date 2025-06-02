@@ -327,6 +327,8 @@ impl ProfileImpl {
                 let (tick_deltas, extra_count) =
                     trace.entry(invocation.libfunc_id.clone()).or_default();
 
+                // A tick_delta equal to u64::MAX implies it is invalid, so we don't take it
+                // into account
                 if *tick_delta != u64::MAX {
                     tick_deltas.push(*tick_delta);
                 } else {

@@ -616,8 +616,9 @@ fn compile_func(
                         #[cfg(feature = "with-libfunc-profiling")]
                         profiler: match libfunc {
                             CoreConcreteLibfunc::FunctionCall(_) => {
-                                // Tail-recursive function calls are broken. Also it'd include the entire function which
-                                // doesn't make sense, therefore it's ignored on purpose.
+                                // Tail-recursive function calls are broken beacuse a stack of timestamps is required,
+                                // which would invalidate tail recursion. Also since each libfunc is measured individually,
+                                // doesn't make sense to function calls into account, therefore it's ignored on purpose.
                                 None
                             }
                             _ => match metadata.remove::<crate::metadata::profiler::ProfilerMeta>()
