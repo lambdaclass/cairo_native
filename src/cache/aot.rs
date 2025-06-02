@@ -47,10 +47,10 @@ where
             mut metadata,
         } = self
             .context
-            .compile(program, false, Some(Default::default()))?;
+            .compile(program, false, Some(Default::default()), None)?;
 
         // Compile module into an object.
-        let object_data = crate::ffi::module_to_object(&module, opt_level)?;
+        let object_data = crate::ffi::module_to_object(&module, opt_level, None)?;
 
         // Compile object into a shared library.
         let shared_library_path = tempfile::Builder::new()
@@ -58,7 +58,7 @@ where
             .suffix(SHARED_LIBRARY_EXT)
             .tempfile()?
             .into_temp_path();
-        crate::ffi::object_to_shared_lib(&object_data, &shared_library_path)?;
+        crate::ffi::object_to_shared_lib(&object_data, &shared_library_path, None)?;
 
         let shared_library = unsafe { Library::new(shared_library_path)? };
         let executor = AotNativeExecutor::new(

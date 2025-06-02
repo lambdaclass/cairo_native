@@ -841,7 +841,7 @@ mod test {
             }
         );
         let ctx = NativeContext::new();
-        let module = ctx.compile(&program, false, None).unwrap();
+        let module = ctx.compile(&program, false, None, None).unwrap();
         let executor = JitNativeExecutor::from_native_module(module, OptLevel::Default).unwrap();
         let ExecutionResult {
             remaining_gas: _,
@@ -874,7 +874,7 @@ mod test {
             }
         );
         let ctx = NativeContext::new();
-        let module = ctx.compile(&program, false, None).unwrap();
+        let module = ctx.compile(&program, false, None, None).unwrap();
         let executor = JitNativeExecutor::from_native_module(module, OptLevel::Default).unwrap();
         let ExecutionResult {
             remaining_gas: _,
@@ -907,7 +907,7 @@ mod test {
             }
         );
         let ctx = NativeContext::new();
-        let module = ctx.compile(&program, false, None).unwrap();
+        let module = ctx.compile(&program, false, None, None).unwrap();
         let executor = JitNativeExecutor::from_native_module(module, OptLevel::Default).unwrap();
         let ExecutionResult {
             remaining_gas: _,
@@ -940,7 +940,7 @@ mod test {
             }
         );
         let ctx = NativeContext::new();
-        let module = ctx.compile(&program, false, None).unwrap();
+        let module = ctx.compile(&program, false, None, None).unwrap();
         let executor = JitNativeExecutor::from_native_module(module, OptLevel::Default).unwrap();
         let ExecutionResult {
             remaining_gas: _,
