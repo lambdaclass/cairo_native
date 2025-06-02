@@ -184,7 +184,7 @@ mod tests {
 
         let native_context = NativeContext::new();
         let module = native_context
-            .compile(&program, false, Some(Default::default()))
+            .compile(&program, false, Some(Default::default()), None)
             .expect("failed to compile context");
         let executor = AotNativeExecutor::from_native_module(module, OptLevel::default()).unwrap();
 

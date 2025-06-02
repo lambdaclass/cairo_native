@@ -97,7 +97,7 @@ fn main() -> anyhow::Result<()> {
 
     // Compile the sierra program into a MLIR module.
     let native_module = native_context
-        .compile(&sierra_program, false, Some(Default::default()))
+        .compile(&sierra_program, false, Some(Default::default()), None)
         .unwrap();
 
     let native_executor: Box<dyn Fn(_, _, _, &mut StubSyscallHandler) -> _> = match args.run_mode {
