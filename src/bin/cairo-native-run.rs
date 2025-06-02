@@ -49,7 +49,7 @@ struct Args {
     #[cfg(feature = "with-libfunc-profiling")]
     #[arg(long)]
     /// The output path for the libfunc profilling results
-    profiler_output: PathBuf,
+    profiler_output: Option<PathBuf>,
 
     #[cfg(feature = "with-trace-dump")]
     #[arg(long)]
