@@ -92,7 +92,7 @@
 <a href=#92 id=92 data-nosnippet>92</a>
 <a href=#93 id=93 data-nosnippet>93</a>    <span class="comment">// Compile the sierra program into a MLIR module.
 <a href=#94 id=94 data-nosnippet>94</a>    </span><span class="kw">let </span>native_module = native_context
-<a href=#95 id=95 data-nosnippet>95</a>        .compile(<span class="kw-2">&amp;</span>sierra_program, <span class="bool-val">false</span>, <span class="prelude-val">Some</span>(Default::default()))
+<a href=#95 id=95 data-nosnippet>95</a>        .compile(<span class="kw-2">&amp;</span>sierra_program, <span class="bool-val">false</span>, <span class="prelude-val">Some</span>(Default::default()), <span class="prelude-val">None</span>)
 <a href=#96 id=96 data-nosnippet>96</a>        .unwrap();
 <a href=#97 id=97 data-nosnippet>97</a>
 <a href=#98 id=98 data-nosnippet>98</a>    <span class="kw">let </span>native_executor: Box&lt;<span class="kw">dyn </span>Fn(<span class="kw">_</span>, <span class="kw">_</span>, <span class="kw">_</span>, <span class="kw-2">&amp;mut </span>StubSyscallHandler) -&gt; <span class="kw">_</span>&gt; = <span class="kw">match </span>args.run_mode {

@@ -76,8 +76,8 @@
 <a href=#76 id=76 data-nosnippet>76</a>            .keep()
 <a href=#77 id=77 data-nosnippet>77</a>            .map_err(io::Error::from)<span class="question-mark">?</span>;
 <a href=#78 id=78 data-nosnippet>78</a>
-<a href=#79 id=79 data-nosnippet>79</a>        <span class="kw">let </span>object_data = <span class="kw">crate</span>::module_to_object(<span class="kw-2">&amp;</span>module, opt_level)<span class="question-mark">?</span>;
-<a href=#80 id=80 data-nosnippet>80</a>        <span class="kw">crate</span>::object_to_shared_lib(<span class="kw-2">&amp;</span>object_data, <span class="kw-2">&amp;</span>library_path)<span class="question-mark">?</span>;
+<a href=#79 id=79 data-nosnippet>79</a>        <span class="kw">let </span>object_data = <span class="kw">crate</span>::module_to_object(<span class="kw-2">&amp;</span>module, opt_level, <span class="prelude-val">None</span>)<span class="question-mark">?</span>;
+<a href=#80 id=80 data-nosnippet>80</a>        <span class="kw">crate</span>::object_to_shared_lib(<span class="kw-2">&amp;</span>object_data, <span class="kw-2">&amp;</span>library_path, <span class="prelude-val">None</span>)<span class="question-mark">?</span>;
 <a href=#81 id=81 data-nosnippet>81</a>
 <a href=#82 id=82 data-nosnippet>82</a>        <span class="prelude-val">Ok</span>(<span class="self">Self</span>::new(
 <a href=#83 id=83 data-nosnippet>83</a>            <span class="kw">unsafe </span>{ Library::new(<span class="kw-2">&amp;</span>library_path)<span class="question-mark">? </span>},
@@ -257,7 +257,7 @@
 <a href=#257 id=257 data-nosnippet>257</a>    </span><span class="kw">fn </span>test_invoke_dynamic(program: Program, <span class="attr">#[case] </span>optlevel: OptLevel) {
 <a href=#258 id=258 data-nosnippet>258</a>        <span class="kw">let </span>native_context = NativeContext::new();
 <a href=#259 id=259 data-nosnippet>259</a>        <span class="kw">let </span>module = native_context
-<a href=#260 id=260 data-nosnippet>260</a>            .compile(<span class="kw-2">&amp;</span>program, <span class="bool-val">false</span>, <span class="prelude-val">Some</span>(Default::default()))
+<a href=#260 id=260 data-nosnippet>260</a>            .compile(<span class="kw-2">&amp;</span>program, <span class="bool-val">false</span>, <span class="prelude-val">Some</span>(Default::default()), <span class="prelude-val">None</span>)
 <a href=#261 id=261 data-nosnippet>261</a>            .expect(<span class="string">"failed to compile context"</span>);
 <a href=#262 id=262 data-nosnippet>262</a>        <span class="kw">let </span>executor = AotNativeExecutor::from_native_module(module, optlevel).unwrap();
 <a href=#263 id=263 data-nosnippet>263</a>
@@ -278,7 +278,7 @@
 <a href=#278 id=278 data-nosnippet>278</a>    </span><span class="kw">fn </span>test_invoke_dynamic_with_syscall_handler(program: Program, <span class="attr">#[case] </span>optlevel: OptLevel) {
 <a href=#279 id=279 data-nosnippet>279</a>        <span class="kw">let </span>native_context = NativeContext::new();
 <a href=#280 id=280 data-nosnippet>280</a>        <span class="kw">let </span>module = native_context
-<a href=#281 id=281 data-nosnippet>281</a>            .compile(<span class="kw-2">&amp;</span>program, <span class="bool-val">false</span>, <span class="prelude-val">Some</span>(Default::default()))
+<a href=#281 id=281 data-nosnippet>281</a>            .compile(<span class="kw-2">&amp;</span>program, <span class="bool-val">false</span>, <span class="prelude-val">Some</span>(Default::default()), <span class="prelude-val">None</span>)
 <a href=#282 id=282 data-nosnippet>282</a>            .expect(<span class="string">"failed to compile context"</span>);
 <a href=#283 id=283 data-nosnippet>283</a>        <span class="kw">let </span>executor = AotNativeExecutor::from_native_module(module, optlevel).unwrap();
 <a href=#284 id=284 data-nosnippet>284</a>
@@ -317,7 +317,7 @@
 <a href=#317 id=317 data-nosnippet>317</a>    </span><span class="kw">fn </span>test_invoke_contract_dynamic(starknet_program: Program, <span class="attr">#[case] </span>optlevel: OptLevel) {
 <a href=#318 id=318 data-nosnippet>318</a>        <span class="kw">let </span>native_context = NativeContext::new();
 <a href=#319 id=319 data-nosnippet>319</a>        <span class="kw">let </span>module = native_context
-<a href=#320 id=320 data-nosnippet>320</a>            .compile(<span class="kw-2">&amp;</span>starknet_program, <span class="bool-val">false</span>, <span class="prelude-val">Some</span>(Default::default()))
+<a href=#320 id=320 data-nosnippet>320</a>            .compile(<span class="kw-2">&amp;</span>starknet_program, <span class="bool-val">false</span>, <span class="prelude-val">Some</span>(Default::default()), <span class="prelude-val">None</span>)
 <a href=#321 id=321 data-nosnippet>321</a>            .expect(<span class="string">"failed to compile context"</span>);
 <a href=#322 id=322 data-nosnippet>322</a>        <span class="kw">let </span>executor = AotNativeExecutor::from_native_module(module, optlevel).unwrap();
 <a href=#323 id=323 data-nosnippet>323</a>

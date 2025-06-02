@@ -280,7 +280,7 @@
 <a href=#280 id=280 data-nosnippet>280</a>    ) -&gt; Arc&lt;AotNativeExecutor&gt; {
 <a href=#281 id=281 data-nosnippet>281</a>        <span class="kw">let </span>native_module = <span class="self">self
 <a href=#282 id=282 data-nosnippet>282</a>            </span>.context
-<a href=#283 id=283 data-nosnippet>283</a>            .compile(program, <span class="bool-val">false</span>, <span class="prelude-val">Some</span>(Default::default()))
+<a href=#283 id=283 data-nosnippet>283</a>            .compile(program, <span class="bool-val">false</span>, <span class="prelude-val">Some</span>(Default::default()), <span class="prelude-val">None</span>)
 <a href=#284 id=284 data-nosnippet>284</a>            .expect(<span class="string">"failed to compile program"</span>);
 <a href=#285 id=285 data-nosnippet>285</a>
 <a href=#286 id=286 data-nosnippet>286</a>        <span class="kw">let </span>registry = ProgramRegistry::new(program).expect(<span class="string">"failed to get program registry"</span>);
@@ -291,7 +291,7 @@
 <a href=#291 id=291 data-nosnippet>291</a>            .expect(<span class="string">"module should have gas metadata"</span>);
 <a href=#292 id=292 data-nosnippet>292</a>
 <a href=#293 id=293 data-nosnippet>293</a>        <span class="kw">let </span>shared_library = {
-<a href=#294 id=294 data-nosnippet>294</a>            <span class="kw">let </span>object_data = module_to_object(native_module.module(), opt_level)
+<a href=#294 id=294 data-nosnippet>294</a>            <span class="kw">let </span>object_data = module_to_object(native_module.module(), opt_level, <span class="prelude-val">None</span>)
 <a href=#295 id=295 data-nosnippet>295</a>                .expect(<span class="string">"failed to convert MLIR to object"</span>);
 <a href=#296 id=296 data-nosnippet>296</a>
 <a href=#297 id=297 data-nosnippet>297</a>            <span class="kw">let </span>shared_library_dir = Path::new(AOT_CACHE_DIR);
@@ -299,7 +299,7 @@
 <a href=#299 id=299 data-nosnippet>299</a>            <span class="kw">let </span>shared_library_name = <span class="macro">format!</span>(<span class="string">"lib{key}{SHARED_LIBRARY_EXT}"</span>);
 <a href=#300 id=300 data-nosnippet>300</a>            <span class="kw">let </span>shared_library_path = shared_library_dir.join(shared_library_name);
 <a href=#301 id=301 data-nosnippet>301</a>
-<a href=#302 id=302 data-nosnippet>302</a>            object_to_shared_lib(<span class="kw-2">&amp;</span>object_data, <span class="kw-2">&amp;</span>shared_library_path)
+<a href=#302 id=302 data-nosnippet>302</a>            object_to_shared_lib(<span class="kw-2">&amp;</span>object_data, <span class="kw-2">&amp;</span>shared_library_path, <span class="prelude-val">None</span>)
 <a href=#303 id=303 data-nosnippet>303</a>                .expect(<span class="string">"failed to link object into shared library"</span>);
 <a href=#304 id=304 data-nosnippet>304</a>
 <a href=#305 id=305 data-nosnippet>305</a>            <span class="kw">unsafe </span>{
