@@ -230,13 +230,13 @@ fn main() -> anyhow::Result<()> {
             let mut output = File::create(profiler_output_path)?;
 
             for (libfunc_id, (n_samples, sum, quartiles, average, std_dev)) in profile.process() {
-                writeln!(profile_file, "{libfunc_id}")?;
-                writeln!(profile_file, "    Total Samples:          {n_samples}")?;
-                writeln!(profile_file, "    Total Execution Time:   {sum}")?;
-                writeln!(profile_file, "    Average Execution Time: {average}")?;
-                writeln!(profile_file, "    Standard Deviation:     {std_dev}")?;
-                writeln!(profile_file, "    Quartiles:              {quartiles:?}")?;
-                writeln!(profile_file)?;
+                writeln!(output, "{libfunc_id}")?;
+                writeln!(output, "    Total Samples:          {n_samples}")?;
+                writeln!(output, "    Total Execution Time:   {sum}")?;
+                writeln!(output, "    Average Execution Time: {average}")?;
+                writeln!(output, "    Standard Deviation:     {std_dev}")?;
+                writeln!(output, "    Quartiles:              {quartiles:?}")?;
+                writeln!(output)?;
             }
         }
     }
