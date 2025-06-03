@@ -42,7 +42,7 @@ name = "starknet-native-compile"
 required-features = ["build-cli"]
 
 [features]
-default = ["with-libfunc-profiling", "build-cli"]
+default = ["build-cli"]
 build-cli = [
     "dep:clap",
     "dep:tracing-subscriber",
