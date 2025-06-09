@@ -340,6 +340,11 @@ impl ProfileImpl {
         let mut trace = trace
             .into_iter()
             .map(|(libfunc_id, (mut tick_deltas, extra_count))| {
+                // if no deltas were registered, we only return the libfunc's calls amount
+                if tick_deltas.is_empty() {
+                    return (libfunc_id, (extra_count, 0, [0; 5], 0.0, 0.0));
+                }
+
                 tick_deltas.sort();
 
                 // Drop outliers.
