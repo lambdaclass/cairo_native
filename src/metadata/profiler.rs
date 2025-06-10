@@ -193,6 +193,13 @@ impl ProfilerMeta {
         let value = block.shli(value_hi, k32, location)?;
         let value = block.append_op_result(arith::ori(value, value_lo, location))?;
 
+        // Values
+        // 1. Timestamp
+        // 2. CPU's id core in which the program is running
+        //
+        // We use the last value to ensure that both the initial and then end timestamp of
+        // a libfunc's execution where calculated by the same core. This is to avoid gathering
+        // invalid data
         Ok((value, core_idx))
     }
 
