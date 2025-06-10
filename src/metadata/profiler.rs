@@ -303,12 +303,6 @@ impl ProfilerMeta {
 pub static LIBFUNC_PROFILE: LazyLock<Mutex<HashMap<u64, ProfileImpl>>> =
     LazyLock::new(|| Mutex::new(HashMap::new()));
 
-/// `(libfunc_id, (vec<delta_time>, extra_count))`
-/// 
-/// `extra_count`: a counter of libfunc calls whose execution time
-/// hasn't been calculated for being invalid
-type ProfileProcessor = dyn Fn((ConcreteLibfuncId, (Vec<u64>, u64))) -> LibfuncProfileSummary;
-
 /// This represents a libfunc's profile, which has the following structure:
 ///
 /// `Vec<(libfunc_id, (samples_number, total_execution_time, quartiles, average_execution_time, standard_deviations))>``
@@ -350,7 +344,16 @@ impl ProfileImpl {
             .push((StatementIdx(statement_idx as usize), tick_delta));
     }
 
-    pub fn process(&self, processor: ProfileProcessor) -> Vec<LibfuncProfileSummary> {
+    /// Process profiling results.
+    ///
+    /// Receives a closure with the flowing paramaters `(libfunc_id, (vec<delta_time>, extra_count))`
+    ///
+    /// `extra_count`: counter of libfunc calls whose execution time
+    /// hasn't been calculated for being invalid
+    pub fn process<F>(&self, processor: F) -> Vec<LibfuncProfileSummary>
+    where
+        F: FnMut((ConcreteLibfuncId, (Vec<u64>, u64))) -> LibfuncProfileSummary,
+    {
         let mut trace = HashMap::<ConcreteLibfuncId, (Vec<u64>, u64)>::new();
 
         for (statement_idx, tick_delta) in self.trace.iter() {
@@ -373,12 +376,12 @@ impl ProfileImpl {
         let mut trace = trace.into_iter().map(processor).collect::<Vec<_>>();
 
         // Sort libfuncs by the order in which they are declared.
-        trace.sort_by_key(|ProfilerSummary { libfunc_idx, .. }| {
+        trace.sort_by_key(|LibfuncProfileSummary { libfunc_idx, .. }| {
             self.sierra_program
                 .libfunc_declarations
                 .iter()
                 .enumerate()
-                .find_map(|(i, x)| (&x.id == libfunc_idx).then_some(i))
+                .find_map(|(i, x)| (x.id == *libfunc_idx).then_some(i))
                 .unwrap()
         });
 

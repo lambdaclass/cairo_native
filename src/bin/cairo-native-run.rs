@@ -7,13 +7,15 @@ use cairo_lang_sierra_to_casm::metadata::MetadataComputationConfig;
 use cairo_native::{
     context::NativeContext,
     executor::{AotNativeExecutor, JitNativeExecutor},
-    metadata::{gas::GasMetadata, profiler::LibfuncProfileSummary},
+    metadata::gas::GasMetadata,
     starknet_stub::StubSyscallHandler,
 };
 use clap::{Parser, ValueEnum};
 use std::path::PathBuf;
 use tracing_subscriber::{EnvFilter, FmtSubscriber};
 use utils::{find_function, result_to_runresult};
+#[cfg(feature = "with-trace-dump")]
+use {cairo_lang_sierra::ids::ConcreteLibfuncId, profiler::LibfuncProfileSummary};
 
 mod utils;
 
@@ -231,7 +233,7 @@ fn main() -> anyhow::Result<()> {
         if let Some(profiler_output_path) = args.profiler_output {
             let mut output = File::create(profiler_output_path)?;
 
-            let profile = profile.process(|profile| process_profiles(profile));
+            let processed_profile = profile.process(process_profiles);
 
             for LibfuncProfileSummary {
                 libfunc_idx,
@@ -240,7 +242,7 @@ fn main() -> anyhow::Result<()> {
                 average_time,
                 std_deviation,
                 quartiles,
-            } in profile.process()
+            } in processed_profile
             {
                 writeln!(output, "{libfunc_idx}")?;
                 writeln!(output, "    Total Samples:          {samples}")?;
@@ -271,12 +273,13 @@ fn main() -> anyhow::Result<()> {
     Ok(())
 }
 
+#[cfg(feature = "with-trace-dump")]
 fn process_profiles(profile: (ConcreteLibfuncId, (Vec<u64>, u64))) -> LibfuncProfileSummary {
     let (libfunc_idx, (mut tick_deltas, extra_count)) = profile;
 
     // if no deltas were registered, we only return the libfunc's calls amount
     if tick_deltas.is_empty() {
-        return ProfilerSummary {
+        return LibfuncProfileSummary {
             libfunc_idx,
             samples: extra_count,
             total_time: 0,
