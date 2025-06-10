@@ -130,7 +130,8 @@ impl AbiArgument for ValueWithInfoWrapper<'_> {
                 abi.capacity.to_bytes(buffer, find_dict_drop_override)?;
             }
             (Value::BoundedInt { .. }, CoreTypeConcrete::BoundedInt(_)) => {
-                native_panic!("todo: implement AbiArgument for Value::BoundedInt case") // See: https://github.com/lambdaclass/cairo_native/issues/1217
+                // See: https://github.com/lambdaclass/cairo_native/issues/1217
+                native_panic!("todo: implement AbiArgument for Value::BoundedInt case")
             }
             (Value::Bytes31(value), CoreTypeConcrete::Bytes31(_)) => {
                 value.to_bytes(buffer, find_dict_drop_override)?

@@ -760,8 +760,9 @@ pub fn get_layout_for_variants(
 
 /// Extract the type and layout for the default enum representation, its discriminant and all its
 /// payloads.
-// TODO: Change this function to accept a slice of slices (for variants). Not all uses have a slice  See: https://github.com/lambdaclass/cairo_native/issues/1187
-//   with one `ConcreteTypeId` per variant (deploy_syscalls has two types for the Ok() variant). 
+// TODO: Change this function to accept a slice of slices (for variants). Not all uses have a slice
+// with one `ConcreteTypeId` per variant (deploy_syscalls has two types for the Ok() variant).
+// See: https://github.com/lambdaclass/cairo_native/issues/1187/
 pub fn get_type_for_variants<'ctx>(
     context: &'ctx Context,
     module: &Module<'ctx>,
