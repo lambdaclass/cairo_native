@@ -15,7 +15,10 @@ use std::path::PathBuf;
 use tracing_subscriber::{EnvFilter, FmtSubscriber};
 use utils::{find_function, result_to_runresult};
 #[cfg(feature = "with-trace-dump")]
-use {cairo_lang_sierra::ids::ConcreteLibfuncId, profiler::LibfuncProfileSummary};
+use {
+    cairo_lang_sierra::ids::ConcreteLibfuncId,
+    cairo_native::metadata::profiler::LibfuncProfileSummary,
+};
 
 mod utils;
 
