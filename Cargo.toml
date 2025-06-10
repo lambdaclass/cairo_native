@@ -99,7 +99,7 @@ tempfile = "3.15.0"
 thiserror = "2.0.9"
 tracing = "0.1"
 utf8_iter = "1.0.4"
-sierra-emu = { version = "0.5.0-rc.5", path = "debug_utils/sierra-emu", optional = true }
+sierra-emu = { version = "0.5.0-rc.6", path = "debug_utils/sierra-emu", optional = true }
 
 
 # CLI dependencies
