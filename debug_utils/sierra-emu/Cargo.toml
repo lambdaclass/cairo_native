@@ -1,12 +1,12 @@
 [package]
 name = "sierra-emu"
 description = "A Cairo (Sierra) Virtual Machine."
+readme = "README.md"
+keywords = ["starknet", "cairo", "vm", "sierra"]
 version.workspace = true
 edition.workspace = true
 license.workspace = true
 repository.workspace = true
-readme = "README.md"
-keywords = ["starknet", "cairo", "compiler", "mlir"]
 
 [dependencies]
 cairo-lang-compiler.workspace = true
