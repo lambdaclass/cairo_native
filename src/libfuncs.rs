@@ -281,6 +281,7 @@ where
     pub results: Vec<Vec<Cell<Option<Value<'ctx, 'this>>>>>,
 
     #[cfg(feature = "with-libfunc-profiling")]
+    // Since function calls don't get profiled, this field is optional
     pub profiler: Option<(
         crate::metadata::profiler::ProfilerMeta,
         cairo_lang_sierra::program::StatementIdx,

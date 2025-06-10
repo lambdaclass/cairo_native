@@ -625,7 +625,7 @@ fn compile_func(
                             CoreConcreteLibfunc::FunctionCall(_) => {
                                 // Tail-recursive function calls are broken beacuse a stack of timestamps is required,
                                 // which would invalidate tail recursion. Also since each libfunc is measured individually,
-                                // doesn't make sense to function calls into account, therefore it's ignored on purpose.
+                                // doesn't make sense to take function calls into account, therefore it's ignored on purpose.
                                 None
                             }
                             _ => match metadata.remove::<crate::metadata::profiler::ProfilerMeta>()

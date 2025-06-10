@@ -22,6 +22,8 @@ use melior::{
     },
     Context,
 };
+#[cfg(feature = "with-libfunc-profiling")]
+use serde::Serialize;
 use std::{
     cell::RefCell,
     collections::{HashMap, HashSet},
@@ -33,21 +35,21 @@ use std::{
 #[derive(Clone, Copy, Debug, Hash, PartialEq, Eq)]
 pub enum ProfilerBinding {
     PushStmt,
-    TraceId,
+    ProfileId,
 }
 
 impl ProfilerBinding {
     pub const fn symbol(self) -> &'static str {
         match self {
             ProfilerBinding::PushStmt => "cairo_native__profiler__push_stmt",
-            ProfilerBinding::TraceId => "cairo_native__profiler__trace_id",
+            ProfilerBinding::ProfileId => "cairo_native__profiler__profile_id",
         }
     }
 
     const fn function_ptr(self) -> *const () {
         match self {
             ProfilerBinding::PushStmt => ProfileImpl::push_stmt as *const (),
-            ProfilerBinding::TraceId => ptr::null(),
+            ProfilerBinding::ProfileId => ptr::null(),
         }
     }
 }
@@ -111,7 +113,7 @@ impl ProfilerMeta {
         )
     }
 
-    pub fn build_trace_id<'c, 'a>(
+    pub fn build_profile_id<'c, 'a>(
         &self,
         context: &'c Context,
         module: &Module,
@@ -121,11 +123,11 @@ impl ProfilerMeta {
         if self
             .active_map
             .borrow_mut()
-            .insert(ProfilerBinding::TraceId)
+            .insert(ProfilerBinding::ProfileId)
         {
             module.body().append_operation(memref::global(
                 context,
-                ProfilerBinding::TraceId.symbol(),
+                ProfilerBinding::ProfileId.symbol(),
                 None,
                 MemRefType::new(IntegerType::new(context, 64).into(), &[], None, None),
                 None,
@@ -135,19 +137,26 @@ impl ProfilerMeta {
             ));
         }
 
-        let trace_id_ptr = block
+        let trace_profile_ptr = block
             .append_op_result(memref::get_global(
                 context,
-                ProfilerBinding::TraceId.symbol(),
+                ProfilerBinding::ProfileId.symbol(),
                 MemRefType::new(IntegerType::new(context, 64).into(), &[], None, None),
                 location,
             ))
             .unwrap();
 
-        block.append_op_result(memref::load(trace_id_ptr, &[], location))
+        block.append_op_result(memref::load(trace_profile_ptr, &[], location))
     }
 
     /// Get the timestamp
+    /// Values
+    /// 1. Timestamp
+    /// 2. CPU's id core in which the program is running (only for x86 arch)
+    ///
+    /// We use the last value to ensure that both the initial and then end timestamp of
+    /// a libfunc's execution where calculated by the same core. This is to avoid gathering
+    /// invalid data
     #[cfg(target_arch = "x86_64")]
     pub fn measure_timestamp<'c, 'a>(
         &self,
@@ -193,17 +202,17 @@ impl ProfilerMeta {
         let value = block.shli(value_hi, k32, location)?;
         let value = block.append_op_result(arith::ori(value, value_lo, location))?;
 
-        // Values
-        // 1. Timestamp
-        // 2. CPU's id core in which the program is running
-        //
-        // We use the last value to ensure that both the initial and then end timestamp of
-        // a libfunc's execution where calculated by the same core. This is to avoid gathering
-        // invalid data
         Ok((value, core_idx))
     }
 
     /// Get the timestamp
+    /// Values
+    /// 1. Timestamp
+    /// 2. CPU's id core in which the program is running (only for x86 arch)
+    ///
+    /// We use the last value to ensure that both the initial and then end timestamp of
+    /// a libfunc's execution where calculated by the same core. This is to avoid gathering
+    /// invalid data
     #[cfg(target_arch = "aarch64")]
     pub fn measure_timestamp<'c, 'a>(
         &self,
@@ -238,7 +247,7 @@ impl ProfilerMeta {
     }
 
     #[allow(clippy::too_many_arguments)]
-    /// Receives two timestamps, if they were originated in the same statement index
+    /// Receives two timestamps, if they were originated in the same CPU core,
     /// the delta time between these two is calculated. If not, then the delta time is
     /// assigned to -1. Then it pushes the frame, which is made of the statement index
     /// the delta time.
@@ -248,6 +257,7 @@ impl ProfilerMeta {
         module: &Module,
         block: &Block<'c>,
         statement_idx: usize,
+        // (timestamp, core_idx)
         t0: (Value<'c, '_>, Value<'c, '_>),
         t1: (Value<'c, '_>, Value<'c, '_>),
         location: Location<'c>,
@@ -258,7 +268,7 @@ impl ProfilerMeta {
         // If core idx does not match:
         //   Write statement idx and -1.
 
-        let trace_id = self.build_trace_id(context, module, block, location)?;
+        let trace_id = self.build_profile_id(context, module, block, location)?;
 
         let i64_ty = IntegerType::new(context, 64).into();
 
@@ -285,6 +295,7 @@ impl ProfilerMeta {
             )
             .into(),
         );
+
         Ok(())
     }
 }
@@ -292,10 +303,25 @@ impl ProfilerMeta {
 pub static LIBFUNC_PROFILE: LazyLock<Mutex<HashMap<u64, ProfileImpl>>> =
     LazyLock::new(|| Mutex::new(HashMap::new()));
 
+/// `(libfunc_id, (vec<delta_time>, extra_count))`
+/// 
+/// `extra_count`: a counter of libfunc calls whose execution time
+/// hasn't been calculated for being invalid
+type ProfileProcessor = dyn Fn((ConcreteLibfuncId, (Vec<u64>, u64))) -> LibfuncProfileSummary;
+
 /// This represents a libfunc's profile, which has the following structure:
 ///
 /// `Vec<(libfunc_id, (samples_number, total_execution_time, quartiles, average_execution_time, standard_deviations))>``
-type ProfileInfo = Vec<(ConcreteLibfuncId, (u64, u64, [u64; 5], f64, f64))>;
+#[cfg(feature = "with-libfunc-profiling")]
+#[derive(Clone, Debug, Serialize)]
+pub struct LibfuncProfileSummary {
+    pub libfunc_idx: ConcreteLibfuncId,
+    pub samples: u64,
+    pub total_time: u64,
+    pub average_time: f64,
+    pub std_deviation: f64,
+    pub quartiles: [u64; 5],
+}
 
 pub struct ProfileImpl {
     pub trace: Vec<(StatementIdx, u64)>,
@@ -324,7 +350,7 @@ impl ProfileImpl {
             .push((StatementIdx(statement_idx as usize), tick_delta));
     }
 
-    pub fn process(&self) -> ProfileInfo {
+    pub fn process(&self, processor: ProfileProcessor) -> Vec<LibfuncProfileSummary> {
         let mut trace = HashMap::<ConcreteLibfuncId, (Vec<u64>, u64)>::new();
 
         for (statement_idx, tick_delta) in self.trace.iter() {
@@ -344,74 +370,15 @@ impl ProfileImpl {
             }
         }
 
-        let mut trace = trace
-            .into_iter()
-            .map(|(libfunc_id, (mut tick_deltas, extra_count))| {
-                // if no deltas were registered, we only return the libfunc's calls amount
-                if tick_deltas.is_empty() {
-                    return (libfunc_id, (extra_count, 0, [0; 5], 0.0, 0.0));
-                }
-
-                tick_deltas.sort();
-
-                // Drop outliers.
-                {
-                    let q1 = tick_deltas[tick_deltas.len() / 4];
-                    let q3 = tick_deltas[3 * tick_deltas.len() / 4];
-                    let iqr = q3 - q1;
-
-                    let q1_thr = q1.saturating_sub(iqr + iqr / 2);
-                    let q3_thr = q3 + (iqr + iqr / 2);
-
-                    tick_deltas.retain(|x| *x >= q1_thr && *x <= q3_thr);
-                }
-
-                // Compute the quartiles.
-                let quartiles = [
-                    *tick_deltas.first().unwrap(),
-                    tick_deltas[tick_deltas.len() / 4],
-                    tick_deltas[tick_deltas.len() / 2],
-                    tick_deltas[3 * tick_deltas.len() / 4],
-                    *tick_deltas.last().unwrap(),
-                ];
-
-                // Compuite the average.
-                let average =
-                    tick_deltas.iter().copied().sum::<u64>() as f64 / tick_deltas.len() as f64;
-
-                // Compute the standard deviation.
-                let std_dev = {
-                    let sum = tick_deltas
-                        .iter()
-                        .copied()
-                        .map(|x| x as f64)
-                        .map(|x| (x - average))
-                        .map(|x| x * x)
-                        .sum::<f64>();
-                    sum / (tick_deltas.len() as u64 + extra_count) as f64
-                };
-
-                (
-                    libfunc_id,
-                    (
-                        tick_deltas.len() as u64 + extra_count,
-                        tick_deltas.iter().sum::<u64>()
-                            + (extra_count as f64 * average).round() as u64,
-                        quartiles,
-                        average,
-                        std_dev,
-                    ),
-                )
-            })
-            .collect::<Vec<_>>();
+        let mut trace = trace.into_iter().map(processor).collect::<Vec<_>>();
 
         // Sort libfuncs by the order in which they are declared.
-        trace.sort_by_key(|(libfunc_id, _)| {
+        trace.sort_by_key(|ProfilerSummary { libfunc_idx, .. }| {
             self.sierra_program
                 .libfunc_declarations
                 .iter()
                 .enumerate()
-                .find_map(|(i, x)| (&x.id == libfunc_id).then_some(i))
+                .find_map(|(i, x)| (&x.id == libfunc_idx).then_some(i))
                 .unwrap()
         });
 
