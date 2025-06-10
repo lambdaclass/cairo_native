@@ -99,7 +99,7 @@ tempfile = "3.15.0"
 thiserror = "2.0.9"
 tracing = "0.1"
 utf8_iter = "1.0.4"
-sierra-emu = { path = "debug_utils/sierra-emu", version = "0.5.0-rc.6", optional = true }
+sierra-emu = { workspace = true, optional = true }
 
 
 # CLI dependencies
@@ -188,6 +188,7 @@ name = "libfuncs"
 harness = false
 
 [workspace.dependencies]
+sierra-emu = { path = "debug_utils/sierra-emu", version = "0.5.0-rc.6" }
 cairo-lang-casm = "=2.12.0-dev.1"
 cairo-lang-compiler = "=2.12.0-dev.1"
 cairo-lang-defs = "=2.12.0-dev.1"
