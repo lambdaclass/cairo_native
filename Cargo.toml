@@ -1,10 +1,3 @@
-[workspace]
-members = ["debug_utils/sierra-emu", "debug_utils/casm-data-flow"]
-
-# Explicitly set the resolver to the default for edition >= 2021
-# https://doc.rust-lang.org/edition-guide/rust-2021/default-cargo-resolver.html
-resolver = "2"
-
 [workspace.package]
 version = "0.5.0-rc.6"
 edition = "2021"
@@ -21,6 +14,10 @@ version.workspace = true
 edition.workspace = true
 license.workspace = true
 repository.workspace = true
+
+# Explicitly set the resolver to the default for edition >= 2021
+# https://doc.rust-lang.org/edition-guide/rust-2021/default-cargo-resolver.html
+resolver = "2"
 
 [[bin]]
 name = "cairo-native-dump"
@@ -186,6 +183,9 @@ harness = false
 [[bench]]
 name = "libfuncs"
 harness = false
+
+[workspace]
+members = ["debug_utils/sierra-emu", "debug_utils/casm-data-flow"]
 
 [workspace.dependencies]
 sierra-emu = { path = "debug_utils/sierra-emu", version = "0.5.0-rc.6" }
