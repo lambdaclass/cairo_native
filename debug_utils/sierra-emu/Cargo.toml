@@ -1,10 +1,10 @@
 [package]
 name = "sierra-emu"
-version = "0.1.0"
-edition = "2021"
-license = "Apache-2.0"
 description = "A Cairo (Sierra) Virtual Machine."
-repository = "https://github.com/lambdaclass/sierra-emu"
+version.workspace = true
+edition.workspace = true
+license.worksace = true
+repository.workspace = true
 readme = "README.md"
 keywords = ["starknet", "cairo", "compiler", "mlir"]
 
