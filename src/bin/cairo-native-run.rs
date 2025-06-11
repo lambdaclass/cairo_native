@@ -3,6 +3,8 @@ use cairo_lang_compiler::{
     compile_prepared_db, db::RootDatabase, project::setup_project, CompilerConfig,
 };
 use cairo_lang_runner::short_string::as_cairo_short_string;
+#[cfg(feature = "with-trace-dump")]
+use cairo_lang_sierra::ids::ConcreteLibfuncId;
 use cairo_lang_sierra_to_casm::metadata::MetadataComputationConfig;
 use cairo_native::{
     context::NativeContext,
@@ -14,11 +16,6 @@ use clap::{Parser, ValueEnum};
 use std::path::PathBuf;
 use tracing_subscriber::{EnvFilter, FmtSubscriber};
 use utils::{find_function, result_to_runresult};
-#[cfg(feature = "with-trace-dump")]
-use {
-    cairo_lang_sierra::ids::ConcreteLibfuncId,
-    cairo_native::metadata::profiler::LibfuncProfileSummary,
-};
 
 mod utils;
 
@@ -222,7 +219,6 @@ fn main() -> anyhow::Result<()> {
 
     #[cfg(feature = "with-libfunc-profiling")]
     {
-        use cairo_native::metadata::profiler::LibfuncProfileSummary;
         use std::{fs::File, io::Write};
 
         let profile = cairo_native::metadata::profiler::LIBFUNC_PROFILE
@@ -290,7 +286,6 @@ fn main() -> anyhow::Result<()> {
 ///
 /// `Vec<(libfunc_id, (samples_number, total_execution_time, quartiles, average_execution_time, standard_deviations))>``
 #[cfg(feature = "with-libfunc-profiling")]
-#[derive(Clone, Debug, Serialize)]
 pub struct LibfuncProfileSummary {
     pub libfunc_idx: ConcreteLibfuncId,
     pub samples: u64,

@@ -45,7 +45,6 @@ use melior::{
     Context,
 };
 #[cfg(feature = "with-libfunc-profiling")]
-use serde::Serialize;
 use std::{
     cell::RefCell,
     collections::{HashMap, HashSet},
