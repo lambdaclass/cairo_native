@@ -286,6 +286,20 @@ fn main() -> anyhow::Result<()> {
     Ok(())
 }
 
+/// This represents a libfunc's profile, which has the following structure:
+///
+/// `Vec<(libfunc_id, (samples_number, total_execution_time, quartiles, average_execution_time, standard_deviations))>``
+#[cfg(feature = "with-libfunc-profiling")]
+#[derive(Clone, Debug, Serialize)]
+pub struct LibfuncProfileSummary {
+    pub libfunc_idx: ConcreteLibfuncId,
+    pub samples: u64,
+    pub total_time: u64,
+    pub average_time: f64,
+    pub std_deviation: f64,
+    pub quartiles: [u64; 5],
+}
+
 #[cfg(feature = "with-trace-dump")]
 fn process_profiles(profile: (ConcreteLibfuncId, (Vec<u64>, u64))) -> LibfuncProfileSummary {
     let (libfunc_idx, (mut tick_deltas, extra_count)) = profile;
