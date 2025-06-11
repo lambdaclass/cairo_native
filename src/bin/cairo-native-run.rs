@@ -236,7 +236,17 @@ fn main() -> anyhow::Result<()> {
         if let Some(profiler_output_path) = args.profiler_output {
             let mut output = File::create(profiler_output_path)?;
 
-            let processed_profile = profile.process(process_profiles);
+            let mut processed_profile = profile.summarize_profiles(process_profiles);
+
+            processed_profile.sort_by_key(|LibfuncProfileSummary { libfunc_idx, .. }| {
+                profile
+                    .sierra_program()
+                    .libfunc_declarations
+                    .iter()
+                    .enumerate()
+                    .find_map(|(i, x)| (x.id == *libfunc_idx).then_some(i))
+                    .unwrap()
+            });
 
             for LibfuncProfileSummary {
                 libfunc_idx,

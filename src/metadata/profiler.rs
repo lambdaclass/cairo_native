@@ -1,4 +1,26 @@
 #![cfg(feature = "with-libfunc-profiling")]
+//! The libfunc profiling feature is used to generate information about every libfunc executed in a sierra program.
+//!
+//! When this feature is used, the compiler will call the important methods:
+//! 1. `measure_timestamp`: called before every libfunc execution.
+//!
+//! 2. `push_frame`: called before every branching operation. This method will also call `measure_timestamp`. This,
+//!    with the timestamp calculated before the execution, will allow to measure each libfunc's execution time. Apart
+//!    from that, it will count every libfunc's call, allowing to summarize every libfun'c execution execution time.
+//!
+//! Once the program execution finished and the information was gathered, a `summarize_profiles` can be called. It
+//! exepects a closure to process this information.
+//!
+//! As well as with the trace-dump fature, in the context of starknet contracts, we need to add support for building
+//! profiles for multiple programs. To do so, we need two important elements, which must be set before every contract
+//! execution:
+//!
+//! 1. A glbal static hashmap to map every profile id to its respective profile summary. See `LIBFUNC_PROFILE`.
+//!
+//! 2. A counter to track the ID of the current libfunc profile, which gets updated every time we switch to another
+//!    contract. Since a contract can call other contract's, we need a way of restoring the counter after every execution.
+//!
+//! See cairo-native-run` for an example on how to do it.
 
 use crate::{
     error::{Error, Result},
@@ -54,18 +76,16 @@ impl ProfilerBinding {
     }
 }
 
-#[derive(Clone)]
+#[derive(Clone, Default)]
 pub struct ProfilerMeta {
     active_map: RefCell<HashSet<ProfilerBinding>>,
-    _private: (),
 }
 
 impl ProfilerMeta {
-    pub fn new() -> Result<Self> {
-        Ok(Self {
+    pub fn new() -> Self {
+        Self {
             active_map: RefCell::new(HashSet::new()),
-            _private: (),
-        })
+        }
     }
 
     /// Register the global for the given binding, if not yet registered, and return
@@ -330,6 +350,10 @@ impl ProfileImpl {
         }
     }
 
+    pub fn sierra_program(&self) -> &Program {
+        &self.sierra_program
+    }
+
     // Push a profiler frame
     pub extern "C" fn push_stmt(trace_id: u64, statement_idx: u64, tick_delta: u64) {
         let mut profiler = LIBFUNC_PROFILE.lock().unwrap();
@@ -346,13 +370,15 @@ impl ProfileImpl {
 
     /// Process profiling results.
     ///
-    /// Receives a closure with the flowing paramaters `(libfunc_id, (vec<delta_time>, extra_count))`
+    /// Receives a closure with the flowing paramaters `(libfunc_id, (vec<delta_time>, extra_count))` to
+    /// process profiles information.
     ///
     /// `extra_count`: counter of libfunc calls whose execution time
-    /// hasn't been calculated for being invalid
-    pub fn process<F>(&self, processor: F) -> Vec<LibfuncProfileSummary>
+    /// hasn't been calculated for being invalid.
+    ///
+    pub fn summarize_profiles<R, F>(&self, processor: F) -> Vec<R>
     where
-        F: FnMut((ConcreteLibfuncId, (Vec<u64>, u64))) -> LibfuncProfileSummary,
+        F: FnMut((ConcreteLibfuncId, (Vec<u64>, u64))) -> R,
     {
         let mut trace = HashMap::<ConcreteLibfuncId, (Vec<u64>, u64)>::new();
 
@@ -373,19 +399,7 @@ impl ProfileImpl {
             }
         }
 
-        let mut trace = trace.into_iter().map(processor).collect::<Vec<_>>();
-
-        // Sort libfuncs by the order in which they are declared.
-        trace.sort_by_key(|LibfuncProfileSummary { libfunc_idx, .. }| {
-            self.sierra_program
-                .libfunc_declarations
-                .iter()
-                .enumerate()
-                .find_map(|(i, x)| (x.id == *libfunc_idx).then_some(i))
-                .unwrap()
-        });
-
-        trace
+        trace.into_iter().map(processor).collect::<Vec<_>>()
     }
 }
 
