@@ -36,11 +36,13 @@ This trait, located in `src/arch.rs` is implemented currently for aarch64 and x8
 In `types.rs` we should also declare whether the type is complex under
 `is_complex`, whether its a builtin in `is_builtin`, a zst in `is_zst` and define it's layout in the `TypeBuilder` trait implementation.
 
+> [!NOTE]
 > Complex types are always passed by pointer (both as params and return
 > values) and require a stack allocation. Examples of complex values include
 > structs and enums, but not felts since LLVM considers them integers.
 
 ### Deserializing a type
+
 When **deserializing** (a.k.a converting the inputs so the runner
 accepts them), you are passed a bump allocator arena from `Bumpalo`, the
 general idea is to get the layout and size of the type, allocate it under
@@ -50,8 +52,9 @@ arena and not Rust itself.
 This is done in the `to_ptr` method.
 
 ### Serializing a type
+
 When **serializing** a type, you will get a `ptr: NonNull<()>` (non null
-pointer), which you will have to cast, dereference and then deserialize.
+pointer), which you will have to cast, dereference and then serialize.
 
 For a simple type to learn how it works, we recommend checking
 `src/values.rs`, in the `from_ptr` method, look the u8 type in the match, for more complex types, check the felt252 type.
@@ -59,6 +62,7 @@ The hardest types to understand are the enums, dictionaries and arrays,
 since they are complex types.
 
 ### Implementing the library function
+
 Libfuncs are implemented under `src/libfuncs.rs` and
 `src/libfuncs/{libfunc_name}.rs`. Just like types.
 
@@ -98,7 +102,8 @@ After implementing the libfuncs, we need to hookup the `build` method in
 the `src/libfuncs.rs` match statement.
 
 ### Example libfunc implementation: u8_to_felt252
-An example libfunc, converting a u8 to a felt252, extensively commented:
+
+An example libfunc, converting a `u8` to a `felt252`, extensively commented:
 
 ```rust,ignore
 /// Generate MLIR operations for the `u8_to_felt252` libfunc.

@@ -46,6 +46,7 @@ use. This can be done by adding `cairo-native = "0.5.0-rc.6"` to your Cargo.toml
 ## Getting Started
 
 ### Dependencies
+
 - Linux or macOS (aarch64 included) only for now
 - LLVM 19 with MLIR: On debian you can use [apt.llvm.org](https://apt.llvm.org/),
   on macOS you can use brew
@@ -54,6 +55,7 @@ use. This can be done by adding `cairo-native = "0.5.0-rc.6"` to your Cargo.toml
 - Git
 
 ### Setup
+
 > This step applies to all operating systems.
 
 Run the following make target to install the dependencies (**both Linux and macOS**):
@@ -63,6 +65,7 @@ make deps
 ```
 
 #### Linux
+
 Since Linux distributions change widely, you need to install LLVM 19 via your
 package manager, compile it or check if the current release has a Linux binary.
 
@@ -125,6 +128,7 @@ source env.sh
 ```
 
 #### MacOS
+
 The makefile `deps` target (which you should have ran before) installs LLVM 19
 with brew for you, afterwards you need to execute the `env.sh` script to setup
 the needed environment variables.
@@ -134,6 +138,7 @@ source env.sh
 ```
 
 ### Make targets:
+
 Running `make` by itself will check whether the required LLVM installation and
 corelib is found, and then list available targets.
 
@@ -162,11 +167,11 @@ Usage:
 ```
 
 ## Included Tools
+
 Aside from the compilation and execution engine library, Cairo Native includes
 a few command-line tools to aid development, and some useful scripts.
 
-These are:
-- The contents of the `/scripts/` folder
+These are the contents of the `/src/bin` folder
 - `cairo-native-compile`
 - `cairo-native-dump`
 - `cairo-native-run`
@@ -176,6 +181,7 @@ These are:
 - `scarb-native-test`
 
 ### `cairo-native-compile`
+
 ```bash
 Compiles a Cairo project outputting the generated MLIR and the shared library.
 Exits with 1 if the compilation or run fails, otherwise 0.
@@ -197,6 +203,7 @@ Options:
 ```
 
 ###  `cairo-native-dump`
+
 ```bash
 Usage: cairo-native-dump [OPTIONS] <INPUT>
 
@@ -210,6 +217,7 @@ Options:
 ```
 
 ### `cairo-native-run`
+
 This tool allows to run programs using the JIT engine, like the `cairo-run`
 tool, the parameters can only be felt values.
 
@@ -234,6 +242,7 @@ Options:
 ```
 
 ### `cairo-native-test`
+
 This tool mimics the `cairo-test`
 [tool](https://github.com/starkware-libs/cairo/tree/main/crates/cairo-lang-test-runner)
 and is identical to it in interface, the only feature it doesn't have is the profiler.
@@ -275,6 +284,7 @@ cairo-native-test ./cairo-tests/
 This will run all the tests (functions marked with the `#[test]` attribute).
 
 ### `cairo-native-stress`
+
 This tool runs a stress test on Cairo Native.
 
 ```bash
@@ -315,6 +325,7 @@ make stress-clean
 ```
 
 ### `scarb-native-dump`
+
 This tool mimics the `scarb build` [command](https://github.com/software-mansion/scarb/tree/main/extensions/scarb-cairo-test).
 You can download it on our [releases](https://github.com/lambdaclass/cairo_native/releases) page.
 
@@ -323,6 +334,7 @@ behave like `scarb build`, leaving the MLIR files under the `target/` folder
 besides the generated JSON sierra files.
 
 ### `scarb-native-test`
+
 This tool mimics the `scarb test` [command](https://github.com/software-mansion/scarb/tree/main/extensions/scarb-cairo-test).
 You can download it on our [releases](https://github.com/lambdaclass/cairo_native/releases) page.
 
@@ -348,6 +360,7 @@ Options:
 ## Benchmarking
 
 ### Requirements
+
 - [hyperfine](https://github.com/sharkdp/hyperfine): `cargo install hyperfine`
 - [cairo 2.12.0-dev.0](https://github.com/starkware-libs/cairo)
 - Cairo Corelibs
