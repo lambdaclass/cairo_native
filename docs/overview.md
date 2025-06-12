@@ -87,7 +87,8 @@ The code is laid out in the following sections:
  ├─ arch.rs             Trampoline assembly for calling functions with dynamic signatures.
  ├─ arch/               Architecture-specific code for the trampoline.
  ├─ bin/                Binary programs.
- ├─ block_ext.rs        A melior (MLIR) block trait extension to write less code.
+ ├─ utils/              Utily traits and methods like a melior (MLIR) block trait
+                        extension to write less code.
  ├─ cache.rs            Types and implementations of compiled program caches.
  ├─ compiler.rs         The glue code of the compiler, has the codegen for
                         the function signatures and calls the libfunc
