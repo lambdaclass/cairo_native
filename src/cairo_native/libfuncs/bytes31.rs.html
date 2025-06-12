@@ -170,7 +170,7 @@
 <a href=#170 id=170 data-nosnippet>170</a>    <span class="kw">use </span>starknet_types_core::felt::Felt;
 <a href=#171 id=171 data-nosnippet>171</a>
 <a href=#172 id=172 data-nosnippet>172</a>    <span class="macro">lazy_static!</span> {
-<a href=#173 id=173 data-nosnippet>173</a>        <span class="comment">// TODO: Test `bytes31_const` once the compiler supports it.
+<a href=#173 id=173 data-nosnippet>173</a>        <span class="comment">// TODO: Test `bytes31_const` once the compiler supports it. See: https://github.com/lambdaclass/cairo_native/issues/1224
 <a href=#174 id=174 data-nosnippet>174</a>        </span><span class="kw">static </span><span class="kw-2">ref </span>BYTES31_ROUNDTRIP: (String, Program) = <span class="macro">load_cairo!</span> {
 <a href=#175 id=175 data-nosnippet>175</a>            <span class="kw">use </span>core::bytes_31::{bytes31_try_from_felt252, bytes31_to_felt252};
 <a href=#176 id=176 data-nosnippet>176</a>

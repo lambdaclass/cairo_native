@@ -265,7 +265,7 @@
 <a href=#265 id=265 data-nosnippet>265</a>            <span class="kw">_ if </span>type_info.is_builtin() =&gt; {
 <a href=#266 id=266 data-nosnippet>266</a>                <span class="kw">if </span>!type_info.is_zst(registry)<span class="question-mark">? </span>{
 <a href=#267 id=267 data-nosnippet>267</a>                    <span class="kw">if let </span>CoreTypeConcrete::BuiltinCosts(<span class="kw">_</span>) = type_info {
-<a href=#268 id=268 data-nosnippet>268</a>                        <span class="comment">// todo: should we use this value?
+<a href=#268 id=268 data-nosnippet>268</a>                        <span class="comment">// todo: should we use this value? See: https://github.com/lambdaclass/cairo_native/issues/1219
 <a href=#269 id=269 data-nosnippet>269</a>                        </span><span class="kw">let </span>_value = <span class="kw">match </span><span class="kw-2">&amp;mut </span>return_ptr {
 <a href=#270 id=270 data-nosnippet>270</a>                            <span class="prelude-val">Some</span>(return_ptr) =&gt; <span class="kw">unsafe </span>{ <span class="kw-2">*</span>read_value::&lt;<span class="kw-2">*mut </span>u64&gt;(return_ptr) },
 <a href=#271 id=271 data-nosnippet>271</a>                            <span class="prelude-val">None </span>=&gt; ret_registers[<span class="number">0</span>] <span class="kw">as </span><span class="kw-2">*mut </span>u64,
