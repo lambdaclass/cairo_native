@@ -45,7 +45,7 @@ Then you are free to go and make a PR!
 ## High level project overview
 
 This will explain how the project is structured, without going into much details
-yet:
+yet.
 
 ### Project dependencies
 
@@ -86,22 +86,22 @@ The code is laid out in the following sections:
  src
  ├─ arch.rs             Trampoline assembly for calling functions with dynamic signatures.
  ├─ arch/               Architecture-specific code for the trampoline.
- ├─ bin/                Binary programs
+ ├─ bin/                Binary programs.
  ├─ block_ext.rs        A melior (MLIR) block trait extension to write less code.
  ├─ cache.rs            Types and implementations of compiled program caches.
  ├─ compiler.rs         The glue code of the compiler, has the codegen for
                         the function signatures and calls the libfunc
                         codegen implementations.
  ├─ context.rs          The MLIR context wrapper, provides the compile method.
- ├─ debug.rs
+ ├─ debug.rs            Debug function that maps the libfuncs to their name. 
  ├─ docs.rs             Documentation modules.
- ├─ error.rs            Error handling,
+ ├─ error.rs            Error handling.
  ├─ execution_result.rs Program result parsing.
- ├─ executor.rs         The executor & related code,
- ├─ ffi.cpp             Missing FFI C wrappers,
+ ├─ executor.rs         The executor & related code.
+ ├─ ffi.cpp             Missing FFI C wrappers.
  ├─ ffi.rs              Missing FFI C wrappers, rust side.
  ├─ lib.rs              The main lib file.
- ├─ libfuncs.rs         Cairo Sierra libfunc glue code & implementations,
+ ├─ libfuncs.rs         Cairo Sierra libfunc glue code & implementations.
  ├─ metadata.rs         Metadata injector to use within the compilation process.
  ├─ module.rs           The MLIR module wrapper.
  ├─ starknet.rs         Starknet syscall handler glue code.
