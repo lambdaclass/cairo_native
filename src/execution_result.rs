@@ -56,6 +56,7 @@ pub struct ContractExecutionResult {
     pub failure_flag: bool,
     pub return_values: Vec<Felt>,
     pub error_msg: Option<String>,
+    pub builtin_stats: BuiltinStats,
 }
 
 impl ContractExecutionResult {
@@ -156,6 +157,7 @@ impl ContractExecutionResult {
             return_values,
             failure_flag,
             error_msg,
+            builtin_stats: result.builtin_stats,
         })
     }
 }
