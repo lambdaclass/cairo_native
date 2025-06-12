@@ -319,24 +319,24 @@ impl ProfilerMeta {
     }
 }
 
+/// Represents a libfunc's profile. A libfunc profile maps libfuncs id
+/// to a tuple with a vector of deltas (*1) and extra counts (*2).
+/// *1 Each delta refers to the execution time of that libfunc call
+/// *2 `extra_count` is a count of libfunc calls whose execution time
+/// couldn't be calculated.
+pub type LibfuncProfiles = HashMap<ConcreteLibfuncId, (Vec<u64>, u64)>;
+
 pub static LIBFUNC_PROFILE: LazyLock<Mutex<HashMap<u64, ProfileImpl>>> =
     LazyLock::new(|| Mutex::new(HashMap::new()));
 
+#[derive(Default)]
 pub struct ProfileImpl {
     pub trace: Vec<(StatementIdx, u64)>,
-    sierra_program: Program,
 }
 
 impl ProfileImpl {
-    pub fn new(sierra_program: Program) -> Self {
-        Self {
-            trace: Vec::new(),
-            sierra_program,
-        }
-    }
-
-    pub fn sierra_program(&self) -> &Program {
-        &self.sierra_program
+    pub fn new() -> Self {
+        Self { trace: Vec::new() }
     }
 
     // Push a profiler frame
@@ -361,16 +361,11 @@ impl ProfileImpl {
     /// `extra_count`: counter of libfunc calls whose execution time
     /// hasn't been calculated for being invalid.
     ///
-    pub fn summarize_profiles<R, F>(&self, processor: F) -> Vec<R>
-    where
-        F: FnMut((ConcreteLibfuncId, (Vec<u64>, u64))) -> R,
-    {
+    pub fn get_profiles(&self, sierra_program: &Program) -> LibfuncProfiles {
         let mut trace = HashMap::<ConcreteLibfuncId, (Vec<u64>, u64)>::new();
 
         for (statement_idx, tick_delta) in self.trace.iter() {
-            if let Statement::Invocation(invocation) =
-                &self.sierra_program.statements[statement_idx.0]
-            {
+            if let Statement::Invocation(invocation) = &sierra_program.statements[statement_idx.0] {
                 let (tick_deltas, extra_count) =
                     trace.entry(invocation.libfunc_id.clone()).or_default();
 
@@ -384,7 +379,7 @@ impl ProfileImpl {
             }
         }
 
-        trace.into_iter().map(processor).collect::<Vec<_>>()
+        trace
     }
 }
 

@@ -3,8 +3,6 @@ use cairo_lang_compiler::{
     compile_prepared_db, db::RootDatabase, project::setup_project, CompilerConfig,
 };
 use cairo_lang_runner::short_string::as_cairo_short_string;
-#[cfg(feature = "with-trace-dump")]
-use cairo_lang_sierra::ids::ConcreteLibfuncId;
 use cairo_lang_sierra_to_casm::metadata::MetadataComputationConfig;
 use cairo_native::{
     context::NativeContext,
@@ -16,6 +14,10 @@ use clap::{Parser, ValueEnum};
 use std::path::PathBuf;
 use tracing_subscriber::{EnvFilter, FmtSubscriber};
 use utils::{find_function, result_to_runresult};
+#[cfg(feature = "with-libfunc-profiling")]
+use {
+    cairo_lang_sierra::ids::ConcreteLibfuncId, cairo_native::metadata::profiler::LibfuncProfiles,
+};
 
 mod utils;
 
@@ -179,7 +181,7 @@ fn main() -> anyhow::Result<()> {
         LIBFUNC_PROFILE
             .lock()
             .unwrap()
-            .insert(0, ProfileImpl::new(sierra_program.clone()));
+            .insert(0, ProfileImpl::new());
     }
 
     let gas_metadata =
@@ -232,11 +234,11 @@ fn main() -> anyhow::Result<()> {
         if let Some(profiler_output_path) = args.profiler_output {
             let mut output = File::create(profiler_output_path)?;
 
-            let mut processed_profile = profile.summarize_profiles(process_profiles);
+            let raw_profiles = profile.get_profiles(&sierra_program);
+            let mut processed_profiles = process_profiles(raw_profiles);
 
-            processed_profile.sort_by_key(|LibfuncProfileSummary { libfunc_idx, .. }| {
-                profile
-                    .sierra_program()
+            processed_profiles.sort_by_key(|LibfuncProfileSummary { libfunc_idx, .. }| {
+                sierra_program
                     .libfunc_declarations
                     .iter()
                     .enumerate()
@@ -251,7 +253,7 @@ fn main() -> anyhow::Result<()> {
                 average_time,
                 std_deviation,
                 quartiles,
-            } in processed_profile
+            } in processed_profiles
             {
                 writeln!(output, "{libfunc_idx}")?;
                 writeln!(output, "    Total Samples:          {samples}")?;
@@ -282,9 +284,6 @@ fn main() -> anyhow::Result<()> {
     Ok(())
 }
 
-/// This represents a libfunc's profile, which has the following structure:
-///
-/// `Vec<(libfunc_id, (samples_number, total_execution_time, quartiles, average_execution_time, standard_deviations))>``
 #[cfg(feature = "with-libfunc-profiling")]
 pub struct LibfuncProfileSummary {
     pub libfunc_idx: ConcreteLibfuncId,
@@ -295,66 +294,71 @@ pub struct LibfuncProfileSummary {
     pub quartiles: [u64; 5],
 }
 
-#[cfg(feature = "with-trace-dump")]
-fn process_profiles(profile: (ConcreteLibfuncId, (Vec<u64>, u64))) -> LibfuncProfileSummary {
-    let (libfunc_idx, (mut tick_deltas, extra_count)) = profile;
+#[cfg(feature = "with-libfunc-profiling")]
+fn process_profiles(profiles: LibfuncProfiles) -> Vec<LibfuncProfileSummary> {
+    profiles
+        .into_iter()
+        .map(|(libfunc_idx, (mut tick_deltas, extra_count))| {
+            // if no deltas were registered, we only return the libfunc's calls amount
+            if tick_deltas.is_empty() {
+                return LibfuncProfileSummary {
+                    libfunc_idx,
+                    samples: extra_count,
+                    total_time: 0,
+                    average_time: 0.0,
+                    std_deviation: 0.0,
+                    quartiles: [0; 5],
+                };
+            }
 
-    // if no deltas were registered, we only return the libfunc's calls amount
-    if tick_deltas.is_empty() {
-        return LibfuncProfileSummary {
-            libfunc_idx,
-            samples: extra_count,
-            total_time: 0,
-            average_time: 0.0,
-            std_deviation: 0.0,
-            quartiles: [0; 5],
-        };
-    }
+            tick_deltas.sort();
 
-    tick_deltas.sort();
+            // Drop outliers.
+            {
+                let q1 = tick_deltas[tick_deltas.len() / 4];
+                let q3 = tick_deltas[3 * tick_deltas.len() / 4];
+                let iqr = q3 - q1;
 
-    // Drop outliers.
-    {
-        let q1 = tick_deltas[tick_deltas.len() / 4];
-        let q3 = tick_deltas[3 * tick_deltas.len() / 4];
-        let iqr = q3 - q1;
+                let q1_thr = q1.saturating_sub(iqr + iqr / 2);
+                let q3_thr = q3 + (iqr + iqr / 2);
 
-        let q1_thr = q1.saturating_sub(iqr + iqr / 2);
-        let q3_thr = q3 + (iqr + iqr / 2);
+                tick_deltas.retain(|x| *x >= q1_thr && *x <= q3_thr);
+            }
 
-        tick_deltas.retain(|x| *x >= q1_thr && *x <= q3_thr);
-    }
+            // Compute the quartiles.
+            let quartiles = [
+                *tick_deltas.first().unwrap(),
+                tick_deltas[tick_deltas.len() / 4],
+                tick_deltas[tick_deltas.len() / 2],
+                tick_deltas[3 * tick_deltas.len() / 4],
+                *tick_deltas.last().unwrap(),
+            ];
 
-    // Compute the quartiles.
-    let quartiles = [
-        *tick_deltas.first().unwrap(),
-        tick_deltas[tick_deltas.len() / 4],
-        tick_deltas[tick_deltas.len() / 2],
-        tick_deltas[3 * tick_deltas.len() / 4],
-        *tick_deltas.last().unwrap(),
-    ];
+            // Compuite the average.
+            let average =
+                tick_deltas.iter().copied().sum::<u64>() as f64 / tick_deltas.len() as f64;
 
-    // Compuite the average.
-    let average = tick_deltas.iter().copied().sum::<u64>() as f64 / tick_deltas.len() as f64;
+            // Compute the standard deviation.
+            let std_dev = {
+                let sum = tick_deltas
+                    .iter()
+                    .copied()
+                    .map(|x| x as f64)
+                    .map(|x| (x - average))
+                    .map(|x| x * x)
+                    .sum::<f64>();
+                sum / (tick_deltas.len() as u64 + extra_count) as f64
+            };
 
-    // Compute the standard deviation.
-    let std_dev = {
-        let sum = tick_deltas
-            .iter()
-            .copied()
-            .map(|x| x as f64)
-            .map(|x| (x - average))
-            .map(|x| x * x)
-            .sum::<f64>();
-        sum / (tick_deltas.len() as u64 + extra_count) as f64
-    };
-
-    LibfuncProfileSummary {
-        libfunc_idx,
-        samples: tick_deltas.len() as u64 + extra_count,
-        total_time: tick_deltas.iter().sum::<u64>() + (extra_count as f64 * average).round() as u64,
-        average_time: average,
-        std_deviation: std_dev,
-        quartiles,
-    }
+            LibfuncProfileSummary {
+                libfunc_idx,
+                samples: tick_deltas.len() as u64 + extra_count,
+                total_time: tick_deltas.iter().sum::<u64>()
+                    + (extra_count as f64 * average).round() as u64,
+                average_time: average,
+                std_deviation: std_dev,
+                quartiles,
+            }
+        })
+        .collect::<Vec<_>>()
 }
