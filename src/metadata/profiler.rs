@@ -5,19 +5,20 @@
 //! 1. `measure_timestamp`: called before every libfunc execution.
 //!
 //! 2. `push_frame`: called before every branching operation. This method will also call `measure_timestamp`. This,
-//!    with the timestamp calculated before the execution, will allow to measure each libfunc's execution time. Apart
-//!    from that, it will count every libfunc's call, allowing to summarize every libfun'c execution execution time.
+//!    with the timestamp calculated before the execution, will allow to measure each statement's execution time.
+//!    If for some reason, the statement delta time could not be gathered, we just record an unit value, recording that
+//!    we executed the given statement.
 //!
-//! Once the program execution finished and the information was gathered, a `summarize_profiles` can be called. It
-//! exepects a closure to process this information.
+//! Once the program execution finished and the information was gathered, the `get_profile` method can be called.
+//! It groups the samples by libfunc, and returns all data related to each libfunc.
 //!
-//! As well as with the trace-dump fature, in the context of starknet contracts, we need to add support for building
-//! profiles for multiple programs. To do so, we need two important elements, which must be set before every contract
+//! As well as with the trace-dump feature, in the context of Starknet contracts, we need to add support for building
+//! profiles for multiple executions. To do so, we need two important elements, which must be set before every contract
 //! execution:
 //!
-//! 1. A glbal static hashmap to map every profile id to its respective profile summary. See `LIBFUNC_PROFILE`.
+//! 1. A golbal static hashmap to map every profile ID to its respective profiler. See `LIBFUNC_PROFILE`.
 //!
-//! 2. A counter to track the ID of the current libfunc profile, which gets updated every time we switch to another
+//! 2. A counter to track the ID of the current profiler, which gets updated every time we switch to another
 //!    contract. Since a contract can call other contract's, we need a way of restoring the counter after every execution.
 //!
 //! See cairo-native-run` for an example on how to do it.
@@ -44,7 +45,7 @@ use melior::{
     },
     Context,
 };
-#[cfg(feature = "with-libfunc-profiling")]
+
 use std::{
     cell::RefCell,
     collections::{HashMap, HashSet},
@@ -69,7 +70,7 @@ impl ProfilerBinding {
 
     const fn function_ptr(self) -> *const () {
         match self {
-            ProfilerBinding::PushStmt => ProfileImpl::push_stmt as *const (),
+            ProfilerBinding::PushStmt => ProfilerImpl::push_stmt as *const (),
             ProfilerBinding::ProfileId => ptr::null(),
         }
     }
@@ -168,8 +169,9 @@ impl ProfilerMeta {
         block.append_op_result(memref::load(trace_profile_ptr, &[], location))
     }
 
-    /// Get the timestamp
-    /// Values
+    /// Gets the current timestamp.
+    ///
+    /// The values returned are:
     /// 1. Timestamp
     /// 2. CPU's id core in which the program is running (only for x86 arch)
     ///
@@ -224,8 +226,9 @@ impl ProfilerMeta {
         Ok((value, core_idx))
     }
 
-    /// Get the timestamp
-    /// Values
+    /// Gets the current timestamp.
+    ///
+    /// The values returned are:
     /// 1. Timestamp
     /// 2. CPU's id core in which the program is running (only for x86 arch)
     ///
@@ -324,62 +327,74 @@ impl ProfilerMeta {
 /// *1 Each delta refers to the execution time of that libfunc call
 /// *2 `extra_count` is a count of libfunc calls whose execution time
 /// couldn't be calculated.
-pub type LibfuncProfiles = HashMap<ConcreteLibfuncId, (Vec<u64>, u64)>;
+/// Represents the entire profile of the execution.
+///
+///It maps the libfunc ID to a libfunc profile.
+type Profile = HashMap<ConcreteLibfuncId, LibfuncProfileData>;
 
-pub static LIBFUNC_PROFILE: LazyLock<Mutex<HashMap<u64, ProfileImpl>>> =
+/// Represents the profile data for a particular libfunc.
+#[derive(Default)]
+pub struct LibfuncProfileData {
+    /// A vector of execution times, for each time the libfunc was executed.
+    pub deltas: Vec<u64>,
+    /// If the time delta for a particular execution could not be gathered,
+    /// we just increase `extra_counts` by 1.
+    pub extra_counts: u64,
+}
+
+pub static LIBFUNC_PROFILE: LazyLock<Mutex<HashMap<u64, ProfilerImpl>>> =
     LazyLock::new(|| Mutex::new(HashMap::new()));
 
 #[derive(Default)]
-pub struct ProfileImpl {
-    pub trace: Vec<(StatementIdx, u64)>,
+pub struct ProfilerImpl {
+    /// The samples recorded by the profiler. A value of `u64::MAX` implies
+    /// that the delta time for a statement could not be gathered.
+    pub samples: Vec<(StatementIdx, u64)>,
 }
 
-impl ProfileImpl {
+impl ProfilerImpl {
     pub fn new() -> Self {
-        Self { trace: Vec::new() }
+        Self {
+            samples: Vec::new(),
+        }
     }
 
     // Push a profiler frame
-    pub extern "C" fn push_stmt(trace_id: u64, statement_idx: u64, tick_delta: u64) {
+    pub extern "C" fn push_stmt(profile_id: u64, statement_idx: u64, tick_delta: u64) {
         let mut profiler = LIBFUNC_PROFILE.lock().unwrap();
 
-        let Some(profiler) = profiler.get_mut(&trace_id) else {
+        let Some(profiler) = profiler.get_mut(&profile_id) else {
             eprintln!("Could not find libfunc profiler!");
             return;
         };
 
         profiler
-            .trace
+            .samples
             .push((StatementIdx(statement_idx as usize), tick_delta));
     }
 
-    /// Process profiling results.
-    ///
-    /// Receives a closure with the flowing paramaters `(libfunc_id, (vec<delta_time>, extra_count))` to
-    /// process profiles information.
-    ///
-    /// `extra_count`: counter of libfunc calls whose execution time
-    /// hasn't been calculated for being invalid.
-    ///
-    pub fn get_profiles(&self, sierra_program: &Program) -> LibfuncProfiles {
-        let mut trace = HashMap::<ConcreteLibfuncId, (Vec<u64>, u64)>::new();
+    /// Returns the execution profile, grouped by libfunc
+    pub fn get_profile(&self, sierra_program: &Program) -> Profile {
+        let mut profile = HashMap::<ConcreteLibfuncId, LibfuncProfileData>::new();
 
-        for (statement_idx, tick_delta) in self.trace.iter() {
+        for (statement_idx, tick_delta) in self.samples.iter() {
             if let Statement::Invocation(invocation) = &sierra_program.statements[statement_idx.0] {
-                let (tick_deltas, extra_count) =
-                    trace.entry(invocation.libfunc_id.clone()).or_default();
+                let LibfuncProfileData {
+                    deltas,
+                    extra_counts,
+                } = profile.entry(invocation.libfunc_id.clone()).or_default();
 
                 // A tick_delta equal to u64::MAX implies it is invalid, so we don't take it
                 // into account
                 if *tick_delta != u64::MAX {
-                    tick_deltas.push(*tick_delta);
+                    deltas.push(*tick_delta);
                 } else {
-                    *extra_count += 1;
+                    *extra_counts += 1;
                 }
             }
         }
 
-        trace
+        profile
     }
 }
 
