@@ -172,8 +172,10 @@ impl ProfilerMeta {
     /// Gets the current timestamp.
     ///
     /// The values returned are:
-    /// 1. Timestamp
-    /// 2. CPU's id core in which the program is running (only for x86 arch)
+    /// 1. Timestamp: CPU cycles since its reset.
+    /// 2. CPU's id core in which the execution is running (only for x86 arch).
+    ///    In case of arm, 0 is always return as there's no way to know in which
+    ///    CPU core the execution was run.
     ///
     /// We use the last value to ensure that both the initial and then end timestamp of
     /// a libfunc's execution where calculated by the same core. This is to avoid gathering
@@ -229,8 +231,10 @@ impl ProfilerMeta {
     /// Gets the current timestamp.
     ///
     /// The values returned are:
-    /// 1. Timestamp
-    /// 2. CPU's id core in which the program is running (only for x86 arch)
+    /// 1. Timestamp: CPU cycles since its reset.
+    /// 2. CPU's id core in which the program is running (only for x86 arch).
+    ///    In case of arm, 0 is always return as there's no way to know in which
+    ///    CPU core the execution was run.
     ///
     /// We use the last value to ensure that both the initial and then end timestamp of
     /// a libfunc's execution where calculated by the same core. This is to avoid gathering
@@ -336,6 +340,7 @@ type Profile = HashMap<ConcreteLibfuncId, LibfuncProfileData>;
 #[derive(Default)]
 pub struct LibfuncProfileData {
     /// A vector of execution times, for each time the libfunc was executed.
+    /// It expreses the number of CPU cycles completed during the execution.
     pub deltas: Vec<u64>,
     /// If the time delta for a particular execution could not be gathered,
     /// we just increase `extra_counts` by 1.
