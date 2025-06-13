@@ -360,10 +360,10 @@ pub mod test {
             }
         };
 
-        // TODO: Add test program for `felt252_add_const`.
-        // TODO: Add test program for `felt252_sub_const`.
-        // TODO: Add test program for `felt252_mul_const`.
-        // TODO: Add test program for `felt252_div_const`.
+        // TODO: Add test program for `felt252_add_const`. See: https://github.com/lambdaclass/cairo_native/issues/1214
+        // TODO: Add test program for `felt252_sub_const`. See: https://github.com/lambdaclass/cairo_native/issues/1214
+        // TODO: Add test program for `felt252_mul_const`. See: https://github.com/lambdaclass/cairo_native/issues/1214
+        // TODO: Add test program for `felt252_div_const`. See: https://github.com/lambdaclass/cairo_native/issues/1214
 
         static ref FELT252_CONST: (String, Program) = load_cairo! {
             extern fn felt252_const<const value: felt252>() -> felt252 nopanic;

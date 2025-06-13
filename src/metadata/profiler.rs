@@ -3,7 +3,7 @@
 //!
 //! When this feature is used, the compiler will call the important methods:
 //!
-//!  1. `measure_timestamp`: called before every libfunc execution.
+//! 1. `measure_timestamp`: called before every libfunc execution.
 //!
 //! 2. `push_frame`: called before every branching operation. This method will also call `measure_timestamp`. This,
 //!    with the timestamp calculated before the execution, will allow to measure each statement's execution time.

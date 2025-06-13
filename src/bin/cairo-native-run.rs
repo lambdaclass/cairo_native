@@ -237,9 +237,9 @@ fn main() -> anyhow::Result<()> {
             let mut output = File::create(profiler_output_path)?;
 
             let raw_profile = profile.get_profile(&sierra_program);
-            let mut processed_profile = process_profiles(raw_profiles);
+            let mut processed_profile = process_profile(raw_profile);
 
-            processed_profiles.sort_by_key(|LibfuncProfileSummary { libfunc_idx, .. }| {
+            processed_profile.sort_by_key(|LibfuncProfileSummary { libfunc_idx, .. }| {
                 sierra_program
                     .libfunc_declarations
                     .iter()
@@ -255,10 +255,23 @@ fn main() -> anyhow::Result<()> {
                 average_time,
                 std_deviation,
                 quartiles,
-            } in processed_profiles
+            } in processed_profile
             {
                 writeln!(output, "{libfunc_idx}")?;
                 writeln!(output, "    Total Samples:          {samples}")?;
+
+                let (Some(total_time), Some(average_time), Some(std_deviation), Some(quartiles)) =
+                    (total_time, average_time, std_deviation, quartiles)
+                else {
+                    writeln!(output, "    Total Execution Time:   none")?;
+                    writeln!(output, "    Average Execution Time: none")?;
+                    writeln!(output, "    Standard Deviation:     none")?;
+                    writeln!(output, "    Quartiles:              none")?;
+                    writeln!(output)?;
+
+                    continue;
+                };
+
                 writeln!(output, "    Total Execution Time:   {total_time}")?;
                 writeln!(output, "    Average Execution Time: {average_time}")?;
                 writeln!(output, "    Standard Deviation:     {std_deviation}")?;
@@ -288,8 +301,8 @@ fn main() -> anyhow::Result<()> {
 
 #[cfg(feature = "with-libfunc-profiling")]
 struct LibfuncProfileSummary {
-    pub libfunc_idx: Option<ConcreteLibfuncId>,
-    pub samples: Option<u64>,
+    pub libfunc_idx: ConcreteLibfuncId,
+    pub samples: u64,
     pub total_time: Option<u64>,
     pub average_time: Option<f64>,
     pub std_deviation: Option<f64>,
@@ -297,7 +310,7 @@ struct LibfuncProfileSummary {
 }
 
 #[cfg(feature = "with-libfunc-profiling")]
-fn process_profiles(
+fn process_profile(
     profiles: HashMap<ConcreteLibfuncId, LibfuncProfileData>,
 ) -> Vec<LibfuncProfileSummary> {
     profiles
@@ -313,8 +326,8 @@ fn process_profiles(
                 // if no deltas were registered, we only return the libfunc's calls amount
                 if deltas.is_empty() {
                     return LibfuncProfileSummary {
-                        libfunc_idx: Some(libfunc_idx),
-                        samples: Some(extra_counts),
+                        libfunc_idx,
+                        samples: extra_counts,
                         total_time: Some(0),
                         average_time: Some(0.0),
                         std_deviation: Some(0.0),
@@ -345,7 +358,7 @@ fn process_profiles(
                     *deltas.last().unwrap(),
                 ];
 
-                // Compuite the average.
+                // Compute the average.
                 let average = deltas.iter().copied().sum::<u64>() as f64 / deltas.len() as f64;
 
                 // Compute the standard deviation.
@@ -361,8 +374,8 @@ fn process_profiles(
                 };
 
                 LibfuncProfileSummary {
-                    libfunc_idx: Some(libfunc_idx),
-                    samples: Some(deltas.len() as u64 + extra_counts),
+                    libfunc_idx,
+                    samples: deltas.len() as u64 + extra_counts,
                     total_time: Some(
                         deltas.iter().sum::<u64>() + (extra_counts as f64 * average).round() as u64,
                     ),
