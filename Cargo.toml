@@ -60,6 +60,7 @@ scarb = ["build-cli", "dep:scarb-ui", "dep:scarb-metadata"]
 with-cheatcode = []
 with-debug-utils = []
 with-mem-tracing = []
+with-libfunc-profiling = []
 with-segfault-catcher = []
 with-trace-dump = ["dep:sierra-emu"]
 
