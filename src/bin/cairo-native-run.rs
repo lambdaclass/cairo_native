@@ -328,10 +328,10 @@ fn process_profile(
                     return LibfuncProfileSummary {
                         libfunc_idx,
                         samples: extra_counts,
-                        total_time: Some(0),
-                        average_time: Some(0.0),
-                        std_deviation: Some(0.0),
-                        quartiles: Some([0; 5]),
+                        total_time: None,
+                        average_time: None,
+                        std_deviation: None,
+                        quartiles: None,
                     };
                 }
 
