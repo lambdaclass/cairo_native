@@ -2,7 +2,8 @@
 //! The libfunc profiling feature is used to generate information about every libfunc executed in a sierra program.
 //!
 //! When this feature is used, the compiler will call the important methods:
-//! 1. `measure_timestamp`: called before every libfunc execution.
+//!
+//!  1. `measure_timestamp`: called before every libfunc execution.
 //!
 //! 2. `push_frame`: called before every branching operation. This method will also call `measure_timestamp`. This,
 //!    with the timestamp calculated before the execution, will allow to measure each statement's execution time.
@@ -16,12 +17,12 @@
 //! profiles for multiple executions. To do so, we need two important elements, which must be set before every contract
 //! execution:
 //!
-//! 1. A golbal static hashmap to map every profile ID to its respective profiler. See `LIBFUNC_PROFILE`.
+//! 1. A global static hashmap to map every profile ID to its respective profiler. See `LIBFUNC_PROFILE`.
 //!
 //! 2. A counter to track the ID of the current profiler, which gets updated every time we switch to another
-//!    contract. Since a contract can call other contract's, we need a way of restoring the counter after every execution.
+//!    contract. Since a contract can call other contracts, we need a way of restoring the counter after every execution.
 //!
-//! See cairo-native-run` for an example on how to do it.
+//! See `cairo-native-run` for an example on how to do it.
 
 use crate::{
     error::{Error, Result},
@@ -174,11 +175,11 @@ impl ProfilerMeta {
     /// The values returned are:
     /// 1. Timestamp: CPU cycles since its reset.
     /// 2. CPU's id core in which the execution is running (only for x86 arch).
-    ///    In case of arm, 0 is always return as there's no way to know in which
+    ///    In case of arm, 0 is always returned as there's no way to know in which
     ///    CPU core the execution was run.
     ///
-    /// We use the last value to ensure that both the initial and then end timestamp of
-    /// a libfunc's execution where calculated by the same core. This is to avoid gathering
+    /// We use the last value to ensure that both the initial and the end timestamp of
+    /// a libfunc's execution were calculated by the same core. This is to avoid gathering
     /// invalid data
     #[cfg(target_arch = "x86_64")]
     pub fn measure_timestamp<'c, 'a>(
@@ -233,11 +234,11 @@ impl ProfilerMeta {
     /// The values returned are:
     /// 1. Timestamp: CPU cycles since its reset.
     /// 2. CPU's id core in which the program is running (only for x86 arch).
-    ///    In case of arm, 0 is always return as there's no way to know in which
+    ///    In case of arm, 0 is always returned as there's no way to know in which
     ///    CPU core the execution was run.
     ///
-    /// We use the last value to ensure that both the initial and then end timestamp of
-    /// a libfunc's execution where calculated by the same core. This is to avoid gathering
+    /// We use the last value to ensure that both the initial and the end timestamp of
+    /// a libfunc's execution were calculated by the same core. This is to avoid gathering
     /// invalid data
     #[cfg(target_arch = "aarch64")]
     pub fn measure_timestamp<'c, 'a>(
@@ -326,14 +327,9 @@ impl ProfilerMeta {
     }
 }
 
-/// Represents a libfunc's profile. A libfunc profile maps libfuncs id
-/// to a tuple with a vector of deltas (*1) and extra counts (*2).
-/// *1 Each delta refers to the execution time of that libfunc call
-/// *2 `extra_count` is a count of libfunc calls whose execution time
-/// couldn't be calculated.
 /// Represents the entire profile of the execution.
 ///
-///It maps the libfunc ID to a libfunc profile.
+/// It maps the libfunc ID to a libfunc profile.
 type Profile = HashMap<ConcreteLibfuncId, LibfuncProfileData>;
 
 /// Represents the profile data for a particular libfunc.

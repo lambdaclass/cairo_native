@@ -236,8 +236,8 @@ fn main() -> anyhow::Result<()> {
         if let Some(profiler_output_path) = args.profiler_output {
             let mut output = File::create(profiler_output_path)?;
 
-            let raw_profiles = profile.get_profile(&sierra_program);
-            let mut processed_profiles = process_profiles(raw_profiles);
+            let raw_profile = profile.get_profile(&sierra_program);
+            let mut processed_profile = process_profiles(raw_profiles);
 
             processed_profiles.sort_by_key(|LibfuncProfileSummary { libfunc_idx, .. }| {
                 sierra_program
@@ -287,13 +287,13 @@ fn main() -> anyhow::Result<()> {
 }
 
 #[cfg(feature = "with-libfunc-profiling")]
-pub struct LibfuncProfileSummary {
-    pub libfunc_idx: ConcreteLibfuncId,
-    pub samples: u64,
-    pub total_time: u64,
-    pub average_time: f64,
-    pub std_deviation: f64,
-    pub quartiles: [u64; 5],
+struct LibfuncProfileSummary {
+    pub libfunc_idx: Option<ConcreteLibfuncId>,
+    pub samples: Option<u64>,
+    pub total_time: Option<u64>,
+    pub average_time: Option<f64>,
+    pub std_deviation: Option<f64>,
+    pub quartiles: Option<[u64; 5]>,
 }
 
 #[cfg(feature = "with-libfunc-profiling")]
@@ -313,12 +313,12 @@ fn process_profiles(
                 // if no deltas were registered, we only return the libfunc's calls amount
                 if deltas.is_empty() {
                     return LibfuncProfileSummary {
-                        libfunc_idx,
-                        samples: extra_counts,
-                        total_time: 0,
-                        average_time: 0.0,
-                        std_deviation: 0.0,
-                        quartiles: [0; 5],
+                        libfunc_idx: Some(libfunc_idx),
+                        samples: Some(extra_counts),
+                        total_time: Some(0),
+                        average_time: Some(0.0),
+                        std_deviation: Some(0.0),
+                        quartiles: Some([0; 5]),
                     };
                 }
 
@@ -361,13 +361,14 @@ fn process_profiles(
                 };
 
                 LibfuncProfileSummary {
-                    libfunc_idx,
-                    samples: deltas.len() as u64 + extra_counts,
-                    total_time: deltas.iter().sum::<u64>()
-                        + (extra_counts as f64 * average).round() as u64,
-                    average_time: average,
-                    std_deviation: std_dev,
-                    quartiles,
+                    libfunc_idx: Some(libfunc_idx),
+                    samples: Some(deltas.len() as u64 + extra_counts),
+                    total_time: Some(
+                        deltas.iter().sum::<u64>() + (extra_counts as f64 * average).round() as u64,
+                    ),
+                    average_time: Some(average),
+                    std_deviation: Some(std_dev),
+                    quartiles: Some(quartiles),
                 }
             },
         )
