@@ -278,7 +278,7 @@ fn main() {
 
     let native_context = NativeContext::new();
 
-    let mut native_program = native_context.compile(&sierra_program).unwrap();
+    let mut native_program = native_context.compile(&sierra_program, false, Some(Default::default()), None).unwrap();
     native_program
         .insert_metadata(SyscallHandlerMeta::new(&mut SyscallHandler))
         .unwrap();
@@ -295,8 +295,8 @@ fn main() {
         .invoke_contract_dynamic(
             fn_id,
             // The calldata
-            &[JitValue::Felt252(Felt::ONE)],
-            u64::MAX.into(),
+            &[Felt::ONE],
+            Some(u64::MAX),
             SyscallHandler::new()
         )
         .expect("failed to execute the given contract");
