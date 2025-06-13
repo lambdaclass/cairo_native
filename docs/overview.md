@@ -172,11 +172,11 @@ fn main() {
     let native_program = native_context.compile(&sierra_program, true, None, None).unwrap();
 
     // The parameters of the entry point.
-    let params = &[JitValue::Felt252(Felt::from_bytes_be_slice(b"user"))];
+    let params = &[Value::Felt252(Felt::from_bytes_be_slice(b"user"))];
 
     // Find the entry point id by its name.
     let entry_point = "hello::hello::greet";
-    let entry_point_id = cairo_native::utils::find_function_id(&sierra_program, entry_point);
+    let entry_point_id = cairo_native::utils::find_function_id(&sierra_program, entry_point).expect("entry point not found");
 
     // Instantiate the executor.
     let native_executor = JitNativeExecutor::from_native_module(native_program, Default::default());
