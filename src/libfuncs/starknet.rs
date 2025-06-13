@@ -346,8 +346,9 @@ pub fn build_call_contract<'ctx, 'this>(
         IntegerType::new(context, 64).into(),
     )?;
 
-    entry.append_operation(helper.cond_br(
+    helper.cond_br(
         context,
+        entry,
         result_tag,
         [1, 0],
         [
@@ -355,8 +356,7 @@ pub fn build_call_contract<'ctx, 'this>(
             &[remaining_gas, entry.arg(1)?, payload_ok],
         ],
         location,
-    ));
-    Ok(())
+    )
 }
 
 pub fn build_class_hash_const<'ctx, 'this>(
@@ -378,8 +378,7 @@ pub fn build_class_hash_const<'ctx, 'this>(
         252,
     )?;
 
-    entry.append_operation(helper.br(0, &[value], location));
-    Ok(())
+    helper.br(entry, 0, &[value], location)
 }
 
 pub fn build_class_hash_try_from_felt252<'ctx, 'this>(
@@ -406,14 +405,14 @@ pub fn build_class_hash_try_from_felt252<'ctx, 'this>(
     ))?;
     let is_in_range = entry.cmpi(context, CmpiPredicate::Ult, value, limit, location)?;
 
-    entry.append_operation(helper.cond_br(
+    helper.cond_br(
         context,
+        entry,
         is_in_range,
         [0, 1],
         [&[range_check, value], &[range_check]],
         location,
-    ));
-    Ok(())
+    )
 }
 
 pub fn build_contract_address_const<'ctx, 'this>(
@@ -435,8 +434,7 @@ pub fn build_contract_address_const<'ctx, 'this>(
         252,
     )?;
 
-    entry.append_operation(helper.br(0, &[value], location));
-    Ok(())
+    helper.br(entry, 0, &[value], location)
 }
 
 pub fn build_contract_address_try_from_felt252<'ctx, 'this>(
@@ -463,14 +461,14 @@ pub fn build_contract_address_try_from_felt252<'ctx, 'this>(
     ))?;
     let is_in_range = entry.cmpi(context, CmpiPredicate::Ult, value, limit, location)?;
 
-    entry.append_operation(helper.cond_br(
+    helper.cond_br(
         context,
+        entry,
         is_in_range,
         [0, 1],
         [&[range_check, value], &[range_check]],
         location,
-    ));
-    Ok(())
+    )
 }
 
 pub fn build_storage_read<'ctx, 'this>(
@@ -613,8 +611,9 @@ pub fn build_storage_read<'ctx, 'this>(
 
     let remaining_gas = entry.load(context, location, gas_builtin_ptr, gas_ty)?;
 
-    entry.append_operation(helper.cond_br(
+    helper.cond_br(
         context,
+        entry,
         result_tag,
         [1, 0],
         [
@@ -622,8 +621,7 @@ pub fn build_storage_read<'ctx, 'this>(
             &[remaining_gas, entry.arg(1)?, payload_ok],
         ],
         location,
-    ));
-    Ok(())
+    )
 }
 
 pub fn build_storage_write<'ctx, 'this>(
@@ -774,8 +772,9 @@ pub fn build_storage_write<'ctx, 'this>(
 
     let remaining_gas = entry.load(context, location, gas_builtin_ptr, gas_ty)?;
 
-    entry.append_operation(helper.cond_br(
+    helper.cond_br(
         context,
+        entry,
         result_tag,
         [1, 0],
         [
@@ -783,8 +782,7 @@ pub fn build_storage_write<'ctx, 'this>(
             &[remaining_gas, entry.arg(1)?, payload_ok],
         ],
         location,
-    ));
-    Ok(())
+    )
 }
 
 pub fn build_storage_base_address_const<'ctx, 'this>(
@@ -806,8 +804,7 @@ pub fn build_storage_base_address_const<'ctx, 'this>(
         252,
     )?;
 
-    entry.append_operation(helper.br(0, &[value], location));
-    Ok(())
+    helper.br(entry, 0, &[value], location)
 }
 
 pub fn build_storage_base_address_from_felt252<'ctx, 'this>(
@@ -847,8 +844,7 @@ pub fn build_storage_base_address_from_felt252<'ctx, 'this>(
         location,
     ))?;
 
-    entry.append_operation(helper.br(0, &[range_check, value], location));
-    Ok(())
+    helper.br(entry, 0, &[range_check, value], location)
 }
 
 pub fn build_storage_address_from_base_and_offset<'ctx, 'this>(
@@ -863,8 +859,7 @@ pub fn build_storage_address_from_base_and_offset<'ctx, 'this>(
     let offset = entry.extui(entry.arg(1)?, entry.argument(0)?.r#type(), location)?;
     let addr = entry.addi(entry.arg(0)?, offset, location)?;
 
-    entry.append_operation(helper.br(0, &[addr], location));
-    Ok(())
+    helper.br(entry, 0, &[addr], location)
 }
 
 pub fn build_storage_address_try_from_felt252<'ctx, 'this>(
@@ -891,14 +886,14 @@ pub fn build_storage_address_try_from_felt252<'ctx, 'this>(
     ))?;
     let is_in_range = entry.cmpi(context, CmpiPredicate::Ult, value, limit, location)?;
 
-    entry.append_operation(helper.cond_br(
+    helper.cond_br(
         context,
+        entry,
         is_in_range,
         [0, 1],
         [&[range_check, value], &[range_check]],
         location,
-    ));
-    Ok(())
+    )
 }
 
 pub fn build_emit_event<'ctx, 'this>(
@@ -1090,8 +1085,9 @@ pub fn build_emit_event<'ctx, 'this>(
 
     let remaining_gas = entry.load(context, location, gas_builtin_ptr, gas_ty)?;
 
-    entry.append_operation(helper.cond_br(
+    helper.cond_br(
         context,
+        entry,
         result_tag,
         [1, 0],
         [
@@ -1099,8 +1095,7 @@ pub fn build_emit_event<'ctx, 'this>(
             &[remaining_gas, entry.arg(1)?, payload_ok],
         ],
         location,
-    ));
-    Ok(())
+    )
 }
 
 pub fn build_get_block_hash<'ctx, 'this>(
@@ -1238,8 +1233,9 @@ pub fn build_get_block_hash<'ctx, 'this>(
 
     let remaining_gas = entry.load(context, location, gas_builtin_ptr, gas_ty)?;
 
-    entry.append_operation(helper.cond_br(
+    helper.cond_br(
         context,
+        entry,
         result_tag,
         [1, 0],
         [
@@ -1247,8 +1243,7 @@ pub fn build_get_block_hash<'ctx, 'this>(
             &[remaining_gas, entry.arg(1)?, payload_ok],
         ],
         location,
-    ));
-    Ok(())
+    )
 }
 
 pub fn build_get_execution_info<'ctx, 'this>(
@@ -1380,8 +1375,9 @@ pub fn build_get_execution_info<'ctx, 'this>(
 
     let remaining_gas = entry.load(context, location, gas_builtin_ptr, gas_ty)?;
 
-    entry.append_operation(helper.cond_br(
+    helper.cond_br(
         context,
+        entry,
         result_tag,
         [1, 0],
         [
@@ -1389,8 +1385,7 @@ pub fn build_get_execution_info<'ctx, 'this>(
             &[remaining_gas, entry.arg(1)?, payload_ok],
         ],
         location,
-    ));
-    Ok(())
+    )
 }
 
 pub fn build_get_execution_info_v2<'ctx, 'this>(
@@ -1522,8 +1517,9 @@ pub fn build_get_execution_info_v2<'ctx, 'this>(
 
     let remaining_gas = entry.load(context, location, gas_builtin_ptr, gas_ty)?;
 
-    entry.append_operation(helper.cond_br(
+    helper.cond_br(
         context,
+        entry,
         result_tag,
         [1, 0],
         [
@@ -1531,8 +1527,7 @@ pub fn build_get_execution_info_v2<'ctx, 'this>(
             &[remaining_gas, entry.arg(1)?, payload_ok],
         ],
         location,
-    ));
-    Ok(())
+    )
 }
 
 pub fn build_deploy<'ctx, 'this>(
@@ -1756,8 +1751,9 @@ pub fn build_deploy<'ctx, 'this>(
 
     let remaining_gas = entry.load(context, location, gas_builtin_ptr, gas_ty)?;
 
-    entry.append_operation(helper.cond_br(
+    helper.cond_br(
         context,
+        entry,
         result_tag,
         [1, 0],
         [
@@ -1782,8 +1778,7 @@ pub fn build_deploy<'ctx, 'this>(
             ],
         ],
         location,
-    ));
-    Ok(())
+    )
 }
 
 pub fn build_keccak<'ctx, 'this>(
@@ -1931,8 +1926,9 @@ pub fn build_keccak<'ctx, 'this>(
     };
     let remaining_gas = entry.load(context, location, gas_builtin_ptr, gas_ty)?;
 
-    entry.append_operation(helper.cond_br(
+    helper.cond_br(
         context,
+        entry,
         result_tag,
         [1, 0],
         [
@@ -1940,8 +1936,7 @@ pub fn build_keccak<'ctx, 'this>(
             &[remaining_gas, entry.arg(1)?, payload_ok],
         ],
         location,
-    ));
-    Ok(())
+    )
 }
 
 pub fn build_library_call<'ctx, 'this>(
@@ -2110,8 +2105,9 @@ pub fn build_library_call<'ctx, 'this>(
 
     let remaining_gas = entry.load(context, location, gas_builtin_ptr, gas_ty)?;
 
-    entry.append_operation(helper.cond_br(
+    helper.cond_br(
         context,
+        entry,
         result_tag,
         [1, 0],
         [
@@ -2119,8 +2115,7 @@ pub fn build_library_call<'ctx, 'this>(
             &[remaining_gas, entry.arg(1)?, payload_ok],
         ],
         location,
-    ));
-    Ok(())
+    )
 }
 
 /// Executes the `meta_tx_v0_syscall`.
@@ -2325,8 +2320,9 @@ pub fn build_meta_tx_v0<'ctx, 'this>(
         IntegerType::new(context, 64).into(),
     )?;
 
-    entry.append_operation(helper.cond_br(
+    helper.cond_br(
         context,
+        entry,
         result_tag,
         [1, 0],
         [
@@ -2334,8 +2330,7 @@ pub fn build_meta_tx_v0<'ctx, 'this>(
             &[remaining_gas, entry.arg(1)?, payload_ok],
         ],
         location,
-    ));
-    Ok(())
+    )
 }
 
 pub fn build_replace_class<'ctx, 'this>(
@@ -2474,8 +2469,9 @@ pub fn build_replace_class<'ctx, 'this>(
 
     let remaining_gas = entry.load(context, location, gas_builtin_ptr, gas_ty)?;
 
-    entry.append_operation(helper.cond_br(
+    helper.cond_br(
         context,
+        entry,
         result_tag,
         [1, 0],
         [
@@ -2483,8 +2479,7 @@ pub fn build_replace_class<'ctx, 'this>(
             &[remaining_gas, entry.arg(1)?, payload_ok],
         ],
         location,
-    ));
-    Ok(())
+    )
 }
 
 pub fn build_send_message_to_l1<'ctx, 'this>(
@@ -2648,8 +2643,9 @@ pub fn build_send_message_to_l1<'ctx, 'this>(
 
     let remaining_gas = entry.load(context, location, gas_builtin_ptr, gas_ty)?;
 
-    entry.append_operation(helper.cond_br(
+    helper.cond_br(
         context,
+        entry,
         result_tag,
         [1, 0],
         [
@@ -2657,8 +2653,7 @@ pub fn build_send_message_to_l1<'ctx, 'this>(
             &[remaining_gas, entry.arg(1)?, payload_ok],
         ],
         location,
-    ));
-    Ok(())
+    )
 }
 
 pub fn build_sha256_process_block_syscall<'ctx, 'this>(
@@ -2798,8 +2793,9 @@ pub fn build_sha256_process_block_syscall<'ctx, 'this>(
 
     let remaining_gas = entry.load(context, location, gas_builtin_ptr, gas_ty)?;
 
-    entry.append_operation(helper.cond_br(
+    helper.cond_br(
         context,
+        entry,
         result_tag,
         [1, 0],
         [
@@ -2807,8 +2803,7 @@ pub fn build_sha256_process_block_syscall<'ctx, 'this>(
             &[remaining_gas, entry.arg(1)?, payload_ok],
         ],
         location,
-    ));
-    Ok(())
+    )
 }
 
 pub fn build_get_class_hash_at<'ctx, 'this>(
@@ -2950,8 +2945,9 @@ pub fn build_get_class_hash_at<'ctx, 'this>(
 
     let remaining_gas = entry.load(context, location, gas_builtin_ptr, gas_ty)?;
 
-    entry.append_operation(helper.cond_br(
+    helper.cond_br(
         context,
+        entry,
         result_tag,
         [1, 0],
         [
@@ -2959,8 +2955,7 @@ pub fn build_get_class_hash_at<'ctx, 'this>(
             &[remaining_gas, entry.arg(1)?, payload_ok],
         ],
         location,
-    ));
-    Ok(())
+    )
 }
 
 #[cfg(test)]
