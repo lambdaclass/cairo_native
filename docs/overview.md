@@ -145,10 +145,10 @@ development, such as wrapping return values and printing them.
 
 ## Basic API usage example
 
-The API contains two structs, `NativeContext` and `NativeExecutor`.
+The API contains three structs, `NativeContext`, `JitNativeExecutor` and `AotNativeExecutor`.
 The main purpose of `NativeContext` is MLIR initialization, compilation and
 lowering to LLVM.
-`NativeExecutor` in the other hand is responsible of executing MLIR
+The two variants of native executors in the other hand are responsible of executing MLIR
 compiled sierra programs from an entrypoint. Programs and JIT states can be
 cached in contexts where their execution will be done multiple times.
 
@@ -159,34 +159,36 @@ use cairo_native::executor::JitNativeExecutor;
 use cairo_native::values::JitValue;
 use std::path::Path;
 
-let program_path = Path::new("programs/examples/hello.cairo");
-// Compile the cairo program to sierra.
-let sierra_program = cairo_native::utils::cairo_to_sierra(program_path);
+fn main() { 
+    let program_path = Path::new("programs/examples/hello.cairo");
+    // Compile the cairo program to sierra.
+    let sierra_program = cairo_native::utils::cairo_to_sierra(program_path);
 
-// Instantiate a Cairo Native MLIR context. This data structure is responsible for the MLIR
-// initialization and compilation of sierra programs into a MLIR module.
-let native_context = NativeContext::new();
+    // Instantiate a Cairo Native MLIR context. This data structure is responsible for the MLIR
+    // initialization and compilation of sierra programs into a MLIR module.
+    let native_context = NativeContext::new();
 
-// Compile the sierra program into a MLIR module.
-let native_program = native_context.compile(&sierra_program, None).unwrap();
+    // Compile the sierra program into a MLIR module.
+    let native_program = native_context.compile(&sierra_program, true, None, None).unwrap();
 
-// The parameters of the entry point.
-let params = &[JitValue::Felt252(Felt::from_bytes_be_slice(b"user"))];
+    // The parameters of the entry point.
+    let params = &[JitValue::Felt252(Felt::from_bytes_be_slice(b"user"))];
 
-// Find the entry point id by its name.
-let entry_point = "hello::hello::greet";
-let entry_point_id = cairo_native::utils::find_function_id(&sierra_program, entry_point);
+    // Find the entry point id by its name.
+    let entry_point = "hello::hello::greet";
+    let entry_point_id = cairo_native::utils::find_function_id(&sierra_program, entry_point);
 
-// Instantiate the executor.
-let native_executor = JitNativeExecutor::from_native_module(native_program, Default::default());
+    // Instantiate the executor.
+    let native_executor = JitNativeExecutor::from_native_module(native_program, Default::default());
 
-// Execute the program.
-let result = native_executor
-    .invoke_dynamic(entry_point_id, params, None)
-    .unwrap();
+    // Execute the program.
+    let result = native_executor
+        .invoke_dynamic(entry_point_id, params, None)
+        .unwrap();
 
-println!("Cairo program was compiled and executed successfully.");
-println!("{:?}", result);
+    println!("Cairo program was compiled and executed successfully.");
+    println!("{:?}", result);
+}
 ```
 
 ## Running a Cairo program
@@ -200,7 +202,7 @@ Example code to run a program:
 ```rust,ignore
 use starknet_types_core::felt::Felt;
 use cairo_native::context::NativeContext;
-use cairo_native::executor::NativeExecutor;
+use cairo_native::executor::JitNativeExecutor;
 use cairo_native::values::JitValue;
 use std::path::Path;
 
@@ -214,7 +216,7 @@ fn main() {
     let native_context = NativeContext::new();
 
     // Compile the sierra program into a MLIR module.
-    let native_program = native_context.compile(&sierra_program).unwrap();
+    let native_program = native_context.compile(&sierra_program, true, None, None).unwrap();
 
     // The parameters of the entry point.
     let params = &[JitValue::Felt252(Felt::from_bytes_be_slice(b"user"))];
@@ -224,7 +226,7 @@ fn main() {
     let entry_point_id = cairo_native::utils::find_function_id(&sierra_program, entry_point);
 
     // Instantiate the executor.
-    let native_executor = NativeExecutor::new(native_program);
+    let native_executor = JitNativeExecutor::from_native_module(native_program, Default::default());
 
     // Execute the program.
     let result = native_executor
@@ -287,14 +289,15 @@ fn main() {
 
     let fn_id = &entry_point_fn.id;
 
-    let native_executor = NativeExecutor::new(native_program);
+    let native_executor = JitNativeExecutor::from_native_module(native_program, Default::default());
 
     let result = native_executor
-        .execute_contract(
+        .invoke_contract_dynamic(
             fn_id,
             // The calldata
             &[JitValue::Felt252(Felt::ONE)],
             u64::MAX.into(),
+            SyscallHandler::new()
         )
         .expect("failed to execute the given contract");
 
