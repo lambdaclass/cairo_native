@@ -1185,7 +1185,7 @@ mod test {
     }
 
     #[test]
-    fn test_to_jit_felt252() {
+    fn test_to_ptr_felt252() {
         let program = ProgramParser::new()
             .parse("type felt252 = felt252;")
             .unwrap();
@@ -1243,7 +1243,7 @@ mod test {
     }
 
     #[test]
-    fn test_to_jit_uint8() {
+    fn test_to_ptr_uint8() {
         let program = ProgramParser::new().parse("type u8 = u8;").unwrap();
 
         let registry = ProgramRegistry::<CoreType, CoreLibfunc>::new(&program).unwrap();
@@ -1266,7 +1266,7 @@ mod test {
     }
 
     #[test]
-    fn test_to_jit_uint16() {
+    fn test_to_ptr_uint16() {
         let program = ProgramParser::new().parse("type u16 = u16;").unwrap();
 
         let registry = ProgramRegistry::<CoreType, CoreLibfunc>::new(&program).unwrap();
@@ -1289,7 +1289,7 @@ mod test {
     }
 
     #[test]
-    fn test_to_jit_uint32() {
+    fn test_to_ptr_uint32() {
         let program = ProgramParser::new().parse("type u32 = u32;").unwrap();
 
         let registry = ProgramRegistry::<CoreType, CoreLibfunc>::new(&program).unwrap();
@@ -1312,7 +1312,7 @@ mod test {
     }
 
     #[test]
-    fn test_to_jit_uint64() {
+    fn test_to_ptr_uint64() {
         let program = ProgramParser::new().parse("type u64 = u64;").unwrap();
 
         let registry = ProgramRegistry::<CoreType, CoreLibfunc>::new(&program).unwrap();
@@ -1335,7 +1335,7 @@ mod test {
     }
 
     #[test]
-    fn test_to_jit_uint128() {
+    fn test_to_ptr_uint128() {
         let program = ProgramParser::new().parse("type u128 = u128;").unwrap();
 
         let registry = ProgramRegistry::<CoreType, CoreLibfunc>::new(&program).unwrap();
@@ -1358,7 +1358,7 @@ mod test {
     }
 
     #[test]
-    fn test_to_jit_sint8() {
+    fn test_to_ptr_sint8() {
         let program = ProgramParser::new().parse("type i8 = i8;").unwrap();
 
         let registry = ProgramRegistry::<CoreType, CoreLibfunc>::new(&program).unwrap();
@@ -1381,7 +1381,7 @@ mod test {
     }
 
     #[test]
-    fn test_to_jit_sint16() {
+    fn test_to_ptr_sint16() {
         let program = ProgramParser::new().parse("type i16 = i16;").unwrap();
 
         let registry = ProgramRegistry::<CoreType, CoreLibfunc>::new(&program).unwrap();
@@ -1404,7 +1404,7 @@ mod test {
     }
 
     #[test]
-    fn test_to_jit_sint32() {
+    fn test_to_ptr_sint32() {
         let program = ProgramParser::new().parse("type i32 = i32;").unwrap();
 
         let registry = ProgramRegistry::<CoreType, CoreLibfunc>::new(&program).unwrap();
@@ -1427,7 +1427,7 @@ mod test {
     }
 
     #[test]
-    fn test_to_jit_sint64() {
+    fn test_to_ptr_sint64() {
         let program = ProgramParser::new().parse("type i64 = i64;").unwrap();
 
         let registry = ProgramRegistry::<CoreType, CoreLibfunc>::new(&program).unwrap();
@@ -1450,7 +1450,7 @@ mod test {
     }
 
     #[test]
-    fn test_to_jit_sint128() {
+    fn test_to_ptr_sint128() {
         let program = ProgramParser::new().parse("type i128 = i128;").unwrap();
 
         let registry = ProgramRegistry::<CoreType, CoreLibfunc>::new(&program).unwrap();
@@ -1473,7 +1473,7 @@ mod test {
     }
 
     #[test]
-    fn test_to_jit_ec_point() {
+    fn test_to_ptr_ec_point() {
         let program = ProgramParser::new()
             .parse("type EcPoint = EcPoint;")
             .unwrap();
@@ -1498,7 +1498,7 @@ mod test {
     }
 
     #[test]
-    fn test_to_jit_ec_state() {
+    fn test_to_ptr_ec_state() {
         let program = ProgramParser::new()
             .parse("type EcState = EcState;")
             .unwrap();
@@ -1533,7 +1533,7 @@ mod test {
     }
 
     #[test]
-    fn test_to_jit_enum() {
+    fn test_to_ptr_enum() {
         // Parse the program
         let program = ProgramParser::new()
             .parse(
@@ -1545,7 +1545,7 @@ mod test {
         // Create the registry for the program
         let registry = ProgramRegistry::<CoreType, CoreLibfunc>::new(&program).unwrap();
 
-        // Call to_jit to get the value of the enum
+        // Call to_ptr to get the value of the enum
         let result = Value::Enum {
             tag: 0,
             value: Box::new(Value::Uint8(10)),
@@ -1558,12 +1558,12 @@ mod test {
             |_| todo!(),
         );
 
-        // Assertion to verify that the value returned by to_jit is not NULL
+        // Assertion to verify that the value returned by to_ptr is not NULL
         assert!(result.is_ok());
     }
 
     #[test]
-    fn test_to_jit_bounded_int_valid() {
+    fn test_to_ptr_bounded_int_valid() {
         // Parse the program
         let program = ProgramParser::new()
             .parse(
@@ -1600,7 +1600,7 @@ mod test {
     }
 
     #[test]
-    fn test_to_jit_bounded_int_lower_bound_greater_than_upper() {
+    fn test_to_ptr_bounded_int_lower_bound_greater_than_upper() {
         // Parse the program
         let program = ProgramParser::new()
             .parse(
@@ -1634,7 +1634,7 @@ mod test {
     }
 
     #[test]
-    fn test_to_jit_bounded_int_value_less_than_lower_bound() {
+    fn test_to_ptr_bounded_int_value_less_than_lower_bound() {
         // Parse the program
         let program = ProgramParser::new()
             .parse(
@@ -1668,7 +1668,7 @@ mod test {
     }
 
     #[test]
-    fn test_to_jit_bounded_int_value_greater_than_or_equal_to_upper_bound() {
+    fn test_to_ptr_bounded_int_value_greater_than_or_equal_to_upper_bound() {
         // Parse the program
         let program = ProgramParser::new()
             .parse(
@@ -1702,7 +1702,7 @@ mod test {
     }
 
     #[test]
-    fn test_to_jit_bounded_int_equal_bounds_and_value() {
+    fn test_to_ptr_bounded_int_equal_bounds_and_value() {
         // Parse the program
         let program = ProgramParser::new()
             .parse(
@@ -1736,7 +1736,7 @@ mod test {
     }
 
     #[test]
-    fn test_to_jit_enum_variant_out_of_range() {
+    fn test_to_ptr_enum_variant_out_of_range() {
         // Parse the program
         let program = ProgramParser::new()
             .parse(
@@ -1748,7 +1748,7 @@ mod test {
         // Create the registry for the program
         let registry = ProgramRegistry::<CoreType, CoreLibfunc>::new(&program).unwrap();
 
-        // Call to_jit to get the value of the enum with tag value out of range
+        // Call to_ptr to get the value of the enum with tag index out of range
         let result = Value::Enum {
             tag: 2,
             value: Box::new(Value::Uint8(10)),
@@ -1769,7 +1769,7 @@ mod test {
     }
 
     #[test]
-    fn test_to_jit_enum_no_variant() {
+    fn test_to_ptr_enum_no_variant() {
         let program = ProgramParser::new()
             .parse(
                 "type u8 = u8;
@@ -1802,7 +1802,7 @@ mod test {
     }
 
     #[test]
-    fn test_to_jit_enum_type_error() {
+    fn test_to_ptr_enum_type_error() {
         // Parse the program
         let program = ProgramParser::new()
             .parse(
@@ -1814,7 +1814,7 @@ mod test {
         // Creating a registry for the program.
         let registry = ProgramRegistry::<CoreType, CoreLibfunc>::new(&program).unwrap();
 
-        // Invoking to_jit method on a JitValue::Enum to convert it to a JIT representation.
+        // Invoking to_ptr method on a Value::Enum to convert it to a JIT representation.
         // Generating an error by providing an enum value instead of the expected type.
         let result = Value::Enum {
             tag: 0,
@@ -1849,7 +1849,7 @@ mod test {
     }
 
     #[test]
-    fn test_to_jit_struct_type_error() {
+    fn test_to_ptr_struct_type_error() {
         // Parse the program
         let program = ProgramParser::new()
             .parse(
@@ -1861,7 +1861,7 @@ mod test {
         // Creating a registry for the program.
         let registry = ProgramRegistry::<CoreType, CoreLibfunc>::new(&program).unwrap();
 
-        // Invoking to_jit method on a JitValue::Struct to convert it to a JIT representation.
+        // Invoking to_ptr method on a Value::Struct to convert it to a JIT representation.
         // Generating an error by providing a struct value instead of the expected type.
         let result = Value::Struct {
             fields: vec![Value::from(2u32)],
