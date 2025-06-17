@@ -149,8 +149,7 @@ pub fn build_new<'ctx, 'this>(
     ))?;
     let value = entry.insert_values(context, location, value, &[nullptr, k0, k0, k0])?;
 
-    entry.append_operation(helper.br(0, &[value], location));
-    Ok(())
+    helper.br(entry, 0, &[value], location)
 }
 
 /// Buils a span (a cairo native array) from a boxed tuple of same-type elements.
@@ -262,8 +261,7 @@ pub fn build_span_from_tuple<'ctx, 'this>(
         &[array_ptr_ptr, k0, array_len, array_len],
     )?;
 
-    entry.append_operation(helper.br(0, &[value], location));
-    Ok(())
+    helper.br(entry, 0, &[value], location)
 }
 
 /// Buils a tuple (struct) from an span (a cairo native array)
@@ -457,7 +455,7 @@ pub fn build_tuple_from_span<'ctx, 'this>(
             location,
         ));
 
-        valid_block.append_operation(helper.br(0, &[value], location));
+        helper.br(valid_block, 0, &[value], location)?;
     }
 
     {
@@ -473,10 +471,8 @@ pub fn build_tuple_from_span<'ctx, 'this>(
                 entry.argument(0)?.into(),
             )?;
 
-        error_block.append_operation(helper.br(1, &[], location));
+        helper.br(error_block, 1, &[], location)
     }
-
-    Ok(())
 }
 
 /// Generate MLIR operations for the `array_append` libfunc.
@@ -723,8 +719,7 @@ pub fn build_append<'ctx, 'this>(
     )?;
     entry.store(context, location, max_len_ptr, array_end)?;
 
-    entry.append_operation(helper.br(0, &[array_obj], location));
-    Ok(())
+    helper.br(entry, 0, &[array_obj], location)
 }
 
 #[derive(Clone, Copy)]
@@ -941,7 +936,7 @@ fn build_pop<'ctx, 'this, const CONSUME: bool, const REVERSE: bool>(
 
         branch_values.push(array_obj);
         branch_values.push(target_ptr);
-        valid_block.append_operation(helper.br(0, &branch_values, location));
+        helper.br(valid_block, 0, &branch_values, location)?;
     }
 
     {
@@ -956,7 +951,7 @@ fn build_pop<'ctx, 'this, const CONSUME: bool, const REVERSE: bool>(
             branch_values.push(array_obj);
         }
 
-        error_block.append_operation(helper.br(1, &branch_values, location));
+        helper.br(error_block, 1, &branch_values, location)?;
     }
 
     Ok(())
@@ -1074,7 +1069,7 @@ pub fn build_get<'ctx, 'this>(
                 entry.argument(1)?.into(),
             )?;
 
-        valid_block.append_operation(helper.br(0, &[range_check, target_ptr], location));
+        helper.br(valid_block, 0, &[range_check, target_ptr], location)?;
     }
 
     {
@@ -1089,7 +1084,7 @@ pub fn build_get<'ctx, 'this>(
                 entry.argument(1)?.into(),
             )?;
 
-        error_block.append_operation(helper.br(1, &[range_check], location));
+        helper.br(error_block, 1, &[range_check], location)?;
     }
 
     Ok(())
@@ -1155,7 +1150,7 @@ pub fn build_slice<'ctx, 'this>(
         let array_obj = valid_block.insert_value(context, location, array_obj, array_start, 1)?;
         let array_obj = valid_block.insert_value(context, location, array_obj, array_end, 2)?;
 
-        valid_block.append_operation(helper.br(0, &[range_check, array_obj], location));
+        helper.br(valid_block, 0, &[range_check, array_obj], location)?;
     }
 
     {
@@ -1170,7 +1165,7 @@ pub fn build_slice<'ctx, 'this>(
                 array_obj,
             )?;
 
-        error_block.append_operation(helper.br(1, &[range_check], location));
+        helper.br(error_block, 1, &[range_check], location)?;
     }
 
     Ok(())
@@ -1205,8 +1200,7 @@ pub fn build_len<'ctx, 'this>(
             entry.argument(0)?.into(),
         )?;
 
-    entry.append_operation(helper.br(0, &[array_len], location));
-    Ok(())
+    helper.br(entry, 0, &[array_len], location)
 }
 
 fn is_shared<'ctx, 'this>(
