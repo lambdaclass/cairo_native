@@ -1185,7 +1185,7 @@
 <a href=#1185 id=1185 data-nosnippet>1185</a>    }
 <a href=#1186 id=1186 data-nosnippet>1186</a>
 <a href=#1187 id=1187 data-nosnippet>1187</a>    <span class="attr">#[test]
-<a href=#1188 id=1188 data-nosnippet>1188</a>    </span><span class="kw">fn </span>test_to_jit_felt252() {
+<a href=#1188 id=1188 data-nosnippet>1188</a>    </span><span class="kw">fn </span>test_to_ptr_felt252() {
 <a href=#1189 id=1189 data-nosnippet>1189</a>        <span class="kw">let </span>program = ProgramParser::new()
 <a href=#1190 id=1190 data-nosnippet>1190</a>            .parse(<span class="string">"type felt252 = felt252;"</span>)
 <a href=#1191 id=1191 data-nosnippet>1191</a>            .unwrap();
@@ -1243,7 +1243,7 @@
 <a href=#1243 id=1243 data-nosnippet>1243</a>    }
 <a href=#1244 id=1244 data-nosnippet>1244</a>
 <a href=#1245 id=1245 data-nosnippet>1245</a>    <span class="attr">#[test]
-<a href=#1246 id=1246 data-nosnippet>1246</a>    </span><span class="kw">fn </span>test_to_jit_uint8() {
+<a href=#1246 id=1246 data-nosnippet>1246</a>    </span><span class="kw">fn </span>test_to_ptr_uint8() {
 <a href=#1247 id=1247 data-nosnippet>1247</a>        <span class="kw">let </span>program = ProgramParser::new().parse(<span class="string">"type u8 = u8;"</span>).unwrap();
 <a href=#1248 id=1248 data-nosnippet>1248</a>
 <a href=#1249 id=1249 data-nosnippet>1249</a>        <span class="kw">let </span>registry = ProgramRegistry::&lt;CoreType, CoreLibfunc&gt;::new(<span class="kw-2">&amp;</span>program).unwrap();
@@ -1266,7 +1266,7 @@
 <a href=#1266 id=1266 data-nosnippet>1266</a>    }
 <a href=#1267 id=1267 data-nosnippet>1267</a>
 <a href=#1268 id=1268 data-nosnippet>1268</a>    <span class="attr">#[test]
-<a href=#1269 id=1269 data-nosnippet>1269</a>    </span><span class="kw">fn </span>test_to_jit_uint16() {
+<a href=#1269 id=1269 data-nosnippet>1269</a>    </span><span class="kw">fn </span>test_to_ptr_uint16() {
 <a href=#1270 id=1270 data-nosnippet>1270</a>        <span class="kw">let </span>program = ProgramParser::new().parse(<span class="string">"type u16 = u16;"</span>).unwrap();
 <a href=#1271 id=1271 data-nosnippet>1271</a>
 <a href=#1272 id=1272 data-nosnippet>1272</a>        <span class="kw">let </span>registry = ProgramRegistry::&lt;CoreType, CoreLibfunc&gt;::new(<span class="kw-2">&amp;</span>program).unwrap();
@@ -1289,7 +1289,7 @@
 <a href=#1289 id=1289 data-nosnippet>1289</a>    }
 <a href=#1290 id=1290 data-nosnippet>1290</a>
 <a href=#1291 id=1291 data-nosnippet>1291</a>    <span class="attr">#[test]
-<a href=#1292 id=1292 data-nosnippet>1292</a>    </span><span class="kw">fn </span>test_to_jit_uint32() {
+<a href=#1292 id=1292 data-nosnippet>1292</a>    </span><span class="kw">fn </span>test_to_ptr_uint32() {
 <a href=#1293 id=1293 data-nosnippet>1293</a>        <span class="kw">let </span>program = ProgramParser::new().parse(<span class="string">"type u32 = u32;"</span>).unwrap();
 <a href=#1294 id=1294 data-nosnippet>1294</a>
 <a href=#1295 id=1295 data-nosnippet>1295</a>        <span class="kw">let </span>registry = ProgramRegistry::&lt;CoreType, CoreLibfunc&gt;::new(<span class="kw-2">&amp;</span>program).unwrap();
@@ -1312,7 +1312,7 @@
 <a href=#1312 id=1312 data-nosnippet>1312</a>    }
 <a href=#1313 id=1313 data-nosnippet>1313</a>
 <a href=#1314 id=1314 data-nosnippet>1314</a>    <span class="attr">#[test]
-<a href=#1315 id=1315 data-nosnippet>1315</a>    </span><span class="kw">fn </span>test_to_jit_uint64() {
+<a href=#1315 id=1315 data-nosnippet>1315</a>    </span><span class="kw">fn </span>test_to_ptr_uint64() {
 <a href=#1316 id=1316 data-nosnippet>1316</a>        <span class="kw">let </span>program = ProgramParser::new().parse(<span class="string">"type u64 = u64;"</span>).unwrap();
 <a href=#1317 id=1317 data-nosnippet>1317</a>
 <a href=#1318 id=1318 data-nosnippet>1318</a>        <span class="kw">let </span>registry = ProgramRegistry::&lt;CoreType, CoreLibfunc&gt;::new(<span class="kw-2">&amp;</span>program).unwrap();
@@ -1335,7 +1335,7 @@
 <a href=#1335 id=1335 data-nosnippet>1335</a>    }
 <a href=#1336 id=1336 data-nosnippet>1336</a>
 <a href=#1337 id=1337 data-nosnippet>1337</a>    <span class="attr">#[test]
-<a href=#1338 id=1338 data-nosnippet>1338</a>    </span><span class="kw">fn </span>test_to_jit_uint128() {
+<a href=#1338 id=1338 data-nosnippet>1338</a>    </span><span class="kw">fn </span>test_to_ptr_uint128() {
 <a href=#1339 id=1339 data-nosnippet>1339</a>        <span class="kw">let </span>program = ProgramParser::new().parse(<span class="string">"type u128 = u128;"</span>).unwrap();
 <a href=#1340 id=1340 data-nosnippet>1340</a>
 <a href=#1341 id=1341 data-nosnippet>1341</a>        <span class="kw">let </span>registry = ProgramRegistry::&lt;CoreType, CoreLibfunc&gt;::new(<span class="kw-2">&amp;</span>program).unwrap();
@@ -1358,7 +1358,7 @@
 <a href=#1358 id=1358 data-nosnippet>1358</a>    }
 <a href=#1359 id=1359 data-nosnippet>1359</a>
 <a href=#1360 id=1360 data-nosnippet>1360</a>    <span class="attr">#[test]
-<a href=#1361 id=1361 data-nosnippet>1361</a>    </span><span class="kw">fn </span>test_to_jit_sint8() {
+<a href=#1361 id=1361 data-nosnippet>1361</a>    </span><span class="kw">fn </span>test_to_ptr_sint8() {
 <a href=#1362 id=1362 data-nosnippet>1362</a>        <span class="kw">let </span>program = ProgramParser::new().parse(<span class="string">"type i8 = i8;"</span>).unwrap();
 <a href=#1363 id=1363 data-nosnippet>1363</a>
 <a href=#1364 id=1364 data-nosnippet>1364</a>        <span class="kw">let </span>registry = ProgramRegistry::&lt;CoreType, CoreLibfunc&gt;::new(<span class="kw-2">&amp;</span>program).unwrap();
@@ -1381,7 +1381,7 @@
 <a href=#1381 id=1381 data-nosnippet>1381</a>    }
 <a href=#1382 id=1382 data-nosnippet>1382</a>
 <a href=#1383 id=1383 data-nosnippet>1383</a>    <span class="attr">#[test]
-<a href=#1384 id=1384 data-nosnippet>1384</a>    </span><span class="kw">fn </span>test_to_jit_sint16() {
+<a href=#1384 id=1384 data-nosnippet>1384</a>    </span><span class="kw">fn </span>test_to_ptr_sint16() {
 <a href=#1385 id=1385 data-nosnippet>1385</a>        <span class="kw">let </span>program = ProgramParser::new().parse(<span class="string">"type i16 = i16;"</span>).unwrap();
 <a href=#1386 id=1386 data-nosnippet>1386</a>
 <a href=#1387 id=1387 data-nosnippet>1387</a>        <span class="kw">let </span>registry = ProgramRegistry::&lt;CoreType, CoreLibfunc&gt;::new(<span class="kw-2">&amp;</span>program).unwrap();
@@ -1404,7 +1404,7 @@
 <a href=#1404 id=1404 data-nosnippet>1404</a>    }
 <a href=#1405 id=1405 data-nosnippet>1405</a>
 <a href=#1406 id=1406 data-nosnippet>1406</a>    <span class="attr">#[test]
-<a href=#1407 id=1407 data-nosnippet>1407</a>    </span><span class="kw">fn </span>test_to_jit_sint32() {
+<a href=#1407 id=1407 data-nosnippet>1407</a>    </span><span class="kw">fn </span>test_to_ptr_sint32() {
 <a href=#1408 id=1408 data-nosnippet>1408</a>        <span class="kw">let </span>program = ProgramParser::new().parse(<span class="string">"type i32 = i32;"</span>).unwrap();
 <a href=#1409 id=1409 data-nosnippet>1409</a>
 <a href=#1410 id=1410 data-nosnippet>1410</a>        <span class="kw">let </span>registry = ProgramRegistry::&lt;CoreType, CoreLibfunc&gt;::new(<span class="kw-2">&amp;</span>program).unwrap();
@@ -1427,7 +1427,7 @@
 <a href=#1427 id=1427 data-nosnippet>1427</a>    }
 <a href=#1428 id=1428 data-nosnippet>1428</a>
 <a href=#1429 id=1429 data-nosnippet>1429</a>    <span class="attr">#[test]
-<a href=#1430 id=1430 data-nosnippet>1430</a>    </span><span class="kw">fn </span>test_to_jit_sint64() {
+<a href=#1430 id=1430 data-nosnippet>1430</a>    </span><span class="kw">fn </span>test_to_ptr_sint64() {
 <a href=#1431 id=1431 data-nosnippet>1431</a>        <span class="kw">let </span>program = ProgramParser::new().parse(<span class="string">"type i64 = i64;"</span>).unwrap();
 <a href=#1432 id=1432 data-nosnippet>1432</a>
 <a href=#1433 id=1433 data-nosnippet>1433</a>        <span class="kw">let </span>registry = ProgramRegistry::&lt;CoreType, CoreLibfunc&gt;::new(<span class="kw-2">&amp;</span>program).unwrap();
@@ -1450,7 +1450,7 @@
 <a href=#1450 id=1450 data-nosnippet>1450</a>    }
 <a href=#1451 id=1451 data-nosnippet>1451</a>
 <a href=#1452 id=1452 data-nosnippet>1452</a>    <span class="attr">#[test]
-<a href=#1453 id=1453 data-nosnippet>1453</a>    </span><span class="kw">fn </span>test_to_jit_sint128() {
+<a href=#1453 id=1453 data-nosnippet>1453</a>    </span><span class="kw">fn </span>test_to_ptr_sint128() {
 <a href=#1454 id=1454 data-nosnippet>1454</a>        <span class="kw">let </span>program = ProgramParser::new().parse(<span class="string">"type i128 = i128;"</span>).unwrap();
 <a href=#1455 id=1455 data-nosnippet>1455</a>
 <a href=#1456 id=1456 data-nosnippet>1456</a>        <span class="kw">let </span>registry = ProgramRegistry::&lt;CoreType, CoreLibfunc&gt;::new(<span class="kw-2">&amp;</span>program).unwrap();
@@ -1473,7 +1473,7 @@
 <a href=#1473 id=1473 data-nosnippet>1473</a>    }
 <a href=#1474 id=1474 data-nosnippet>1474</a>
 <a href=#1475 id=1475 data-nosnippet>1475</a>    <span class="attr">#[test]
-<a href=#1476 id=1476 data-nosnippet>1476</a>    </span><span class="kw">fn </span>test_to_jit_ec_point() {
+<a href=#1476 id=1476 data-nosnippet>1476</a>    </span><span class="kw">fn </span>test_to_ptr_ec_point() {
 <a href=#1477 id=1477 data-nosnippet>1477</a>        <span class="kw">let </span>program = ProgramParser::new()
 <a href=#1478 id=1478 data-nosnippet>1478</a>            .parse(<span class="string">"type EcPoint = EcPoint;"</span>)
 <a href=#1479 id=1479 data-nosnippet>1479</a>            .unwrap();
@@ -1498,7 +1498,7 @@
 <a href=#1498 id=1498 data-nosnippet>1498</a>    }
 <a href=#1499 id=1499 data-nosnippet>1499</a>
 <a href=#1500 id=1500 data-nosnippet>1500</a>    <span class="attr">#[test]
-<a href=#1501 id=1501 data-nosnippet>1501</a>    </span><span class="kw">fn </span>test_to_jit_ec_state() {
+<a href=#1501 id=1501 data-nosnippet>1501</a>    </span><span class="kw">fn </span>test_to_ptr_ec_state() {
 <a href=#1502 id=1502 data-nosnippet>1502</a>        <span class="kw">let </span>program = ProgramParser::new()
 <a href=#1503 id=1503 data-nosnippet>1503</a>            .parse(<span class="string">"type EcState = EcState;"</span>)
 <a href=#1504 id=1504 data-nosnippet>1504</a>            .unwrap();
@@ -1533,7 +1533,7 @@
 <a href=#1533 id=1533 data-nosnippet>1533</a>    }
 <a href=#1534 id=1534 data-nosnippet>1534</a>
 <a href=#1535 id=1535 data-nosnippet>1535</a>    <span class="attr">#[test]
-<a href=#1536 id=1536 data-nosnippet>1536</a>    </span><span class="kw">fn </span>test_to_jit_enum() {
+<a href=#1536 id=1536 data-nosnippet>1536</a>    </span><span class="kw">fn </span>test_to_ptr_enum() {
 <a href=#1537 id=1537 data-nosnippet>1537</a>        <span class="comment">// Parse the program
 <a href=#1538 id=1538 data-nosnippet>1538</a>        </span><span class="kw">let </span>program = ProgramParser::new()
 <a href=#1539 id=1539 data-nosnippet>1539</a>            .parse(
@@ -1545,7 +1545,7 @@
 <a href=#1545 id=1545 data-nosnippet>1545</a>        <span class="comment">// Create the registry for the program
 <a href=#1546 id=1546 data-nosnippet>1546</a>        </span><span class="kw">let </span>registry = ProgramRegistry::&lt;CoreType, CoreLibfunc&gt;::new(<span class="kw-2">&amp;</span>program).unwrap();
 <a href=#1547 id=1547 data-nosnippet>1547</a>
-<a href=#1548 id=1548 data-nosnippet>1548</a>        <span class="comment">// Call to_jit to get the value of the enum
+<a href=#1548 id=1548 data-nosnippet>1548</a>        <span class="comment">// Call to_ptr to get the value of the enum
 <a href=#1549 id=1549 data-nosnippet>1549</a>        </span><span class="kw">let </span>result = Value::Enum {
 <a href=#1550 id=1550 data-nosnippet>1550</a>            tag: <span class="number">0</span>,
 <a href=#1551 id=1551 data-nosnippet>1551</a>            value: Box::new(Value::Uint8(<span class="number">10</span>)),
@@ -1558,12 +1558,12 @@
 <a href=#1558 id=1558 data-nosnippet>1558</a>            |<span class="kw">_</span>| <span class="macro">todo!</span>(),
 <a href=#1559 id=1559 data-nosnippet>1559</a>        );
 <a href=#1560 id=1560 data-nosnippet>1560</a>
-<a href=#1561 id=1561 data-nosnippet>1561</a>        <span class="comment">// Assertion to verify that the value returned by to_jit is not NULL
+<a href=#1561 id=1561 data-nosnippet>1561</a>        <span class="comment">// Assertion to verify that the value returned by to_ptr is not NULL
 <a href=#1562 id=1562 data-nosnippet>1562</a>        </span><span class="macro">assert!</span>(result.is_ok());
 <a href=#1563 id=1563 data-nosnippet>1563</a>    }
 <a href=#1564 id=1564 data-nosnippet>1564</a>
 <a href=#1565 id=1565 data-nosnippet>1565</a>    <span class="attr">#[test]
-<a href=#1566 id=1566 data-nosnippet>1566</a>    </span><span class="kw">fn </span>test_to_jit_bounded_int_valid() {
+<a href=#1566 id=1566 data-nosnippet>1566</a>    </span><span class="kw">fn </span>test_to_ptr_bounded_int_valid() {
 <a href=#1567 id=1567 data-nosnippet>1567</a>        <span class="comment">// Parse the program
 <a href=#1568 id=1568 data-nosnippet>1568</a>        </span><span class="kw">let </span>program = ProgramParser::new()
 <a href=#1569 id=1569 data-nosnippet>1569</a>            .parse(
@@ -1600,7 +1600,7 @@
 <a href=#1600 id=1600 data-nosnippet>1600</a>    }
 <a href=#1601 id=1601 data-nosnippet>1601</a>
 <a href=#1602 id=1602 data-nosnippet>1602</a>    <span class="attr">#[test]
-<a href=#1603 id=1603 data-nosnippet>1603</a>    </span><span class="kw">fn </span>test_to_jit_bounded_int_lower_bound_greater_than_upper() {
+<a href=#1603 id=1603 data-nosnippet>1603</a>    </span><span class="kw">fn </span>test_to_ptr_bounded_int_lower_bound_greater_than_upper() {
 <a href=#1604 id=1604 data-nosnippet>1604</a>        <span class="comment">// Parse the program
 <a href=#1605 id=1605 data-nosnippet>1605</a>        </span><span class="kw">let </span>program = ProgramParser::new()
 <a href=#1606 id=1606 data-nosnippet>1606</a>            .parse(
@@ -1634,7 +1634,7 @@
 <a href=#1634 id=1634 data-nosnippet>1634</a>    }
 <a href=#1635 id=1635 data-nosnippet>1635</a>
 <a href=#1636 id=1636 data-nosnippet>1636</a>    <span class="attr">#[test]
-<a href=#1637 id=1637 data-nosnippet>1637</a>    </span><span class="kw">fn </span>test_to_jit_bounded_int_value_less_than_lower_bound() {
+<a href=#1637 id=1637 data-nosnippet>1637</a>    </span><span class="kw">fn </span>test_to_ptr_bounded_int_value_less_than_lower_bound() {
 <a href=#1638 id=1638 data-nosnippet>1638</a>        <span class="comment">// Parse the program
 <a href=#1639 id=1639 data-nosnippet>1639</a>        </span><span class="kw">let </span>program = ProgramParser::new()
 <a href=#1640 id=1640 data-nosnippet>1640</a>            .parse(
@@ -1668,7 +1668,7 @@
 <a href=#1668 id=1668 data-nosnippet>1668</a>    }
 <a href=#1669 id=1669 data-nosnippet>1669</a>
 <a href=#1670 id=1670 data-nosnippet>1670</a>    <span class="attr">#[test]
-<a href=#1671 id=1671 data-nosnippet>1671</a>    </span><span class="kw">fn </span>test_to_jit_bounded_int_value_greater_than_or_equal_to_upper_bound() {
+<a href=#1671 id=1671 data-nosnippet>1671</a>    </span><span class="kw">fn </span>test_to_ptr_bounded_int_value_greater_than_or_equal_to_upper_bound() {
 <a href=#1672 id=1672 data-nosnippet>1672</a>        <span class="comment">// Parse the program
 <a href=#1673 id=1673 data-nosnippet>1673</a>        </span><span class="kw">let </span>program = ProgramParser::new()
 <a href=#1674 id=1674 data-nosnippet>1674</a>            .parse(
@@ -1702,7 +1702,7 @@
 <a href=#1702 id=1702 data-nosnippet>1702</a>    }
 <a href=#1703 id=1703 data-nosnippet>1703</a>
 <a href=#1704 id=1704 data-nosnippet>1704</a>    <span class="attr">#[test]
-<a href=#1705 id=1705 data-nosnippet>1705</a>    </span><span class="kw">fn </span>test_to_jit_bounded_int_equal_bounds_and_value() {
+<a href=#1705 id=1705 data-nosnippet>1705</a>    </span><span class="kw">fn </span>test_to_ptr_bounded_int_equal_bounds_and_value() {
 <a href=#1706 id=1706 data-nosnippet>1706</a>        <span class="comment">// Parse the program
 <a href=#1707 id=1707 data-nosnippet>1707</a>        </span><span class="kw">let </span>program = ProgramParser::new()
 <a href=#1708 id=1708 data-nosnippet>1708</a>            .parse(
@@ -1736,7 +1736,7 @@
 <a href=#1736 id=1736 data-nosnippet>1736</a>    }
 <a href=#1737 id=1737 data-nosnippet>1737</a>
 <a href=#1738 id=1738 data-nosnippet>1738</a>    <span class="attr">#[test]
-<a href=#1739 id=1739 data-nosnippet>1739</a>    </span><span class="kw">fn </span>test_to_jit_enum_variant_out_of_range() {
+<a href=#1739 id=1739 data-nosnippet>1739</a>    </span><span class="kw">fn </span>test_to_ptr_enum_variant_out_of_range() {
 <a href=#1740 id=1740 data-nosnippet>1740</a>        <span class="comment">// Parse the program
 <a href=#1741 id=1741 data-nosnippet>1741</a>        </span><span class="kw">let </span>program = ProgramParser::new()
 <a href=#1742 id=1742 data-nosnippet>1742</a>            .parse(
@@ -1748,7 +1748,7 @@
 <a href=#1748 id=1748 data-nosnippet>1748</a>        <span class="comment">// Create the registry for the program
 <a href=#1749 id=1749 data-nosnippet>1749</a>        </span><span class="kw">let </span>registry = ProgramRegistry::&lt;CoreType, CoreLibfunc&gt;::new(<span class="kw-2">&amp;</span>program).unwrap();
 <a href=#1750 id=1750 data-nosnippet>1750</a>
-<a href=#1751 id=1751 data-nosnippet>1751</a>        <span class="comment">// Call to_jit to get the value of the enum with tag value out of range
+<a href=#1751 id=1751 data-nosnippet>1751</a>        <span class="comment">// Call to_ptr to get the value of the enum with tag index out of range
 <a href=#1752 id=1752 data-nosnippet>1752</a>        </span><span class="kw">let </span>result = Value::Enum {
 <a href=#1753 id=1753 data-nosnippet>1753</a>            tag: <span class="number">2</span>,
 <a href=#1754 id=1754 data-nosnippet>1754</a>            value: Box::new(Value::Uint8(<span class="number">10</span>)),
@@ -1769,7 +1769,7 @@
 <a href=#1769 id=1769 data-nosnippet>1769</a>    }
 <a href=#1770 id=1770 data-nosnippet>1770</a>
 <a href=#1771 id=1771 data-nosnippet>1771</a>    <span class="attr">#[test]
-<a href=#1772 id=1772 data-nosnippet>1772</a>    </span><span class="kw">fn </span>test_to_jit_enum_no_variant() {
+<a href=#1772 id=1772 data-nosnippet>1772</a>    </span><span class="kw">fn </span>test_to_ptr_enum_no_variant() {
 <a href=#1773 id=1773 data-nosnippet>1773</a>        <span class="kw">let </span>program = ProgramParser::new()
 <a href=#1774 id=1774 data-nosnippet>1774</a>            .parse(
 <a href=#1775 id=1775 data-nosnippet>1775</a>                <span class="string">"type u8 = u8;
@@ -1802,7 +1802,7 @@
 <a href=#1802 id=1802 data-nosnippet>1802</a>    }
 <a href=#1803 id=1803 data-nosnippet>1803</a>
 <a href=#1804 id=1804 data-nosnippet>1804</a>    <span class="attr">#[test]
-<a href=#1805 id=1805 data-nosnippet>1805</a>    </span><span class="kw">fn </span>test_to_jit_enum_type_error() {
+<a href=#1805 id=1805 data-nosnippet>1805</a>    </span><span class="kw">fn </span>test_to_ptr_enum_type_error() {
 <a href=#1806 id=1806 data-nosnippet>1806</a>        <span class="comment">// Parse the program
 <a href=#1807 id=1807 data-nosnippet>1807</a>        </span><span class="kw">let </span>program = ProgramParser::new()
 <a href=#1808 id=1808 data-nosnippet>1808</a>            .parse(
@@ -1814,7 +1814,7 @@
 <a href=#1814 id=1814 data-nosnippet>1814</a>        <span class="comment">// Creating a registry for the program.
 <a href=#1815 id=1815 data-nosnippet>1815</a>        </span><span class="kw">let </span>registry = ProgramRegistry::&lt;CoreType, CoreLibfunc&gt;::new(<span class="kw-2">&amp;</span>program).unwrap();
 <a href=#1816 id=1816 data-nosnippet>1816</a>
-<a href=#1817 id=1817 data-nosnippet>1817</a>        <span class="comment">// Invoking to_jit method on a JitValue::Enum to convert it to a JIT representation.
+<a href=#1817 id=1817 data-nosnippet>1817</a>        <span class="comment">// Invoking to_ptr method on a Value::Enum to convert it to a JIT representation.
 <a href=#1818 id=1818 data-nosnippet>1818</a>        // Generating an error by providing an enum value instead of the expected type.
 <a href=#1819 id=1819 data-nosnippet>1819</a>        </span><span class="kw">let </span>result = Value::Enum {
 <a href=#1820 id=1820 data-nosnippet>1820</a>            tag: <span class="number">0</span>,
@@ -1849,7 +1849,7 @@
 <a href=#1849 id=1849 data-nosnippet>1849</a>    }
 <a href=#1850 id=1850 data-nosnippet>1850</a>
 <a href=#1851 id=1851 data-nosnippet>1851</a>    <span class="attr">#[test]
-<a href=#1852 id=1852 data-nosnippet>1852</a>    </span><span class="kw">fn </span>test_to_jit_struct_type_error() {
+<a href=#1852 id=1852 data-nosnippet>1852</a>    </span><span class="kw">fn </span>test_to_ptr_struct_type_error() {
 <a href=#1853 id=1853 data-nosnippet>1853</a>        <span class="comment">// Parse the program
 <a href=#1854 id=1854 data-nosnippet>1854</a>        </span><span class="kw">let </span>program = ProgramParser::new()
 <a href=#1855 id=1855 data-nosnippet>1855</a>            .parse(
@@ -1861,7 +1861,7 @@
 <a href=#1861 id=1861 data-nosnippet>1861</a>        <span class="comment">// Creating a registry for the program.
 <a href=#1862 id=1862 data-nosnippet>1862</a>        </span><span class="kw">let </span>registry = ProgramRegistry::&lt;CoreType, CoreLibfunc&gt;::new(<span class="kw-2">&amp;</span>program).unwrap();
 <a href=#1863 id=1863 data-nosnippet>1863</a>
-<a href=#1864 id=1864 data-nosnippet>1864</a>        <span class="comment">// Invoking to_jit method on a JitValue::Struct to convert it to a JIT representation.
+<a href=#1864 id=1864 data-nosnippet>1864</a>        <span class="comment">// Invoking to_ptr method on a Value::Struct to convert it to a JIT representation.
 <a href=#1865 id=1865 data-nosnippet>1865</a>        // Generating an error by providing a struct value instead of the expected type.
 <a href=#1866 id=1866 data-nosnippet>1866</a>        </span><span class="kw">let </span>result = Value::Struct {
 <a href=#1867 id=1867 data-nosnippet>1867</a>            fields: <span class="macro">vec!</span>[Value::from(<span class="number">2u32</span>)],
