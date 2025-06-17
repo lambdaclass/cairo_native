@@ -144,7 +144,7 @@ let args = [
 
 let execution_result = engine.invoke_dynamic(
   function_id, // The entry point function id.
-  args,        // The slice of `JitValue`s.
+  args,        // The slice of `Value`s.
   None,        // The available gas (if any).
 )?;
 
@@ -214,7 +214,7 @@ let args = [
 
 let execution_result = engine.invoke_dynamic(
   function_id, // The entry point function id.
-  args,        // The slice of `JitValue`s.
+  args,        // The slice of `Value`s.
   None,        // The available gas (if any).
 )?;
 
@@ -235,8 +235,8 @@ Running the code above should print the following:
 Remaining gas: None
 Failure flag:  false
 Return value:  [
-  JitValue::Felt252(1),
-  JitValue::Felt252(5555),
+  Value::Felt252(1),
+  Value::Felt252(5555),
 ]
 Builtin stats: BuiltinStats { bitwise: 1, ec_op: 0, range_check: 1, pedersen: 0, poseidon: 0, segment_arena: 0 }
 ```

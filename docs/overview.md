@@ -145,7 +145,7 @@ cached in contexts where their execution will be done multiple times.
 use starknet_types_core::felt::Felt;
 use cairo_native::context::NativeContext;
 use cairo_native::executor::JitNativeExecutor;
-use cairo_native::values::JitValue;
+use cairo_native::values::Value;
 use std::path::Path;
 
 fn main() { 
@@ -192,7 +192,7 @@ Example code to run a program:
 use starknet_types_core::felt::Felt;
 use cairo_native::context::NativeContext;
 use cairo_native::executor::JitNativeExecutor;
-use cairo_native::values::JitValue;
+use cairo_native::values::Value;
 use std::path::Path;
 
 fn main() {
@@ -208,7 +208,7 @@ fn main() {
     let native_program = native_context.compile(&sierra_program, true, None, None).unwrap();
 
     // The parameters of the entry point.
-    let params = &[JitValue::Felt252(Felt::from_bytes_be_slice(b"user"))];
+    let params = &[Value::Felt252(Felt::from_bytes_be_slice(b"user"))];
 
     // Find the entry point id by its name.
     let entry_point = "hello::hello::greet";
@@ -238,7 +238,6 @@ use cairo_lang_starknet::contract_class::compile_path;
 use cairo_native::context::NativeContext;
 use cairo_native::executor::NativeExecutor;
 use cairo_native::utils::find_entry_point_by_idx;
-use cairo_native::values::JitValue;
 use cairo_native::{
     metadata::syscall_handler::SyscallHandlerMeta,
     starknet::{BlockInfo, ExecutionInfo, StarkNetSyscallHandler, SyscallResult, TxInfo, U256},
