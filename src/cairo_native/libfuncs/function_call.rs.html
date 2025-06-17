@@ -122,7 +122,7 @@
 <a href=#122 id=122 data-nosnippet>122</a>            }
 <a href=#123 id=123 data-nosnippet>123</a>        }
 <a href=#124 id=124 data-nosnippet>124</a>
-<a href=#125 id=125 data-nosnippet>125</a>        cont_block.append_operation(helper.br(<span class="number">0</span>, <span class="kw-2">&amp;</span>results, location));
+<a href=#125 id=125 data-nosnippet>125</a>        helper.br(cont_block, <span class="number">0</span>, <span class="kw-2">&amp;</span>results, location)<span class="question-mark">?</span>;
 <a href=#126 id=126 data-nosnippet>126</a>    } <span class="kw">else </span>{
 <a href=#127 id=127 data-nosnippet>127</a>        <span class="kw">let </span><span class="kw-2">mut </span>result_types = Vec::new();
 <a href=#128 id=128 data-nosnippet>128</a>        <span class="kw">let </span>return_types = info
@@ -294,7 +294,7 @@
 <a href=#294 id=294 data-nosnippet>294</a>            }
 <a href=#295 id=295 data-nosnippet>295</a>        }
 <a href=#296 id=296 data-nosnippet>296</a>
-<a href=#297 id=297 data-nosnippet>297</a>        entry.append_operation(helper.br(<span class="number">0</span>, <span class="kw-2">&amp;</span>results, location));
+<a href=#297 id=297 data-nosnippet>297</a>        helper.br(entry, <span class="number">0</span>, <span class="kw-2">&amp;</span>results, location)<span class="question-mark">?</span>;
 <a href=#298 id=298 data-nosnippet>298</a>    }
 <a href=#299 id=299 data-nosnippet>299</a>
 <a href=#300 id=300 data-nosnippet>300</a>    <span class="kw">if let </span><span class="prelude-val">Some</span>(tailrec_meta) = tailrec_meta {

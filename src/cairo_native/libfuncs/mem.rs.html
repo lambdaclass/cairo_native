@@ -20,7 +20,7 @@
 <a href=#20 id=20 data-nosnippet>20</a>};
 <a href=#21 id=21 data-nosnippet>21</a><span class="kw">use </span>melior::{
 <a href=#22 id=22 data-nosnippet>22</a>    dialect::llvm,
-<a href=#23 id=23 data-nosnippet>23</a>    ir::{Block, BlockLike, Location},
+<a href=#23 id=23 data-nosnippet>23</a>    ir::{Block, Location},
 <a href=#24 id=24 data-nosnippet>24</a>    Context,
 <a href=#25 id=25 data-nosnippet>25</a>};
 <a href=#26 id=26 data-nosnippet>26</a>
@@ -84,20 +84,18 @@
 <a href=#84 id=84 data-nosnippet>84</a>
 <a href=#85 id=85 data-nosnippet>85</a>    <span class="kw">let </span>value = entry.append_op_result(llvm::undef(target_type, location))<span class="question-mark">?</span>;
 <a href=#86 id=86 data-nosnippet>86</a>
-<a href=#87 id=87 data-nosnippet>87</a>    entry.append_operation(helper.br(<span class="number">0</span>, <span class="kw-2">&amp;</span>[value], location));
-<a href=#88 id=88 data-nosnippet>88</a>    <span class="prelude-val">Ok</span>(())
-<a href=#89 id=89 data-nosnippet>89</a>}
-<a href=#90 id=90 data-nosnippet>90</a>
-<a href=#91 id=91 data-nosnippet>91</a><span class="doccomment">/// Generate MLIR operations for the `store_local` libfunc.
-<a href=#92 id=92 data-nosnippet>92</a></span><span class="kw">pub fn </span>build_store_local&lt;<span class="lifetime">'ctx</span>, <span class="lifetime">'this</span>&gt;(
-<a href=#93 id=93 data-nosnippet>93</a>    _context: <span class="kw-2">&amp;</span><span class="lifetime">'ctx </span>Context,
-<a href=#94 id=94 data-nosnippet>94</a>    _registry: <span class="kw-2">&amp;</span>ProgramRegistry&lt;CoreType, CoreLibfunc&gt;,
-<a href=#95 id=95 data-nosnippet>95</a>    entry: <span class="kw-2">&amp;</span><span class="lifetime">'this </span>Block&lt;<span class="lifetime">'ctx</span>&gt;,
-<a href=#96 id=96 data-nosnippet>96</a>    location: Location&lt;<span class="lifetime">'ctx</span>&gt;,
-<a href=#97 id=97 data-nosnippet>97</a>    helper: <span class="kw-2">&amp;</span>LibfuncHelper&lt;<span class="lifetime">'ctx</span>, <span class="lifetime">'this</span>&gt;,
-<a href=#98 id=98 data-nosnippet>98</a>    _metadata: <span class="kw-2">&amp;mut </span>MetadataStorage,
-<a href=#99 id=99 data-nosnippet>99</a>    _info: <span class="kw-2">&amp;</span>SignatureAndTypeConcreteLibfunc,
-<a href=#100 id=100 data-nosnippet>100</a>) -&gt; <span class="prelude-ty">Result</span>&lt;()&gt; {
-<a href=#101 id=101 data-nosnippet>101</a>    entry.append_operation(helper.br(<span class="number">0</span>, <span class="kw-2">&amp;</span>[entry.arg(<span class="number">1</span>)<span class="question-mark">?</span>], location));
-<a href=#102 id=102 data-nosnippet>102</a>    <span class="prelude-val">Ok</span>(())
-<a href=#103 id=103 data-nosnippet>103</a>}</code></pre></div></section></main></body></html>
+<a href=#87 id=87 data-nosnippet>87</a>    helper.br(entry, <span class="number">0</span>, <span class="kw-2">&amp;</span>[value], location)
+<a href=#88 id=88 data-nosnippet>88</a>}
+<a href=#89 id=89 data-nosnippet>89</a>
+<a href=#90 id=90 data-nosnippet>90</a><span class="doccomment">/// Generate MLIR operations for the `store_local` libfunc.
+<a href=#91 id=91 data-nosnippet>91</a></span><span class="kw">pub fn </span>build_store_local&lt;<span class="lifetime">'ctx</span>, <span class="lifetime">'this</span>&gt;(
+<a href=#92 id=92 data-nosnippet>92</a>    _context: <span class="kw-2">&amp;</span><span class="lifetime">'ctx </span>Context,
+<a href=#93 id=93 data-nosnippet>93</a>    _registry: <span class="kw-2">&amp;</span>ProgramRegistry&lt;CoreType, CoreLibfunc&gt;,
+<a href=#94 id=94 data-nosnippet>94</a>    entry: <span class="kw-2">&amp;</span><span class="lifetime">'this </span>Block&lt;<span class="lifetime">'ctx</span>&gt;,
+<a href=#95 id=95 data-nosnippet>95</a>    location: Location&lt;<span class="lifetime">'ctx</span>&gt;,
+<a href=#96 id=96 data-nosnippet>96</a>    helper: <span class="kw-2">&amp;</span>LibfuncHelper&lt;<span class="lifetime">'ctx</span>, <span class="lifetime">'this</span>&gt;,
+<a href=#97 id=97 data-nosnippet>97</a>    _metadata: <span class="kw-2">&amp;mut </span>MetadataStorage,
+<a href=#98 id=98 data-nosnippet>98</a>    _info: <span class="kw-2">&amp;</span>SignatureAndTypeConcreteLibfunc,
+<a href=#99 id=99 data-nosnippet>99</a>) -&gt; <span class="prelude-ty">Result</span>&lt;()&gt; {
+<a href=#100 id=100 data-nosnippet>100</a>    helper.br(entry, <span class="number">0</span>, <span class="kw-2">&amp;</span>[entry.arg(<span class="number">1</span>)<span class="question-mark">?</span>], location)
+<a href=#101 id=101 data-nosnippet>101</a>}</code></pre></div></section></main></body></html>
