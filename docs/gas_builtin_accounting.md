@@ -171,7 +171,7 @@ gas accounting.
 The Cairo Native compiler records the usage of each builtins in order to
 provide information about the program's builtins consumption.
 This information is NOT used for the gas calculation, as the gas cost of
-builtins is already taken into account during the [gas accounting process](./gas.md).
+builtins is already taken into account during the gas accounting process.
 The builtins counter types can each be found in the [types folder](../src/types/).
 Taking the [Pedersen hash](../src/types/pedersen.rs) as an example, we see
 that the counters will be represented as `i64` integers in MLIR.
