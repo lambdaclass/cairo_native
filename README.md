@@ -23,7 +23,6 @@ to machine code via MLIR and LLVM.
 
 - [Getting Started](#getting-started)
 - [Included Tools](#included-tools)
-  - [Scripts](#scripts)
   - [cairo-native-compile](#cairo-native-compile)
   - [cairo-native-dump](#cairo-native-dump)
   - [cairo-native-run](#cairo-native-run)
@@ -145,7 +144,7 @@ corelib is found, and then list available targets.
 ```bash
 % make
 LLVM is correctly set at /opt/homebrew/opt/llvm.
-./scripts/check-corelib-version.sh 2.12.0-dev.0
+./scripts/check-corelib-version.sh 2.12.0-dev.1
 Usage:
     deps:         Installs the necesary dependencies.
     build:        Builds the cairo-native library and binaries in release mode.
@@ -159,7 +158,7 @@ Usage:
     doc-open:     Builds and opens documentation in browser.
     bench:        Runs the hyperfine benchmark script.
     bench-ci:     Runs the criterion benchmarks for CI.
-    install:      Invokes cargo to install the cairo-native tools.
+    install:      Invokes cargo to install cairo-native tools.
     clean:        Cleans the built artifacts.
     stress-test   Runs a command which runs stress tests.
     stress-plot   Plots the results of the stress test command.
@@ -221,7 +220,7 @@ Options:
 This tool allows to run programs using the JIT engine, like the `cairo-run`
 tool, the parameters can only be felt values.
 
-Example: `echo '1' | cairo-native-run 'program.cairo' 'program::program::main' --inputs - --outputs -`
+Example: `cairo-native-run --available-gas 5000 './programs/program.cairo'`
 
 ```bash
 Exits with 1 if the compilation or run fails, otherwise 0.
