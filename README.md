@@ -253,32 +253,61 @@ Exits with 1 if the compilation or run fails, otherwise 0.
 Usage: cairo-native-test [OPTIONS] <PATH>
 
 Arguments:
-  <PATH>  The Cairo project path to compile and run its tests
+  <PATH>
+          The Cairo project path to compile and run its tests
 
 Options:
-  -s, --single-file            Whether path is a single file
-      --allow-warnings         Allows the compilation to succeed with warnings
-  -f, --filter <FILTER>        The filter for the tests, running only tests containing the filter string [default: ]
-      --include-ignored        Should we run ignored tests as well
-      --ignored                Should we run only the ignored tests
-      --starknet               Should we add the starknet plugin to run the tests
-      --run-mode <RUN_MODE>    Run with JIT or AOT (compiled) [default: jit] [possible values: aot, jit]
-  -O, --opt-level <OPT_LEVEL>  Optimization level, Valid: 0, 1, 2, 3. Values higher than 3 are considered as 3 [default: 0]
-  -h, --help                   Print help
-  -V, --version                Print version
+  -s, --single-file
+          Whether path is a single file
+
+      --allow-warnings
+          Allows the compilation to succeed with warnings
+
+  -f, --filter <FILTER>
+          The filter for the tests, running only tests containing the filter string
+          
+          [default: ]
+
+      --skip-compilation <SKIP_COMPILATION>
+          Skips compilation for tests/functions containing any of the given filters. Unlike `--filter`, the matching tests are not even compiled by native.
+          
+          DISCLAIMER: This is a hacky and temporary flag, used to run corelib tests when not all libfuncs are implemented.
+
+      --include-ignored
+          Should we run ignored tests as well
+
+      --ignored
+          Should we run only the ignored tests
+
+      --starknet
+          Should we add the starknet plugin to run the tests
+
+      --run-mode <RUN_MODE>
+          Run with JIT or AOT (compiled)
+          
+          [default: jit]
+          [possible values: aot, jit]
+
+  -O, --opt-level <OPT_LEVEL>
+          Optimization level, Valid: 0, 1, 2, 3. Values higher than 3 are considered as 3
+          
+          [default: 0]
+
+  -h, --help
+          Print help (see a summary with '-h')
+
+  -V, --version
+          Print version
 ```
 
 For single files, you can use the `-s, --single-file` option.
 
-For a project, it needs to have a `cairo_project.toml` specifying the
-`crate_roots`. You can find an example under the `cairo-tests/` folder, which
-is a cairo project that works with this tool.
-
 ```bash
 cairo-native-test -s myfile.cairo
-
-cairo-native-test ./cairo-tests/
 ```
+
+For a project, it needs to have a `cairo_project.toml` specifying the
+`crate_roots`.
 
 This will run all the tests (functions marked with the `#[test]` attribute).
 
@@ -350,6 +379,7 @@ Options:
   -f, --filter <FILTER>        Run only tests whose name contain FILTER [default: ]
       --include-ignored        Run ignored and not ignored tests
       --ignored                Run only ignored tests
+  -t, --test-kind <TEST_KIND>  Choose test kind to run [possible values: unit, integration, all]
       --run-mode <RUN_MODE>    Run with JIT or AOT (compiled) [default: jit] [possible values: aot, jit]
   -O, --opt-level <OPT_LEVEL>  Optimization level, Valid: 0, 1, 2, 3. Values higher than 3 are considered as 3 [default: 0]
   -h, --help                   Print help
