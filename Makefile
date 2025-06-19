@@ -141,7 +141,7 @@ endif
 .PHONY: deps-macos
 deps-macos: build-cairo-2-compiler-macos install-scarb-macos
 	-brew install llvm@19 --quiet
-	@echo "You can execute the env-macos.sh script to setup the needed env variables."
+	@echo "You can execute the env.sh script to setup the needed env variables."
 
 # CI use only
 .PHONY: deps-ci-linux build-cairo-2-compiler install-scarb
