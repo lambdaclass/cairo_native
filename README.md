@@ -220,7 +220,7 @@ Options:
 This tool allows to run programs using the JIT engine, like the `cairo-run`
 tool, the parameters can only be felt values.
 
-Example: `cairo-native-run --available-gas 5000 './programs/program.cairo'`
+Example: `cairo-native-run --available-gas 10000 './programs/array_get.cairo'`
 
 ```bash
 Exits with 1 if the compilation or run fails, otherwise 0.
