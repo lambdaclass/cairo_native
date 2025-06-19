@@ -151,7 +151,7 @@ lowering to LLVM.
 compiled sierra programs from an entrypoint. Programs and JIT states can be
 cached in contexts where their execution will be done multiple times.
 
-```rust,ignore
+```rust
 use starknet_types_core::felt::Felt;
 use cairo_native::context::NativeContext;
 use cairo_native::executor::JitNativeExecutor;
@@ -196,7 +196,7 @@ execute a program using the JIT.
 
 Example code to run a program:
 
-```rust,ignore
+```rust
 use starknet_types_core::felt::Felt;
 use cairo_native::context::NativeContext;
 use cairo_native::executor::NativeExecutor;
@@ -239,7 +239,7 @@ fn main() {
 
 Example code to run a Starknet contract:
 
-```rust,ignore
+```rust
 use starknet_types_core::felt::Felt;
 use cairo_lang_compiler::CompilerConfig;
 use cairo_lang_starknet::contract_class::compile_path;
