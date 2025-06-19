@@ -244,14 +244,11 @@ Builtin stats: BuiltinStats { bitwise: 1, ec_op: 0, range_check: 1, pedersen: 0,
 ## The Cairo Native runtime
 
 Sometimes we need to use stuff that would be too complicated or error-prone to
-implement in MLIR, but that we have readily available from Rust. That's when we
-use the runtime library.
+implement in MLIR, but that we have readily available from Rust.
 
-When using the JIT it'll be automatically linked (if compiled with support for
-it, which is enabled by default). If using the AOT, the
-`CAIRO_NATIVE_RUNTIME_LIBRARY` environment variable will have to be modified to
-point to the `libcairo_native_runtime.a` file, which is built and placed in said
-folder by `make build`.
+When initializing an executor, for each of the variants of the `RuntimeBinding` enum a
+pointer to a runtime function is created on global. Then on execution, it will access the global
+of the desired function and find its pointer.
 
 Although it's implemented in Rust, its functions use the C ABI and have Rust's
 name mangling disabled. This means that to the extern observer it's technically
@@ -261,8 +258,7 @@ functions callable from MLIR.
 ### Syscall handlers
 
 The syscall handler is similar to the runtime in the sense that we have
-C-compatible functions called from MLIR, but it's different in that they're
-built into Cairo Native itself rather than an external library, and that their
+C-compatible functions called from MLIR, but it's different in that their
 implementation is user-dependent.
 
 To allow for user-provided syscall handler implementations we pass a pointer to
