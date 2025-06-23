@@ -89,12 +89,12 @@ jobs:
       - name: Run with Native
         if: ${{ matrix.runner == 'native' }}
         run: |
-          cargo run --features state_dump block mainnet ${{ matrix.block }}
+          cargo run --release --bin replay --features state_dump block mainnet ${{ matrix.block }}
 
       - name: Run with VM
         if: ${{ matrix.runner == 'vm' }}
         run: |
-          cargo run --features "state_dump,only_cairo_vm" block mainnet ${{ matrix.block }}
+          cargo run --release --bin replay --features "state_dump,only_cairo_vm" block mainnet ${{ matrix.block }}
 
       - name: Upload dumps
         uses: actions/upload-artifact@v4
