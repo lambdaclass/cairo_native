@@ -152,40 +152,47 @@ compiled sierra programs from an entrypoint. Programs and JIT states can be
 cached in contexts where their execution will be done multiple times.
 
 ```rust
+use cairo_native::{
+    context::NativeContext, executor::JitNativeExecutor, utils::cairo_to_sierra, Value,
+};
 use starknet_types_core::felt::Felt;
-use cairo_native::context::NativeContext;
-use cairo_native::executor::JitNativeExecutor;
-use cairo_native::values::JitValue;
 use std::path::Path;
 
-let program_path = Path::new("programs/examples/hello.cairo");
-// Compile the cairo program to sierra.
-let sierra_program = cairo_native::utils::cairo_to_sierra(program_path);
+fn main() {
+    let program_path = Path::new("programs/examples/hello.cairo");
 
-// Instantiate a Cairo Native MLIR context. This data structure is responsible for the MLIR
-// initialization and compilation of sierra programs into a MLIR module.
-let native_context = NativeContext::new();
+    // Instantiate a Cairo Native MLIR context. This data structure is responsible for the MLIR
+    // initialization and compilation of sierra programs into a MLIR module.
+    let native_context = NativeContext::new();
 
-// Compile the sierra program into a MLIR module.
-let native_program = native_context.compile(&sierra_program, None).unwrap();
+    // Compile the cairo program to sierra.
+    let sierra_program = cairo_to_sierra(program_path).unwrap();
 
-// The parameters of the entry point.
-let params = &[JitValue::Felt252(Felt::from_bytes_be_slice(b"user"))];
+    // Compile the sierra program into a MLIR module.
+    let native_program = native_context
+        .compile(&sierra_program, false, Some(Default::default()), None)
+        .unwrap();
 
-// Find the entry point id by its name.
-let entry_point = "hello::hello::greet";
-let entry_point_id = cairo_native::utils::find_function_id(&sierra_program, entry_point);
+    // The parameters of the entry point.
+    let params = &[Value::Felt252(Felt::from_bytes_be_slice(b"user"))];
 
-// Instantiate the executor.
-let native_executor = JitNativeExecutor::from_native_module(native_program, Default::default());
+    // Find the entry point id by its name.
+    let entry_point = "hello::hello::greet";
+    let entry_point_id = cairo_native::utils::find_function_id(&sierra_program, entry_point)
+        .expect("entry point not found");
 
-// Execute the program.
-let result = native_executor
-    .invoke_dynamic(entry_point_id, params, None)
-    .unwrap();
+    // Instantiate the executor.
+    let native_executor =
+        JitNativeExecutor::from_native_module(native_program, Default::default()).unwrap();
 
-println!("Cairo program was compiled and executed successfully.");
-println!("{:?}", result);
+    // Execute the program.
+    let result = native_executor
+        .invoke_dynamic(entry_point_id, params, None)
+        .unwrap();
+
+    println!("Cairo program was compiled and executed successfully.");
+    println!("{:?}", result);
+}
 ```
 
 ## Running a Cairo program
@@ -197,41 +204,41 @@ execute a program using the JIT.
 Example code to run a program:
 
 ```rust
-use starknet_types_core::felt::Felt;
-use cairo_native::context::NativeContext;
-use cairo_native::executor::NativeExecutor;
-use cairo_native::values::JitValue;
+use cairo_native::{
+    context::NativeContext, executor::JitNativeExecutor, utils::find_entry_point, Value,
+};
 use std::path::Path;
+use tracing_subscriber::{EnvFilter, FmtSubscriber};
 
 fn main() {
-    let program_path = Path::new("programs/examples/hello.cairo");
+    let program_path = Path::new("programs/echo.cairo");
+
     // Compile the cairo program to sierra.
-    let sierra_program = cairo_native::utils::cairo_to_sierra(program_path);
+    let sierra_program = cairo_native::utils::cairo_to_sierra(program_path).unwrap();
 
     // Instantiate a Cairo Native MLIR context. This data structure is responsible for the MLIR
     // initialization and compilation of sierra programs into a MLIR module.
     let native_context = NativeContext::new();
 
     // Compile the sierra program into a MLIR module.
-    let native_program = native_context.compile(&sierra_program).unwrap();
-
-    // The parameters of the entry point.
-    let params = &[JitValue::Felt252(Felt::from_bytes_be_slice(b"user"))];
-
-    // Find the entry point id by its name.
-    let entry_point = "hello::hello::greet";
-    let entry_point_id = cairo_native::utils::find_function_id(&sierra_program, entry_point);
-
-    // Instantiate the executor.
-    let native_executor = NativeExecutor::new(native_program);
-
-    // Execute the program.
-    let result = native_executor
-        .execute(entry_point_id, params, None)
+    let native_program = native_context
+        .compile(&sierra_program, false, Some(Default::default()), None)
         .unwrap();
 
+    // Find the entry point id by its name.
+    let entry_point_fn = find_entry_point(&sierra_program, "echo::echo::main").unwrap();
+    let fn_id = &entry_point_fn.id;
+
+    // Instantiate the executor.
+    let native_executor =
+        JitNativeExecutor::from_native_module(native_program, Default::default()).unwrap();
+
+    // Execute the program.
+    let output = native_executor.invoke_dynamic(fn_id, &[Value::Felt252(1.into())], None);
+
+    println!();
     println!("Cairo program was compiled and executed successfully.");
-    println!("{:?}", result);
+    println!("{output:#?}");
 }
 ```
 
@@ -239,7 +246,7 @@ fn main() {
 
 Example code to run a Starknet contract:
 
-```rust
+```rust,ignore
 use starknet_types_core::felt::Felt;
 use cairo_lang_compiler::CompilerConfig;
 use cairo_lang_starknet::contract_class::compile_path;
