@@ -65,18 +65,6 @@ Libfuncs are implemented under `src/libfuncs.rs` and
 Using the `src/libfuncs/felt252.rs` libfuncs as a aid:
 
 ```rust,ignore
-use melior::Context;
-use melior::ir::Block;
-use melior::ir::Location;
-use cairo_lang_sierra::{
-    extensions::{
-        core::{CoreLibfunc, CoreType},
-        felt252::Felt252Concrete,
-    },
-    program_registry::ProgramRegistry,
-};
-use cairo_native::metadata::MetadataStorage;
-
 /// Select and call the correct libfunc builder function from the selector.
 pub fn build<'ctx, 'this>(
     context: &'ctx Context,
