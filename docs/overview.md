@@ -234,13 +234,12 @@ Example code to run a Starknet contract:
 ```rust,ignore
 use starknet_types_core::felt::Felt;
 use cairo_lang_compiler::CompilerConfig;
-use cairo_lang_starknet::contract_class::compile_path;
+use cairo_lang_starknet::compile::compile_path;
 use cairo_native::context::NativeContext;
-use cairo_native::executor::NativeExecutor;
+use cairo_native::executor::JitNativeExecutor;
 use cairo_native::utils::find_entry_point_by_idx;
 use cairo_native::{
-    metadata::syscall_handler::SyscallHandlerMeta,
-    starknet::{BlockInfo, ExecutionInfo, StarkNetSyscallHandler, SyscallResult, TxInfo, U256},
+    starknet::{BlockInfo, ExecutionInfo, StarknetSyscallHandler, SyscallResult, TxInfo, U256},
 };
 use std::path::Path;
 
@@ -267,9 +266,6 @@ fn main() {
     let native_context = NativeContext::new();
 
     let mut native_program = native_context.compile(&sierra_program, false, Some(Default::default()), None).unwrap();
-    native_program
-        .insert_metadata(SyscallHandlerMeta::new(&mut SyscallHandler))
-        .unwrap();
 
     // Call the echo function from the contract using the generated wrapper.
     let entry_point_fn =
@@ -277,7 +273,7 @@ fn main() {
 
     let fn_id = &entry_point_fn.id;
 
-    let native_executor = JitNativeExecutor::from_native_module(native_program, Default::default());
+    let native_executor = JitNativeExecutor::from_native_module(native_program, Default::default()).unwrap();
 
     let result = native_executor
         .invoke_contract_dynamic(
@@ -294,8 +290,14 @@ fn main() {
     println!("{result:#?}");
 }
 
+impl SyscallHandler {
+    pub fn new() -> Self {
+        Self {}
+    }
+}
+
 // Implement an example syscall handler.
-impl StarkNetSyscallHandler for SyscallHandler {
+impl StarknetSyscallHandler for SyscallHandler {
     fn get_block_hash(
         &mut self,
         block_number: u64,
@@ -428,7 +430,10 @@ impl StarkNetSyscallHandler for SyscallHandler {
         _gas: &mut u64,
     ) -> SyscallResult<cairo_native::starknet::U256> {
         println!("Called `keccak({input:?})` from MLIR.");
-        Ok(U256(Felt::from(1234567890).to_le_bytes()))
+        Ok(U256 {
+            hi: 0,
+            lo: 1234567890,
+        })
     }
 
     /*
