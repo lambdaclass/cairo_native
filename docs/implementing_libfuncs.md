@@ -125,19 +125,20 @@ pub fn build_to_felt252<'ctx, 'this>(
     let felt252_ty = registry.build_type(
         context,
         helper,
+        registry,
         metadata,
         &info.branch_signatures()[0].vars[0].ty,
     )?;
 
     // Retrieve the first argument passed to this library function, in this case its the u8 value we need to convert.
-    let value: Value = entry.arg(0)?;
+    let value: Value = entry.argument(0)?.into();
 
     // We create a "extui" operation from the "arith" dialect, which basically
     // zero extends the value to have the same bits as the given type.
-    let result = entry.extui(value, felt252_ty, location)?;
+    let result = entry.append_op_result(arith::extui(value, felt252_ty, location))?;
 
     // Using the helper argument, append the branching operation to the next statement, passing result as our output variable.
-    helper.br(0, &[result], location);
+    entry.append_operation(helper.br(0, &[result], location));
 
     Ok(())
 }
