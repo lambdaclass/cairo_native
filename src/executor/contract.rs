@@ -13,11 +13,11 @@
 //! ## How it works:
 //!
 //! The only variable data we need to know at call time is the builtins order,
-//! to save this, when first compiling the sierra program (with [`ContractExecutor::new`]) it iterates through all the user
+//! to save this, when first compiling the sierra program (with [`AotContractExecutor::new`]) it iterates through all the user
 //! defined functions (this includes the contract wrappers, which are the ones that matter)
 //! and saves the builtin arguments in a `Vec`.
 //!
-//! The API provides two more methods: [`ContractExecutor::save`] and [`ContractExecutor::load`].
+//! The API provides two more methods: [`AotContractExecutor::save`] and [`AotContractExecutor::load`].
 //!
 //! Save can be used to save the compiled program into the given path, alongside it will be saved
 //! a json file with the entry points and their builtins (as seen in the example)
