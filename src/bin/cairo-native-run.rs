@@ -15,7 +15,7 @@ use cairo_native::{
     starknet_stub::StubSyscallHandler,
 };
 use clap::{Parser, ValueEnum};
-#[cfg(any(feature = "with-libfunc-profiling"))]
+#[cfg(feature = "with-libfunc-profiling")]
 use std::collections::HashMap;
 use std::path::PathBuf;
 use tracing_subscriber::{EnvFilter, FmtSubscriber};
