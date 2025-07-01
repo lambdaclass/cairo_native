@@ -61,6 +61,7 @@ with-cheatcode = []
 with-debug-utils = []
 with-mem-tracing = []
 with-libfunc-profiling = []
+with-libfunc-counter = []
 with-segfault-catcher = []
 with-trace-dump = ["dep:sierra-emu"]
 

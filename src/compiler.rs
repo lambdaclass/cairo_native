@@ -60,6 +60,8 @@ use crate::{
     utils::{generate_function_name, walk_ir::walk_mlir_block, BlockExt},
 };
 use bumpalo::Bump;
+#[cfg(feature = "with-libfunc-counter")]
+use cairo_lang_sierra::ids::ConcreteLibfuncId;
 use cairo_lang_sierra::{
     edit_state,
     extensions::{
@@ -151,6 +153,14 @@ pub fn compile(
     let n_libfuncs = program.libfunc_declarations.len() + 1;
     let sierra_stmt_start_offset = num_types + n_libfuncs + 1;
 
+    #[cfg(feature = "with-libfunc-counter")]
+    let libfunc_indexes = program
+        .libfunc_declarations
+        .iter()
+        .enumerate()
+        .map(|(idx, libf)| (libf.id.clone(), idx))
+        .collect::<HashMap<ConcreteLibfuncId, usize>>();
+
     for function in &program.funcs {
         tracing::info!("Compiling function `{}`.", function.id);
         compile_func(
@@ -159,6 +169,8 @@ pub fn compile(
             registry,
             function,
             &program.statements,
+            #[cfg(feature = "with-libfunc-counter")]
+            &libfunc_indexes,
             metadata,
             di_compile_unit_id,
             sierra_stmt_start_offset,
@@ -186,6 +198,7 @@ fn compile_func(
     registry: &ProgramRegistry<CoreType, CoreLibfunc>,
     function: &Function,
     statements: &[Statement],
+    #[cfg(feature = "with-libfunc-counter")] libfunc_indexes: &HashMap<ConcreteLibfuncId, usize>,
     metadata: &mut MetadataStorage,
     di_compile_unit_id: Attribute,
     sierra_stmt_start_offset: usize,
@@ -639,6 +652,21 @@ fn compile_func(
                             },
                         },
                     };
+
+                    #[cfg(feature = "with-libfunc-counter")]
+                    {
+                        // Can't fail since that would we got a libfunc which is not defined in the program
+                        let libfunc_idx = libfunc_indexes.get(&invocation.libfunc_id).unwrap();
+
+                        crate::metadata::libfunc_counter::libfunc_counter_runtime::count_libfunc(
+                            context,
+                            module,
+                            block,
+                            location,
+                            metadata,
+                            *libfunc_idx,
+                        )?;
+                    }
 
                     libfunc.build(
                         context,
