@@ -661,10 +661,11 @@ fn compile_func(
                         crate::metadata::libfunc_counter::libfunc_counter_runtime::count_libfunc(
                             context,
                             module,
-                            block,
+                            &block,
                             location,
                             metadata,
                             *libfunc_idx,
+                            libfunc_indexes.len() as u32,
                         )?;
                     }
 
@@ -951,6 +952,14 @@ fn compile_func(
             })
         },
     )?;
+
+    #[cfg(feature = "with-libfunc-counter")]
+    {
+        use crate::metadata::libfunc_counter::LibfuncCounterMeta;
+
+        let libfunc_counter = metadata.get_mut::<LibfuncCounterMeta>().unwrap();
+        libfunc_counter.store_array_counter(context, module, &entry_block, Location::unknown(context), libfunc_indexes.len() as u32)?;
+    }
 
     // Load arguments and jump to the entry block.
     {

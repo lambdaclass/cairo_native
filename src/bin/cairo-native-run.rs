@@ -15,7 +15,7 @@ use cairo_native::{
     starknet_stub::StubSyscallHandler,
 };
 use clap::{Parser, ValueEnum};
-#[cfg(any(feature = "with-libfunc-profiling", feature = "with-libfunc-counter"))]
+#[cfg(any(feature = "with-libfunc-profiling"))]
 use std::collections::HashMap;
 use std::path::PathBuf;
 use tracing_subscriber::{EnvFilter, FmtSubscriber};
@@ -213,18 +213,6 @@ fn main() -> anyhow::Result<()> {
             .insert(0, ProfilerImpl::new());
     }
 
-    #[cfg(feature = "with-libfunc-counter")]
-    {
-        use cairo_native::metadata::libfunc_counter::libfunc_counter_runtime::{
-            CounterImpl, LIBFUNC_COUNTER,
-        };
-
-        LIBFUNC_COUNTER.lock().unwrap().insert(
-            0,
-            CounterImpl::new(sierra_program.libfunc_declarations.len()),
-        );
-    }
-
     let gas_metadata =
         GasMetadata::new(&sierra_program, Some(MetadataComputationConfig::default())).unwrap();
 
@@ -333,7 +321,6 @@ fn main() -> anyhow::Result<()> {
         let libfunc_counter = counters.values().next().unwrap();
 
         let libfunc_counts = libfunc_counter
-            .array_counter
             .iter()
             .enumerate()
             .map(|(i, count)| {
@@ -343,7 +330,6 @@ fn main() -> anyhow::Result<()> {
                 (debug_name, *count)
             })
             .collect::<HashMap<String, u32>>();
-            dbg!(&libfunc_counts);
         serde_json::to_writer_pretty(
             std::fs::File::create(libfunc_counter_output).unwrap(),
             &libfunc_counts,
