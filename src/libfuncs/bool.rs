@@ -5,7 +5,7 @@ use crate::{
     error::{panic::ToNativeAssertError, Result},
     metadata::MetadataStorage,
     types::TypeBuilder,
-    utils::{BlockExt, ProgramRegistryExt},
+    utils::ProgramRegistryExt,
 };
 use cairo_lang_sierra::{
     extensions::{
@@ -18,6 +18,7 @@ use cairo_lang_sierra::{
 };
 use melior::{
     dialect::{arith, llvm},
+    helpers::{ArithBlockExt, BuiltinBlockExt, LlvmBlockExt},
     ir::{r#type::IntegerType, Block, Location},
     Context,
 };

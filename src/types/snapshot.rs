@@ -12,7 +12,7 @@
 //! pub struct Snapshot<T>(pub T);
 //! ```
 
-use super::{BlockExt, TypeBuilder, WithSelf};
+use super::{TypeBuilder, WithSelf};
 use crate::{
     error::{Error, Result},
     metadata::{
@@ -30,6 +30,7 @@ use cairo_lang_sierra::{
 };
 use melior::{
     dialect::func,
+    helpers::BuiltinBlockExt,
     ir::{Block, BlockLike, Location, Module, Region, Type},
     Context,
 };

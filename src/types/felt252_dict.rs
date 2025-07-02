@@ -14,7 +14,7 @@ use crate::{
         felt252_dict::Felt252DictOverrides, realloc_bindings::ReallocBindingsMeta,
         runtime_bindings::RuntimeBindingsMeta, MetadataStorage,
     },
-    utils::{BlockExt, ProgramRegistryExt},
+    utils::ProgramRegistryExt,
 };
 use cairo_lang_sierra::{
     extensions::{
@@ -25,6 +25,7 @@ use cairo_lang_sierra::{
 };
 use melior::{
     dialect::{func, llvm},
+    helpers::BuiltinBlockExt,
     ir::{Block, BlockLike, Location, Module, Region, Type},
     Context,
 };

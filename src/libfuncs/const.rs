@@ -7,7 +7,7 @@ use crate::{
     metadata::{realloc_bindings::ReallocBindingsMeta, MetadataStorage},
     native_panic,
     types::TypeBuilder,
-    utils::{BlockExt, ProgramRegistryExt, RangeExt, PRIME},
+    utils::{ProgramRegistryExt, RangeExt, PRIME},
 };
 use cairo_lang_sierra::{
     extensions::{
@@ -24,6 +24,7 @@ use cairo_lang_sierra::{
 };
 use melior::{
     dialect::llvm::{self, r#type::pointer},
+    helpers::{ArithBlockExt, BuiltinBlockExt, LlvmBlockExt},
     ir::{Block, Location, Value},
     Context,
 };
@@ -246,12 +247,14 @@ pub fn build_const_type_value<'ctx, 'this>(
             // Offset the value so that 0 matches with lower.
             let value = &value - &range.lower;
 
-            entry.const_int(
-                context,
-                location,
-                value,
-                inner_type.integer_range(registry)?.offset_bit_width(),
-            )
+            entry
+                .const_int(
+                    context,
+                    location,
+                    value,
+                    inner_type.integer_range(registry)?.offset_bit_width(),
+                )
+                .map_err(crate::error::Error::from)
         }
         CoreTypeConcrete::Felt252(_) => {
             let value = match &info.inner_data.as_slice() {
@@ -265,7 +268,9 @@ pub fn build_const_type_value<'ctx, 'this>(
                 _ => value,
             };
 
-            entry.const_int_from_type(context, location, value, inner_ty)
+            entry
+                .const_int_from_type(context, location, value, inner_ty)
+                .map_err(crate::error::Error::from)
         }
         CoreTypeConcrete::Starknet(
             StarknetTypeConcrete::ClassHash(_) | StarknetTypeConcrete::ContractAddress(_),
@@ -281,7 +286,9 @@ pub fn build_const_type_value<'ctx, 'this>(
                 _ => value,
             };
 
-            entry.const_int_from_type(context, location, value, inner_ty)
+            entry
+                .const_int_from_type(context, location, value, inner_ty)
+                .map_err(crate::error::Error::from)
         }
         CoreTypeConcrete::Uint8(_)
         | CoreTypeConcrete::Uint16(_)
@@ -294,9 +301,9 @@ pub fn build_const_type_value<'ctx, 'this>(
         | CoreTypeConcrete::Sint64(_)
         | CoreTypeConcrete::Sint128(_)
         | CoreTypeConcrete::Bytes31(_) => match &info.inner_data.as_slice() {
-            [GenericArg::Value(value)] => {
-                entry.const_int_from_type(context, location, value.clone(), inner_ty)
-            }
+            [GenericArg::Value(value)] => entry
+                .const_int_from_type(context, location, value.clone(), inner_ty)
+                .map_err(crate::error::Error::from),
             _ => Err(Error::ConstDataMismatch),
         },
         _ => native_panic!("const for type {} not implemented", info.inner_ty),
