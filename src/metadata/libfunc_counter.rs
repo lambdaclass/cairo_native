@@ -158,11 +158,11 @@ impl LibfuncCounterMeta {
 
     /// Indexes the array of counters and increments
     /// the one relative to the given libfunc index
-    pub fn store_array_counter<'c, 'a>(
+    pub fn store_array_counter(
         &mut self,
         context: &Context,
         module: &Module,
-        block: &'a Block<'c>,
+        block: &Block<'_>,
         location: Location,
         libfunc_amount: u32,
     ) -> Result<()> {
@@ -222,11 +222,11 @@ impl LibfuncCounterMeta {
         Ok(())
     }
 
-    pub fn count_libfunc<'c, 'a>(
+    pub fn count_libfunc(
         &mut self,
         context: &Context,
         module: &Module,
-        block: &'a Block<'c>,
+        block: &Block<'_>,
         location: Location,
         libfunc_idx: usize,
         libfuncs_amount: u32,
