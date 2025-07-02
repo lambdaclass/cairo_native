@@ -15,7 +15,7 @@ use melior::{
 
 use crate::{
     error::{Error, Result},
-    utils::{BlockExt, GepIndex},
+    utils::BlockExt,
 };
 
 #[derive(Clone, Copy, Debug, Hash, PartialEq, Eq)]
@@ -142,7 +142,7 @@ impl LibfuncCounterMeta {
         module: &Module,
         block: &'a Block<'c>,
         location: Location,
-        libfunc_amount: u32
+        libfunc_amount: u32,
     ) -> Result<()> {
         let array_ty = llvm::r#type::array(IntegerType::new(context, 32).into(), libfunc_amount);
 
@@ -166,12 +166,10 @@ impl LibfuncCounterMeta {
             .into(),
         )?;
 
-        let array_counter_ptr = block.load(context, location, global_address, array_ty)?;
-
         block.append_operation(
             OperationBuilder::new("llvm.call", location)
                 .add_operands(&[function_ptr])
-                .add_operands(&[counter_id, array_counter_ptr, lifuncs_amount])
+                .add_operands(&[counter_id, global_address, lifuncs_amount])
                 .build()?,
         );
 
@@ -212,15 +210,6 @@ impl LibfuncCounterMeta {
             .into(),
         )?;
 
-        let array_counter_ptr = block.load(context, location, global_address, array_ty)?;
-
-        block.insert_values(
-            context,
-            location,
-            array_counter_ptr,
-            &vec![k0; libfunc_amount as usize],
-        )?;
-
         Ok(())
     }
 
@@ -241,7 +230,7 @@ impl LibfuncCounterMeta {
         let array_ty = llvm::r#type::array(u32_ty, libfuncs_amount);
         let k1 = block.const_int(context, location, 1, 32)?;
 
-        let global_address = block.append_op_result(
+        let array_counter_ptr = block.append_op_result(
             ods::llvm::mlir_addressof(
                 context,
                 llvm::r#type::pointer(context, 0),
@@ -251,24 +240,20 @@ impl LibfuncCounterMeta {
             .into(),
         )?;
 
-        let array_counter_ptr = block.load(context, location, global_address, array_ty)?;
+        let array_counter = block.load(context, location, array_counter_ptr, array_ty)?;
 
-        let value_counter = block.gep(
-            context,
-            location,
-            array_counter_ptr,
-            &[GepIndex::Const(libfunc_idx as i32)],
-            u32_ty,
-        )?;
+        let value_counter = block.extract_value(context, location, array_counter, u32_ty, libfunc_idx)?;
         let value_incremented = block.addi(value_counter, k1, location)?;
-
-        block.insert_value(
+        
+        let array_counter = block.insert_value(
             context,
             location,
-            array_counter_ptr,
+            array_counter,
             value_incremented,
             libfunc_idx,
         )?;
+
+        block.store(context, location, array_counter_ptr, array_counter)?;
 
         Ok(())
     }
@@ -328,11 +313,12 @@ pub mod libfunc_counter_runtime {
 
     pub unsafe extern "C" fn store_array_counter(
         counter_id: u64,
-        array_counter: &[u32],
+        array_counter: *const u32,
         libfuncs_amount: u32,
     ) {
         let mut libfunc_counter = LIBFUNC_COUNTER.lock().unwrap();
-
-        libfunc_counter.insert(counter_id, array_counter.to_vec());
+        let vec = (0..libfuncs_amount).map(|i| dbg!(*array_counter.add(i as usize))).collect_vec(); 
+        
+        libfunc_counter.insert(counter_id, vec);
     }
 }
