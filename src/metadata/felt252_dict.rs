@@ -1,7 +1,7 @@
 use super::{drop_overrides::DropOverridesMeta, MetadataStorage};
 use crate::{
     error::{Error, Result},
-    utils::{BlockExt, ProgramRegistryExt},
+    utils::ProgramRegistryExt,
 };
 use cairo_lang_sierra::{
     extensions::core::{CoreLibfunc, CoreType},
@@ -10,6 +10,7 @@ use cairo_lang_sierra::{
 };
 use melior::{
     dialect::llvm,
+    helpers::{BuiltinBlockExt, LlvmBlockExt},
     ir::{
         attribute::{FlatSymbolRefAttribute, StringAttribute, TypeAttribute},
         Attribute, Block, BlockLike, Identifier, Location, Module, Region,

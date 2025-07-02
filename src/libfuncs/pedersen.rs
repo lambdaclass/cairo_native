@@ -5,7 +5,7 @@ use super::LibfuncHelper;
 use crate::{
     error::{panic::ToNativeAssertError, Result},
     metadata::{runtime_bindings::RuntimeBindingsMeta, MetadataStorage},
-    utils::{get_integer_layout, BlockExt, ProgramRegistryExt},
+    utils::{get_integer_layout, ProgramRegistryExt},
 };
 use cairo_lang_sierra::{
     extensions::{
@@ -17,6 +17,7 @@ use cairo_lang_sierra::{
     program_registry::ProgramRegistry,
 };
 use melior::{
+    helpers::{ArithBlockExt, BuiltinBlockExt, LlvmBlockExt},
     ir::{r#type::IntegerType, Block, Location},
     Context,
 };

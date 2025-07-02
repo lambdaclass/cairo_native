@@ -7,7 +7,7 @@ use crate::{
     libfuncs::LibfuncHelper,
     metadata::MetadataStorage,
     native_panic,
-    utils::{get_integer_layout, layout_repeat, BlockExt, RangeExt, PRIME},
+    utils::{get_integer_layout, layout_repeat, RangeExt, PRIME},
 };
 use cairo_lang_sierra::{
     extensions::{
@@ -22,6 +22,7 @@ use cairo_lang_sierra::{
 };
 use melior::{
     dialect::llvm,
+    helpers::{ArithBlockExt, BuiltinBlockExt, LlvmBlockExt},
     ir::{r#type::IntegerType, Block, Location, Module, Type, Value},
     Context,
 };

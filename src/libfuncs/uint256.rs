@@ -1,6 +1,6 @@
 //! # `u256`-related libfuncs
 
-use super::{BlockExt, LibfuncHelper};
+use super::LibfuncHelper;
 use crate::{error::Result, metadata::MetadataStorage, utils::ProgramRegistryExt};
 use cairo_lang_sierra::{
     extensions::{
@@ -16,6 +16,7 @@ use melior::{
         arith::{self, CmpiPredicate},
         llvm, ods, scf,
     },
+    helpers::BuiltinBlockExt,
     ir::{
         attribute::{DenseI64ArrayAttribute, IntegerAttribute},
         operation::OperationBuilder,

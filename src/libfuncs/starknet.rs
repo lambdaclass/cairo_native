@@ -6,7 +6,7 @@ use crate::{
     ffi::get_struct_field_type_at,
     metadata::{drop_overrides::DropOverridesMeta, MetadataStorage},
     starknet::handler::StarknetSyscallHandlerCallbacks,
-    utils::{get_integer_layout, BlockExt, GepIndex, ProgramRegistryExt, PRIME},
+    utils::{get_integer_layout, ProgramRegistryExt, PRIME},
 };
 use cairo_lang_sierra::{
     extensions::{
@@ -23,6 +23,7 @@ use melior::{
         arith::{self, CmpiPredicate},
         llvm::{self, r#type::pointer, LoadStoreOptions},
     },
+    helpers::{ArithBlockExt, BuiltinBlockExt, GepIndex, LlvmBlockExt},
     ir::{
         attribute::DenseI64ArrayAttribute, operation::OperationBuilder, r#type::IntegerType,
         Attribute, Block, BlockLike, Location, Type, ValueLike,
@@ -222,7 +223,10 @@ pub fn build_call_contract<'ctx, 'this>(
     ));
 
     // Allocate `address` argument and write the value.
-    let address_arg_ptr = helper.init_block().alloca_int(context, location, 252)?;
+    let address_arg_ptr =
+        helper
+            .init_block()
+            .alloca_int(context, location, 252, get_integer_layout(252).align())?;
     entry.append_operation(llvm::store(
         context,
         entry.arg(2)?,
@@ -232,7 +236,10 @@ pub fn build_call_contract<'ctx, 'this>(
     ));
 
     // Allocate `entry_point_selector` argument and write the value.
-    let entry_point_selector_arg_ptr = helper.init_block().alloca_int(context, location, 252)?;
+    let entry_point_selector_arg_ptr =
+        helper
+            .init_block()
+            .alloca_int(context, location, 252, get_integer_layout(252).align())?;
     entry.append_operation(llvm::store(
         context,
         entry.arg(3)?,
@@ -532,7 +539,10 @@ pub fn build_storage_read<'ctx, 'this>(
     entry.store(context, location, gas_builtin_ptr, entry.arg(0)?)?;
 
     // Allocate `address` argument and write the value.
-    let address_arg_ptr = helper.init_block().alloca_int(context, location, 252)?;
+    let address_arg_ptr =
+        helper
+            .init_block()
+            .alloca_int(context, location, 252, get_integer_layout(252).align())?;
     entry.store(context, location, address_arg_ptr, entry.arg(3)?)?;
 
     // Extract function pointer.
@@ -689,11 +699,17 @@ pub fn build_storage_write<'ctx, 'this>(
     entry.store(context, location, gas_builtin_ptr, entry.arg(0)?)?;
 
     // Allocate `address` argument and write the value.
-    let address_arg_ptr = helper.init_block().alloca_int(context, location, 252)?;
+    let address_arg_ptr =
+        helper
+            .init_block()
+            .alloca_int(context, location, 252, get_integer_layout(252).align())?;
     entry.store(context, location, address_arg_ptr, entry.arg(3)?)?;
 
     // Allocate `value` argument and write the value.
-    let value_arg_ptr = helper.init_block().alloca_int(context, location, 252)?;
+    let value_arg_ptr =
+        helper
+            .init_block()
+            .alloca_int(context, location, 252, get_integer_layout(252).align())?;
     entry.store(context, location, value_arg_ptr, entry.arg(4)?)?;
 
     let fn_ptr = entry.gep(
@@ -1631,11 +1647,17 @@ pub fn build_deploy<'ctx, 'this>(
     entry.store(context, location, gas_builtin_ptr, entry.arg(0)?)?;
 
     // Allocate `class_hash` argument and write the value.
-    let class_hash_arg_ptr = helper.init_block().alloca_int(context, location, 252)?;
+    let class_hash_arg_ptr =
+        helper
+            .init_block()
+            .alloca_int(context, location, 252, get_integer_layout(252).align())?;
     entry.store(context, location, class_hash_arg_ptr, entry.arg(2)?)?;
 
     // Allocate `entry_point_selector` argument and write the value.
-    let contract_address_salt_arg_ptr = helper.init_block().alloca_int(context, location, 252)?;
+    let contract_address_salt_arg_ptr =
+        helper
+            .init_block()
+            .alloca_int(context, location, 252, get_integer_layout(252).align())?;
     entry.store(
         context,
         location,
@@ -2000,11 +2022,17 @@ pub fn build_library_call<'ctx, 'this>(
     entry.store(context, location, gas_builtin_ptr, entry.arg(0)?)?;
 
     // Allocate `class_hash` argument and write the value.
-    let class_hash_arg_ptr = helper.init_block().alloca_int(context, location, 252)?;
+    let class_hash_arg_ptr =
+        helper
+            .init_block()
+            .alloca_int(context, location, 252, get_integer_layout(252).align())?;
     entry.store(context, location, class_hash_arg_ptr, entry.arg(2)?)?;
 
     // Allocate `entry_point_selector` argument and write the value.
-    let function_selector_arg_ptr = helper.init_block().alloca_int(context, location, 252)?;
+    let function_selector_arg_ptr =
+        helper
+            .init_block()
+            .alloca_int(context, location, 252, get_integer_layout(252).align())?;
     entry.store(context, location, function_selector_arg_ptr, entry.arg(3)?)?;
 
     // Allocate `calldata` argument and write the value.
@@ -2192,11 +2220,17 @@ pub fn build_meta_tx_v0<'ctx, 'this>(
     entry.store(context, location, gas_builtin_ptr, entry.arg(0)?)?;
 
     // Allocate `address` argument and write the value.
-    let address_arg_ptr = helper.init_block().alloca_int(context, location, 252)?;
+    let address_arg_ptr =
+        helper
+            .init_block()
+            .alloca_int(context, location, 252, get_integer_layout(252).align())?;
     entry.store(context, location, address_arg_ptr, entry.arg(2)?)?;
 
     // Allocate `entry_point_selector` argument and write its value.
-    let entry_point_selector_arg_ptr = helper.init_block().alloca_int(context, location, 252)?;
+    let entry_point_selector_arg_ptr =
+        helper
+            .init_block()
+            .alloca_int(context, location, 252, get_integer_layout(252).align())?;
     entry.store(
         context,
         location,
@@ -2398,7 +2432,10 @@ pub fn build_replace_class<'ctx, 'this>(
     entry.store(context, location, gas_builtin_ptr, entry.arg(0)?)?;
 
     // Allocate `class_hash` argument and write the value.
-    let class_hash_arg_ptr = helper.init_block().alloca_int(context, location, 252)?;
+    let class_hash_arg_ptr =
+        helper
+            .init_block()
+            .alloca_int(context, location, 252, get_integer_layout(252).align())?;
     entry.store(context, location, class_hash_arg_ptr, entry.arg(2)?)?;
 
     let fn_ptr = entry.gep(
@@ -2547,7 +2584,10 @@ pub fn build_send_message_to_l1<'ctx, 'this>(
     entry.store(context, location, gas_builtin_ptr, entry.arg(0)?)?;
 
     // Allocate `to_address` argument and write the value.
-    let to_address_arg_ptr = helper.init_block().alloca_int(context, location, 252)?;
+    let to_address_arg_ptr =
+        helper
+            .init_block()
+            .alloca_int(context, location, 252, get_integer_layout(252).align())?;
     entry.store(context, location, to_address_arg_ptr, entry.arg(2)?)?;
 
     // Allocate `payload` argument and write the value.
@@ -2873,7 +2913,10 @@ pub fn build_get_class_hash_at<'ctx, 'this>(
     ));
 
     // Allocate `contract_address` argument and write the value.
-    let contract_address_ptr = helper.init_block().alloca_int(context, location, 252)?;
+    let contract_address_ptr =
+        helper
+            .init_block()
+            .alloca_int(context, location, 252, get_integer_layout(252).align())?;
     entry.store(context, location, contract_address_ptr, entry.arg(2)?)?;
 
     // Extract function pointer.

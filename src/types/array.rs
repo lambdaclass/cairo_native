@@ -29,7 +29,7 @@ use crate::{
         drop_overrides::DropOverridesMeta, dup_overrides::DupOverridesMeta,
         realloc_bindings::ReallocBindingsMeta, MetadataStorage,
     },
-    utils::{get_integer_layout, BlockExt, GepIndex, ProgramRegistryExt},
+    utils::{get_integer_layout, ProgramRegistryExt},
 };
 use cairo_lang_sierra::{
     extensions::{
@@ -38,7 +38,6 @@ use cairo_lang_sierra::{
     },
     program_registry::ProgramRegistry,
 };
-use melior::ir::Region;
 use melior::{
     dialect::{arith, llvm},
     ir::{r#type::IntegerType, Block, Location, Module, Type},
@@ -47,6 +46,10 @@ use melior::{
 use melior::{
     dialect::{arith::CmpiPredicate, func, scf},
     ir::BlockLike,
+};
+use melior::{
+    helpers::{ArithBlockExt, BuiltinBlockExt, GepIndex, LlvmBlockExt},
+    ir::Region,
 };
 use std::alloc::Layout;
 

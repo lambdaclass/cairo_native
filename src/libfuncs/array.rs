@@ -9,7 +9,7 @@ use crate::{
     },
     native_assert,
     types::array::calc_data_prefix_offset,
-    utils::{BlockExt, GepIndex, ProgramRegistryExt},
+    utils::ProgramRegistryExt,
 };
 use cairo_lang_sierra::{
     extensions::{
@@ -25,6 +25,7 @@ use melior::{
         arith::{self, CmpiPredicate},
         cf, llvm, ods, scf,
     },
+    helpers::{ArithBlockExt, BuiltinBlockExt, GepIndex, LlvmBlockExt},
     ir::{
         attribute::IntegerAttribute, r#type::IntegerType, Block, BlockLike, Location, Region, Value,
     },

@@ -4,7 +4,7 @@ use super::LibfuncHelper;
 use crate::{
     error::{Error, Result},
     metadata::{runtime_bindings::RuntimeBindingsMeta, MetadataStorage},
-    utils::{get_integer_layout, BlockExt, ProgramRegistryExt, PRIME},
+    utils::{get_integer_layout, ProgramRegistryExt, PRIME},
 };
 use cairo_lang_sierra::{
     extensions::{
@@ -20,6 +20,7 @@ use melior::{
         arith::{self, CmpiPredicate},
         llvm,
     },
+    helpers::{ArithBlockExt, BuiltinBlockExt, LlvmBlockExt},
     ir::{operation::OperationBuilder, r#type::IntegerType, Block, Location},
     Context,
 };
