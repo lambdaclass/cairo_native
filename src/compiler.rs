@@ -527,6 +527,20 @@ fn compile_func(
                         0,
                     );
 
+                    #[cfg(feature = "with-debug-utils")]
+                    {
+                        // If this env var exists and is a valid statement, insert a debug trap before the libfunc call.
+                        // Only on when using with-debug-utils feature.
+                        if let Ok(x) = std::env::var("NATIVE_DEBUG_TRAP_AT_STMT") {
+                            if x.eq_ignore_ascii_case(&statement_idx.0.to_string()) {
+                                block.append_operation(
+                                    melior::dialect::ods::llvm::intr_debugtrap(context, location)
+                                        .into(),
+                                );
+                            }
+                        }
+                    }
+
                     let libfunc_name = if invocation.libfunc_id.debug_name.is_some() {
                         format!("{}(stmt_idx={})", invocation.libfunc_id, statement_idx)
                     } else {
