@@ -655,8 +655,8 @@ fn compile_func(
 
                     #[cfg(feature = "with-libfunc-counter")]
                     {
-                        // Can't fail. If we had a key from the invocation statement that is not included in this hashmap, 
-                        // that would mean that there's an error in the sierra program since we got to invoke a libfunc that has 
+                        // Can't fail. If we had a key from the invocation statement that is not included in this hashmap,
+                        // that would mean that there's an error in the sierra program since we got to invoke a libfunc that has
                         // not been declared.
                         let libfunc_idx = libfunc_indexes.get(&invocation.libfunc_id).unwrap();
 

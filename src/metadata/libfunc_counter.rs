@@ -48,9 +48,7 @@ pub enum LibfuncCounterBinding {
 impl LibfuncCounterBinding {
     pub const fn symbol(self) -> &'static str {
         match self {
-            LibfuncCounterBinding::StoreArrayCounter => {
-                "cairo_native__store_array_counter"
-            }
+            LibfuncCounterBinding::StoreArrayCounter => "cairo_native__store_array_counter",
             LibfuncCounterBinding::CounterId => "cairo_native__counter_id",
             LibfuncCounterBinding::ArrayCounter => "cairo_native__array_counter",
         }
