@@ -1,7 +1,7 @@
 #![cfg(feature = "with-libfunc-counter")]
 //! The libfunc counter feature is used to generate information counting how many time a libfunc has been called.
 //!
-//! When this feature is used, the compiler will call the important methods:
+//! When this feature is used, the compiler will call three important methods:
 //!
 //! 1. `count_libfunc`: called before every libfunc execution.
 //!
@@ -156,8 +156,8 @@ impl LibfuncCounterMeta {
         block.append_op_result(memref::load(libfunc_counter_id_ptr, &[], location))
     }
 
-    /// Indexes the array of counters and increments
-    /// the one relative to the given libfunc index
+    /// Indexes the array of counters and increments the counter relative
+    /// to the given libfunc index
     pub fn store_array_counter(
         &mut self,
         context: &Context,
