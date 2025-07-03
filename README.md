@@ -133,7 +133,7 @@ the needed environment variables.
 source env.sh
 ```
 
-##### Vscode: rust-analyzer (only MacOS)
+#### rust-analyzer config for Vscode(only MacOS)
 If you are using vscode as your code editor, you'll need to add this to you settings.json:
 ```json
 "rust-analyzer.cargo.extraEnv": {
