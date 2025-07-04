@@ -184,8 +184,12 @@ impl LibfuncCounterMeta {
             )
             .into(),
         )?;
-        let array_counter_ptr = block.load(context, location, array_counter_ptr_ptr, llvm::r#type::pointer(context, 0))?;
-        
+        let array_counter_ptr = block.load(
+            context,
+            location,
+            array_counter_ptr_ptr,
+            llvm::r#type::pointer(context, 0),
+        )?;
 
         block.append_operation(
             OperationBuilder::new("llvm.call", location)

@@ -137,28 +137,12 @@ fn main() -> anyhow::Result<()> {
             }
 
             Box::new(move |function_id, args, gas, syscall_handler| {
-                let result = executor.invoke_dynamic_with_syscall_handler(
+                executor.invoke_dynamic_with_syscall_handler(
                     function_id,
                     args,
                     gas,
                     syscall_handler,
-                );
-
-                // Deallocate the array of counters
-                #[cfg(feature = "with-libfunc-counter")]
-                {
-                    use cairo_native::metadata::libfunc_counter::LibfuncCounterBinding;
-
-                    if let Some(array_counter_ptr) =
-                        executor.find_symbol_ptr(LibfuncCounterBinding::ArrayCounter.symbol())
-                    {
-                        // unsafe {
-                        //     libc::free(array_counter_ptr);
-                        // }
-                    }
-                }
-
-                result
+                )
             })
         }
         RunMode::Jit => {
@@ -198,28 +182,12 @@ fn main() -> anyhow::Result<()> {
             }
 
             Box::new(move |function_id, args, gas, syscall_handler| {
-                let result = executor.invoke_dynamic_with_syscall_handler(
+                executor.invoke_dynamic_with_syscall_handler(
                     function_id,
                     args,
                     gas,
                     syscall_handler,
-                );
-
-                // Deallocate the array of counters
-                #[cfg(feature = "with-libfunc-counter")]
-                {
-                    use cairo_native::metadata::libfunc_counter::LibfuncCounterBinding;
-
-                    if let Some(array_counter_ptr) =
-                        executor.find_symbol_ptr(LibfuncCounterBinding::ArrayCounter.symbol())
-                    {
-                        // unsafe {
-                        //     libc::free(*array_counter_ptr);
-                        // }
-                    }
-                }
-
-                result
+                )
             })
         }
     };
