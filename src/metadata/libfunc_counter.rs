@@ -35,7 +35,8 @@ use melior::{
 
 use crate::{
     error::{Error, Result},
-    utils::BlockExt,
+    metadata::realloc_bindings::ReallocBindingsMeta,
+    utils::{get_integer_layout, layout_repeat, BlockExt, GepIndex},
 };
 
 #[derive(Clone, Copy, Debug, Hash, PartialEq, Eq)]
@@ -174,7 +175,88 @@ impl LibfuncCounterMeta {
         )?;
         let lifuncs_amount = block.const_int(context, location, libfunc_amount, 32)?;
         // by this time, the array counter should be initialized
-        let global_address = block.append_op_result(
+        let array_counter_ptr_ptr = block.append_op_result(
+            ods::llvm::mlir_addressof(
+                context,
+                llvm::r#type::pointer(context, 0),
+                FlatSymbolRefAttribute::new(context, LibfuncCounterBinding::ArrayCounter.symbol()),
+                location,
+            )
+            .into(),
+        )?;
+        let array_counter_ptr = block.load(context, location, array_counter_ptr_ptr, llvm::r#type::pointer(context, 0))?;
+        
+
+        block.append_operation(
+            OperationBuilder::new("llvm.call", location)
+                .add_operands(&[function_ptr])
+                .add_operands(&[counter_id, array_counter_ptr, lifuncs_amount])
+                .build()?,
+        );
+
+        Ok(())
+    }
+
+    /// Build the array of counters
+    fn get_array_counter<'c, 'a>(
+        &mut self,
+        context: &'c Context,
+        module: &Module,
+        block: &'a Block<'c>,
+        location: Location<'c>,
+        libfunc_amount: u32,
+    ) -> Result<Value<'c, 'a>> {
+        if self.active_map.insert(LibfuncCounterBinding::ArrayCounter) {
+            module.body().append_operation(
+                ods::llvm::mlir_global(
+                    context,
+                    Region::new(),
+                    TypeAttribute::new(llvm::r#type::pointer(context, 0)),
+                    StringAttribute::new(context, LibfuncCounterBinding::ArrayCounter.symbol()),
+                    Attribute::parse(context, "#llvm.linkage<weak>")
+                        .ok_or(Error::ParseAttributeError)?,
+                    location,
+                )
+                .into(),
+            );
+
+            // Once we created the global pointer to the counters, we need to reallocate it so that it
+            // can hold as many counters as libfuncs declared
+            let u32_layout = get_integer_layout(32);
+            let libfuncs_amount_bytes = layout_repeat(&u32_layout, libfunc_amount as usize)?
+                .0
+                .pad_to_align()
+                .size();
+            let libfuncs_amount_bytes =
+                block.const_int(context, location, libfuncs_amount_bytes, 64)?;
+
+            let array_counter_ptr_ptr = block.append_op_result(
+                ods::llvm::mlir_addressof(
+                    context,
+                    llvm::r#type::pointer(context, 0),
+                    FlatSymbolRefAttribute::new(
+                        context,
+                        LibfuncCounterBinding::ArrayCounter.symbol(),
+                    ),
+                    location,
+                )
+                .into(),
+            )?;
+
+            let array_counter_ptr =
+                block.append_op_result(llvm::zero(llvm::r#type::pointer(context, 0), location))?;
+
+            let array_counter_ptr = block.append_op_result(ReallocBindingsMeta::realloc(
+                context,
+                array_counter_ptr,
+                libfuncs_amount_bytes,
+                location,
+            )?)?;
+
+            block.store(context, location, array_counter_ptr_ptr, array_counter_ptr)?;
+        }
+
+        let array_counter_ptr_ptr = block.append_op_result(
             ods::llvm::mlir_addressof(
                 context,
                 llvm::r#type::pointer(context, 0),
@@ -184,40 +266,13 @@ impl LibfuncCounterMeta {
             .into(),
         )?;
 
-        block.append_operation(
-            OperationBuilder::new("llvm.call", location)
-                .add_operands(&[function_ptr])
-                .add_operands(&[counter_id, global_address, lifuncs_amount])
-                .build()?,
-        );
-
-        Ok(())
-    }
-
-    /// Build the array of counters
-    fn build_array_counter<'c>(
-        &mut self,
-        context: &'c Context,
-        module: &Module,
-        location: Location<'c>,
-        libfunc_amount: u32,
-    ) -> Result<()> {
-        let array_ty = llvm::r#type::array(IntegerType::new(context, 32).into(), libfunc_amount);
-
-        module.body().append_operation(
-            ods::llvm::mlir_global(
-                context,
-                Region::new(),
-                TypeAttribute::new(array_ty),
-                StringAttribute::new(context, LibfuncCounterBinding::ArrayCounter.symbol()),
-                Attribute::parse(context, "#llvm.linkage<weak>")
-                    .ok_or(Error::ParseAttributeError)?,
-                location,
-            )
-            .into(),
-        );
-
-        Ok(())
+        // // return the pointer to array counter
+        block.load(
+            context,
+            location,
+            array_counter_ptr_ptr,
+            llvm::r#type::pointer(context, 0),
+        )
     }
 
     pub fn count_libfunc(
@@ -229,39 +284,23 @@ impl LibfuncCounterMeta {
         libfunc_idx: usize,
         libfuncs_amount: u32,
     ) -> Result<()> {
-        if self.active_map.insert(LibfuncCounterBinding::ArrayCounter) {
-            self.build_array_counter(context, module, location, libfuncs_amount)?;
-        }
-
         let u32_ty = IntegerType::new(context, 32).into();
-        let array_ty = llvm::r#type::array(u32_ty, libfuncs_amount);
-        let k1 = block.const_int(context, location, 1, 32)?;
+        let k1 = block.const_int(context, location, 0, 32)?;
 
-        let array_counter_ptr = block.append_op_result(
-            ods::llvm::mlir_addressof(
-                context,
-                llvm::r#type::pointer(context, 0),
-                FlatSymbolRefAttribute::new(context, LibfuncCounterBinding::ArrayCounter.symbol()),
-                location,
-            )
-            .into(),
-        )?;
-
-        let array_counter = block.load(context, location, array_counter_ptr, array_ty)?;
-
-        let value_counter =
-            block.extract_value(context, location, array_counter, u32_ty, libfunc_idx)?;
-        let value_incremented = block.addi(value_counter, k1, location)?;
-
-        let array_counter = block.insert_value(
+        let array_counter_ptr =
+            self.get_array_counter(context, module, block, location, libfuncs_amount)?;
+        let value_counter_ptr = block.gep(
             context,
             location,
-            array_counter,
-            value_incremented,
-            libfunc_idx,
+            array_counter_ptr,
+            &[GepIndex::Const(libfunc_idx as i32)],
+            u32_ty,
         )?;
 
-        block.store(context, location, array_counter_ptr, array_counter)?;
+        let value_counter = block.load(context, location, value_counter_ptr, u32_ty)?;
+        let value_incremented = block.addi(value_counter, k1, location)?;
+
+        block.store(context, location, value_counter_ptr, value_incremented)?;
 
         Ok(())
     }
