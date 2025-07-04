@@ -63,6 +63,9 @@ impl AotNativeExecutor {
         #[cfg(feature = "with-libfunc-profiling")]
         crate::metadata::profiler::setup_runtime(|name| executor.find_symbol_ptr(name));
 
+        #[cfg(feature = "with-libfunc-counter")]
+        crate::metadata::libfunc_counter::setup_runtime(|name| executor.find_symbol_ptr(name));
+
         executor
     }
 
