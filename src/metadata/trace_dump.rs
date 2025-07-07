@@ -269,7 +269,7 @@ pub mod trace_dump_runtime {
     ) {
         let mut trace_dump = TRACE_DUMP.lock().unwrap();
         let Some(trace_dump) = trace_dump.get_mut(&trace_id) else {
-            eprintln!("Could not find trace dump!");
+            eprintln!("1. Could not find trace dump!");
             return;
         };
 
@@ -285,7 +285,7 @@ pub mod trace_dump_runtime {
     pub unsafe extern "C" fn push_state_to_trace_dump(trace_id: u64, statement_idx: u64) {
         let mut trace_dump = TRACE_DUMP.lock().unwrap();
         let Some(trace_dump) = trace_dump.get_mut(&trace_id) else {
-            eprintln!("Could not find trace dump!");
+            eprintln!("2. Could not find trace dump!");
             return;
         };
 
@@ -498,13 +498,14 @@ pub mod trace_dump_runtime {
                 value_from_ptr(registry, &info.ty, value_ptr)
             }
 
+            CoreTypeConcrete::RangeCheck(_) => Value::RangeCheck(value_ptr.cast().read()),
+
             // Builtins and other unit types:
             CoreTypeConcrete::Bitwise(_)
             | CoreTypeConcrete::EcOp(_)
             | CoreTypeConcrete::Pedersen(_)
             | CoreTypeConcrete::Poseidon(_)
             | CoreTypeConcrete::RangeCheck96(_)
-            | CoreTypeConcrete::RangeCheck(_)
             | CoreTypeConcrete::SegmentArena(_)
             | CoreTypeConcrete::Starknet(StarknetTypeConcrete::System(_))
             | CoreTypeConcrete::Uint128MulGuarantee(_) => Value::Unit,

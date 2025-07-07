@@ -60,10 +60,16 @@ pub fn eval_squash(
     _info: &SignatureOnlyConcreteLibfunc,
     args: Vec<Value>,
 ) -> EvalAction {
-    let [range_check @ Value::Unit, Value::U64(gas_builtin), segment_arena @ Value::Unit, Value::FeltDict { ty, data, count }]: [Value; 4] =
+    let [mut range_check @ Value::RangeCheck(_), Value::U64(gas_builtin), segment_arena @ Value::Unit, Value::FeltDict { ty, data, count }]: [Value; 4] =
         args.try_into().unwrap()
     else {
         panic!();
+    };
+
+    // Increment builtin counter
+    range_check = match range_check {
+        Value::RangeCheck(n) => Value::RangeCheck(n + 1),
+        _ => panic!(),
     };
 
     const DICT_GAS_REFUND_PER_ACCESS: u64 =
