@@ -619,6 +619,7 @@ impl AotContractExecutor {
             failure_flag: tag != 0,
             return_values: array_value,
             error_msg,
+            builtin_stats,
         })
     }
 
