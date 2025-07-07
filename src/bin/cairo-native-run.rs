@@ -136,13 +136,40 @@ fn main() -> anyhow::Result<()> {
                 }
             }
 
+            #[cfg(feature = "with-libfunc-counter")]
+            let libfuncs_amount = sierra_program.libfunc_declarations.len();
+
             Box::new(move |function_id, args, gas, syscall_handler| {
-                executor.invoke_dynamic_with_syscall_handler(
+                let result = executor.invoke_dynamic_with_syscall_handler(
                     function_id,
                     args,
                     gas,
                     syscall_handler,
-                )
+                );
+
+                #[cfg(feature = "with-libfunc-counter")]
+                unsafe {
+                    use cairo_native::metadata::libfunc_counter::{
+                        libfunc_counter_runtime, LibfuncCounterBinding,
+                    };
+
+                    let counter_id_ptr = executor
+                        .find_symbol_ptr(LibfuncCounterBinding::CounterId.symbol())
+                        .unwrap()
+                        .cast::<u64>();
+                    let counters_array_ptr_ptr = executor
+                        .find_symbol_ptr(LibfuncCounterBinding::CounterArray.symbol())
+                        .unwrap()
+                        .cast::<*mut u32>();
+
+                    libfunc_counter_runtime::store_counters_array(
+                        counter_id_ptr,
+                        counters_array_ptr_ptr,
+                        libfuncs_amount,
+                    );
+                }
+
+                result
             })
         }
         RunMode::Jit => {
@@ -152,6 +179,7 @@ fn main() -> anyhow::Result<()> {
             #[cfg(feature = "with-trace-dump")]
             {
                 use cairo_native::metadata::trace_dump::TraceBinding;
+
                 if let Some(trace_id) = executor.find_symbol_ptr(TraceBinding::TraceId.symbol()) {
                     let trace_id = trace_id.cast::<u64>();
                     unsafe { *trace_id = 0 };
@@ -173,6 +201,7 @@ fn main() -> anyhow::Result<()> {
             #[cfg(feature = "with-libfunc-counter")]
             {
                 use cairo_native::metadata::libfunc_counter::LibfuncCounterBinding;
+
                 if let Some(counter_id) =
                     executor.find_symbol_ptr(LibfuncCounterBinding::CounterId.symbol())
                 {
@@ -181,13 +210,40 @@ fn main() -> anyhow::Result<()> {
                 }
             }
 
+            #[cfg(feature = "with-libfunc-counter")]
+            let libfuncs_amount = sierra_program.libfunc_declarations.len();
+
             Box::new(move |function_id, args, gas, syscall_handler| {
-                executor.invoke_dynamic_with_syscall_handler(
+                let result = executor.invoke_dynamic_with_syscall_handler(
                     function_id,
                     args,
                     gas,
                     syscall_handler,
-                )
+                );
+
+                #[cfg(feature = "with-libfunc-counter")]
+                unsafe {
+                    use cairo_native::metadata::libfunc_counter::{
+                        libfunc_counter_runtime, LibfuncCounterBinding,
+                    };
+
+                    let counter_id_ptr = executor
+                        .find_symbol_ptr(LibfuncCounterBinding::CounterId.symbol())
+                        .unwrap()
+                        .cast::<u64>();
+                    let counters_array_ptr_ptr = executor
+                        .find_symbol_ptr(LibfuncCounterBinding::CounterArray.symbol())
+                        .unwrap()
+                        .cast::<*mut u32>();
+
+                    libfunc_counter_runtime::store_counters_array(
+                        counter_id_ptr,
+                        counters_array_ptr_ptr,
+                        libfuncs_amount,
+                    );
+                }
+
+                result
             })
         }
     };

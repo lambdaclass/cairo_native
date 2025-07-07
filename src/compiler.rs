@@ -1064,10 +1064,6 @@ fn compile_func(
             sierra_stmt_start_offset + function.entry_point.0,
             0,
         ),
-        #[cfg(feature = "with-libfunc-counter")]
-        libfunc_indexes,
-        #[cfg(feature = "with-libfunc-counter")]
-        metadata,
     )?;
 
     tracing::debug!("Done generating function {}.", function.id);
@@ -1449,8 +1445,6 @@ fn generate_entry_point_wrapper<'c>(
     arg_types: &[(Type<'c>, Location<'c>)],
     ret_types: &[Type<'c>],
     location: Location<'c>,
-    #[cfg(feature = "with-libfunc-counter")] libfunc_indexes: &HashMap<ConcreteLibfuncId, usize>,
-    #[cfg(feature = "with-libfunc-counter")] metadata: &mut MetadataStorage,
 ) -> Result<(), Error> {
     let region = Region::new();
     let block = region.append_block(Block::new(arg_types));
@@ -1481,20 +1475,6 @@ fn generate_entry_point_wrapper<'c>(
     let mut returns = Vec::with_capacity(ret_types.len());
     for (i, ty) in ret_types.iter().enumerate() {
         returns.push(block.extract_value(context, location, result, *ty, i)?);
-    }
-
-    #[cfg(feature = "with-libfunc-counter")]
-    {
-        use crate::metadata::libfunc_counter::LibfuncCounterMeta;
-
-        let libfunc_counter = metadata.get_mut::<LibfuncCounterMeta>().unwrap();
-        libfunc_counter.store_array_counter(
-            context,
-            module,
-            &block,
-            location,
-            libfunc_indexes.len() as u32,
-        )?;
     }
 
     block.append_operation(func::r#return(&returns, location));
