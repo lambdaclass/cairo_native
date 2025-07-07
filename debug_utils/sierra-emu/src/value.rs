@@ -80,6 +80,7 @@ pub enum Value {
         ty: ConcreteTypeId,
     },
     BuiltinCosts(BuiltinCosts),
+    RangeCheck(u64),
     Null,
     Unit,
 }
@@ -165,9 +166,10 @@ impl Value {
                 matches!(self, Self::U128(_))
             }
 
+            CoreTypeConcrete::RangeCheck(_) => matches!(self, Self::RangeCheck(_)),
+
             // Unused builtins (mapped to `Value::Unit`).
-            CoreTypeConcrete::RangeCheck(_)
-            | CoreTypeConcrete::SegmentArena(_)
+            CoreTypeConcrete::SegmentArena(_)
             | CoreTypeConcrete::RangeCheck96(_)
             | CoreTypeConcrete::Starknet(StarknetTypeConcrete::System(_)) => {
                 matches!(self, Self::Unit)

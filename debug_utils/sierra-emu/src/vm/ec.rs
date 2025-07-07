@@ -216,8 +216,16 @@ fn eval_point_from_x(
     _info: &SignatureOnlyConcreteLibfunc,
     args: Vec<Value>,
 ) -> EvalAction {
-    let [range_check @ Value::Unit, Value::Felt(x)]: [Value; 2] = args.try_into().unwrap() else {
+    let [mut range_check @ Value::RangeCheck(_), Value::Felt(x)]: [Value; 2] =
+        args.try_into().unwrap()
+    else {
         panic!()
+    };
+
+    // Increment builtin counter
+    range_check = match range_check {
+        Value::RangeCheck(n) => Value::RangeCheck(n + 1),
+        _ => panic!(),
     };
 
     // https://github.com/starkware-libs/cairo/blob/aaad921bba52e729dc24ece07fab2edf09ccfa15/crates/cairo-lang-sierra-to-casm/src/invocations/ec.rs#L63

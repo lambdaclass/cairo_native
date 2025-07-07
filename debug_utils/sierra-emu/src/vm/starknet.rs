@@ -455,9 +455,16 @@ fn eval_class_hash_try_from_felt(
 ) -> EvalAction {
     // 2 ** 251 = 3618502788666131106986593281521497120414687020801267626233049500247285301248
 
-    let [range_check @ Value::Unit, Value::Felt(value)]: [Value; 2] = args.try_into().unwrap()
+    let [mut range_check @ Value::RangeCheck(_), Value::Felt(value)]: [Value; 2] =
+        args.try_into().unwrap()
     else {
         panic!()
+    };
+
+    // Increment builtin counter
+    range_check = match range_check {
+        Value::RangeCheck(n) => Value::RangeCheck(n + 1),
+        _ => panic!(),
     };
 
     if value
@@ -479,9 +486,16 @@ fn eval_contract_address_try_from_felt(
 ) -> EvalAction {
     // 2 ** 251 = 3618502788666131106986593281521497120414687020801267626233049500247285301248
 
-    let [range_check @ Value::Unit, Value::Felt(value)]: [Value; 2] = args.try_into().unwrap()
+    let [mut range_check @ Value::RangeCheck(_), Value::Felt(value)]: [Value; 2] =
+        args.try_into().unwrap()
     else {
         panic!()
+    };
+
+    // Increment builtin counter
+    range_check = match range_check {
+        Value::RangeCheck(n) => Value::RangeCheck(n + 1),
+        _ => panic!(),
     };
 
     if value

@@ -47,10 +47,16 @@ fn eval_builtin_withdraw_gas(
     gas_meta: &GasMetadata,
     statement_idx: StatementIdx,
 ) -> EvalAction {
-    let [range_check @ Value::Unit, Value::U64(gas), Value::BuiltinCosts(builtin_costs)]: [Value;
+    let [mut range_check @ Value::RangeCheck(_), Value::U64(gas), Value::BuiltinCosts(builtin_costs)]: [Value;
         3] = args.try_into().unwrap()
     else {
         panic!()
+    };
+
+    // Increment builtin counter
+    range_check = match range_check {
+        Value::RangeCheck(n) => Value::RangeCheck(n + 1),
+        _ => panic!(),
     };
 
     let builtin_costs: [u64; 7] = builtin_costs.into();
@@ -95,8 +101,16 @@ fn eval_withdraw_gas(
     statement_idx: StatementIdx,
     builtin_costs: BuiltinCosts,
 ) -> EvalAction {
-    let [range_check @ Value::Unit, Value::U64(gas)]: [Value; 2] = args.try_into().unwrap() else {
+    let [mut range_check @ Value::RangeCheck(_), Value::U64(gas)]: [Value; 2] =
+        args.try_into().unwrap()
+    else {
         panic!()
+    };
+
+    // Increment builtin counter
+    range_check = match range_check {
+        Value::RangeCheck(n) => Value::RangeCheck(n + 1),
+        _ => panic!(),
     };
 
     let builtin_costs: [u64; 7] = builtin_costs.into();

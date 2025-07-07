@@ -132,10 +132,16 @@ fn eval_get(
     _info: &SignatureAndTypeConcreteLibfunc,
     args: Vec<Value>,
 ) -> EvalAction {
-    let [range_check @ Value::Unit, Value::Array { data, .. }, Value::U32(index)]: [Value; 3] =
+    let [mut range_check @ Value::RangeCheck(_), Value::Array { data, .. }, Value::U32(index)]: [Value; 3] =
         args.try_into().unwrap()
     else {
         panic!()
+    };
+
+    // Increment builtin counter
+    range_check = match range_check {
+        Value::RangeCheck(n) => Value::RangeCheck(n + 1),
+        _ => panic!(),
     };
 
     match data.get(index as usize).cloned() {
@@ -149,10 +155,16 @@ fn eval_slice(
     _info: &SignatureAndTypeConcreteLibfunc,
     args: Vec<Value>,
 ) -> EvalAction {
-    let [range_check @ Value::Unit, Value::Array { data, ty }, Value::U32(start), Value::U32(len)]: [Value; 4] =
+    let [mut range_check @ Value::RangeCheck(_), Value::Array { data, ty }, Value::U32(start), Value::U32(len)]: [Value; 4] =
         args.try_into().unwrap()
     else {
         panic!()
+    };
+
+    // Increment builtin counter
+    range_check = match range_check {
+        Value::RangeCheck(n) => Value::RangeCheck(n + 1),
+        _ => panic!(),
     };
 
     match data.get(start as usize..(start + len) as usize) {

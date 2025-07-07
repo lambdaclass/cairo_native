@@ -124,10 +124,16 @@ pub fn eval_divmod(
     _info: &SignatureOnlyConcreteLibfunc,
     args: Vec<Value>,
 ) -> EvalAction {
-    let [range_check @ Value::Unit, Value::Struct(lhs), Value::Struct(rhs)]: [Value; 3] =
-        args.try_into().unwrap()
+    let [mut range_check @ Value::RangeCheck(_), Value::Struct(lhs), Value::Struct(rhs)]: [Value;
+        3] = args.try_into().unwrap()
     else {
         panic!()
+    };
+
+    // Increment builtin counter
+    range_check = match range_check {
+        Value::RangeCheck(n) => Value::RangeCheck(n + 1),
+        _ => panic!(),
     };
 
     let [Value::U128(lhs_lo), Value::U128(lhs_hi)]: [Value; 2] = lhs.try_into().unwrap() else {

@@ -126,6 +126,7 @@ impl ContractExecutionResult {
                     }
                 }
                 Value::Unit => {}
+                Value::RangeCheck(_) => {} // Check if this is correct!!!!!!
                 _ => None?,
             }
         }

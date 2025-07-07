@@ -234,9 +234,16 @@ fn eval_from_felt(
     info: &SignatureOnlyConcreteLibfunc,
     args: Vec<Value>,
 ) -> EvalAction {
-    let [range_check @ Value::Unit, Value::Felt(value_felt)]: [Value; 2] = args.try_into().unwrap()
+    let [mut range_check @ Value::RangeCheck(_), Value::Felt(value_felt)]: [Value; 2] =
+        args.try_into().unwrap()
     else {
         panic!()
+    };
+
+    // Increment builtin counter
+    range_check = match range_check {
+        Value::RangeCheck(n) => Value::RangeCheck(n + 1),
+        _ => panic!(),
     };
 
     let prime = Felt::prime();
@@ -267,9 +274,16 @@ pub fn eval_u128_from_felt(
     _info: &SignatureOnlyConcreteLibfunc,
     args: Vec<Value>,
 ) -> EvalAction {
-    let [range_check @ Value::Unit, Value::Felt(value)]: [Value; 2] = args.try_into().unwrap()
+    let [mut range_check @ Value::RangeCheck(_), Value::Felt(value)]: [Value; 2] =
+        args.try_into().unwrap()
     else {
         panic!()
+    };
+
+    // Increment builtin counter
+    range_check = match range_check {
+        Value::RangeCheck(n) => Value::RangeCheck(n + 1),
+        _ => panic!(),
     };
 
     let bound = Felt::from(u128::MAX) + 1;
@@ -313,9 +327,16 @@ fn eval_operation(
     info: &IntOperationConcreteLibfunc,
     args: Vec<Value>,
 ) -> EvalAction {
-    let range_check @ Value::Unit: Value = args[0].clone() else {
+    let mut range_check @ Value::RangeCheck(_): Value = args[0].clone() else {
         panic!()
     };
+
+    // Increment builtin counter
+    range_check = match range_check {
+        Value::RangeCheck(n) => Value::RangeCheck(n + 1),
+        _ => panic!(),
+    };
+
     let [lhs, rhs]: [BigInt; 2] = get_numeric_args_as_bigints(&args[1..]).try_into().unwrap();
     let int_ty = &info.signature.branch_signatures[0].vars[1].ty;
 
@@ -392,9 +413,16 @@ fn eval_guarantee_verify(
     _info: &SignatureOnlyConcreteLibfunc,
     args: Vec<Value>,
 ) -> EvalAction {
-    let [range_check @ Value::Unit, _verify @ Value::Unit]: [Value; 2] = args.try_into().unwrap()
+    let [mut range_check @ Value::RangeCheck(_), _verify @ Value::Unit]: [Value; 2] =
+        args.try_into().unwrap()
     else {
         panic!()
+    };
+
+    // Increment builtin counter
+    range_check = match range_check {
+        Value::RangeCheck(n) => Value::RangeCheck(n + 1),
+        _ => panic!(),
     };
 
     EvalAction::NormalBranch(0, smallvec![range_check])

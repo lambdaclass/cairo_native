@@ -201,8 +201,8 @@ impl VirtualMachine {
                             Value::BuiltinCosts(builtin_costs.unwrap_or_default())
                         }
                         CoreTypeConcrete::Starknet(StarknetTypeConcrete::System(_)) => Value::Unit,
-                        CoreTypeConcrete::RangeCheck(_)
-                        | CoreTypeConcrete::RangeCheck96(_)
+                        CoreTypeConcrete::RangeCheck(_) => Value::RangeCheck(0),
+                        CoreTypeConcrete::RangeCheck96(_)
                         | CoreTypeConcrete::Circuit(
                             CircuitTypeConcrete::MulMod(_) | CircuitTypeConcrete::AddMod(_),
                         )
@@ -244,8 +244,8 @@ impl VirtualMachine {
                     let type_info = self.registry().get_type(type_id).unwrap();
                     match type_info {
                         CoreTypeConcrete::GasBuiltin(_) => Value::U64(initial_gas),
-                        CoreTypeConcrete::RangeCheck(_)
-                        | CoreTypeConcrete::RangeCheck96(_)
+                        CoreTypeConcrete::RangeCheck(_) => Value::RangeCheck(0),
+                        CoreTypeConcrete::RangeCheck96(_)
                         | CoreTypeConcrete::Bitwise(_)
                         | CoreTypeConcrete::Pedersen(_)
                         | CoreTypeConcrete::Poseidon(_)
