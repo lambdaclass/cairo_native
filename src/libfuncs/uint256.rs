@@ -346,7 +346,8 @@ pub fn build_square_root<'ctx, 'this>(
     _metadata: &mut MetadataStorage,
     _info: &SignatureOnlyConcreteLibfunc,
 ) -> Result<()> {
-    let range_check = super::increment_builtin_counter(context, entry, location, entry.arg(0)?)?;
+    let range_check =
+        super::increment_builtin_counter_by(context, entry, location, entry.arg(0)?, 7)?;
 
     let i128_ty = IntegerType::new(context, 128).into();
     let i256_ty = IntegerType::new(context, 256).into();
