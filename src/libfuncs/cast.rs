@@ -55,8 +55,7 @@ pub fn build_downcast<'ctx, 'this>(
     _metadata: &mut MetadataStorage,
     info: &DowncastConcreteLibfunc,
 ) -> Result<()> {
-    let mut range_check: Value = entry.arg(1)?;
-
+    let mut range_check: Value = entry.arg(0)?;
     let src_value: Value = entry.arg(1)?;
 
     if info.signature.param_signatures[1].ty == info.signature.branch_signatures[0].vars[1].ty {
