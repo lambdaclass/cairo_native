@@ -642,6 +642,12 @@ pub fn build_u256_guarantee_inv_mod_n<'ctx, 'this>(
     metadata: &mut MetadataStorage,
     info: &SignatureOnlyConcreteLibfunc,
 ) -> Result<()> {
+    let original_range_check = entry.arg(0)?;
+    let range_check_failure =
+        super::increment_builtin_counter_by(context, entry, location, original_range_check, 7)?;
+    let range_check_fallthrough =
+        super::increment_builtin_counter_by(context, entry, location, original_range_check, 9)?;
+
     let i128_ty = IntegerType::new(context, 128).into();
     let i256_ty = IntegerType::new(context, 256).into();
 
@@ -928,7 +934,7 @@ pub fn build_u256_guarantee_inv_mod_n<'ctx, 'this>(
         [0, 1],
         [
             &[
-                entry.arg(0)?,
+                range_check_fallthrough,
                 result_inv,
                 guarantee,
                 guarantee,
@@ -939,7 +945,7 @@ pub fn build_u256_guarantee_inv_mod_n<'ctx, 'this>(
                 guarantee,
                 guarantee,
             ],
-            &[entry.arg(0)?, guarantee, guarantee],
+            &[range_check_failure, guarantee, guarantee],
         ],
         location,
     )
