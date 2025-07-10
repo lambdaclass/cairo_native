@@ -111,7 +111,7 @@ pub fn build_from_felt252<'ctx, 'this>(
     info: &SignatureOnlyConcreteLibfunc,
 ) -> Result<()> {
     let range_check: Value =
-        super::increment_builtin_counter(context, entry, location, entry.arg(0)?)?;
+        super::increment_builtin_counter_by(context, entry, location, entry.arg(0)?, 3)?;
 
     let value: Value = entry.arg(1)?;
 
