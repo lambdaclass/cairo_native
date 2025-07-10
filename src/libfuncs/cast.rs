@@ -55,7 +55,8 @@ pub fn build_downcast<'ctx, 'this>(
     _metadata: &mut MetadataStorage,
     info: &DowncastConcreteLibfunc,
 ) -> Result<()> {
-    let range_check = super::increment_builtin_counter(context, entry, location, entry.arg(0)?)?;
+    let mut range_check: Value = entry.arg(1)?;
+
     let src_value: Value = entry.arg(1)?;
 
     if info.signature.param_signatures[1].ty == info.signature.branch_signatures[0].vars[1].ty {
@@ -237,10 +238,28 @@ pub fn build_downcast<'ctx, 'this>(
 
         let is_in_bounds = match (lower_check, upper_check) {
             (Some(lower_check), Some(upper_check)) => {
+                range_check = super::increment_builtin_counter_by(
+                    context,
+                    entry,
+                    location,
+                    entry.arg(0)?,
+                    2,
+                )?;
+
                 entry.append_op_result(arith::andi(lower_check, upper_check, location))?
             }
-            (Some(lower_check), None) => lower_check,
-            (None, Some(upper_check)) => upper_check,
+            (Some(lower_check), None) => {
+                range_check =
+                    super::increment_builtin_counter(context, entry, location, entry.arg(0)?)?;
+
+                lower_check
+            }
+            (None, Some(upper_check)) => {
+                range_check =
+                    super::increment_builtin_counter(context, entry, location, entry.arg(0)?)?;
+
+                upper_check
+            }
             // its always in bounds since dst is larger than src (i.e no bounds checks needed)
             (None, None) => {
                 native_panic!("matched an unreachable: no bounds checks are being performed")
