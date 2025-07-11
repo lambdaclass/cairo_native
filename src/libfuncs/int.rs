@@ -1,6 +1,6 @@
 use super::{BlockExt, LibfuncHelper};
 use crate::{
-    error::Result,
+    error::{panic::ToNativeAssertError, Result},
     metadata::MetadataStorage,
     native_panic,
     types::TypeBuilder,
@@ -8,6 +8,7 @@ use crate::{
 };
 use cairo_lang_sierra::{
     extensions::{
+        bounded_int::BoundedIntDivRemAlgorithm,
         core::{CoreLibfunc, CoreType, CoreTypeConcrete},
         int::{
             signed::{SintConcrete, SintTraits},
@@ -19,6 +20,7 @@ use cairo_lang_sierra::{
         },
         is_zero::IsZeroTraits,
         lib_func::SignatureOnlyConcreteLibfunc,
+        ConcreteLibfunc,
     },
     program_registry::ProgramRegistry,
 };
@@ -297,17 +299,36 @@ fn build_diff<'ctx, 'this>(
 
 fn build_divmod<'ctx, 'this>(
     context: &'ctx Context,
-    _registry: &ProgramRegistry<CoreType, CoreLibfunc>,
+    registry: &ProgramRegistry<CoreType, CoreLibfunc>,
     entry: &'this Block<'ctx>,
     location: Location<'ctx>,
     helper: &LibfuncHelper<'ctx, 'this>,
     _metadata: &mut MetadataStorage,
-    _info: &SignatureOnlyConcreteLibfunc,
+    info: &SignatureOnlyConcreteLibfunc,
 ) -> Result<()> {
-    let range_check = super::increment_builtin_counter(context, entry, location, entry.arg(0)?)?;
-
     let lhs = entry.arg(1)?;
     let rhs = entry.arg(2)?;
+
+    // Extract the ranges for the calculation of the range_check builtin increment.
+    let lhs_ty = registry.get_type(&info.param_signatures()[1].ty)?;
+    let rhs_ty = registry.get_type(&info.param_signatures()[2].ty)?;
+    let lhs_range = lhs_ty.integer_range(registry)?;
+    let rhs_range = rhs_ty.integer_range(registry)?;
+
+    let div_rem_algorithm = BoundedIntDivRemAlgorithm::try_new(&lhs_range, &rhs_range)
+        .to_native_assert_error(&format!(
+            "div_rem of ranges: lhs = {:#?} and rhs= {:#?} is not supported yet",
+            &lhs_range, &rhs_range
+        ))?;
+    let range_check = match div_rem_algorithm {
+        BoundedIntDivRemAlgorithm::KnownSmallRhs => {
+            super::increment_builtin_counter_by(context, entry, location, entry.arg(0)?, 3)?
+        }
+        BoundedIntDivRemAlgorithm::KnownSmallQuotient { q_upper_bound: _ }
+        | BoundedIntDivRemAlgorithm::KnownSmallLhs { lhs_upper_sqrt: _ } => {
+            super::increment_builtin_counter_by(context, entry, location, entry.arg(0)?, 4)?
+        }
+    };
 
     let result_div = entry.append_op_result(arith::divui(lhs, rhs, location))?;
     let result_rem = entry.append_op_result(arith::remui(lhs, rhs, location))?;
