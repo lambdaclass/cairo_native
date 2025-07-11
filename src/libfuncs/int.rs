@@ -344,10 +344,9 @@ fn build_from_felt252<'ctx, 'this>(
     metadata: &mut MetadataStorage,
     info: &SignatureOnlyConcreteLibfunc,
 ) -> Result<()> {
-    let range_check = super::increment_builtin_counter(context, entry, location, entry.arg(0)?)?;
-
     let value_ty = registry.get_type(&info.signature.branch_signatures[0].vars[1].ty)?;
     let threshold = value_ty.integer_range(registry)?;
+    let threshold_size = threshold.size();
 
     let value_ty = value_ty.build(
         context,
@@ -444,6 +443,40 @@ fn build_from_felt252<'ctx, 'this>(
 
         (is_in_range, value)
     };
+
+    let range_check = entry.append_op_result(scf::r#if(
+        is_in_range,
+        &[IntegerType::new(context, 64).into()],
+        {
+            let region = Region::new();
+            let block = region.append_block(Block::new(&[]));
+            let rc_size_value = BigInt::from(1) << 128;
+            let rc_size = block.const_int(context, location, rc_size_value, 128)?;
+            let out_range = block.const_int(context, location, threshold_size, 128)?;
+            let condition =
+                block.cmpi(context, CmpiPredicate::Ult, out_range, rc_size, location)?;
+            let range_check = super::increment_builtin_counter_by_if(
+                context,
+                &block,
+                location,
+                entry.arg(0)?,
+                2,
+                1,
+                condition,
+            )?;
+            block.append_operation(scf::r#yield(&[range_check], location));
+            region
+        },
+        {
+            let region = Region::new();
+            let block = region.append_block(Block::new(&[]));
+            let range_check =
+                super::increment_builtin_counter_by(context, &block, location, entry.arg(0)?, 3)?;
+            block.append_operation(scf::r#yield(&[range_check], location));
+            region
+        },
+        location,
+    ))?;
 
     let value = entry.trunci(value, value_ty, location)?;
 
