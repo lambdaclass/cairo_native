@@ -788,6 +788,61 @@ pub fn compare_outputs(
         "gas mismatch"
     );
 
+    for (builtin_name, &vm_builtin_counter) in vm_result
+        .used_resources
+        .basic_resources
+        .builtin_instance_counter
+        .iter()
+    {
+        // We convert to str and back, to bypass compiler errors, as they belong
+        // to different versions of the CairoVM.
+        // We should find a better solution for this.
+        let builtin_name_str = builtin_name.to_str();
+        let builtin_name = BuiltinName::from_str(&builtin_name_str).unwrap();
+
+        match builtin_name {
+            BuiltinName::output => (),
+            BuiltinName::ecdsa => assert_eq!(vm_builtin_counter, 0, "ecdsa mismatch"),
+            BuiltinName::keccak => assert_eq!(vm_builtin_counter, 0, "keccak mismatch"),
+            BuiltinName::range_check => assert_eq!(
+                vm_builtin_counter, native_result.builtin_stats.range_check,
+                "range_check mismatch"
+            ),
+            BuiltinName::pedersen => assert_eq!(
+                vm_builtin_counter, native_result.builtin_stats.pedersen,
+                "pedersen mismatch"
+            ),
+            BuiltinName::bitwise => assert_eq!(
+                vm_builtin_counter, native_result.builtin_stats.bitwise,
+                "bitwise mismatch"
+            ),
+            BuiltinName::ec_op => assert_eq!(
+                vm_builtin_counter, native_result.builtin_stats.ec_op,
+                "ec_op mismatch"
+            ),
+            BuiltinName::poseidon => assert_eq!(
+                vm_builtin_counter, native_result.builtin_stats.poseidon,
+                "poseidon mismatch"
+            ),
+            BuiltinName::segment_arena => assert_eq!(
+                vm_builtin_counter, native_result.builtin_stats.segment_arena,
+                "segment_arena mismatch"
+            ),
+            BuiltinName::range_check96 => assert_eq!(
+                vm_builtin_counter, native_result.builtin_stats.range_check_96,
+                "range_check96 mismatch"
+            ),
+            BuiltinName::add_mod => assert_eq!(
+                vm_builtin_counter, native_result.builtin_stats.circuit_add,
+                "add_mod mismatch"
+            ),
+            BuiltinName::mul_mod => assert_eq!(
+                vm_builtin_counter, native_result.builtin_stats.circuit_mul,
+                "mul_mod mismatch"
+            ),
+        }
+    }
+
     let vm_result = match &vm_result.value {
         RunResultValue::Success(values) if !values.is_empty() | returns_panic => {
             if returns_panic {
