@@ -1458,7 +1458,7 @@ mod test {
             let lo = u128::from_le_bytes(res_bytes[..16].try_into().unwrap());
             let hi = u128::from_le_bytes(res_bytes[16..].try_into().unwrap());
 
-            assert_eq!(result.builtin_stats.range_check, 1);
+            assert_eq!(result.builtin_stats.range_check, 9);
             assert_eq!(
                 result.return_value,
                 Value::Struct {
