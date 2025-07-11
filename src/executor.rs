@@ -10,7 +10,7 @@ use crate::{
     execution_result::{
         BuiltinStats, ExecutionResult, ADD_MOD_BUILTIN_SIZE, BITWISE_BUILTIN_SIZE,
         EC_OP_BUILTIN_SIZE, MUL_MOD_BUILTIN_SIZE, PEDERSEN_BUILTIN_SIZE, POSEIDON_BUILTIN_SIZE,
-        RANGECHECK_BUILTIN_SIZE, RANGE_CHECK96_BUILTIN_SIZE, SEGMENT_ARENA_BUILTIN_SIZE,
+        RANGE_CHECK96_BUILTIN_SIZE, RANGE_CHECK_BUILTIN_SIZE, SEGMENT_ARENA_BUILTIN_SIZE,
     },
     native_panic,
     runtime::BUILTIN_COSTS,
@@ -282,7 +282,7 @@ fn invoke_dynamic(
 
                         match type_info {
                             CoreTypeConcrete::RangeCheck(_) => {
-                                builtin_stats.range_check = value / RANGECHECK_BUILTIN_SIZE
+                                builtin_stats.range_check = value / RANGE_CHECK_BUILTIN_SIZE
                             }
                             CoreTypeConcrete::Pedersen(_) => {
                                 builtin_stats.pedersen = value / PEDERSEN_BUILTIN_SIZE

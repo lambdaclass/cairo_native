@@ -30,7 +30,7 @@ pub struct BuiltinStats {
     pub mul_mod: usize,
 }
 
-pub const RANGECHECK_BUILTIN_SIZE: usize = 1;
+pub const RANGE_CHECK_BUILTIN_SIZE: usize = 1;
 pub const PEDERSEN_BUILTIN_SIZE: usize = 3;
 pub const BITWISE_BUILTIN_SIZE: usize = 5;
 pub const EC_OP_BUILTIN_SIZE: usize = 7;
