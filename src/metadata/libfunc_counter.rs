@@ -41,6 +41,7 @@ use crate::{
 #[derive(Clone, Copy, Debug, Hash, PartialEq, Eq)]
 pub enum LibfuncCounterBinding {
     CounterId,
+    GetCounterArray,
     CounterArray,
 }
 
@@ -48,7 +49,18 @@ impl LibfuncCounterBinding {
     pub const fn symbol(self) -> &'static str {
         match self {
             LibfuncCounterBinding::CounterId => "cairo_native__counter_id",
+            LibfuncCounterBinding::GetCounterArray => "cairo_native__get_counter_array",
             LibfuncCounterBinding::CounterArray => "cairo_native__counter_array",
+        }
+    }
+
+    pub const fn function_ptr(self) -> *const () {
+        match self {
+            LibfuncCounterBinding::CounterId => std::ptr::null(),
+            LibfuncCounterBinding::GetCounterArray => {
+                libfunc_counter_runtime::get_counter_array as *const ()
+            }
+            LibfuncCounterBinding::CounterArray => std::ptr::null(),
         }
     }
 }
@@ -257,6 +269,7 @@ impl LibfuncCounterMeta {
 pub mod libfunc_counter_runtime {
     use core::slice;
     use std::{
+        cell::Cell,
         collections::HashMap,
         sync::{LazyLock, Mutex},
     };
@@ -274,6 +287,31 @@ pub mod libfunc_counter_runtime {
     /// Contains an array of vector for each execution completed
     pub static LIBFUNC_COUNTER: LazyLock<Mutex<HashMap<u64, Vec<u32>>>> =
         LazyLock::new(|| Mutex::new(HashMap::new()));
+
+    thread_local! {
+        pub(crate) static COUNTERS_ARRAY: Cell<*mut u32> = const {
+            // This value will be overritten before executing the code
+            Cell::new(std::ptr::null_mut())
+        };
+    }
+
+    /// In the context of Starknet, a contract may call another. This means we
+    /// need as many arrays of counters as call contracts are invoked during execution.
+    /// This struct is used to hold the current array before calling the next contract 
+    /// so that it can then be restored.
+    pub struct CountersArrayGuard(pub *mut u32);
+
+    impl CountersArrayGuard {
+        pub fn init(array_ptr: *mut u32) -> CountersArrayGuard {
+            Self(COUNTERS_ARRAY.replace(array_ptr))
+        }
+    }
+
+    impl Drop for CountersArrayGuard {
+        fn drop(&mut self) {
+            COUNTERS_ARRAY.set(self.0);
+        }
+    }
 
     /// Increase the libfunc's counter given its index
     pub fn count_libfunc(
@@ -297,6 +335,10 @@ pub mod libfunc_counter_runtime {
         )
     }
 
+    pub extern "C" fn get_counter_array() -> *const u32 {
+        COUNTERS_ARRAY.with(|x| x.as_ptr()) as *const u32
+    }
+
     pub unsafe fn store_counters_array(
         counter_id_ptr: *mut u64,
         array_ptr_ptr: *mut *mut u32,
@@ -308,7 +350,5 @@ pub mod libfunc_counter_runtime {
             .lock()
             .unwrap()
             .insert(*counter_id_ptr, counters_vec);
-
-        libc::free(*array_ptr_ptr.cast::<*mut libc::c_void>());
     }
 }
