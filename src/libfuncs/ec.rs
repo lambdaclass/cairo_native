@@ -245,7 +245,7 @@ pub fn build_state_add_mul<'ctx, 'this>(
     metadata: &mut MetadataStorage,
     _info: &SignatureOnlyConcreteLibfunc,
 ) -> Result<()> {
-    let ec_op = super::increment_builtin_counter(context, entry, location, entry.arg(0)?)?;
+    let ec_op = super::increment_builtin_counter_by(context, entry, location, entry.arg(0)?, 7)?;
 
     let felt252_ty = IntegerType::new(context, 252).into();
     let ec_state_ty = llvm::r#type::r#struct(
