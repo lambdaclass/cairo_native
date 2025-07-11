@@ -824,8 +824,6 @@ fn build_u128s_from_felt252<'ctx, 'this>(
     _metadata: &mut MetadataStorage,
     _info: &SignatureOnlyConcreteLibfunc,
 ) -> Result<()> {
-    let range_check = super::increment_builtin_counter(context, entry, location, entry.arg(0)?)?;
-
     let target_ty = IntegerType::new(context, 128).into();
 
     let lo = entry.trunci(entry.arg(1)?, target_ty, location)?;
@@ -836,6 +834,16 @@ fn build_u128s_from_felt252<'ctx, 'this>(
 
     let k0 = entry.const_int_from_type(context, location, 0, target_ty)?;
     let is_wide = entry.cmpi(context, CmpiPredicate::Ne, hi, k0, location)?;
+
+    let range_check = super::increment_builtin_counter_by_if(
+        context,
+        entry,
+        location,
+        entry.arg(0)?,
+        1,
+        3,
+        is_wide,
+    )?;
 
     helper.cond_br(
         context,
