@@ -236,7 +236,7 @@ fn build_byte_reverse<'ctx, 'this>(
     _metadata: &mut MetadataStorage,
     _info: &SignatureOnlyConcreteLibfunc,
 ) -> Result<()> {
-    let bitwise = super::increment_builtin_counter(context, entry, location, entry.arg(0)?)?;
+    let bitwise = super::increment_builtin_counter_by(context, entry, location, entry.arg(0)?, 20)?;
 
     let value =
         entry.append_op_result(ods::llvm::intr_bswap(context, entry.arg(1)?, location).into())?;
