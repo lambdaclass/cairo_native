@@ -1,6 +1,7 @@
 use super::{BlockExt, LibfuncHelper};
 use crate::{
     error::Result,
+    libfuncs::{increment_builtin_counter, increment_builtin_counter_by_if},
     metadata::MetadataStorage,
     native_panic,
     types::TypeBuilder,
@@ -526,10 +527,10 @@ fn build_operation<'ctx, 'this>(
     metadata: &mut MetadataStorage,
     info: &IntOperationConcreteLibfunc,
 ) -> Result<()> {
-    let range_check = super::increment_builtin_counter(context, entry, location, entry.arg(0)?)?;
-
+    let mut range_check = increment_builtin_counter(context, entry, location, entry.arg(0)?)?;
     let value_ty = registry.get_type(&info.signature.param_signatures[1].ty)?;
-    let is_signed = !value_ty.integer_range(registry)?.lower.is_zero();
+    let value_range = value_ty.integer_range(registry)?;
+    let is_signed = !value_range.lower.is_zero();
     let value_ty = value_ty.build(
         context,
         helper,
@@ -565,6 +566,31 @@ fn build_operation<'ctx, 'this>(
     )?;
 
     if is_signed {
+        let is_in_range = {
+            let k1_neg = entry.const_int_from_type(context, location, -1, value_ty)?;
+            let min_value_range =
+                entry.const_int_from_type(context, location, value_range.clone().lower, value_ty)?;
+            let min_value_range_neg = entry.muli(min_value_range, k1_neg, location)?;
+            let canonical_value = entry.addi(result, min_value_range_neg, location)?;
+            let range_size =
+                entry.const_int_from_type(context, location, value_range.size(), value_ty)?;
+
+            entry.cmpi(
+                context,
+                CmpiPredicate::Slt,
+                canonical_value,
+                range_size,
+                location,
+            )?
+        };
+        let is_not_i128 =
+            !(value_range.clone().lower == i128::MIN.into() && value_range.upper == i128::MAX.into());
+        let is_not_i128_value =
+            entry.const_int_from_type(context, location, is_not_i128, value_ty)?;
+        let is_in_range_and_not_i128 = entry.append_op_result(arith::andi(is_not_i128_value, is_in_range, location))?;
+
+        range_check = increment_builtin_counter_by_if(context, entry, location, range_check, 1,0, is_in_range_and_not_i128)?;
+
         let block_in_range = helper.append_block(Block::new(&[]));
         let block_overflow = helper.append_block(Block::new(&[]));
 
