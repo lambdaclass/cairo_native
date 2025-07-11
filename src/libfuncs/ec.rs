@@ -3,6 +3,7 @@
 use super::LibfuncHelper;
 use crate::{
     error::{Error, Result},
+    libfuncs::increment_builtin_counter_by_if,
     metadata::{runtime_bindings::RuntimeBindingsMeta, MetadataStorage},
     utils::{get_integer_layout, BlockExt, ProgramRegistryExt, PRIME},
 };
@@ -147,10 +148,6 @@ pub fn build_point_from_x<'ctx, 'this>(
     metadata: &mut MetadataStorage,
     _info: &SignatureOnlyConcreteLibfunc,
 ) -> Result<()> {
-    let original_range_check = entry.arg(0)?;
-    let range_check_on_curve =
-        super::increment_builtin_counter_by(context, entry, location, original_range_check, 3)?;
-
     let ec_point_ty = llvm::r#type::r#struct(
         context,
         &[
@@ -180,12 +177,15 @@ pub fn build_point_from_x<'ctx, 'this>(
 
     let point = entry.load(context, location, point_ptr, ec_point_ty)?;
 
+    let range_check =
+        increment_builtin_counter_by_if(context, entry, location, entry.arg(0)?, 3, 0, result)?;
+
     helper.cond_br(
         context,
         entry,
         result,
         [0, 1],
-        [&[range_check_on_curve, point], &[original_range_check]],
+        [&[range_check, point], &[range_check]],
         location,
     )
 }
