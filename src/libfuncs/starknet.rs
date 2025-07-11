@@ -818,7 +818,8 @@ pub fn build_storage_base_address_from_felt252<'ctx, 'this>(
     _metadata: &mut MetadataStorage,
     _info: &SignatureOnlyConcreteLibfunc,
 ) -> Result<()> {
-    let range_check = super::increment_builtin_counter(context, entry, location, entry.arg(0)?)?;
+    let range_check =
+        super::increment_builtin_counter_by(context, entry, location, entry.arg(0)?, 3)?;
 
     let k_limit = entry.append_op_result(arith::constant(
         context,
