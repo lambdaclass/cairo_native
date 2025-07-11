@@ -155,19 +155,25 @@ pub fn run_tests(
     contracts_info: OrderedHashMap<Felt, ContractInfo>,
     args: RunArgs,
 ) -> anyhow::Result<TestsSummary> {
-    let runner = SierraCasmRunner::new(
-        sierra_program.clone(),
-        Some(MetadataComputationConfig {
-            function_set_costs: function_set_costs.clone(),
-            linear_gas_solver: true,
-            linear_ap_change_solver: true,
-            skip_non_linear_solver_comparisons: false,
-            compute_runtime_costs: false,
-        }),
-        contracts_info,
-        None,
-    )
-    .with_context(|| "Failed setting up runner.")?;
+    let runner = if args.compare_with_vm {
+        Some(
+            SierraCasmRunner::new(
+                sierra_program.clone(),
+                Some(MetadataComputationConfig {
+                    function_set_costs: function_set_costs.clone(),
+                    linear_gas_solver: true,
+                    linear_ap_change_solver: true,
+                    skip_non_linear_solver_comparisons: false,
+                    compute_runtime_costs: false,
+                }),
+                contracts_info,
+                None,
+            )
+            .with_context(|| "Failed setting up runner.")?,
+        )
+    } else {
+        None
+    };
 
     let native_context = NativeContext::new();
 
@@ -244,15 +250,7 @@ pub fn run_tests(
                     &mut StubSyscallHandler::default(),
                 )
                 .with_context(|| format!("Failed to run the function `{}`.", name.as_str()))?;
-
-                let vm_result = runner
-                    .run_function_with_starknet_context(
-                        func,
-                        vec![],
-                        test.available_gas,
-                        Default::default(),
-                    )
-                    .with_context(|| format!("Failed to run the function `{}`.", name.as_str()))?;
+                let run_result = result_to_runresult(&native_result)?;
 
                 let gas_usage = test
                     .available_gas
@@ -264,45 +262,59 @@ pub fn run_tests(
                             .map(|gas| gas.try_into().unwrap())
                     });
 
-                for (builtin_name, &vm_builtin_counter) in vm_result
-                    .used_resources
-                    .basic_resources
-                    .builtin_instance_counter
-                    .iter()
-                {
-                    // We convert to str because of cyclic dependency problems when importing Cairo VM.
-                    let builtin_name_str = builtin_name.to_str();
-                    let native_builtin_counter = match builtin_name_str {
-                        "output" => 0,
-                        "ecdsa" => 0,
-                        "keccak" => 0,
-                        "range_check" => native_result.builtin_stats.range_check,
-                        "pedersen" => native_result.builtin_stats.pedersen,
-                        "bitwise" => native_result.builtin_stats.bitwise,
-                        "ec_op" => native_result.builtin_stats.ec_op,
-                        "poseidon" => native_result.builtin_stats.poseidon,
-                        "segment_arena" => native_result.builtin_stats.segment_arena,
-                        "range_check96" => native_result.builtin_stats.range_check_96,
-                        "add_mod" => native_result.builtin_stats.circuit_add,
-                        "mul_mod" => native_result.builtin_stats.circuit_mul,
-                        _ => panic!("unknown builtin!"),
-                    };
+                if let Some(runner) = &runner {
+                    let vm_result = runner
+                        .run_function_with_starknet_context(
+                            func,
+                            vec![],
+                            test.available_gas,
+                            Default::default(),
+                        )
+                        .with_context(|| {
+                            format!("Failed to run the function `{}`.", name.as_str())
+                        })?;
 
-                    if native_builtin_counter != vm_builtin_counter {
-                        return Ok((
-                            name,
-                            Some(TestResult {
-                                status: TestStatus::Mismatch(format!(
-                                    "{} builtin mismatch: expected {}, got {}",
-                                    builtin_name_str, vm_builtin_counter, native_builtin_counter
-                                )),
-                                gas_usage,
-                            }),
-                        ));
+                    for (builtin_name, &vm_builtin_counter) in vm_result
+                        .used_resources
+                        .basic_resources
+                        .builtin_instance_counter
+                        .iter()
+                    {
+                        // We convert to str because of cyclic dependency problems when importing Cairo VM.
+                        let builtin_name_str = builtin_name.to_str();
+                        let native_builtin_counter = match builtin_name_str {
+                            "output" => 0,
+                            "ecdsa" => 0,
+                            "keccak" => 0,
+                            "range_check" => native_result.builtin_stats.range_check,
+                            "pedersen" => native_result.builtin_stats.pedersen,
+                            "bitwise" => native_result.builtin_stats.bitwise,
+                            "ec_op" => native_result.builtin_stats.ec_op,
+                            "poseidon" => native_result.builtin_stats.poseidon,
+                            "segment_arena" => native_result.builtin_stats.segment_arena,
+                            "range_check96" => native_result.builtin_stats.range_check_96,
+                            "add_mod" => native_result.builtin_stats.circuit_add,
+                            "mul_mod" => native_result.builtin_stats.circuit_mul,
+                            _ => panic!("unknown builtin!"),
+                        };
+
+                        if native_builtin_counter != vm_builtin_counter {
+                            return Ok((
+                                name,
+                                Some(TestResult {
+                                    status: TestStatus::Mismatch(format!(
+                                        "{} builtin mismatch: expected {}, got {}",
+                                        builtin_name_str,
+                                        vm_builtin_counter,
+                                        native_builtin_counter
+                                    )),
+                                    gas_usage,
+                                }),
+                            ));
+                        }
                     }
                 }
 
-                let run_result = result_to_runresult(&native_result)?;
                 Ok((
                     name,
                     Some(TestResult {

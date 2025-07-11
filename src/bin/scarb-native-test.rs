@@ -38,6 +38,9 @@ struct Args {
     /// Optimization level, Valid: 0, 1, 2, 3. Values higher than 3 are considered as 3.
     #[arg(short = 'O', long, default_value_t = 0)]
     opt_level: u8,
+    /// Compares test result with Cairo VM.
+    #[arg(long, default_value_t = false)]
+    compare_with_cairo_vm: bool,
 }
 
 #[derive(ValueEnum, Clone, Debug, Default)]
@@ -139,6 +142,7 @@ fn main() -> anyhow::Result<()> {
                 RunArgs {
                     run_mode: args.run_mode.clone(),
                     opt_level: args.opt_level,
+                    compare_with_vm: args.compare_with_cairo_vm,
                 },
             )?;
 

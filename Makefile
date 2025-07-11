@@ -66,7 +66,7 @@ test: check-llvm needs-cairo2 build-alexandria
 
 .PHONY: test-cairo
 test-cairo: check-llvm needs-cairo2
-	cargo r --profile ci --bin cairo-native-test -- corelib
+	cargo r --profile ci --bin cairo-native-test -- --compare-with-cairo-vm corelib
 
 .PHONY: proptest
 proptest: check-llvm needs-cairo2
