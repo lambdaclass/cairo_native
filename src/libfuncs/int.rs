@@ -907,6 +907,7 @@ mod test {
         fmt::Display,
         mem,
         ops::{BitAnd, BitOr, BitXor},
+        u128,
     };
 
     fn test_bitwise<T>() -> Result<(), Box<dyn std::error::Error>>
@@ -1808,7 +1809,11 @@ mod test {
             let lo = u128::from_le_bytes(value_bytes[..16].try_into().unwrap());
             let hi = u128::from_le_bytes(value_bytes[16..].try_into().unwrap());
 
-            assert_eq!(result.builtin_stats.range_check, 1);
+            if value < Felt::from(BigInt::from(u128::MAX + 1)) {
+                assert_eq!(result.builtin_stats.range_check, 3);
+            } else {
+                assert_eq!(result.builtin_stats.range_check, 1);
+            }
             assert_eq!(
                 result.return_value,
                 Value::Enum {
