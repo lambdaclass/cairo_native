@@ -61,7 +61,8 @@ pub fn build_divmod<'ctx, 'this>(
     metadata: &mut MetadataStorage,
     info: &SignatureOnlyConcreteLibfunc,
 ) -> Result<()> {
-    let range_check = super::increment_builtin_counter(context, entry, location, entry.arg(0)?)?;
+    let range_check =
+        super::increment_builtin_counter_by(context, entry, location, entry.arg(0)?, 6)?;
 
     let i128_ty = IntegerType::new(context, 128).into();
     let i256_ty = IntegerType::new(context, 256).into();
