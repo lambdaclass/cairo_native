@@ -1809,7 +1809,7 @@ mod test {
             let lo = u128::from_le_bytes(value_bytes[..16].try_into().unwrap());
             let hi = u128::from_le_bytes(value_bytes[16..].try_into().unwrap());
 
-            if value < Felt::from(BigInt::from(u128::MAX + 1)) {
+            if value <= Felt::from(BigInt::from(u128::MAX)) {
                 assert_eq!(result.builtin_stats.range_check, 3);
             } else {
                 assert_eq!(result.builtin_stats.range_check, 1);
