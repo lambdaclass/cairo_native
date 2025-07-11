@@ -2,7 +2,7 @@
 
 use super::LibfuncHelper;
 use crate::{
-    error::Result,
+    error::{panic::ToNativeAssertError, Result},
     metadata::MetadataStorage,
     native_assert,
     types::TypeBuilder,
@@ -12,7 +12,8 @@ use cairo_lang_sierra::{
     extensions::{
         bounded_int::{
             BoundedIntConcreteLibfunc, BoundedIntConstrainConcreteLibfunc,
-            BoundedIntDivRemConcreteLibfunc, BoundedIntTrimConcreteLibfunc,
+            BoundedIntDivRemAlgorithm, BoundedIntDivRemConcreteLibfunc,
+            BoundedIntTrimConcreteLibfunc,
         },
         core::{CoreLibfunc, CoreType},
         lib_func::SignatureOnlyConcreteLibfunc,
@@ -453,8 +454,6 @@ fn build_divrem<'ctx, 'this>(
     _metadata: &mut MetadataStorage,
     info: &BoundedIntDivRemConcreteLibfunc,
 ) -> Result<()> {
-    let range_check = super::increment_builtin_counter(context, entry, location, entry.arg(0)?)?;
-
     let lhs_value = entry.arg(1)?;
     let rhs_value = entry.arg(2)?;
 
@@ -481,6 +480,12 @@ fn build_divrem<'ctx, 'this>(
     } else {
         rhs_range.zero_based_bit_width()
     };
+
+    let div_rem_algorithm = BoundedIntDivRemAlgorithm::try_new(&lhs_range, &rhs_range)
+        .to_native_assert_error(&format!(
+            "div_rem of ranges: lhs = {:#?} and rhs= {:#?} is not supported yet",
+            &lhs_range, &rhs_range
+        ))?;
 
     // Calculate the computation range.
     let compute_range = Range {
@@ -581,6 +586,34 @@ fn build_divrem<'ctx, 'this>(
         )?
     } else {
         rem_value
+    };
+
+    let range_check = match div_rem_algorithm {
+        BoundedIntDivRemAlgorithm::KnownSmallRhs => crate::libfuncs::increment_builtin_counter_by(
+            context,
+            entry,
+            location,
+            entry.arg(0)?,
+            3,
+        )?,
+        BoundedIntDivRemAlgorithm::KnownSmallQuotient { .. } => {
+            crate::libfuncs::increment_builtin_counter_by(
+                context,
+                entry,
+                location,
+                entry.arg(0)?,
+                4,
+            )?
+        }
+        BoundedIntDivRemAlgorithm::KnownSmallLhs { .. } => {
+            crate::libfuncs::increment_builtin_counter_by(
+                context,
+                entry,
+                location,
+                entry.arg(0)?,
+                4,
+            )?
+        }
     };
 
     helper.br(entry, 0, &[range_check, div_value, rem_value], location)
