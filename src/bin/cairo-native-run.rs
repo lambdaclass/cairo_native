@@ -6,6 +6,10 @@ use cairo_lang_runner::short_string::as_cairo_short_string;
 #[cfg(feature = "with-libfunc-profiling")]
 use cairo_lang_sierra::ids::ConcreteLibfuncId;
 use cairo_lang_sierra_to_casm::metadata::MetadataComputationConfig;
+#[cfg(feature = "with-libfunc-counter")]
+use cairo_native::metadata::libfunc_counter::{
+    libfunc_counter_runtime::CountersArrayGuard, LibfuncCounterBinding,
+};
 #[cfg(feature = "with-libfunc-profiling")]
 use cairo_native::metadata::profiler::LibfuncProfileData;
 use cairo_native::{
@@ -57,6 +61,11 @@ struct Args {
     /// The output path for the libfunc profilling results
     profiler_output: Option<PathBuf>,
 
+    #[cfg(feature = "with-libfunc-counter")]
+    #[arg(long)]
+    /// The output path for the execution trace
+    libfunc_counter_output: Option<PathBuf>,
+
     #[cfg(feature = "with-trace-dump")]
     #[arg(long)]
     /// The output path for the execution trace
@@ -106,6 +115,9 @@ fn main() -> anyhow::Result<()> {
         .compile(&sierra_program, false, Some(Default::default()), None)
         .unwrap();
 
+    #[cfg(feature = "with-libfunc-counter")]
+    let libfuncs_amount = sierra_program.clone().libfunc_declarations.len();
+
     let native_executor: Box<dyn Fn(_, _, _, &mut StubSyscallHandler) -> _> = match args.run_mode {
         RunMode::Aot => {
             let executor =
@@ -120,13 +132,70 @@ fn main() -> anyhow::Result<()> {
                 }
             }
 
+            #[cfg(feature = "with-libfunc-counter")]
+            {
+                use cairo_native::metadata::libfunc_counter::LibfuncCounterBinding;
+                if let Some(counter_id) =
+                    executor.find_symbol_ptr(LibfuncCounterBinding::CounterId.symbol())
+                {
+                    let counter_id = counter_id.cast::<u64>();
+                    unsafe { *counter_id = 0 };
+                }
+            }
+
             Box::new(move |function_id, args, gas, syscall_handler| {
-                executor.invoke_dynamic_with_syscall_handler(
+                #[cfg(feature = "with-libfunc-counter")]
+                let mut array_counter_guard = CountersArrayGuard(std::ptr::null_mut());
+
+                #[cfg(feature = "with-libfunc-counter")]
+                if let Some(counter_array_ptr_ptr) =
+                    executor.find_symbol_ptr(LibfuncCounterBinding::CounterArray.symbol())
+                {
+                    let counter_array_ptr_ptr = counter_array_ptr_ptr.cast::<*mut u32>();
+                    unsafe {
+                        // Save the current then array of counters to restore it after the execution.
+                        array_counter_guard = CountersArrayGuard::init(*counter_array_ptr_ptr);
+                    }
+                };
+
+                let result = executor.invoke_dynamic_with_syscall_handler(
                     function_id,
                     args,
                     gas,
                     syscall_handler,
-                )
+                );
+
+                #[cfg(feature = "with-libfunc-counter")]
+                {
+                    use cairo_native::metadata::libfunc_counter::libfunc_counter_runtime;
+                    use cairo_native::metadata::libfunc_counter::LibfuncCounterBinding;
+
+                    let counter_array_ptr_ptr = executor
+                        .find_symbol_ptr(LibfuncCounterBinding::CounterArray.symbol())
+                        .expect("");
+
+                    let counter_array_ptr_ptr = counter_array_ptr_ptr.cast::<*mut u32>();
+                    let counter_id_ptr = executor
+                        .find_symbol_ptr(LibfuncCounterBinding::CounterArray.symbol())
+                        .expect("");
+
+                    unsafe {
+                        libfunc_counter_runtime::store_counters_array(
+                            counter_id_ptr as *mut u64,
+                            counter_array_ptr_ptr,
+                            libfuncs_amount,
+                        );
+
+                        if !(*counter_array_ptr_ptr).is_null() {
+                            libc::free(*counter_array_ptr_ptr as *mut libc::c_void);
+                        }
+                        *counter_array_ptr_ptr = array_counter_guard.0;
+                    }
+
+                    drop(array_counter_guard);
+                };
+
+                result
             })
         }
         RunMode::Jit => {
@@ -136,6 +205,7 @@ fn main() -> anyhow::Result<()> {
             #[cfg(feature = "with-trace-dump")]
             {
                 use cairo_native::metadata::trace_dump::TraceBinding;
+
                 if let Some(trace_id) = executor.find_symbol_ptr(TraceBinding::TraceId.symbol()) {
                     let trace_id = trace_id.cast::<u64>();
                     unsafe { *trace_id = 0 };
@@ -154,13 +224,70 @@ fn main() -> anyhow::Result<()> {
                 }
             }
 
+            #[cfg(feature = "with-libfunc-counter")]
+            {
+                use cairo_native::metadata::libfunc_counter::LibfuncCounterBinding;
+
+                if let Some(counter_id) =
+                    executor.find_symbol_ptr(LibfuncCounterBinding::CounterId.symbol())
+                {
+                    let counter_id = counter_id.cast::<u64>();
+                    unsafe { *counter_id = 0 };
+                }
+            }
+
             Box::new(move |function_id, args, gas, syscall_handler| {
-                executor.invoke_dynamic_with_syscall_handler(
+                #[cfg(feature = "with-libfunc-counter")]
+                let mut array_counter_guard = CountersArrayGuard(std::ptr::null_mut());
+
+                #[cfg(feature = "with-libfunc-counter")]
+                if let Some(counter_array_ptr_ptr) =
+                    executor.find_symbol_ptr(LibfuncCounterBinding::CounterArray.symbol())
+                {
+                    let counter_array_ptr_ptr = counter_array_ptr_ptr.cast::<*mut u32>();
+                    unsafe {
+                        array_counter_guard = CountersArrayGuard::init(*counter_array_ptr_ptr);
+                    }
+                };
+
+                let result = executor.invoke_dynamic_with_syscall_handler(
                     function_id,
                     args,
                     gas,
                     syscall_handler,
-                )
+                );
+
+                #[cfg(feature = "with-libfunc-counter")]
+                {
+                    use cairo_native::metadata::libfunc_counter::libfunc_counter_runtime;
+                    use cairo_native::metadata::libfunc_counter::LibfuncCounterBinding;
+
+                    let counter_array_ptr_ptr = executor
+                        .find_symbol_ptr(LibfuncCounterBinding::CounterArray.symbol())
+                        .expect("");
+
+                    let counter_array_ptr_ptr = counter_array_ptr_ptr.cast::<*mut u32>();
+                    let counter_id_ptr = executor
+                        .find_symbol_ptr(LibfuncCounterBinding::CounterArray.symbol())
+                        .expect("");
+
+                    unsafe {
+                        libfunc_counter_runtime::store_counters_array(
+                            counter_id_ptr as *mut u64,
+                            counter_array_ptr_ptr,
+                            libfuncs_amount,
+                        );
+
+                        if !(*counter_array_ptr_ptr).is_null() {
+                            libc::free(*counter_array_ptr_ptr as *mut libc::c_void);
+                        }
+                        *counter_array_ptr_ptr = array_counter_guard.0;
+                    }
+
+                    drop(array_counter_guard);
+                };
+
+                result
             })
         }
     };
@@ -279,6 +406,35 @@ fn main() -> anyhow::Result<()> {
                 writeln!(output)?;
             }
         }
+    }
+
+    #[cfg(feature = "with-libfunc-counter")]
+    if let Some(libfunc_counter_output) = args.libfunc_counter_output {
+        use std::collections::HashMap;
+
+        let counters =
+            cairo_native::metadata::libfunc_counter::libfunc_counter_runtime::LIBFUNC_COUNTER
+                .lock()
+                .unwrap();
+        assert_eq!(counters.len(), 1);
+
+        let libfunc_counter = counters.values().next().unwrap();
+
+        let libfunc_counts = libfunc_counter
+            .iter()
+            .enumerate()
+            .map(|(i, count)| {
+                let libfunc = &sierra_program.libfunc_declarations[i];
+                let debug_name = libfunc.id.debug_name.clone().unwrap().to_string();
+
+                (debug_name, *count)
+            })
+            .collect::<HashMap<String, u32>>();
+        serde_json::to_writer_pretty(
+            std::fs::File::create(libfunc_counter_output).unwrap(),
+            &libfunc_counts,
+        )
+        .unwrap();
     }
 
     #[cfg(feature = "with-trace-dump")]
