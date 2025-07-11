@@ -794,53 +794,29 @@ pub fn compare_outputs(
         .builtin_instance_counter
         .iter()
     {
-        // We convert to str and back, to bypass compiler errors, as they belong
-        // to different versions of the CairoVM.
-        // We should find a better solution for this.
+        // We convert to str because of cyclic dependency problems when importing Cairo VM.
         let builtin_name_str = builtin_name.to_str();
-        let builtin_name = BuiltinName::from_str(&builtin_name_str).unwrap();
+        let native_builtin_counter = match builtin_name_str {
+            "output" => 0,
+            "ecdsa" => 0,
+            "keccak" => 0,
+            "range_check" => native_result.builtin_stats.range_check,
+            "pedersen" => native_result.builtin_stats.pedersen,
+            "bitwise" => native_result.builtin_stats.bitwise,
+            "ec_op" => native_result.builtin_stats.ec_op,
+            "poseidon" => native_result.builtin_stats.poseidon,
+            "segment_arena" => native_result.builtin_stats.segment_arena,
+            "range_check96" => native_result.builtin_stats.range_check_96,
+            "add_mod" => native_result.builtin_stats.circuit_add,
+            "mul_mod" => native_result.builtin_stats.circuit_mul,
+            _ => panic!("unknown builtin!"),
+        };
 
-        match builtin_name {
-            BuiltinName::output => (),
-            BuiltinName::ecdsa => assert_eq!(vm_builtin_counter, 0, "ecdsa mismatch"),
-            BuiltinName::keccak => assert_eq!(vm_builtin_counter, 0, "keccak mismatch"),
-            BuiltinName::range_check => assert_eq!(
-                vm_builtin_counter, native_result.builtin_stats.range_check,
-                "range_check mismatch"
-            ),
-            BuiltinName::pedersen => assert_eq!(
-                vm_builtin_counter, native_result.builtin_stats.pedersen,
-                "pedersen mismatch"
-            ),
-            BuiltinName::bitwise => assert_eq!(
-                vm_builtin_counter, native_result.builtin_stats.bitwise,
-                "bitwise mismatch"
-            ),
-            BuiltinName::ec_op => assert_eq!(
-                vm_builtin_counter, native_result.builtin_stats.ec_op,
-                "ec_op mismatch"
-            ),
-            BuiltinName::poseidon => assert_eq!(
-                vm_builtin_counter, native_result.builtin_stats.poseidon,
-                "poseidon mismatch"
-            ),
-            BuiltinName::segment_arena => assert_eq!(
-                vm_builtin_counter, native_result.builtin_stats.segment_arena,
-                "segment_arena mismatch"
-            ),
-            BuiltinName::range_check96 => assert_eq!(
-                vm_builtin_counter, native_result.builtin_stats.range_check_96,
-                "range_check96 mismatch"
-            ),
-            BuiltinName::add_mod => assert_eq!(
-                vm_builtin_counter, native_result.builtin_stats.circuit_add,
-                "add_mod mismatch"
-            ),
-            BuiltinName::mul_mod => assert_eq!(
-                vm_builtin_counter, native_result.builtin_stats.circuit_mul,
-                "mul_mod mismatch"
-            ),
-        }
+        assert_eq!(
+            vm_builtin_counter, native_builtin_counter,
+            "{} builtin mismatch: expected {}, got {}",
+            builtin_name_str, vm_builtin_counter, native_builtin_counter
+        );
     }
 
     let vm_result = match &vm_result.value {
