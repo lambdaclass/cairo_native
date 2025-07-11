@@ -41,7 +41,7 @@ pub fn build<'ctx, 'this>(
         MemConcreteLibfunc::StoreLocal(info) => {
             build_store_local(context, registry, entry, location, helper, metadata, info)
         }
-        MemConcreteLibfunc::FinalizeLocals(info) => super::build_noop::<0, true>(
+        MemConcreteLibfunc::FinalizeLocals(info) => super::build_noop::<0, false>(
             context,
             registry,
             entry,
