@@ -527,15 +527,15 @@ impl AotContractExecutor {
                     let value = unsafe { *read_value::<u64>(return_ptr) } as usize;
 
                     match x {
-                        BuiltinType::Bitwise => builtin_stats.bitwise = value,
-                        BuiltinType::EcOp => builtin_stats.ec_op = value,
+                        BuiltinType::Bitwise => builtin_stats.bitwise = value / 5,
+                        BuiltinType::EcOp => builtin_stats.ec_op = value / 7,
                         BuiltinType::RangeCheck => builtin_stats.range_check = value,
-                        BuiltinType::SegmentArena => builtin_stats.segment_arena = value,
-                        BuiltinType::Poseidon => builtin_stats.poseidon = value,
-                        BuiltinType::Pedersen => builtin_stats.pedersen = value,
+                        BuiltinType::SegmentArena => builtin_stats.segment_arena = value / 3,
+                        BuiltinType::Poseidon => builtin_stats.poseidon = value / 6,
+                        BuiltinType::Pedersen => builtin_stats.pedersen = value / 3,
                         BuiltinType::RangeCheck96 => builtin_stats.range_check_96 = value,
-                        BuiltinType::CircuitAdd => builtin_stats.circuit_add = value,
-                        BuiltinType::CircuitMul => builtin_stats.circuit_mul = value,
+                        BuiltinType::CircuitAdd => builtin_stats.circuit_add = value / 7,
+                        BuiltinType::CircuitMul => builtin_stats.circuit_mul = value / 7,
                         BuiltinType::Gas => {}
                         BuiltinType::System => {}
                         BuiltinType::BuiltinCosts => {}
