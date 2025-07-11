@@ -135,6 +135,7 @@ fn main() -> anyhow::Result<()> {
                 compiled.metadata.named_tests,
                 compiled.sierra_program.program,
                 compiled.metadata.function_set_costs,
+                compiled.metadata.contracts_info,
                 RunArgs {
                     run_mode: args.run_mode.clone(),
                     opt_level: args.opt_level,

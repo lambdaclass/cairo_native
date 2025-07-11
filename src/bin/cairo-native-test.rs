@@ -8,7 +8,6 @@ use cairo_lang_filesystem::cfg::{Cfg, CfgSet};
 use cairo_lang_starknet::starknet_plugin_suite;
 use cairo_lang_test_plugin::{compile_test_prepared_db, test_plugin_suite, TestsCompilationConfig};
 use clap::Parser;
-use colored::Colorize;
 use std::path::PathBuf;
 use tracing_subscriber::{EnvFilter, FmtSubscriber};
 use utils::{
@@ -108,6 +107,7 @@ fn main() -> anyhow::Result<()> {
         compiled.metadata.named_tests,
         compiled.sierra_program.program,
         compiled.metadata.function_set_costs,
+        compiled.metadata.contracts_info,
         RunArgs {
             run_mode: args.run_mode.clone(),
             opt_level: args.opt_level,
@@ -115,14 +115,9 @@ fn main() -> anyhow::Result<()> {
     )?;
 
     display_tests_summary(&summary, filtered_out);
-    if !summary.failed.is_empty() {
-        bail!(
-            "test result: {}. {} passed; {} failed; {} ignored",
-            "FAILED".bright_red(),
-            summary.passed.len(),
-            summary.failed.len(),
-            summary.ignored.len()
-        );
+
+    if summary.failed.len() > 0 || summary.mismatch.len() > 0 {
+        bail!("Some tests failed")
     }
 
     Ok(())

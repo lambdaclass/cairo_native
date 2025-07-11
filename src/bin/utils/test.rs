@@ -1,8 +1,9 @@
 use super::{find_function, format_for_panic, result_to_runresult, RunArgs, RunMode};
 use anyhow::Context;
-use cairo_lang_runner::RunResultValue;
+use cairo_lang_runner::{RunResultValue, SierraCasmRunner};
 use cairo_lang_sierra::{extensions::gas::CostTokenType, ids::FunctionId, program::Program};
 use cairo_lang_sierra_to_casm::metadata::MetadataComputationConfig;
+use cairo_lang_starknet::contract::ContractInfo;
 use cairo_lang_test_plugin::{
     test_config::{PanicExpectation, TestExpectation},
     TestConfig,
@@ -20,6 +21,7 @@ use itertools::Itertools;
 use num_traits::ToPrimitive;
 #[cfg(feature = "scarb")]
 use scarb_metadata::{PackageMetadata, TargetMetadata};
+use starknet_types_core::felt::Felt;
 use std::sync::Mutex;
 
 /// Summary data of the ran tests.
@@ -27,7 +29,9 @@ pub struct TestsSummary {
     pub passed: Vec<String>,
     pub failed: Vec<String>,
     pub ignored: Vec<String>,
+    pub mismatch: Vec<String>,
     pub failed_run_results: Vec<RunResultValue>,
+    pub mismatch_reason: Vec<String>,
 }
 
 /// The result of a ran test.
@@ -42,6 +46,7 @@ struct TestResult {
 enum TestStatus {
     Success,
     Fail(RunResultValue),
+    Mismatch(String),
 }
 
 /// Find all testable targets in the Scarb package.
@@ -98,16 +103,10 @@ pub fn filter_test_cases(
 
 /// Display the summary of the ran tests.
 pub fn display_tests_summary(summary: &TestsSummary, filtered_out: usize) {
-    if summary.failed.is_empty() {
-        println!(
-            "test result: {}. {} passed; {} failed; {} ignored; {filtered_out} filtered out;",
-            "ok".bright_green(),
-            summary.passed.len(),
-            summary.failed.len(),
-            summary.ignored.len()
-        );
-    } else {
-        println!("failures:");
+    println!();
+
+    if !summary.failed.is_empty() || !summary.mismatch.is_empty() {
+        println!("Failures:");
         for (failure, run_result) in summary
             .failed
             .iter()
@@ -123,8 +122,29 @@ pub fn display_tests_summary(summary: &TestsSummary, filtered_out: usize) {
                 }
             }
         }
+        for (test_name, mismatch_reason) in summary
+            .mismatch
+            .iter()
+            .zip_eq(summary.mismatch_reason.clone())
+        {
+            println!("   {test_name} - {mismatch_reason}");
+        }
         println!();
     }
+
+    println!(
+        "Test result: {}. {} passed; {} failed; {} mismatched; {} ignored; {} filtered out;",
+        if summary.failed.len() == 0 && summary.mismatch.len() == 0 {
+            "SUCCESS".bright_green()
+        } else {
+            "FAILURE".bright_red()
+        },
+        summary.passed.len(),
+        summary.failed.len(),
+        summary.mismatch.len(),
+        summary.ignored.len(),
+        filtered_out
+    );
 }
 
 /// Runs the tests and process the results for a summary.
@@ -132,8 +152,23 @@ pub fn run_tests(
     named_tests: Vec<(String, TestConfig)>,
     sierra_program: Program,
     function_set_costs: OrderedHashMap<FunctionId, OrderedHashMap<CostTokenType, i32>>,
+    contracts_info: OrderedHashMap<Felt, ContractInfo>,
     args: RunArgs,
 ) -> anyhow::Result<TestsSummary> {
+    let runner = SierraCasmRunner::new(
+        sierra_program.clone(),
+        Some(MetadataComputationConfig {
+            function_set_costs: function_set_costs.clone(),
+            linear_gas_solver: true,
+            linear_ap_change_solver: true,
+            skip_non_linear_solver_comparisons: false,
+            compute_runtime_costs: false,
+        }),
+        contracts_info,
+        None,
+    )
+    .with_context(|| "Failed setting up runner.")?;
+
     let native_context = NativeContext::new();
 
     // Compile the sierra program into a MLIR module.
@@ -185,7 +220,9 @@ pub fn run_tests(
         passed: vec![],
         failed: vec![],
         ignored: vec![],
+        mismatch: vec![],
         failed_run_results: vec![],
+        mismatch_reason: vec![],
     }));
     named_tests
         .into_iter()
@@ -200,7 +237,7 @@ pub fn run_tests(
 
                 let initial_gas = test.available_gas.map(|x| x.try_into().unwrap());
 
-                let result = native_executor(
+                let native_result = native_executor(
                     &func.id,
                     &[],
                     initial_gas,
@@ -208,7 +245,64 @@ pub fn run_tests(
                 )
                 .with_context(|| format!("Failed to run the function `{}`.", name.as_str()))?;
 
-                let run_result = result_to_runresult(&result)?;
+                let vm_result = runner
+                    .run_function_with_starknet_context(
+                        func,
+                        vec![],
+                        test.available_gas,
+                        Default::default(),
+                    )
+                    .with_context(|| format!("Failed to run the function `{}`.", name.as_str()))?;
+
+                let gas_usage = test
+                    .available_gas
+                    .zip(native_result.remaining_gas)
+                    .map(|(before, after)| before.into_or_panic::<i64>() - after.to_i64().unwrap())
+                    .or_else(|| {
+                        gas_metadata
+                            .initial_required_gas(&func.id)
+                            .map(|gas| gas.try_into().unwrap())
+                    });
+
+                for (builtin_name, &vm_builtin_counter) in vm_result
+                    .used_resources
+                    .basic_resources
+                    .builtin_instance_counter
+                    .iter()
+                {
+                    // We convert to str because of cyclic dependency problems when importing Cairo VM.
+                    let builtin_name_str = builtin_name.to_str();
+                    let native_builtin_counter = match builtin_name_str {
+                        "output" => 0,
+                        "ecdsa" => 0,
+                        "keccak" => 0,
+                        "range_check" => native_result.builtin_stats.range_check,
+                        "pedersen" => native_result.builtin_stats.pedersen,
+                        "bitwise" => native_result.builtin_stats.bitwise,
+                        "ec_op" => native_result.builtin_stats.ec_op,
+                        "poseidon" => native_result.builtin_stats.poseidon,
+                        "segment_arena" => native_result.builtin_stats.segment_arena,
+                        "range_check96" => native_result.builtin_stats.range_check_96,
+                        "add_mod" => native_result.builtin_stats.circuit_add,
+                        "mul_mod" => native_result.builtin_stats.circuit_mul,
+                        _ => panic!("unknown builtin!"),
+                    };
+
+                    if native_builtin_counter != vm_builtin_counter {
+                        return Ok((
+                            name,
+                            Some(TestResult {
+                                status: TestStatus::Mismatch(format!(
+                                    "{} builtin mismatch: expected {}, got {}",
+                                    builtin_name_str, vm_builtin_counter, native_builtin_counter
+                                )),
+                                gas_usage,
+                            }),
+                        ));
+                    }
+                }
+
+                let run_result = result_to_runresult(&native_result)?;
                 Ok((
                     name,
                     Some(TestResult {
@@ -229,17 +323,7 @@ pub fn run_tests(
                                 }
                             },
                         },
-                        gas_usage: test
-                            .available_gas
-                            .zip(result.remaining_gas)
-                            .map(|(before, after)| {
-                                before.into_or_panic::<i64>() - after.to_i64().unwrap()
-                            })
-                            .or_else(|| {
-                                gas_metadata
-                                    .initial_required_gas(&func.id)
-                                    .map(|gas| gas.try_into().unwrap())
-                            }),
+                        gas_usage,
                     }),
                 ))
             },
@@ -268,6 +352,13 @@ pub fn run_tests(
                 }) => {
                     summary.failed_run_results.push(run_result);
                     (&mut summary.failed, "fail".bright_red(), gas_usage)
+                }
+                Some(TestResult {
+                    status: TestStatus::Mismatch(reason),
+                    gas_usage,
+                }) => {
+                    summary.mismatch_reason.push(reason);
+                    (&mut summary.mismatch, "mismatch".bright_red(), gas_usage)
                 }
                 None => (&mut summary.ignored, "ignored".bright_yellow(), None),
             };
