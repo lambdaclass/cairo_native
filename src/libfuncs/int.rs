@@ -990,7 +990,7 @@ mod test {
         for value in data.into_iter() {
             let result = executor.invoke_dynamic(&program.funcs[0].id, &[value.into()], None)?;
 
-            assert_eq!(result.builtin_stats.bitwise, 1);
+            assert_eq!(result.builtin_stats.bitwise, 20);
             assert_eq!(result.return_value, Value::Uint128(value.swap_bytes()));
         }
 
