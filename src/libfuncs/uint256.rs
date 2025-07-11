@@ -1,7 +1,10 @@
 //! # `u256`-related libfuncs
 
 use super::{BlockExt, LibfuncHelper};
-use crate::{error::Result, metadata::MetadataStorage, utils::ProgramRegistryExt};
+use crate::{
+    error::Result, libfuncs::increment_builtin_counter_by_if, metadata::MetadataStorage,
+    utils::ProgramRegistryExt,
+};
 use cairo_lang_sierra::{
     extensions::{
         core::{CoreLibfunc, CoreType},
@@ -921,6 +924,10 @@ pub fn build_u256_guarantee_inv_mod_n<'ctx, 'this>(
     let op = entry.append_operation(llvm::undef(guarantee_type, location));
     let guarantee = op.result(0)?.into();
 
+    // Increment the range_check builtin
+    let range_check =
+        increment_builtin_counter_by_if(context, entry, location, entry.arg(0)?, 9, 7, condition)?;
+
     helper.cond_br(
         context,
         entry,
@@ -928,7 +935,7 @@ pub fn build_u256_guarantee_inv_mod_n<'ctx, 'this>(
         [0, 1],
         [
             &[
-                entry.arg(0)?,
+                range_check,
                 result_inv,
                 guarantee,
                 guarantee,
@@ -939,7 +946,7 @@ pub fn build_u256_guarantee_inv_mod_n<'ctx, 'this>(
                 guarantee,
                 guarantee,
             ],
-            &[entry.arg(0)?, guarantee, guarantee],
+            &[range_check, guarantee, guarantee],
         ],
         location,
     )
