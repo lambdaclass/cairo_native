@@ -277,22 +277,22 @@ fn invoke_dynamic(
                         } as usize;
 
                         match type_info {
-                            CoreTypeConcrete::Bitwise(_) => builtin_stats.bitwise = value,
-                            CoreTypeConcrete::EcOp(_) => builtin_stats.ec_op = value,
+                            CoreTypeConcrete::Bitwise(_) => builtin_stats.bitwise = value / 5,
+                            CoreTypeConcrete::EcOp(_) => builtin_stats.ec_op = value / 7,
                             CoreTypeConcrete::RangeCheck(_) => builtin_stats.range_check = value,
-                            CoreTypeConcrete::Pedersen(_) => builtin_stats.pedersen = value,
-                            CoreTypeConcrete::Poseidon(_) => builtin_stats.poseidon = value,
+                            CoreTypeConcrete::Pedersen(_) => builtin_stats.pedersen = value / 3,
+                            CoreTypeConcrete::Poseidon(_) => builtin_stats.poseidon = value / 6,
                             CoreTypeConcrete::SegmentArena(_) => {
-                                builtin_stats.segment_arena = value
+                                builtin_stats.segment_arena = value / 3
                             }
                             CoreTypeConcrete::RangeCheck96(_) => {
                                 builtin_stats.range_check_96 = value
                             }
                             CoreTypeConcrete::Circuit(CircuitTypeConcrete::AddMod(_)) => {
-                                builtin_stats.circuit_add = value
+                                builtin_stats.circuit_add = value / 7
                             }
                             CoreTypeConcrete::Circuit(CircuitTypeConcrete::MulMod(_)) => {
-                                builtin_stats.circuit_mul = value
+                                builtin_stats.circuit_mul = value / 7
                             }
                             _ => native_panic!("given type should be a builtin: {type_id:?}"),
                         }
