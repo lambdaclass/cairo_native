@@ -1,6 +1,7 @@
 use super::{BlockExt, LibfuncHelper};
 use crate::{
     error::Result,
+    execution_result::BITWISE_BUILTIN_SIZE,
     metadata::MetadataStorage,
     native_panic,
     types::TypeBuilder,
@@ -210,7 +211,13 @@ fn build_bitwise<'ctx, 'this>(
     _metadata: &mut MetadataStorage,
     _info: &SignatureOnlyConcreteLibfunc,
 ) -> Result<()> {
-    let bitwise = super::increment_builtin_counter_by(context, entry, location, entry.arg(0)?, 5)?;
+    let bitwise = super::increment_builtin_counter_by(
+        context,
+        entry,
+        location,
+        entry.arg(0)?,
+        BITWISE_BUILTIN_SIZE,
+    )?;
 
     let lhs = entry.arg(1)?;
     let rhs = entry.arg(2)?;
@@ -236,7 +243,13 @@ fn build_byte_reverse<'ctx, 'this>(
     _metadata: &mut MetadataStorage,
     _info: &SignatureOnlyConcreteLibfunc,
 ) -> Result<()> {
-    let bitwise = super::increment_builtin_counter_by(context, entry, location, entry.arg(0)?, 20)?;
+    let bitwise = super::increment_builtin_counter_by(
+        context,
+        entry,
+        location,
+        entry.arg(0)?,
+        4 * BITWISE_BUILTIN_SIZE,
+    )?;
 
     let value =
         entry.append_op_result(ods::llvm::intr_bswap(context, entry.arg(1)?, location).into())?;
