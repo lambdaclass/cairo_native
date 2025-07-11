@@ -19,16 +19,26 @@ use starknet_types_core::felt::Felt;
     serde::Deserialize,
 )]
 pub struct BuiltinStats {
-    pub bitwise: usize,
-    pub ec_op: usize,
     pub range_check: usize,
     pub pedersen: usize,
+    pub bitwise: usize,
+    pub ec_op: usize,
     pub poseidon: usize,
     pub segment_arena: usize,
-    pub range_check_96: usize,
-    pub circuit_add: usize,
-    pub circuit_mul: usize,
+    pub range_check96: usize,
+    pub add_mod: usize,
+    pub mul_mod: usize,
 }
+
+pub const RANGECHECK_BUILTIN_SIZE: usize = 1;
+pub const PEDERSEN_BUILTIN_SIZE: usize = 3;
+pub const BITWISE_BUILTIN_SIZE: usize = 5;
+pub const EC_OP_BUILTIN_SIZE: usize = 7;
+pub const POSEIDON_BUILTIN_SIZE: usize = 6;
+pub const SEGMENT_ARENA_BUILTIN_SIZE: usize = 3;
+pub const RANGE_CHECK96_BUILTIN_SIZE: usize = 1;
+pub const ADD_MOD_BUILTIN_SIZE: usize = 7;
+pub const MUL_MOD_BUILTIN_SIZE: usize = 7;
 
 /// The result of the JIT execution.
 #[derive(Debug, Clone, PartialEq, Eq, serde::Serialize, serde::Deserialize)]
