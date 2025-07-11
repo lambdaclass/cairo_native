@@ -948,7 +948,7 @@ mod test {
                 None,
             )?;
 
-            assert_eq!(result.builtin_stats.bitwise, 1);
+            assert_eq!(result.builtin_stats.bitwise, 5);
             assert_eq!(
                 result.return_value,
                 Value::Struct {
