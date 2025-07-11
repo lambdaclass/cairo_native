@@ -210,7 +210,7 @@ fn build_bitwise<'ctx, 'this>(
     _metadata: &mut MetadataStorage,
     _info: &SignatureOnlyConcreteLibfunc,
 ) -> Result<()> {
-    let bitwise = super::increment_builtin_counter(context, entry, location, entry.arg(0)?)?;
+    let bitwise = super::increment_builtin_counter_by(context, entry, location, entry.arg(0)?, 5)?;
 
     let lhs = entry.arg(1)?;
     let rhs = entry.arg(2)?;
