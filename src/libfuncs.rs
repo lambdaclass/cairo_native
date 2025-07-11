@@ -497,23 +497,6 @@ fn increment_builtin_counter_by<'ctx: 'a, 'a>(
     ))
 }
 
-fn increment_builtin_counter_by_if<'ctx: 'a, 'a>(
-    context: &'ctx Context,
-    block: &'ctx Block<'ctx>,
-    location: Location<'ctx>,
-    value: Value<'ctx, '_>,
-    amount: impl Into<BigInt>,
-    condition: Value<'ctx, '_>,
-) -> crate::error::Result<Value<'ctx, 'a>> {
-    let incremented = block.append_op_result(arith::addi(
-        value,
-        block.const_int(context, location, amount, 64)?,
-        location,
-    ))?;
-
-    block.append_op_result(arith::select(condition, incremented, value, location))
-}
-
 fn build_noop<'ctx, 'this, const N: usize, const PROCESS_BUILTINS: bool>(
     context: &'ctx Context,
     registry: &ProgramRegistry<CoreType, CoreLibfunc>,
