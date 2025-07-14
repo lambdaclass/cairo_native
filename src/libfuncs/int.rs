@@ -905,9 +905,14 @@ fn build_wide_mul<'ctx, 'this>(
 #[cfg(test)]
 mod test {
     use crate::{
-        context::NativeContext, executor::JitNativeExecutor, utils::HALF_PRIME, OptLevel, Value,
+        context::NativeContext, error::panic::ToNativeAssertError, executor::JitNativeExecutor,
+        utils::HALF_PRIME, OptLevel, Value,
     };
-    use cairo_lang_sierra::ProgramParser;
+    use ark_ff::One;
+    use cairo_lang_sierra::{
+        extensions::{bounded_int::BoundedIntDivRemAlgorithm, utils::Range},
+        ProgramParser,
+    };
     use itertools::Itertools;
     use num_bigint::{BigInt, BigUint, Sign};
     use num_integer::Roots;
@@ -1219,7 +1224,7 @@ mod test {
 
     fn test_divmod<T>() -> Result<(), Box<dyn std::error::Error>>
     where
-        T: Bounded + Copy + Num,
+        T: Bounded + Copy + Num + Into<BigInt>,
         Value: From<T>,
     {
         let n_bits = 8 * mem::size_of::<T>();
@@ -1252,6 +1257,17 @@ mod test {
         let module = context.compile(&program, false, None, None)?;
         let executor = JitNativeExecutor::from_native_module(module, OptLevel::default())?;
 
+        // Get the range to create the BoundedIntDivRemAlgorithm
+        let range = Range {
+            lower: T::min_value().into(),
+            upper: T::max_value().into() + BigInt::one(),
+        };
+        let div_rem_algorithm = BoundedIntDivRemAlgorithm::try_new(&range, &range)
+            .to_native_assert_error(&format!(
+                "div_rem of ranges: lhs = {:#?} and rhs= {:#?} is not supported yet",
+                &range, &range
+            ))?;
+
         let data = [T::min_value(), T::zero(), T::one(), T::max_value()];
         for perm in Itertools::permutations(data.into_iter(), 2) {
             if perm[1].is_zero() {
@@ -1260,15 +1276,26 @@ mod test {
 
             let result = executor.invoke_dynamic(
                 &program.funcs[0].id,
-                &[perm[0].into(), perm[1].into()],
+                &[Value::from(perm[0]), Value::from(perm[1])],
                 None,
             )?;
 
-            assert_eq!(result.builtin_stats.range_check, 1);
+            match div_rem_algorithm {
+                BoundedIntDivRemAlgorithm::KnownSmallRhs => {
+                    assert_eq!(result.builtin_stats.range_check, 3)
+                }
+                BoundedIntDivRemAlgorithm::KnownSmallQuotient { q_upper_bound: _ }
+                | BoundedIntDivRemAlgorithm::KnownSmallLhs { lhs_upper_sqrt: _ } => {
+                    assert_eq!(result.builtin_stats.range_check, 4)
+                }
+            }
             assert_eq!(
                 result.return_value,
                 Value::Struct {
-                    fields: vec![(perm[0] / perm[1]).into(), (perm[0] % perm[1]).into()],
+                    fields: vec![
+                        Value::from(perm[0] / perm[1]),
+                        Value::from(perm[0] % perm[1])
+                    ],
                     debug_name: None,
                 },
             );
