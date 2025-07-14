@@ -449,6 +449,8 @@ pub fn build_contract_address_try_from_felt252<'ctx, 'this>(
     _metadata: &mut MetadataStorage,
     _info: &SignatureOnlyConcreteLibfunc,
 ) -> Result<()> {
+    // The sierra-to-casm compiler uses the range check builtin a total of 3 time.
+    // https://github.com/starkware-libs/cairo/blob/dc8b4f0b2e189a3b107b15062895597588b78a46/crates/cairo-lang-sierra-to-casm/src/invocations/misc.rs?plain=1#L266
     let range_check =
         super::increment_builtin_counter_by(context, entry, location, entry.arg(0)?, 3)?;
 
