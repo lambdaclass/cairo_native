@@ -53,7 +53,7 @@ pub fn build_hades_permutation<'ctx>(
         .to_native_assert_error("runtime library should be available")?;
 
     let poseidon_builtin =
-        super::increment_builtin_counter(context, entry, location, entry.arg(0)?)?;
+        super::increment_builtin_counter_by(context, entry, location, entry.arg(0)?, 6)?;
 
     let felt252_ty =
         registry.build_type(context, helper, metadata, &info.param_signatures()[1].ty)?;
