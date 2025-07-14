@@ -608,19 +608,14 @@ fn build_operation<'ctx, 'this>(
 
             // if we are handling an i128 and the in_range condition is met, increase the range check builtin by 1:
             // https://github.com/starkware-libs/cairo/blob/main/crates/cairo-lang-sierra-to-casm/src/invocations/int/signed.rs#L105
-            if is_not_i128 {
-                range_check = increment_builtin_counter_by(
-                    context,
-                    block_in_range,
-                    location,
-                    range_check,
-                    1,
-                )?;
-            }
+            let range_check = if is_not_i128 {
+                increment_builtin_counter_by(context, block_in_range, location, range_check, 1)?
+            } else {
+                range_check
+            };
 
             helper.br(block_in_range, 0, &[range_check, result], location)?;
         }
-
         {
             let k0 = block_overflow.const_int_from_type(context, location, 0, result.r#type())?;
             let is_positive =
