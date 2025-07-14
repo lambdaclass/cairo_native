@@ -567,30 +567,43 @@ fn build_operation<'ctx, 'this>(
 
     if is_signed {
         let is_in_range = {
-            let k1_neg = entry.const_int_from_type(context, location, -1, value_ty)?;
+            let k1_neg = entry.const_int_from_type(context, location, -1, result.r#type())?;
             let min_value_range = entry.const_int_from_type(
                 context,
                 location,
                 value_range.clone().lower,
-                value_ty,
+                result.r#type(),
             )?;
             let min_value_range_neg = entry.muli(min_value_range, k1_neg, location)?;
-            let canonical_value = entry.addi(result, min_value_range_neg, location)?;
-            let range_size =
-                entry.const_int_from_type(context, location, value_range.size(), value_ty)?;
+            let canonical_value_minus_one = {
+                let k1 = entry.const_int_from_type(context, location, 1, result.r#type())?;
+                let canonical_value = entry.addi(result, min_value_range_neg, location)?;
+
+                entry.append_op_result(arith::subi(canonical_value, k1, location))?
+            };
+
+            // The size of a i128 range can't be represented with 128 bits. To avoid having to use more than 128 bits,
+            // we substract 1 from it. Then, when comparing with the canonical value, we also substract 1 to the latter 
+            // to reach an equivalent expression
+            let range_size_minus_one = entry.const_int_from_type(
+                context,
+                location,
+                value_range.size() - 1,
+                result.r#type(),
+            )?;
 
             entry.cmpi(
                 context,
                 CmpiPredicate::Slt,
-                canonical_value,
-                range_size,
+                canonical_value_minus_one,
+                range_size_minus_one,
                 location,
             )?
         };
         let is_not_i128 = !(value_range.clone().lower == i128::MIN.into()
             && value_range.upper == i128::MAX.into());
         let is_not_i128_value =
-            entry.const_int_from_type(context, location, is_not_i128, value_ty)?;
+            entry.const_int(context, location, is_not_i128, 1)?;
         let is_in_range_and_not_i128 =
             entry.append_op_result(arith::andi(is_not_i128_value, is_in_range, location))?;
 
