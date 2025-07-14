@@ -237,12 +237,41 @@ pub fn build_downcast<'ctx, 'this>(
 
         let is_in_bounds = match (lower_check, upper_check) {
             (Some(lower_check), Some(upper_check)) => {
-                range_check = super::increment_builtin_counter_by(
+                let is_valid = {
+                    let k1_neg =
+                        entry.const_int_from_type(context, location, -1, src_value.r#type())?;
+                    let min_value_range = entry.const_int_from_type(
+                        context,
+                        location,
+                        dst_range.clone().lower,
+                        src_value.r#type(),
+                    )?;
+                    let min_value_range_neg = entry.muli(min_value_range, k1_neg, location)?;
+                    let canonical_value = entry.addi(src_value, min_value_range_neg, location)?;
+                    let range_size = entry.const_int_from_type(
+                        context,
+                        location,
+                        dst_range.size(),
+                        src_value.r#type(),
+                    )?;
+
+                    entry.cmpi(
+                        context,
+                        CmpiPredicate::Slt,
+                        canonical_value,
+                        range_size,
+                        location,
+                    )?
+                };
+
+                range_check = super::increment_builtin_counter_by_if(
                     context,
                     entry,
                     location,
                     entry.arg(0)?,
                     2,
+                    1,
+                    is_valid,
                 )?;
 
                 entry.append_op_result(arith::andi(lower_check, upper_check, location))?
