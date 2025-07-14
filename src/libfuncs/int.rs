@@ -583,7 +583,7 @@ fn build_operation<'ctx, 'this>(
             };
 
             // The size of a i128 range can't be represented with 128 bits. To avoid having to use more than 128 bits,
-            // we substract 1 from it. Then, when comparing with the canonical value, we also substract 1 to the latter 
+            // we substract 1 from it. Then, when comparing with the canonical value, we also substract 1 to the latter
             // to reach an equivalent expression
             let range_size_minus_one = entry.const_int_from_type(
                 context,
@@ -602,8 +602,7 @@ fn build_operation<'ctx, 'this>(
         };
         let is_not_i128 = !(value_range.clone().lower == i128::MIN.into()
             && value_range.upper == i128::MAX.into());
-        let is_not_i128_value =
-            entry.const_int(context, location, is_not_i128, 1)?;
+        let is_not_i128_value = entry.const_int(context, location, is_not_i128, 1)?;
         let is_in_range_and_not_i128 =
             entry.append_op_result(arith::andi(is_not_i128_value, is_in_range, location))?;
 
