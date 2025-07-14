@@ -134,7 +134,7 @@ pub fn display_tests_summary(summary: &TestsSummary, filtered_out: usize) {
 
     println!(
         "test result: {}. {} passed; {} failed; {} ignored; {} filtered out;",
-        if summary.failed.len() == 0 && summary.mismatch.len() == 0 {
+        if summary.failed.is_empty() && summary.mismatch.is_empty() {
             "OK".bright_green()
         } else {
             "FAILED".bright_red()
