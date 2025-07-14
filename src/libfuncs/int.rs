@@ -1301,8 +1301,8 @@ mod test {
                 BoundedIntDivRemAlgorithm::KnownSmallRhs => {
                     assert_eq!(result.builtin_stats.range_check, 3)
                 }
-                BoundedIntDivRemAlgorithm::KnownSmallQuotient { q_upper_bound: _ }
-                | BoundedIntDivRemAlgorithm::KnownSmallLhs { lhs_upper_sqrt: _ } => {
+                BoundedIntDivRemAlgorithm::KnownSmallQuotient { .. }
+                | BoundedIntDivRemAlgorithm::KnownSmallLhs { .. } => {
                     assert_eq!(result.builtin_stats.range_check, 4)
                 }
             }
