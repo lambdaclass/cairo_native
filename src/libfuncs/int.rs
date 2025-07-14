@@ -2,7 +2,7 @@ use super::{BlockExt, LibfuncHelper};
 use crate::{
     error::Result,
     execution_result::BITWISE_BUILTIN_SIZE,
-    libfuncs::{increment_builtin_counter, increment_builtin_counter_by_if},
+    libfuncs::{increment_builtin_counter, increment_builtin_counter_by},
     metadata::MetadataStorage,
     native_panic,
     types::TypeBuilder,
@@ -588,58 +588,6 @@ fn build_operation<'ctx, 'this>(
     )?;
 
     if is_signed {
-        let is_in_range = {
-            let k1_neg = entry.const_int_from_type(context, location, -1, result.r#type())?;
-            let min_value_range = entry.const_int_from_type(
-                context,
-                location,
-                value_range.clone().lower,
-                result.r#type(),
-            )?;
-            let min_value_range_neg = entry.muli(min_value_range, k1_neg, location)?;
-            let canonical_value_minus_one = {
-                let k1 = entry.const_int_from_type(context, location, 1, result.r#type())?;
-                let canonical_value = entry.addi(result, min_value_range_neg, location)?;
-
-                entry.append_op_result(arith::subi(canonical_value, k1, location))?
-            };
-
-            // The size of a i128 range can't be represented with 128 bits. To avoid having to use more than 128 bits,
-            // we substract 1 from it. Then, when comparing with the canonical value, we also substract 1 to the latter
-            // to reach an equivalent expression
-            let range_size_minus_one = entry.const_int_from_type(
-                context,
-                location,
-                value_range.size() - 1,
-                result.r#type(),
-            )?;
-
-            entry.cmpi(
-                context,
-                CmpiPredicate::Slt,
-                canonical_value_minus_one,
-                range_size_minus_one,
-                location,
-            )?
-        };
-        let is_not_i128 = !(value_range.clone().lower == i128::MIN.into()
-            && value_range.upper == i128::MAX.into());
-        let is_not_i128_value = entry.const_int(context, location, is_not_i128, 1)?;
-        let is_in_range_and_not_i128 =
-            entry.append_op_result(arith::andi(is_not_i128_value, is_in_range, location))?;
-
-        // if we are handling an i128 and the in_range condition is met, increase the range check builtin by 1:
-        // https://github.com/starkware-libs/cairo/blob/main/crates/cairo-lang-sierra-to-casm/src/invocations/int/signed.rs#L105
-        range_check = increment_builtin_counter_by_if(
-            context,
-            entry,
-            location,
-            range_check,
-            1,
-            0,
-            is_in_range_and_not_i128,
-        )?;
-
         let block_in_range = helper.append_block(Block::new(&[]));
         let block_overflow = helper.append_block(Block::new(&[]));
 
@@ -653,7 +601,24 @@ fn build_operation<'ctx, 'this>(
             location,
         ));
 
-        helper.br(block_in_range, 0, &[range_check, result], location)?;
+        {
+            let is_i128 =
+                value_range.lower == i128::MIN.into() && value_range.upper == i128::MAX.into();
+
+            // if we are handling an i128 and the in_range condition is met, increase the range check builtin by 1:
+            // https://github.com/starkware-libs/cairo/blob/main/crates/cairo-lang-sierra-to-casm/src/invocations/int/signed.rs#L105
+            if is_i128 {
+                range_check = increment_builtin_counter_by(
+                    context,
+                    block_in_range,
+                    location,
+                    range_check,
+                    1,
+                )?;
+            }
+
+            helper.br(block_in_range, 0, &[range_check, result], location)?;
+        }
 
         {
             let k0 = block_overflow.const_int_from_type(context, location, 0, result.r#type())?;
