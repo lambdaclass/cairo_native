@@ -1,3 +1,6 @@
+This patch is applied to the downloaded corelib, to remove tests for unimplemented libfuncs.
+This patch allows us to not need to add the full corelib to the repository.
+
 diff --git a/cairo2/corelib/src/test.cairo b/cairo2/corelib/src/test.cairo
 index 39072873c..3ae171a6f 100644
 --- a/cairo2/corelib/src/test.cairo
