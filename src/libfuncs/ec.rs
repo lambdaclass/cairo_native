@@ -177,6 +177,9 @@ pub fn build_point_from_x<'ctx, 'this>(
 
     let point = entry.load(context, location, point_ptr, ec_point_ty)?;
 
+    // The sierra-to-casm compiler uses the range check builtin a total of 3 times if the
+    // is_wide condition is true. Otherwise it is not used.
+    // https://github.com/starkware-libs/cairo/blob/ff2e19a3d671036e626ea89cac409c5325383584/crates/cairo-lang-sierra-to-casm/src/invocations/ec.rs#L167
     let range_check =
         increment_builtin_counter_by_if(context, entry, location, entry.arg(0)?, 3, 0, result)?;
 
