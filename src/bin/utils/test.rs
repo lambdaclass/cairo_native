@@ -292,9 +292,9 @@ pub fn run_tests(
                             "ec_op" => native_result.builtin_stats.ec_op,
                             "poseidon" => native_result.builtin_stats.poseidon,
                             "segment_arena" => native_result.builtin_stats.segment_arena,
-                            "range_check96" => native_result.builtin_stats.range_check_96,
-                            "add_mod" => native_result.builtin_stats.circuit_add,
-                            "mul_mod" => native_result.builtin_stats.circuit_mul,
+                            "range_check96" => native_result.builtin_stats.range_check96,
+                            "add_mod" => native_result.builtin_stats.add_mod,
+                            "mul_mod" => native_result.builtin_stats.mul_mod,
                             _ => panic!("unknown builtin!"),
                         };
 
