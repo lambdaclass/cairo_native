@@ -1436,11 +1436,9 @@ mod test {
 
             match T::try_from(value) {
                 Ok(_) => {
-                    let mut temp: BigInt = T::max_value().into() - T::min_value().into();
-                    temp = temp + BigInt::one();
-                    let out_range = Felt::from(temp);
-                    let rc_size = Felt::from(BigInt::from(1) << 128);
-                    if out_range < rc_size {
+                    let range_size = T::max_value().into() - T::min_value().into() + BigInt::one();
+                    let rc_size = BigInt::from(1) << 128;
+                    if range_size < rc_size {
                         assert_eq!(
                             result.builtin_stats.range_check, 2,
                             "Type: {}  Lower: {}  Upper: {}  Value: {}",
