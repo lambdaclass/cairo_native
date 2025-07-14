@@ -3,7 +3,7 @@ use crate::{
     libfuncs::LibfuncHelper,
     metadata::MetadataStorage,
     starknet::handler::StarknetSyscallHandlerCallbacks,
-    utils::{get_integer_layout, BlockExt, GepIndex, ProgramRegistryExt},
+    utils::{get_integer_layout, ProgramRegistryExt},
 };
 use cairo_lang_sierra::{
     extensions::{
@@ -16,6 +16,7 @@ use cairo_lang_sierra::{
 };
 use melior::{
     dialect::llvm::{self, LoadStoreOptions},
+    helpers::{GepIndex, LlvmBlockExt},
     ir::{
         attribute::DenseI32ArrayAttribute, operation::OperationBuilder, r#type::IntegerType, Block,
         BlockLike, Location,
@@ -792,7 +793,10 @@ pub fn build_k1_get_point_from_x<'ctx, 'this>(
     ));
 
     // Allocate `y_parity` argument and write the value.
-    let y_parity_arg_ptr = helper.init_block().alloca_int(context, location, 1)?;
+    let y_parity_arg_ptr =
+        helper
+            .init_block()
+            .alloca_int(context, location, 1, get_integer_layout(1).align())?;
     entry.append_operation(llvm::store(
         context,
         entry.argument(3)?.into(),
@@ -1879,7 +1883,10 @@ pub fn build_r1_get_point_from_x<'ctx, 'this>(
     ));
 
     // Allocate `y_parity` argument and write the value.
-    let y_parity_arg_ptr = helper.init_block().alloca_int(context, location, 1)?;
+    let y_parity_arg_ptr =
+        helper
+            .init_block()
+            .alloca_int(context, location, 1, get_integer_layout(1).align())?;
     entry.append_operation(llvm::store(
         context,
         entry.argument(3)?.into(),

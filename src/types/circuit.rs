@@ -2,7 +2,7 @@
 
 use std::alloc::Layout;
 
-use super::{BlockExt, WithSelf};
+use super::WithSelf;
 use crate::{
     error::{Result, SierraAssertError},
     metadata::{
@@ -22,6 +22,7 @@ use cairo_lang_sierra::{
 };
 use melior::{
     dialect::{func, llvm},
+    helpers::{ArithBlockExt, BuiltinBlockExt, LlvmBlockExt},
     ir::{r#type::IntegerType, Block, BlockLike, Location, Module, Region, Type, Value},
     Context,
 };

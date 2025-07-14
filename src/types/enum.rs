@@ -408,7 +408,7 @@ use crate::{
         drop_overrides::DropOverridesMeta, dup_overrides::DupOverridesMeta, MetadataStorage,
     },
     native_panic,
-    utils::{get_integer_layout, BlockExt, ProgramRegistryExt},
+    utils::{get_integer_layout, ProgramRegistryExt},
 };
 use cairo_lang_sierra::{
     extensions::{
@@ -420,6 +420,7 @@ use cairo_lang_sierra::{
 };
 use melior::{
     dialect::{cf, func, llvm},
+    helpers::{BuiltinBlockExt, LlvmBlockExt},
     ir::{r#type::IntegerType, Block, BlockLike, Location, Module, Region, Type, Value},
     Context,
 };

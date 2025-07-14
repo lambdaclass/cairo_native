@@ -20,7 +20,7 @@ use crate::{
         realloc_bindings::ReallocBindingsMeta, MetadataStorage,
     },
     types::TypeBuilder,
-    utils::{BlockExt, ProgramRegistryExt},
+    utils::ProgramRegistryExt,
 };
 use cairo_lang_sierra::{
     extensions::{
@@ -31,6 +31,7 @@ use cairo_lang_sierra::{
 };
 use melior::{
     dialect::{func, llvm, ods},
+    helpers::{ArithBlockExt, BuiltinBlockExt, LlvmBlockExt},
     ir::{
         attribute::IntegerAttribute, r#type::IntegerType, Block, BlockLike, Location, Module,
         Region, Type,

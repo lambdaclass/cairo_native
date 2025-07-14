@@ -2,10 +2,7 @@
 
 use super::LibfuncHelper;
 use crate::{
-    error::Result,
-    metadata::MetadataStorage,
-    types::TypeBuilder,
-    utils::{BlockExt, ProgramRegistryExt},
+    error::Result, metadata::MetadataStorage, types::TypeBuilder, utils::ProgramRegistryExt,
 };
 use cairo_lang_sierra::{
     extensions::{
@@ -19,6 +16,7 @@ use cairo_lang_sierra::{
 };
 use melior::{
     dialect::llvm,
+    helpers::{BuiltinBlockExt, LlvmBlockExt},
     ir::{Block, BlockLike, Location, Value},
     Context,
 };
@@ -90,7 +88,9 @@ pub fn build_struct_value<'ctx, 'this>(
 
     let acc = entry.append_operation(llvm::undef(struct_ty, location));
 
-    entry.insert_values(context, location, acc.result(0)?.into(), fields)
+    entry
+        .insert_values(context, location, acc.result(0)?.into(), fields)
+        .map_err(crate::error::Error::from)
 }
 
 /// Generate MLIR operations for the `struct_deconstruct` libfunc.

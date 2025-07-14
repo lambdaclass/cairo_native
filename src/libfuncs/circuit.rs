@@ -11,7 +11,7 @@ use crate::{
     },
     native_panic,
     types::{circuit::build_u384_struct_type, TypeBuilder},
-    utils::{get_integer_layout, layout_repeat, BlockExt, GepIndex, ProgramRegistryExt},
+    utils::{get_integer_layout, layout_repeat, ProgramRegistryExt},
 };
 use cairo_lang_sierra::{
     extensions::{
@@ -30,6 +30,7 @@ use melior::{
         arith::{self, CmpiPredicate},
         cf, llvm,
     },
+    helpers::{ArithBlockExt, BuiltinBlockExt, GepIndex, LlvmBlockExt},
     ir::{r#type::IntegerType, Block, BlockLike, Location, Type, Value, ValueLike},
     Context,
 };
@@ -1023,12 +1024,14 @@ fn u384_integer_to_struct<'a>(
     let struct_type = build_u384_struct_type(context);
     let struct_value = block.append_op_result(llvm::undef(struct_type, location))?;
 
-    block.insert_values(
-        context,
-        location,
-        struct_value,
-        &[limb1, limb2, limb3, limb4],
-    )
+    block
+        .insert_values(
+            context,
+            location,
+            struct_value,
+            &[limb1, limb2, limb3, limb4],
+        )
+        .map_err(crate::error::Error::from)
 }
 
 /// The extended euclidean algorithm calculates the greatest common divisor (gcd) of two integers a and b,
@@ -1133,12 +1136,14 @@ fn build_array_slice<'ctx>(
         values.push(value);
     }
 
-    block.insert_values(
-        context,
-        location,
-        block.append_op_result(llvm::undef(result_type, location))?,
-        &values,
-    )
+    block
+        .insert_values(
+            context,
+            location,
+            block.append_op_result(llvm::undef(result_type, location))?,
+            &values,
+        )
+        .map_err(crate::error::Error::from)
 }
 
 /// Converts input to an U96Guarantee.

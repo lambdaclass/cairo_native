@@ -8,7 +8,6 @@ use crate::{
     metadata::{enum_snapshot_variants::EnumSnapshotVariantsMeta, MetadataStorage},
     native_assert, native_panic,
     types::TypeBuilder,
-    utils::BlockExt,
 };
 use cairo_lang_sierra::{
     extensions::{
@@ -22,6 +21,7 @@ use cairo_lang_sierra::{
 };
 use melior::{
     dialect::{arith, cf, llvm, ods},
+    helpers::{ArithBlockExt, BuiltinBlockExt, LlvmBlockExt},
     ir::{
         attribute::{DenseI64ArrayAttribute, IntegerAttribute},
         r#type::IntegerType,

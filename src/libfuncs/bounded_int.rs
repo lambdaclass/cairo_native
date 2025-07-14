@@ -2,11 +2,7 @@
 
 use super::LibfuncHelper;
 use crate::{
-    error::Result,
-    metadata::MetadataStorage,
-    native_assert,
-    types::TypeBuilder,
-    utils::{BlockExt, RangeExt},
+    error::Result, metadata::MetadataStorage, native_assert, types::TypeBuilder, utils::RangeExt,
 };
 use cairo_lang_sierra::{
     extensions::{
@@ -26,6 +22,7 @@ use melior::{
         arith::{self, CmpiPredicate},
         cf,
     },
+    helpers::{ArithBlockExt, BuiltinBlockExt},
     ir::{r#type::IntegerType, Block, BlockLike, Location, Value, ValueLike},
     Context,
 };

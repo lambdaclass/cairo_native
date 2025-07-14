@@ -5,7 +5,7 @@ use crate::{
     error::{Error, Result},
     metadata::{runtime_bindings::RuntimeBindingsMeta, MetadataStorage},
     types::TypeBuilder,
-    utils::{BlockExt, ProgramRegistryExt},
+    utils::ProgramRegistryExt,
 };
 use cairo_lang_sierra::{
     extensions::{
@@ -18,6 +18,7 @@ use cairo_lang_sierra::{
 };
 use melior::{
     dialect::{llvm, scf},
+    helpers::{ArithBlockExt, BuiltinBlockExt, LlvmBlockExt},
     ir::{r#type::IntegerType, Block, BlockLike, Location, Region},
     Context,
 };

@@ -7,7 +7,6 @@ use crate::{
     metadata::MetadataStorage,
     native_panic,
     types::TypeBuilder,
-    utils::BlockExt,
 };
 use bumpalo::Bump;
 use cairo_lang_sierra::{
@@ -26,6 +25,7 @@ use cairo_lang_sierra::{
 };
 use melior::{
     dialect::{arith, cf},
+    helpers::{ArithBlockExt, BuiltinBlockExt},
     ir::{Block, BlockLike, BlockRef, Location, Module, Region, Value},
     Context,
 };
@@ -490,11 +490,13 @@ fn increment_builtin_counter_by<'ctx: 'a, 'a>(
     value: Value<'ctx, '_>,
     amount: impl Into<BigInt>,
 ) -> crate::error::Result<Value<'ctx, 'a>> {
-    block.append_op_result(arith::addi(
-        value,
-        block.const_int(context, location, amount, 64)?,
-        location,
-    ))
+    block
+        .append_op_result(arith::addi(
+            value,
+            block.const_int(context, location, amount.into(), 64)?,
+            location,
+        ))
+        .map_err(crate::error::Error::from)
 }
 
 fn build_noop<'ctx, 'this, const N: usize, const PROCESS_BUILTINS: bool>(
