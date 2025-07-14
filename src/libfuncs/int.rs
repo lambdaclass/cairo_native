@@ -445,6 +445,11 @@ fn build_from_felt252<'ctx, 'this>(
         (is_in_range, value)
     };
 
+    // The sierra-to-casm compiler uses the range check builtin a total of:
+    //      - 3 times if is_in_range is false
+    //      - 2 times if is_in_range is true and out_range < rc_size
+    //      - 1 time if is_in_range is true and out_range >= rc_size
+    // https://github.com/starkware-libs/cairo/blob/96625b57abee8aca55bdeb3ecf29f82e8cea77c3/crates/cairo-lang-sierra-to-casm/src/invocations/range_reduction.rs#L26
     let range_check = entry.append_op_result(scf::r#if(
         is_in_range,
         &[IntegerType::new(context, 64).into()],
