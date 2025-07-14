@@ -924,7 +924,9 @@ pub fn build_u256_guarantee_inv_mod_n<'ctx, 'this>(
     let op = entry.append_operation(llvm::undef(guarantee_type, location));
     let guarantee = op.result(0)?.into();
 
-    // Increment the range_check builtin
+    // The sierra-to-casm compiler uses the range check builtin a total of 9 times if the
+    // condition is true. Otherwise it will be used 7 times.
+    // https://github.com/starkware-libs/cairo/blob/b067c4531f55e0e6836c203c74ce3e793512f355/crates/cairo-lang-sierra-to-casm/src/invocations/int/unsigned256.rs#L21
     let range_check =
         increment_builtin_counter_by_if(context, entry, location, entry.arg(0)?, 9, 7, condition)?;
 
