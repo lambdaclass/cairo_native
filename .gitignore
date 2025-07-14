@@ -17,6 +17,7 @@ target/
 
 .clangd
 *.sierra
+corelib
 
 .env
 .envrc
