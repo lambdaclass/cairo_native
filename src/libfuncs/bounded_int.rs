@@ -596,16 +596,8 @@ fn build_divrem<'ctx, 'this>(
             entry.arg(0)?,
             3,
         )?,
-        BoundedIntDivRemAlgorithm::KnownSmallQuotient { .. } => {
-            crate::libfuncs::increment_builtin_counter_by(
-                context,
-                entry,
-                location,
-                entry.arg(0)?,
-                4,
-            )?
-        }
-        BoundedIntDivRemAlgorithm::KnownSmallLhs { .. } => {
+        BoundedIntDivRemAlgorithm::KnownSmallQuotient { .. }
+        | BoundedIntDivRemAlgorithm::KnownSmallLhs { .. } => {
             crate::libfuncs::increment_builtin_counter_by(
                 context,
                 entry,
