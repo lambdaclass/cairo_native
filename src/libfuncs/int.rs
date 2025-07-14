@@ -550,7 +550,7 @@ fn build_operation<'ctx, 'this>(
     // * for unsigned128:
     //    * for overflowing add: https://github.com/starkware-libs/cairo/blob/main/crates/cairo-lang-sierra-to-casm/src/invocations/int/unsigned128.rs#L45
     //    * for overflowing sub: https://github.com/starkware-libs/cairo/blob/main/crates/cairo-lang-sierra-to-casm/src/invocations/int/mod.rs#L146
-    let mut range_check = increment_builtin_counter(context, entry, location, entry.arg(0)?)?;
+    let range_check = increment_builtin_counter(context, entry, location, entry.arg(0)?)?;
     let value_ty = registry.get_type(&info.signature.param_signatures[1].ty)?;
     let value_range = value_ty.integer_range(registry)?;
     let is_signed = !value_range.lower.is_zero();

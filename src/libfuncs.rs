@@ -102,7 +102,7 @@ impl LibfuncBuilder for CoreConcreteLibfunc {
     ) -> Result<()> {
         match self {
             Self::ApTracking(_) | Self::BranchAlign(_) | Self::UnconditionalJump(_) => {
-                build_noop::<0, true>(
+                build_noop::<0, false>(
                     context,
                     registry,
                     entry,
