@@ -6,6 +6,7 @@ use crate::{
     types::TypeBuilder,
     utils::{ProgramRegistryExt, PRIME},
 };
+use ark_ff::One;
 use cairo_lang_sierra::{
     extensions::{
         core::{CoreLibfunc, CoreType, CoreTypeConcrete},
@@ -450,9 +451,12 @@ fn build_from_felt252<'ctx, 'this>(
         {
             let region = Region::new();
             let block = region.append_block(Block::new(&[]));
-            let rc_size_value = BigInt::from(1) << 128;
-            let rc_size = block.const_int(context, location, rc_size_value, 256)?;
-            let out_range = block.const_int(context, location, threshold_size, 256)?;
+            // When shifting left 128 times we would need 256 bits since
+            // it would not fit in 128. To avoid this we substract one from
+            // the two elements we want to compare.
+            let rc_size_value = (BigInt::from(1) << 128) - BigInt::one();
+            let rc_size = block.const_int(context, location, rc_size_value, 128)?;
+            let out_range = block.const_int(context, location, threshold_size - 1, 128)?;
             let condition =
                 block.cmpi(context, CmpiPredicate::Ult, out_range, rc_size, location)?;
             let range_check = super::increment_builtin_counter_by_if(
