@@ -1,6 +1,7 @@
 use super::{BlockExt, LibfuncHelper};
 use crate::{
     error::{panic::ToNativeAssertError, Result},
+    execution_result::BITWISE_BUILTIN_SIZE,
     metadata::MetadataStorage,
     native_panic,
     types::TypeBuilder,
@@ -212,7 +213,13 @@ fn build_bitwise<'ctx, 'this>(
     _metadata: &mut MetadataStorage,
     _info: &SignatureOnlyConcreteLibfunc,
 ) -> Result<()> {
-    let bitwise = super::increment_builtin_counter(context, entry, location, entry.arg(0)?)?;
+    let bitwise = super::increment_builtin_counter_by(
+        context,
+        entry,
+        location,
+        entry.arg(0)?,
+        BITWISE_BUILTIN_SIZE,
+    )?;
 
     let lhs = entry.arg(1)?;
     let rhs = entry.arg(2)?;
@@ -238,7 +245,13 @@ fn build_byte_reverse<'ctx, 'this>(
     _metadata: &mut MetadataStorage,
     _info: &SignatureOnlyConcreteLibfunc,
 ) -> Result<()> {
-    let bitwise = super::increment_builtin_counter(context, entry, location, entry.arg(0)?)?;
+    let bitwise = super::increment_builtin_counter_by(
+        context,
+        entry,
+        location,
+        entry.arg(0)?,
+        4 * BITWISE_BUILTIN_SIZE,
+    )?;
 
     let value =
         entry.append_op_result(ods::llvm::intr_bswap(context, entry.arg(1)?, location).into())?;
@@ -533,7 +546,8 @@ fn build_mul_guarantee_verify<'ctx, 'this>(
     _metadata: &mut MetadataStorage,
     _info: &SignatureOnlyConcreteLibfunc,
 ) -> Result<()> {
-    let range_check = super::increment_builtin_counter(context, entry, location, entry.arg(0)?)?;
+    let range_check =
+        super::increment_builtin_counter_by(context, entry, location, entry.arg(0)?, 9)?;
 
     helper.br(entry, 0, &[range_check], location)
 }
@@ -1016,7 +1030,7 @@ mod test {
         for value in data.into_iter() {
             let result = executor.invoke_dynamic(&program.funcs[0].id, &[value.into()], None)?;
 
-            assert_eq!(result.builtin_stats.bitwise, 1);
+            assert_eq!(result.builtin_stats.bitwise, 4);
             assert_eq!(result.return_value, Value::Uint128(value.swap_bytes()));
         }
 
@@ -1505,7 +1519,7 @@ mod test {
             let lo = u128::from_le_bytes(res_bytes[..16].try_into().unwrap());
             let hi = u128::from_le_bytes(res_bytes[16..].try_into().unwrap());
 
-            assert_eq!(result.builtin_stats.range_check, 1);
+            assert_eq!(result.builtin_stats.range_check, 9);
             assert_eq!(
                 result.return_value,
                 Value::Struct {

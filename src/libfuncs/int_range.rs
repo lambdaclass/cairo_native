@@ -56,7 +56,7 @@ pub fn build_int_range_try_new<'ctx, 'this>(
     metadata: &mut MetadataStorage,
     info: &SignatureOnlyConcreteLibfunc,
 ) -> Result<()> {
-    let range_check = entry.arg(0)?;
+    let range_check = super::increment_builtin_counter(context, entry, location, entry.arg(0)?)?;
     let x = entry.arg(1)?;
     let y = entry.arg(2)?;
     let range_ty = registry.build_type(
