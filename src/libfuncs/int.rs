@@ -527,6 +527,14 @@ fn build_operation<'ctx, 'this>(
     metadata: &mut MetadataStorage,
     info: &IntOperationConcreteLibfunc,
 ) -> Result<()> {
+    // Increment the range check builtin by 1
+    // for signed ints: https://github.com/starkware-libs/cairo/blob/main/crates/cairo-lang-sierra-to-casm/src/invocations/int/signed.rs#L68
+    // for unsinged ints:
+    //     for overflowing add: https://github.com/starkware-libs/cairo/blob/main/crates/cairo-lang-sierra-to-casm/src/invocations/int/unsigned.rs#L19
+    //     for overflowing sub: https://github.com/starkware-libs/cairo/blob/main/crates/cairo-lang-sierra-to-casm/src/invocations/int/mod.rs#L67
+    // for unsigned128:
+    //     for overflowing add: https://github.com/starkware-libs/cairo/blob/main/crates/cairo-lang-sierra-to-casm/src/invocations/int/unsigned128.rs#L45
+    //.    for overflowing sub: https://github.com/starkware-libs/cairo/blob/main/crates/cairo-lang-sierra-to-casm/src/invocations/int/mod.rs#L146
     let mut range_check = increment_builtin_counter(context, entry, location, entry.arg(0)?)?;
     let value_ty = registry.get_type(&info.signature.param_signatures[1].ty)?;
     let value_range = value_ty.integer_range(registry)?;
@@ -606,6 +614,8 @@ fn build_operation<'ctx, 'this>(
         let is_in_range_and_not_i128 =
             entry.append_op_result(arith::andi(is_not_i128_value, is_in_range, location))?;
 
+        // if we are handling an i128 and the in_range condition is met, increase the range check builtin by 1:
+        // https://github.com/starkware-libs/cairo/blob/main/crates/cairo-lang-sierra-to-casm/src/invocations/int/signed.rs#L105
         range_check = increment_builtin_counter_by_if(
             context,
             entry,
