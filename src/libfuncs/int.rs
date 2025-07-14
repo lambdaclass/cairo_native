@@ -928,6 +928,7 @@ mod test {
     use crate::{
         context::NativeContext, executor::JitNativeExecutor, utils::HALF_PRIME, OptLevel, Value,
     };
+    use ark_ff::One;
     use cairo_lang_sierra::ProgramParser;
     use itertools::Itertools;
     use num_bigint::{BigInt, BigUint, Sign};
@@ -1366,8 +1367,8 @@ mod test {
 
     fn test_from_felt252<T>() -> Result<(), Box<dyn std::error::Error>>
     where
-        T: Bounded + Copy + Num + TryFrom<Value>,
-        Felt: From<T>,
+        T: Bounded + Copy + Num + TryFrom<Value> + Into<BigInt> + TryFrom<Felt>,
+        Felt: From<T> + From<BigInt>,
         Value: From<T>,
     {
         let n_bits = 8 * mem::size_of::<T>();
@@ -1428,16 +1429,67 @@ mod test {
                 None,
             ),
         ];
+        let upper_bound: BigInt = T::max_value().into();
+        let lower_bound: BigInt = T::min_value().into();
         for (value, target) in data {
             let result = executor.invoke_dynamic(&program.funcs[0].id, &[value.into()], None)?;
 
-            // assert_eq!(result.builtin_stats.range_check, 3);
+            match T::try_from(value) {
+                Ok(_) => {
+                    let mut temp: BigInt = T::max_value().into() - T::min_value().into();
+                    temp = temp + BigInt::one();
+                    let out_range = Felt::from(temp);
+                    let rc_size = Felt::from(BigInt::from(1) << 128);
+                    if out_range < rc_size {
+                        assert_eq!(
+                            result.builtin_stats.range_check, 2,
+                            "Type: {}  Lower: {}  Upper: {}  Value: {}",
+                            type_id, lower_bound, upper_bound, value
+                        );
+                    } else {
+                        assert_eq!(
+                            result.builtin_stats.range_check, 1,
+                            "Type: {}  Lower: {}  Upper: {}  Value: {}",
+                            type_id, lower_bound, upper_bound, value
+                        );
+                    }
+                }
+                Err(_) => assert_eq!(
+                    result.builtin_stats.range_check, 3,
+                    "Type: {}  Lower: {}  Upper: {}  Value: {}",
+                    type_id, lower_bound, upper_bound, value
+                ),
+            }
+
+            // if big_int_value >= lower_bound && big_int_value <= upper_bound {
+            //     let out_range = Felt::from(T::max_value() - T::min_value() + T::one());
+            //     let rc_size = Felt::from(BigInt::from(1) << 128);
+            //     if out_range < rc_size {
+            //         assert_eq!(
+            //             result.builtin_stats.range_check, 2,
+            //             "Type: {}  Lower: {}  Upper: {}  Value: {}",
+            //             type_id, lower_bound, upper_bound, big_int_value
+            //         );
+            //     } else {
+            //         assert_eq!(
+            //             result.builtin_stats.range_check, 1,
+            //             "Type: {}  Lower: {}  Upper: {}  Value: {}",
+            //             type_id, lower_bound, upper_bound, big_int_value
+            //         );
+            //     }
+            // } else {
+            //     assert_eq!(
+            //         result.builtin_stats.range_check, 3,
+            //         "Type: {}  Lower: {}  Upper: {}  Value: {}",
+            //         type_id, lower_bound, upper_bound, big_int_value
+            //     );
+            // }
             assert_eq!(
                 result.return_value,
                 match target {
                     Some(x) => Value::Enum {
                         tag: 0,
-                        value: Box::new(x.into()),
+                        value: Box::new(Value::from(x)),
                         debug_name: None,
                     },
                     None => Value::Enum {
