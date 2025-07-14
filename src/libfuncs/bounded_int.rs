@@ -2,7 +2,12 @@
 
 use super::LibfuncHelper;
 use crate::{
-    error::{panic::ToNativeAssertError, Result}, execution_result::RANGE_CHECK_BUILTIN_SIZE, metadata::MetadataStorage, native_assert, types::TypeBuilder, utils::{BlockExt, RangeExt}
+    error::{panic::ToNativeAssertError, Result},
+    execution_result::RANGE_CHECK_BUILTIN_SIZE,
+    metadata::MetadataStorage,
+    native_assert,
+    types::TypeBuilder,
+    utils::{BlockExt, RangeExt},
 };
 use cairo_lang_sierra::{
     extensions::{
@@ -597,7 +602,7 @@ fn build_divrem<'ctx, 'this>(
         BoundedIntDivRemAlgorithm::KnownSmallQuotient { .. }
         | BoundedIntDivRemAlgorithm::KnownSmallLhs { .. } => {
             // Additional increment of range check builtin by 1
-            // 
+            //
             // Case KnownSmallQuotient: https://github.com/starkware-libs/cairo/blob/61c56aff349b4715f2a6619faf5b710f2da8a663/crates/cairo-lang-sierra-to-casm/src/invocations/int/bounded.rs#L126
             // Case KnownSmallLhs: https://github.com/starkware-libs/cairo/blob/61c56aff349b4715f2a6619faf5b710f2da8a663/crates/cairo-lang-sierra-to-casm/src/invocations/int/bounded.rs#L154
             crate::libfuncs::increment_builtin_counter_by(
