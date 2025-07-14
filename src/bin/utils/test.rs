@@ -106,7 +106,7 @@ pub fn display_tests_summary(summary: &TestsSummary, filtered_out: usize) {
     println!();
 
     if !summary.failed.is_empty() || !summary.mismatch.is_empty() {
-        println!("Failures:");
+        println!("failures:");
         for (failure, run_result) in summary
             .failed
             .iter()
@@ -133,18 +133,18 @@ pub fn display_tests_summary(summary: &TestsSummary, filtered_out: usize) {
     }
 
     println!(
-        "Test result: {}. {} passed; {} failed; {} mismatched; {} ignored; {} filtered out;",
+        "test result: {}. {} passed; {} failed; {} ignored; {} filtered out;",
         if summary.failed.len() == 0 && summary.mismatch.len() == 0 {
-            "SUCCESS".bright_green()
+            "OK".bright_green()
         } else {
-            "FAILURE".bright_red()
+            "FAILED".bright_red()
         },
         summary.passed.len(),
-        summary.failed.len(),
-        summary.mismatch.len(),
+        summary.failed.len() + summary.mismatch.len(),
         summary.ignored.len(),
         filtered_out
     );
+    println!();
 }
 
 /// Runs the tests and process the results for a summary.

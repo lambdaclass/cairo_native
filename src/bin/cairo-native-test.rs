@@ -121,7 +121,7 @@ fn main() -> anyhow::Result<()> {
     display_tests_summary(&summary, filtered_out);
 
     if summary.failed.len() > 0 || summary.mismatch.len() > 0 {
-        bail!("Some tests failed")
+        bail!("test failed")
     }
 
     Ok(())
