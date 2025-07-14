@@ -1199,6 +1199,8 @@ fn build_u96_guarantee_verify<'ctx, 'this>(
     _metadata: &mut MetadataStorage,
     _info: &SignatureOnlyConcreteLibfunc,
 ) -> Result<()> {
+    // We increase the range_check96 builtin by 1 usage
+    // https://github.com/starkware-libs/cairo/blob/dc8b4f0b2e189a3b107b15062895597588b78a46/crates/cairo-lang-sierra-to-casm/src/invocations/circuit.rs?plain=1#L534
     let range_check96 = increment_builtin_counter_by(
         context,
         entry,
