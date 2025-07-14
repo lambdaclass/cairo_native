@@ -1,1 +1,1 @@
-window.SIDEBAR_ITEMS = {"struct":["BuiltinStats","ContractExecutionResult","ExecutionResult"]};
+window.SIDEBAR_ITEMS = {"constant":["ADD_MOD_BUILTIN_SIZE","BITWISE_BUILTIN_SIZE","EC_OP_BUILTIN_SIZE","MUL_MOD_BUILTIN_SIZE","PEDERSEN_BUILTIN_SIZE","POSEIDON_BUILTIN_SIZE","RANGE_CHECK96_BUILTIN_SIZE","RANGE_CHECK_BUILTIN_SIZE","SEGMENT_ARENA_BUILTIN_SIZE"],"struct":["BuiltinStats","ContractExecutionResult","ExecutionResult"]};
