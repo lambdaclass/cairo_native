@@ -320,6 +320,9 @@ fn build_divmod<'ctx, 'this>(
             "div_rem of ranges: lhs = {:#?} and rhs= {:#?} is not supported yet",
             &lhs_range, &rhs_range
         ))?;
+    // The sierra-to-casm compiler uses the range check builtin 3 times if div_rem_algorithm
+    // is KnownSmallRhs. Otherwise it is used 4 times.
+    // https://github.com/starkware-libs/cairo/blob/96625b57abee8aca55bdeb3ecf29f82e8cea77c3/crates/cairo-lang-sierra-to-casm/src/invocations/int/unsigned.rs#L151C1-L155C11
     let range_check = match div_rem_algorithm {
         BoundedIntDivRemAlgorithm::KnownSmallRhs => {
             super::increment_builtin_counter_by(context, entry, location, entry.arg(0)?, 3)?
