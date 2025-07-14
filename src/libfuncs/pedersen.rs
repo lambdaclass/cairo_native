@@ -4,6 +4,7 @@
 use super::LibfuncHelper;
 use crate::{
     error::{panic::ToNativeAssertError, Result},
+    execution_result::PEDERSEN_BUILTIN_SIZE,
     metadata::{runtime_bindings::RuntimeBindingsMeta, MetadataStorage},
     utils::{get_integer_layout, BlockExt, ProgramRegistryExt},
 };
@@ -53,8 +54,13 @@ pub fn build_pedersen<'ctx>(
 
     // The sierra-to-casm compiler uses the pedersen builtin a total of 1 time.
     // https://github.com/starkware-libs/cairo/blob/dc8b4f0b2e189a3b107b15062895597588b78a46/crates/cairo-lang-sierra-to-casm/src/invocations/pedersen.rs?plain=1#L23
-    let pedersen_builtin =
-        super::increment_builtin_counter_by(context, entry, location, entry.arg(0)?, 3)?;
+    let pedersen_builtin = super::increment_builtin_counter_by(
+        context,
+        entry,
+        location,
+        entry.arg(0)?,
+        PEDERSEN_BUILTIN_SIZE,
+    )?;
 
     let felt252_ty =
         registry.build_type(context, helper, metadata, &info.param_signatures()[1].ty)?;
