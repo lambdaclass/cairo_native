@@ -7,9 +7,7 @@ use cairo_lang_runner::short_string::as_cairo_short_string;
 use cairo_lang_sierra::ids::ConcreteLibfuncId;
 use cairo_lang_sierra_to_casm::metadata::MetadataComputationConfig;
 #[cfg(feature = "with-libfunc-counter")]
-use cairo_native::metadata::libfunc_counter::{
-    libfunc_counter_runtime::CountersArrayGuard, LibfuncCounterBinding,
-};
+use cairo_native::metadata::libfunc_counter::libfunc_counter_runtime::CountersArrayGuard;
 #[cfg(feature = "with-libfunc-profiling")]
 use cairo_native::metadata::profiler::LibfuncProfileData;
 use cairo_native::{
@@ -145,18 +143,7 @@ fn main() -> anyhow::Result<()> {
 
             Box::new(move |function_id, args, gas, syscall_handler| {
                 #[cfg(feature = "with-libfunc-counter")]
-                let mut array_counter_guard = CountersArrayGuard(std::ptr::null_mut());
-
-                #[cfg(feature = "with-libfunc-counter")]
-                if let Some(counter_array_ptr_ptr) =
-                    executor.find_symbol_ptr(LibfuncCounterBinding::CounterArray.symbol())
-                {
-                    let counter_array_ptr_ptr = counter_array_ptr_ptr.cast::<*mut u32>();
-                    unsafe {
-                        // Save the current then array of counters to restore it after the execution.
-                        array_counter_guard = CountersArrayGuard::init(*counter_array_ptr_ptr);
-                    }
-                };
+                let array_counter_guard = CountersArrayGuard::init(libfuncs_amount);
 
                 let result = executor.invoke_dynamic_with_syscall_handler(
                     function_id,
@@ -170,26 +157,15 @@ fn main() -> anyhow::Result<()> {
                     use cairo_native::metadata::libfunc_counter::libfunc_counter_runtime;
                     use cairo_native::metadata::libfunc_counter::LibfuncCounterBinding;
 
-                    let counter_array_ptr_ptr = executor
-                        .find_symbol_ptr(LibfuncCounterBinding::CounterArray.symbol())
-                        .expect("");
-
-                    let counter_array_ptr_ptr = counter_array_ptr_ptr.cast::<*mut u32>();
                     let counter_id_ptr = executor
-                        .find_symbol_ptr(LibfuncCounterBinding::CounterArray.symbol())
+                        .find_symbol_ptr(LibfuncCounterBinding::CounterId.symbol())
                         .expect("");
 
                     unsafe {
-                        libfunc_counter_runtime::store_counters_array(
+                        libfunc_counter_runtime::store_and_free_counters_array(
                             counter_id_ptr as *mut u64,
-                            counter_array_ptr_ptr,
                             libfuncs_amount,
                         );
-
-                        if !(*counter_array_ptr_ptr).is_null() {
-                            libc::free(*counter_array_ptr_ptr as *mut libc::c_void);
-                        }
-                        *counter_array_ptr_ptr = array_counter_guard.0;
                     }
 
                     drop(array_counter_guard);
@@ -238,17 +214,7 @@ fn main() -> anyhow::Result<()> {
 
             Box::new(move |function_id, args, gas, syscall_handler| {
                 #[cfg(feature = "with-libfunc-counter")]
-                let mut array_counter_guard = CountersArrayGuard(std::ptr::null_mut());
-
-                #[cfg(feature = "with-libfunc-counter")]
-                if let Some(counter_array_ptr_ptr) =
-                    executor.find_symbol_ptr(LibfuncCounterBinding::CounterArray.symbol())
-                {
-                    let counter_array_ptr_ptr = counter_array_ptr_ptr.cast::<*mut u32>();
-                    unsafe {
-                        array_counter_guard = CountersArrayGuard::init(*counter_array_ptr_ptr);
-                    }
-                };
+                let array_counter_guard = CountersArrayGuard::init(libfuncs_amount);
 
                 let result = executor.invoke_dynamic_with_syscall_handler(
                     function_id,
@@ -262,26 +228,15 @@ fn main() -> anyhow::Result<()> {
                     use cairo_native::metadata::libfunc_counter::libfunc_counter_runtime;
                     use cairo_native::metadata::libfunc_counter::LibfuncCounterBinding;
 
-                    let counter_array_ptr_ptr = executor
-                        .find_symbol_ptr(LibfuncCounterBinding::CounterArray.symbol())
-                        .expect("");
-
-                    let counter_array_ptr_ptr = counter_array_ptr_ptr.cast::<*mut u32>();
                     let counter_id_ptr = executor
-                        .find_symbol_ptr(LibfuncCounterBinding::CounterArray.symbol())
+                        .find_symbol_ptr(LibfuncCounterBinding::CounterId.symbol())
                         .expect("");
 
                     unsafe {
-                        libfunc_counter_runtime::store_counters_array(
+                        libfunc_counter_runtime::store_and_free_counters_array(
                             counter_id_ptr as *mut u64,
-                            counter_array_ptr_ptr,
                             libfuncs_amount,
                         );
-
-                        if !(*counter_array_ptr_ptr).is_null() {
-                            libc::free(*counter_array_ptr_ptr as *mut libc::c_void);
-                        }
-                        *counter_array_ptr_ptr = array_counter_guard.0;
                     }
 
                     drop(array_counter_guard);

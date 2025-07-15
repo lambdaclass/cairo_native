@@ -667,7 +667,6 @@ fn compile_func(
                             location,
                             metadata,
                             *libfunc_idx,
-                            libfunc_indexes.len() as u32,
                         )?;
                     }
 

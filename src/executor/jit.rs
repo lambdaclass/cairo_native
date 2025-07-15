@@ -74,6 +74,9 @@ impl<'m> JitNativeExecutor<'m> {
         #[cfg(feature = "with-libfunc-profiling")]
         crate::metadata::profiler::setup_runtime(|name| executor.find_symbol_ptr(name));
 
+        #[cfg(feature = "with-libfunc-counter")]
+        crate::metadata::libfunc_counter::setup_runtime(|name| executor.find_symbol_ptr(name));
+
         Ok(executor)
     }
 
@@ -120,7 +123,7 @@ impl<'m> JitNativeExecutor<'m> {
             .gas_metadata
             .get_initial_available_gas(function_id, gas)
             .map_err(crate::error::Error::GasMetadataError)?;
-        
+
         super::invoke_dynamic(
             &self.registry,
             self.find_function_ptr(function_id),

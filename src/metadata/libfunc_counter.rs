@@ -26,6 +26,7 @@ use melior::{
     dialect::{llvm, memref, ods},
     ir::{
         attribute::{FlatSymbolRefAttribute, StringAttribute, TypeAttribute},
+        operation::OperationBuilder,
         r#type::{IntegerType, MemRefType},
         Attribute, Block, BlockLike, Location, Module, Region, Value,
     },
@@ -34,15 +35,13 @@ use melior::{
 
 use crate::{
     error::{Error, Result},
-    metadata::realloc_bindings::ReallocBindingsMeta,
-    utils::{get_integer_layout, layout_repeat, BlockExt, GepIndex},
+    utils::{BlockExt, GepIndex},
 };
 
 #[derive(Clone, Copy, Debug, Hash, PartialEq, Eq)]
 pub enum LibfuncCounterBinding {
     CounterId,
     GetCounterArray,
-    CounterArray,
 }
 
 impl LibfuncCounterBinding {
@@ -50,7 +49,6 @@ impl LibfuncCounterBinding {
         match self {
             LibfuncCounterBinding::CounterId => "cairo_native__counter_id",
             LibfuncCounterBinding::GetCounterArray => "cairo_native__get_counter_array",
-            LibfuncCounterBinding::CounterArray => "cairo_native__counter_array",
         }
     }
 
@@ -60,7 +58,6 @@ impl LibfuncCounterBinding {
             LibfuncCounterBinding::GetCounterArray => {
                 libfunc_counter_runtime::get_counter_array as *const ()
             }
-            LibfuncCounterBinding::CounterArray => std::ptr::null(),
         }
     }
 }
@@ -161,76 +158,21 @@ impl LibfuncCounterMeta {
         module: &Module,
         block: &'a Block<'c>,
         location: Location<'c>,
-        libfunc_amount: u32,
     ) -> Result<Value<'c, 'a>> {
-        if self.active_map.insert(LibfuncCounterBinding::CounterArray) {
-            self.build_counter_id(context, module, block, location)?;
-
-            module.body().append_operation(
-                ods::llvm::mlir_global(
-                    context,
-                    Region::new(),
-                    TypeAttribute::new(llvm::r#type::pointer(context, 0)),
-                    StringAttribute::new(context, LibfuncCounterBinding::CounterArray.symbol()),
-                    Attribute::parse(context, "#llvm.linkage<weak>")
-                        .ok_or(Error::ParseAttributeError)?,
-                    location,
-                )
-                .into(),
-            );
-
-            // Once we created the global pointer to the counters, we need to reallocate it so that it
-            // can hold as many counters as libfuncs declared
-            let u32_layout = get_integer_layout(32);
-            let libfuncs_amount_bytes = layout_repeat(&u32_layout, libfunc_amount as usize)?
-                .0
-                .pad_to_align()
-                .size();
-            let libfuncs_amount_bytes =
-                block.const_int(context, location, libfuncs_amount_bytes, 64)?;
-
-            let array_counter_ptr_ptr = block.append_op_result(
-                ods::llvm::mlir_addressof(
-                    context,
-                    llvm::r#type::pointer(context, 0),
-                    FlatSymbolRefAttribute::new(
-                        context,
-                        LibfuncCounterBinding::CounterArray.symbol(),
-                    ),
-                    location,
-                )
-                .into(),
-            )?;
-
-            let array_counter_ptr =
-                block.append_op_result(llvm::zero(llvm::r#type::pointer(context, 0), location))?;
-
-            let array_counter_ptr = block.append_op_result(ReallocBindingsMeta::realloc(
-                context,
-                array_counter_ptr,
-                libfuncs_amount_bytes,
-                location,
-            )?)?;
-
-            block.store(context, location, array_counter_ptr_ptr, array_counter_ptr)?;
-        }
-
-        let array_counter_ptr_ptr = block.append_op_result(
-            ods::llvm::mlir_addressof(
-                context,
-                llvm::r#type::pointer(context, 0),
-                FlatSymbolRefAttribute::new(context, LibfuncCounterBinding::CounterArray.symbol()),
-                location,
-            )
-            .into(),
+        self.build_counter_id(context, module, block, location)?;
+        let function_ptr = self.build_function(
+            context,
+            module,
+            block,
+            location,
+            LibfuncCounterBinding::GetCounterArray,
         )?;
 
-        // return the pointer to array counter
-        block.load(
-            context,
-            location,
-            array_counter_ptr_ptr,
-            llvm::r#type::pointer(context, 0),
+        block.append_op_result(
+            OperationBuilder::new("llvm.call", location)
+                .add_operands(&[function_ptr])
+                .add_results(&[llvm::r#type::pointer(context, 0)])
+                .build()?,
         )
     }
 
@@ -241,13 +183,11 @@ impl LibfuncCounterMeta {
         block: &Block<'_>,
         location: Location,
         libfunc_idx: usize,
-        libfuncs_amount: u32,
     ) -> Result<()> {
         let u32_ty = IntegerType::new(context, 32).into();
         let k1 = block.const_int(context, location, 1, 32)?;
 
-        let array_counter_ptr =
-            self.build_array_counter(context, module, block, location, libfuncs_amount)?;
+        let array_counter_ptr = self.build_array_counter(context, module, block, location)?;
 
         let value_counter_ptr = block.gep(
             context,
@@ -263,6 +203,17 @@ impl LibfuncCounterMeta {
         block.store(context, location, value_counter_ptr, value_incremented)?;
 
         Ok(())
+    }
+}
+
+pub fn setup_runtime(find_symbol_ptr: impl Fn(&str) -> Option<*mut libc::c_void>) {
+    let bindings = &[LibfuncCounterBinding::GetCounterArray];
+
+    for binding in bindings {
+        if let Some(global) = find_symbol_ptr(binding.symbol()) {
+            let global = global.cast::<*const ()>();
+            unsafe { *global = binding.function_ptr() };
+        }
     }
 }
 
@@ -297,13 +248,23 @@ pub mod libfunc_counter_runtime {
 
     /// In the context of Starknet, a contract may call another. This means we
     /// need as many arrays of counters as call contracts are invoked during execution.
-    /// This struct is used to hold the current array before calling the next contract 
+    /// This struct is used to hold the current array before calling the next contract
     /// so that it can then be restored.
     pub struct CountersArrayGuard(pub *mut u32);
 
     impl CountersArrayGuard {
-        pub fn init(array_ptr: *mut u32) -> CountersArrayGuard {
-            Self(COUNTERS_ARRAY.replace(array_ptr))
+        pub fn init(libfuncs_amount: usize) -> CountersArrayGuard {
+            let u32_libfuncs_amount = libfuncs_amount * 4;
+
+            let new_array = unsafe { libc::malloc(u32_libfuncs_amount) as *mut u32 };
+
+            for i in 0..libfuncs_amount {
+                unsafe {
+                    *(new_array.add(i)) = 0
+                };
+            }
+
+            Self(COUNTERS_ARRAY.replace(new_array))
         }
     }
 
@@ -321,34 +282,27 @@ pub mod libfunc_counter_runtime {
         location: Location,
         metadata: &mut MetadataStorage,
         libfunc_idx: usize,
-        libfuncs_amount: u32,
     ) -> Result<()> {
         let libfunc_counter = metadata.get_or_insert_with(LibfuncCounterMeta::default);
 
-        libfunc_counter.count_libfunc(
-            context,
-            module,
-            block,
-            location,
-            libfunc_idx,
-            libfuncs_amount,
-        )
+        libfunc_counter.count_libfunc(context, module, block, location, libfunc_idx)
     }
 
-    pub extern "C" fn get_counter_array() -> *const u32 {
-        COUNTERS_ARRAY.with(|x| x.as_ptr()) as *const u32
+    pub fn get_counter_array() -> *mut u32 {
+        COUNTERS_ARRAY.with(|x| x.get()) as *mut u32
     }
 
-    pub unsafe fn store_counters_array(
-        counter_id_ptr: *mut u64,
-        array_ptr_ptr: *mut *mut u32,
-        libfuncs_amount: usize,
-    ) {
-        let counters_vec = slice::from_raw_parts(*array_ptr_ptr, libfuncs_amount).to_vec();
+    pub unsafe extern "C" fn store_and_free_counters_array(counter_id_ptr: *mut u64, libfuncs_amount: usize) {
+        let counter_array_ptr = get_counter_array();
+        let counters_vec = slice::from_raw_parts(counter_array_ptr, libfuncs_amount).to_vec();
 
         LIBFUNC_COUNTER
             .lock()
             .unwrap()
             .insert(*counter_id_ptr, counters_vec);
+
+        if !(counter_array_ptr.is_null()) {
+            libc::free(counter_array_ptr as *mut libc::c_void);
+        }
     }
 }
