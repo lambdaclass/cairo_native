@@ -6,6 +6,7 @@ use cairo_lang_sierra_gas::core_libfunc_cost::{
 };
 use itertools::Itertools;
 use lazy_static::lazy_static;
+use num_bigint::BigInt;
 use num_traits::{ToPrimitive, Zero};
 use rand::Rng;
 use starknet_curve::curve_params::BETA;
@@ -22,6 +23,7 @@ use std::{
     fs::File,
     io::Write,
     mem::{forget, ManuallyDrop},
+    ops::Shl,
     os::fd::FromRawFd,
     ptr,
     rc::Rc,
@@ -309,6 +311,45 @@ pub unsafe extern "C" fn cairo_native__dict_squash(
 
     *gas_ptr -=
         (dict.count.saturating_sub(dict.mappings.len() as u64)) * *DICT_GAS_REFUND_PER_ACCESS;
+
+    // Squashing a dictionary always uses the range check builtin at least twice.
+    // https://github.com/starkware-libs/cairo/blob/v2.12.0-dev.1/crates/cairo-lang-sierra-to-casm/src/invocations/felt252_dict.rs?plain=1#L131-L136
+    *range_check_ptr += 2;
+
+    let no_big_keys = dict
+        .mappings
+        .keys()
+        .map(|raw_key| Felt::from_bytes_le(raw_key))
+        .all(|key| key < Felt::from(BigInt::from(1).shl(128)));
+    let mut number_of_keys = dict.mappings.len() as u64;
+
+    // How we update the range check depends on whether we have any big key or not.
+    // - If there are no big keys, every unique key increases the range check by 3.
+    // - If there are big keys:
+    //   - the first unique key increases the range check by 2.
+    //   - the remaining unique keys increase the range check by 6.
+    if no_big_keys {
+        // The first increase actually appears in two places:
+        // 1a. https://github.com/starkware-libs/cairo/blob/v2.12.0-dev.1/crates/cairo-lang-sierra-to-casm/src/invocations/felt252_dict.rs?plain=1#L326
+        // 1b. https://github.com/starkware-libs/cairo/blob/v2.12.0-dev.1/crates/cairo-lang-sierra-to-casm/src/invocations/felt252_dict.rs?plain=1#L507
+        // 2.  https://github.com/starkware-libs/cairo/blob/v2.12.0-dev.1/crates/cairo-lang-sierra-to-casm/src/invocations/felt252_dict.rs?plain=1#L416
+        // 3.  https://github.com/starkware-libs/cairo/blob/v2.12.0-dev.1/crates/cairo-lang-sierra-to-casm/src/invocations/felt252_dict.rs?plain=1#L480
+        *range_check_ptr += 3 * number_of_keys;
+    } else {
+        if number_of_keys > 0 {
+            // These incremenets are shared with the "no big keys" case.
+            // 2.  https://github.com/starkware-libs/cairo/blob/v2.12.0-dev.1/crates/cairo-lang-sierra-to-casm/src/invocations/felt252_dict.rs?plain=1#L416
+            // 3.  https://github.com/starkware-libs/cairo/blob/v2.12.0-dev.1/crates/cairo-lang-sierra-to-casm/src/invocations/felt252_dict.rs?plain=1#L480
+            *range_check_ptr += 2;
+            number_of_keys -= 1;
+        }
+        // In addition to the increments for the first unique key, we also increase the range check 4 additional times:
+        // - https://github.com/starkware-libs/cairo/blob/v2.12.0-dev.1/crates/cairo-lang-sierra-to-casm/src/invocations/felt252_dict.rs#L669-L674
+        *range_check_ptr += 6 * number_of_keys;
+    }
+    // For each non unique accessed key, we increase the range check once.
+    // - https://github.com/starkware-libs/cairo/blob/v2.12.0-dev.1/crates/cairo-lang-sierra-to-casm/src/invocations/felt252_dict.rs?plain=1#L602
+    *range_check_ptr += dict.count.saturating_sub(dict.mappings.len() as u64);
 
     forget(dict);
 }
