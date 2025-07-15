@@ -129,6 +129,8 @@ pub fn build_squash<'ctx, 'this>(
     let segment_arena = entry.arg(2)?;
     let dict_ptr = entry.arg(3)?;
 
+    // Increase the segment arena builtin by 1 usage.
+    // https://github.com/starkware-libs/cairo/blob/v2.12.0-dev.1/crates/cairo-lang-sierra-to-casm/src/invocations/felt252_dict.rs?plain=1#L148-L151
     let segment_arena = super::increment_builtin_counter_by(
         context,
         entry,
