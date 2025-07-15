@@ -1343,8 +1343,8 @@ mod test {
 
     fn test_from_felt252<T>() -> Result<(), Box<dyn std::error::Error>>
     where
-        T: Bounded + Copy + Num + TryFrom<Value> + Into<BigInt> + TryFrom<Felt>,
-        Felt: From<T> + From<BigInt>,
+        T: Bounded + Copy + Num + TryFrom<Value> + Into<BigInt>,
+        Felt: From<T>,
         Value: From<T>,
     {
         let n_bits = 8 * mem::size_of::<T>();
@@ -1405,34 +1405,32 @@ mod test {
                 None,
             ),
         ];
-        let upper_bound: BigInt = T::max_value().into();
-        let lower_bound: BigInt = T::min_value().into();
         for (value, target) in data {
             let result = executor.invoke_dynamic(&program.funcs[0].id, &[value.into()], None)?;
 
             // If try_from(value) fails, means the value is out of range for T
-            match T::try_from(value) {
-                Ok(_) => {
+            match target {
+                Some(_) => {
                     let range_size = T::max_value().into() - T::min_value().into() + BigInt::one();
                     let rc_size = BigInt::from(1) << 128;
                     if range_size < rc_size {
                         assert_eq!(
                             result.builtin_stats.range_check, 2,
-                            "Type: {}  Lower: {}  Upper: {}  Value: {}",
-                            type_id, lower_bound, upper_bound, value
+                            "Type: {}  Value: {}",
+                            type_id, value
                         );
                     } else {
                         assert_eq!(
                             result.builtin_stats.range_check, 1,
-                            "Type: {}  Lower: {}  Upper: {}  Value: {}",
-                            type_id, lower_bound, upper_bound, value
+                            "Type: {}  Value: {}",
+                            type_id, value
                         );
                     }
                 }
-                Err(_) => assert_eq!(
+                None => assert_eq!(
                     result.builtin_stats.range_check, 3,
-                    "Type: {}  Lower: {}  Upper: {}  Value: {}",
-                    type_id, lower_bound, upper_bound, value
+                    "Difference in range_check count. Type: {}  Value: {}",
+                    type_id, value
                 ),
             }
 
