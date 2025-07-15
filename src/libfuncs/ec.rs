@@ -168,7 +168,7 @@ pub fn build_point_from_x<'ctx, 'this>(
     let point = entry.insert_value(context, location, point, entry.arg(1)?, 0)?;
 
     entry.store(context, location, point_ptr, point)?;
-    let result = metadata
+    let is_on_curve = metadata
         .get_mut::<RuntimeBindingsMeta>()
         .ok_or(Error::MissingMetadata)?
         .libfunc_ec_point_from_x_nz(context, helper, entry, point_ptr, location)?
@@ -178,15 +178,22 @@ pub fn build_point_from_x<'ctx, 'this>(
     let point = entry.load(context, location, point_ptr, ec_point_ty)?;
 
     // The sierra-to-casm compiler uses the range check builtin a total of 3 times if the
-    // is_wide condition is true. Otherwise it is not used.
+    // point is on the curve. Otherwise it is not used.
     // https://github.com/starkware-libs/cairo/blob/ff2e19a3d671036e626ea89cac409c5325383584/crates/cairo-lang-sierra-to-casm/src/invocations/ec.rs#L167
-    let range_check =
-        increment_builtin_counter_by_if(context, entry, location, entry.arg(0)?, 3, 0, result)?;
+    let range_check = increment_builtin_counter_by_if(
+        context,
+        entry,
+        location,
+        entry.arg(0)?,
+        3,
+        0,
+        is_on_curve,
+    )?;
 
     helper.cond_br(
         context,
         entry,
-        result,
+        is_on_curve,
         [0, 1],
         [&[range_check, point], &[range_check]],
         location,
