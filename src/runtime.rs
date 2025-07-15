@@ -319,9 +319,9 @@ pub unsafe extern "C" fn cairo_native__dict_squash(
     let no_big_keys = dict
         .mappings
         .keys()
-        .map(|raw_key| Felt::from_bytes_le(raw_key))
+        .map(Felt::from_bytes_le)
         .all(|key| key < Felt::from(BigInt::from(1).shl(128)));
-    let mut number_of_keys = dict.mappings.len() as u64;
+    let number_of_keys = dict.mappings.len() as u64;
 
     // How we update the range check depends on whether we have any big key or not.
     // - If there are no big keys, every unique key increases the range check by 3.
@@ -341,11 +341,12 @@ pub unsafe extern "C" fn cairo_native__dict_squash(
             // 2.  https://github.com/starkware-libs/cairo/blob/v2.12.0-dev.1/crates/cairo-lang-sierra-to-casm/src/invocations/felt252_dict.rs?plain=1#L416
             // 3.  https://github.com/starkware-libs/cairo/blob/v2.12.0-dev.1/crates/cairo-lang-sierra-to-casm/src/invocations/felt252_dict.rs?plain=1#L480
             *range_check_ptr += 2;
-            number_of_keys -= 1;
         }
-        // In addition to the increments for the first unique key, we also increase the range check 4 additional times:
-        // - https://github.com/starkware-libs/cairo/blob/v2.12.0-dev.1/crates/cairo-lang-sierra-to-casm/src/invocations/felt252_dict.rs#L669-L674
-        *range_check_ptr += 6 * number_of_keys;
+        if number_of_keys > 1 {
+            // In addition to the increments for the first unique key, we also increase the range check 4 additional times:
+            // - https://github.com/starkware-libs/cairo/blob/v2.12.0-dev.1/crates/cairo-lang-sierra-to-casm/src/invocations/felt252_dict.rs#L669-L674
+            *range_check_ptr += 6 * (number_of_keys - 1);
+        }
     }
     // For each non unique accessed key, we increase the range check once.
     // - https://github.com/starkware-libs/cairo/blob/v2.12.0-dev.1/crates/cairo-lang-sierra-to-casm/src/invocations/felt252_dict.rs?plain=1#L602
