@@ -6,7 +6,6 @@ use crate::{
     types::TypeBuilder,
     utils::{ProgramRegistryExt, PRIME},
 };
-use ark_ff::One;
 use cairo_lang_sierra::{
     extensions::{
         core::{CoreLibfunc, CoreType, CoreTypeConcrete},
@@ -453,42 +452,16 @@ fn build_from_felt252<'ctx, 'this>(
     //   the range is greater than or equal to the size of the range check.
     // With the range check size being 2**128
     // https://github.com/starkware-libs/cairo/blob/96625b57abee8aca55bdeb3ecf29f82e8cea77c3/crates/cairo-lang-sierra-to-casm/src/invocations/range_reduction.rs#L26
-    let range_check = entry.append_op_result(scf::r#if(
-        is_in_range,
-        &[IntegerType::new(context, 64).into()],
-        {
-            let region = Region::new();
-            let block = region.append_block(Block::new(&[]));
-            // When shifting left 128 times we would need 256 bits since
-            // it would not fit in 128. To avoid this we substract one from
-            // the two elements we want to compare.
-            let rc_size_value = (BigInt::from(1) << 128) - BigInt::one();
-            let rc_size = block.const_int(context, location, rc_size_value, 128)?;
-            let out_range = block.const_int(context, location, threshold_size - 1, 128)?;
-            let condition =
-                block.cmpi(context, CmpiPredicate::Ult, out_range, rc_size, location)?;
-            let range_check = super::increment_builtin_counter_by_if(
-                context,
-                &block,
-                location,
-                entry.arg(0)?,
-                2,
-                1,
-                condition,
-            )?;
-            block.append_operation(scf::r#yield(&[range_check], location));
-            region
-        },
-        {
-            let region = Region::new();
-            let block = region.append_block(Block::new(&[]));
-            let range_check =
-                super::increment_builtin_counter_by(context, &block, location, entry.arg(0)?, 3)?;
-            block.append_operation(scf::r#yield(&[range_check], location));
-            region
-        },
+    let rc_size = BigInt::from(1) << 128;
+    let range_check = super::increment_builtin_counter_by_if(
+        context,
+        entry,
         location,
-    ))?;
+        entry.arg(0)?,
+        if threshold_size < rc_size { 2 } else { 1 },
+        3,
+        is_in_range,
+    )?;
 
     let value = entry.trunci(value, value_ty, location)?;
 
