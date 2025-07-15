@@ -247,7 +247,7 @@ pub fn build_state_add_mul<'ctx, 'this>(
     _info: &SignatureOnlyConcreteLibfunc,
 ) -> Result<()> {
     // The sierra-to-casm compiler uses the ec op builtin 1 time.
-    // https://github.com/starkware-libs/cairo/blob/ff2e19a3d671036e626ea89cac409c5325383584/crates/cairo-lang-sierra-to-casm/src/invocations/ec.rs#L439
+    // https://github.com/starkware-libs/cairo/blob/v2.12.0-dev.1/crates/cairo-lang-sierra-to-casm/src/invocations/ec.rs#L439
     let ec_op = super::increment_builtin_counter_by(
         context,
         entry,
