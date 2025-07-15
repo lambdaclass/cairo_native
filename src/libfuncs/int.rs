@@ -1434,6 +1434,7 @@ mod test {
         for (value, target) in data {
             let result = executor.invoke_dynamic(&program.funcs[0].id, &[value.into()], None)?;
 
+            // If try_from(value) fails, means the value is out of range for T
             match T::try_from(value) {
                 Ok(_) => {
                     let range_size = T::max_value().into() - T::min_value().into() + BigInt::one();
@@ -1459,29 +1460,6 @@ mod test {
                 ),
             }
 
-            // if big_int_value >= lower_bound && big_int_value <= upper_bound {
-            //     let out_range = Felt::from(T::max_value() - T::min_value() + T::one());
-            //     let rc_size = Felt::from(BigInt::from(1) << 128);
-            //     if out_range < rc_size {
-            //         assert_eq!(
-            //             result.builtin_stats.range_check, 2,
-            //             "Type: {}  Lower: {}  Upper: {}  Value: {}",
-            //             type_id, lower_bound, upper_bound, big_int_value
-            //         );
-            //     } else {
-            //         assert_eq!(
-            //             result.builtin_stats.range_check, 1,
-            //             "Type: {}  Lower: {}  Upper: {}  Value: {}",
-            //             type_id, lower_bound, upper_bound, big_int_value
-            //         );
-            //     }
-            // } else {
-            //     assert_eq!(
-            //         result.builtin_stats.range_check, 3,
-            //         "Type: {}  Lower: {}  Upper: {}  Value: {}",
-            //         type_id, lower_bound, upper_bound, big_int_value
-            //     );
-            // }
             assert_eq!(
                 result.return_value,
                 match target {
