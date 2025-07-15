@@ -525,6 +525,8 @@ fn build_mul_guarantee_verify<'ctx, 'this>(
     _metadata: &mut MetadataStorage,
     _info: &SignatureOnlyConcreteLibfunc,
 ) -> Result<()> {
+    // The sierra-to-casm compiler uses the range check builtin a total of 9 times.
+    // https://github.com/starkware-libs/cairo/blob/dc8b4f0b2e189a3b107b15062895597588b78a46/crates/cairo-lang-sierra-to-casm/src/invocations/int/unsigned128.rs?plain=1#L112
     let range_check =
         super::increment_builtin_counter_by(context, entry, location, entry.arg(0)?, 9)?;
 
