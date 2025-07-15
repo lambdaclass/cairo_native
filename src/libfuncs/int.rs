@@ -840,8 +840,6 @@ fn build_u128s_from_felt252<'ctx, 'this>(
     _metadata: &mut MetadataStorage,
     _info: &SignatureOnlyConcreteLibfunc,
 ) -> Result<()> {
-    let range_check = super::increment_builtin_counter(context, entry, location, entry.arg(0)?)?;
-
     let target_ty = IntegerType::new(context, 128).into();
 
     let lo = entry.trunci(entry.arg(1)?, target_ty, location)?;
@@ -852,6 +850,19 @@ fn build_u128s_from_felt252<'ctx, 'this>(
 
     let k0 = entry.const_int_from_type(context, location, 0, target_ty)?;
     let is_wide = entry.cmpi(context, CmpiPredicate::Ne, hi, k0, location)?;
+
+    // The sierra-to-casm compiler uses the range check builtin a total of 3 times when the value is greater than u128 max.
+    // Otherwise it will be used once.
+    // https://github.com/starkware-libs/cairo/blob/96625b57abee8aca55bdeb3ecf29f82e8cea77c3/crates/cairo-lang-sierra-to-casm/src/invocations/int/unsigned128.rs#L234
+    let range_check = super::increment_builtin_counter_by_if(
+        context,
+        entry,
+        location,
+        entry.arg(0)?,
+        3,
+        1,
+        is_wide,
+    )?;
 
     helper.cond_br(
         context,
@@ -1816,7 +1827,11 @@ mod test {
             let lo = u128::from_le_bytes(value_bytes[..16].try_into().unwrap());
             let hi = u128::from_le_bytes(value_bytes[16..].try_into().unwrap());
 
-            assert_eq!(result.builtin_stats.range_check, 1);
+            if value >= Felt::from(BigInt::from(u128::MAX)) {
+                assert_eq!(result.builtin_stats.range_check, 3);
+            } else {
+                assert_eq!(result.builtin_stats.range_check, 1);
+            }
             assert_eq!(
                 result.return_value,
                 Value::Enum {
