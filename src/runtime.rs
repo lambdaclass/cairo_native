@@ -294,19 +294,23 @@ pub unsafe extern "C" fn cairo_native__dict_get(
     is_present as c_int
 }
 
-/// Compute the total gas refund for the dictionary at squash time.
+/// Simulates the felt252_dict_squash libfunc.
 ///
 /// # Safety
 ///
 /// This function is intended to be called from MLIR, deals with pointers, and is therefore
 /// definitely unsafe to use manually.
-pub unsafe extern "C" fn cairo_native__dict_gas_refund(ptr: *const FeltDict) -> u64 {
-    let dict = Rc::from_raw(ptr);
-    let amount =
+pub unsafe extern "C" fn cairo_native__dict_squash(
+    dict_ptr: *const FeltDict,
+    range_check_ptr: &mut u64,
+    gas_ptr: &mut u64,
+) {
+    let dict = Rc::from_raw(dict_ptr);
+
+    *gas_ptr -=
         (dict.count.saturating_sub(dict.mappings.len() as u64)) * *DICT_GAS_REFUND_PER_ACCESS;
 
     forget(dict);
-    amount
 }
 
 /// Compute `ec_point_from_x_nz(x)` and store it.
@@ -837,8 +841,11 @@ mod tests {
         assert_eq!(unsafe { *ptr }, 24);
         unsafe { *ptr = 42 };
 
-        let refund = unsafe { cairo_native__dict_gas_refund(dict) };
-        assert_eq!(refund, 4050);
+        let mut range_check = 0;
+        let mut gas = 4050;
+
+        unsafe { cairo_native__dict_squash(dict, &mut range_check, &mut gas) };
+        assert_eq!(gas, 0);
 
         let cloned_dict = unsafe { cairo_native__dict_dup(dict) };
         unsafe { cairo_native__dict_drop(dict) };
