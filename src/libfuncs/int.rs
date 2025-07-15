@@ -960,12 +960,12 @@ mod test {
         utils::HALF_PRIME, OptLevel, Value,
     };
     use ark_ff::One;
+    use ark_ff::One;
+    use cairo_lang_sierra::ProgramParser;
     use cairo_lang_sierra::{
         extensions::{bounded_int::BoundedIntDivRemAlgorithm, utils::Range},
         ProgramParser,
     };
-    use ark_ff::One;
-    use cairo_lang_sierra::ProgramParser;
     use itertools::Itertools;
     use num_bigint::{BigInt, BigUint, Sign};
     use num_integer::Roots;
