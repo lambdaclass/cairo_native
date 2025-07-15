@@ -488,7 +488,7 @@ fn build_from_felt252<'ctx, 'this>(
     // - 1 time if the value is within the range and the size of
     //   the range is greater than or equal to the size of the range check.
     // With the range check size being 2**128
-    // https://github.com/starkware-libs/cairo/blob/96625b57abee8aca55bdeb3ecf29f82e8cea77c3/crates/cairo-lang-sierra-to-casm/src/invocations/range_reduction.rs#L26
+    // https://github.com/starkware-libs/cairo/blob/v2.12.0-dev.1/crates/cairo-lang-sierra-to-casm/src/invocations/range_reduction.rs#L26
     let rc_size = BigInt::from(1) << 128;
     let range_check = super::increment_builtin_counter_by_if(
         context,
