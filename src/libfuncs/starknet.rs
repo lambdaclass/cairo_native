@@ -391,7 +391,7 @@ pub fn build_class_hash_try_from_felt252<'ctx, 'this>(
     _info: &SignatureOnlyConcreteLibfunc,
 ) -> Result<()> {
     // The sierra-to-casm compiler uses the range check builtin a total of 3 times.
-    // https://github.com/starkware-libs/cairo/blob/dc8b4f0b2e189a3b107b15062895597588b78a46/crates/cairo-lang-sierra-to-casm/src/invocations/misc.rs?plain=1#L266
+    // https://github.com/starkware-libs/cairo/blob/v2.12.0-dev.0/crates/cairo-lang-sierra-to-casm/src/invocations/misc.rs?plain=1#L266
     let range_check =
         super::increment_builtin_counter_by(context, entry, location, entry.arg(0)?, 3)?;
 
@@ -450,7 +450,7 @@ pub fn build_contract_address_try_from_felt252<'ctx, 'this>(
     _info: &SignatureOnlyConcreteLibfunc,
 ) -> Result<()> {
     // The sierra-to-casm compiler uses the range check builtin a total of 3 times.
-    // https://github.com/starkware-libs/cairo/blob/dc8b4f0b2e189a3b107b15062895597588b78a46/crates/cairo-lang-sierra-to-casm/src/invocations/misc.rs?plain=1#L266
+    // https://github.com/starkware-libs/cairo/blob/v2.12.0-dev.0/crates/cairo-lang-sierra-to-casm/src/invocations/misc.rs?plain=1#L266
     let range_check =
         super::increment_builtin_counter_by(context, entry, location, entry.arg(0)?, 3)?;
 
@@ -823,7 +823,7 @@ pub fn build_storage_base_address_from_felt252<'ctx, 'this>(
     _info: &SignatureOnlyConcreteLibfunc,
 ) -> Result<()> {
     // The sierra-to-casm compiler uses the range check builtin a total of 3 times.
-    // https://github.com/starkware-libs/cairo/blob/dc8b4f0b2e189a3b107b15062895597588b78a46/crates/cairo-lang-sierra-to-casm/src/invocations/starknet/storage.rs?plain=1#L30
+    // https://github.com/starkware-libs/cairo/blob/v2.12.0-dev.0/crates/cairo-lang-sierra-to-casm/src/invocations/starknet/storage.rs?plain=1#L30
     let range_check =
         super::increment_builtin_counter_by(context, entry, location, entry.arg(0)?, 3)?;
 
@@ -881,7 +881,7 @@ pub fn build_storage_address_try_from_felt252<'ctx, 'this>(
     _info: &SignatureOnlyConcreteLibfunc,
 ) -> Result<()> {
     // The sierra-to-casm compiler uses the range check builtin a total of 3 times.
-    // https://github.com/starkware-libs/cairo/blob/dc8b4f0b2e189a3b107b15062895597588b78a46/crates/cairo-lang-sierra-to-casm/src/invocations/misc.rs?plain=1#L266
+    // https://github.com/starkware-libs/cairo/blob/v2.12.0-dev.0/crates/cairo-lang-sierra-to-casm/src/invocations/misc.rs?plain=1#L266
     let range_check =
         super::increment_builtin_counter_by(context, entry, location, entry.arg(0)?, 3)?;
 

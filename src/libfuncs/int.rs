@@ -335,7 +335,7 @@ fn build_divmod<'ctx, 'this>(
         ))?;
     // The sierra-to-casm compiler uses the range check builtin 3 times if the algorithm
     // is KnownSmallRhs. Otherwise it is used 4 times.
-    // https://github.com/starkware-libs/cairo/blob/96625b57abee8aca55bdeb3ecf29f82e8cea77c3/crates/cairo-lang-sierra-to-casm/src/invocations/int/unsigned.rs#L151C1-L155C11
+    // https://github.com/starkware-libs/cairo/blob/v2.12.0-dev.0/crates/cairo-lang-sierra-to-casm/src/invocations/int/unsigned.rs#L151C1-L155C11
     let range_check = match div_rem_algorithm {
         BoundedIntDivRemAlgorithm::KnownSmallRhs => {
             super::increment_builtin_counter_by(context, entry, location, entry.arg(0)?, 3)?
@@ -550,7 +550,7 @@ fn build_mul_guarantee_verify<'ctx, 'this>(
     _info: &SignatureOnlyConcreteLibfunc,
 ) -> Result<()> {
     // The sierra-to-casm compiler uses the range check builtin a total of 9 times.
-    // https://github.com/starkware-libs/cairo/blob/dc8b4f0b2e189a3b107b15062895597588b78a46/crates/cairo-lang-sierra-to-casm/src/invocations/int/unsigned128.rs?plain=1#L112
+    // https://github.com/starkware-libs/cairo/blob/v2.12.0-dev.0/crates/cairo-lang-sierra-to-casm/src/invocations/int/unsigned128.rs?plain=1#L112
     let range_check =
         super::increment_builtin_counter_by(context, entry, location, entry.arg(0)?, 9)?;
 
@@ -655,7 +655,7 @@ fn build_square_root<'ctx, 'this>(
     info: &SignatureOnlyConcreteLibfunc,
 ) -> Result<()> {
     // The sierra-to-casm compiler uses the range_check builtin 4 times.
-    // https://github.com/starkware-libs/cairo/blob/96625b57abee8aca55bdeb3ecf29f82e8cea77c3/crates/cairo-lang-sierra-to-casm/src/invocations/int/unsigned.rs#L73
+    // https://github.com/starkware-libs/cairo/blob/v2.12.0-dev.0/crates/cairo-lang-sierra-to-casm/src/invocations/int/unsigned.rs#L73
     let range_check =
         super::increment_builtin_counter_by(context, entry, location, entry.arg(0)?, 4)?;
 
@@ -880,7 +880,7 @@ fn build_u128s_from_felt252<'ctx, 'this>(
 
     // The sierra-to-casm compiler uses the range check builtin a total of 3 times when the value is greater than u128 max.
     // Otherwise it will be used once.
-    // https://github.com/starkware-libs/cairo/blob/96625b57abee8aca55bdeb3ecf29f82e8cea77c3/crates/cairo-lang-sierra-to-casm/src/invocations/int/unsigned128.rs#L234
+    // https://github.com/starkware-libs/cairo/blob/v2.12.0-dev.0/crates/cairo-lang-sierra-to-casm/src/invocations/int/unsigned128.rs#L234
     let range_check = super::increment_builtin_counter_by_if(
         context,
         entry,

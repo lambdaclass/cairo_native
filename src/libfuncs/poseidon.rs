@@ -54,7 +54,7 @@ pub fn build_hades_permutation<'ctx>(
         .to_native_assert_error("runtime library should be available")?;
 
     // The sierra-to-casm compiler uses the poseidon builtin a total of 1 time.
-    // https://github.com/starkware-libs/cairo/blob/dc8b4f0b2e189a3b107b15062895597588b78a46/crates/cairo-lang-sierra-to-casm/src/invocations/poseidon.rs?plain=1#L19
+    // https://github.com/starkware-libs/cairo/blob/v2.12.0-dev.0/crates/cairo-lang-sierra-to-casm/src/invocations/poseidon.rs?plain=1#L19
     let poseidon_builtin = super::increment_builtin_counter_by(
         context,
         entry,
