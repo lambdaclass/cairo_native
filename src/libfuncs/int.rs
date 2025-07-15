@@ -960,8 +960,6 @@ mod test {
         utils::HALF_PRIME, OptLevel, Value,
     };
     use ark_ff::One;
-    use ark_ff::One;
-    use cairo_lang_sierra::ProgramParser;
     use cairo_lang_sierra::{
         extensions::{bounded_int::BoundedIntDivRemAlgorithm, utils::Range},
         ProgramParser,
