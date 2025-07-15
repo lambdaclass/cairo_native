@@ -1,6 +1,6 @@
 use super::{BlockExt, LibfuncHelper};
 use crate::{
-    error::Result,
+    error::{panic::ToNativeAssertError, Result},
     execution_result::BITWISE_BUILTIN_SIZE,
     metadata::MetadataStorage,
     native_panic,
@@ -9,6 +9,7 @@ use crate::{
 };
 use cairo_lang_sierra::{
     extensions::{
+        bounded_int::BoundedIntDivRemAlgorithm,
         core::{CoreLibfunc, CoreType, CoreTypeConcrete},
         int::{
             signed::{SintConcrete, SintTraits},
@@ -20,6 +21,7 @@ use cairo_lang_sierra::{
         },
         is_zero::IsZeroTraits,
         lib_func::SignatureOnlyConcreteLibfunc,
+        ConcreteLibfunc,
     },
     program_registry::ProgramRegistry,
 };
@@ -310,17 +312,39 @@ fn build_diff<'ctx, 'this>(
 
 fn build_divmod<'ctx, 'this>(
     context: &'ctx Context,
-    _registry: &ProgramRegistry<CoreType, CoreLibfunc>,
+    registry: &ProgramRegistry<CoreType, CoreLibfunc>,
     entry: &'this Block<'ctx>,
     location: Location<'ctx>,
     helper: &LibfuncHelper<'ctx, 'this>,
     _metadata: &mut MetadataStorage,
-    _info: &SignatureOnlyConcreteLibfunc,
+    info: &SignatureOnlyConcreteLibfunc,
 ) -> Result<()> {
-    let range_check = super::increment_builtin_counter(context, entry, location, entry.arg(0)?)?;
-
     let lhs = entry.arg(1)?;
     let rhs = entry.arg(2)?;
+
+    // Extract the ranges for the calculation of the range_check builtin increment.
+    let lhs_ty = registry.get_type(&info.param_signatures()[1].ty)?;
+    let rhs_ty = registry.get_type(&info.param_signatures()[2].ty)?;
+    let lhs_range = lhs_ty.integer_range(registry)?;
+    let rhs_range = rhs_ty.integer_range(registry)?;
+
+    let div_rem_algorithm = BoundedIntDivRemAlgorithm::try_new(&lhs_range, &rhs_range)
+        .to_native_assert_error(&format!(
+            "div_rem of ranges: lhs = {:#?} and rhs= {:#?} is not supported yet",
+            &lhs_range, &rhs_range
+        ))?;
+    // The sierra-to-casm compiler uses the range check builtin 3 times if the algorithm
+    // is KnownSmallRhs. Otherwise it is used 4 times.
+    // https://github.com/starkware-libs/cairo/blob/96625b57abee8aca55bdeb3ecf29f82e8cea77c3/crates/cairo-lang-sierra-to-casm/src/invocations/int/unsigned.rs#L151C1-L155C11
+    let range_check = match div_rem_algorithm {
+        BoundedIntDivRemAlgorithm::KnownSmallRhs => {
+            super::increment_builtin_counter_by(context, entry, location, entry.arg(0)?, 3)?
+        }
+        BoundedIntDivRemAlgorithm::KnownSmallQuotient { .. }
+        | BoundedIntDivRemAlgorithm::KnownSmallLhs { .. } => {
+            super::increment_builtin_counter_by(context, entry, location, entry.arg(0)?, 4)?
+        }
+    };
 
     let result_div = entry.append_op_result(arith::divui(lhs, rhs, location))?;
     let result_rem = entry.append_op_result(arith::remui(lhs, rhs, location))?;
@@ -914,9 +938,14 @@ fn build_wide_mul<'ctx, 'this>(
 #[cfg(test)]
 mod test {
     use crate::{
-        context::NativeContext, executor::JitNativeExecutor, utils::HALF_PRIME, OptLevel, Value,
+        context::NativeContext, error::panic::ToNativeAssertError, executor::JitNativeExecutor,
+        utils::HALF_PRIME, OptLevel, Value,
     };
-    use cairo_lang_sierra::ProgramParser;
+    use ark_ff::One;
+    use cairo_lang_sierra::{
+        extensions::{bounded_int::BoundedIntDivRemAlgorithm, utils::Range},
+        ProgramParser,
+    };
     use itertools::Itertools;
     use num_bigint::{BigInt, BigUint, Sign};
     use num_integer::Roots;
@@ -1228,7 +1257,7 @@ mod test {
 
     fn test_divmod<T>() -> Result<(), Box<dyn std::error::Error>>
     where
-        T: Bounded + Copy + Num,
+        T: Bounded + Copy + Num + Into<BigInt>,
         Value: From<T>,
     {
         let n_bits = 8 * mem::size_of::<T>();
@@ -1261,6 +1290,17 @@ mod test {
         let module = context.compile(&program, false, None, None)?;
         let executor = JitNativeExecutor::from_native_module(module, OptLevel::default())?;
 
+        // Get the range to create the BoundedIntDivRemAlgorithm
+        let range = Range {
+            lower: T::min_value().into(),
+            upper: T::max_value().into() + BigInt::one(),
+        };
+        let div_rem_algorithm = BoundedIntDivRemAlgorithm::try_new(&range, &range)
+            .to_native_assert_error(&format!(
+                "div_rem of ranges: lhs = {:#?} and rhs= {:#?} is not supported yet",
+                &range, &range
+            ))?;
+
         let data = [T::min_value(), T::zero(), T::one(), T::max_value()];
         for perm in Itertools::permutations(data.into_iter(), 2) {
             if perm[1].is_zero() {
@@ -1269,15 +1309,26 @@ mod test {
 
             let result = executor.invoke_dynamic(
                 &program.funcs[0].id,
-                &[perm[0].into(), perm[1].into()],
+                &[Value::from(perm[0]), Value::from(perm[1])],
                 None,
             )?;
 
-            assert_eq!(result.builtin_stats.range_check, 1);
+            match div_rem_algorithm {
+                BoundedIntDivRemAlgorithm::KnownSmallRhs => {
+                    assert_eq!(result.builtin_stats.range_check, 3)
+                }
+                BoundedIntDivRemAlgorithm::KnownSmallQuotient { .. }
+                | BoundedIntDivRemAlgorithm::KnownSmallLhs { .. } => {
+                    assert_eq!(result.builtin_stats.range_check, 4)
+                }
+            }
             assert_eq!(
                 result.return_value,
                 Value::Struct {
-                    fields: vec![(perm[0] / perm[1]).into(), (perm[0] % perm[1]).into()],
+                    fields: vec![
+                        Value::from(perm[0] / perm[1]),
+                        Value::from(perm[0] % perm[1])
+                    ],
                     debug_name: None,
                 },
             );
