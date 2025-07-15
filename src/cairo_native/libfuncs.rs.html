@@ -497,37 +497,62 @@
 <a href=#497 id=497 data-nosnippet>497</a>    ))
 <a href=#498 id=498 data-nosnippet>498</a>}
 <a href=#499 id=499 data-nosnippet>499</a>
-<a href=#500 id=500 data-nosnippet>500</a><span class="kw">fn </span>build_noop&lt;<span class="lifetime">'ctx</span>, <span class="lifetime">'this</span>, <span class="kw">const </span>N: usize, <span class="kw">const </span>PROCESS_BUILTINS: bool&gt;(
+<a href=#500 id=500 data-nosnippet>500</a><span class="kw">fn </span>increment_builtin_counter_by_if&lt;<span class="lifetime">'ctx</span>: <span class="lifetime">'a</span>, <span class="lifetime">'a</span>&gt;(
 <a href=#501 id=501 data-nosnippet>501</a>    context: <span class="kw-2">&amp;</span><span class="lifetime">'ctx </span>Context,
-<a href=#502 id=502 data-nosnippet>502</a>    registry: <span class="kw-2">&amp;</span>ProgramRegistry&lt;CoreType, CoreLibfunc&gt;,
-<a href=#503 id=503 data-nosnippet>503</a>    entry: <span class="kw-2">&amp;</span><span class="lifetime">'this </span>Block&lt;<span class="lifetime">'ctx</span>&gt;,
-<a href=#504 id=504 data-nosnippet>504</a>    location: Location&lt;<span class="lifetime">'ctx</span>&gt;,
-<a href=#505 id=505 data-nosnippet>505</a>    helper: <span class="kw-2">&amp;</span>LibfuncHelper&lt;<span class="lifetime">'ctx</span>, <span class="lifetime">'this</span>&gt;,
-<a href=#506 id=506 data-nosnippet>506</a>    _metadata: <span class="kw-2">&amp;mut </span>MetadataStorage,
-<a href=#507 id=507 data-nosnippet>507</a>    param_signatures: <span class="kw-2">&amp;</span>[ParamSignature],
-<a href=#508 id=508 data-nosnippet>508</a>) -&gt; <span class="prelude-ty">Result</span>&lt;()&gt; {
-<a href=#509 id=509 data-nosnippet>509</a>    <span class="kw">let </span><span class="kw-2">mut </span>params = Vec::with_capacity(N);
-<a href=#510 id=510 data-nosnippet>510</a>
-<a href=#511 id=511 data-nosnippet>511</a>    <span class="attr">#[allow(clippy::needless_range_loop)]
-<a href=#512 id=512 data-nosnippet>512</a>    </span><span class="kw">for </span>i <span class="kw">in </span><span class="number">0</span>..N {
-<a href=#513 id=513 data-nosnippet>513</a>        <span class="kw">let </span>param_ty = registry.get_type(<span class="kw-2">&amp;</span>param_signatures[i].ty)<span class="question-mark">?</span>;
-<a href=#514 id=514 data-nosnippet>514</a>        <span class="kw">let </span><span class="kw-2">mut </span>param_val = entry.argument(i)<span class="question-mark">?</span>.into();
-<a href=#515 id=515 data-nosnippet>515</a>
-<a href=#516 id=516 data-nosnippet>516</a>        <span class="kw">if </span>PROCESS_BUILTINS
-<a href=#517 id=517 data-nosnippet>517</a>            &amp;&amp; param_ty.is_builtin()
-<a href=#518 id=518 data-nosnippet>518</a>            &amp;&amp; !<span class="macro">matches!</span>(
-<a href=#519 id=519 data-nosnippet>519</a>                param_ty,
-<a href=#520 id=520 data-nosnippet>520</a>                CoreTypeConcrete::BuiltinCosts(<span class="kw">_</span>)
-<a href=#521 id=521 data-nosnippet>521</a>                    | CoreTypeConcrete::Coupon(<span class="kw">_</span>)
-<a href=#522 id=522 data-nosnippet>522</a>                    | CoreTypeConcrete::GasBuiltin(<span class="kw">_</span>)
-<a href=#523 id=523 data-nosnippet>523</a>                    | CoreTypeConcrete::Starknet(StarknetTypeConcrete::System(<span class="kw">_</span>))
-<a href=#524 id=524 data-nosnippet>524</a>            )
-<a href=#525 id=525 data-nosnippet>525</a>        {
-<a href=#526 id=526 data-nosnippet>526</a>            param_val = increment_builtin_counter(context, entry, location, param_val)<span class="question-mark">?</span>;
-<a href=#527 id=527 data-nosnippet>527</a>        }
-<a href=#528 id=528 data-nosnippet>528</a>
-<a href=#529 id=529 data-nosnippet>529</a>        params.push(param_val);
-<a href=#530 id=530 data-nosnippet>530</a>    }
-<a href=#531 id=531 data-nosnippet>531</a>
-<a href=#532 id=532 data-nosnippet>532</a>    helper.br(entry, <span class="number">0</span>, <span class="kw-2">&amp;</span>params, location)
-<a href=#533 id=533 data-nosnippet>533</a>}</code></pre></div></section></main></body></html>
+<a href=#502 id=502 data-nosnippet>502</a>    block: <span class="kw-2">&amp;</span><span class="lifetime">'ctx </span>Block&lt;<span class="lifetime">'ctx</span>&gt;,
+<a href=#503 id=503 data-nosnippet>503</a>    location: Location&lt;<span class="lifetime">'ctx</span>&gt;,
+<a href=#504 id=504 data-nosnippet>504</a>    value_to_inc: Value&lt;<span class="lifetime">'ctx</span>, <span class="lifetime">'_</span>&gt;,
+<a href=#505 id=505 data-nosnippet>505</a>    true_amount: <span class="kw">impl </span>Into&lt;BigInt&gt;,
+<a href=#506 id=506 data-nosnippet>506</a>    false_amount: <span class="kw">impl </span>Into&lt;BigInt&gt;,
+<a href=#507 id=507 data-nosnippet>507</a>    condition: Value&lt;<span class="lifetime">'ctx</span>, <span class="lifetime">'_</span>&gt;,
+<a href=#508 id=508 data-nosnippet>508</a>) -&gt; <span class="kw">crate</span>::error::Result&lt;Value&lt;<span class="lifetime">'ctx</span>, <span class="lifetime">'a</span>&gt;&gt; {
+<a href=#509 id=509 data-nosnippet>509</a>    <span class="kw">let </span>true_amount_value = block.const_int(context, location, true_amount, <span class="number">64</span>)<span class="question-mark">?</span>;
+<a href=#510 id=510 data-nosnippet>510</a>    <span class="kw">let </span>false_amount_value = block.const_int(context, location, false_amount, <span class="number">64</span>)<span class="question-mark">?</span>;
+<a href=#511 id=511 data-nosnippet>511</a>
+<a href=#512 id=512 data-nosnippet>512</a>    <span class="kw">let </span>true_incremented =
+<a href=#513 id=513 data-nosnippet>513</a>        block.append_op_result(arith::addi(value_to_inc, true_amount_value, location))<span class="question-mark">?</span>;
+<a href=#514 id=514 data-nosnippet>514</a>    <span class="kw">let </span>false_incremented =
+<a href=#515 id=515 data-nosnippet>515</a>        block.append_op_result(arith::addi(value_to_inc, false_amount_value, location))<span class="question-mark">?</span>;
+<a href=#516 id=516 data-nosnippet>516</a>
+<a href=#517 id=517 data-nosnippet>517</a>    block.append_op_result(arith::select(
+<a href=#518 id=518 data-nosnippet>518</a>        condition,
+<a href=#519 id=519 data-nosnippet>519</a>        true_incremented,
+<a href=#520 id=520 data-nosnippet>520</a>        false_incremented,
+<a href=#521 id=521 data-nosnippet>521</a>        location,
+<a href=#522 id=522 data-nosnippet>522</a>    ))
+<a href=#523 id=523 data-nosnippet>523</a>}
+<a href=#524 id=524 data-nosnippet>524</a>
+<a href=#525 id=525 data-nosnippet>525</a><span class="kw">fn </span>build_noop&lt;<span class="lifetime">'ctx</span>, <span class="lifetime">'this</span>, <span class="kw">const </span>N: usize, <span class="kw">const </span>PROCESS_BUILTINS: bool&gt;(
+<a href=#526 id=526 data-nosnippet>526</a>    context: <span class="kw-2">&amp;</span><span class="lifetime">'ctx </span>Context,
+<a href=#527 id=527 data-nosnippet>527</a>    registry: <span class="kw-2">&amp;</span>ProgramRegistry&lt;CoreType, CoreLibfunc&gt;,
+<a href=#528 id=528 data-nosnippet>528</a>    entry: <span class="kw-2">&amp;</span><span class="lifetime">'this </span>Block&lt;<span class="lifetime">'ctx</span>&gt;,
+<a href=#529 id=529 data-nosnippet>529</a>    location: Location&lt;<span class="lifetime">'ctx</span>&gt;,
+<a href=#530 id=530 data-nosnippet>530</a>    helper: <span class="kw-2">&amp;</span>LibfuncHelper&lt;<span class="lifetime">'ctx</span>, <span class="lifetime">'this</span>&gt;,
+<a href=#531 id=531 data-nosnippet>531</a>    _metadata: <span class="kw-2">&amp;mut </span>MetadataStorage,
+<a href=#532 id=532 data-nosnippet>532</a>    param_signatures: <span class="kw-2">&amp;</span>[ParamSignature],
+<a href=#533 id=533 data-nosnippet>533</a>) -&gt; <span class="prelude-ty">Result</span>&lt;()&gt; {
+<a href=#534 id=534 data-nosnippet>534</a>    <span class="kw">let </span><span class="kw-2">mut </span>params = Vec::with_capacity(N);
+<a href=#535 id=535 data-nosnippet>535</a>
+<a href=#536 id=536 data-nosnippet>536</a>    <span class="attr">#[allow(clippy::needless_range_loop)]
+<a href=#537 id=537 data-nosnippet>537</a>    </span><span class="kw">for </span>i <span class="kw">in </span><span class="number">0</span>..N {
+<a href=#538 id=538 data-nosnippet>538</a>        <span class="kw">let </span>param_ty = registry.get_type(<span class="kw-2">&amp;</span>param_signatures[i].ty)<span class="question-mark">?</span>;
+<a href=#539 id=539 data-nosnippet>539</a>        <span class="kw">let </span><span class="kw-2">mut </span>param_val = entry.argument(i)<span class="question-mark">?</span>.into();
+<a href=#540 id=540 data-nosnippet>540</a>
+<a href=#541 id=541 data-nosnippet>541</a>        <span class="kw">if </span>PROCESS_BUILTINS
+<a href=#542 id=542 data-nosnippet>542</a>            &amp;&amp; param_ty.is_builtin()
+<a href=#543 id=543 data-nosnippet>543</a>            &amp;&amp; !<span class="macro">matches!</span>(
+<a href=#544 id=544 data-nosnippet>544</a>                param_ty,
+<a href=#545 id=545 data-nosnippet>545</a>                CoreTypeConcrete::BuiltinCosts(<span class="kw">_</span>)
+<a href=#546 id=546 data-nosnippet>546</a>                    | CoreTypeConcrete::Coupon(<span class="kw">_</span>)
+<a href=#547 id=547 data-nosnippet>547</a>                    | CoreTypeConcrete::GasBuiltin(<span class="kw">_</span>)
+<a href=#548 id=548 data-nosnippet>548</a>                    | CoreTypeConcrete::Starknet(StarknetTypeConcrete::System(<span class="kw">_</span>))
+<a href=#549 id=549 data-nosnippet>549</a>            )
+<a href=#550 id=550 data-nosnippet>550</a>        {
+<a href=#551 id=551 data-nosnippet>551</a>            param_val = increment_builtin_counter(context, entry, location, param_val)<span class="question-mark">?</span>;
+<a href=#552 id=552 data-nosnippet>552</a>        }
+<a href=#553 id=553 data-nosnippet>553</a>
+<a href=#554 id=554 data-nosnippet>554</a>        params.push(param_val);
+<a href=#555 id=555 data-nosnippet>555</a>    }
+<a href=#556 id=556 data-nosnippet>556</a>
+<a href=#557 id=557 data-nosnippet>557</a>    helper.br(entry, <span class="number">0</span>, <span class="kw-2">&amp;</span>params, location)
+<a href=#558 id=558 data-nosnippet>558</a>}</code></pre></div></section></main></body></html>
