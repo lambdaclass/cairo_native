@@ -234,7 +234,7 @@ impl LibfuncBuilder for CoreConcreteLibfunc {
             Self::Uint512(selector) => self::uint512::build(
                 context, registry, entry, location, helper, metadata, selector,
             ),
-            Self::UnwrapNonZero(info) => build_noop::<1, true>(
+            Self::UnwrapNonZero(info) => build_noop::<1, false>(
                 context,
                 registry,
                 entry,
