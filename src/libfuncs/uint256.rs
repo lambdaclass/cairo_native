@@ -926,7 +926,7 @@ pub fn build_u256_guarantee_inv_mod_n<'ctx, 'this>(
 
     // The sierra-to-casm compiler uses the range check builtin a total of 9 times if the inverse is
     // not equal to 0 and lhs is invertible. Otherwise it will be used 7 times.
-    // https://github.com/starkware-libs/cairo/blob/b067c4531f55e0e6836c203c74ce3e793512f355/crates/cairo-lang-sierra-to-casm/src/invocations/int/unsigned256.rs#L21
+    // https://github.com/starkware-libs/cairo/blob/v2.12.0-dev.1/crates/cairo-lang-sierra-to-casm/src/invocations/int/unsigned256.rs#L21
     let range_check = increment_builtin_counter_by_if(
         context,
         entry,
