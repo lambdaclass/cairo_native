@@ -309,7 +309,7 @@ pub unsafe extern "C" fn cairo_native__dict_squash(
 ) {
     let dict = Rc::from_raw(dict_ptr);
 
-    *gas_ptr -=
+    *gas_ptr +=
         (dict.count.saturating_sub(dict.mappings.len() as u64)) * *DICT_GAS_REFUND_PER_ACCESS;
 
     // Squashing a dictionary always uses the range check builtin at least twice.
@@ -883,10 +883,10 @@ mod tests {
         unsafe { *ptr = 42 };
 
         let mut range_check = 0;
-        let mut gas = 4050;
+        let mut gas = 0;
 
         unsafe { cairo_native__dict_squash(dict, &mut range_check, &mut gas) };
-        assert_eq!(gas, 0);
+        assert_eq!(gas, 4050);
 
         let cloned_dict = unsafe { cairo_native__dict_dup(dict) };
         unsafe { cairo_native__dict_drop(dict) };
