@@ -5,7 +5,7 @@
 use super::{increment_builtin_counter_by, LibfuncHelper};
 use crate::{
     error::{Result, SierraAssertError},
-    execution_result::RANGE_CHECK96_BUILTIN_SIZE,
+    execution_result::{ADD_MOD_BUILTIN_SIZE, MUL_MOD_BUILTIN_SIZE, RANGE_CHECK96_BUILTIN_SIZE},
     libfuncs::r#struct::build_struct_value,
     metadata::{
         drop_overrides::DropOverridesMeta, realloc_bindings::ReallocBindingsMeta, MetadataStorage,
@@ -316,12 +316,14 @@ fn build_eval<'ctx, 'this>(
     // let zero = entry.argument(5)?;
     // let one = entry.argument(6)?;
 
+    // Always increase the add mod builtin pointer, regardless of the evaluation result.
+    // https://github.com/starkware-libs/cairo/blob/dc8b4f0b2e189a3b107b15062895597588b78a46/crates/cairo-lang-sierra-to-casm/src/invocations/circuit.rs?plain=1#L257
     let add_mod = increment_builtin_counter_by(
         context,
         entry,
         location,
         add_mod,
-        circuit_info.add_offsets.len() * MOD_BUILTIN_INSTANCE_SIZE,
+        circuit_info.add_offsets.len() * ADD_MOD_BUILTIN_SIZE,
     )?;
 
     let ([ok_block, err_block], gates) = build_gate_evaluation(
@@ -347,12 +349,15 @@ fn build_eval<'ctx, 'this>(
             )?;
         }
 
+        // Increase the mul mod builtin pointer by the number of evaluated gates.
+        // If the evaluation succedes, then we assume that every gate was evaluated.
+        // https://github.com/starkware-libs/cairo/blob/dc8b4f0b2e189a3b107b15062895597588b78a46/crates/cairo-lang-sierra-to-casm/src/invocations/circuit.rs?plain=1#L261
         let mul_mod = increment_builtin_counter_by(
             context,
             ok_block,
             location,
             mul_mod,
-            circuit_info.mul_offsets.len() * MOD_BUILTIN_INSTANCE_SIZE,
+            circuit_info.mul_offsets.len() * MUL_MOD_BUILTIN_SIZE,
         )?;
 
         // convert circuit output from integer representation to struct representation
@@ -424,10 +429,14 @@ fn build_eval<'ctx, 'this>(
         }
 
         // We only consider mul gates evaluated before failure
+        // Increase the mul mod builtin pointer by the number of evaluated gates.
+        // As the evaluation failed, we read the number of evaluated gates from
+        // the first argument of the error block.
+        // https://github.com/starkware-libs/cairo/blob/dc8b4f0b2e189a3b107b15062895597588b78a46/crates/cairo-lang-sierra-to-casm/src/invocations/circuit.rs?plain=1#L261
         let mul_mod = {
             let mul_mod_usage = err_block.muli(
                 err_block.arg(0)?,
-                err_block.const_int(context, location, 4, 64)?,
+                err_block.const_int(context, location, MUL_MOD_BUILTIN_SIZE, 64)?,
                 location,
             )?;
             err_block.addi(mul_mod, mul_mod_usage, location)
