@@ -805,7 +805,7 @@ fn build_wrap_non_zero<'ctx, 'this>(
         "value must not be zero"
     );
 
-    super::build_noop::<1, true>(
+    super::build_noop::<1, false>(
         context,
         registry,
         entry,
