@@ -1488,7 +1488,6 @@ mod test {
         for (value, target) in data {
             let result = executor.invoke_dynamic(&program.funcs[0].id, &[value.into()], None)?;
 
-            // If try_from(value) fails, means the value is out of range for T
             match target {
                 Some(_) => {
                     let range_size = T::max_value().into() - T::min_value().into() + BigInt::one();
@@ -1496,13 +1495,13 @@ mod test {
                     if range_size < rc_size {
                         assert_eq!(
                             result.builtin_stats.range_check, 2,
-                            "Type: {}  Value: {}",
+                            "Difference in range_check count. Type: {}  Value: {}",
                             type_id, value
                         );
                     } else {
                         assert_eq!(
                             result.builtin_stats.range_check, 1,
-                            "Type: {}  Value: {}",
+                            "Difference in range_check count. Type: {}  Value: {}",
                             type_id, value
                         );
                     }
