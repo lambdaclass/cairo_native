@@ -53,7 +53,7 @@ pub fn build_pedersen<'ctx>(
         .to_native_assert_error("runtime library should be available")?;
 
     // The sierra-to-casm compiler uses the pedersen builtin a total of 1 time.
-    // https://github.com/starkware-libs/cairo/blob/v2.12.0-dev.0/crates/cairo-lang-sierra-to-casm/src/invocations/pedersen.rs?plain=1#L23
+    // https://github.com/starkware-libs/cairo/blob/v2.12.0-dev.1/crates/cairo-lang-sierra-to-casm/src/invocations/pedersen.rs?plain=1#L23
     let pedersen_builtin = super::increment_builtin_counter_by(
         context,
         entry,

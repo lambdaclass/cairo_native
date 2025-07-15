@@ -55,7 +55,7 @@ pub fn build_new<'ctx, 'this>(
     info: &SignatureOnlyConcreteLibfunc,
 ) -> Result<()> {
     // We increase the segment arena builtin by 1 usage.
-    // https://github.com/starkware-libs/cairo/blob/v2.12.0-dev.0/crates/cairo-lang-sierra-to-casm/src/invocations/felt252_dict.rs?plain=1#L45-L49
+    // https://github.com/starkware-libs/cairo/blob/v2.12.0-dev.1/crates/cairo-lang-sierra-to-casm/src/invocations/felt252_dict.rs?plain=1#L45-L49
     let segment_arena = super::increment_builtin_counter_by(
         context,
         entry,
