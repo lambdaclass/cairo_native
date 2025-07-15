@@ -288,11 +288,11 @@ pub mod libfunc_counter_runtime {
         libfunc_counter.count_libfunc(context, module, block, location, libfunc_idx)
     }
 
-    pub fn get_counter_array() -> *mut u32 {
+    pub extern "C" fn get_counter_array() -> *mut u32 {
         COUNTERS_ARRAY.with(|x| x.get()) as *mut u32
     }
 
-    pub unsafe extern "C" fn store_and_free_counters_array(counter_id_ptr: *mut u64, libfuncs_amount: usize) {
+    pub unsafe fn store_and_free_counters_array(counter_id_ptr: *mut u64, libfuncs_amount: usize) {
         let counter_array_ptr = get_counter_array();
         let counters_vec = slice::from_raw_parts(counter_array_ptr, libfuncs_amount).to_vec();
 
