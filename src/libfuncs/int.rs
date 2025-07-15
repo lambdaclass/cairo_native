@@ -340,8 +340,8 @@ fn build_divmod<'ctx, 'this>(
         BoundedIntDivRemAlgorithm::KnownSmallRhs => {
             super::increment_builtin_counter_by(context, entry, location, entry.arg(0)?, 3)?
         }
-        BoundedIntDivRemAlgorithm::KnownSmallQuotient { q_upper_bound: _ }
-        | BoundedIntDivRemAlgorithm::KnownSmallLhs { lhs_upper_sqrt: _ } => {
+        BoundedIntDivRemAlgorithm::KnownSmallQuotient { .. }
+        | BoundedIntDivRemAlgorithm::KnownSmallLhs { .. } => {
             super::increment_builtin_counter_by(context, entry, location, entry.arg(0)?, 4)?
         }
     };
