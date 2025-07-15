@@ -914,7 +914,7 @@ pub fn build_u256_guarantee_inv_mod_n<'ctx, 'this>(
         .append_operation(arith::cmpi(context, CmpiPredicate::Ne, inv, k0, location))
         .result(0)?
         .into();
-    let condition = entry
+    let inverse_exists_and_is_not_zero = entry
         .append_operation(arith::andi(lhs_is_invertible, inv_not_zero, location))
         .result(0)?
         .into();
@@ -924,16 +924,23 @@ pub fn build_u256_guarantee_inv_mod_n<'ctx, 'this>(
     let op = entry.append_operation(llvm::undef(guarantee_type, location));
     let guarantee = op.result(0)?.into();
 
-    // The sierra-to-casm compiler uses the range check builtin a total of 9 times if the
-    // condition is true. Otherwise it will be used 7 times.
+    // The sierra-to-casm compiler uses the range check builtin a total of 9 times if the inverse is
+    // not equal to 0 and lhs is invertible. Otherwise it will be used 7 times.
     // https://github.com/starkware-libs/cairo/blob/b067c4531f55e0e6836c203c74ce3e793512f355/crates/cairo-lang-sierra-to-casm/src/invocations/int/unsigned256.rs#L21
-    let range_check =
-        increment_builtin_counter_by_if(context, entry, location, entry.arg(0)?, 9, 7, condition)?;
+    let range_check = increment_builtin_counter_by_if(
+        context,
+        entry,
+        location,
+        entry.arg(0)?,
+        9,
+        7,
+        inverse_exists_and_is_not_zero,
+    )?;
 
     helper.cond_br(
         context,
         entry,
-        condition,
+        inverse_exists_and_is_not_zero,
         [0, 1],
         [
             &[
