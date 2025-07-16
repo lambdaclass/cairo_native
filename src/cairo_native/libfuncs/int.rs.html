@@ -647,8 +647,8 @@
 <a href=#647 id=647 data-nosnippet>647</a>        ));
 <a href=#648 id=648 data-nosnippet>648</a>
 <a href=#649 id=649 data-nosnippet>649</a>        {
-<a href=#650 id=650 data-nosnippet>650</a>            <span class="kw">let </span>is_not_i128 =
-<a href=#651 id=651 data-nosnippet>651</a>                !(value_range.lower == i128::MIN.into() &amp;&amp; value_range.upper == i128::MAX.into());
+<a href=#650 id=650 data-nosnippet>650</a>            <span class="kw">let </span>is_not_i128 = !(value_range.lower == i128::MIN.into()
+<a href=#651 id=651 data-nosnippet>651</a>                &amp;&amp; value_range.upper - <span class="number">1 </span>== i128::MAX.into());
 <a href=#652 id=652 data-nosnippet>652</a>
 <a href=#653 id=653 data-nosnippet>653</a>            <span class="comment">// if we are not handling an i128 and the in_range condition is met, increase the range check builtin by 1:
 <a href=#654 id=654 data-nosnippet>654</a>            // https://github.com/starkware-libs/cairo/blob/v2.12.0-dev.1/crates/cairo-lang-sierra-to-casm/src/invocations/int/signed.rs#L105
