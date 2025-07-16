@@ -317,7 +317,7 @@ fn build_eval<'ctx, 'this>(
     // let one = entry.argument(6)?;
 
     // Always increase the add mod builtin pointer, regardless of the evaluation result.
-    // https://github.com/starkware-libs/cairo/blob/dc8b4f0b2e189a3b107b15062895597588b78a46/crates/cairo-lang-sierra-to-casm/src/invocations/circuit.rs?plain=1#L257
+    // https://github.com/starkware-libs/cairo/blob/v2.12.0-dev.1/crates/cairo-lang-sierra-to-casm/src/invocations/circuit.rs?plain=1#L257
     let add_mod = increment_builtin_counter_by(
         context,
         entry,
@@ -351,7 +351,7 @@ fn build_eval<'ctx, 'this>(
 
         // Increase the mul mod builtin pointer by the number of evaluated gates.
         // If the evaluation succedes, then we assume that every gate was evaluated.
-        // https://github.com/starkware-libs/cairo/blob/dc8b4f0b2e189a3b107b15062895597588b78a46/crates/cairo-lang-sierra-to-casm/src/invocations/circuit.rs?plain=1#L261
+        // https://github.com/starkware-libs/cairo/blob/v2.12.0-dev.1/crates/cairo-lang-sierra-to-casm/src/invocations/circuit.rs?plain=1#L261
         let mul_mod = increment_builtin_counter_by(
             context,
             ok_block,
@@ -432,7 +432,7 @@ fn build_eval<'ctx, 'this>(
         // Increase the mul mod builtin pointer by the number of evaluated gates.
         // As the evaluation failed, we read the number of evaluated gates from
         // the first argument of the error block.
-        // https://github.com/starkware-libs/cairo/blob/dc8b4f0b2e189a3b107b15062895597588b78a46/crates/cairo-lang-sierra-to-casm/src/invocations/circuit.rs?plain=1#L261
+        // https://github.com/starkware-libs/cairo/blob/v2.12.0-dev.1/crates/cairo-lang-sierra-to-casm/src/invocations/circuit.rs?plain=1#L261
         let mul_mod = {
             let mul_mod_usage = err_block.muli(
                 err_block.arg(0)?,
@@ -1209,7 +1209,7 @@ fn build_u96_guarantee_verify<'ctx, 'this>(
     _info: &SignatureOnlyConcreteLibfunc,
 ) -> Result<()> {
     // We increase the range_check96 builtin by 1 usage
-    // https://github.com/starkware-libs/cairo/blob/dc8b4f0b2e189a3b107b15062895597588b78a46/crates/cairo-lang-sierra-to-casm/src/invocations/circuit.rs?plain=1#L534
+    // https://github.com/starkware-libs/cairo/blob/v2.12.0-dev.1/crates/cairo-lang-sierra-to-casm/src/invocations/circuit.rs?plain=1#L534
     let range_check96 = increment_builtin_counter_by(
         context,
         entry,
