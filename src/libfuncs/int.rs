@@ -568,14 +568,14 @@ fn build_operation<'ctx, 'this>(
     info: &IntOperationConcreteLibfunc,
 ) -> Result<()> {
     // Regardless of the operation range, the range check builtin pointer is always increased at least once.
-    // * for signed ints: https://github.com/starkware-libs/cairo/blob/v2.12.0-dev.0/crates/cairo-lang-sierra-to-casm/src/invocations/int/signed.rs#L68
+    // * for signed ints: https://github.com/starkware-libs/cairo/blob/v2.12.0-dev.1/crates/cairo-lang-sierra-to-casm/src/invocations/int/signed.rs#L68
     // * for signed128: behaves the same as the signed ints case.
     // * for unsinged ints:
-    //    * for overflowing add: https://github.com/starkware-libs/cairo/blob/v2.12.0-dev.0/crates/cairo-lang-sierra-to-casm/src/invocations/int/unsigned.rs#L19
-    //    * for overflowing sub: https://github.com/starkware-libs/cairo/blob/v2.12.0-dev.0/crates/cairo-lang-sierra-to-casm/src/invocations/int/mod.rs#L67
+    //    * for overflowing add: https://github.com/starkware-libs/cairo/blob/v2.12.0-dev.1/crates/cairo-lang-sierra-to-casm/src/invocations/int/unsigned.rs#L19
+    //    * for overflowing sub: https://github.com/starkware-libs/cairo/blob/v2.12.0-dev.1/crates/cairo-lang-sierra-to-casm/src/invocations/int/mod.rs#L67
     // * for unsigned128:
-    //    * for overflowing add: https://github.com/starkware-libs/cairo/blob/v2.12.0-dev.0/crates/cairo-lang-sierra-to-casm/src/invocations/int/unsigned128.rs#L45
-    //    * for overflowing sub: https://github.com/starkware-libs/cairo/blob/v2.12.0-dev.0/crates/cairo-lang-sierra-to-casm/src/invocations/int/mod.rs#L146
+    //    * for overflowing add: https://github.com/starkware-libs/cairo/blob/v2.12.0-dev.1/crates/cairo-lang-sierra-to-casm/src/invocations/int/unsigned128.rs#L45
+    //    * for overflowing sub: https://github.com/starkware-libs/cairo/blob/v2.12.0-dev.1/crates/cairo-lang-sierra-to-casm/src/invocations/int/mod.rs#L104
     let range_check = increment_builtin_counter(context, entry, location, entry.arg(0)?)?;
     let value_ty = registry.get_type(&info.signature.param_signatures[1].ty)?;
     let value_range = value_ty.integer_range(registry)?;
@@ -633,7 +633,7 @@ fn build_operation<'ctx, 'this>(
                 !(value_range.lower == i128::MIN.into() && value_range.upper == i128::MAX.into());
 
             // if we are handling an i128 and the in_range condition is met, increase the range check builtin by 1:
-            // https://github.com/starkware-libs/cairo/blob/v2.12.0-dev.0/crates/cairo-lang-sierra-to-casm/src/invocations/int/signed.rs#L105
+            // https://github.com/starkware-libs/cairo/blob/v2.12.0-dev.1/crates/cairo-lang-sierra-to-casm/src/invocations/int/signed.rs#L105
             let range_check = if is_not_i128 {
                 increment_builtin_counter_by(context, block_in_range, location, range_check, 1)?
             } else {
