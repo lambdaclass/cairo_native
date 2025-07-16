@@ -337,7 +337,7 @@ pub unsafe extern "C" fn cairo_native__dict_squash(
         *range_check_ptr += 3 * number_of_keys;
     } else {
         if number_of_keys > 0 {
-            // These incremenets are shared with the "no big keys" case.
+            // These increments are shared with the "no big keys" case.
             // 2.  https://github.com/starkware-libs/cairo/blob/v2.12.0-dev.1/crates/cairo-lang-sierra-to-casm/src/invocations/felt252_dict.rs?plain=1#L416
             // 3.  https://github.com/starkware-libs/cairo/blob/v2.12.0-dev.1/crates/cairo-lang-sierra-to-casm/src/invocations/felt252_dict.rs?plain=1#L480
             *range_check_ptr += 2;
