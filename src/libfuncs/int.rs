@@ -647,8 +647,8 @@ fn build_operation<'ctx, 'this>(
         ));
 
         {
-            let is_not_i128 =
-                !(value_range.lower == i128::MIN.into() && value_range.upper == i128::MAX.into());
+            let is_not_i128 = !(value_range.lower == i128::MIN.into()
+                && value_range.upper - 1 == i128::MAX.into());
 
             // if we are not handling an i128 and the in_range condition is met, increase the range check builtin by 1:
             // https://github.com/starkware-libs/cairo/blob/v2.12.0-dev.1/crates/cairo-lang-sierra-to-casm/src/invocations/int/signed.rs#L105
