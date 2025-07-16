@@ -206,7 +206,14 @@ pub fn build_downcast<'ctx, 'this>(
         // then increment the range_check builtin by 2.
         // https://github.com/starkware-libs/cairo/blob/v2.12.0-dev.1/crates/cairo-lang-sierra-to-casm/src/invocations/range_reduction.rs#L87
         let range_check = if info.from_range.is_full_felt252_range() {
-            increment_builtin_counter_by(context, entry, location, range_check, 2)?
+            let rc_size = BigInt::from(1) << 128;
+            increment_builtin_counter_by(
+                context,
+                entry,
+                location,
+                range_check,
+                if dst_range.size() < rc_size { 2 } else { 1 },
+            )?
         } else {
             range_check
         };
