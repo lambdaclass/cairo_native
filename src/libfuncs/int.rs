@@ -381,10 +381,9 @@ fn build_from_felt252<'ctx, 'this>(
     metadata: &mut MetadataStorage,
     info: &SignatureOnlyConcreteLibfunc,
 ) -> Result<()> {
-    let range_check = super::increment_builtin_counter(context, entry, location, entry.arg(0)?)?;
-
     let value_ty = registry.get_type(&info.signature.branch_signatures[0].vars[1].ty)?;
     let threshold = value_ty.integer_range(registry)?;
+    let threshold_size = threshold.size();
 
     let value_ty = value_ty.build(
         context,
@@ -481,6 +480,25 @@ fn build_from_felt252<'ctx, 'this>(
 
         (is_in_range, value)
     };
+
+    // The sierra-to-casm compiler uses the range check builtin a total of:
+    // - 3 times if the value is not within the range.
+    // - 2 times if the value is within the range and the size of
+    //   the range is less than the size of the range check.
+    // - 1 time if the value is within the range and the size of
+    //   the range is greater than or equal to the size of the range check.
+    // With the range check size being 2**128
+    // https://github.com/starkware-libs/cairo/blob/v2.12.0-dev.1/crates/cairo-lang-sierra-to-casm/src/invocations/range_reduction.rs#L26
+    let rc_size = BigInt::from(1) << 128;
+    let range_check = super::increment_builtin_counter_by_if(
+        context,
+        entry,
+        location,
+        entry.arg(0)?,
+        if threshold_size < rc_size { 2 } else { 1 },
+        3,
+        is_in_range,
+    )?;
 
     let value = entry.trunci(value, value_ty, location)?;
 
@@ -1405,7 +1423,7 @@ mod test {
 
     fn test_from_felt252<T>() -> Result<(), Box<dyn std::error::Error>>
     where
-        T: Bounded + Copy + Num + TryFrom<Value>,
+        T: Bounded + Copy + Num + TryFrom<Value> + Into<BigInt>,
         Felt: From<T>,
         Value: From<T>,
     {
@@ -1470,13 +1488,37 @@ mod test {
         for (value, target) in data {
             let result = executor.invoke_dynamic(&program.funcs[0].id, &[value.into()], None)?;
 
-            assert_eq!(result.builtin_stats.range_check, 1);
+            match target {
+                Some(_) => {
+                    let range_size = T::max_value().into() - T::min_value().into() + BigInt::one();
+                    let rc_size = BigInt::from(1) << 128;
+                    if range_size < rc_size {
+                        assert_eq!(
+                            result.builtin_stats.range_check, 2,
+                            "Difference in range_check count. Type: {}  Value: {}",
+                            type_id, value
+                        );
+                    } else {
+                        assert_eq!(
+                            result.builtin_stats.range_check, 1,
+                            "Difference in range_check count. Type: {}  Value: {}",
+                            type_id, value
+                        );
+                    }
+                }
+                None => assert_eq!(
+                    result.builtin_stats.range_check, 3,
+                    "Difference in range_check count. Type: {}  Value: {}",
+                    type_id, value
+                ),
+            }
+
             assert_eq!(
                 result.return_value,
                 match target {
                     Some(x) => Value::Enum {
                         tag: 0,
-                        value: Box::new(x.into()),
+                        value: Box::new(Value::from(x)),
                         debug_name: None,
                     },
                     None => Value::Enum {
