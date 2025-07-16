@@ -3,7 +3,6 @@
 use super::LibfuncHelper;
 use crate::{
     error::Result,
-    libfuncs::increment_builtin_counter_by,
     metadata::MetadataStorage,
     native_assert, native_panic,
     types::TypeBuilder,
@@ -164,7 +163,7 @@ pub fn build_downcast<'ctx, 'this>(
         // then increment the range_check builtin by 3.
         // https://github.com/starkware-libs/cairo/blob/v2.12.0-dev.1/crates/cairo-lang-sierra-to-casm/src/invocations/range_reduction.rs#L79
         let range_check = if info.from_range.is_full_felt252_range() {
-            increment_builtin_counter_by(context, entry, location, range_check, 3)?
+            super::increment_builtin_counter_by(context, entry, location, range_check, 3)?
         } else {
             range_check
         };
@@ -202,21 +201,6 @@ pub fn build_downcast<'ctx, 'this>(
             location,
         )?;
     } else {
-        // If the the value is in bounds with respect to the destination range and the original range can contain a felt252.
-        // then increment the range_check builtin by 2.
-        // https://github.com/starkware-libs/cairo/blob/v2.12.0-dev.1/crates/cairo-lang-sierra-to-casm/src/invocations/range_reduction.rs#L87
-        let range_check_if_not_felt = if info.from_range.is_full_felt252_range() {
-            let rc_size = BigInt::from(1) << 128;
-            increment_builtin_counter_by(
-                context,
-                entry,
-                location,
-                range_check,
-                if dst_range.size() < rc_size { 2 } else { 1 },
-            )?
-        } else {
-            range_check
-        };
         let lower_check = if dst_range.lower > src_range.lower {
             let dst_lower = entry.const_int_from_type(
                 context,
@@ -260,7 +244,7 @@ pub fn build_downcast<'ctx, 'this>(
             None
         };
 
-        let (is_in_bounds, range_check) = match (lower_check, upper_check) {
+        let (is_in_bounds, range_check_if_not_is_full_felt252_range) = match (lower_check, upper_check) {
             (Some(lower_check), Some(upper_check)) => {
                 let is_in_range =
                     entry.append_op_result(arith::andi(lower_check, upper_check, location))?;
@@ -306,7 +290,7 @@ pub fn build_downcast<'ctx, 'this>(
         // https://github.com/starkware-libs/cairo/blob/v2.12.0-dev.1/crates/cairo-lang-sierra-to-casm/src/invocations/range_reduction.rs#L87
         let range_check = if info.from_range.is_full_felt252_range() {
             let rc_size = BigInt::from(1) << 128;
-            increment_builtin_counter_by(
+            super::increment_builtin_counter_by(
                 context,
                 entry,
                 location,
@@ -314,7 +298,7 @@ pub fn build_downcast<'ctx, 'this>(
                 if dst_range.size() < rc_size { 2 } else { 1 },
             )?
         } else {
-            range_check_if_not_felt
+            range_check_if_not_is_full_felt252_range
         };
 
         let dst_value = if dst_ty.is_bounded_int(registry)? && dst_range.lower != BigInt::ZERO {
