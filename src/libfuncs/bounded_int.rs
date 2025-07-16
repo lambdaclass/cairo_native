@@ -590,7 +590,7 @@ fn build_divrem<'ctx, 'this>(
     };
 
     // Increase range check builtin by 3, regardless of `div_rem_algorithm`:
-    // https://github.com/starkware-libs/cairo/blob/61c56aff349b4715f2a6619faf5b710f2da8a663/crates/cairo-lang-sierra-to-casm/src/invocations/int/bounded.rs#L97
+    // https://github.com/starkware-libs/cairo/blob/v2.12.0-dev.1/crates/cairo-lang-sierra-to-casm/src/invocations/int/bounded.rs#L100
     let range_check = match div_rem_algorithm {
         BoundedIntDivRemAlgorithm::KnownSmallRhs => crate::libfuncs::increment_builtin_counter_by(
             context,
@@ -603,8 +603,8 @@ fn build_divrem<'ctx, 'this>(
         | BoundedIntDivRemAlgorithm::KnownSmallLhs { .. } => {
             // If `div_rem_algorithm` is `KnownSmallQuotient` or `KnownSmallLhs`, increase range check builtin by 1.
             //
-            // Case KnownSmallQuotient: https://github.com/starkware-libs/cairo/blob/61c56aff349b4715f2a6619faf5b710f2da8a663/crates/cairo-lang-sierra-to-casm/src/invocations/int/bounded.rs#L126
-            // Case KnownSmallLhs: https://github.com/starkware-libs/cairo/blob/61c56aff349b4715f2a6619faf5b710f2da8a663/crates/cairo-lang-sierra-to-casm/src/invocations/int/bounded.rs#L154
+            // Case KnownSmallQuotient: https://github.com/starkware-libs/cairo/blob/v2.12.0-dev.1/crates/cairo-lang-sierra-to-casm/src/invocations/int/bounded.rs#L129
+            // Case KnownSmallLhs: https://github.com/starkware-libs/cairo/blob/v2.12.0-dev.1/crates/cairo-lang-sierra-to-casm/src/invocations/int/bounded.rs#L157
             crate::libfuncs::increment_builtin_counter_by(
                 context,
                 entry,
