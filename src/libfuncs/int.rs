@@ -2,6 +2,7 @@ use super::{BlockExt, LibfuncHelper};
 use crate::{
     error::{panic::ToNativeAssertError, Result},
     execution_result::BITWISE_BUILTIN_SIZE,
+    libfuncs::{increment_builtin_counter, increment_builtin_counter_by},
     metadata::MetadataStorage,
     native_panic,
     types::TypeBuilder,
@@ -584,10 +585,19 @@ fn build_operation<'ctx, 'this>(
     metadata: &mut MetadataStorage,
     info: &IntOperationConcreteLibfunc,
 ) -> Result<()> {
-    let range_check = super::increment_builtin_counter(context, entry, location, entry.arg(0)?)?;
-
+    // Regardless of the operation range, the range check builtin pointer is always increased at least once.
+    // * for signed ints: https://github.com/starkware-libs/cairo/blob/v2.12.0-dev.1/crates/cairo-lang-sierra-to-casm/src/invocations/int/signed.rs#L68
+    // * for signed128: behaves the same as the signed ints case.
+    // * for unsinged ints:
+    //    * for overflowing add: https://github.com/starkware-libs/cairo/blob/v2.12.0-dev.1/crates/cairo-lang-sierra-to-casm/src/invocations/int/unsigned.rs#L19
+    //    * for overflowing sub: https://github.com/starkware-libs/cairo/blob/v2.12.0-dev.1/crates/cairo-lang-sierra-to-casm/src/invocations/int/mod.rs#L67
+    // * for unsigned128:
+    //    * for overflowing add: https://github.com/starkware-libs/cairo/blob/v2.12.0-dev.1/crates/cairo-lang-sierra-to-casm/src/invocations/int/unsigned128.rs#L45
+    //    * for overflowing sub: https://github.com/starkware-libs/cairo/blob/v2.12.0-dev.1/crates/cairo-lang-sierra-to-casm/src/invocations/int/mod.rs#L104
+    let range_check = increment_builtin_counter(context, entry, location, entry.arg(0)?)?;
     let value_ty = registry.get_type(&info.signature.param_signatures[1].ty)?;
-    let is_signed = !value_ty.integer_range(registry)?.lower.is_zero();
+    let value_range = value_ty.integer_range(registry)?;
+    let is_signed = !value_range.lower.is_zero();
     let value_ty = value_ty.build(
         context,
         helper,
@@ -636,8 +646,20 @@ fn build_operation<'ctx, 'this>(
             location,
         ));
 
-        helper.br(block_in_range, 0, &[range_check, result], location)?;
+        {
+            let is_not_i128 =
+                !(value_range.lower == i128::MIN.into() && value_range.upper == i128::MAX.into());
 
+            // if we are not handling an i128 and the in_range condition is met, increase the range check builtin by 1:
+            // https://github.com/starkware-libs/cairo/blob/v2.12.0-dev.1/crates/cairo-lang-sierra-to-casm/src/invocations/int/signed.rs#L105
+            let range_check = if is_not_i128 {
+                increment_builtin_counter_by(context, block_in_range, location, range_check, 1)?
+            } else {
+                range_check
+            };
+
+            helper.br(block_in_range, 0, &[range_check, result], location)?;
+        }
         {
             let k0 = block_overflow.const_int_from_type(context, location, 0, result.r#type())?;
             let is_positive =
