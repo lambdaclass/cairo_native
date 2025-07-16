@@ -2,11 +2,7 @@
 
 use super::LibfuncHelper;
 use crate::{
-    error::Result,
-    metadata::MetadataStorage,
-    native_assert, native_panic,
-    types::TypeBuilder,
-    utils::{BlockExt, RangeExt, HALF_PRIME, PRIME},
+    error::Result, libfuncs::increment_builtin_counter_by, metadata::MetadataStorage, native_assert, native_panic, types::TypeBuilder, utils::{BlockExt, RangeExt, HALF_PRIME, PRIME}
 };
 use cairo_lang_sierra::{
     extensions::{
@@ -55,7 +51,7 @@ pub fn build_downcast<'ctx, 'this>(
     _metadata: &mut MetadataStorage,
     info: &DowncastConcreteLibfunc,
 ) -> Result<()> {
-    let mut range_check: Value = entry.arg(0)?;
+    let range_check = entry.arg(0)?;
     let src_value: Value = entry.arg(1)?;
 
     if info.signature.param_signatures[1].ty == info.signature.branch_signatures[0].vars[1].ty {
@@ -159,6 +155,15 @@ pub fn build_downcast<'ctx, 'this>(
     };
 
     if !(dst_range.lower > src_range.lower || dst_range.upper < src_range.upper) {
+        // If the the value is in bounds with respect to the destination range and the original range can contain a felt252.
+        // then increment the range_check builtin by 2.
+        https://github.com/starkware-libs/cairo/blob/v2.12.0-dev.1/crates/cairo-lang-sierra-to-casm/src/invocations/range_reduction.rs#L87
+        let range_check = if info.from_range.is_full_felt252_range() {
+            increment_builtin_counter_by(context, entry, location, range_check, 2)?
+        } else {
+            range_check
+        };
+
         let dst_value = if dst_ty.is_bounded_int(registry)? && dst_range.lower != BigInt::ZERO {
             let dst_offset = entry.const_int_from_type(
                 context,
@@ -192,6 +197,14 @@ pub fn build_downcast<'ctx, 'this>(
             location,
         )?;
     } else {
+        // If the the value is not in bounds with respect to the destination range and the original range can contain a felt252.
+        // then increment the range_check builtin by 3.
+        // https://github.com/starkware-libs/cairo/blob/v2.12.0-dev.1/crates/cairo-lang-sierra-to-casm/src/invocations/range_reduction.rs#L79
+        let range_check = if info.from_range.is_full_felt252_range() {
+            increment_builtin_counter_by(context, entry, location, range_check, 3)?
+        } else {
+            range_check
+        };
         let lower_check = if dst_range.lower > src_range.lower {
             let dst_lower = entry.const_int_from_type(
                 context,
@@ -235,58 +248,29 @@ pub fn build_downcast<'ctx, 'this>(
             None
         };
 
-        let is_in_bounds = match (lower_check, upper_check) {
+        let (is_in_bounds, range_check) = match (lower_check, upper_check) {
             (Some(lower_check), Some(upper_check)) => {
-                let is_valid = {
-                    let k1_neg =
-                        entry.const_int_from_type(context, location, -1, src_value.r#type())?;
-                    let min_value_range = entry.const_int_from_type(
-                        context,
-                        location,
-                        dst_range.clone().lower,
-                        src_value.r#type(),
-                    )?;
-                    let min_value_range_neg = entry.muli(min_value_range, k1_neg, location)?;
-                    let canonical_value = entry.addi(src_value, min_value_range_neg, location)?;
-                    let range_size = entry.const_int_from_type(
-                        context,
-                        location,
-                        dst_range.size(),
-                        src_value.r#type(),
-                    )?;
+                let is_in_range = entry.append_op_result(arith::andi(lower_check, upper_check, location))?;
+                
+                // If the result is in range, increment the range check builting by 2. Otherwise, increment it by 1.
+                // https://github.com/starkware-libs/cairo/blob/v2.12.0-dev.1/crates/cairo-lang-sierra-to-casm/src/invocations/casts.rs#L160
+                let range_check = super::increment_builtin_counter_by_if(context, entry, location, range_check, 2, 1, is_in_range)?;
 
-                    entry.cmpi(
-                        context,
-                        CmpiPredicate::Slt,
-                        canonical_value,
-                        range_size,
-                        location,
-                    )?
-                };
-
-                range_check = super::increment_builtin_counter_by_if(
-                    context,
-                    entry,
-                    location,
-                    entry.arg(0)?,
-                    2,
-                    1,
-                    is_valid,
-                )?;
-
-                entry.append_op_result(arith::andi(lower_check, upper_check, location))?
+                (is_in_range, range_check)
             }
             (Some(lower_check), None) => {
-                range_check =
-                    super::increment_builtin_counter(context, entry, location, entry.arg(0)?)?;
+                // Increment the range check builting by 1, regardless of whether the result is in range or not.
+                // https://github.com/starkware-libs/cairo/blob/v2.12.0-dev.1/crates/cairo-lang-sierra-to-casm/src/invocations/casts.rs#L135
+                let range_check = super::increment_builtin_counter_by(context, entry, location, range_check, 1)?;
 
-                lower_check
+                (lower_check, range_check)
             }
             (None, Some(upper_check)) => {
-                range_check =
-                    super::increment_builtin_counter(context, entry, location, entry.arg(0)?)?;
+                // Increment the range check builting by 1, regardless of whether the result is in range or not.
+                // https://github.com/starkware-libs/cairo/blob/v2.12.0-dev.1/crates/cairo-lang-sierra-to-casm/src/invocations/casts.rs#L111
+                let range_check = super::increment_builtin_counter_by(context, entry, location, range_check, 1)?;
 
-                upper_check
+                (upper_check, range_check)
             }
             // its always in bounds since dst is larger than src (i.e no bounds checks needed)
             (None, None) => {
