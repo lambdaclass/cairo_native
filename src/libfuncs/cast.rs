@@ -160,11 +160,11 @@ pub fn build_downcast<'ctx, 'this>(
     };
 
     if !(dst_range.lower > src_range.lower || dst_range.upper < src_range.upper) {
-        // If the the value is in bounds with respect to the destination range and the original range can contain a felt252.
-        // then increment the range_check builtin by 2.
-        // https://github.com/starkware-libs/cairo/blob/v2.12.0-dev.1/crates/cairo-lang-sierra-to-casm/src/invocations/range_reduction.rs#L87
+        // If the the value is not in bounds with respect to the destination range and the original range can contain a felt252.
+        // then increment the range_check builtin by 3.
+        // https://github.com/starkware-libs/cairo/blob/v2.12.0-dev.1/crates/cairo-lang-sierra-to-casm/src/invocations/range_reduction.rs#L79
         let range_check = if info.from_range.is_full_felt252_range() {
-            increment_builtin_counter_by(context, entry, location, range_check, 2)?
+            increment_builtin_counter_by(context, entry, location, range_check, 3)?
         } else {
             range_check
         };
@@ -202,11 +202,11 @@ pub fn build_downcast<'ctx, 'this>(
             location,
         )?;
     } else {
-        // If the the value is not in bounds with respect to the destination range and the original range can contain a felt252.
-        // then increment the range_check builtin by 3.
-        // https://github.com/starkware-libs/cairo/blob/v2.12.0-dev.1/crates/cairo-lang-sierra-to-casm/src/invocations/range_reduction.rs#L79
+        // If the the value is in bounds with respect to the destination range and the original range can contain a felt252.
+        // then increment the range_check builtin by 2.
+        // https://github.com/starkware-libs/cairo/blob/v2.12.0-dev.1/crates/cairo-lang-sierra-to-casm/src/invocations/range_reduction.rs#L87
         let range_check = if info.from_range.is_full_felt252_range() {
-            increment_builtin_counter_by(context, entry, location, range_check, 3)?
+            increment_builtin_counter_by(context, entry, location, range_check, 2)?
         } else {
             range_check
         };
