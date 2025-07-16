@@ -244,46 +244,57 @@ pub fn build_downcast<'ctx, 'this>(
             None
         };
 
-        let (is_in_bounds, range_check_if_not_is_full_felt252_range) = match (lower_check, upper_check) {
-            (Some(lower_check), Some(upper_check)) => {
-                let is_in_range =
-                    entry.append_op_result(arith::andi(lower_check, upper_check, location))?;
+        let (is_in_bounds, range_check_if_not_is_full_felt252_range) =
+            match (lower_check, upper_check) {
+                (Some(lower_check), Some(upper_check)) => {
+                    let is_in_range =
+                        entry.append_op_result(arith::andi(lower_check, upper_check, location))?;
 
-                // If the result is in range, increment the range check builting by 2. Otherwise, increment it by 1.
-                // https://github.com/starkware-libs/cairo/blob/v2.12.0-dev.1/crates/cairo-lang-sierra-to-casm/src/invocations/casts.rs#L160
-                let range_check = super::increment_builtin_counter_by_if(
-                    context,
-                    entry,
-                    location,
-                    range_check,
-                    2,
-                    1,
-                    is_in_range,
-                )?;
+                    // If the result is in range, increment the range check builting by 2. Otherwise, increment it by 1.
+                    // https://github.com/starkware-libs/cairo/blob/v2.12.0-dev.1/crates/cairo-lang-sierra-to-casm/src/invocations/casts.rs#L160
+                    let range_check = super::increment_builtin_counter_by_if(
+                        context,
+                        entry,
+                        location,
+                        range_check,
+                        2,
+                        1,
+                        is_in_range,
+                    )?;
 
-                (is_in_range, range_check)
-            }
-            (Some(lower_check), None) => {
-                // Increment the range check builting by 1, regardless of whether the result is in range or not.
-                // https://github.com/starkware-libs/cairo/blob/v2.12.0-dev.1/crates/cairo-lang-sierra-to-casm/src/invocations/casts.rs#L135
-                let range_check =
-                    super::increment_builtin_counter_by(context, entry, location, range_check, 1)?;
+                    (is_in_range, range_check)
+                }
+                (Some(lower_check), None) => {
+                    // Increment the range check builting by 1, regardless of whether the result is in range or not.
+                    // https://github.com/starkware-libs/cairo/blob/v2.12.0-dev.1/crates/cairo-lang-sierra-to-casm/src/invocations/casts.rs#L135
+                    let range_check = super::increment_builtin_counter_by(
+                        context,
+                        entry,
+                        location,
+                        range_check,
+                        1,
+                    )?;
 
-                (lower_check, range_check)
-            }
-            (None, Some(upper_check)) => {
-                // Increment the range check builting by 1, regardless of whether the result is in range or not.
-                // https://github.com/starkware-libs/cairo/blob/v2.12.0-dev.1/crates/cairo-lang-sierra-to-casm/src/invocations/casts.rs#L111
-                let range_check =
-                    super::increment_builtin_counter_by(context, entry, location, range_check, 1)?;
+                    (lower_check, range_check)
+                }
+                (None, Some(upper_check)) => {
+                    // Increment the range check builting by 1, regardless of whether the result is in range or not.
+                    // https://github.com/starkware-libs/cairo/blob/v2.12.0-dev.1/crates/cairo-lang-sierra-to-casm/src/invocations/casts.rs#L111
+                    let range_check = super::increment_builtin_counter_by(
+                        context,
+                        entry,
+                        location,
+                        range_check,
+                        1,
+                    )?;
 
-                (upper_check, range_check)
-            }
-            // its always in bounds since dst is larger than src (i.e no bounds checks needed)
-            (None, None) => {
-                native_panic!("matched an unreachable: no bounds checks are being performed")
-            }
-        };
+                    (upper_check, range_check)
+                }
+                // its always in bounds since dst is larger than src (i.e no bounds checks needed)
+                (None, None) => {
+                    native_panic!("matched an unreachable: no bounds checks are being performed")
+                }
+            };
 
         // If the the value is in bounds with respect to the destination range and the original range can contain a felt252.
         // then increment the range_check builtin by 2.
