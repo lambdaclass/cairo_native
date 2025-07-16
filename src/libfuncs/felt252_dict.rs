@@ -3,6 +3,7 @@
 use super::LibfuncHelper;
 use crate::{
     error::{panic::ToNativeAssertError, Result},
+    execution_result::SEGMENT_ARENA_BUILTIN_SIZE,
     metadata::{
         felt252_dict::Felt252DictOverrides, runtime_bindings::RuntimeBindingsMeta, MetadataStorage,
     },
@@ -53,7 +54,15 @@ pub fn build_new<'ctx, 'this>(
     metadata: &mut MetadataStorage,
     info: &SignatureOnlyConcreteLibfunc,
 ) -> Result<()> {
-    let segment_arena = super::increment_builtin_counter(context, entry, location, entry.arg(0)?)?;
+    // We increase the segment arena builtin by 1 usage.
+    // https://github.com/starkware-libs/cairo/blob/dc8b4f0b2e189a3b107b15062895597588b78a46/crates/cairo-lang-sierra-to-casm/src/invocations/felt252_dict.rs?plain=1#L45-L49
+    let segment_arena = super::increment_builtin_counter_by(
+        context,
+        entry,
+        location,
+        entry.arg(0)?,
+        SEGMENT_ARENA_BUILTIN_SIZE,
+    )?;
 
     let value_type_id = match registry.get_type(&info.signature.branch_signatures[0].vars[1].ty)? {
         CoreTypeConcrete::Felt252Dict(info) => &info.ty,

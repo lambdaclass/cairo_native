@@ -1,6 +1,6 @@
 use super::{BlockExt, LibfuncHelper};
 use crate::{
-    error::Result,
+    error::{panic::ToNativeAssertError, Result},
     execution_result::BITWISE_BUILTIN_SIZE,
     metadata::MetadataStorage,
     native_panic,
@@ -9,6 +9,7 @@ use crate::{
 };
 use cairo_lang_sierra::{
     extensions::{
+        bounded_int::BoundedIntDivRemAlgorithm,
         core::{CoreLibfunc, CoreType, CoreTypeConcrete},
         int::{
             signed::{SintConcrete, SintTraits},
@@ -20,6 +21,7 @@ use cairo_lang_sierra::{
         },
         is_zero::IsZeroTraits,
         lib_func::SignatureOnlyConcreteLibfunc,
+        ConcreteLibfunc,
     },
     program_registry::ProgramRegistry,
 };
@@ -310,17 +312,39 @@ fn build_diff<'ctx, 'this>(
 
 fn build_divmod<'ctx, 'this>(
     context: &'ctx Context,
-    _registry: &ProgramRegistry<CoreType, CoreLibfunc>,
+    registry: &ProgramRegistry<CoreType, CoreLibfunc>,
     entry: &'this Block<'ctx>,
     location: Location<'ctx>,
     helper: &LibfuncHelper<'ctx, 'this>,
     _metadata: &mut MetadataStorage,
-    _info: &SignatureOnlyConcreteLibfunc,
+    info: &SignatureOnlyConcreteLibfunc,
 ) -> Result<()> {
-    let range_check = super::increment_builtin_counter(context, entry, location, entry.arg(0)?)?;
-
     let lhs = entry.arg(1)?;
     let rhs = entry.arg(2)?;
+
+    // Extract the ranges for the calculation of the range_check builtin increment.
+    let lhs_ty = registry.get_type(&info.param_signatures()[1].ty)?;
+    let rhs_ty = registry.get_type(&info.param_signatures()[2].ty)?;
+    let lhs_range = lhs_ty.integer_range(registry)?;
+    let rhs_range = rhs_ty.integer_range(registry)?;
+
+    let div_rem_algorithm = BoundedIntDivRemAlgorithm::try_new(&lhs_range, &rhs_range)
+        .to_native_assert_error(&format!(
+            "div_rem of ranges: lhs = {:#?} and rhs= {:#?} is not supported yet",
+            &lhs_range, &rhs_range
+        ))?;
+    // The sierra-to-casm compiler uses the range check builtin 3 times if the algorithm
+    // is KnownSmallRhs. Otherwise it is used 4 times.
+    // https://github.com/starkware-libs/cairo/blob/96625b57abee8aca55bdeb3ecf29f82e8cea77c3/crates/cairo-lang-sierra-to-casm/src/invocations/int/unsigned.rs#L151C1-L155C11
+    let range_check = match div_rem_algorithm {
+        BoundedIntDivRemAlgorithm::KnownSmallRhs => {
+            super::increment_builtin_counter_by(context, entry, location, entry.arg(0)?, 3)?
+        }
+        BoundedIntDivRemAlgorithm::KnownSmallQuotient { .. }
+        | BoundedIntDivRemAlgorithm::KnownSmallLhs { .. } => {
+            super::increment_builtin_counter_by(context, entry, location, entry.arg(0)?, 4)?
+        }
+    };
 
     let result_div = entry.append_op_result(arith::divui(lhs, rhs, location))?;
     let result_rem = entry.append_op_result(arith::remui(lhs, rhs, location))?;
@@ -357,10 +381,9 @@ fn build_from_felt252<'ctx, 'this>(
     metadata: &mut MetadataStorage,
     info: &SignatureOnlyConcreteLibfunc,
 ) -> Result<()> {
-    let range_check = super::increment_builtin_counter(context, entry, location, entry.arg(0)?)?;
-
     let value_ty = registry.get_type(&info.signature.branch_signatures[0].vars[1].ty)?;
     let threshold = value_ty.integer_range(registry)?;
+    let threshold_size = threshold.size();
 
     let value_ty = value_ty.build(
         context,
@@ -458,6 +481,25 @@ fn build_from_felt252<'ctx, 'this>(
         (is_in_range, value)
     };
 
+    // The sierra-to-casm compiler uses the range check builtin a total of:
+    // - 3 times if the value is not within the range.
+    // - 2 times if the value is within the range and the size of
+    //   the range is less than the size of the range check.
+    // - 1 time if the value is within the range and the size of
+    //   the range is greater than or equal to the size of the range check.
+    // With the range check size being 2**128
+    // https://github.com/starkware-libs/cairo/blob/v2.12.0-dev.1/crates/cairo-lang-sierra-to-casm/src/invocations/range_reduction.rs#L26
+    let rc_size = BigInt::from(1) << 128;
+    let range_check = super::increment_builtin_counter_by_if(
+        context,
+        entry,
+        location,
+        entry.arg(0)?,
+        if threshold_size < rc_size { 2 } else { 1 },
+        3,
+        is_in_range,
+    )?;
+
     let value = entry.trunci(value, value_ty, location)?;
 
     helper.cond_br(
@@ -525,6 +567,8 @@ fn build_mul_guarantee_verify<'ctx, 'this>(
     _metadata: &mut MetadataStorage,
     _info: &SignatureOnlyConcreteLibfunc,
 ) -> Result<()> {
+    // The sierra-to-casm compiler uses the range check builtin a total of 9 times.
+    // https://github.com/starkware-libs/cairo/blob/dc8b4f0b2e189a3b107b15062895597588b78a46/crates/cairo-lang-sierra-to-casm/src/invocations/int/unsigned128.rs?plain=1#L112
     let range_check =
         super::increment_builtin_counter_by(context, entry, location, entry.arg(0)?, 9)?;
 
@@ -628,7 +672,10 @@ fn build_square_root<'ctx, 'this>(
     _metadata: &mut MetadataStorage,
     info: &SignatureOnlyConcreteLibfunc,
 ) -> Result<()> {
-    let range_check = super::increment_builtin_counter(context, entry, location, entry.arg(0)?)?;
+    // The sierra-to-casm compiler uses the range_check builtin 4 times.
+    // https://github.com/starkware-libs/cairo/blob/96625b57abee8aca55bdeb3ecf29f82e8cea77c3/crates/cairo-lang-sierra-to-casm/src/invocations/int/unsigned.rs#L73
+    let range_check =
+        super::increment_builtin_counter_by(context, entry, location, entry.arg(0)?, 4)?;
 
     let input = entry.arg(1)?;
     let (input_bits, value_bits) =
@@ -838,8 +885,6 @@ fn build_u128s_from_felt252<'ctx, 'this>(
     _metadata: &mut MetadataStorage,
     _info: &SignatureOnlyConcreteLibfunc,
 ) -> Result<()> {
-    let range_check = super::increment_builtin_counter(context, entry, location, entry.arg(0)?)?;
-
     let target_ty = IntegerType::new(context, 128).into();
 
     let lo = entry.trunci(entry.arg(1)?, target_ty, location)?;
@@ -850,6 +895,19 @@ fn build_u128s_from_felt252<'ctx, 'this>(
 
     let k0 = entry.const_int_from_type(context, location, 0, target_ty)?;
     let is_wide = entry.cmpi(context, CmpiPredicate::Ne, hi, k0, location)?;
+
+    // The sierra-to-casm compiler uses the range check builtin a total of 3 times when the value is greater than u128 max.
+    // Otherwise it will be used once.
+    // https://github.com/starkware-libs/cairo/blob/96625b57abee8aca55bdeb3ecf29f82e8cea77c3/crates/cairo-lang-sierra-to-casm/src/invocations/int/unsigned128.rs#L234
+    let range_check = super::increment_builtin_counter_by_if(
+        context,
+        entry,
+        location,
+        entry.arg(0)?,
+        3,
+        1,
+        is_wide,
+    )?;
 
     helper.cond_br(
         context,
@@ -898,9 +956,14 @@ fn build_wide_mul<'ctx, 'this>(
 #[cfg(test)]
 mod test {
     use crate::{
-        context::NativeContext, executor::JitNativeExecutor, utils::HALF_PRIME, OptLevel, Value,
+        context::NativeContext, error::panic::ToNativeAssertError, executor::JitNativeExecutor,
+        utils::HALF_PRIME, OptLevel, Value,
     };
-    use cairo_lang_sierra::ProgramParser;
+    use ark_ff::One;
+    use cairo_lang_sierra::{
+        extensions::{bounded_int::BoundedIntDivRemAlgorithm, utils::Range},
+        ProgramParser,
+    };
     use itertools::Itertools;
     use num_bigint::{BigInt, BigUint, Sign};
     use num_integer::Roots;
@@ -1212,7 +1275,7 @@ mod test {
 
     fn test_divmod<T>() -> Result<(), Box<dyn std::error::Error>>
     where
-        T: Bounded + Copy + Num,
+        T: Bounded + Copy + Num + Into<BigInt>,
         Value: From<T>,
     {
         let n_bits = 8 * mem::size_of::<T>();
@@ -1245,6 +1308,17 @@ mod test {
         let module = context.compile(&program, false, None, None)?;
         let executor = JitNativeExecutor::from_native_module(module, OptLevel::default())?;
 
+        // Get the range to create the BoundedIntDivRemAlgorithm
+        let range = Range {
+            lower: T::min_value().into(),
+            upper: T::max_value().into() + BigInt::one(),
+        };
+        let div_rem_algorithm = BoundedIntDivRemAlgorithm::try_new(&range, &range)
+            .to_native_assert_error(&format!(
+                "div_rem of ranges: lhs = {:#?} and rhs= {:#?} is not supported yet",
+                &range, &range
+            ))?;
+
         let data = [T::min_value(), T::zero(), T::one(), T::max_value()];
         for perm in Itertools::permutations(data.into_iter(), 2) {
             if perm[1].is_zero() {
@@ -1253,15 +1327,26 @@ mod test {
 
             let result = executor.invoke_dynamic(
                 &program.funcs[0].id,
-                &[perm[0].into(), perm[1].into()],
+                &[Value::from(perm[0]), Value::from(perm[1])],
                 None,
             )?;
 
-            assert_eq!(result.builtin_stats.range_check, 1);
+            match div_rem_algorithm {
+                BoundedIntDivRemAlgorithm::KnownSmallRhs => {
+                    assert_eq!(result.builtin_stats.range_check, 3)
+                }
+                BoundedIntDivRemAlgorithm::KnownSmallQuotient { .. }
+                | BoundedIntDivRemAlgorithm::KnownSmallLhs { .. } => {
+                    assert_eq!(result.builtin_stats.range_check, 4)
+                }
+            }
             assert_eq!(
                 result.return_value,
                 Value::Struct {
-                    fields: vec![(perm[0] / perm[1]).into(), (perm[0] % perm[1]).into()],
+                    fields: vec![
+                        Value::from(perm[0] / perm[1]),
+                        Value::from(perm[0] % perm[1])
+                    ],
                     debug_name: None,
                 },
             );
@@ -1338,7 +1423,7 @@ mod test {
 
     fn test_from_felt252<T>() -> Result<(), Box<dyn std::error::Error>>
     where
-        T: Bounded + Copy + Num + TryFrom<Value>,
+        T: Bounded + Copy + Num + TryFrom<Value> + Into<BigInt>,
         Felt: From<T>,
         Value: From<T>,
     {
@@ -1403,13 +1488,37 @@ mod test {
         for (value, target) in data {
             let result = executor.invoke_dynamic(&program.funcs[0].id, &[value.into()], None)?;
 
-            assert_eq!(result.builtin_stats.range_check, 1);
+            match target {
+                Some(_) => {
+                    let range_size = T::max_value().into() - T::min_value().into() + BigInt::one();
+                    let rc_size = BigInt::from(1) << 128;
+                    if range_size < rc_size {
+                        assert_eq!(
+                            result.builtin_stats.range_check, 2,
+                            "Difference in range_check count. Type: {}  Value: {}",
+                            type_id, value
+                        );
+                    } else {
+                        assert_eq!(
+                            result.builtin_stats.range_check, 1,
+                            "Difference in range_check count. Type: {}  Value: {}",
+                            type_id, value
+                        );
+                    }
+                }
+                None => assert_eq!(
+                    result.builtin_stats.range_check, 3,
+                    "Difference in range_check count. Type: {}  Value: {}",
+                    type_id, value
+                ),
+            }
+
             assert_eq!(
                 result.return_value,
                 match target {
                     Some(x) => Value::Enum {
                         tag: 0,
-                        value: Box::new(x.into()),
+                        value: Box::new(Value::from(x)),
                         debug_name: None,
                     },
                     None => Value::Enum {
@@ -1814,7 +1923,11 @@ mod test {
             let lo = u128::from_le_bytes(value_bytes[..16].try_into().unwrap());
             let hi = u128::from_le_bytes(value_bytes[16..].try_into().unwrap());
 
-            assert_eq!(result.builtin_stats.range_check, 1);
+            if value >= Felt::from(BigInt::from(u128::MAX)) {
+                assert_eq!(result.builtin_stats.range_check, 3);
+            } else {
+                assert_eq!(result.builtin_stats.range_check, 1);
+            }
             assert_eq!(
                 result.return_value,
                 Value::Enum {
