@@ -3,6 +3,7 @@
 use super::LibfuncHelper;
 use crate::{
     error::{Error, Result},
+    execution_result::EC_OP_BUILTIN_SIZE,
     libfuncs::increment_builtin_counter_by_if,
     metadata::{runtime_bindings::RuntimeBindingsMeta, MetadataStorage},
     utils::{get_integer_layout, BlockExt, ProgramRegistryExt, PRIME},
@@ -257,7 +258,15 @@ pub fn build_state_add_mul<'ctx, 'this>(
     metadata: &mut MetadataStorage,
     _info: &SignatureOnlyConcreteLibfunc,
 ) -> Result<()> {
-    let ec_op = super::increment_builtin_counter(context, entry, location, entry.arg(0)?)?;
+    // The sierra-to-casm compiler uses the ec op builtin 1 time.
+    // https://github.com/starkware-libs/cairo/blob/v2.12.0-dev.1/crates/cairo-lang-sierra-to-casm/src/invocations/ec.rs#L439
+    let ec_op = super::increment_builtin_counter_by(
+        context,
+        entry,
+        location,
+        entry.arg(0)?,
+        EC_OP_BUILTIN_SIZE,
+    )?;
 
     let felt252_ty = IntegerType::new(context, 252).into();
     let ec_state_ty = llvm::r#type::r#struct(
