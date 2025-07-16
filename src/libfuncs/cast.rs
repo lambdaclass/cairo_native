@@ -205,7 +205,7 @@ pub fn build_downcast<'ctx, 'this>(
         // If the the value is in bounds with respect to the destination range and the original range can contain a felt252.
         // then increment the range_check builtin by 2.
         // https://github.com/starkware-libs/cairo/blob/v2.12.0-dev.1/crates/cairo-lang-sierra-to-casm/src/invocations/range_reduction.rs#L87
-        let range_check = if info.from_range.is_full_felt252_range() {
+        let range_check_if_not_felt = if info.from_range.is_full_felt252_range() {
             let rc_size = BigInt::from(1) << 128;
             increment_builtin_counter_by(
                 context,
@@ -301,6 +301,22 @@ pub fn build_downcast<'ctx, 'this>(
             }
         };
 
+        // If the the value is in bounds with respect to the destination range and the original range can contain a felt252.
+        // then increment the range_check builtin by 2.
+        // https://github.com/starkware-libs/cairo/blob/v2.12.0-dev.1/crates/cairo-lang-sierra-to-casm/src/invocations/range_reduction.rs#L87
+        let range_check = if info.from_range.is_full_felt252_range() {
+            let rc_size = BigInt::from(1) << 128;
+            increment_builtin_counter_by(
+                context,
+                entry,
+                location,
+                range_check,
+                if dst_range.size() < rc_size { 2 } else { 1 },
+            )?
+        } else {
+            range_check_if_not_felt
+        };
+
         let dst_value = if dst_ty.is_bounded_int(registry)? && dst_range.lower != BigInt::ZERO {
             let dst_offset = entry.const_int_from_type(
                 context,
@@ -322,6 +338,7 @@ pub fn build_downcast<'ctx, 'this>(
         } else {
             dst_value
         };
+
         helper.cond_br(
             context,
             entry,
