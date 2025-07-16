@@ -788,6 +788,37 @@ pub fn compare_outputs(
         "gas mismatch"
     );
 
+    for (builtin_name, &vm_builtin_counter) in vm_result
+        .used_resources
+        .basic_resources
+        .builtin_instance_counter
+        .iter()
+    {
+        // We convert to str because of cyclic dependency problems when importing Cairo VM.
+        let builtin_name_str = builtin_name.to_str();
+        let native_builtin_counter = match builtin_name_str {
+            "output" => 0,
+            "ecdsa" => 0,
+            "keccak" => 0,
+            "range_check" => native_result.builtin_stats.range_check,
+            "pedersen" => native_result.builtin_stats.pedersen,
+            "bitwise" => native_result.builtin_stats.bitwise,
+            "ec_op" => native_result.builtin_stats.ec_op,
+            "poseidon" => native_result.builtin_stats.poseidon,
+            "segment_arena" => native_result.builtin_stats.segment_arena,
+            "range_check96" => native_result.builtin_stats.range_check96,
+            "add_mod" => native_result.builtin_stats.add_mod,
+            "mul_mod" => native_result.builtin_stats.mul_mod,
+            _ => panic!("unknown builtin!"),
+        };
+
+        assert_eq!(
+            vm_builtin_counter, native_builtin_counter,
+            "{} builtin mismatch: expected {}, got {}",
+            builtin_name_str, vm_builtin_counter, native_builtin_counter
+        );
+    }
+
     let vm_result = match &vm_result.value {
         RunResultValue::Success(values) if !values.is_empty() | returns_panic => {
             if returns_panic {
