@@ -57,7 +57,7 @@
 <a href=#57 id=57 data-nosnippet>57</a>    info: <span class="kw-2">&amp;</span>SignatureOnlyConcreteLibfunc,
 <a href=#58 id=58 data-nosnippet>58</a>) -&gt; <span class="prelude-ty">Result</span>&lt;()&gt; {
 <a href=#59 id=59 data-nosnippet>59</a>    <span class="comment">// The sierra-to-casm compiler uses the range check builtin a total of 1 time.
-<a href=#60 id=60 data-nosnippet>60</a>    // https://github.com/starkware-libs/cairo/blob/dc8b4f0b2e189a3b107b15062895597588b78a46/crates/cairo-lang-sierra-to-casm/src/invocations/range.rs?plain=1#L24
+<a href=#60 id=60 data-nosnippet>60</a>    // https://github.com/starkware-libs/cairo/blob/v2.12.0-dev.1/crates/cairo-lang-sierra-to-casm/src/invocations/range.rs?plain=1#L24
 <a href=#61 id=61 data-nosnippet>61</a>    </span><span class="kw">let </span>range_check = <span class="kw">super</span>::increment_builtin_counter(context, entry, location, entry.arg(<span class="number">0</span>)<span class="question-mark">?</span>)<span class="question-mark">?</span>;
 <a href=#62 id=62 data-nosnippet>62</a>    <span class="kw">let </span>x = entry.arg(<span class="number">1</span>)<span class="question-mark">?</span>;
 <a href=#63 id=63 data-nosnippet>63</a>    <span class="kw">let </span>y = entry.arg(<span class="number">2</span>)<span class="question-mark">?</span>;

@@ -335,7 +335,7 @@
 <a href=#335 id=335 data-nosnippet>335</a>        ))<span class="question-mark">?</span>;
 <a href=#336 id=336 data-nosnippet>336</a>    <span class="comment">// The sierra-to-casm compiler uses the range check builtin 3 times if the algorithm
 <a href=#337 id=337 data-nosnippet>337</a>    // is KnownSmallRhs. Otherwise it is used 4 times.
-<a href=#338 id=338 data-nosnippet>338</a>    // https://github.com/starkware-libs/cairo/blob/96625b57abee8aca55bdeb3ecf29f82e8cea77c3/crates/cairo-lang-sierra-to-casm/src/invocations/int/unsigned.rs#L151C1-L155C11
+<a href=#338 id=338 data-nosnippet>338</a>    // https://github.com/starkware-libs/cairo/blob/v2.12.0-dev.1/crates/cairo-lang-sierra-to-casm/src/invocations/int/unsigned.rs#L151C1-L155C11
 <a href=#339 id=339 data-nosnippet>339</a>    </span><span class="kw">let </span>range_check = <span class="kw">match </span>div_rem_algorithm {
 <a href=#340 id=340 data-nosnippet>340</a>        BoundedIntDivRemAlgorithm::KnownSmallRhs =&gt; {
 <a href=#341 id=341 data-nosnippet>341</a>            <span class="kw">super</span>::increment_builtin_counter_by(context, entry, location, entry.arg(<span class="number">0</span>)<span class="question-mark">?</span>, <span class="number">3</span>)<span class="question-mark">?
@@ -568,7 +568,7 @@
 <a href=#568 id=568 data-nosnippet>568</a>    _info: <span class="kw-2">&amp;</span>SignatureOnlyConcreteLibfunc,
 <a href=#569 id=569 data-nosnippet>569</a>) -&gt; <span class="prelude-ty">Result</span>&lt;()&gt; {
 <a href=#570 id=570 data-nosnippet>570</a>    <span class="comment">// The sierra-to-casm compiler uses the range check builtin a total of 9 times.
-<a href=#571 id=571 data-nosnippet>571</a>    // https://github.com/starkware-libs/cairo/blob/dc8b4f0b2e189a3b107b15062895597588b78a46/crates/cairo-lang-sierra-to-casm/src/invocations/int/unsigned128.rs?plain=1#L112
+<a href=#571 id=571 data-nosnippet>571</a>    // https://github.com/starkware-libs/cairo/blob/v2.12.0-dev.1/crates/cairo-lang-sierra-to-casm/src/invocations/int/unsigned128.rs?plain=1#L112
 <a href=#572 id=572 data-nosnippet>572</a>    </span><span class="kw">let </span>range_check =
 <a href=#573 id=573 data-nosnippet>573</a>        <span class="kw">super</span>::increment_builtin_counter_by(context, entry, location, entry.arg(<span class="number">0</span>)<span class="question-mark">?</span>, <span class="number">9</span>)<span class="question-mark">?</span>;
 <a href=#574 id=574 data-nosnippet>574</a>
@@ -673,7 +673,7 @@
 <a href=#673 id=673 data-nosnippet>673</a>    info: <span class="kw-2">&amp;</span>SignatureOnlyConcreteLibfunc,
 <a href=#674 id=674 data-nosnippet>674</a>) -&gt; <span class="prelude-ty">Result</span>&lt;()&gt; {
 <a href=#675 id=675 data-nosnippet>675</a>    <span class="comment">// The sierra-to-casm compiler uses the range_check builtin 4 times.
-<a href=#676 id=676 data-nosnippet>676</a>    // https://github.com/starkware-libs/cairo/blob/96625b57abee8aca55bdeb3ecf29f82e8cea77c3/crates/cairo-lang-sierra-to-casm/src/invocations/int/unsigned.rs#L73
+<a href=#676 id=676 data-nosnippet>676</a>    // https://github.com/starkware-libs/cairo/blob/v2.12.0-dev.1/crates/cairo-lang-sierra-to-casm/src/invocations/int/unsigned.rs#L73
 <a href=#677 id=677 data-nosnippet>677</a>    </span><span class="kw">let </span>range_check =
 <a href=#678 id=678 data-nosnippet>678</a>        <span class="kw">super</span>::increment_builtin_counter_by(context, entry, location, entry.arg(<span class="number">0</span>)<span class="question-mark">?</span>, <span class="number">4</span>)<span class="question-mark">?</span>;
 <a href=#679 id=679 data-nosnippet>679</a>
@@ -898,7 +898,7 @@
 <a href=#898 id=898 data-nosnippet>898</a>
 <a href=#899 id=899 data-nosnippet>899</a>    <span class="comment">// The sierra-to-casm compiler uses the range check builtin a total of 3 times when the value is greater than u128 max.
 <a href=#900 id=900 data-nosnippet>900</a>    // Otherwise it will be used once.
-<a href=#901 id=901 data-nosnippet>901</a>    // https://github.com/starkware-libs/cairo/blob/96625b57abee8aca55bdeb3ecf29f82e8cea77c3/crates/cairo-lang-sierra-to-casm/src/invocations/int/unsigned128.rs#L234
+<a href=#901 id=901 data-nosnippet>901</a>    // https://github.com/starkware-libs/cairo/blob/v2.12.0-dev.1/crates/cairo-lang-sierra-to-casm/src/invocations/int/unsigned128.rs#L234
 <a href=#902 id=902 data-nosnippet>902</a>    </span><span class="kw">let </span>range_check = <span class="kw">super</span>::increment_builtin_counter_by_if(
 <a href=#903 id=903 data-nosnippet>903</a>        context,
 <a href=#904 id=904 data-nosnippet>904</a>        entry,

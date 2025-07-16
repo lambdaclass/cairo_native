@@ -317,7 +317,7 @@
 <a href=#317 id=317 data-nosnippet>317</a>    // let one = entry.argument(6)?;
 <a href=#318 id=318 data-nosnippet>318</a>
 <a href=#319 id=319 data-nosnippet>319</a>    // Always increase the add mod builtin pointer, regardless of the evaluation result.
-<a href=#320 id=320 data-nosnippet>320</a>    // https://github.com/starkware-libs/cairo/blob/dc8b4f0b2e189a3b107b15062895597588b78a46/crates/cairo-lang-sierra-to-casm/src/invocations/circuit.rs?plain=1#L257
+<a href=#320 id=320 data-nosnippet>320</a>    // https://github.com/starkware-libs/cairo/blob/v2.12.0-dev.1/crates/cairo-lang-sierra-to-casm/src/invocations/circuit.rs?plain=1#L257
 <a href=#321 id=321 data-nosnippet>321</a>    </span><span class="kw">let </span>add_mod = increment_builtin_counter_by(
 <a href=#322 id=322 data-nosnippet>322</a>        context,
 <a href=#323 id=323 data-nosnippet>323</a>        entry,
@@ -351,7 +351,7 @@
 <a href=#351 id=351 data-nosnippet>351</a>
 <a href=#352 id=352 data-nosnippet>352</a>        <span class="comment">// Increase the mul mod builtin pointer by the number of evaluated gates.
 <a href=#353 id=353 data-nosnippet>353</a>        // If the evaluation succedes, then we assume that every gate was evaluated.
-<a href=#354 id=354 data-nosnippet>354</a>        // https://github.com/starkware-libs/cairo/blob/dc8b4f0b2e189a3b107b15062895597588b78a46/crates/cairo-lang-sierra-to-casm/src/invocations/circuit.rs?plain=1#L261
+<a href=#354 id=354 data-nosnippet>354</a>        // https://github.com/starkware-libs/cairo/blob/v2.12.0-dev.1/crates/cairo-lang-sierra-to-casm/src/invocations/circuit.rs?plain=1#L261
 <a href=#355 id=355 data-nosnippet>355</a>        </span><span class="kw">let </span>mul_mod = increment_builtin_counter_by(
 <a href=#356 id=356 data-nosnippet>356</a>            context,
 <a href=#357 id=357 data-nosnippet>357</a>            ok_block,
@@ -432,7 +432,7 @@
 <a href=#432 id=432 data-nosnippet>432</a>        // Increase the mul mod builtin pointer by the number of evaluated gates.
 <a href=#433 id=433 data-nosnippet>433</a>        // As the evaluation failed, we read the number of evaluated gates from
 <a href=#434 id=434 data-nosnippet>434</a>        // the first argument of the error block.
-<a href=#435 id=435 data-nosnippet>435</a>        // https://github.com/starkware-libs/cairo/blob/dc8b4f0b2e189a3b107b15062895597588b78a46/crates/cairo-lang-sierra-to-casm/src/invocations/circuit.rs?plain=1#L261
+<a href=#435 id=435 data-nosnippet>435</a>        // https://github.com/starkware-libs/cairo/blob/v2.12.0-dev.1/crates/cairo-lang-sierra-to-casm/src/invocations/circuit.rs?plain=1#L261
 <a href=#436 id=436 data-nosnippet>436</a>        </span><span class="kw">let </span>mul_mod = {
 <a href=#437 id=437 data-nosnippet>437</a>            <span class="kw">let </span>mul_mod_usage = err_block.muli(
 <a href=#438 id=438 data-nosnippet>438</a>                err_block.arg(<span class="number">0</span>)<span class="question-mark">?</span>,
@@ -1209,7 +1209,7 @@
 <a href=#1209 id=1209 data-nosnippet>1209</a>    _info: <span class="kw-2">&amp;</span>SignatureOnlyConcreteLibfunc,
 <a href=#1210 id=1210 data-nosnippet>1210</a>) -&gt; <span class="prelude-ty">Result</span>&lt;()&gt; {
 <a href=#1211 id=1211 data-nosnippet>1211</a>    <span class="comment">// We increase the range_check96 builtin by 1 usage
-<a href=#1212 id=1212 data-nosnippet>1212</a>    // https://github.com/starkware-libs/cairo/blob/dc8b4f0b2e189a3b107b15062895597588b78a46/crates/cairo-lang-sierra-to-casm/src/invocations/circuit.rs?plain=1#L534
+<a href=#1212 id=1212 data-nosnippet>1212</a>    // https://github.com/starkware-libs/cairo/blob/v2.12.0-dev.1/crates/cairo-lang-sierra-to-casm/src/invocations/circuit.rs?plain=1#L534
 <a href=#1213 id=1213 data-nosnippet>1213</a>    </span><span class="kw">let </span>range_check96 = increment_builtin_counter_by(
 <a href=#1214 id=1214 data-nosnippet>1214</a>        context,
 <a href=#1215 id=1215 data-nosnippet>1215</a>        entry,

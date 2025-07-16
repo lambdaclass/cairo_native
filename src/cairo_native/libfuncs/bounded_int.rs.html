@@ -590,7 +590,7 @@
 <a href=#590 id=590 data-nosnippet>590</a>    };
 <a href=#591 id=591 data-nosnippet>591</a>
 <a href=#592 id=592 data-nosnippet>592</a>    <span class="comment">// Increase range check builtin by 3, regardless of `div_rem_algorithm`:
-<a href=#593 id=593 data-nosnippet>593</a>    // https://github.com/starkware-libs/cairo/blob/61c56aff349b4715f2a6619faf5b710f2da8a663/crates/cairo-lang-sierra-to-casm/src/invocations/int/bounded.rs#L97
+<a href=#593 id=593 data-nosnippet>593</a>    // https://github.com/starkware-libs/cairo/blob/v2.12.0-dev.1/crates/cairo-lang-sierra-to-casm/src/invocations/int/bounded.rs#L100
 <a href=#594 id=594 data-nosnippet>594</a>    </span><span class="kw">let </span>range_check = <span class="kw">match </span>div_rem_algorithm {
 <a href=#595 id=595 data-nosnippet>595</a>        BoundedIntDivRemAlgorithm::KnownSmallRhs =&gt; <span class="kw">crate</span>::libfuncs::increment_builtin_counter_by(
 <a href=#596 id=596 data-nosnippet>596</a>            context,
@@ -603,8 +603,8 @@
 <a href=#603 id=603 data-nosnippet>603</a>        | BoundedIntDivRemAlgorithm::KnownSmallLhs { .. } =&gt; {
 <a href=#604 id=604 data-nosnippet>604</a>            <span class="comment">// If `div_rem_algorithm` is `KnownSmallQuotient` or `KnownSmallLhs`, increase range check builtin by 1.
 <a href=#605 id=605 data-nosnippet>605</a>            //
-<a href=#606 id=606 data-nosnippet>606</a>            // Case KnownSmallQuotient: https://github.com/starkware-libs/cairo/blob/61c56aff349b4715f2a6619faf5b710f2da8a663/crates/cairo-lang-sierra-to-casm/src/invocations/int/bounded.rs#L126
-<a href=#607 id=607 data-nosnippet>607</a>            // Case KnownSmallLhs: https://github.com/starkware-libs/cairo/blob/61c56aff349b4715f2a6619faf5b710f2da8a663/crates/cairo-lang-sierra-to-casm/src/invocations/int/bounded.rs#L154
+<a href=#606 id=606 data-nosnippet>606</a>            // Case KnownSmallQuotient: https://github.com/starkware-libs/cairo/blob/v2.12.0-dev.1/crates/cairo-lang-sierra-to-casm/src/invocations/int/bounded.rs#L129
+<a href=#607 id=607 data-nosnippet>607</a>            // Case KnownSmallLhs: https://github.com/starkware-libs/cairo/blob/v2.12.0-dev.1/crates/cairo-lang-sierra-to-casm/src/invocations/int/bounded.rs#L157
 <a href=#608 id=608 data-nosnippet>608</a>            </span><span class="kw">crate</span>::libfuncs::increment_builtin_counter_by(
 <a href=#609 id=609 data-nosnippet>609</a>                context,
 <a href=#610 id=610 data-nosnippet>610</a>                entry,
