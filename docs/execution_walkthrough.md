@@ -246,9 +246,9 @@ Builtin stats: BuiltinStats { bitwise: 1, ec_op: 0, range_check: 1, pedersen: 0,
 Sometimes we need to use stuff that would be too complicated or error-prone to
 implement in MLIR, but that we have readily available from Rust.
 
-When initializing an executor, for each of the variants of the `RuntimeBinding` enum a
-pointer to a runtime function is created on global. Then on execution, it will access the global
-of the desired function and find its pointer.
+When initializing an executor, for each of the variants of the `RuntimeBinding` enum, an MLIR global symbol
+is declared that will contain a pointer to the runtime fucntion implementation. Then on execution, it will access the global symbol of the desired function and find its pointer. This way, each contract uses the
+same runtime library located on the sequencer.
 
 Although it's implemented in Rust, its functions use the C ABI and have Rust's
 name mangling disabled. This means that to the extern observer it's technically
