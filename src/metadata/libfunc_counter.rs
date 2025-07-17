@@ -1,23 +1,19 @@
 #![cfg(feature = "with-libfunc-counter")]
 //! The libfunc counter feature is used to generate information counting how many time a libfunc has been called.
 //!
-//! When this feature is used, the compiler will call three important methods:
+//! When this feature is used, the compiler will call one main method:
 //!
-//! 1. `count_libfunc`: called before every libfunc execution.
+//! 1. `count_libfunc`: called before every libfunc execution. This method will handle the counting. Given a the index
+//!    of a libfunc (relative the its declaration order), it accesses the array of counters and updates the counter.
 //!
-//! 2. `build_array_counter`: called only once to build the array of counters (one for each libfuncs). The order of
-//!    is based on the libfuncs' declaration order.
+//! In the context of Starknet contracts, we need to add support for building the arrays of counters for multiple executions.
+//! To do so, we need one important element, which must be set before every contract execution:
 //!
-//! 3. `store_array_counter`: called before finishing each entrypoint execution. It transforms the MLIR array into a
-//!    Rust vector which is then stored in `LIBFUNC_COUNTER`, a static variable that registers the array of counters by
-//!    execution, along with its `counter_id` (which is relative to the execution).
+//! * A counter to track the ID of the current array of counter, which gets updated every time we switch to another
+//!   contract. Since a contract can call other contracts, we need a way of restoring the counter after every execution.
 //!
-//! In the context of Starknet contracts, we need to add support for building
-//! the arrays of counters for multiple executions. To do so, we need one important element, which must be set before every contract
-//! execution:
-//!
-//! A counter to track the ID of the current array of counter, which gets updated every time we switch to another
-//! contract. Since a contract can call other contracts, we need a way of restoring the counter after every execution.
+//! * An array-of-counter guard. Every time a new entrypoint is executed, a new array of counters needs to be created in order to isolate
+//!   each of them. The guard keeps the last array that was used to restore it once the inner entrypoint execution has finished.
 //!
 //! See `cairo-native-run` for an example on how to do it.
 use std::collections::HashSet;
@@ -48,7 +44,7 @@ impl LibfuncCounterBinding {
     pub const fn symbol(self) -> &'static str {
         match self {
             LibfuncCounterBinding::CounterId => "cairo_native__counter_id",
-            LibfuncCounterBinding::GetCounterArray => "cairo_native__get_counter_array",
+            LibfuncCounterBinding::GetCounterArray => "cairo_native__get_counters_array",
         }
     }
 
@@ -56,7 +52,7 @@ impl LibfuncCounterBinding {
         match self {
             LibfuncCounterBinding::CounterId => std::ptr::null(),
             LibfuncCounterBinding::GetCounterArray => {
-                libfunc_counter_runtime::get_counter_array as *const ()
+                libfunc_counter_runtime::get_counters_array as *const ()
             }
         }
     }
@@ -77,7 +73,7 @@ impl LibfuncCounterMeta {
     /// Register the global for the given binding, if not yet registered, and return
     /// a pointer to the stored value.
     ///
-    /// For the function to be available, `setup_runtime` must be called before running the module
+    /// For the function to be available, `setup_runtime` must be called before running the module.
     pub fn build_function<'c, 'a>(
         &mut self,
         context: &'c Context,
@@ -151,8 +147,8 @@ impl LibfuncCounterMeta {
         block.append_op_result(memref::load(libfunc_counter_id_ptr, &[], location))
     }
 
-    /// Build the array of counters
-    fn build_array_counter<'c, 'a>(
+    /// Returns the array of counters.
+    fn get_array_counter<'c, 'a>(
         &mut self,
         context: &'c Context,
         module: &Module,
@@ -160,6 +156,7 @@ impl LibfuncCounterMeta {
         location: Location<'c>,
     ) -> Result<Value<'c, 'a>> {
         self.build_counter_id(context, module, block, location)?;
+
         let function_ptr = self.build_function(
             context,
             module,
@@ -187,7 +184,7 @@ impl LibfuncCounterMeta {
         let u32_ty = IntegerType::new(context, 32).into();
         let k1 = block.const_int(context, location, 1, 32)?;
 
-        let array_counter_ptr = self.build_array_counter(context, module, block, location)?;
+        let array_counter_ptr = self.get_array_counter(context, module, block, location)?;
 
         let value_counter_ptr = block.gep(
             context,
@@ -233,9 +230,10 @@ pub mod libfunc_counter_runtime {
     use crate::{
         error::Result,
         metadata::{libfunc_counter::LibfuncCounterMeta, MetadataStorage},
+        utils::libc_malloc,
     };
 
-    /// Contains an array of vector for each execution completed
+    /// Contains an array of vector for each execution completed.
     pub static LIBFUNC_COUNTER: LazyLock<Mutex<HashMap<u64, Vec<u32>>>> =
         LazyLock::new(|| Mutex::new(HashMap::new()));
 
@@ -255,13 +253,13 @@ pub mod libfunc_counter_runtime {
     impl CountersArrayGuard {
         pub fn init(libfuncs_amount: usize) -> CountersArrayGuard {
             let u32_libfuncs_amount = libfuncs_amount * 4;
+            let new_array: *mut u32 = unsafe { libc_malloc(u32_libfuncs_amount).cast() };
 
-            let new_array = unsafe { libc::malloc(u32_libfuncs_amount) as *mut u32 };
-
+            // All positions in the array must be initialized with 0. Since
+            // some libfuncs declared may not be called, their respective counter
+            // won't be updated.
             for i in 0..libfuncs_amount {
-                unsafe {
-                    *(new_array.add(i)) = 0
-                };
+                unsafe { *(new_array.add(i)) = 0 };
             }
 
             Self(COUNTERS_ARRAY.replace(new_array))
@@ -274,7 +272,7 @@ pub mod libfunc_counter_runtime {
         }
     }
 
-    /// Increase the libfunc's counter given its index
+    /// Update the libfunc's counter based on its index, relative to the order of declaration.
     pub fn count_libfunc(
         context: &Context,
         module: &Module,
@@ -288,12 +286,15 @@ pub mod libfunc_counter_runtime {
         libfunc_counter.count_libfunc(context, module, block, location, libfunc_idx)
     }
 
-    pub extern "C" fn get_counter_array() -> *mut u32 {
+    pub extern "C" fn get_counters_array() -> *mut u32 {
         COUNTERS_ARRAY.with(|x| x.get()) as *mut u32
     }
 
+    /// Converts the pointer to the counters into a Rust `Vec` and store it. Then, it frees the pointer.
+    ///
+    /// This method should be called at the end of an entrypoint execution.
     pub unsafe fn store_and_free_counters_array(counter_id_ptr: *mut u64, libfuncs_amount: usize) {
-        let counter_array_ptr = get_counter_array();
+        let counter_array_ptr = get_counters_array();
         let counters_vec = slice::from_raw_parts(counter_array_ptr, libfuncs_amount).to_vec();
 
         LIBFUNC_COUNTER
@@ -301,8 +302,6 @@ pub mod libfunc_counter_runtime {
             .unwrap()
             .insert(*counter_id_ptr, counters_vec);
 
-        if !(counter_array_ptr.is_null()) {
-            libc::free(counter_array_ptr as *mut libc::c_void);
-        }
+        libc::free(counter_array_ptr as *mut libc::c_void);
     }
 }
