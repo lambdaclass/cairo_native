@@ -84,11 +84,15 @@ The code is laid out in the following sections:
 
 ```txt
  src
- ├─ arch.rs             Trampoline assembly for calling functions with dynamic signatures.
  ├─ arch/               Architecture-specific code for the trampoline.
  ├─ bin/                Binary programs.
+ ├─ cache/              Cache implementations for Jit and Aot.
+ ├─ executor/           Implementations of the AotNativeExecutor, AotContractExecutor and JitNativeExecutor.
+ ├─ libfuncs/           Libfuncs implementations                        
+ ├─ types/              Cairo type to MLIR implementations.
  ├─ utils/              Utily traits and methods like a melior (MLIR) block trait
                         extension to write less code.
+ ├─ arch.rs             Trampoline assembly for calling functions with dynamic signatures.
  ├─ cache.rs            Types and implementations of compiled program caches.
  ├─ compiler.rs         The glue code of the compiler, has the codegen for
                         the function signatures and calls the libfunc
@@ -105,9 +109,10 @@ The code is laid out in the following sections:
  ├─ libfuncs.rs         Cairo Sierra libfunc glue code & implementations.
  ├─ metadata.rs         Metadata injector to use within the compilation process.
  ├─ module.rs           The MLIR module wrapper.
- ├─ starknet.rs         Starknet syscall handler glue code.
+ ├─ runtime.rs          Methods that need to use the Rust runtime
  ├─ starknet_stub.rs
- ├─ types.rs            Cairo to MLIR type information,
+ ├─ starknet.rs         Starknet syscall handler glue code.
+ ├─ types.rs            Conversion from Sierra to MLIR types. Cairo to MLIR type information.
  ├─ utils.rs            Internal utilities.
  └─ values.rs           JIT serialization.
 ```
