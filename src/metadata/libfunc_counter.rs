@@ -3,17 +3,17 @@
 //!
 //! When this feature is used, the compiler will call one main method:
 //!
-//! 1. `count_libfunc`: called before every libfunc execution. This method will handle the counting. Given a the index
-//!    of a libfunc (relative the its declaration order), it accesses the array of counters and updates the counter.
+//! 1. `count_libfunc`: called before every libfunc execution. This method will handle the counting. Given the index
+//!    of a libfunc (relative to its declaration order), it accesses the array of counters and updates the counter.
 //!
-//! In the context of Starknet contracts, we need to add support for building the arrays of counters for multiple executions.
-//! To do so, we need one important element, which must be set before every contract execution:
+//! In the context of Starknet contracts, we need to add support for building the array of counters for multiple executions.
+//! To do so, we need one important element which must be set before every contract execution:
 //!
 //! * A counter to track the ID of the current array of counter, which gets updated every time we switch to another
 //!   contract. Since a contract can call other contracts, we need a way of restoring the counter after every execution.
 //!
-//! * An array-of-counter guard. Every time a new entrypoint is executed, a new array of counters needs to be created in order to isolate
-//!   each of them. The guard keeps the last array that was used to restore it once the inner entrypoint execution has finished.
+//! * An array-of-counters guard. Every time a new entrypoint is executed, a new array of counters needs to be created.
+//!   The guard keeps the last array that was used to restore it once the inner entrypoint execution has finished.
 //!
 //! See `cairo-native-run` for an example on how to do it.
 use std::collections::HashSet;
