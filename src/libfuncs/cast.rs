@@ -268,8 +268,9 @@ pub fn build_downcast<'ctx, 'this>(
         } else {
             match (lower_check, upper_check) {
                 (Some(_), None) | (None, Some(_)) => {
-                    // Increment the range check builting by 1, regardless of whether the result is in range or not.
-                    // https://github.com/starkware-libs/cairo/blob/v2.12.0-dev.1/crates/cairo-lang-sierra-to-casm/src/invocations/casts.rs#L111
+                    // If either the lower or the upper bound was checked, increment the range check builting by 1.
+                    // * In case the lower bound was checked: https://github.com/starkware-libs/cairo/blob/v2.12.0-dev.1/crates/cairo-lang-sierra-to-casm/src/invocations/casts.rs#L135
+                    // * In case the upper bound was checked: https://github.com/starkware-libs/cairo/blob/v2.12.0-dev.1/crates/cairo-lang-sierra-to-casm/src/invocations/casts.rs#L111
                     super::increment_builtin_counter_by(context, entry, location, range_check, 1)?
                 }
                 (Some(lower_check), Some(upper_check)) => {
