@@ -200,9 +200,9 @@ jobs:
       - name: Checkout Sequencer
         uses: actions/checkout@v4
         with:
-          repository: lambdaclass/sequencer
+          repository: starkware-libs/sequencer
           path: sequencer
-          ref: 81505b1b48e941c52c2e9780f48ef4443d555f89 # branch: reduce-recursion-depth
+          ref: apollo-v0.14.0-testnet
       - name: Setup rust env
         uses: dtolnay/rust-toolchain@1.84.1
       - name: Retreive cached dependecies
