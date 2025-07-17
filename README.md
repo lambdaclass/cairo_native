@@ -30,6 +30,7 @@ to machine code via MLIR and LLVM.
   - [cairo-native-stress](#cairo-native-stress)
   - [scarb-native-dump](#scarb-native-dump)
   - [scarb-native-test](#scarb-native-test)
+  - [starknet-native-compile](#starknet-native-compile)
 - [Benchmarking](#benchmarking)
 
 For in-depth documentation, see the [developer documentation][].
@@ -178,6 +179,7 @@ These are the contents of the `/src/bin` folder
 - `cairo-native-stress`
 - `scarb-native-dump`
 - `scarb-native-test`
+- `starknet-native-compile`
 
 ### `cairo-native-compile`
 
@@ -382,6 +384,26 @@ Options:
   -t, --test-kind <TEST_KIND>  Choose test kind to run [possible values: unit, integration, all]
       --run-mode <RUN_MODE>    Run with JIT or AOT (compiled) [default: jit] [possible values: aot, jit]
   -O, --opt-level <OPT_LEVEL>  Optimization level, Valid: 0, 1, 2, 3. Values higher than 3 are considered as 3 [default: 0]
+  -h, --help                   Print help
+  -V, --version                Print version
+```
+
+### `starknet-native-compile`
+
+```bash
+Given a Sierra file (as saved in Starknet's contract tree), extracts the sierra_program from
+felts into readable Sierra code, compiles it to native, and saves the result to the given output
+path.
+
+Usage: starknet-native-compile [OPTIONS] <PATH> <OUTPUT>
+
+Arguments:
+  <PATH>    The path of the Sierra file to compile
+  <OUTPUT>  The output file path
+
+Options:
+  -O, --opt-level <OPT_LEVEL>  Optimization level, Valid: 0, 1, 2, 3. Values higher than 3 are considered as 3 [default: 0]
+      --stats <STATS>          Output path for compilation statistics
   -h, --help                   Print help
   -V, --version                Print version
 ```
