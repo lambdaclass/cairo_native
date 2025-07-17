@@ -32,7 +32,7 @@ jobs:
         with:
           repository: lambdaclass/starknet-replay
           path: starknet-replay
-          ref: 135ba7cd5b45fe137b11b7f75654dcd472363033
+          ref: 95c7e85f65acbf536462ffb538b866ddafb7ce39
       # We need native to use the linux deps ci action
       - name: Checkout Native
         uses: actions/checkout@v4
@@ -43,8 +43,7 @@ jobs:
         with:
           repository: lambdaclass/sequencer
           path: sequencer
-          ref: b61262980394dab0e0a4c4cab85f12d31d0ce878
-
+          ref: c12c6a72f2375413fc5ba04e50af87ef21096784
       - name: Cache RPC Calls
         uses: actions/cache@v4.2.0
         with:
@@ -90,12 +89,12 @@ jobs:
       - name: Run with Native
         if: ${{ matrix.runner == 'native' }}
         run: |
-          cargo run --features state_dump block mainnet ${{ matrix.block }}
+          cargo run --release --bin replay --features state_dump block mainnet ${{ matrix.block }}
 
       - name: Run with VM
         if: ${{ matrix.runner == 'vm' }}
         run: |
-          cargo run --features "state_dump,only_cairo_vm" block mainnet ${{ matrix.block }}
+          cargo run --release --bin replay --features "state_dump,only_cairo_vm" block mainnet ${{ matrix.block }}
 
       - name: Upload dumps
         uses: actions/upload-artifact@v4
@@ -126,5 +125,4 @@ jobs:
         continue-on-error: true
 
       - name: Compare states
-        run: |
-          ./scripts/cmp_state_dumps.sh
+        run: python ./scripts/cmp_state_dumps.py

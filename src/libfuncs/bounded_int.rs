@@ -2,7 +2,8 @@
 
 use super::LibfuncHelper;
 use crate::{
-    error::Result,
+    error::{panic::ToNativeAssertError, Result},
+    execution_result::RANGE_CHECK_BUILTIN_SIZE,
     metadata::MetadataStorage,
     native_assert,
     types::TypeBuilder,
@@ -12,7 +13,8 @@ use cairo_lang_sierra::{
     extensions::{
         bounded_int::{
             BoundedIntConcreteLibfunc, BoundedIntConstrainConcreteLibfunc,
-            BoundedIntDivRemConcreteLibfunc, BoundedIntTrimConcreteLibfunc,
+            BoundedIntDivRemAlgorithm, BoundedIntDivRemConcreteLibfunc,
+            BoundedIntTrimConcreteLibfunc,
         },
         core::{CoreLibfunc, CoreType},
         lib_func::SignatureOnlyConcreteLibfunc,
@@ -193,8 +195,7 @@ fn build_add<'ctx, 'this>(
         res_value
     };
 
-    entry.append_operation(helper.br(0, &[res_value], location));
-    Ok(())
+    helper.br(entry, 0, &[res_value], location)
 }
 
 /// Generate MLIR operations for the `bounded_int_sub` libfunc.
@@ -321,8 +322,7 @@ fn build_sub<'ctx, 'this>(
         res_value
     };
 
-    entry.append_operation(helper.br(0, &[res_value], location));
-    Ok(())
+    helper.br(entry, 0, &[res_value], location)
 }
 
 /// Generate MLIR operations for the `bounded_int_mul` libfunc.
@@ -441,8 +441,7 @@ fn build_mul<'ctx, 'this>(
         res_value
     };
 
-    entry.append_operation(helper.br(0, &[res_value], location));
-    Ok(())
+    helper.br(entry, 0, &[res_value], location)
 }
 
 /// Generate MLIR operations for the `bounded_int_divrem` libfunc.
@@ -456,8 +455,6 @@ fn build_divrem<'ctx, 'this>(
     _metadata: &mut MetadataStorage,
     info: &BoundedIntDivRemConcreteLibfunc,
 ) -> Result<()> {
-    let range_check = super::increment_builtin_counter(context, entry, location, entry.arg(0)?)?;
-
     let lhs_value = entry.arg(1)?;
     let rhs_value = entry.arg(2)?;
 
@@ -484,6 +481,12 @@ fn build_divrem<'ctx, 'this>(
     } else {
         rhs_range.zero_based_bit_width()
     };
+
+    let div_rem_algorithm = BoundedIntDivRemAlgorithm::try_new(&lhs_range, &rhs_range)
+        .to_native_assert_error(&format!(
+            "div_rem of ranges: lhs = {:#?} and rhs= {:#?} is not supported yet",
+            &lhs_range, &rhs_range
+        ))?;
 
     // Calculate the computation range.
     let compute_range = Range {
@@ -586,8 +589,33 @@ fn build_divrem<'ctx, 'this>(
         rem_value
     };
 
-    entry.append_operation(helper.br(0, &[range_check, div_value, rem_value], location));
-    Ok(())
+    // Increase range check builtin by 3, regardless of `div_rem_algorithm`:
+    // https://github.com/starkware-libs/cairo/blob/v2.12.0-dev.1/crates/cairo-lang-sierra-to-casm/src/invocations/int/bounded.rs#L100
+    let range_check = match div_rem_algorithm {
+        BoundedIntDivRemAlgorithm::KnownSmallRhs => crate::libfuncs::increment_builtin_counter_by(
+            context,
+            entry,
+            location,
+            entry.arg(0)?,
+            3 * RANGE_CHECK_BUILTIN_SIZE,
+        )?,
+        BoundedIntDivRemAlgorithm::KnownSmallQuotient { .. }
+        | BoundedIntDivRemAlgorithm::KnownSmallLhs { .. } => {
+            // If `div_rem_algorithm` is `KnownSmallQuotient` or `KnownSmallLhs`, increase range check builtin by 1.
+            //
+            // Case KnownSmallQuotient: https://github.com/starkware-libs/cairo/blob/v2.12.0-dev.1/crates/cairo-lang-sierra-to-casm/src/invocations/int/bounded.rs#L129
+            // Case KnownSmallLhs: https://github.com/starkware-libs/cairo/blob/v2.12.0-dev.1/crates/cairo-lang-sierra-to-casm/src/invocations/int/bounded.rs#L157
+            crate::libfuncs::increment_builtin_counter_by(
+                context,
+                entry,
+                location,
+                entry.arg(0)?,
+                4 * RANGE_CHECK_BUILTIN_SIZE,
+            )?
+        }
+    };
+
+    helper.br(entry, 0, &[range_check, div_value, rem_value], location)
 }
 
 /// Generate MLIR operations for the `bounded_int_constrain` libfunc.
@@ -669,7 +697,7 @@ fn build_constrain<'ctx, 'this>(
             res_value
         };
 
-        lower_block.append_operation(helper.br(0, &[range_check, res_value], location));
+        helper.br(lower_block, 0, &[range_check, res_value], location)?;
     }
 
     {
@@ -696,7 +724,7 @@ fn build_constrain<'ctx, 'this>(
             res_value
         };
 
-        upper_block.append_operation(helper.br(1, &[range_check, res_value], location));
+        helper.br(upper_block, 1, &[range_check, res_value], location)?;
     }
 
     Ok(())
@@ -747,9 +775,14 @@ fn build_trim<'ctx, 'this>(
         value
     };
 
-    entry.append_operation(helper.cond_br(context, is_invalid, [0, 1], [&[], &[value]], location));
-
-    Ok(())
+    helper.cond_br(
+        context,
+        entry,
+        is_invalid,
+        [0, 1],
+        [&[], &[value]],
+        location,
+    )
 }
 
 /// Generate MLIR operations for the `bounded_int_is_zero` libfunc.
@@ -775,14 +808,14 @@ fn build_is_zero<'ctx, 'this>(
     let k0 = entry.const_int_from_type(context, location, 0, src_value.r#type())?;
     let src_is_zero = entry.cmpi(context, CmpiPredicate::Eq, src_value, k0, location)?;
 
-    entry.append_operation(helper.cond_br(
+    helper.cond_br(
         context,
+        entry,
         src_is_zero,
         [0, 1],
         [&[], &[src_value]],
         location,
-    ));
-    Ok(())
+    )
 }
 
 /// Generate MLIR operations for the `bounded_int_wrap_non_zero` libfunc.
@@ -804,7 +837,7 @@ fn build_wrap_non_zero<'ctx, 'this>(
         "value must not be zero"
     );
 
-    super::build_noop::<1, true>(
+    super::build_noop::<1, false>(
         context,
         registry,
         entry,
@@ -841,7 +874,7 @@ mod test {
             }
         );
         let ctx = NativeContext::new();
-        let module = ctx.compile(&program, false, None).unwrap();
+        let module = ctx.compile(&program, false, None, None).unwrap();
         let executor = JitNativeExecutor::from_native_module(module, OptLevel::Default).unwrap();
         let ExecutionResult {
             remaining_gas: _,
@@ -874,7 +907,7 @@ mod test {
             }
         );
         let ctx = NativeContext::new();
-        let module = ctx.compile(&program, false, None).unwrap();
+        let module = ctx.compile(&program, false, None, None).unwrap();
         let executor = JitNativeExecutor::from_native_module(module, OptLevel::Default).unwrap();
         let ExecutionResult {
             remaining_gas: _,
@@ -907,7 +940,7 @@ mod test {
             }
         );
         let ctx = NativeContext::new();
-        let module = ctx.compile(&program, false, None).unwrap();
+        let module = ctx.compile(&program, false, None, None).unwrap();
         let executor = JitNativeExecutor::from_native_module(module, OptLevel::Default).unwrap();
         let ExecutionResult {
             remaining_gas: _,
@@ -940,7 +973,7 @@ mod test {
             }
         );
         let ctx = NativeContext::new();
-        let module = ctx.compile(&program, false, None).unwrap();
+        let module = ctx.compile(&program, false, None, None).unwrap();
         let executor = JitNativeExecutor::from_native_module(module, OptLevel::Default).unwrap();
         let ExecutionResult {
             remaining_gas: _,

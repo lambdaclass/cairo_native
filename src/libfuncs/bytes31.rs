@@ -74,9 +74,7 @@ pub fn build_const<'ctx, 'this>(
         location,
     ));
 
-    entry.append_operation(helper.br(0, &[op0.result(0)?.into()], location));
-
-    Ok(())
+    helper.br(entry, 0, &[op0.result(0)?.into()], location)
 }
 
 /// Generate MLIR operations for the `bytes31_to_felt252` libfunc.
@@ -99,9 +97,7 @@ pub fn build_to_felt252<'ctx, 'this>(
 
     let result = entry.extui(value, felt252_ty, location)?;
 
-    entry.append_operation(helper.br(0, &[result], location));
-
-    Ok(())
+    helper.br(entry, 0, &[result], location)
 }
 
 /// Generate MLIR operations for the `u8_from_felt252` libfunc.
@@ -114,8 +110,10 @@ pub fn build_from_felt252<'ctx, 'this>(
     metadata: &mut MetadataStorage,
     info: &SignatureOnlyConcreteLibfunc,
 ) -> Result<()> {
+    // The sierra-to-casm compiler uses the range check builtin a total of 3 times.
+    // https://github.com/starkware-libs/cairo/blob/v2.12.0-dev.1/crates/cairo-lang-sierra-to-casm/src/invocations/misc.rs?plain=1#L266
     let range_check: Value =
-        super::increment_builtin_counter(context, entry, location, entry.arg(0)?)?;
+        super::increment_builtin_counter_by(context, entry, location, entry.arg(0)?, 3)?;
 
     let value: Value = entry.arg(1)?;
 
@@ -153,9 +151,9 @@ pub fn build_from_felt252<'ctx, 'this>(
     ));
 
     let value = block_success.trunci(value, result_ty, location)?;
-    block_success.append_operation(helper.br(0, &[range_check, value], location));
+    helper.br(block_success, 0, &[range_check, value], location)?;
 
-    block_failure.append_operation(helper.br(1, &[range_check], location));
+    helper.br(block_failure, 1, &[range_check], location)?;
 
     Ok(())
 }
@@ -170,7 +168,7 @@ mod test {
     use starknet_types_core::felt::Felt;
 
     lazy_static! {
-        // TODO: Test `bytes31_const` once the compiler supports it.
+        // TODO: Test `bytes31_const` once the compiler supports it. See: https://github.com/lambdaclass/cairo_native/issues/1224
         static ref BYTES31_ROUNDTRIP: (String, Program) = load_cairo! {
             use core::bytes_31::{bytes31_try_from_felt252, bytes31_to_felt252};
 

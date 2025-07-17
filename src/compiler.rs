@@ -45,6 +45,7 @@
 //! [BFS algorithm]: https://en.wikipedia.org/wiki/Breadth-first_search
 
 use crate::{
+    clone_option_mut,
     debug::libfunc_to_name,
     error::{panic::ToNativeAssertError, Error},
     libfuncs::{BranchArg, LibfuncBuilder, LibfuncHelper},
@@ -54,8 +55,9 @@ use crate::{
         MetadataStorage,
     },
     native_assert, native_panic,
+    statistics::Statistics,
     types::TypeBuilder,
-    utils::{generate_function_name, BlockExt},
+    utils::{generate_function_name, walk_ir::walk_mlir_block, BlockExt},
 };
 use bumpalo::Bump;
 use cairo_lang_sierra::{
@@ -98,6 +100,7 @@ use mlir_sys::{
 use std::{
     cell::Cell,
     collections::{hash_map::Entry, BTreeMap, HashMap, HashSet},
+    ffi::c_void,
     ops::Deref,
 };
 
@@ -121,6 +124,7 @@ type BlockStorage<'c, 'a> =
 ///
 /// Additionally, it needs a reference to the MLIR context, the output module and the metadata
 /// storage. The last one is passed externally so that stuff can be initialized if necessary.
+#[allow(clippy::too_many_arguments)]
 pub fn compile(
     context: &Context,
     module: &Module,
@@ -129,6 +133,7 @@ pub fn compile(
     metadata: &mut MetadataStorage,
     di_compile_unit_id: Attribute,
     ignore_debug_names: bool,
+    stats: Option<&mut Statistics>,
 ) -> Result<(), Error> {
     if let Ok(x) = std::env::var("NATIVE_DEBUG_DUMP") {
         if x == "1" || x == "true" {
@@ -158,6 +163,7 @@ pub fn compile(
             di_compile_unit_id,
             sierra_stmt_start_offset,
             ignore_debug_names,
+            clone_option_mut!(stats),
         )?;
     }
 
@@ -184,6 +190,7 @@ fn compile_func(
     di_compile_unit_id: Attribute,
     sierra_stmt_start_offset: usize,
     ignore_debug_names: bool,
+    stats: Option<&mut Statistics>,
 ) -> Result<(), Error> {
     let fn_location = Location::new(
         context,
@@ -543,26 +550,6 @@ fn compile_func(
 
                     let (state, _) = edit_state::take_args(state, invocation.args.iter())?;
 
-                    let helper = LibfuncHelper {
-                        module,
-                        init_block: &pre_entry_block,
-                        region: &region,
-                        blocks_arena: &blocks_arena,
-                        last_block: Cell::new(block),
-                        branches: generate_branching_targets(
-                            &blocks,
-                            statements,
-                            statement_idx,
-                            invocation,
-                            &state,
-                        ),
-                        results: invocation
-                            .branches
-                            .iter()
-                            .map(|x| vec![Cell::new(None); x.results.len()])
-                            .collect::<Vec<_>>(),
-                    };
-
                     let libfunc = registry.get_libfunc(&invocation.libfunc_id)?;
                     if is_recursive {
                         if let Some(target) = libfunc.is_function_call() {
@@ -613,6 +600,46 @@ fn compile_func(
                         }
                     }
 
+                    #[allow(unused_mut)]
+                    let mut helper = LibfuncHelper {
+                        module,
+                        init_block: &pre_entry_block,
+                        region: &region,
+                        blocks_arena: &blocks_arena,
+                        last_block: Cell::new(block),
+                        branches: generate_branching_targets(
+                            &blocks,
+                            statements,
+                            statement_idx,
+                            invocation,
+                            &state,
+                        ),
+                        results: invocation
+                            .branches
+                            .iter()
+                            .map(|x| vec![Cell::new(None); x.results.len()])
+                            .collect::<Vec<_>>(),
+
+                        #[cfg(feature = "with-libfunc-profiling")]
+                        profiler: match libfunc {
+                            CoreConcreteLibfunc::FunctionCall(_) => {
+                                // Tail-recursive function calls are broken beacuse a stack of timestamps is required,
+                                // which would invalidate tail recursion. Also, since each libfunc is measured individually,
+                                // it doesn't make sense to take function calls into account, therefore it's ignored on purpose.
+                                None
+                            }
+                            _ => match metadata.remove::<crate::metadata::profiler::ProfilerMeta>()
+                            {
+                                Some(profiler_meta) => {
+                                    let t0 = profiler_meta
+                                        .measure_timestamp(context, block, location)?;
+                                    Some((profiler_meta, statement_idx, t0))
+                                }
+                                None => None,
+                            },
+                        },
+                    };
+
                     libfunc.build(
                         context,
                         registry,
@@ -621,11 +648,33 @@ fn compile_func(
                         &helper,
                         metadata,
                     )?;
+
+                    // When statistics are enabled, we iterate from the start
+                    // to the end block of the compiled libfunc, and count all the operations.
+                    if let Some(&mut ref mut stats) = stats {
+                        unsafe extern "C" fn callback(
+                            _: mlir_sys::MlirOperation,
+                            data: *mut c_void,
+                        ) -> mlir_sys::MlirWalkResult {
+                            let data = data.cast::<u128>().as_mut().unwrap();
+                            *data += 1;
+                            0
+                        }
+                        let data = walk_mlir_block(*block, *helper.last_block.get(), callback, 0);
+                        let name = libfunc_to_name(libfunc).to_string();
+                        *stats.mlir_operations_by_libfunc.entry(name).or_insert(0) += data;
+                    }
+
                     native_assert!(
                         block.terminator().is_some(),
                         "libfunc {} had no terminator",
                         libfunc_name
                     );
+
+                    #[cfg(feature = "with-libfunc-profiling")]
+                    if let Some((profiler_meta, _, _)) = helper.profiler.take() {
+                        metadata.insert(profiler_meta);
+                    }
 
                     if let Some(tailrec_meta) = metadata.remove::<TailRecursionMeta>() {
                         if let Some(return_block) = tailrec_meta.return_target() {
