@@ -22,7 +22,7 @@ use num_traits::ToPrimitive;
 #[cfg(feature = "scarb")]
 use scarb_metadata::{PackageMetadata, TargetMetadata};
 use starknet_types_core::felt::Felt;
-use std::sync::Mutex;
+use std::{collections::HashMap, sync::Mutex};
 
 /// Summary data of the ran tests.
 pub struct TestsSummary {
@@ -274,39 +274,45 @@ pub fn run_tests(
                             format!("Failed to run the function `{}`.", name.as_str())
                         })?;
 
-                    for (builtin_name, &vm_builtin_counter) in vm_result
+                    let vm_builtins: HashMap<&str, usize> = vm_result
                         .used_resources
                         .basic_resources
+                        .filter_unused_builtins()
                         .builtin_instance_counter
                         .iter()
-                    {
-                        // We convert to str because of cyclic dependency problems when importing Cairo VM.
-                        let builtin_name_str = builtin_name.to_str();
-                        let native_builtin_counter = match builtin_name_str {
-                            "output" => 0,
-                            "ecdsa" => 0,
-                            "keccak" => 0,
-                            "range_check" => native_result.builtin_stats.range_check,
-                            "pedersen" => native_result.builtin_stats.pedersen,
-                            "bitwise" => native_result.builtin_stats.bitwise,
-                            "ec_op" => native_result.builtin_stats.ec_op,
-                            "poseidon" => native_result.builtin_stats.poseidon,
-                            "segment_arena" => native_result.builtin_stats.segment_arena,
-                            "range_check96" => native_result.builtin_stats.range_check96,
-                            "add_mod" => native_result.builtin_stats.add_mod,
-                            "mul_mod" => native_result.builtin_stats.mul_mod,
-                            _ => panic!("unknown builtin!"),
-                        };
+                        .map(|(k, v)| (k.to_str(), *v))
+                        .collect();
 
-                        if native_builtin_counter != vm_builtin_counter {
+                    let native_builtins = {
+                        let mut native_builtins = HashMap::new();
+                        native_builtins
+                            .insert("range_check", native_result.builtin_stats.range_check);
+                        native_builtins.insert("pedersen", native_result.builtin_stats.pedersen);
+                        native_builtins.insert("bitwise", native_result.builtin_stats.bitwise);
+                        native_builtins.insert("ec_op", native_result.builtin_stats.ec_op);
+                        native_builtins.insert("poseidon", native_result.builtin_stats.poseidon);
+                        // we don't include the segment arena builtin, as its not included in the VM output either.
+                        native_builtins
+                            .insert("range_check96", native_result.builtin_stats.range_check96);
+                        native_builtins.insert("add_mod", native_result.builtin_stats.add_mod);
+                        native_builtins.insert("mul_mod", native_result.builtin_stats.mul_mod);
+
+                        for builtin_name in vm_builtins.keys() {
+                            native_builtins.entry(&builtin_name).or_default();
+                        }
+                        native_builtins
+                    };
+
+                    for (builtin_name, native_counter) in native_builtins {
+                        let vm_counter = vm_builtins.get(builtin_name).cloned().unwrap_or_default();
+
+                        if native_counter != vm_counter {
                             return Ok((
                                 name,
                                 Some(TestResult {
                                     status: TestStatus::Mismatch(format!(
                                         "{} builtin mismatch: expected {}, got {}",
-                                        builtin_name_str,
-                                        vm_builtin_counter,
-                                        native_builtin_counter
+                                        builtin_name, vm_counter, native_counter
                                     )),
                                     gas_usage,
                                 }),

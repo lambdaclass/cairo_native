@@ -53,6 +53,7 @@ use lambdaworks_math::{
     unsigned_integer::element::UnsignedInteger,
 };
 use num_bigint::{BigInt, BigUint, Sign};
+use pretty_assertions_sorted::assert_eq_sorted;
 use proptest::{strategy::Strategy, test_runner::TestCaseError};
 use starknet_types_core::felt::Felt;
 use std::{collections::HashMap, env::var, fs, ops::Neg, path::Path};
@@ -788,36 +789,31 @@ pub fn compare_outputs(
         "gas mismatch"
     );
 
-    for (builtin_name, &vm_builtin_counter) in vm_result
+    let native_builtins = {
+        let mut native_builtins = HashMap::new();
+        native_builtins.insert("range_check", native_result.builtin_stats.range_check);
+        native_builtins.insert("pedersen", native_result.builtin_stats.pedersen);
+        native_builtins.insert("bitwise", native_result.builtin_stats.bitwise);
+        native_builtins.insert("ec_op", native_result.builtin_stats.ec_op);
+        native_builtins.insert("poseidon", native_result.builtin_stats.poseidon);
+        // don't include the segment arena builtin, as its not included in the VM output either.
+        native_builtins.insert("range_check96", native_result.builtin_stats.range_check96);
+        native_builtins.insert("add_mod", native_result.builtin_stats.add_mod);
+        native_builtins.insert("mul_mod", native_result.builtin_stats.mul_mod);
+        native_builtins.retain(|_, &mut v| v != 0);
+        native_builtins
+    };
+
+    let vm_builtins: HashMap<&str, usize> = vm_result
         .used_resources
         .basic_resources
+        .filter_unused_builtins()
         .builtin_instance_counter
         .iter()
-    {
-        // We convert to str because of cyclic dependency problems when importing Cairo VM.
-        let builtin_name_str = builtin_name.to_str();
-        let native_builtin_counter = match builtin_name_str {
-            "output" => 0,
-            "ecdsa" => 0,
-            "keccak" => 0,
-            "range_check" => native_result.builtin_stats.range_check,
-            "pedersen" => native_result.builtin_stats.pedersen,
-            "bitwise" => native_result.builtin_stats.bitwise,
-            "ec_op" => native_result.builtin_stats.ec_op,
-            "poseidon" => native_result.builtin_stats.poseidon,
-            "segment_arena" => native_result.builtin_stats.segment_arena,
-            "range_check96" => native_result.builtin_stats.range_check96,
-            "add_mod" => native_result.builtin_stats.add_mod,
-            "mul_mod" => native_result.builtin_stats.mul_mod,
-            _ => panic!("unknown builtin!"),
-        };
+        .map(|(k, v)| (k.to_str(), *v))
+        .collect();
 
-        assert_eq!(
-            vm_builtin_counter, native_builtin_counter,
-            "{} builtin mismatch: expected {}, got {}",
-            builtin_name_str, vm_builtin_counter, native_builtin_counter
-        );
-    }
+    assert_eq_sorted!(vm_builtins, native_builtins, "builtin mismatch",);
 
     let vm_result = match &vm_result.value {
         RunResultValue::Success(values) if !values.is_empty() | returns_panic => {
