@@ -2,7 +2,8 @@
 
 use super::LibfuncHelper;
 use crate::{
-    error::Result,
+    error::{panic::ToNativeAssertError, Result},
+    execution_result::RANGE_CHECK_BUILTIN_SIZE,
     metadata::MetadataStorage,
     native_assert,
     types::TypeBuilder,
@@ -12,7 +13,8 @@ use cairo_lang_sierra::{
     extensions::{
         bounded_int::{
             BoundedIntConcreteLibfunc, BoundedIntConstrainConcreteLibfunc,
-            BoundedIntDivRemConcreteLibfunc, BoundedIntTrimConcreteLibfunc,
+            BoundedIntDivRemAlgorithm, BoundedIntDivRemConcreteLibfunc,
+            BoundedIntTrimConcreteLibfunc,
         },
         core::{CoreLibfunc, CoreType},
         lib_func::SignatureOnlyConcreteLibfunc,
@@ -453,8 +455,6 @@ fn build_divrem<'ctx, 'this>(
     _metadata: &mut MetadataStorage,
     info: &BoundedIntDivRemConcreteLibfunc,
 ) -> Result<()> {
-    let range_check = super::increment_builtin_counter(context, entry, location, entry.arg(0)?)?;
-
     let lhs_value = entry.arg(1)?;
     let rhs_value = entry.arg(2)?;
 
@@ -481,6 +481,12 @@ fn build_divrem<'ctx, 'this>(
     } else {
         rhs_range.zero_based_bit_width()
     };
+
+    let div_rem_algorithm = BoundedIntDivRemAlgorithm::try_new(&lhs_range, &rhs_range)
+        .to_native_assert_error(&format!(
+            "div_rem of ranges: lhs = {:#?} and rhs= {:#?} is not supported yet",
+            &lhs_range, &rhs_range
+        ))?;
 
     // Calculate the computation range.
     let compute_range = Range {
@@ -581,6 +587,32 @@ fn build_divrem<'ctx, 'this>(
         )?
     } else {
         rem_value
+    };
+
+    // Increase range check builtin by 3, regardless of `div_rem_algorithm`:
+    // https://github.com/starkware-libs/cairo/blob/v2.12.0-dev.1/crates/cairo-lang-sierra-to-casm/src/invocations/int/bounded.rs#L100
+    let range_check = match div_rem_algorithm {
+        BoundedIntDivRemAlgorithm::KnownSmallRhs => crate::libfuncs::increment_builtin_counter_by(
+            context,
+            entry,
+            location,
+            entry.arg(0)?,
+            3 * RANGE_CHECK_BUILTIN_SIZE,
+        )?,
+        BoundedIntDivRemAlgorithm::KnownSmallQuotient { .. }
+        | BoundedIntDivRemAlgorithm::KnownSmallLhs { .. } => {
+            // If `div_rem_algorithm` is `KnownSmallQuotient` or `KnownSmallLhs`, increase range check builtin by 1.
+            //
+            // Case KnownSmallQuotient: https://github.com/starkware-libs/cairo/blob/v2.12.0-dev.1/crates/cairo-lang-sierra-to-casm/src/invocations/int/bounded.rs#L129
+            // Case KnownSmallLhs: https://github.com/starkware-libs/cairo/blob/v2.12.0-dev.1/crates/cairo-lang-sierra-to-casm/src/invocations/int/bounded.rs#L157
+            crate::libfuncs::increment_builtin_counter_by(
+                context,
+                entry,
+                location,
+                entry.arg(0)?,
+                4 * RANGE_CHECK_BUILTIN_SIZE,
+            )?
+        }
     };
 
     helper.br(entry, 0, &[range_check, div_value, rem_value], location)
@@ -805,7 +837,7 @@ fn build_wrap_non_zero<'ctx, 'this>(
         "value must not be zero"
     );
 
-    super::build_noop::<1, true>(
+    super::build_noop::<1, false>(
         context,
         registry,
         entry,

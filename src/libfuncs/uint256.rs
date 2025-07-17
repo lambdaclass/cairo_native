@@ -1,7 +1,10 @@
 //! # `u256`-related libfuncs
 
 use super::{BlockExt, LibfuncHelper};
-use crate::{error::Result, metadata::MetadataStorage, utils::ProgramRegistryExt};
+use crate::{
+    error::Result, libfuncs::increment_builtin_counter_by_if, metadata::MetadataStorage,
+    utils::ProgramRegistryExt,
+};
 use cairo_lang_sierra::{
     extensions::{
         core::{CoreLibfunc, CoreType},
@@ -61,7 +64,10 @@ pub fn build_divmod<'ctx, 'this>(
     metadata: &mut MetadataStorage,
     info: &SignatureOnlyConcreteLibfunc,
 ) -> Result<()> {
-    let range_check = super::increment_builtin_counter(context, entry, location, entry.arg(0)?)?;
+    // The sierra-to-casm compiler uses the range check builtin a total of 6 times.
+    // https://github.com/starkware-libs/cairo/blob/v2.12.0-dev.1/crates/cairo-lang-sierra-to-casm/src/invocations/int/unsigned256.rs?plain=1#L47
+    let range_check =
+        super::increment_builtin_counter_by(context, entry, location, entry.arg(0)?, 6)?;
 
     let i128_ty = IntegerType::new(context, 128).into();
     let i256_ty = IntegerType::new(context, 256).into();
@@ -346,7 +352,10 @@ pub fn build_square_root<'ctx, 'this>(
     _metadata: &mut MetadataStorage,
     _info: &SignatureOnlyConcreteLibfunc,
 ) -> Result<()> {
-    let range_check = super::increment_builtin_counter(context, entry, location, entry.arg(0)?)?;
+    // The sierra-to-casm compiler uses the range check builtin a total of 7 times.
+    // https://github.com/starkware-libs/cairo/blob/v2.12.0-dev.1/crates/cairo-lang-sierra-to-casm/src/invocations/int/unsigned256.rs?plain=1#L189
+    let range_check =
+        super::increment_builtin_counter_by(context, entry, location, entry.arg(0)?, 7)?;
 
     let i128_ty = IntegerType::new(context, 128).into();
     let i256_ty = IntegerType::new(context, 256).into();
@@ -911,7 +920,7 @@ pub fn build_u256_guarantee_inv_mod_n<'ctx, 'this>(
         .append_operation(arith::cmpi(context, CmpiPredicate::Ne, inv, k0, location))
         .result(0)?
         .into();
-    let condition = entry
+    let inverse_exists_and_is_not_zero = entry
         .append_operation(arith::andi(lhs_is_invertible, inv_not_zero, location))
         .result(0)?
         .into();
@@ -921,14 +930,27 @@ pub fn build_u256_guarantee_inv_mod_n<'ctx, 'this>(
     let op = entry.append_operation(llvm::undef(guarantee_type, location));
     let guarantee = op.result(0)?.into();
 
+    // The sierra-to-casm compiler uses the range check builtin a total of 9 times if the inverse is
+    // not equal to 0 and lhs is invertible. Otherwise it will be used 7 times.
+    // https://github.com/starkware-libs/cairo/blob/v2.12.0-dev.1/crates/cairo-lang-sierra-to-casm/src/invocations/int/unsigned256.rs#L21
+    let range_check = increment_builtin_counter_by_if(
+        context,
+        entry,
+        location,
+        entry.arg(0)?,
+        9,
+        7,
+        inverse_exists_and_is_not_zero,
+    )?;
+
     helper.cond_br(
         context,
         entry,
-        condition,
+        inverse_exists_and_is_not_zero,
         [0, 1],
         [
             &[
-                entry.arg(0)?,
+                range_check,
                 result_inv,
                 guarantee,
                 guarantee,
@@ -939,7 +961,7 @@ pub fn build_u256_guarantee_inv_mod_n<'ctx, 'this>(
                 guarantee,
                 guarantee,
             ],
-            &[entry.arg(0)?, guarantee, guarantee],
+            &[range_check, guarantee, guarantee],
         ],
         location,
     )

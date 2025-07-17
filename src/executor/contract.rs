@@ -37,7 +37,11 @@ use crate::{
     context::NativeContext,
     debug::libfunc_to_name,
     error::{panic::ToNativeAssertError, Error, Result},
-    execution_result::{BuiltinStats, ContractExecutionResult},
+    execution_result::{
+        BuiltinStats, ContractExecutionResult, ADD_MOD_BUILTIN_SIZE, BITWISE_BUILTIN_SIZE,
+        EC_OP_BUILTIN_SIZE, MUL_MOD_BUILTIN_SIZE, PEDERSEN_BUILTIN_SIZE, POSEIDON_BUILTIN_SIZE,
+        RANGE_CHECK96_BUILTIN_SIZE, RANGE_CHECK_BUILTIN_SIZE, SEGMENT_ARENA_BUILTIN_SIZE,
+    },
     executor::{invoke_trampoline, BuiltinCostsGuard},
     metadata::runtime_bindings::setup_runtime,
     module::NativeModule,
@@ -530,15 +534,31 @@ impl AotContractExecutor {
                     let value = unsafe { *read_value::<u64>(return_ptr) } as usize;
 
                     match x {
-                        BuiltinType::Bitwise => builtin_stats.bitwise = value,
-                        BuiltinType::EcOp => builtin_stats.ec_op = value,
-                        BuiltinType::RangeCheck => builtin_stats.range_check = value,
-                        BuiltinType::SegmentArena => builtin_stats.segment_arena = value,
-                        BuiltinType::Poseidon => builtin_stats.poseidon = value,
-                        BuiltinType::Pedersen => builtin_stats.pedersen = value,
-                        BuiltinType::RangeCheck96 => builtin_stats.range_check_96 = value,
-                        BuiltinType::CircuitAdd => builtin_stats.circuit_add = value,
-                        BuiltinType::CircuitMul => builtin_stats.circuit_mul = value,
+                        BuiltinType::RangeCheck => {
+                            builtin_stats.range_check = value / RANGE_CHECK_BUILTIN_SIZE
+                        }
+                        BuiltinType::Pedersen => {
+                            builtin_stats.pedersen = value / PEDERSEN_BUILTIN_SIZE
+                        }
+                        BuiltinType::Bitwise => {
+                            builtin_stats.bitwise = value / BITWISE_BUILTIN_SIZE
+                        }
+                        BuiltinType::EcOp => builtin_stats.ec_op = value / EC_OP_BUILTIN_SIZE,
+                        BuiltinType::Poseidon => {
+                            builtin_stats.poseidon = value / POSEIDON_BUILTIN_SIZE
+                        }
+                        BuiltinType::SegmentArena => {
+                            builtin_stats.segment_arena = value / SEGMENT_ARENA_BUILTIN_SIZE
+                        }
+                        BuiltinType::RangeCheck96 => {
+                            builtin_stats.range_check96 = value / RANGE_CHECK96_BUILTIN_SIZE
+                        }
+                        BuiltinType::CircuitAdd => {
+                            builtin_stats.add_mod = value / ADD_MOD_BUILTIN_SIZE
+                        }
+                        BuiltinType::CircuitMul => {
+                            builtin_stats.mul_mod = value / MUL_MOD_BUILTIN_SIZE
+                        }
                         BuiltinType::Gas => {}
                         BuiltinType::System => {}
                         BuiltinType::BuiltinCosts => {}
@@ -622,6 +642,7 @@ impl AotContractExecutor {
             failure_flag: tag != 0,
             return_values: array_value,
             error_msg,
+            builtin_stats,
         })
     }
 
