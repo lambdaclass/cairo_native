@@ -56,7 +56,9 @@ pub fn build_int_range_try_new<'ctx, 'this>(
     metadata: &mut MetadataStorage,
     info: &SignatureOnlyConcreteLibfunc,
 ) -> Result<()> {
-    let range_check = entry.arg(0)?;
+    // The sierra-to-casm compiler uses the range check builtin a total of 1 time.
+    // https://github.com/starkware-libs/cairo/blob/v2.12.0-dev.1/crates/cairo-lang-sierra-to-casm/src/invocations/range.rs?plain=1#L24
+    let range_check = super::increment_builtin_counter(context, entry, location, entry.arg(0)?)?;
     let x = entry.arg(1)?;
     let y = entry.arg(2)?;
     let range_ty = registry.build_type(
