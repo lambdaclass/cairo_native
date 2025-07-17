@@ -247,14 +247,15 @@ pub fn build_downcast<'ctx, 'this>(
             }
         };
 
-        // If the value is in bounds with respect to the destination range and the original range can contain a felt252,
-        // then increment the range check builtin by 2, otherwise increment it by 1.
-        // https://github.com/starkware-libs/cairo/blob/v2.12.0-dev.1/crates/cairo-lang-sierra-to-casm/src/invocations/range_reduction.rs#L87
-        //
-        // If the value is not in bounds, increment the range check by 3.
-        // https://github.com/starkware-libs/cairo/blob/v2.12.0-dev.1/crates/cairo-lang-sierra-to-casm/src/invocations/range_reduction.rs#L79
+        // Incrementing the range check depends on whether the source range can hold a felt252 or not
         let range_check = if info.from_range.is_full_felt252_range() {
             let rc_size = BigInt::from(1) << 128;
+            // If the range can contain a felt252, how the range check is increased depends on whether the value is in bounds or not:
+            // * If it is in bounds, we check whether the destination range size is less than range check size. If it is, increment
+            //   the range check builtin by 2. Otherwise, increment it by 1.
+            //   https://github.com/starkware-libs/cairo/blob/v2.12.0-dev.1/crates/cairo-lang-sierra-to-casm/src/invocations/range_reduction.rs#L87
+            // * If it is not in bounds, increment the range check builtin by 3.
+            //   https://github.com/starkware-libs/cairo/blob/v2.12.0-dev.1/crates/cairo-lang-sierra-to-casm/src/invocations/range_reduction.rs#L79
             super::increment_builtin_counter_by_if(
                 context,
                 entry,
@@ -267,8 +268,9 @@ pub fn build_downcast<'ctx, 'this>(
         } else {
             match (lower_check, upper_check) {
                 (Some(_), None) | (None, Some(_)) => {
-                    // Increment the range check builting by 1, regardless of whether the result is in range or not.
-                    // https://github.com/starkware-libs/cairo/blob/v2.12.0-dev.1/crates/cairo-lang-sierra-to-casm/src/invocations/casts.rs#L111
+                    // If either the lower or the upper bound was checked, increment the range check builting by 1.
+                    // * In case the lower bound was checked: https://github.com/starkware-libs/cairo/blob/v2.12.0-dev.1/crates/cairo-lang-sierra-to-casm/src/invocations/casts.rs#L135
+                    // * In case the upper bound was checked: https://github.com/starkware-libs/cairo/blob/v2.12.0-dev.1/crates/cairo-lang-sierra-to-casm/src/invocations/casts.rs#L111
                     super::increment_builtin_counter_by(context, entry, location, range_check, 1)?
                 }
                 (Some(lower_check), Some(upper_check)) => {
