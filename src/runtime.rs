@@ -343,7 +343,7 @@ pub unsafe extern "C" fn cairo_native__dict_squash(
     // 1b. Once at the end of `SquashDictInner`, right before recursing.
     //     https://github.com/starkware-libs/cairo/blob/v2.12.0-dev.1/crates/cairo-lang-sierra-to-casm/src/invocations/felt252_dict.rs?plain=1#L507
     if no_big_keys {
-        *range_check_ptr += 1 * number_of_keys;
+        *range_check_ptr += number_of_keys;
     }
 
     // The next two range check usages are done always inside of the inner
