@@ -135,11 +135,10 @@ development, such as wrapping return values and printing them.
 ## Basic API usage example
 
 The API contains four structs, `NativeContext`, `JitNativeExecutor`, `AotNativeExecutor` and `AotContractExecutor`.
-The main purpose of `NativeContext` is MLIR initialization, compilation and has some optimizations for their execution.
-lowering to LLVM. then we have the `AotContractExecutor` which is specialized for Starknet contracts
-The two variants of native executors in the other hand are responsible of executing MLIR
-compiled sierra programs from an entrypoint. Programs and JIT states can be
-cached in contexts where their execution will be done multiple times.
+The main purpose of `NativeContext` is MLIR initialization and compilation. The two variants 
+of native executors on the other hand, are responsible of executing MLIR compiled sierra 
+programs from an entrypoint. Programs and JIT states can be cached in contexts where their
+execution will be done multiple times. Finally, we have the AotContractExecutor which is specialized for executing Starknet contracts.
 
 ```rust,ignore
 use starknet_types_core::felt::Felt;
