@@ -4,6 +4,7 @@
 use super::LibfuncHelper;
 use crate::{
     error::{panic::ToNativeAssertError, Result},
+    execution_result::POSEIDON_BUILTIN_SIZE,
     metadata::{runtime_bindings::RuntimeBindingsMeta, MetadataStorage},
     utils::{get_integer_layout, BlockExt, ProgramRegistryExt},
 };
@@ -52,8 +53,15 @@ pub fn build_hades_permutation<'ctx>(
         .get_mut::<RuntimeBindingsMeta>()
         .to_native_assert_error("runtime library should be available")?;
 
-    let poseidon_builtin =
-        super::increment_builtin_counter_by(context, entry, location, entry.arg(0)?, 6)?;
+    // The sierra-to-casm compiler uses the poseidon builtin a total of 1 time.
+    // https://github.com/starkware-libs/cairo/blob/v2.12.0-dev.1/crates/cairo-lang-sierra-to-casm/src/invocations/poseidon.rs?plain=1#L19
+    let poseidon_builtin = super::increment_builtin_counter_by(
+        context,
+        entry,
+        location,
+        entry.arg(0)?,
+        POSEIDON_BUILTIN_SIZE,
+    )?;
 
     let felt252_ty =
         registry.build_type(context, helper, metadata, &info.param_signatures()[1].ty)?;

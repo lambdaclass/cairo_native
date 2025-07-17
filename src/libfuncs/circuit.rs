@@ -5,7 +5,7 @@
 use super::{increment_builtin_counter_by, LibfuncHelper};
 use crate::{
     error::{Result, SierraAssertError},
-    execution_result::{ADD_MOD_BUILTIN_SIZE, MUL_MOD_BUILTIN_SIZE},
+    execution_result::{ADD_MOD_BUILTIN_SIZE, MUL_MOD_BUILTIN_SIZE, RANGE_CHECK96_BUILTIN_SIZE},
     libfuncs::r#struct::build_struct_value,
     metadata::{
         drop_overrides::DropOverridesMeta, realloc_bindings::ReallocBindingsMeta, MetadataStorage,
@@ -76,16 +76,8 @@ pub fn build<'ctx, 'this>(
                 context, registry, entry, location, helper, metadata, info,
             )
         }
-        CircuitConcreteLibfunc::U96GuaranteeVerify(SignatureOnlyConcreteLibfunc { signature }) => {
-            super::build_noop::<1, true>(
-                context,
-                registry,
-                entry,
-                location,
-                helper,
-                metadata,
-                &signature.param_signatures,
-            )
+        CircuitConcreteLibfunc::U96GuaranteeVerify(info) => {
+            build_u96_guarantee_verify(context, registry, entry, location, helper, metadata, info)
         }
         CircuitConcreteLibfunc::U96LimbsLessThanGuaranteeVerify(info) => {
             build_u96_limbs_less_than_guarantee_verify(
@@ -325,7 +317,7 @@ fn build_eval<'ctx, 'this>(
     // let one = entry.argument(6)?;
 
     // Always increase the add mod builtin pointer, regardless of the evaluation result.
-    // https://github.com/starkware-libs/cairo/blob/dc8b4f0b2e189a3b107b15062895597588b78a46/crates/cairo-lang-sierra-to-casm/src/invocations/circuit.rs?plain=1#L257
+    // https://github.com/starkware-libs/cairo/blob/v2.12.0-dev.1/crates/cairo-lang-sierra-to-casm/src/invocations/circuit.rs?plain=1#L257
     let add_mod = increment_builtin_counter_by(
         context,
         entry,
@@ -359,7 +351,7 @@ fn build_eval<'ctx, 'this>(
 
         // Increase the mul mod builtin pointer by the number of evaluated gates.
         // If the evaluation succedes, then we assume that every gate was evaluated.
-        // https://github.com/starkware-libs/cairo/blob/dc8b4f0b2e189a3b107b15062895597588b78a46/crates/cairo-lang-sierra-to-casm/src/invocations/circuit.rs?plain=1#L261
+        // https://github.com/starkware-libs/cairo/blob/v2.12.0-dev.1/crates/cairo-lang-sierra-to-casm/src/invocations/circuit.rs?plain=1#L261
         let mul_mod = increment_builtin_counter_by(
             context,
             ok_block,
@@ -440,7 +432,7 @@ fn build_eval<'ctx, 'this>(
         // Increase the mul mod builtin pointer by the number of evaluated gates.
         // As the evaluation failed, we read the number of evaluated gates from
         // the first argument of the error block.
-        // https://github.com/starkware-libs/cairo/blob/dc8b4f0b2e189a3b107b15062895597588b78a46/crates/cairo-lang-sierra-to-casm/src/invocations/circuit.rs?plain=1#L261
+        // https://github.com/starkware-libs/cairo/blob/v2.12.0-dev.1/crates/cairo-lang-sierra-to-casm/src/invocations/circuit.rs?plain=1#L261
         let mul_mod = {
             let mul_mod_usage = err_block.muli(
                 err_block.arg(0)?,
@@ -1194,6 +1186,39 @@ fn build_into_u96_guarantee<'ctx, 'this>(
     }
 
     helper.br(entry, 0, &[dst], location)
+}
+
+/// Verifies an U96Guarantee
+///
+/// # Signature
+/// ```cairo
+/// extern fn u96_guarantee_verify(guarantee: U96Guarantee) implicits(RangeCheck96) nopanic;
+/// ```
+///
+/// This is actually a noop in Cairo Native.
+/// We should only increase the builtin counter.
+///
+/// The implementation is adapted from the [sierra-to-casm compiler](https://github.com/starkware-libs/cairo/blob/dc8b4f0b2e189a3b107b15062895597588b78a46/crates/cairo-lang-sierra-to-casm/src/invocations/circuit.rs?plain=1#L523).
+fn build_u96_guarantee_verify<'ctx, 'this>(
+    context: &'ctx Context,
+    _registry: &ProgramRegistry<CoreType, CoreLibfunc>,
+    entry: &'this Block<'ctx>,
+    location: Location<'ctx>,
+    helper: &LibfuncHelper<'ctx, 'this>,
+    _metadata: &mut MetadataStorage,
+    _info: &SignatureOnlyConcreteLibfunc,
+) -> Result<()> {
+    // We increase the range_check96 builtin by 1 usage
+    // https://github.com/starkware-libs/cairo/blob/v2.12.0-dev.1/crates/cairo-lang-sierra-to-casm/src/invocations/circuit.rs?plain=1#L534
+    let range_check96 = increment_builtin_counter_by(
+        context,
+        entry,
+        location,
+        entry.arg(0)?,
+        RANGE_CHECK96_BUILTIN_SIZE,
+    )?;
+
+    helper.br(entry, 0, &[range_check96], location)
 }
 
 #[cfg(test)]
