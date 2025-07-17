@@ -26,7 +26,7 @@ use cairo_lang_sierra::{
 };
 use melior::{
     dialect::{arith, cf},
-    ir::{Block, BlockLike, BlockRef, Location, Module, Operation, Region, Value},
+    ir::{Block, BlockLike, BlockRef, Location, Module, Region, Value},
     Context,
 };
 use num_bigint::BigInt;
@@ -102,7 +102,7 @@ impl LibfuncBuilder for CoreConcreteLibfunc {
     ) -> Result<()> {
         match self {
             Self::ApTracking(_) | Self::BranchAlign(_) | Self::UnconditionalJump(_) => {
-                build_noop::<0, true>(
+                build_noop::<0, false>(
                     context,
                     registry,
                     entry,
@@ -234,7 +234,7 @@ impl LibfuncBuilder for CoreConcreteLibfunc {
             Self::Uint512(selector) => self::uint512::build(
                 context, registry, entry, location, helper, metadata, selector,
             ),
-            Self::UnwrapNonZero(info) => build_noop::<1, true>(
+            Self::UnwrapNonZero(info) => build_noop::<1, false>(
                 context,
                 registry,
                 entry,
@@ -279,6 +279,14 @@ where
 
     pub branches: Vec<(&'this Block<'ctx>, Vec<BranchArg<'ctx, 'this>>)>,
     pub results: Vec<Vec<Cell<Option<Value<'ctx, 'this>>>>>,
+
+    #[cfg(feature = "with-libfunc-profiling")]
+    // Since function calls don't get profiled, this field is optional
+    pub profiler: Option<(
+        crate::metadata::profiler::ProfilerMeta,
+        cairo_lang_sierra::program::StatementIdx,
+        (Value<'ctx, 'this>, Value<'ctx, 'this>),
+    )>,
 }
 
 impl<'ctx, 'this> LibfuncHelper<'ctx, 'this>
@@ -330,10 +338,11 @@ where
     /// used later on when required.
     fn br(
         &self,
+        block: &'this Block<'ctx>,
         branch: usize,
         results: &[Value<'ctx, 'this>],
         location: Location<'ctx>,
-    ) -> Operation<'ctx> {
+    ) -> Result<()> {
         let (successor, operands) = &self.branches[branch];
 
         for (dst, src) in self.results[branch].iter().zip(results) {
@@ -349,7 +358,16 @@ where
             })
             .collect::<Vec<_>>();
 
-        cf::br(successor, &destination_operands, location)
+        #[cfg(feature = "with-libfunc-profiling")]
+        self.push_profiler_frame(
+            unsafe { self.context().to_ref() },
+            self.module,
+            block,
+            location,
+        )?;
+
+        block.append_operation(cf::br(successor, &destination_operands, location));
+        Ok(())
     }
 
     /// Creates a conditional binary branching operation, potentially jumping out of the libfunc and
@@ -364,11 +382,12 @@ where
     fn cond_br(
         &self,
         context: &'ctx Context,
+        block: &'this Block<'ctx>,
         condition: Value<'ctx, 'this>,
         branches: [usize; 2],
         results: [&[Value<'ctx, 'this>]; 2],
         location: Location<'ctx>,
-    ) -> Operation<'ctx> {
+    ) -> Result<()> {
         let (block_true, args_true) = {
             let (successor, operands) = &self.branches[branches[0]];
 
@@ -407,7 +426,10 @@ where
             (*successor, destination_operands)
         };
 
-        cf::cond_br(
+        #[cfg(feature = "with-libfunc-profiling")]
+        self.push_profiler_frame(context, self.module, block, location)?;
+
+        block.append_operation(cf::cond_br(
             context,
             condition,
             block_true,
@@ -415,7 +437,26 @@ where
             &args_true,
             &args_false,
             location,
-        )
+        ));
+        Ok(())
+    }
+
+    #[cfg(feature = "with-libfunc-profiling")]
+    fn push_profiler_frame(
+        &self,
+        context: &'ctx Context,
+        module: &'this Module,
+        block: &'this Block<'ctx>,
+        location: Location<'ctx>,
+    ) -> Result<()> {
+        if let Some((profiler_meta, statement_idx, t0)) = self.profiler.as_ref() {
+            let t0 = *t0;
+            let t1 = profiler_meta.measure_timestamp(context, block, location)?;
+
+            profiler_meta.push_frame(context, module, block, statement_idx.0, t0, t1, location)?;
+        }
+
+        Ok(())
     }
 }
 
@@ -456,6 +497,31 @@ fn increment_builtin_counter_by<'ctx: 'a, 'a>(
     ))
 }
 
+fn increment_builtin_counter_by_if<'ctx: 'a, 'a>(
+    context: &'ctx Context,
+    block: &'ctx Block<'ctx>,
+    location: Location<'ctx>,
+    value_to_inc: Value<'ctx, '_>,
+    true_amount: impl Into<BigInt>,
+    false_amount: impl Into<BigInt>,
+    condition: Value<'ctx, '_>,
+) -> crate::error::Result<Value<'ctx, 'a>> {
+    let true_amount_value = block.const_int(context, location, true_amount, 64)?;
+    let false_amount_value = block.const_int(context, location, false_amount, 64)?;
+
+    let true_incremented =
+        block.append_op_result(arith::addi(value_to_inc, true_amount_value, location))?;
+    let false_incremented =
+        block.append_op_result(arith::addi(value_to_inc, false_amount_value, location))?;
+
+    block.append_op_result(arith::select(
+        condition,
+        true_incremented,
+        false_incremented,
+        location,
+    ))
+}
+
 fn build_noop<'ctx, 'this, const N: usize, const PROCESS_BUILTINS: bool>(
     context: &'ctx Context,
     registry: &ProgramRegistry<CoreType, CoreLibfunc>,
@@ -488,6 +554,5 @@ fn build_noop<'ctx, 'this, const N: usize, const PROCESS_BUILTINS: bool>(
         params.push(param_val);
     }
 
-    entry.append_operation(helper.br(0, &params, location));
-    Ok(())
+    helper.br(entry, 0, &params, location)
 }

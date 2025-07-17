@@ -20,7 +20,15 @@ pub fn value_to_felt(value: &Value) -> Vec<Felt> {
             costs.mul_mod.into(),
         ],
         Value::CircuitModulus(value) => vec![value.into()],
-        Value::Circuit(data) | Value::CircuitOutputs(data) => data.iter().map(Felt::from).collect(),
+        Value::Circuit(data) => data.iter().map(Felt::from).collect(),
+        Value::CircuitOutputs {
+            circuits: data,
+            modulus,
+        } => {
+            let mut felts = data.iter().map(Felt::from).collect::<Vec<_>>();
+            felts.push(modulus.into());
+            felts
+        }
         Value::EcPoint { x, y } => {
             vec![*x, *y]
         }
@@ -83,6 +91,13 @@ pub fn value_to_felt(value: &Value) -> Vec<Felt> {
         Value::U64(x) => vec![(*x).into()],
         Value::U128(x) => vec![(*x).into()],
         Value::U256(x, y) => vec![(*x).into(), (*y).into()],
+        Value::IntRange { x, y } => {
+            let felt = value_to_felt(x);
+            felts.extend(felt);
+            let felt = value_to_felt(y);
+            felts.extend(felt);
+            felts
+        }
         Value::Unit | Value::Null | Value::Uninitialized { .. } => vec![0.into()],
     }
 }

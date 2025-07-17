@@ -1,12 +1,12 @@
 [package]
 name = "sierra-emu"
-version = "0.1.0"
-edition = "2021"
-license = "Apache-2.0"
 description = "A Cairo (Sierra) Virtual Machine."
-repository = "https://github.com/lambdaclass/sierra-emu"
 readme = "README.md"
-keywords = ["starknet", "cairo", "compiler", "mlir"]
+keywords = ["starknet", "cairo", "vm", "sierra"]
+version.workspace = true
+edition.workspace = true
+license.workspace = true
+repository.workspace = true
 
 [dependencies]
 cairo-lang-compiler.workspace = true
@@ -23,6 +23,7 @@ cairo-lang-utils.workspace = true
 clap = { version = "4.5.26", features = ["derive"] }
 k256 = "0.13.4"
 keccak = "0.1.5"
+num-integer.workspace = true
 num-bigint.workspace = true
 num-traits.workspace = true
 p256 = "0.13.2"

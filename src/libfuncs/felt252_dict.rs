@@ -3,6 +3,7 @@
 use super::LibfuncHelper;
 use crate::{
     error::{panic::ToNativeAssertError, Result},
+    execution_result::SEGMENT_ARENA_BUILTIN_SIZE,
     metadata::{
         felt252_dict::Felt252DictOverrides, runtime_bindings::RuntimeBindingsMeta, MetadataStorage,
     },
@@ -20,7 +21,7 @@ use cairo_lang_sierra::{
 };
 use melior::{
     dialect::{llvm, ods},
-    ir::{Block, BlockLike, Location},
+    ir::{Block, Location},
     Context,
 };
 
@@ -53,7 +54,15 @@ pub fn build_new<'ctx, 'this>(
     metadata: &mut MetadataStorage,
     info: &SignatureOnlyConcreteLibfunc,
 ) -> Result<()> {
-    let segment_arena = super::increment_builtin_counter(context, entry, location, entry.arg(0)?)?;
+    // We increase the segment arena builtin by 1 usage.
+    // https://github.com/starkware-libs/cairo/blob/v2.12.0-dev.1/crates/cairo-lang-sierra-to-casm/src/invocations/felt252_dict.rs?plain=1#L45-L49
+    let segment_arena = super::increment_builtin_counter_by(
+        context,
+        entry,
+        location,
+        entry.arg(0)?,
+        SEGMENT_ARENA_BUILTIN_SIZE,
+    )?;
 
     let value_type_id = match registry.get_type(&info.signature.branch_signatures[0].vars[1].ty)? {
         CoreTypeConcrete::Felt252Dict(info) => &info.ty,
@@ -103,8 +112,7 @@ pub fn build_new<'ctx, 'this>(
         registry.get_type(value_type_id)?.layout(registry)?,
     )?;
 
-    entry.append_operation(helper.br(0, &[segment_arena, dict_ptr], location));
-    Ok(())
+    helper.br(entry, 0, &[segment_arena, dict_ptr], location)
 }
 
 pub fn build_squash<'ctx, 'this>(
@@ -132,13 +140,12 @@ pub fn build_squash<'ctx, 'this>(
 
     let new_gas_builtin = entry.addi(gas_builtin, gas_refund, location)?;
 
-    entry.append_operation(helper.br(
+    helper.br(
+        entry,
         0,
         &[range_check, new_gas_builtin, segment_arena, entry.arg(3)?],
         location,
-    ));
-
-    Ok(())
+    )
 }
 
 #[cfg(test)]

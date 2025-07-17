@@ -103,7 +103,6 @@ fn main() {
         let before_round = Instant::now();
 
         let program = modify_starknet_contract(program.clone(), UNIQUE_CONTRACT_VALUE, round);
-        // TODO: use the program hash instead of round number.
         let hash = round;
 
         debug!(hash, "obtained test program");
@@ -280,7 +279,7 @@ where
     ) -> Arc<AotNativeExecutor> {
         let native_module = self
             .context
-            .compile(program, false, Some(Default::default()))
+            .compile(program, false, Some(Default::default()), None)
             .expect("failed to compile program");
 
         let registry = ProgramRegistry::new(program).expect("failed to get program registry");
@@ -291,7 +290,7 @@ where
             .expect("module should have gas metadata");
 
         let shared_library = {
-            let object_data = module_to_object(native_module.module(), opt_level)
+            let object_data = module_to_object(native_module.module(), opt_level, None)
                 .expect("failed to convert MLIR to object");
 
             let shared_library_dir = Path::new(AOT_CACHE_DIR);
@@ -299,7 +298,7 @@ where
             let shared_library_name = format!("lib{key}{SHARED_LIBRARY_EXT}");
             let shared_library_path = shared_library_dir.join(shared_library_name);
 
-            object_to_shared_lib(&object_data, &shared_library_path)
+            object_to_shared_lib(&object_data, &shared_library_path, None)
                 .expect("failed to link object into shared library");
 
             unsafe {

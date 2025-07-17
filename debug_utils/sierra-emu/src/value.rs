@@ -27,8 +27,11 @@ pub enum Value {
         value: BigInt,
     },
     Circuit(Vec<BigUint>),
+    CircuitOutputs {
+        circuits: Vec<BigUint>,
+        modulus: BigUint,
+    },
     CircuitModulus(BigUint),
-    CircuitOutputs(Vec<BigUint>),
     Enum {
         self_ty: ConcreteTypeId,
         index: usize,
@@ -69,6 +72,10 @@ pub enum Value {
     U32(u32),
     U64(u64),
     U8(u8),
+    IntRange {
+        x: Box<Value>,
+        y: Box<Value>,
+    },
     Uninitialized {
         ty: ConcreteTypeId,
     },
@@ -94,13 +101,17 @@ impl Value {
                 index: 0,
                 payload: Box::new(Value::default_for_type(registry, &info.variants[0])),
             },
+            CoreTypeConcrete::Array(info) => Value::Array {
+                ty: info.ty.clone(),
+                data: vec![],
+            },
             CoreTypeConcrete::Struct(info) => Value::Struct(
                 info.members
                     .iter()
                     .map(|member| Value::default_for_type(registry, member))
                     .collect(),
             ),
-            CoreTypeConcrete::Nullable(info) => Value::default_for_type(registry, &info.ty),
+            CoreTypeConcrete::Nullable(_) => Value::Null,
             x => panic!("type {:?} has no default value implementation", x.info()),
         }
     }
@@ -169,25 +180,31 @@ impl Value {
 
             // Circuit related types
             CoreTypeConcrete::Circuit(selector) => match selector {
-                CircuitTypeConcrete::Circuit(_) => matches!(self, Self::Circuit(_)),
-                CircuitTypeConcrete::CircuitData(_) => matches!(self, Self::Circuit(_)),
-                CircuitTypeConcrete::CircuitOutputs(_) => matches!(self, Self::CircuitOutputs(_)),
-                CircuitTypeConcrete::CircuitInput(_) => matches!(self, Self::Unit),
-                CircuitTypeConcrete::CircuitInputAccumulator(_) => matches!(self, Self::Circuit(_)),
+                CircuitTypeConcrete::Circuit(_)
+                | CircuitTypeConcrete::CircuitData(_)
+                | CircuitTypeConcrete::CircuitInputAccumulator(_) => {
+                    matches!(self, Self::Circuit(_))
+                }
+                CircuitTypeConcrete::CircuitOutputs(_) => {
+                    matches!(self, Self::CircuitOutputs { .. })
+                }
                 CircuitTypeConcrete::CircuitModulus(_) => matches!(self, Self::CircuitModulus(_)),
                 CircuitTypeConcrete::U96Guarantee(_) => matches!(self, Self::U128(_)),
-                CircuitTypeConcrete::CircuitDescriptor(_)
-                | CircuitTypeConcrete::CircuitFailureGuarantee(_)
-                | CircuitTypeConcrete::AddMod(_)
+                CircuitTypeConcrete::CircuitInput(_) => {
+                    matches!(self, Self::Struct(_))
+                }
+                CircuitTypeConcrete::U96LimbsLessThanGuarantee(_) => {
+                    matches!(self, Self::Struct(_))
+                }
+                CircuitTypeConcrete::AddMod(_)
                 | CircuitTypeConcrete::MulMod(_)
+                | CircuitTypeConcrete::CircuitDescriptor(_)
+                | CircuitTypeConcrete::CircuitFailureGuarantee(_)
                 | CircuitTypeConcrete::AddModGate(_)
                 | CircuitTypeConcrete::CircuitPartialOutputs(_)
                 | CircuitTypeConcrete::InverseGate(_)
                 | CircuitTypeConcrete::MulModGate(_)
-                | CircuitTypeConcrete::SubModGate(_)
-                | CircuitTypeConcrete::U96LimbsLessThanGuarantee(_) => {
-                    matches!(self, Self::Unit)
-                }
+                | CircuitTypeConcrete::SubModGate(_) => matches!(self, Self::Unit),
             },
             CoreTypeConcrete::Const(info) => self.is(registry, &info.inner_ty),
             CoreTypeConcrete::EcOp(_) => matches!(self, Self::Unit),
@@ -220,7 +237,7 @@ impl Value {
                 StarknetTypeConcrete::Secp256Point(_) => matches!(self, Self::Struct(_)),
                 StarknetTypeConcrete::Sha256StateHandle(_) => matches!(self, Self::Struct { .. }),
             },
-            CoreTypeConcrete::IntRange(_) => todo!(),
+            CoreTypeConcrete::IntRange(_) => matches!(self, Self::IntRange { .. }),
             CoreTypeConcrete::Blake(_) => todo!(),
             CoreTypeConcrete::QM31(_) => todo!(),
         };
@@ -245,4 +262,39 @@ impl Value {
             Felt::from_dec_str(value).unwrap()
         })
     }
+}
+
+macro_rules! impl_conversions {
+    ( $( $t:ty as $i:ident ; )+ ) => { $(
+        impl From<$t> for Value {
+            fn from(value: $t) -> Self {
+                Self::$i(value)
+            }
+        }
+
+        impl TryFrom<Value> for $t {
+            type Error = Value;
+
+            fn try_from(value: Value) -> Result<Self, Self::Error> {
+                match value {
+                    Value::$i(value) => Ok(value),
+                    _ => Err(value),
+                }
+            }
+        }
+    )+ };
+}
+
+impl_conversions! {
+    Felt as Felt;
+    u8   as U8;
+    u16  as U16;
+    u32  as U32;
+    u64  as U64;
+    u128 as U128;
+    i8   as I8;
+    i16  as I16;
+    i32  as I32;
+    i64  as I64;
+    i128 as I128;
 }

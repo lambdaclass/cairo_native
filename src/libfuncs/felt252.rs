@@ -271,14 +271,11 @@ pub fn build_binary_operation<'ctx, 'this>(
             ))?;
             let result = inverse_result_block.trunci(result, felt252_ty, location)?;
 
-            inverse_result_block.append_operation(helper.br(0, &[result], location));
-            return Ok(());
+            return helper.br(inverse_result_block, 0, &[result], location);
         }
     };
 
-    entry.append_operation(helper.br(0, &[result], location));
-
-    Ok(())
+    helper.br(entry, 0, &[result], location)
 }
 
 /// Generate MLIR operations for the `felt252_const` libfunc.
@@ -306,8 +303,8 @@ pub fn build_const<'ctx, 'this>(
     )?;
 
     let value = entry.const_int_from_type(context, location, value, felt252_ty)?;
-    entry.append_operation(helper.br(0, &[value], location));
-    Ok(())
+
+    helper.br(entry, 0, &[value], location)
 }
 
 /// Generate MLIR operations for the `felt252_is_zero` libfunc.
@@ -325,8 +322,7 @@ pub fn build_is_zero<'ctx, 'this>(
     let k0 = entry.const_int_from_type(context, location, 0, arg0.r#type())?;
     let condition = entry.cmpi(context, CmpiPredicate::Eq, arg0, k0, location)?;
 
-    entry.append_operation(helper.cond_br(context, condition, [0, 1], [&[], &[arg0]], location));
-    Ok(())
+    helper.cond_br(context, entry, condition, [0, 1], [&[], &[arg0]], location)
 }
 
 #[cfg(test)]
@@ -364,10 +360,10 @@ pub mod test {
             }
         };
 
-        // TODO: Add test program for `felt252_add_const`.
-        // TODO: Add test program for `felt252_sub_const`.
-        // TODO: Add test program for `felt252_mul_const`.
-        // TODO: Add test program for `felt252_div_const`.
+        // TODO: Add test program for `felt252_add_const`. See: https://github.com/lambdaclass/cairo_native/issues/1214
+        // TODO: Add test program for `felt252_sub_const`. See: https://github.com/lambdaclass/cairo_native/issues/1214
+        // TODO: Add test program for `felt252_mul_const`. See: https://github.com/lambdaclass/cairo_native/issues/1214
+        // TODO: Add test program for `felt252_div_const`. See: https://github.com/lambdaclass/cairo_native/issues/1214
 
         static ref FELT252_CONST: (String, Program) = load_cairo! {
             extern fn felt252_const<const value: felt252>() -> felt252 nopanic;

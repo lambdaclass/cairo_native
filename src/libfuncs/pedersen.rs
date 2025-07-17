@@ -4,6 +4,7 @@
 use super::LibfuncHelper;
 use crate::{
     error::{panic::ToNativeAssertError, Result},
+    execution_result::PEDERSEN_BUILTIN_SIZE,
     metadata::{runtime_bindings::RuntimeBindingsMeta, MetadataStorage},
     utils::{get_integer_layout, BlockExt, ProgramRegistryExt},
 };
@@ -17,7 +18,7 @@ use cairo_lang_sierra::{
     program_registry::ProgramRegistry,
 };
 use melior::{
-    ir::{r#type::IntegerType, Block, BlockLike, Location},
+    ir::{r#type::IntegerType, Block, Location},
     Context,
 };
 
@@ -51,8 +52,15 @@ pub fn build_pedersen<'ctx>(
         .get_mut::<RuntimeBindingsMeta>()
         .to_native_assert_error("runtime library should be available")?;
 
-    let pedersen_builtin =
-        super::increment_builtin_counter(context, entry, location, entry.arg(0)?)?;
+    // The sierra-to-casm compiler uses the pedersen builtin a total of 1 time.
+    // https://github.com/starkware-libs/cairo/blob/v2.12.0-dev.1/crates/cairo-lang-sierra-to-casm/src/invocations/pedersen.rs?plain=1#L23
+    let pedersen_builtin = super::increment_builtin_counter_by(
+        context,
+        entry,
+        location,
+        entry.arg(0)?,
+        PEDERSEN_BUILTIN_SIZE,
+    )?;
 
     let felt252_ty =
         registry.build_type(context, helper, metadata, &info.param_signatures()[1].ty)?;
@@ -91,8 +99,7 @@ pub fn build_pedersen<'ctx>(
     let result = entry.load(context, location, dst_ptr, i256_ty)?;
     let result = entry.trunci(result, felt252_ty, location)?;
 
-    entry.append_operation(helper.br(0, &[pedersen_builtin, result], location));
-    Ok(())
+    helper.br(entry, 0, &[pedersen_builtin, result], location)
 }
 
 #[cfg(test)]

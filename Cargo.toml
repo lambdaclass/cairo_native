@@ -1,13 +1,19 @@
-[package]
-name = "cairo-native"
-version = "0.5.0-rc.5"
+[workspace.package]
+version = "0.5.0-rc.6"
 edition = "2021"
 license = "Apache-2.0"
-description = "A compiler to convert Cairo's IR Sierra code to MLIR and execute it."
 repository = "https://github.com/lambdaclass/cairo_native"
+
+[package]
+name = "cairo-native"
+description = "A compiler to convert Cairo's IR Sierra code to MLIR and execute it."
 readme = "README.md"
 keywords = ["starknet", "cairo", "compiler", "mlir"]
 categories = ["compilers"]
+version.workspace = true
+edition.workspace = true
+license.workspace = true
+repository.workspace = true
 
 # Explicitly set the resolver to the default for edition >= 2021
 # https://doc.rust-lang.org/edition-guide/rust-2021/default-cargo-resolver.html
@@ -54,6 +60,7 @@ scarb = ["build-cli", "dep:scarb-ui", "dep:scarb-metadata"]
 with-cheatcode = []
 with-debug-utils = []
 with-mem-tracing = []
+with-libfunc-profiling = []
 with-segfault-catcher = []
 with-trace-dump = ["dep:sierra-emu"]
 
@@ -90,7 +97,7 @@ tempfile = "3.15.0"
 thiserror = "2.0.9"
 tracing = "0.1"
 utf8_iter = "1.0.4"
-sierra-emu = { path = "debug_utils/sierra-emu", optional = true }
+sierra-emu = { workspace = true, optional = true }
 
 
 # CLI dependencies
@@ -179,9 +186,11 @@ name = "libfuncs"
 harness = false
 
 [workspace]
-members = ["debug_utils/sierra-emu", "debug_utils/sierra2casm-dbg"]
+members = ["debug_utils/sierra-emu", "debug_utils/casm-data-flow"]
 
 [workspace.dependencies]
+sierra-emu = { path = "debug_utils/sierra-emu", version = "0.5.0-rc.6" }
+cairo-lang-casm = "=2.12.0-dev.1"
 cairo-lang-compiler = "=2.12.0-dev.1"
 cairo-lang-defs = "=2.12.0-dev.1"
 cairo-lang-filesystem = "=2.12.0-dev.1"

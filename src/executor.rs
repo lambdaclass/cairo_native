@@ -7,7 +7,11 @@ pub use self::{aot::AotNativeExecutor, contract::AotContractExecutor, jit::JitNa
 use crate::{
     arch::{AbiArgument, ValueWithInfoWrapper},
     error::{panic::ToNativeAssertError, Error},
-    execution_result::{BuiltinStats, ExecutionResult},
+    execution_result::{
+        BuiltinStats, ExecutionResult, ADD_MOD_BUILTIN_SIZE, BITWISE_BUILTIN_SIZE,
+        EC_OP_BUILTIN_SIZE, MUL_MOD_BUILTIN_SIZE, PEDERSEN_BUILTIN_SIZE, POSEIDON_BUILTIN_SIZE,
+        RANGE_CHECK96_BUILTIN_SIZE, RANGE_CHECK_BUILTIN_SIZE, SEGMENT_ARENA_BUILTIN_SIZE,
+    },
     native_panic,
     runtime::BUILTIN_COSTS,
     starknet::{handler::StarknetSyscallHandlerCallbacks, StarknetSyscallHandler},
@@ -265,7 +269,7 @@ fn invoke_dynamic(
             _ if type_info.is_builtin() => {
                 if !type_info.is_zst(registry)? {
                     if let CoreTypeConcrete::BuiltinCosts(_) = type_info {
-                        // todo: should we use this value?
+                        // todo: should we use this value? See: https://github.com/lambdaclass/cairo_native/issues/1219
                         let _value = match &mut return_ptr {
                             Some(return_ptr) => unsafe { *read_value::<*mut u64>(return_ptr) },
                             None => ret_registers[0] as *mut u64,
@@ -277,22 +281,32 @@ fn invoke_dynamic(
                         } as usize;
 
                         match type_info {
-                            CoreTypeConcrete::Bitwise(_) => builtin_stats.bitwise = value,
-                            CoreTypeConcrete::EcOp(_) => builtin_stats.ec_op = value,
-                            CoreTypeConcrete::RangeCheck(_) => builtin_stats.range_check = value,
-                            CoreTypeConcrete::Pedersen(_) => builtin_stats.pedersen = value,
-                            CoreTypeConcrete::Poseidon(_) => builtin_stats.poseidon = value,
+                            CoreTypeConcrete::RangeCheck(_) => {
+                                builtin_stats.range_check = value / RANGE_CHECK_BUILTIN_SIZE
+                            }
+                            CoreTypeConcrete::Pedersen(_) => {
+                                builtin_stats.pedersen = value / PEDERSEN_BUILTIN_SIZE
+                            }
+                            CoreTypeConcrete::Bitwise(_) => {
+                                builtin_stats.bitwise = value / BITWISE_BUILTIN_SIZE
+                            }
+                            CoreTypeConcrete::EcOp(_) => {
+                                builtin_stats.ec_op = value / EC_OP_BUILTIN_SIZE
+                            }
+                            CoreTypeConcrete::Poseidon(_) => {
+                                builtin_stats.poseidon = value / POSEIDON_BUILTIN_SIZE
+                            }
                             CoreTypeConcrete::SegmentArena(_) => {
-                                builtin_stats.segment_arena = value
+                                builtin_stats.segment_arena = value / SEGMENT_ARENA_BUILTIN_SIZE
                             }
                             CoreTypeConcrete::RangeCheck96(_) => {
-                                builtin_stats.range_check_96 = value
+                                builtin_stats.range_check96 = value / RANGE_CHECK96_BUILTIN_SIZE
                             }
                             CoreTypeConcrete::Circuit(CircuitTypeConcrete::AddMod(_)) => {
-                                builtin_stats.circuit_add = value
+                                builtin_stats.add_mod = value / ADD_MOD_BUILTIN_SIZE
                             }
                             CoreTypeConcrete::Circuit(CircuitTypeConcrete::MulMod(_)) => {
-                                builtin_stats.circuit_mul = value
+                                builtin_stats.mul_mod = value / MUL_MOD_BUILTIN_SIZE
                             }
                             _ => native_panic!("given type should be a builtin: {type_id:?}"),
                         }
@@ -720,7 +734,7 @@ mod tests {
     fn test_invoke_dynamic_aot_native_executor(program: Program) {
         let native_context = NativeContext::new();
         let module = native_context
-            .compile(&program, false, Some(Default::default()))
+            .compile(&program, false, Some(Default::default()), None)
             .expect("failed to compile context");
         let executor = AotNativeExecutor::from_native_module(module, OptLevel::default()).unwrap();
 
@@ -738,7 +752,7 @@ mod tests {
     fn test_invoke_dynamic_jit_native_executor(program: Program) {
         let native_context = NativeContext::new();
         let module = native_context
-            .compile(&program, false, None)
+            .compile(&program, false, None, None)
             .expect("failed to compile context");
         let executor = JitNativeExecutor::from_native_module(module, OptLevel::default()).unwrap();
 
@@ -756,7 +770,7 @@ mod tests {
     fn test_invoke_contract_dynamic_aot(starknet_program: Program) {
         let native_context = NativeContext::new();
         let module = native_context
-            .compile(&starknet_program, false, Some(Default::default()))
+            .compile(&starknet_program, false, Some(Default::default()), None)
             .expect("failed to compile context");
         let executor = AotNativeExecutor::from_native_module(module, OptLevel::default()).unwrap();
 
@@ -788,7 +802,7 @@ mod tests {
     fn test_invoke_contract_dynamic_jit(starknet_program: Program) {
         let native_context = NativeContext::new();
         let module = native_context
-            .compile(&starknet_program, false, Some(Default::default()))
+            .compile(&starknet_program, false, Some(Default::default()), None)
             .expect("failed to compile context");
         let executor = JitNativeExecutor::from_native_module(module, OptLevel::default()).unwrap();
 

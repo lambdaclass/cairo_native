@@ -17,7 +17,7 @@ use cairo_lang_sierra::{
 };
 use melior::{
     dialect::{arith, llvm},
-    ir::{r#type::IntegerType, Block, BlockLike, Location, Value},
+    ir::{r#type::IntegerType, Block, Location, Value},
     Context,
 };
 
@@ -48,7 +48,10 @@ pub fn build_divmod_u256<'ctx, 'this>(
     metadata: &mut MetadataStorage,
     info: &SignatureOnlyConcreteLibfunc,
 ) -> Result<()> {
-    let range_check = super::increment_builtin_counter(context, entry, location, entry.arg(0)?)?;
+    // The sierra-to-casm compiler uses the range check builtin a total of 12 times.
+    // https://github.com/starkware-libs/cairo/blob/v2.12.0-dev.1/crates/cairo-lang-sierra-to-casm/src/invocations/int/unsigned512.rs?plain=1#L23
+    let range_check =
+        super::increment_builtin_counter_by(context, entry, location, entry.arg(0)?, 12)?;
 
     let i128_ty = IntegerType::new(context, 128).into();
     let i512_ty = IntegerType::new(context, 512).into();
@@ -140,7 +143,8 @@ pub fn build_divmod_u256<'ctx, 'this>(
 
     let guarantee = entry.append_op_result(llvm::undef(guarantee_type, location))?;
 
-    entry.append_operation(helper.br(
+    helper.br(
+        entry,
         0,
         &[
             range_check,
@@ -153,8 +157,7 @@ pub fn build_divmod_u256<'ctx, 'this>(
             guarantee,
         ],
         location,
-    ));
-    Ok(())
+    )
 }
 
 #[cfg(test)]
