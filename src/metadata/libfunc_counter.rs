@@ -230,7 +230,7 @@ pub mod libfunc_counter_runtime {
     use crate::{
         error::Result,
         metadata::{libfunc_counter::LibfuncCounterMeta, MetadataStorage},
-        utils::libc_malloc,
+        utils::{libc_free, libc_malloc},
     };
 
     /// Contains an array of vector for each execution completed.
@@ -287,7 +287,7 @@ pub mod libfunc_counter_runtime {
     }
 
     pub extern "C" fn get_counters_array() -> *mut u32 {
-        COUNTERS_ARRAY.with(|x| x.get()) as *mut u32
+        COUNTERS_ARRAY.with(|x| x.get())
     }
 
     /// Converts the pointer to the counters into a Rust `Vec` and store it. Then, it frees the pointer.
@@ -302,6 +302,6 @@ pub mod libfunc_counter_runtime {
             .unwrap()
             .insert(*counter_id_ptr, counters_vec);
 
-        libc::free(counter_array_ptr as *mut libc::c_void);
+        libc_free(counter_array_ptr as *mut libc::c_void);
     }
 }
