@@ -298,7 +298,7 @@ pub fn run_tests(
                         native_builtins.insert("mul_mod", native_result.builtin_stats.mul_mod);
 
                         for builtin_name in vm_builtins.keys() {
-                            native_builtins.entry(&builtin_name).or_default();
+                            native_builtins.entry(builtin_name).or_default();
                         }
                         native_builtins
                     };
