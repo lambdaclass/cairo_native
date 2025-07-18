@@ -247,7 +247,7 @@ Sometimes we need to use stuff that would be too complicated or error-prone to
 implement in MLIR, but that we have readily available from Rust.
 
 When initializing an executor, for each of the variants of the `RuntimeBinding` enum, an MLIR global symbol
-is declared that will contain a pointer to the runtime fucntion implementation. Then on execution, it will access the global symbol of the desired function and find its pointer. This way, each contract uses the
+is declared that will contain a pointer to the runtime function implementation. Then on execution, it will access the global symbol of the desired function and find its pointer. This way, each contract uses the
 same runtime library located on the sequencer in a dynamic dispatch way.
 
 Although it's implemented in Rust, its functions use the C ABI and have Rust's
