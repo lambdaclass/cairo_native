@@ -109,7 +109,7 @@ The code is laid out in the following sections:
  ├─ libfuncs.rs         Cairo Sierra libfunc glue code & implementations.
  ├─ metadata.rs         Metadata injector to use within the compilation process.
  ├─ module.rs           The MLIR module wrapper.
- ├─ runtime.rs          Methods that need to use the Rust runtime
+ ├─ runtime.rs          Extern functions invoked from the compiled code.
  ├─ starknet_stub.rs
  ├─ starknet.rs         Starknet syscall handler glue code.
  ├─ types.rs            Conversion from Sierra to MLIR types. Cairo to MLIR type information.
