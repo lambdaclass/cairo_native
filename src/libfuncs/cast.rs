@@ -256,7 +256,7 @@ pub fn build_downcast<'ctx, 'this>(
             //   https://github.com/starkware-libs/cairo/blob/v2.12.0-dev.1/crates/cairo-lang-sierra-to-casm/src/invocations/range_reduction.rs#L87
             // * If it is not in bounds, increment the range check builtin by 3.
             //   https://github.com/starkware-libs/cairo/blob/v2.12.0-dev.1/crates/cairo-lang-sierra-to-casm/src/invocations/range_reduction.rs#L79
-            super::increment_builtin_counter_by_if(
+            super::increment_builtin_counter_conditionally_by(
                 context,
                 entry,
                 location,
@@ -279,7 +279,7 @@ pub fn build_downcast<'ctx, 'this>(
 
                     // If the result is in range, increment the range check builtin by 2. Otherwise, increment it by 1.
                     // https://github.com/starkware-libs/cairo/blob/v2.12.0-dev.1/crates/cairo-lang-sierra-to-casm/src/invocations/casts.rs#L160
-                    super::increment_builtin_counter_by_if(
+                    super::increment_builtin_counter_conditionally_by(
                         context,
                         entry,
                         location,
