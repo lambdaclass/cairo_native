@@ -491,7 +491,7 @@
 <a href=#491 id=491 data-nosnippet>491</a>    // With the range check size being 2**128
 <a href=#492 id=492 data-nosnippet>492</a>    // https://github.com/starkware-libs/cairo/blob/v2.12.0-dev.1/crates/cairo-lang-sierra-to-casm/src/invocations/range_reduction.rs#L26
 <a href=#493 id=493 data-nosnippet>493</a>    </span><span class="kw">let </span>rc_size = BigInt::from(<span class="number">1</span>) &lt;&lt; <span class="number">128</span>;
-<a href=#494 id=494 data-nosnippet>494</a>    <span class="kw">let </span>range_check = <span class="kw">super</span>::increment_builtin_counter_by_if(
+<a href=#494 id=494 data-nosnippet>494</a>    <span class="kw">let </span>range_check = <span class="kw">super</span>::increment_builtin_counter_conditionally_by(
 <a href=#495 id=495 data-nosnippet>495</a>        context,
 <a href=#496 id=496 data-nosnippet>496</a>        entry,
 <a href=#497 id=497 data-nosnippet>497</a>        location,
@@ -921,7 +921,7 @@
 <a href=#921 id=921 data-nosnippet>921</a>    <span class="comment">// The sierra-to-casm compiler uses the range check builtin a total of 3 times when the value is greater than u128 max.
 <a href=#922 id=922 data-nosnippet>922</a>    // Otherwise it will be used once.
 <a href=#923 id=923 data-nosnippet>923</a>    // https://github.com/starkware-libs/cairo/blob/v2.12.0-dev.1/crates/cairo-lang-sierra-to-casm/src/invocations/int/unsigned128.rs#L234
-<a href=#924 id=924 data-nosnippet>924</a>    </span><span class="kw">let </span>range_check = <span class="kw">super</span>::increment_builtin_counter_by_if(
+<a href=#924 id=924 data-nosnippet>924</a>    </span><span class="kw">let </span>range_check = <span class="kw">super</span>::increment_builtin_counter_conditionally_by(
 <a href=#925 id=925 data-nosnippet>925</a>        context,
 <a href=#926 id=926 data-nosnippet>926</a>        entry,
 <a href=#927 id=927 data-nosnippet>927</a>        location,

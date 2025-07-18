@@ -256,7 +256,7 @@
 <a href=#256 id=256 data-nosnippet>256</a>            //   https://github.com/starkware-libs/cairo/blob/v2.12.0-dev.1/crates/cairo-lang-sierra-to-casm/src/invocations/range_reduction.rs#L87
 <a href=#257 id=257 data-nosnippet>257</a>            // * If it is not in bounds, increment the range check builtin by 3.
 <a href=#258 id=258 data-nosnippet>258</a>            //   https://github.com/starkware-libs/cairo/blob/v2.12.0-dev.1/crates/cairo-lang-sierra-to-casm/src/invocations/range_reduction.rs#L79
-<a href=#259 id=259 data-nosnippet>259</a>            </span><span class="kw">super</span>::increment_builtin_counter_by_if(
+<a href=#259 id=259 data-nosnippet>259</a>            </span><span class="kw">super</span>::increment_builtin_counter_conditionally_by(
 <a href=#260 id=260 data-nosnippet>260</a>                context,
 <a href=#261 id=261 data-nosnippet>261</a>                entry,
 <a href=#262 id=262 data-nosnippet>262</a>                location,
@@ -279,7 +279,7 @@
 <a href=#279 id=279 data-nosnippet>279</a>
 <a href=#280 id=280 data-nosnippet>280</a>                    <span class="comment">// If the result is in range, increment the range check builtin by 2. Otherwise, increment it by 1.
 <a href=#281 id=281 data-nosnippet>281</a>                    // https://github.com/starkware-libs/cairo/blob/v2.12.0-dev.1/crates/cairo-lang-sierra-to-casm/src/invocations/casts.rs#L160
-<a href=#282 id=282 data-nosnippet>282</a>                    </span><span class="kw">super</span>::increment_builtin_counter_by_if(
+<a href=#282 id=282 data-nosnippet>282</a>                    </span><span class="kw">super</span>::increment_builtin_counter_conditionally_by(
 <a href=#283 id=283 data-nosnippet>283</a>                        context,
 <a href=#284 id=284 data-nosnippet>284</a>                        entry,
 <a href=#285 id=285 data-nosnippet>285</a>                        location,

@@ -2,7 +2,7 @@
 <a href=#2 id=2 data-nosnippet>2</a>
 <a href=#3 id=3 data-nosnippet>3</a></span><span class="kw">use super</span>::{BlockExt, LibfuncHelper};
 <a href=#4 id=4 data-nosnippet>4</a><span class="kw">use crate</span>::{
-<a href=#5 id=5 data-nosnippet>5</a>    error::Result, libfuncs::increment_builtin_counter_by_if, metadata::MetadataStorage,
+<a href=#5 id=5 data-nosnippet>5</a>    error::Result, libfuncs::increment_builtin_counter_conditionally_by, metadata::MetadataStorage,
 <a href=#6 id=6 data-nosnippet>6</a>    utils::ProgramRegistryExt,
 <a href=#7 id=7 data-nosnippet>7</a>};
 <a href=#8 id=8 data-nosnippet>8</a><span class="kw">use </span>cairo_lang_sierra::{
@@ -933,7 +933,7 @@
 <a href=#933 id=933 data-nosnippet>933</a>    <span class="comment">// The sierra-to-casm compiler uses the range check builtin a total of 9 times if the inverse is
 <a href=#934 id=934 data-nosnippet>934</a>    // not equal to 0 and lhs is invertible. Otherwise it will be used 7 times.
 <a href=#935 id=935 data-nosnippet>935</a>    // https://github.com/starkware-libs/cairo/blob/v2.12.0-dev.1/crates/cairo-lang-sierra-to-casm/src/invocations/int/unsigned256.rs#L21
-<a href=#936 id=936 data-nosnippet>936</a>    </span><span class="kw">let </span>range_check = increment_builtin_counter_by_if(
+<a href=#936 id=936 data-nosnippet>936</a>    </span><span class="kw">let </span>range_check = increment_builtin_counter_conditionally_by(
 <a href=#937 id=937 data-nosnippet>937</a>        context,
 <a href=#938 id=938 data-nosnippet>938</a>        entry,
 <a href=#939 id=939 data-nosnippet>939</a>        location,
