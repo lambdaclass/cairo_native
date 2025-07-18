@@ -4,7 +4,7 @@ use super::LibfuncHelper;
 use crate::{
     error::{Error, Result},
     execution_result::EC_OP_BUILTIN_SIZE,
-    libfuncs::increment_builtin_counter_by_if,
+    libfuncs::increment_builtin_counter_conditionally_by,
     metadata::{runtime_bindings::RuntimeBindingsMeta, MetadataStorage},
     utils::{get_integer_layout, BlockExt, ProgramRegistryExt, PRIME},
 };
@@ -181,7 +181,7 @@ pub fn build_point_from_x<'ctx, 'this>(
     // The sierra-to-casm compiler uses the range check builtin a total of 3 times if the
     // point is on the curve. Otherwise it is not used.
     // https://github.com/starkware-libs/cairo/blob/v2.12.0-dev.1/crates/cairo-lang-sierra-to-casm/src/invocations/ec.rs#L167
-    let range_check = increment_builtin_counter_by_if(
+    let range_check = increment_builtin_counter_conditionally_by(
         context,
         entry,
         location,
