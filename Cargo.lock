@@ -1020,7 +1020,7 @@ dependencies = [
 
 [[package]]
 name = "cairo-native"
-version = "0.5.0-rc.6"
+version = "0.6.0-rc.1"
 dependencies = [
  "anyhow",
  "aquamarine",
@@ -1208,7 +1208,7 @@ dependencies = [
 
 [[package]]
 name = "casm-data-flow"
-version = "0.5.0-rc.6"
+version = "0.6.0-rc.1"
 dependencies = [
  "bincode 2.0.1",
  "cairo-lang-casm",
@@ -3368,7 +3368,7 @@ checksum = "0fda2ff0d084019ba4d7c6f371c95d8fd75ce3524c3cb8fb653a3023f6323e64"
 
 [[package]]
 name = "sierra-emu"
-version = "0.5.0-rc.6"
+version = "0.6.0-rc.1"
 dependencies = [
  "cairo-lang-compiler",
  "cairo-lang-filesystem",
