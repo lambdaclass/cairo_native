@@ -604,7 +604,7 @@ pub fn compare_outputs(
                 values[0].to_biguint().to_i8().unwrap()
             }),
             CoreTypeConcrete::BoundedInt(info) => Value::BoundedInt {
-                value: values[0].into(),
+                value: values[0],
                 range: info.range.clone(),
             },
             CoreTypeConcrete::Enum(info) => {
