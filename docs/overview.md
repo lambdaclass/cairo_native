@@ -45,7 +45,7 @@ Then you are free to go and make a PR!
 ## High level project overview
 
 This will explain how the project is structured, without going into much details
-yet:
+yet.
 
 ### Project dependencies
 
@@ -84,29 +84,35 @@ The code is laid out in the following sections:
 
 ```txt
  src
- ├─ arch.rs             Trampoline assembly for calling functions with dynamic signatures.
  ├─ arch/               Architecture-specific code for the trampoline.
- ├─ bin/                Binary programs
- ├─ block_ext.rs        A melior (MLIR) block trait extension to write less code.
+ ├─ bin/                Binary programs.
+ ├─ cache/              Cache implementations for Jit and Aot.
+ ├─ executor/           Implementations of the AotNativeExecutor, AotContractExecutor and JitNativeExecutor.
+ ├─ libfuncs/           Libfuncs implementations                        
+ ├─ types/              Cairo type to MLIR implementations.
+ ├─ utils/              Utily traits and methods like a melior (MLIR) block trait
+                        extension to write less code.
+ ├─ arch.rs             Trampoline assembly for calling functions with dynamic signatures.
  ├─ cache.rs            Types and implementations of compiled program caches.
  ├─ compiler.rs         The glue code of the compiler, has the codegen for
                         the function signatures and calls the libfunc
                         codegen implementations.
  ├─ context.rs          The MLIR context wrapper, provides the compile method.
- ├─ debug.rs
+ ├─ debug.rs            Debug function that maps the libfuncs to their name. 
  ├─ docs.rs             Documentation modules.
- ├─ error.rs            Error handling,
+ ├─ error.rs            Error handling.
  ├─ execution_result.rs Program result parsing.
- ├─ executor.rs         The executor & related code,
- ├─ ffi.cpp             Missing FFI C wrappers,
+ ├─ executor.rs         The executor & related code.
+ ├─ ffi.cpp             Missing FFI C wrappers.
  ├─ ffi.rs              Missing FFI C wrappers, rust side.
  ├─ lib.rs              The main lib file.
- ├─ libfuncs.rs         Cairo Sierra libfunc glue code & implementations,
+ ├─ libfuncs.rs         Cairo Sierra libfunc glue code & implementations.
  ├─ metadata.rs         Metadata injector to use within the compilation process.
  ├─ module.rs           The MLIR module wrapper.
- ├─ starknet.rs         Starknet syscall handler glue code.
+ ├─ runtime.rs          Extern functions invoked from the compiled code.
  ├─ starknet_stub.rs
- ├─ types.rs            Cairo to MLIR type information,
+ ├─ starknet.rs         Starknet syscall handler glue code.
+ ├─ types.rs            Conversion from Sierra to MLIR types. Cairo to MLIR type information.
  ├─ utils.rs            Internal utilities.
  └─ values.rs           JIT serialization.
 ```
@@ -117,17 +123,6 @@ Path: `src/libfuncs`
 
 Here are stored all the library function implementations in MLIR, this
 contains the majority of the code.
-
-To store information about the different types of library functions sierra
-has, we divide them into the following using the enum `SierraLibFunc`:
-
-- **Branching**: These functions are implemented inline, adding blocks and
-  jumping as necessary based on given conditions.
-- **Constant**: A constant value, this isn't represented as a function and
-  is inserted inline.
-- **Function**: Any other function.
-- **InlineDataFlow**: Functions that can be implemented inline without much
-  problem. For example: `dup`, `store_temp`
 
 ### Statements
 
@@ -144,48 +139,49 @@ development, such as wrapping return values and printing them.
 
 ## Basic API usage example
 
-The API contains two structs, `NativeContext` and `NativeExecutor`.
-The main purpose of `NativeContext` is MLIR initialization, compilation and
-lowering to LLVM.
-`NativeExecutor` in the other hand is responsible of executing MLIR
-compiled sierra programs from an entrypoint. Programs and JIT states can be
-cached in contexts where their execution will be done multiple times.
+The API contains four structs, `NativeContext`, `JitNativeExecutor`, `AotNativeExecutor` and `AotContractExecutor`.
+The main purpose of `NativeContext` is MLIR initialization and compilation. The two variants 
+of native executors on the other hand, are responsible of executing MLIR compiled sierra 
+programs from an entrypoint. Programs and JIT states can be cached in contexts where their
+execution will be done multiple times. Finally, we have the AotContractExecutor which is specialized for executing Starknet contracts.
 
 ```rust,ignore
 use starknet_types_core::felt::Felt;
 use cairo_native::context::NativeContext;
 use cairo_native::executor::JitNativeExecutor;
-use cairo_native::values::JitValue;
+use cairo_native::values::Value;
 use std::path::Path;
 
-let program_path = Path::new("programs/examples/hello.cairo");
-// Compile the cairo program to sierra.
-let sierra_program = cairo_native::utils::cairo_to_sierra(program_path);
+fn main() { 
+    let program_path = Path::new("programs/examples/hello.cairo");
+    // Compile the cairo program to sierra.
+    let sierra_program = cairo_native::utils::cairo_to_sierra(program_path);
 
-// Instantiate a Cairo Native MLIR context. This data structure is responsible for the MLIR
-// initialization and compilation of sierra programs into a MLIR module.
-let native_context = NativeContext::new();
+    // Instantiate a Cairo Native MLIR context. This data structure is responsible for the MLIR
+    // initialization and compilation of sierra programs into a MLIR module.
+    let native_context = NativeContext::new();
 
-// Compile the sierra program into a MLIR module.
-let native_program = native_context.compile(&sierra_program, None).unwrap();
+    // Compile the sierra program into a MLIR module.
+    let native_program = native_context.compile(&sierra_program, true, None, None).unwrap();
 
-// The parameters of the entry point.
-let params = &[JitValue::Felt252(Felt::from_bytes_be_slice(b"user"))];
+    // The parameters of the entry point.
+    let params = &[Value::Felt252(Felt::from_bytes_be_slice(b"user"))];
 
-// Find the entry point id by its name.
-let entry_point = "hello::hello::greet";
-let entry_point_id = cairo_native::utils::find_function_id(&sierra_program, entry_point);
+    // Find the entry point id by its name.
+    let entry_point = "hello::hello::greet";
+    let entry_point_id = cairo_native::utils::find_function_id(&sierra_program, entry_point).expect("entry point not found");
 
-// Instantiate the executor.
-let native_executor = JitNativeExecutor::from_native_module(native_program, Default::default());
+    // Instantiate the executor.
+    let native_executor = JitNativeExecutor::from_native_module(native_program, Default::default());
 
-// Execute the program.
-let result = native_executor
-    .invoke_dynamic(entry_point_id, params, None)
-    .unwrap();
+    // Execute the program.
+    let result = native_executor
+        .invoke_dynamic(entry_point_id, params, None)
+        .unwrap();
 
-println!("Cairo program was compiled and executed successfully.");
-println!("{:?}", result);
+    println!("Cairo program was compiled and executed successfully.");
+    println!("{:?}", result);
+}
 ```
 
 ## Running a Cairo program
@@ -199,8 +195,8 @@ Example code to run a program:
 ```rust,ignore
 use starknet_types_core::felt::Felt;
 use cairo_native::context::NativeContext;
-use cairo_native::executor::NativeExecutor;
-use cairo_native::values::JitValue;
+use cairo_native::executor::JitNativeExecutor;
+use cairo_native::values::Value;
 use std::path::Path;
 
 fn main() {
@@ -213,17 +209,17 @@ fn main() {
     let native_context = NativeContext::new();
 
     // Compile the sierra program into a MLIR module.
-    let native_program = native_context.compile(&sierra_program).unwrap();
+    let native_program = native_context.compile(&sierra_program, true, None, None).unwrap();
 
     // The parameters of the entry point.
-    let params = &[JitValue::Felt252(Felt::from_bytes_be_slice(b"user"))];
+    let params = &[Value::Felt252(Felt::from_bytes_be_slice(b"user"))];
 
     // Find the entry point id by its name.
     let entry_point = "hello::hello::greet";
     let entry_point_id = cairo_native::utils::find_function_id(&sierra_program, entry_point);
 
     // Instantiate the executor.
-    let native_executor = NativeExecutor::new(native_program);
+    let native_executor = JitNativeExecutor::from_native_module(native_program, Default::default());
 
     // Execute the program.
     let result = native_executor
@@ -242,14 +238,12 @@ Example code to run a Starknet contract:
 ```rust,ignore
 use starknet_types_core::felt::Felt;
 use cairo_lang_compiler::CompilerConfig;
-use cairo_lang_starknet::contract_class::compile_path;
+use cairo_lang_starknet::compile::compile_path;
 use cairo_native::context::NativeContext;
-use cairo_native::executor::NativeExecutor;
+use cairo_native::executor::JitNativeExecutor;
 use cairo_native::utils::find_entry_point_by_idx;
-use cairo_native::values::JitValue;
 use cairo_native::{
-    metadata::syscall_handler::SyscallHandlerMeta,
-    starknet::{BlockInfo, ExecutionInfo, StarkNetSyscallHandler, SyscallResult, TxInfo, U256},
+    starknet::{BlockInfo, ExecutionInfo, StarknetSyscallHandler, SyscallResult, TxInfo, U256},
 };
 use std::path::Path;
 
@@ -275,10 +269,7 @@ fn main() {
 
     let native_context = NativeContext::new();
 
-    let mut native_program = native_context.compile(&sierra_program).unwrap();
-    native_program
-        .insert_metadata(SyscallHandlerMeta::new(&mut SyscallHandler))
-        .unwrap();
+    let mut native_program = native_context.compile(&sierra_program, false, Some(Default::default()), None).unwrap();
 
     // Call the echo function from the contract using the generated wrapper.
     let entry_point_fn =
@@ -286,14 +277,15 @@ fn main() {
 
     let fn_id = &entry_point_fn.id;
 
-    let native_executor = NativeExecutor::new(native_program);
+    let native_executor = JitNativeExecutor::from_native_module(native_program, Default::default()).unwrap();
 
     let result = native_executor
-        .execute_contract(
+        .invoke_contract_dynamic(
             fn_id,
             // The calldata
-            &[JitValue::Felt252(Felt::ONE)],
-            u64::MAX.into(),
+            &[Felt::ONE],
+            Some(u64::MAX),
+            SyscallHandler::new()
         )
         .expect("failed to execute the given contract");
 
@@ -302,8 +294,14 @@ fn main() {
     println!("{result:#?}");
 }
 
+impl SyscallHandler {
+    pub fn new() -> Self {
+        Self {}
+    }
+}
+
 // Implement an example syscall handler.
-impl StarkNetSyscallHandler for SyscallHandler {
+impl StarknetSyscallHandler for SyscallHandler {
     fn get_block_hash(
         &mut self,
         block_number: u64,
@@ -436,7 +434,10 @@ impl StarkNetSyscallHandler for SyscallHandler {
         _gas: &mut u64,
     ) -> SyscallResult<cairo_native::starknet::U256> {
         println!("Called `keccak({input:?})` from MLIR.");
-        Ok(U256(Felt::from(1234567890).to_le_bytes()))
+        Ok(U256 {
+            hi: 0,
+            lo: 1234567890,
+        })
     }
 
     /*
