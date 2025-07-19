@@ -69,7 +69,7 @@ lazy_static! {
             assert!(outputs.get_output(add) == u384 { limb0: 14, limb1: 0, limb2: 0, limb3: 0 });
         }
 
-        fn test_builtin_comparison_circuit_add() -> u384 {
+        fn test_circuit_add() -> u384 {
             let in1 = CircuitElement::<CircuitInput<0>> {};
             let in2 = CircuitElement::<CircuitInput<1>> {};
             let add = circuit_add(in1, in2);
@@ -87,7 +87,7 @@ lazy_static! {
             outputs.get_output(add)
         }
 
-        fn test_builtin_comparison_circuit_sub() -> u384 {
+        fn test_circuit_sub() -> u384 {
             let in1 = CircuitElement::<CircuitInput<0>> {};
             let in2 = CircuitElement::<CircuitInput<1>> {};
             let sub = circuit_sub(in1, in2);
@@ -105,7 +105,7 @@ lazy_static! {
             outputs.get_output(sub)
         }
 
-        fn test_builtin_comparison_circuit_mul() -> u384 {
+        fn test_circuit_mul() -> u384 {
             let in1 = CircuitElement::<CircuitInput<0>> {};
             let in2 = CircuitElement::<CircuitInput<1>> {};
             let mul = circuit_mul(in1, in2);
@@ -123,7 +123,7 @@ lazy_static! {
             outputs.get_output(mul)
         }
 
-        fn test_builtin_comparison_circuit_inv() -> u384 {
+        fn test_circuit_inv() -> u384 {
             let in1 = CircuitElement::<CircuitInput<0>> {};
             let inv = circuit_inverse(in1);
 
@@ -139,7 +139,7 @@ lazy_static! {
             outputs.get_output(inv)
         }
 
-        fn test_builtin_comparison_circuit_full() -> u384 {
+        fn test_circuit_full() -> u384 {
             let in1 = CircuitElement::<CircuitInput<0>> {};
             let in2 = CircuitElement::<CircuitInput<1>> {};
             let add1 = circuit_add(in1, in2);
@@ -289,7 +289,7 @@ fn builtin_comparison_circuit_add() {
 
     let result_vm = run_vm_program(
         program,
-        "test_builtin_comparison_circuit_add",
+        "test_circuit_add",
         vec![],
         Some(DEFAULT_GAS as usize),
     )
@@ -297,7 +297,7 @@ fn builtin_comparison_circuit_add() {
 
     let result_native = run_native_program(
         program,
-        "test_builtin_comparison_circuit_add",
+        "test_circuit_add",
         &[],
         Some(DEFAULT_GAS),
         Option::<DummySyscallHandler>::None,
@@ -305,11 +305,7 @@ fn builtin_comparison_circuit_add() {
 
     compare_outputs(
         &program.1,
-        &program
-            .2
-            .find_function("test_builtin_comparison_circuit_add")
-            .unwrap()
-            .id,
+        &program.2.find_function("test_circuit_add").unwrap().id,
         &result_vm,
         &result_native,
     )
@@ -322,7 +318,7 @@ fn builtin_comparison_circuit_sub() {
 
     let result_vm = run_vm_program(
         program,
-        "test_builtin_comparison_circuit_sub",
+        "test_circuit_sub",
         vec![],
         Some(DEFAULT_GAS as usize),
     )
@@ -330,7 +326,7 @@ fn builtin_comparison_circuit_sub() {
 
     let result_native = run_native_program(
         program,
-        "test_builtin_comparison_circuit_sub",
+        "test_circuit_sub",
         &[],
         Some(DEFAULT_GAS),
         Option::<DummySyscallHandler>::None,
@@ -338,11 +334,7 @@ fn builtin_comparison_circuit_sub() {
 
     compare_outputs(
         &program.1,
-        &program
-            .2
-            .find_function("test_builtin_comparison_circuit_sub")
-            .unwrap()
-            .id,
+        &program.2.find_function("test_circuit_sub").unwrap().id,
         &result_vm,
         &result_native,
     )
@@ -355,7 +347,7 @@ fn builtin_comparison_circuit_mul() {
 
     let result_vm = run_vm_program(
         program,
-        "test_builtin_comparison_circuit_mul",
+        "test_circuit_mul",
         vec![],
         Some(DEFAULT_GAS as usize),
     )
@@ -363,7 +355,7 @@ fn builtin_comparison_circuit_mul() {
 
     let result_native = run_native_program(
         program,
-        "test_builtin_comparison_circuit_mul",
+        "test_circuit_mul",
         &[],
         Some(DEFAULT_GAS),
         Option::<DummySyscallHandler>::None,
@@ -371,11 +363,7 @@ fn builtin_comparison_circuit_mul() {
 
     compare_outputs(
         &program.1,
-        &program
-            .2
-            .find_function("test_builtin_comparison_circuit_mul")
-            .unwrap()
-            .id,
+        &program.2.find_function("test_circuit_mul").unwrap().id,
         &result_vm,
         &result_native,
     )
@@ -388,7 +376,7 @@ fn builtin_comparison_circuit_inv() {
 
     let result_vm = run_vm_program(
         program,
-        "test_builtin_comparison_circuit_inv",
+        "test_circuit_inv",
         vec![],
         Some(DEFAULT_GAS as usize),
     )
@@ -396,7 +384,7 @@ fn builtin_comparison_circuit_inv() {
 
     let result_native = run_native_program(
         program,
-        "test_builtin_comparison_circuit_inv",
+        "test_circuit_inv",
         &[],
         Some(DEFAULT_GAS),
         Option::<DummySyscallHandler>::None,
@@ -404,11 +392,7 @@ fn builtin_comparison_circuit_inv() {
 
     compare_outputs(
         &program.1,
-        &program
-            .2
-            .find_function("test_builtin_comparison_circuit_inv")
-            .unwrap()
-            .id,
+        &program.2.find_function("test_circuit_inv").unwrap().id,
         &result_vm,
         &result_native,
     )
@@ -421,7 +405,7 @@ fn builtin_comparison_circuit_full() {
 
     let result_vm = run_vm_program(
         program,
-        "test_builtin_comparison_circuit_full",
+        "test_circuit_full",
         vec![],
         Some(DEFAULT_GAS as usize),
     )
@@ -429,7 +413,7 @@ fn builtin_comparison_circuit_full() {
 
     let result_native = run_native_program(
         program,
-        "test_builtin_comparison_circuit_full",
+        "test_circuit_full",
         &[],
         Some(DEFAULT_GAS),
         Option::<DummySyscallHandler>::None,
@@ -437,11 +421,7 @@ fn builtin_comparison_circuit_full() {
 
     compare_outputs(
         &program.1,
-        &program
-            .2
-            .find_function("test_builtin_comparison_circuit_full")
-            .unwrap()
-            .id,
+        &program.2.find_function("test_circuit_full").unwrap().id,
         &result_vm,
         &result_native,
     )
