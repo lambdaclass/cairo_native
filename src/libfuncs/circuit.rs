@@ -1317,11 +1317,11 @@ mod test {
             fn main() -> u384 {
                 let in1 = CircuitElement::<CircuitInput<0>> {};
                 let in2 = CircuitElement::<CircuitInput<1>> {};
-                let mul = circuit_sub(in1, in2);
+                let sub = circuit_sub(in1, in2);
 
                 let modulus = TryInto::<_, CircuitModulus>::try_into([12, 12, 12, 12]).unwrap();
 
-                let outputs = (mul,)
+                let outputs = (sub,)
                     .new_inputs()
                     .next([6, 6, 6, 6])
                     .next([3, 3, 3, 3])
@@ -1329,7 +1329,7 @@ mod test {
                     .eval(modulus)
                     .unwrap();
 
-                outputs.get_output(mul)
+                outputs.get_output(sub)
             }
         );
 
