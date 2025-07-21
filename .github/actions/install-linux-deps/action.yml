@@ -1,4 +1,5 @@
 name: 'Install Linux Dependencies'
+description: "Install linux dependencies for Cairo Native"
 runs:
   using: "composite"
   steps:
