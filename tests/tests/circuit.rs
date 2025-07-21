@@ -164,9 +164,24 @@ lazy_static! {
             outputs.get_output(add2)
         }
 
+        fn test_circuit_fail() -> u384 {
+            let in1 = CircuitElement::<CircuitInput<0>> {};
+            let in2 = CircuitElement::<CircuitInput<1>> {};
+            let add = circuit_add(in1, in2);
 
+            let modulus = TryInto::<_, CircuitModulus>::try_into([0, 0, 0, 0]).unwrap(); // Having this modulus makes eval panic
+
+            let outputs = (add,)
+                .new_inputs()
+                .next([3, 3, 3, 3])
+                .next([6, 6, 6, 6])
+                .done()
+                .eval(modulus)
+                .unwrap();
+
+            outputs.get_output(add)
+        }
     };
-
 }
 
 #[test]
@@ -284,7 +299,7 @@ fn circuit_guarantee_middle_limb() {
 }
 
 #[test]
-fn builtin_comparison_circuit_add() {
+fn comparison_circuit_add() {
     let program = &TEST;
 
     let result_vm = run_vm_program(
@@ -313,7 +328,7 @@ fn builtin_comparison_circuit_add() {
 }
 
 #[test]
-fn builtin_comparison_circuit_sub() {
+fn comparison_circuit_sub() {
     let program = &TEST;
 
     let result_vm = run_vm_program(
@@ -342,7 +357,7 @@ fn builtin_comparison_circuit_sub() {
 }
 
 #[test]
-fn builtin_comparison_circuit_mul() {
+fn comparison_circuit_mul() {
     let program = &TEST;
 
     let result_vm = run_vm_program(
@@ -371,7 +386,7 @@ fn builtin_comparison_circuit_mul() {
 }
 
 #[test]
-fn builtin_comparison_circuit_inv() {
+fn comparison_circuit_inv() {
     let program = &TEST;
 
     let result_vm = run_vm_program(
@@ -400,7 +415,7 @@ fn builtin_comparison_circuit_inv() {
 }
 
 #[test]
-fn builtin_comparison_circuit_full() {
+fn comparison_circuit_full() {
     let program = &TEST;
 
     let result_vm = run_vm_program(
@@ -422,6 +437,35 @@ fn builtin_comparison_circuit_full() {
     compare_outputs(
         &program.1,
         &program.2.find_function("test_circuit_full").unwrap().id,
+        &result_vm,
+        &result_native,
+    )
+    .unwrap();
+}
+
+#[test]
+fn comparison_circuit_fail() {
+    let program = &TEST;
+
+    let result_vm = run_vm_program(
+        program,
+        "test_circuit_fail",
+        vec![],
+        Some(DEFAULT_GAS as usize),
+    )
+    .unwrap();
+
+    let result_native = run_native_program(
+        program,
+        "test_circuit_fail",
+        &[],
+        Some(DEFAULT_GAS),
+        Option::<DummySyscallHandler>::None,
+    );
+
+    compare_outputs(
+        &program.1,
+        &program.2.find_function("test_circuit_fail").unwrap().id,
         &result_vm,
         &result_native,
     )
