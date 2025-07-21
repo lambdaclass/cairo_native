@@ -3,6 +3,7 @@
 
 #![allow(dead_code)]
 
+use ark_ff::One;
 use cairo_lang_compiler::{
     compile_prepared_db, db::RootDatabase, project::setup_project, CompilerConfig,
 };
@@ -15,6 +16,7 @@ use cairo_lang_sierra::{
         circuit::CircuitTypeConcrete,
         core::{CoreLibfunc, CoreType, CoreTypeConcrete},
         starknet::StarknetTypeConcrete,
+        utils::Range,
         ConcreteType,
     },
     ids::{ConcreteTypeId, FunctionId},
@@ -508,6 +510,7 @@ pub fn compare_outputs(
                     | CoreTypeConcrete::Sint8(_)
                     | CoreTypeConcrete::Box(_)
                     | CoreTypeConcrete::BoundedInt(_)
+                    | CoreTypeConcrete::Circuit(CircuitTypeConcrete::U96Guarantee(_))
                     | CoreTypeConcrete::Nullable(_) => 1,
                     CoreTypeConcrete::Enum(info) => {
                         1 + info
@@ -606,6 +609,13 @@ pub fn compare_outputs(
             CoreTypeConcrete::BoundedInt(info) => Value::BoundedInt {
                 value: values[0],
                 range: info.range.clone(),
+            },
+            CoreTypeConcrete::Circuit(CircuitTypeConcrete::U96Guarantee(_)) => Value::BoundedInt {
+                value: values[0],
+                range: Range {
+                    lower: BigInt::ZERO,
+                    upper: BigInt::one() << 96,
+                },
             },
             CoreTypeConcrete::Enum(info) => {
                 let enum_size = map_vm_sizes(size_cache, registry, ty);

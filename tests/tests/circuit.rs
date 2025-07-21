@@ -12,8 +12,11 @@ lazy_static! {
         use core::circuit::{
             CircuitElement, CircuitInput, circuit_add, circuit_sub, circuit_mul, circuit_inverse,
             EvalCircuitResult, EvalCircuitTrait, u384, CircuitOutputsTrait, CircuitModulus,
-            CircuitInputs, AddInputResultTrait
+            CircuitInputs, AddInputResultTrait, into_u96_guarantee, U96Guarantee
         };
+
+        #[feature("bounded-int-utils")]
+        use core::internal::bounded_int::BoundedInt;
 
         fn test_guarantee_first_limb() {
             let in1 = CircuitElement::<CircuitInput<0>> {};
@@ -180,6 +183,14 @@ lazy_static! {
                 .unwrap();
 
             outputs.get_output(add)
+        }
+
+        fn test_into_u96_guarantee() -> (U96Guarantee, U96Guarantee, U96Guarantee) {
+            (
+                into_u96_guarantee::<BoundedInt<0, 79228162514264337593543950335>>(123),
+                into_u96_guarantee::<BoundedInt<100, 1000>>(123),
+                into_u96_guarantee::<u8>(123),
+            )
         }
     };
 }
@@ -466,6 +477,39 @@ fn comparison_circuit_fail() {
     compare_outputs(
         &program.1,
         &program.2.find_function("test_circuit_fail").unwrap().id,
+        &result_vm,
+        &result_native,
+    )
+    .unwrap();
+}
+
+#[test]
+fn comparison_circuit_into_u96_guarantee() {
+    let program = &TEST;
+
+    let result_vm = run_vm_program(
+        program,
+        "test_into_u96_guarantee",
+        vec![],
+        Some(DEFAULT_GAS as usize),
+    )
+    .unwrap();
+
+    let result_native = run_native_program(
+        program,
+        "test_into_u96_guarantee",
+        &[],
+        Some(DEFAULT_GAS),
+        Option::<DummySyscallHandler>::None,
+    );
+
+    compare_outputs(
+        &program.1,
+        &program
+            .2
+            .find_function("test_into_u96_guarantee")
+            .unwrap()
+            .id,
         &result_vm,
         &result_native,
     )
