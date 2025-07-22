@@ -92,7 +92,7 @@ In Cairo Native we provide an API around context initialization, namely
 2. Register all relevant MLIR dialects into the context.
 3. Load the dialects.
 4. Register all passes into the context.
-5. Register all translations (ex. to LLVM IR) into the context.
+5. Register all translations (e.g. to LLVM IR) into the context.
 
 <aside>
 💡 Registering doesn’t mean using, it means that later in the compilation
