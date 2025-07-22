@@ -148,7 +148,7 @@ the following:
   inserted immediately after the first one.
 
 While handling each statement on the function, the libfunc code generators may
-build the types they need (ex. arguments and return values) using the
+build the types they need (e.g. arguments and return values) using the
 `TypeBuilder` trait.
 
 ## Metadata Storage
