@@ -140,7 +140,7 @@ invocation arguments are removed while the results are inserted).
 Then it loops on the statements of the function, on each statement it does
 the following:
 
-- Check if there the gas metadata is present and whether the current statement
+- Check if the gas metadata is present and whether the current statement
   has a cost, then insert the `GasCost` metadata if it exists. This metadata
   will be removed before the next statement is processed.
 - Get the block and potential landing block for this statement.
