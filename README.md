@@ -391,9 +391,8 @@ Options:
 ### `starknet-native-compile`
 
 ```bash
-Given a Sierra file (as saved in Starknet's contract tree), extracts the sierra_program from
-felts into readable Sierra code, compiles it to native, and saves the result to the given output
-path.
+Given a Sierra file (as saved in Starknet's contract tree), extracts the sierra_program from it into readable Sierra code, compiles it to a shared library, and saves the result to the given output path. Keep in mind, that when specifying the 
+output file path it should have a .so extension in Linux and a .dylib extension in Macos.
 
 Usage: starknet-native-compile [OPTIONS] <PATH> <OUTPUT>
 
