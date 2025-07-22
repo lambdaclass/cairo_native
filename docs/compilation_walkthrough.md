@@ -78,8 +78,8 @@ pub struct Program {
 The compilation process uses these fields through the `ProgramRegistry` to
 generate the relevant MLIR IR code.
 
-To do all this we will need a MLIR context and a module created with said
-context, the module describes a compilation unit, in this case, the Cairo
+To do all this we will need a MLIR context and a MLIR module created it. The 
+module describes a compilation unit, in this case, the Cairo
 program.
 
 ## Initialization
