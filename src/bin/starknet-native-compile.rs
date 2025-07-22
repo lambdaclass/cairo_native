@@ -11,8 +11,8 @@ use clap::Parser;
 
 /// Given a Sierra file (as saved in Starknet's contract tree), extracts the sierra_program
 /// from it into readable Sierra code, compiles it to a shared library, and saves the result
-/// to the given output path. Keep in mind, that when specifying the
-/// output file path it should have a .so extension in Linux and a .dylib extension in Macos.
+/// to the given output path. Keep in mind, that when specifying the output file path it should
+/// have a .so extension in Linux and a .dylib extension in Macos.
 #[derive(Parser, Debug)]
 #[clap(version, verbatim_doc_comment)]
 struct Args {

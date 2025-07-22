@@ -1,7 +1,7 @@
 # Compilation walkthrough
 
 This section describes the entire process Cairo Native goes through to compile a
-Cairo program to either a shared library (and how to use it) or a MLIR module
+Sierra program to either a shared library (and how to use it) or a MLIR module
 for use in the JIT engine.
 
 ## General flow
