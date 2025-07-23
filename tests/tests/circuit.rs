@@ -274,6 +274,99 @@ lazy_static! {
 
             return outputs.get_output(res);
         }
+
+        #[derive(Copy, Drop, Debug, PartialEq)]
+        pub struct G2Point {
+            pub x0: u384,
+            pub x1: u384,
+            pub y0: u384,
+            pub y1: u384,
+        }
+
+        #[inline(always)]
+        pub fn run_ADD_EC_POINTS_G2_circuit() -> (G2Point,) {
+            let p = G2Point {
+                x0: u384 {limb0: 5, limb1: 0, limb2: 0, limb3: 0},
+                x1: u384 {limb0: 1, limb1: 0, limb2: 0, limb3: 0},
+                y0: u384 {limb0: 7, limb1: 0, limb2: 0, limb3: 0},
+                y1: u384 {limb0: 2, limb1: 0, limb2: 0, limb3: 0},
+            };
+
+            let q = G2Point {
+                x0: u384 {limb0: 3, limb1: 0, limb2: 0, limb3: 0},
+                x1: u384 {limb0: 4, limb1: 0, limb2: 0, limb3: 0},
+                y0: u384 {limb0: 6, limb1: 0, limb2: 0, limb3: 0},
+                y1: u384 {limb0: 8, limb1: 0, limb2: 0, limb3: 0},
+            };
+
+            // CONSTANT stack
+            let in0 = CircuitElement::<CircuitInput<0>> {}; // 0x0
+
+            // INPUT stack
+            let (in1, in2, in3) = (CircuitElement::<CircuitInput<1>> {}, CircuitElement::<CircuitInput<2>> {}, CircuitElement::<CircuitInput<3>> {});
+            let (in4, in5, in6) = (CircuitElement::<CircuitInput<4>> {}, CircuitElement::<CircuitInput<5>> {}, CircuitElement::<CircuitInput<6>> {});
+            let (in7, in8) = (CircuitElement::<CircuitInput<7>> {}, CircuitElement::<CircuitInput<8>> {});
+            let t0 = circuit_sub(in3, in7); // Fp2 sub coeff 0/1
+            let t1 = circuit_sub(in4, in8); // Fp2 sub coeff 1/1
+            let t2 = circuit_sub(in1, in5); // Fp2 sub coeff 0/1
+            let t3 = circuit_sub(in2, in6); // Fp2 sub coeff 1/1
+            let t4 = circuit_mul(t2, t2); // Fp2 Inv start
+            let t5 = circuit_mul(t3, t3);
+            let t6 = circuit_add(t4, t5);
+            let t7 = circuit_inverse(t6);
+            let t8 = circuit_mul(t2, t7); // Fp2 Inv real part end
+            let t9 = circuit_mul(t3, t7);
+            let t10 = circuit_sub(in0, t9); // Fp2 Inv imag part end
+            let t11 = circuit_mul(t0, t8); // Fp2 mul start
+            let t12 = circuit_mul(t1, t10);
+            let t13 = circuit_sub(t11, t12); // Fp2 mul real part end
+            let t14 = circuit_mul(t0, t10);
+            let t15 = circuit_mul(t1, t8);
+            let t16 = circuit_add(t14, t15); // Fp2 mul imag part end
+            let t17 = circuit_add(t13, t16);
+            let t18 = circuit_sub(t13, t16);
+            let t19 = circuit_mul(t17, t18);
+            let t20 = circuit_mul(t13, t16);
+            let t21 = circuit_add(t20, t20);
+            let t22 = circuit_sub(t19, in1); // Fp2 sub coeff 0/1
+            let t23 = circuit_sub(t21, in2); // Fp2 sub coeff 1/1
+            let t24 = circuit_sub(t22, in5); // Fp2 sub coeff 0/1
+            let t25 = circuit_sub(t23, in6); // Fp2 sub coeff 1/1
+            let t26 = circuit_sub(in1, t24); // Fp2 sub coeff 0/1
+            let t27 = circuit_sub(in2, t25); // Fp2 sub coeff 1/1
+            let t28 = circuit_mul(t13, t26); // Fp2 mul start
+            let t29 = circuit_mul(t16, t27);
+            let t30 = circuit_sub(t28, t29); // Fp2 mul real part end
+            let t31 = circuit_mul(t13, t27);
+            let t32 = circuit_mul(t16, t26);
+            let t33 = circuit_add(t31, t32); // Fp2 mul imag part end
+            let t34 = circuit_sub(t30, in3); // Fp2 sub coeff 0/1
+            let t35 = circuit_sub(t33, in4); // Fp2 sub coeff 1/1
+
+            let modulus = get_BN254_modulus();
+
+            let mut circuit_inputs = (t24, t25, t34, t35).new_inputs();
+            // Prefill constants:
+            circuit_inputs = circuit_inputs.next_2([0x0, 0x0, 0x0, 0x0]); // in0
+            // Fill inputs:
+            circuit_inputs = circuit_inputs.next_2(p.x0); // in1
+            circuit_inputs = circuit_inputs.next_2(p.x1); // in2
+            circuit_inputs = circuit_inputs.next_2(p.y0); // in3
+            circuit_inputs = circuit_inputs.next_2(p.y1); // in4
+            circuit_inputs = circuit_inputs.next_2(q.x0); // in5
+            circuit_inputs = circuit_inputs.next_2(q.x1); // in6
+            circuit_inputs = circuit_inputs.next_2(q.y0); // in7
+            circuit_inputs = circuit_inputs.next_2(q.y1); // in8
+
+            let outputs = circuit_inputs.done_2().eval(modulus).unwrap();
+            let result: G2Point = G2Point {
+                x0: outputs.get_output(t24),
+                x1: outputs.get_output(t25),
+                y0: outputs.get_output(t34),
+                y1: outputs.get_output(t35),
+            };
+            return (result,);
+        }
     };
 }
 
@@ -654,6 +747,39 @@ fn comparison_batch_3_mod_bn254() {
     compare_outputs(
         &program.1,
         &program.2.find_function("batch_3_mod_bn254").unwrap().id,
+        &result_vm,
+        &result_native,
+    )
+    .unwrap();
+}
+
+#[test]
+fn test_circuit_add_ec_points_g2() {
+    let program = &TEST;
+
+    let result_vm = run_vm_program(
+        program,
+        "run_ADD_EC_POINTS_G2_circuit",
+        vec![],
+        Some(DEFAULT_GAS as usize),
+    )
+    .unwrap();
+
+    let result_native = run_native_program(
+        program,
+        "run_ADD_EC_POINTS_G2_circuit",
+        &[],
+        Some(DEFAULT_GAS),
+        Option::<DummySyscallHandler>::None,
+    );
+
+    compare_outputs(
+        &program.1,
+        &program
+            .2
+            .find_function("run_ADD_EC_POINTS_G2_circuit")
+            .unwrap()
+            .id,
         &result_vm,
         &result_native,
     )
