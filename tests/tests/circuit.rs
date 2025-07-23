@@ -10,9 +10,9 @@ lazy_static! {
     // Taken from: https://github.com/starkware-libs/sequencer/blob/7ee6f4c8a81def87402c626c9d72a33c74bc3243/crates/blockifier/feature_contracts/cairo1/test_contract.cairo#L656
     static ref TEST: (String, Program, SierraCasmRunner) = load_cairo! {
         use core::circuit::{
-            CircuitElement, CircuitInput, circuit_add, circuit_sub, circuit_mul, circuit_inverse,
-            EvalCircuitResult, EvalCircuitTrait, u384, CircuitOutputsTrait, CircuitModulus,
-            CircuitInputs, AddInputResultTrait, into_u96_guarantee, U96Guarantee
+            CircuitData, CircuitElement, CircuitInput, circuit_add, circuit_sub, circuit_mul, circuit_inverse,
+            EvalCircuitResult, EvalCircuitTrait, u384, CircuitOutputsTrait, CircuitModulus, into_u96_guarantee, U96Guarantee,
+            CircuitInputs, AddInputResultTrait, AddInputResult, IntoCircuitInputValue, add_circuit_input
         };
 
         #[feature("bounded-int-utils")]
@@ -245,6 +245,34 @@ lazy_static! {
                 .unwrap();
 
             return (outputs.get_output(yInv), outputs.get_output(xNegOverY));
+        }
+
+        #[inline(always)]
+        pub fn batch_3_mod_bn254() -> u384 {
+            let _x = CircuitElement::<CircuitInput<0>> {};
+            let _y = CircuitElement::<CircuitInput<1>> {};
+            let _z = CircuitElement::<CircuitInput<2>> {};
+            let _c0 = CircuitElement::<CircuitInput<3>> {};
+            let _c1 = circuit_mul(_c0, _c0);
+            let _c2 = circuit_mul(_c1, _c0);
+            let _mul1 = circuit_mul(_x, _c0);
+            let _mul2 = circuit_mul(_y, _c1);
+            let _mul3 = circuit_mul(_z, _c2);
+            let res = circuit_add(circuit_add(_mul1, _mul2), _mul3);
+
+            let modulus = get_BN254_modulus(); // BN254 prime field modulus
+
+            let outputs = (res,)
+                .new_inputs()
+                .next_2([5, 0, 0, 0])
+                .next_2([2, 0, 0, 0])
+                .next_2([8, 0, 0, 0])
+                .next_2([3, 0, 0, 0])
+                .done_2()
+                .eval(modulus)
+                .unwrap();
+
+            return outputs.get_output(res);
         }
     };
 }
@@ -571,7 +599,7 @@ fn comparison_circuit_into_u96_guarantee() {
 }
 
 #[test]
-fn test_circuit_y_inv_x_neg_over_y_bn254() {
+fn comparison_circuit_y_inv_x_neg_over_y_bn254() {
     let program = &TEST;
 
     let result_vm = run_vm_program(
@@ -597,6 +625,35 @@ fn test_circuit_y_inv_x_neg_over_y_bn254() {
             .find_function("compute_yInvXnegOverY_BN254")
             .unwrap()
             .id,
+        &result_vm,
+        &result_native,
+    )
+    .unwrap();
+}
+
+#[test]
+fn comparison_batch_3_mod_bn254() {
+    let program = &TEST;
+
+    let result_vm = run_vm_program(
+        program,
+        "batch_3_mod_bn254",
+        vec![],
+        Some(DEFAULT_GAS as usize),
+    )
+    .unwrap();
+
+    let result_native = run_native_program(
+        program,
+        "batch_3_mod_bn254",
+        &[],
+        Some(DEFAULT_GAS),
+        Option::<DummySyscallHandler>::None,
+    );
+
+    compare_outputs(
+        &program.1,
+        &program.2.find_function("batch_3_mod_bn254").unwrap().id,
         &result_vm,
         &result_native,
     )
