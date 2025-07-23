@@ -725,7 +725,7 @@ fn comparison_circuit_y_inv_x_neg_over_y_bn254() {
 }
 
 #[test]
-fn comparison_batch_3_mod_bn254() {
+fn comparison_circuit_batch_3_mod_bn254() {
     let program = &TEST;
 
     let result_vm = run_vm_program(
@@ -754,7 +754,7 @@ fn comparison_batch_3_mod_bn254() {
 }
 
 #[test]
-fn test_circuit_add_ec_points_g2() {
+fn comparison_circuit_add_ec_points_g2() {
     let program = &TEST;
 
     let result_vm = run_vm_program(
