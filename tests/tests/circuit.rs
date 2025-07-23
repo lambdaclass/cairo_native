@@ -192,6 +192,60 @@ lazy_static! {
                 into_u96_guarantee::<u8>(123),
             )
         }
+
+
+        #[generate_trait]
+        pub impl AddInputResultImpl2<C> of AddInputResultTrait2<C> {
+            fn next_2<Value, +IntoCircuitInputValue<Value>, +Drop<Value>>(
+                self: AddInputResult<C>, value: Value,
+            ) -> AddInputResult<C> {
+                match self {
+                    AddInputResult::More(accumulator) => add_circuit_input(
+                        accumulator, value.into_circuit_input_value(),
+                    ),
+                    AddInputResult::Done(_) => panic!("All inputs have been filled"),
+                }
+            }
+            #[inline(always)]
+            fn done_2(self: AddInputResult<C>) -> CircuitData<C> {
+                match self {
+                    AddInputResult::Done(data) => data,
+                    AddInputResult::More(_) => panic!("not all inputs filled"),
+                }
+            }
+        }
+
+        // Returns the modulus of BN254
+        #[inline(always)]
+        fn get_BN254_modulus() -> CircuitModulus {
+            let modulus = TryInto::<
+                _, CircuitModulus,
+            >::try_into([0x6871ca8d3c208c16d87cfd47, 0xb85045b68181585d97816a91, 0x30644e72e131a029, 0x0])
+                .unwrap();
+            modulus
+        }
+
+        fn compute_yInvXnegOverY_BN254() -> (u384, u384) {
+            let in1 = CircuitElement::<CircuitInput<0>> {};
+            let in2 = CircuitElement::<CircuitInput<1>> {};
+            let in3 = CircuitElement::<CircuitInput<2>> {};
+            let yInv = circuit_inverse(in3);
+            let xNeg = circuit_sub(in1, in2);
+            let xNegOverY = circuit_mul(xNeg, yInv);
+
+            let modulus = get_BN254_modulus(); // BN254 prime field modulus
+
+            let outputs = (yInv, xNegOverY)
+                .new_inputs()
+                .next_2([0, 0, 0, 0])
+                .next_2([7, 0, 0, 0])
+                .next_2([3, 0, 0, 0])
+                .done_2()
+                .eval(modulus)
+                .unwrap();
+
+            return (outputs.get_output(yInv), outputs.get_output(xNegOverY));
+        }
     };
 }
 
@@ -508,6 +562,39 @@ fn comparison_circuit_into_u96_guarantee() {
         &program
             .2
             .find_function("test_into_u96_guarantee")
+            .unwrap()
+            .id,
+        &result_vm,
+        &result_native,
+    )
+    .unwrap();
+}
+
+#[test]
+fn test_circuit_y_inv_x_neg_over_y_bn254() {
+    let program = &TEST;
+
+    let result_vm = run_vm_program(
+        program,
+        "compute_yInvXnegOverY_BN254",
+        vec![],
+        Some(DEFAULT_GAS as usize),
+    )
+    .unwrap();
+
+    let result_native = run_native_program(
+        program,
+        "compute_yInvXnegOverY_BN254",
+        &[],
+        Some(DEFAULT_GAS),
+        Option::<DummySyscallHandler>::None,
+    );
+
+    compare_outputs(
+        &program.1,
+        &program
+            .2
+            .find_function("compute_yInvXnegOverY_BN254")
             .unwrap()
             .id,
         &result_vm,
