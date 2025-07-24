@@ -491,7 +491,7 @@ fn build_from_felt252<'ctx, 'this>(
     // With the range check size being 2**128
     // https://github.com/starkware-libs/cairo/blob/v2.12.0-dev.1/crates/cairo-lang-sierra-to-casm/src/invocations/range_reduction.rs#L26
     let rc_size = BigInt::from(1) << 128;
-    let range_check = super::increment_builtin_counter_by_if(
+    let range_check = super::increment_builtin_counter_conditionally_by(
         context,
         entry,
         location,
@@ -921,7 +921,7 @@ fn build_u128s_from_felt252<'ctx, 'this>(
     // The sierra-to-casm compiler uses the range check builtin a total of 3 times when the value is greater than u128 max.
     // Otherwise it will be used once.
     // https://github.com/starkware-libs/cairo/blob/v2.12.0-dev.1/crates/cairo-lang-sierra-to-casm/src/invocations/int/unsigned128.rs#L234
-    let range_check = super::increment_builtin_counter_by_if(
+    let range_check = super::increment_builtin_counter_conditionally_by(
         context,
         entry,
         location,

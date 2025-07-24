@@ -497,7 +497,7 @@ fn increment_builtin_counter_by<'ctx: 'a, 'a>(
     ))
 }
 
-fn increment_builtin_counter_by_if<'ctx: 'a, 'a>(
+fn increment_builtin_counter_conditionally_by<'ctx: 'a, 'a>(
     context: &'ctx Context,
     block: &'ctx Block<'ctx>,
     location: Location<'ctx>,

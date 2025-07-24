@@ -1,5 +1,5 @@
 [workspace.package]
-version = "0.5.0-rc.6"
+version = "0.6.0-rc.1"
 edition = "2021"
 license = "Apache-2.0"
 repository = "https://github.com/lambdaclass/cairo_native"
@@ -189,7 +189,7 @@ harness = false
 members = ["debug_utils/sierra-emu", "debug_utils/casm-data-flow"]
 
 [workspace.dependencies]
-sierra-emu = { path = "debug_utils/sierra-emu", version = "0.5.0-rc.6" }
+sierra-emu = { path = "debug_utils/sierra-emu", version = "0.6.0-rc.1" }
 cairo-lang-casm = "=2.12.0-dev.1"
 cairo-lang-compiler = "=2.12.0-dev.1"
 cairo-lang-defs = "=2.12.0-dev.1"
