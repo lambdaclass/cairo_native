@@ -1167,6 +1167,43 @@ lazy_static! {
         //     let res: G1Point = G1Point { x: outputs.get_output(t749), y: outputs.get_output(t752) };
         //     return (res,);
         // }
+
+
+        /////////////////////////// Kakarot ///////////////////////////
+        // Add two BN254 EC points without checking if:
+        // - the points are on the curve
+        // - the points are not the same
+        // - none of the points are the point at infinity
+        fn add_ec_point_unchecked() -> (u384, u384) {
+            let xP = u384 {limb0: 5, limb1: 0, limb2: 0, limb3: 0};
+            let yP = u384 {limb0: 7, limb1: 0, limb2: 0, limb3: 0};
+            let xQ = u384 {limb0: 9, limb1: 0, limb2: 0, limb3: 0};
+            let yP = u384 {limb0: 4, limb1: 0, limb2: 0, limb3: 0};
+            // INPUT stack
+            let (_xP, _yP, _xQ, _yQ) = (CircuitElement::<CircuitInput<0>> {}, CircuitElement::<CircuitInput<1>> {}, CircuitElement::<CircuitInput<2>> {}, CircuitElement::<CircuitInput<3>> {});
+
+            let num = circuit_sub(_yP, _yQ);
+            let den = circuit_sub(_xP, _xQ);
+            let inv_den = circuit_inverse(den);
+            let slope = circuit_mul(num, inv_den);
+            let slope_sqr = circuit_mul(slope, slope);
+
+            let nx = circuit_sub(circuit_sub(slope_sqr, _xP), _xQ);
+            let ny = circuit_sub(circuit_mul(slope, circuit_sub(_xP, nx)), _yP);
+
+            let modulus = get_BN254_modulus(); // BN254 prime field modulus
+
+            let mut circuit_inputs = (nx, ny,).new_inputs();
+            // Fill inputs:
+            circuit_inputs = circuit_inputs.next_2(xP); // in1
+            circuit_inputs = circuit_inputs.next_2(yP); // in2
+            circuit_inputs = circuit_inputs.next_2(xQ); // in3
+            circuit_inputs = circuit_inputs.next_2(yQ); // in4
+
+            let outputs = circuit_inputs.done_2().eval(modulus).unwrap();
+
+            (outputs.get_output(nx), outputs.get_output(ny))
+        }
     };
 }
 
@@ -1618,3 +1655,36 @@ fn comparison_circuit_add_ec_points_g2() {
 //     )
 //     .unwrap();
 // }
+
+#[test]
+fn comparison_circuit_add_ec_point_unchecked() {
+    let program = &TEST;
+
+    let result_vm = run_vm_program(
+        program,
+        "add_ec_point_unchecked",
+        vec![],
+        Some(DEFAULT_GAS as usize),
+    )
+    .unwrap();
+
+    let result_native = run_native_program(
+        program,
+        "add_ec_point_unchecked",
+        &[],
+        Some(DEFAULT_GAS),
+        Option::<DummySyscallHandler>::None,
+    );
+
+    compare_outputs(
+        &program.1,
+        &program
+            .2
+            .find_function("add_ec_point_unchecked")
+            .unwrap()
+            .id,
+        &result_vm,
+        &result_native,
+    )
+    .unwrap();
+}
