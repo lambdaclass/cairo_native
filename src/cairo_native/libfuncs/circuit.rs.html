@@ -1317,11 +1317,11 @@
 <a href=#1317 id=1317 data-nosnippet>1317</a>            <span class="kw">fn </span>main() -&gt; u384 {
 <a href=#1318 id=1318 data-nosnippet>1318</a>                <span class="kw">let </span>in1 = CircuitElement::&lt;CircuitInput&lt;<span class="number">0</span>&gt;&gt; {};
 <a href=#1319 id=1319 data-nosnippet>1319</a>                <span class="kw">let </span>in2 = CircuitElement::&lt;CircuitInput&lt;<span class="number">1</span>&gt;&gt; {};
-<a href=#1320 id=1320 data-nosnippet>1320</a>                <span class="kw">let </span>mul = circuit_sub(in1, in2);
+<a href=#1320 id=1320 data-nosnippet>1320</a>                <span class="kw">let </span>sub = circuit_sub(in1, in2);
 <a href=#1321 id=1321 data-nosnippet>1321</a>
 <a href=#1322 id=1322 data-nosnippet>1322</a>                <span class="kw">let </span>modulus = TryInto::&lt;<span class="kw">_</span>, CircuitModulus&gt;::try_into([<span class="number">12</span>, <span class="number">12</span>, <span class="number">12</span>, <span class="number">12</span>]).unwrap();
 <a href=#1323 id=1323 data-nosnippet>1323</a>
-<a href=#1324 id=1324 data-nosnippet>1324</a>                <span class="kw">let </span>outputs = (mul,)
+<a href=#1324 id=1324 data-nosnippet>1324</a>                <span class="kw">let </span>outputs = (sub,)
 <a href=#1325 id=1325 data-nosnippet>1325</a>                    .new_inputs()
 <a href=#1326 id=1326 data-nosnippet>1326</a>                    .next([<span class="number">6</span>, <span class="number">6</span>, <span class="number">6</span>, <span class="number">6</span>])
 <a href=#1327 id=1327 data-nosnippet>1327</a>                    .next([<span class="number">3</span>, <span class="number">3</span>, <span class="number">3</span>, <span class="number">3</span>])
@@ -1329,7 +1329,7 @@
 <a href=#1329 id=1329 data-nosnippet>1329</a>                    .eval(modulus)
 <a href=#1330 id=1330 data-nosnippet>1330</a>                    .unwrap();
 <a href=#1331 id=1331 data-nosnippet>1331</a>
-<a href=#1332 id=1332 data-nosnippet>1332</a>                outputs.get_output(mul)
+<a href=#1332 id=1332 data-nosnippet>1332</a>                outputs.get_output(sub)
 <a href=#1333 id=1333 data-nosnippet>1333</a>            }
 <a href=#1334 id=1334 data-nosnippet>1334</a>        );
 <a href=#1335 id=1335 data-nosnippet>1335</a>
