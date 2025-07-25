@@ -193,6 +193,17 @@ lazy_static! {
             )
         }
 
+    };
+}
+
+lazy_static! {
+    static ref GARAGA_CIRCUITS: (String, Program, SierraCasmRunner) = load_cairo! {
+        use core::circuit::{
+            CircuitData, CircuitElement, CircuitInput, circuit_add, circuit_sub, circuit_mul, circuit_inverse,
+            EvalCircuitResult, EvalCircuitTrait, u384, CircuitOutputsTrait, CircuitModulus, into_u96_guarantee, U96Guarantee,
+            CircuitInputs, AddInputResultTrait, AddInputResult, IntoCircuitInputValue, add_circuit_input
+        };
+
         #[generate_trait]
         pub impl AddInputResultImpl2<C> of AddInputResultTrait2<C> {
             fn next_2<Value, +IntoCircuitInputValue<Value>, +Drop<Value>>(
@@ -214,6 +225,7 @@ lazy_static! {
             }
         }
 
+        // Taken from: https://github.com/keep-starknet-strange/garaga/blob/5c5859e6dc5515f542c310cb38a149602e774112/src/src/definitions/curves.cairo#L336
         // Returns the modulus of BN254
         #[inline(always)]
         fn get_BN254_modulus() -> CircuitModulus {
@@ -224,6 +236,7 @@ lazy_static! {
             modulus
         }
 
+        // Taken from: https://github.com/keep-starknet-strange/garaga/blob/5c5859e6dc5515f542c310cb38a149602e774112/src/src/basic_field_ops.cairo#L60
         fn compute_yInvXnegOverY_BN254() -> (u384, u384) {
             let in1 = CircuitElement::<CircuitInput<0>> {};
             let in2 = CircuitElement::<CircuitInput<1>> {};
@@ -246,6 +259,8 @@ lazy_static! {
             return (outputs.get_output(yInv), outputs.get_output(xNegOverY));
         }
 
+        // Taken from: https://github.com/keep-starknet-strange/garaga/blob/5c5859e6dc5515f542c310cb38a149602e774112/src/src/basic_field_ops.cairo#L174
+        // In the original function, the modulus is a parameter. Here we will use BN254 modulus.
         #[inline(always)]
         pub fn batch_3_mod_bn254() -> u384 {
             let _x = CircuitElement::<CircuitInput<0>> {};
@@ -274,6 +289,7 @@ lazy_static! {
             return outputs.get_output(res);
         }
 
+        // Taken from: https://github.com/keep-starknet-strange/garaga/blob/5c5859e6dc5515f542c310cb38a149602e774112/src/src/definitions/structs/points.cairo#L27
         #[derive(Copy, Drop, Debug, PartialEq)]
         pub struct G2Point {
             pub x0: u384,
@@ -282,6 +298,7 @@ lazy_static! {
             pub y1: u384,
         }
 
+        // Taken from: https://github.com/keep-starknet-strange/garaga/blob/5c5859e6dc5515f542c310cb38a149602e774112/src/src/circuits/ec.cairo#L324
         #[inline(always)]
         pub fn run_ADD_EC_POINTS_G2_circuit() -> (G2Point,) {
             let p = G2Point {
@@ -366,8 +383,44 @@ lazy_static! {
             };
             return (result,);
         }
+    };
+}
 
-        /////////////////////////// Kakarot ///////////////////////////
+lazy_static! {
+    // Taken from: https://github.com/kkrt-labs/kakarot/blob/563af42d5fe9888f8f49cf22003d2085612bf42c/cairo/kakarot-ssj/crates/evm/src/precompiles/ec_operations/ec_add.cairo#L143
+    static ref KAKAROT_CIRCUIT: (String, Program, SierraCasmRunner) = load_cairo! {
+        use core::circuit::{
+            CircuitData, CircuitElement, CircuitInput, circuit_add, circuit_sub, circuit_mul, circuit_inverse,
+            EvalCircuitResult, EvalCircuitTrait, u384, u96, CircuitOutputsTrait, CircuitModulus, into_u96_guarantee, U96Guarantee,
+            CircuitInputs, AddInputResultTrait, AddInputResult, IntoCircuitInputValue, add_circuit_input
+        };
+        const BN254_PRIME_LIMBS: [
+            u96
+            ; 4] = [
+            0x6871ca8d3c208c16d87cfd47, 0xb85045b68181585d97816a91, 0x30644e72e131a029, 0x0
+        ];
+
+        #[generate_trait]
+        pub impl AddInputResultImpl2<C> of AddInputResultTrait2<C> {
+            fn next_2<Value, +IntoCircuitInputValue<Value>, +Drop<Value>>(
+                self: AddInputResult<C>, value: Value,
+            ) -> AddInputResult<C> {
+                match self {
+                    AddInputResult::More(accumulator) => add_circuit_input(
+                        accumulator, value.into_circuit_input_value(),
+                    ),
+                    AddInputResult::Done(_) => panic!("All inputs have been filled"),
+                }
+            }
+            #[inline(always)]
+            fn done_2(self: AddInputResult<C>) -> CircuitData<C> {
+                match self {
+                    AddInputResult::Done(data) => data,
+                    AddInputResult::More(_) => panic!("not all inputs filled"),
+                }
+            }
+        }
+
         // Add two BN254 EC points without checking if:
         // - the points are on the curve
         // - the points are not the same
@@ -389,7 +442,7 @@ lazy_static! {
             let nx = circuit_sub(circuit_sub(slope_sqr, _xP), _xQ);
             let ny = circuit_sub(circuit_mul(slope, circuit_sub(_xP, nx)), _yP);
 
-            let modulus = get_BN254_modulus(); // BN254 prime field modulus
+            let modulus = TryInto::<_, CircuitModulus>::try_into(BN254_PRIME_LIMBS).unwrap(); // BN254 prime field modulus
 
             let mut circuit_inputs = (nx, ny,).new_inputs();
             // Fill inputs:
@@ -1559,7 +1612,7 @@ fn comparison_circuit_into_u96_guarantee() {
 
 #[test]
 fn comparison_circuit_y_inv_x_neg_over_y_bn254() {
-    let program = &TEST;
+    let program = &GARAGA_CIRCUITS;
 
     let result_vm = run_vm_program(
         program,
@@ -1592,7 +1645,7 @@ fn comparison_circuit_y_inv_x_neg_over_y_bn254() {
 
 #[test]
 fn comparison_circuit_batch_3_mod_bn254() {
-    let program = &TEST;
+    let program = &GARAGA_CIRCUITS;
 
     let result_vm = run_vm_program(
         program,
@@ -1621,7 +1674,7 @@ fn comparison_circuit_batch_3_mod_bn254() {
 
 #[test]
 fn comparison_circuit_add_ec_points_g2() {
-    let program = &TEST;
+    let program = &GARAGA_CIRCUITS;
 
     let result_vm = run_vm_program(
         program,
@@ -1687,7 +1740,7 @@ fn comparison_circuit_clear_cofactor_bls12_381() {
 
 #[test]
 fn comparison_circuit_add_ec_point_unchecked() {
-    let program = &TEST;
+    let program = &KAKAROT_CIRCUIT;
 
     let result_vm = run_vm_program(
         program,
