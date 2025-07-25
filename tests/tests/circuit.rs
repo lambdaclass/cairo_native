@@ -193,7 +193,6 @@ lazy_static! {
             )
         }
 
-
         #[generate_trait]
         pub impl AddInputResultImpl2<C> of AddInputResultTrait2<C> {
             fn next_2<Value, +IntoCircuitInputValue<Value>, +Drop<Value>>(
