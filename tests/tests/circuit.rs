@@ -431,7 +431,7 @@ lazy_static! {
     static ref BIG_CIRCUIT: (String, Program, SierraCasmRunner) = load_cairo! {
         use core::circuit::{
             CircuitData, CircuitElement as CE, CircuitInput as CI, circuit_add, circuit_sub, circuit_mul, circuit_inverse,
-            EvalCircuitResult, EvalCircuitTrait, u384, CircuitOutputsTrait, CircuitModulus, into_u96_guarantee, U96Guarantee,
+            EvalCircuitResult, EvalCircuitTrait, u384, CircuitOutputsTrait, CircuitModulus,
             CircuitInputs, AddInputResultTrait, AddInputResult, IntoCircuitInputValue, add_circuit_input
         };
 
