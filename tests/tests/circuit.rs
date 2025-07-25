@@ -487,12 +487,14 @@ lazy_static! {
             }
         }
 
+        // Taken from: https://github.com/keep-starknet-strange/garaga/blob/5c5859e6dc5515f542c310cb38a149602e774112/src/src/definitions/structs/points.cairo#L8
         #[derive(Copy, Drop, Debug, PartialEq)]
         pub struct G1Point {
             pub x: u384,
             pub y: u384,
         }
 
+        // Taken from: https://github.com/keep-starknet-strange/garaga/blob/5c5859e6dc5515f542c310cb38a149602e774112/src/src/definitions/curves.cairo#L322
         #[inline(always)]
         pub fn get_BLS12_381_modulus() -> CircuitModulus {
             let modulus = TryInto::<
@@ -507,6 +509,7 @@ lazy_static! {
             modulus
         }
 
+        // Taken from: https://github.com/keep-starknet-strange/garaga/blob/5c5859e6dc5515f542c310cb38a149602e774112/src/src/circuits/ec.cairo#L425
         #[inline(always)]
         pub fn run_CLEAR_COFACTOR_BLS12_381_circuit() -> (G1Point,) {
             let P = G1Point {
