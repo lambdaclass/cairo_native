@@ -237,6 +237,7 @@ lazy_static! {
         }
 
         // Taken from: https://github.com/keep-starknet-strange/garaga/blob/5c5859e6dc5515f542c310cb38a149602e774112/src/src/basic_field_ops.cairo#L60
+        // Computes (in1 - in2) * (in3 ** -1)
         fn compute_yInvXnegOverY_BN254() -> (u384, u384) {
             let in1 = CircuitElement::<CircuitInput<0>> {};
             let in2 = CircuitElement::<CircuitInput<1>> {};
@@ -261,6 +262,7 @@ lazy_static! {
 
         // Taken from: https://github.com/keep-starknet-strange/garaga/blob/5c5859e6dc5515f542c310cb38a149602e774112/src/src/basic_field_ops.cairo#L174
         // In the original function, the modulus is a parameter. Here we will use BN254 modulus.
+        // Computes _x * _c0 + _y * _c0 ** 2 + _z * _c0 ** 3
         #[inline(always)]
         pub fn batch_3_mod_bn254() -> u384 {
             let _x = CircuitElement::<CircuitInput<0>> {};
@@ -299,6 +301,9 @@ lazy_static! {
         }
 
         // Taken from: https://github.com/keep-starknet-strange/garaga/blob/5c5859e6dc5515f542c310cb38a149602e774112/src/src/circuits/ec.cairo#L324
+        // Adds 2 ec points without checking if:
+        //  - They are on the curve
+        //  - They are on infinity (same x but opposite y)
         #[inline(always)]
         pub fn run_ADD_EC_POINTS_G2_circuit() -> (G2Point,) {
             let p = G2Point {
@@ -510,6 +515,7 @@ lazy_static! {
         }
 
         // Taken from: https://github.com/keep-starknet-strange/garaga/blob/5c5859e6dc5515f542c310cb38a149602e774112/src/src/circuits/ec.cairo#L425
+        // Clear cofactor of a point in the BLS12-381 elliptic curve
         #[inline(always)]
         pub fn run_CLEAR_COFACTOR_BLS12_381_circuit() -> (G1Point,) {
             let P = G1Point {
