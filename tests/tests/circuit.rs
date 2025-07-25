@@ -1178,7 +1178,7 @@ lazy_static! {
             let xP = u384 {limb0: 5, limb1: 0, limb2: 0, limb3: 0};
             let yP = u384 {limb0: 7, limb1: 0, limb2: 0, limb3: 0};
             let xQ = u384 {limb0: 9, limb1: 0, limb2: 0, limb3: 0};
-            let yP = u384 {limb0: 4, limb1: 0, limb2: 0, limb3: 0};
+            let yQ = u384 {limb0: 4, limb1: 0, limb2: 0, limb3: 0};
             // INPUT stack
             let (_xP, _yP, _xQ, _yQ) = (CircuitElement::<CircuitInput<0>> {}, CircuitElement::<CircuitInput<1>> {}, CircuitElement::<CircuitInput<2>> {}, CircuitElement::<CircuitInput<3>> {});
 
