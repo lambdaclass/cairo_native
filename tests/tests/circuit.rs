@@ -193,7 +193,6 @@ lazy_static! {
             )
         }
 
-
         #[generate_trait]
         pub impl AddInputResultImpl2<C> of AddInputResultTrait2<C> {
             fn next_2<Value, +IntoCircuitInputValue<Value>, +Drop<Value>>(
@@ -367,27 +366,6 @@ lazy_static! {
             };
             return (result,);
         }
-
-        #[derive(Copy, Drop, Debug, PartialEq)]
-        pub struct G1Point {
-            pub x: u384,
-            pub y: u384,
-        }
-
-        #[inline(always)]
-        pub fn get_BLS12_381_modulus() -> CircuitModulus {
-            let modulus = TryInto::<
-                _, CircuitModulus,
-            >::try_into(
-                [
-                    0xb153ffffb9feffffffffaaab, 0x6730d2a0f6b0f6241eabfffe, 0x434bacd764774b84f38512bf,
-                    0x1a0111ea397fe69a4b1ba7b6,
-                ],
-            )
-                .unwrap();
-            modulus
-        }
-
 
         /////////////////////////// Kakarot ///////////////////////////
         // Add two BN254 EC points without checking if:
