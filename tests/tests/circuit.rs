@@ -292,6 +292,7 @@ lazy_static! {
         }
 
         // Taken from: https://github.com/keep-starknet-strange/garaga/blob/5c5859e6dc5515f542c310cb38a149602e774112/src/src/definitions/structs/points.cairo#L27
+        // Represents a point on G2, the group of rational points on an elliptic curve over an extension field.
         #[derive(Copy, Drop, Debug, PartialEq)]
         pub struct G2Point {
             pub x0: u384,
@@ -301,7 +302,7 @@ lazy_static! {
         }
 
         // Taken from: https://github.com/keep-starknet-strange/garaga/blob/5c5859e6dc5515f542c310cb38a149602e774112/src/src/circuits/ec.cairo#L324
-        // Adds 2 ec points without checking if:
+        // Adds 2 ec G2Points without checking if:
         //  - They are on the curve
         //  - They are on infinity (same x but opposite y)
         #[inline(always)]
@@ -493,6 +494,7 @@ lazy_static! {
         }
 
         // Taken from: https://github.com/keep-starknet-strange/garaga/blob/5c5859e6dc5515f542c310cb38a149602e774112/src/src/definitions/structs/points.cairo#L8
+        // Represents a point on G1, the group of rational points on an elliptic curve over the base field.
         #[derive(Copy, Drop, Debug, PartialEq)]
         pub struct G1Point {
             pub x: u384,
@@ -517,7 +519,7 @@ lazy_static! {
         // Taken from: https://github.com/keep-starknet-strange/garaga/blob/5c5859e6dc5515f542c310cb38a149602e774112/src/src/circuits/ec.cairo#L425
         // Clear cofactor of a point in the BLS12-381 elliptic curve
         #[inline(always)]
-        pub fn run_CLEAR_COFACTOR_BLS12_381_circuit() -> (G1Point,) {
+        pub fn run_CLEAR_COFACTOR_BLS12_381_circuit() -> (G1Point, G1Point, G1Point, G1Point) {
             let P = G1Point {
                 x: u384 {limb0: 5, limb1: 0, limb2: 0, limb3: 0},
                 y: u384 {limb0: 7, limb1: 0, limb2: 0, limb3: 0},
@@ -1292,8 +1294,17 @@ lazy_static! {
             circuit_inputs = circuit_inputs.next_2(P.y); // in2
 
             let outputs = circuit_inputs.done_2().eval(modulus).unwrap();
+            let s = outputs.get_output(t240);
+            let r = outputs.get_output(t300);
+            let t = outputs.get_output(t190);
+            let q = outputs.get_output(t10);
+            let v = outputs.get_output(t45);
+            let u = outputs.get_output(t650);
+            let res2 = G1Point {x: s, y: r};
+            let res3 = G1Point {x: t, y: q};
+            let res4 = G1Point {x:v, y:u};
             let res: G1Point = G1Point { x: outputs.get_output(t749), y: outputs.get_output(t752) };
-            return (res,);
+            return (res,res2, res3, res4);
         }
     };
 }
