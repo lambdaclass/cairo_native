@@ -152,9 +152,6 @@ rayon = "1.10.0"
 [build-dependencies]
 cc = "1.2.7"
 
-[lints.clippy]
-uninlined_format_args = "allow"
-
 [profile.optimized-dev]
 inherits = "dev"
 opt-level = 3
