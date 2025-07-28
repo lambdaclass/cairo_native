@@ -508,11 +508,8 @@ fn increment_builtin_counter_conditionally_by<'ctx: 'a, 'a>(
     false_amount: impl Into<BigInt>,
     condition: Value<'ctx, '_>,
 ) -> crate::error::Result<Value<'ctx, 'a>> {
-    let true_amount = true_amount.into();
-    let false_amount = false_amount.into();
-
-    let true_amount_value = block.const_int(context, location, true_amount, 64)?;
-    let false_amount_value = block.const_int(context, location, false_amount, 64)?;
+    let true_amount_value = block.const_int(context, location, true_amount.into(), 64)?;
+    let false_amount_value = block.const_int(context, location, false_amount.into(), 64)?;
 
     let true_incremented =
         block.append_op_result(arith::addi(value_to_inc, true_amount_value, location))?;
