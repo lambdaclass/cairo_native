@@ -36,7 +36,7 @@ enum RuntimeBinding {
     EcPointFromXNz,
     DictNew,
     DictGet,
-    DictGasRefund,
+    DictSquash,
     DictDrop,
     DictDup,
     GetCostsBuiltin,
@@ -61,7 +61,7 @@ impl RuntimeBinding {
             RuntimeBinding::EcPointFromXNz => "cairo_native__libfunc__ec__ec_point_from_x_nz",
             RuntimeBinding::DictNew => "cairo_native__dict_new",
             RuntimeBinding::DictGet => "cairo_native__dict_get",
-            RuntimeBinding::DictGasRefund => "cairo_native__dict_gas_refund",
+            RuntimeBinding::DictSquash => "cairo_native__dict_squash",
             RuntimeBinding::DictDrop => "cairo_native__dict_drop",
             RuntimeBinding::DictDup => "cairo_native__dict_dup",
             RuntimeBinding::GetCostsBuiltin => "cairo_native__get_costs_builtin",
@@ -101,9 +101,7 @@ impl RuntimeBinding {
             }
             RuntimeBinding::DictNew => crate::runtime::cairo_native__dict_new as *const (),
             RuntimeBinding::DictGet => crate::runtime::cairo_native__dict_get as *const (),
-            RuntimeBinding::DictGasRefund => {
-                crate::runtime::cairo_native__dict_gas_refund as *const ()
-            }
+            RuntimeBinding::DictSquash => crate::runtime::cairo_native__dict_squash as *const (),
             RuntimeBinding::DictDrop => crate::runtime::cairo_native__dict_drop as *const (),
             RuntimeBinding::DictDup => crate::runtime::cairo_native__dict_dup as *const (),
             RuntimeBinding::GetCostsBuiltin => {
@@ -577,29 +575,26 @@ impl RuntimeBindingsMeta {
     ///
     /// Returns a u64 of the result.
     #[allow(clippy::too_many_arguments)]
-    pub fn dict_gas_refund<'c, 'a>(
+    pub fn dict_squash<'c, 'a>(
         &mut self,
         context: &'c Context,
         module: &Module,
         block: &'a Block<'c>,
-        dict_ptr: Value<'c, 'a>, // ptr to the dict
+        dict_ptr: Value<'c, 'a>,        // ptr to the dict
+        range_check_ptr: Value<'c, 'a>, // ptr to range check
+        gas_ptr: Value<'c, 'a>,         // ptr to gas
         location: Location<'c>,
     ) -> Result<OperationRef<'c, 'a>>
     where
         'c: 'a,
     {
-        let function = self.build_function(
-            context,
-            module,
-            block,
-            location,
-            RuntimeBinding::DictGasRefund,
-        )?;
+        let function =
+            self.build_function(context, module, block, location, RuntimeBinding::DictSquash)?;
 
         Ok(block.append_operation(
             OperationBuilder::new("llvm.call", location)
                 .add_operands(&[function])
-                .add_operands(&[dict_ptr])
+                .add_operands(&[dict_ptr, range_check_ptr, gas_ptr])
                 .add_results(&[IntegerType::new(context, 64).into()])
                 .build()?,
         ))
@@ -683,7 +678,7 @@ pub fn setup_runtime(find_symbol_ptr: impl Fn(&str) -> Option<*mut c_void>) {
         RuntimeBinding::EcPointFromXNz,
         RuntimeBinding::DictNew,
         RuntimeBinding::DictGet,
-        RuntimeBinding::DictGasRefund,
+        RuntimeBinding::DictSquash,
         RuntimeBinding::DictDrop,
         RuntimeBinding::DictDup,
         RuntimeBinding::GetCostsBuiltin,

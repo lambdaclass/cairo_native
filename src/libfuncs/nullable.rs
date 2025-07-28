@@ -34,7 +34,7 @@ pub fn build<'ctx, 'this>(
 ) -> Result<()> {
     match selector {
         NullableConcreteLibfunc::ForwardSnapshot(info)
-        | NullableConcreteLibfunc::NullableFromBox(info) => super::build_noop::<1, true>(
+        | NullableConcreteLibfunc::NullableFromBox(info) => super::build_noop::<1, false>(
             context,
             registry,
             entry,

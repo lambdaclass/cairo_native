@@ -3,6 +3,7 @@
 use super::LibfuncHelper;
 use crate::{
     error::{panic::ToNativeAssertError, Result},
+    execution_result::SEGMENT_ARENA_BUILTIN_SIZE,
     metadata::{
         felt252_dict::Felt252DictOverrides, runtime_bindings::RuntimeBindingsMeta, MetadataStorage,
     },
@@ -53,7 +54,15 @@ pub fn build_new<'ctx, 'this>(
     metadata: &mut MetadataStorage,
     info: &SignatureOnlyConcreteLibfunc,
 ) -> Result<()> {
-    let segment_arena = super::increment_builtin_counter(context, entry, location, entry.arg(0)?)?;
+    // We increase the segment arena builtin by 1 usage.
+    // https://github.com/starkware-libs/cairo/blob/v2.12.0-dev.1/crates/cairo-lang-sierra-to-casm/src/invocations/felt252_dict.rs?plain=1#L45-L49
+    let segment_arena = super::increment_builtin_counter_by(
+        context,
+        entry,
+        location,
+        entry.arg(0)?,
+        SEGMENT_ARENA_BUILTIN_SIZE,
+    )?;
 
     let value_type_id = match registry.get_type(&info.signature.branch_signatures[0].vars[1].ty)? {
         CoreTypeConcrete::Felt252Dict(info) => &info.ty,
@@ -115,26 +124,58 @@ pub fn build_squash<'ctx, 'this>(
     metadata: &mut MetadataStorage,
     _info: &SignatureOnlyConcreteLibfunc,
 ) -> Result<()> {
-    let range_check = super::increment_builtin_counter(context, entry, location, entry.arg(0)?)?;
-    let gas_builtin = entry.arg(1)?;
-    let segment_arena = super::increment_builtin_counter(context, entry, location, entry.arg(2)?)?;
+    let range_check = entry.arg(0)?;
+    let gas = entry.arg(1)?;
+    let segment_arena = entry.arg(2)?;
     let dict_ptr = entry.arg(3)?;
+
+    // Increase the segment arena builtin by 1 usage.
+    // https://github.com/starkware-libs/cairo/blob/v2.12.0-dev.1/crates/cairo-lang-sierra-to-casm/src/invocations/felt252_dict.rs?plain=1#L148-L151
+    let segment_arena = super::increment_builtin_counter_by(
+        context,
+        entry,
+        location,
+        segment_arena,
+        SEGMENT_ARENA_BUILTIN_SIZE,
+    )?;
 
     let runtime_bindings = metadata
         .get_mut::<RuntimeBindingsMeta>()
         .to_native_assert_error("runtime library should be available")?;
 
-    let gas_refund = runtime_bindings
-        .dict_gas_refund(context, helper, entry, dict_ptr, location)?
-        .result(0)?
-        .into();
+    let range_check_ptr =
+        entry.alloca1(context, location, IntegerType::new(context, 64).into(), 0)?;
+    entry.store(context, location, range_check_ptr, range_check)?;
+    let gas_ptr = entry.alloca1(context, location, IntegerType::new(context, 64).into(), 0)?;
+    entry.store(context, location, gas_ptr, gas)?;
 
-    let new_gas_builtin = entry.addi(gas_builtin, gas_refund, location)?;
+    runtime_bindings.dict_squash(
+        context,
+        helper,
+        entry,
+        dict_ptr,
+        range_check_ptr,
+        gas_ptr,
+        location,
+    )?;
+
+    let range_check = entry.load(
+        context,
+        location,
+        range_check_ptr,
+        IntegerType::new(context, 64).into(),
+    )?;
+    let gas_builtin = entry.load(
+        context,
+        location,
+        gas_ptr,
+        IntegerType::new(context, 64).into(),
+    )?;
 
     helper.br(
         entry,
         0,
-        &[range_check, new_gas_builtin, segment_arena, entry.arg(3)?],
+        &[range_check, gas_builtin, segment_arena, entry.arg(3)?],
         location,
     )
 }
@@ -142,7 +183,9 @@ pub fn build_squash<'ctx, 'this>(
 #[cfg(test)]
 mod test {
     use crate::{
-        utils::test::{jit_dict, jit_enum, jit_struct, load_cairo, run_program_assert_output},
+        utils::test::{
+            jit_dict, jit_enum, jit_struct, load_cairo, run_program, run_program_assert_output,
+        },
         values::Value,
     };
 
@@ -328,5 +371,85 @@ mod test {
                 2 => jit_enum!(2, 3u128.into()),
             ),
         );
+    }
+
+    #[test]
+    fn run_dict_squash() {
+        let program = load_cairo! {
+            use core::dict::{Felt252Dict, Felt252DictEntryTrait, SquashedFelt252DictImpl};
+
+            pub fn main() {
+                // The squash libfunc has a fixed range check cost of 2.
+
+                // If no big keys, 3 per unique key access.
+                let mut dict: Felt252Dict<felt252> = Default::default();
+                dict.insert(1, 1); // 3
+                dict.insert(2, 2); // 3
+                dict.insert(3, 3); // 3
+                dict.insert(4, 4); // 3
+                dict.insert(5, 4); // 3
+                dict.insert(6, 4); // 3
+                let _ = dict.squash(); // 2
+                // SUBTOTAL: 20
+
+                // A dictionary has big keys if there is at least one key greater than
+                // the range check bound (2**128 - 1).
+
+                // If has big keys, 2 for first unique key access,
+                // and 6 each of the remaining unique key accesses.
+                let mut dict: Felt252Dict<felt252> = Default::default();
+                dict.insert(1, 1); // 2
+                dict.insert(0xF00000000000000000000000000000002, 1); // 6
+                dict.insert(3, 1); // 6
+                dict.insert(0xF00000000000000000000000000000004, 1); // 6
+                dict.insert(5, 1); // 6
+                dict.insert(0xF00000000000000000000000000000006, 1); // 6
+                dict.insert(7, 1); // 6
+                let _ = dict.squash(); // 2
+                // SUBTOTAL: 40
+
+
+                // If no big keys, 3 per unique key access.
+                // Each repeated key adds an extra range check usage.
+                let mut dict: Felt252Dict<felt252> = Default::default();
+                dict.insert(1, 1); // 3
+                dict.insert(2, 1); // 3
+                dict.insert(3, 1); // 3
+                dict.insert(4, 1); // 3
+                dict.insert(1, 1); // 1
+                dict.insert(2, 1); // 1
+                dict.insert(1, 1); // 1
+                dict.insert(2, 1); // 1
+                dict.insert(1, 1); // 1
+                dict.insert(2, 1); // 1
+                let _ = dict.squash(); // 2
+                // SUBTOTAL: 20
+
+
+                // If has big keys, 2 for first unique key access,
+                // and 6 each of the remaining unique key accesses.
+                // Each repeated key access adds an extra range check usage.
+                let mut dict: Felt252Dict<felt252> = Default::default();
+                dict.insert(1, 1); // 2
+                dict.insert(0xF00000000000000000000000000000002, 1); // 6
+                dict.insert(1, 1); // 1
+                dict.insert(0xF00000000000000000000000000000002, 1); // 1
+                dict.insert(1, 1); // 1
+                dict.insert(0xF00000000000000000000000000000002, 1); // 1
+                dict.insert(1, 1); // 1
+                dict.insert(0xF00000000000000000000000000000002, 1); // 1
+                dict.insert(1, 1); // 1
+                dict.insert(0xF00000000000000000000000000000002, 1); // 1
+                dict.insert(1, 1); // 1
+                dict.insert(0xF00000000000000000000000000000002, 1); // 1
+                let _ = dict.squash(); // 2
+                // SUBTOTAL: 20
+
+                // TOTAL: 100
+            }
+        };
+
+        let result = run_program(&program, "main", &[]);
+        assert_eq!(result.builtin_stats.range_check, 100);
     }
 }

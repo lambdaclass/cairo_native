@@ -3,6 +3,8 @@
 use super::LibfuncHelper;
 use crate::{
     error::{Error, Result},
+    execution_result::EC_OP_BUILTIN_SIZE,
+    libfuncs::increment_builtin_counter_conditionally_by,
     metadata::{runtime_bindings::RuntimeBindingsMeta, MetadataStorage},
     utils::{get_integer_layout, ProgramRegistryExt, PRIME},
 };
@@ -148,8 +150,6 @@ pub fn build_point_from_x<'ctx, 'this>(
     metadata: &mut MetadataStorage,
     _info: &SignatureOnlyConcreteLibfunc,
 ) -> Result<()> {
-    let range_check = super::increment_builtin_counter(context, entry, location, entry.arg(0)?)?;
-
     let ec_point_ty = llvm::r#type::r#struct(
         context,
         &[
@@ -170,7 +170,7 @@ pub fn build_point_from_x<'ctx, 'this>(
     let point = entry.insert_value(context, location, point, entry.arg(1)?, 0)?;
 
     entry.store(context, location, point_ptr, point)?;
-    let result = metadata
+    let is_on_curve = metadata
         .get_mut::<RuntimeBindingsMeta>()
         .ok_or(Error::MissingMetadata)?
         .libfunc_ec_point_from_x_nz(context, helper, entry, point_ptr, location)?
@@ -179,10 +179,23 @@ pub fn build_point_from_x<'ctx, 'this>(
 
     let point = entry.load(context, location, point_ptr, ec_point_ty)?;
 
+    // The sierra-to-casm compiler uses the range check builtin a total of 3 times if the
+    // point is on the curve. Otherwise it is not used.
+    // https://github.com/starkware-libs/cairo/blob/v2.12.0-dev.1/crates/cairo-lang-sierra-to-casm/src/invocations/ec.rs#L167
+    let range_check = increment_builtin_counter_conditionally_by(
+        context,
+        entry,
+        location,
+        entry.arg(0)?,
+        3,
+        0,
+        is_on_curve,
+    )?;
+
     helper.cond_br(
         context,
         entry,
-        result,
+        is_on_curve,
         [0, 1],
         [&[range_check, point], &[range_check]],
         location,
@@ -246,7 +259,15 @@ pub fn build_state_add_mul<'ctx, 'this>(
     metadata: &mut MetadataStorage,
     _info: &SignatureOnlyConcreteLibfunc,
 ) -> Result<()> {
-    let ec_op = super::increment_builtin_counter(context, entry, location, entry.arg(0)?)?;
+    // The sierra-to-casm compiler uses the ec op builtin 1 time.
+    // https://github.com/starkware-libs/cairo/blob/v2.12.0-dev.1/crates/cairo-lang-sierra-to-casm/src/invocations/ec.rs#L439
+    let ec_op = super::increment_builtin_counter_by(
+        context,
+        entry,
+        location,
+        entry.arg(0)?,
+        EC_OP_BUILTIN_SIZE,
+    )?;
 
     let felt252_ty = IntegerType::new(context, 252).into();
     let ec_state_ty = llvm::r#type::r#struct(
