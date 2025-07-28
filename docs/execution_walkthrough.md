@@ -369,7 +369,7 @@ place and invoke the function pointer.
 This is where the trampoline comes in. It's a simple assembler function that
 does three things:
 
-1. Fill in the 6 or 8 argument registers with the first values in the data
+1. Fill in the 6 or 8 argument registers (for x86 or ARM respectively) with the first values in the data
    pointer and copy the rest into the stack as-is (no stack alignment or anything,
    we guarantee from the Rust side that the stack will end up properly aligned).
 2. Invoke the function pointer.
