@@ -1,6 +1,6 @@
 //! # `u256`-related libfuncs
 
-use super::LibfuncHelper;
+use super::{increment_builtin_counter_conditionally_by, LibfuncHelper};
 use crate::{error::Result, metadata::MetadataStorage, utils::ProgramRegistryExt};
 use cairo_lang_sierra::{
     extensions::{

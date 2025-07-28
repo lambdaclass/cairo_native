@@ -14,3 +14,6 @@ cairo-lang-casm = { workspace = true, features = [ "serde", ] }
 cairo-lang-utils.workspace = true
 cairo-lang-starknet-classes.workspace = true
 cairo-vm = { git = "https://github.com/lambdaclass/cairo-vm/", rev = "3b36cd92f68f3dc26ddf5aba6c1f9a50ff3d303f", features = ["cairo-1-hints"] }
+
+[lints.clippy]
+uninlined_format_args = "allow"

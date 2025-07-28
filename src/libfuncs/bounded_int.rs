@@ -2,8 +2,12 @@
 
 use super::LibfuncHelper;
 use crate::{
-    error::Result, metadata::MetadataStorage, native_assert, types::TypeBuilder, utils::RangeExt,
+    error::{panic::ToNativeAssertError, Result},
     execution_result::RANGE_CHECK_BUILTIN_SIZE,
+    metadata::MetadataStorage,
+    native_assert,
+    types::TypeBuilder,
+    utils::RangeExt,
 };
 use cairo_lang_sierra::{
     extensions::{
