@@ -1,5 +1,3 @@
-use std::ffi::c_void;
-
 use llvm_sys::{
     core::{
         LLVMGetFirstBasicBlock, LLVMGetFirstFunction, LLVMGetFirstInstruction,
@@ -9,65 +7,51 @@ use llvm_sys::{
     LLVMBasicBlock, LLVMValue,
 };
 use melior::ir::{BlockLike, BlockRef, OperationRef};
-use mlir_sys::{MlirOperation, MlirWalkResult};
-
-type OperationWalkCallback =
-    unsafe extern "C" fn(MlirOperation, *mut ::std::os::raw::c_void) -> MlirWalkResult;
 
 /// Traverses the given operation tree in preorder.
 ///
-/// Calls `f` on each operation encountered. The second argument to `f` should
-/// be interpreted as a pointer to a value of type `T`.
-///
-/// TODO: Can we receive a closure instead?
-/// We may need to save a pointer to the closure
-/// inside of the callback data.
-pub fn walk_mlir_operations<T: Sized>(
-    top_op: OperationRef,
-    f: OperationWalkCallback,
-    initial: T,
-) -> T {
-    let mut data = Box::new(initial);
-    unsafe {
-        mlir_sys::mlirOperationWalk(
-            top_op.to_raw(),
-            Some(f),
-            data.as_mut() as *mut _ as *mut c_void,
-            mlir_sys::MlirWalkOrder_MlirWalkPreOrder,
-        );
-    };
-    *data
+/// Calls `f` on each operation encountered.
+pub fn walk_mlir_operations(top_op: OperationRef, f: &mut impl FnMut(OperationRef)) {
+    f(top_op);
+
+    for region in top_op.regions() {
+        let mut next_block = region.first_block();
+
+        while let Some(block) = next_block {
+            let mut next_operation = block.first_operation();
+
+            while let Some(operation) = next_operation {
+                walk_mlir_operations(operation, f);
+
+                // we have to convert it to raw, and back to ref to bypass borrow checker.
+                next_operation = unsafe {
+                    operation
+                        .next_in_block()
+                        .map(OperationRef::to_raw)
+                        .map(|op| OperationRef::from_raw(op))
+                }
+            }
+
+            next_block = block.next_in_region();
+        }
+    }
 }
 
 /// Traverses from start block to end block (including) in preorder.
 ///
-/// Calls `f` on each operation encountered. The second argument to `f` should
-/// be interpreted as a pointer to a value of type `T`.
-///
-/// TODO: Can we receive a closure instead?
-/// We may need to save a pointer to the closure
-/// inside of the callback data.
-pub fn walk_mlir_block<T: Sized>(
+/// Calls `f` on each operation encountered.
+pub fn walk_mlir_block(
     start_block: BlockRef,
     end_block: BlockRef,
-    f: OperationWalkCallback,
-    initial: T,
-) -> T {
-    let mut data = Box::new(initial);
+    f: &mut impl FnMut(OperationRef),
+) {
+    let mut next_block = Some(start_block);
 
-    let mut current_block = start_block;
-    loop {
-        let mut next_operation = current_block.first_operation();
+    while let Some(block) = next_block {
+        let mut next_operation = block.first_operation();
 
         while let Some(operation) = next_operation {
-            unsafe {
-                mlir_sys::mlirOperationWalk(
-                    operation.to_raw(),
-                    Some(f),
-                    data.as_mut() as *mut _ as *mut c_void,
-                    mlir_sys::MlirWalkOrder_MlirWalkPreOrder,
-                );
-            };
+            walk_mlir_operations(operation, f);
 
             // we have to convert it to raw, and back to ref to bypass borrow checker.
             next_operation = unsafe {
@@ -78,16 +62,12 @@ pub fn walk_mlir_block<T: Sized>(
             }
         }
 
-        if current_block == end_block {
-            break;
+        if block == end_block {
+            return;
         }
 
-        current_block = current_block
-            .next_in_region()
-            .expect("should always reach `end_block`");
+        next_block = block.next_in_region();
     }
-
-    *data
 }
 
 /// Traverses the whole LLVM Module, calling `f` on each instruction.
