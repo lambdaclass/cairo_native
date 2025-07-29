@@ -1310,7 +1310,7 @@ lazy_static! {
 }
 
 #[test]
-fn circuit_guarantee_first_limb() {
+fn test_circuit_guarantee_first_limb() {
     let program = &TEST;
 
     let result_vm = run_vm_program(
@@ -1348,7 +1348,7 @@ fn circuit_guarantee_first_limb() {
 }
 
 #[test]
-fn circuit_guarantee_last_limb() {
+fn test_circuit_guarantee_last_limb() {
     let program = &TEST;
 
     let result_vm = run_vm_program(
@@ -1386,7 +1386,7 @@ fn circuit_guarantee_last_limb() {
 }
 
 #[test]
-fn circuit_guarantee_middle_limb() {
+fn test_circuit_guarantee_middle_limb() {
     let program = &TEST;
 
     let result_vm = run_vm_program(
@@ -1424,7 +1424,7 @@ fn circuit_guarantee_middle_limb() {
 }
 
 #[test]
-fn comparison_circuit_add() {
+fn test_circuit_add() {
     let program = &TEST;
 
     let result_vm = run_vm_program(
@@ -1453,7 +1453,7 @@ fn comparison_circuit_add() {
 }
 
 #[test]
-fn comparison_circuit_sub() {
+fn test_circuit_sub() {
     let program = &TEST;
 
     let result_vm = run_vm_program(
@@ -1482,7 +1482,7 @@ fn comparison_circuit_sub() {
 }
 
 #[test]
-fn comparison_circuit_mul() {
+fn test_circuit_mul() {
     let program = &TEST;
 
     let result_vm = run_vm_program(
@@ -1511,7 +1511,7 @@ fn comparison_circuit_mul() {
 }
 
 #[test]
-fn comparison_circuit_inv() {
+fn test_circuit_inv() {
     let program = &TEST;
 
     let result_vm = run_vm_program(
@@ -1540,7 +1540,7 @@ fn comparison_circuit_inv() {
 }
 
 #[test]
-fn comparison_circuit_full() {
+fn test_circuit_full() {
     let program = &TEST;
 
     let result_vm = run_vm_program(
@@ -1569,7 +1569,7 @@ fn comparison_circuit_full() {
 }
 
 #[test]
-fn comparison_circuit_fail() {
+fn test_circuit_fail() {
     let program = &TEST;
 
     let result_vm = run_vm_program(
@@ -1598,7 +1598,7 @@ fn comparison_circuit_fail() {
 }
 
 #[test]
-fn comparison_circuit_into_u96_guarantee() {
+fn test_circuit_into_u96_guarantee() {
     let program = &TEST;
 
     let result_vm = run_vm_program(
@@ -1631,7 +1631,7 @@ fn comparison_circuit_into_u96_guarantee() {
 }
 
 #[test]
-fn comparison_circuit_y_inv_x_neg_over_y_bn254() {
+fn test_circuit_y_inv_x_neg_over_y_bn254() {
     let program = &GARAGA_CIRCUITS;
 
     let result_vm = run_vm_program(
@@ -1664,7 +1664,7 @@ fn comparison_circuit_y_inv_x_neg_over_y_bn254() {
 }
 
 #[test]
-fn comparison_circuit_batch_3_mod_bn254() {
+fn test_circuit_batch_3_mod_bn254() {
     let program = &GARAGA_CIRCUITS;
 
     let result_vm = run_vm_program(
@@ -1693,7 +1693,7 @@ fn comparison_circuit_batch_3_mod_bn254() {
 }
 
 #[test]
-fn comparison_circuit_add_ec_points_g2() {
+fn test_circuit_add_ec_points_g2() {
     let program = &GARAGA_CIRCUITS;
 
     let result_vm = run_vm_program(
@@ -1726,7 +1726,7 @@ fn comparison_circuit_add_ec_points_g2() {
 }
 
 #[test]
-fn comparison_circuit_clear_cofactor_bls12_381() {
+fn test_circuit_clear_cofactor_bls12_381() {
     let program = &BIG_CIRCUIT;
 
     let result_vm = run_vm_program(
@@ -1759,7 +1759,7 @@ fn comparison_circuit_clear_cofactor_bls12_381() {
 }
 
 #[test]
-fn comparison_circuit_add_ec_point_unchecked() {
+fn test_circuit_add_ec_point_unchecked() {
     let program = &KAKAROT_CIRCUIT;
 
     let result_vm = run_vm_program(
