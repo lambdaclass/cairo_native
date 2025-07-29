@@ -250,9 +250,24 @@ lazy_static! {
 
             let outputs = (yInv, xNegOverY)
                 .new_inputs()
-                .next_2([0, 0, 0, 0])
-                .next_2([7, 0, 0, 0])
-                .next_2([3, 0, 0, 0])
+                .next_2([
+                    0xae40a8b5aee95e54aedee2e7,
+                    0x6e0699501c5035eed8fc5162,
+                    0xbee76829b76806d1b6617bf8,
+                    0x5026c3305c1267922077393,
+                ])
+                .next_2([
+                    0x10c08c4b0a70e02491c3c435,
+                    0x591ef738050b3ce067e2016f,
+                    0xdd6e0a179e2ce3c1399c5273,
+                    0xd5c9af9b97e94f90cb4aba3,
+                ])
+                .next_2([
+                    0x93be53660cebb92c90d4fa87,
+                    0xfbf63ca94e1d0ffd65801863,
+                    0xd24fd9a06d72f1dc57f15f0a,
+                    0x100dbfd4f271378e85171313,
+                ])
                 .done_2()
                 .eval(modulus)
                 .unwrap();
@@ -280,10 +295,30 @@ lazy_static! {
 
             let outputs = (res,)
                 .new_inputs()
-                .next_2([5, 0, 0, 0])
-                .next_2([2, 0, 0, 0])
-                .next_2([8, 0, 0, 0])
-                .next_2([3, 0, 0, 0])
+                .next_2([
+                    0xb7296e587409163eecd3ef5d,
+                    0x8a065d6871fa185d15703e78,
+                    0x8a85fb95bb90eb5c7a0d81a9,
+                    0x157cf362e91a3c96640bd973
+                ])
+                .next_2([
+                    0x2131be4b061714de5a11407d,
+                    0xd41318f9bcade1fee985310b,
+                    0xb2669e638a7b78b7ba5c6751,
+                    0xa5284fb2911d4e2f445e714,
+                ])
+                .next_2([
+                    0x712edcaf95ed642a8237e6fd,
+                    0xed6fccd7b64896ebb6ffb3d9,
+                    0xfcb88d23294a46657b8d2482,
+                    0x143ef485b660d37036fc18e2,
+                ])
+                .next_2([
+                    0xaa5b7ff57bdbf47e6ab49121,
+                    0xc14cded56b4a44e022320616,
+                    0xdd5105feb3fdc5b10edb5afa,
+                    0x175d2c78538490ce02fcead8,
+                ])
                 .done_2()
                 .eval(modulus)
                 .unwrap();
@@ -308,17 +343,57 @@ lazy_static! {
         #[inline(always)]
         pub fn run_ADD_EC_POINTS_G2_circuit() -> (G2Point,) {
             let p = G2Point {
-                x0: u384 {limb0: 5, limb1: 0, limb2: 0, limb3: 0},
-                x1: u384 {limb0: 1, limb1: 0, limb2: 0, limb3: 0},
-                y0: u384 {limb0: 7, limb1: 0, limb2: 0, limb3: 0},
-                y1: u384 {limb0: 2, limb1: 0, limb2: 0, limb3: 0},
+                x0: u384 {
+                    limb0: 0xf3611b78c952aacab827a053,
+                    limb1: 0xe1ea1e1e4d00dbae81f14b0b,
+                    limb2: 0xcc7ed5863bc0b995b8825e0e,
+                    limb3: 0x1638533957d540a9d2370f17,
+                },
+                x1: u384 {
+                    limb0: 0xb57ec72a6178288c47c33577,
+                    limb1: 0x728114d1031e1572c6c886f6,
+                    limb2: 0x730a124fd70662a904ba1074,
+                    limb3: 0xa4edef9c1ed7f729f520e47,
+                },
+                y0: u384 {
+                    limb0: 0x764bf3bd999d95d71e4c9899,
+                    limb1: 0xbfe6bd221e47aa8ae88dece9,
+                    limb2: 0x2b5256789a66da69bf91009c,
+                    limb3: 0x468fb440d82b0630aeb8dca,
+                },
+                y1: u384 {
+                    limb0: 0xa59c8967acdefd8b6e36ccf3,
+                    limb1: 0x97003f7a13c308f5422e1aa0,
+                    limb2: 0x3f887136a43253d9c66c4116,
+                    limb3: 0xf6d4552fa65dd2638b36154,
+                },
             };
 
             let q = G2Point {
-                x0: u384 {limb0: 3, limb1: 0, limb2: 0, limb3: 0},
-                x1: u384 {limb0: 4, limb1: 0, limb2: 0, limb3: 0},
-                y0: u384 {limb0: 6, limb1: 0, limb2: 0, limb3: 0},
-                y1: u384 {limb0: 8, limb1: 0, limb2: 0, limb3: 0},
+                x0: u384 {
+                    limb0: 0x866f09d516020ef82324afae,
+                    limb1: 0xa0c75df1c04d6d7a50a030fc,
+                    limb2: 0xdccb23ae691ae54329781315,
+                    limb3: 0x122915c824a0857e2ee414a3,
+                },
+                x1: u384 {
+                    limb0: 0x937cc6d9d6a44aaa56ca66dc,
+                    limb1: 0x5062650f8d251c96eb480673,
+                    limb2: 0x7e0550ff2ac480905396eda5,
+                    limb3: 0x9380275bbc8e5dcea7dc4dd,
+                },
+                y0: u384 {
+                    limb0: 0x8b52fdf2455e44813ecfd892,
+                    limb1: 0x326ac738fef5c721479dfd94,
+                    limb2: 0xbc1a6f0136961d1e3b20b1a7,
+                    limb3: 0xb21da7955969e61010c7a1a,
+                },
+                y1: u384 {
+                    limb0: 0xb975b9edea56d53f23a0e849,
+                    limb1: 0x714150a166bfbd6bcf6b3b58,
+                    limb2: 0xa36cfe5f62a7e42e0bf1c1ed,
+                    limb3: 0x8f239ba329b3967fe48d718,
+                },
             };
 
             // CONSTANT stack
@@ -432,10 +507,30 @@ lazy_static! {
         // - the points are not the same
         // - none of the points are the point at infinity
         fn add_ec_point_unchecked() -> (u384, u384) {
-            let xP = u384 {limb0: 5, limb1: 0, limb2: 0, limb3: 0};
-            let yP = u384 {limb0: 7, limb1: 0, limb2: 0, limb3: 0};
-            let xQ = u384 {limb0: 9, limb1: 0, limb2: 0, limb3: 0};
-            let yQ = u384 {limb0: 4, limb1: 0, limb2: 0, limb3: 0};
+            let xP = u384 {
+                limb0: 0xb3e77acb0d776ee38973b578,
+                limb1: 0x7290c49d0303a7a719325387,
+                limb2: 0x3104f09f1439bbd9b6e47310,
+                limb3: 0x1794c7df23dbcfd21f7c96f5,
+            };
+            let yP = u384 {
+                limb0: 0xd0ccdf6e1de037c5f25dbd53,
+                limb1: 0x254a0c8d3849192e33a21665,
+                limb2: 0xcc0375e474dc85925319c5ad,
+                limb3: 0x59163bc09c3bb5cd5864b34,
+            };
+            let xQ = u384 {
+                limb0: 0x42951c5be1c30dd1f90a8da3,
+                limb1: 0xffa3bb5d4cc66b3c5c927fe8,
+                limb2: 0xb2bef79be9fc2df478672961,
+                limb3: 0x13b08e1d6ece19818bc96ea9,
+            };
+            let yQ = u384 {
+                limb0: 0x93fd3339f961a2b9c29235bc,
+                limb1: 0xf9bbad7b2c116dfe3ed68c7a,
+                limb2: 0xbd2f1d7614ffe6107af3312d,
+                limb3: 0x565882562afe825ad18d630,
+            };
             // INPUT stack
             let (_xP, _yP, _xQ, _yQ) = (CircuitElement::<CircuitInput<0>> {}, CircuitElement::<CircuitInput<1>> {}, CircuitElement::<CircuitInput<2>> {}, CircuitElement::<CircuitInput<3>> {});
 
@@ -521,8 +616,18 @@ lazy_static! {
         #[inline(always)]
         pub fn run_CLEAR_COFACTOR_BLS12_381_circuit() -> (G1Point, G1Point, G1Point, G1Point) {
             let P = G1Point {
-                x: u384 {limb0: 5, limb1: 0, limb2: 0, limb3: 0},
-                y: u384 {limb0: 7, limb1: 0, limb2: 0, limb3: 0},
+                x: u384 {
+                    limb0: 0x23893f1bb0fdb0533584b05f,
+                    limb1: 0x420d425d79dcd48b26d87814,
+                    limb2: 0xc932fa90468e6b9dfd658cc9,
+                    limb3: 0xe5fac70e9096e97adc6dd89,
+                },
+                y: u384 {
+                    limb0: 0x90d1a47263d9c179e9d6bab3,
+                    limb1: 0xc8f52b7ac4908e42515e61a6,
+                    limb2: 0x85c60896512fc21fc50ce238,
+                    limb3: 0x15bb2157a1b9aab29d66c644,
+                },
             };
             let modulus = get_BLS12_381_modulus();
             // CONSTANT stack
