@@ -1,1 +1,1 @@
-window.SIDEBAR_ITEMS = {"fn":["libfunc_to_name"]};
+window.SIDEBAR_ITEMS = {"fn":["generic_type_to_name","libfunc_to_name","type_to_name"]};
