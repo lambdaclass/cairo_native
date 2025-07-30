@@ -45,6 +45,3 @@ rayon = "1.10.0"
 [dev-dependencies]
 cairo-lang-compiler.workspace = true
 cairo-lang-starknet.workspace = true
-
-[lints.clippy]
-uninlined_format_args = "allow"
