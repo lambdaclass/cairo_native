@@ -48,7 +48,7 @@ use crate::{
     native_assert, native_panic,
     starknet::{handler::StarknetSyscallHandlerCallbacks, StarknetSyscallHandler},
     statistics::Statistics,
-    types::TypeBuilder,
+    types::{core_type_name, TypeBuilder},
     utils::{
         decode_error_message, generate_function_name, get_integer_layout, libc_free, libc_malloc,
         BuiltinCosts,
@@ -245,6 +245,15 @@ impl AotContractExecutor {
                     let libfunc = registry.get_libfunc(&invocation.libfunc_id)?;
                     let name = libfunc_to_name(libfunc).to_string();
                     *stats.sierra_libfunc_frequency.entry(name).or_insert(0) += 1;
+                }
+            }
+
+            for type_declaration in &program.type_declarations {
+                if let Ok(type_concrete) = registry.get_type(&type_declaration.id) {
+                    *stats
+                        .max_types_sizes
+                        .entry(core_type_name(type_concrete))
+                        .or_insert(0) += type_concrete.layout(&registry).unwrap().size()
                 }
             }
         }
