@@ -45,7 +45,9 @@ def compare(vm_dump_path: str):
         return ("MISS", block, tx)
 
     native_dump = re.sub(r".*reverted.*", "", native_dump, count=1)
+    native_dump = re.sub(r".*cairo_native.*", "", native_dump)
     vm_dump = re.sub(r".*reverted.*", "", vm_dump, count=1)
+    vm_dump = re.sub(r".*cairo_native.*", "", vm_dump)
 
     if native_dump == vm_dump:
         return ("MATCH", block, tx, vm_dump_path, native_dump_path)
