@@ -13,6 +13,14 @@ pub struct Statistics {
     pub sierra_statement_count: Option<usize>,
     /// Number of user functions defined in the Sierra code.
     pub sierra_func_count: Option<usize>,
+    /// Max number of parameters in a sierra function
+    pub sierra_func_max_params: Option<usize>,
+    /// Avg number of parameters in a sierra function
+    pub sierra_func_avg_params: Option<usize>,
+    /// Max number of return types in a sierra function
+    pub sierra_func_max_return_types: Option<usize>,
+    /// Avg number of return types in a sierra function
+    pub sierra_func_avg_return_types: Option<usize>,
     /// Number of statements for each distinct libfunc.
     pub sierra_libfunc_frequency: BTreeMap<String, u128>,
     /// Number of MLIR operations generated.

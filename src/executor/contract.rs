@@ -79,7 +79,7 @@ use serde::{Deserialize, Serialize};
 use starknet_types_core::felt::Felt;
 use std::{
     alloc::Layout,
-    cmp::Ordering,
+    cmp::{self, Ordering},
     collections::BTreeMap,
     ffi::c_void,
     fs::{self, File},
@@ -210,6 +210,24 @@ impl AotContractExecutor {
             stats.sierra_libfunc_count = Some(program.libfunc_declarations.len());
             stats.sierra_statement_count = Some(program.statements.len());
             stats.sierra_func_count = Some(program.funcs.len());
+
+            let mut max_params = 0;
+            let mut max_return_types = 0;
+            let mut params_acum = 0;
+            let mut return_types_acum = 0;
+            for func in &program.funcs {
+                let curr_params_len = func.signature.ret_types.len();
+                let curr_return_types_len = func.signature.ret_types.len();
+
+                max_params = cmp::max(max_params, curr_params_len);
+                max_return_types = cmp::max(max_return_types, curr_return_types_len);
+                params_acum += curr_params_len;
+                return_types_acum += curr_return_types_len;
+            }
+            stats.sierra_func_max_params = Some(max_params);
+            stats.sierra_func_avg_params = Some(params_acum / program.funcs.len());
+            stats.sierra_func_max_return_types = Some(max_return_types);
+            stats.sierra_func_avg_return_types = Some(return_types_acum / program.funcs.len());
         }
 
         // Compile the Sierra program.
