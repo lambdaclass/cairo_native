@@ -27,7 +27,9 @@ use melior::{
 };
 use num_bigint::{BigInt, Sign};
 use num_traits::{Bounded, One};
-use std::{alloc::Layout, error::Error, ops::Deref, sync::OnceLock};
+use std::{
+    alloc::Layout, error::Error, fs::OpenOptions, io::Write, ops::Deref, path::Path, sync::OnceLock,
+};
 
 pub mod array;
 mod bitwise;
@@ -960,6 +962,56 @@ impl TypeBuilder for CoreTypeConcrete {
             _ => native_panic!("unsupported dict value type"),
         })
     }
+}
+
+pub fn core_type_name(core_type: &CoreTypeConcrete) -> String {
+    let type_name = match core_type {
+        CoreTypeConcrete::Array(_) => "Array",
+        CoreTypeConcrete::Coupon(_) => "Coupon",
+        CoreTypeConcrete::Bitwise(_) => "Bitwise",
+        CoreTypeConcrete::Blake(_) => "Blake",
+        CoreTypeConcrete::Box(_) => "Box",
+        CoreTypeConcrete::Circuit(_) => "Circuit",
+        CoreTypeConcrete::Const(_) => "Const",
+        CoreTypeConcrete::EcOp(_) => "EcOp",
+        CoreTypeConcrete::EcPoint(_) => "EcPoint",
+        CoreTypeConcrete::EcState(_) => "EcState",
+        CoreTypeConcrete::Felt252(_) => "Felt252",
+        CoreTypeConcrete::GasBuiltin(_) => "GasBuiltin",
+        CoreTypeConcrete::IntRange(_) => "IntRange",
+        CoreTypeConcrete::BuiltinCosts(_) => "BuiltinCosts",
+        CoreTypeConcrete::Uint8(_) => "Uint8",
+        CoreTypeConcrete::Uint16(_) => "Uint16",
+        CoreTypeConcrete::Uint32(_) => "Uint32",
+        CoreTypeConcrete::Uint64(_) => "Uint64",
+        CoreTypeConcrete::Uint128(_) => "Uint128",
+        CoreTypeConcrete::Uint128MulGuarantee(_) => "Uint128MulGuarantee",
+        CoreTypeConcrete::Sint8(_) => "Sint8",
+        CoreTypeConcrete::Sint16(_) => "Sint16",
+        CoreTypeConcrete::Sint32(_) => "Sint32",
+        CoreTypeConcrete::Sint64(_) => "Sint64",
+        CoreTypeConcrete::Sint128(_) => "Sint128",
+        CoreTypeConcrete::NonZero(_) => "NonZero",
+        CoreTypeConcrete::Nullable(_) => "Nullable",
+        CoreTypeConcrete::RangeCheck(_) => "RangeCheck",
+        CoreTypeConcrete::RangeCheck96(_) => "RangeCheck96",
+        CoreTypeConcrete::Uninitialized(_) => "Uninitialized",
+        CoreTypeConcrete::Enum(_) => "Enum",
+        CoreTypeConcrete::Struct(_) => "Struct",
+        CoreTypeConcrete::Felt252Dict(_) => "Felt252Dict",
+        CoreTypeConcrete::Felt252DictEntry(_) => "Felt252DictEntry",
+        CoreTypeConcrete::SquashedFelt252Dict(_) => "SquashedFelt252Dict",
+        CoreTypeConcrete::Pedersen(_) => "Pedersen",
+        CoreTypeConcrete::Poseidon(_) => "Poseidon",
+        CoreTypeConcrete::Span(_) => "Span",
+        CoreTypeConcrete::Starknet(_) => "Starknet",
+        CoreTypeConcrete::SegmentArena(_) => "SegmentArena",
+        CoreTypeConcrete::Snapshot(_) => "Snapshot",
+        CoreTypeConcrete::Bytes31(_) => "Bytes31",
+        CoreTypeConcrete::BoundedInt(_) => "BoundedInt",
+        CoreTypeConcrete::QM31(_) => "QM31",
+    };
+    type_name.to_string()
 }
 
 #[derive(Clone, Debug, Eq, Hash, PartialEq)]
