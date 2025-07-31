@@ -56,7 +56,7 @@ fn main() -> anyhow::Result<()> {
 
     // Compile the sierra program into a MLIR module.
     let native_module = native_context
-        .compile(&sierra_program, false, Some(Default::default()), None)
+        .compile(&sierra_program, true, Some(Default::default()), None)
         .unwrap();
 
     let output_mlir = args
