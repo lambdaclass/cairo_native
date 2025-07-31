@@ -31,10 +31,10 @@ struct Args {
     /// By default, it is intrepreted as a Cairo project.
     path: PathBuf,
     /// Whether path is a single Cairo file.
-    #[arg(short, long)]
+    #[arg(short, long, group = "input")]
     single_file: bool,
     /// Whether path is a single Sierra JSON file.
-    #[arg(long)]
+    #[arg(long, group = "input")]
     sierra_json: bool,
     /// Optimization level (Valid: 0, 1, 2, 3).
     /// Values higher than 3 are considered as 3.
