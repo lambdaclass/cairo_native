@@ -1,6 +1,5 @@
-use std::collections::BTreeMap;
-
 use serde::Serialize;
+use std::collections::BTreeMap;
 
 /// A set of compilation statistics gathered during the compilation.
 /// It should be completely filled at the end of the compilation.
@@ -42,10 +41,8 @@ pub struct Statistics {
     pub compilation_linking_time_ms: Option<u128>,
     /// Size of the compiled object.
     pub object_size_bytes: Option<usize>,
-    /// Maximum sizes for each of the types
+    /// Maximum sizes for each of the types. Format: key = type_id | value = max_size
     pub max_types_sizes: BTreeMap<String, usize>,
-    /// Average sizes for each of the types
-    pub avg_types_sizes: BTreeMap<String, usize>,
 }
 
 impl Statistics {

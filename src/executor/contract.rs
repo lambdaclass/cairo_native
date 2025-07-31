@@ -48,7 +48,7 @@ use crate::{
     native_assert, native_panic,
     starknet::{handler::StarknetSyscallHandlerCallbacks, StarknetSyscallHandler},
     statistics::Statistics,
-    types::{core_type_name, TypeBuilder},
+    types::TypeBuilder,
     utils::{
         decode_error_message, generate_function_name, get_integer_layout, libc_free, libc_malloc,
         BuiltinCosts,
@@ -250,18 +250,19 @@ impl AotContractExecutor {
 
             for type_declaration in &program.type_declarations {
                 if let Ok(type_concrete) = registry.get_type(&type_declaration.id) {
-                    let type_name = core_type_name(type_concrete);
-                    let max_size = *stats.max_types_sizes.entry(type_name.clone()).or_insert(0);
+                    let type_id = format!("{}", type_declaration.id);
+                    let max_size = *stats.max_types_sizes.entry(type_id.clone()).or_insert(0);
                     let curr_size = type_concrete.layout(&registry).unwrap().size();
 
                     if curr_size > max_size {
                         stats
                             .max_types_sizes
-                            .entry(type_name)
+                            .entry(type_id)
                             .and_modify(|val| *val = curr_size);
                     }
                 }
             }
+            stats.max_types_sizes.retain(|_, v| *v != 0);
         }
 
         // Generate mappings between the entry point's selectors and their function indexes.
