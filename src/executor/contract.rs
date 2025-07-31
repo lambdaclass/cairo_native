@@ -281,6 +281,41 @@ impl AotContractExecutor {
                 }
             }
             stats.max_types_sizes.retain(|_, v| *v != 0);
+
+            let mut max_params_size = 0;
+            let mut accum_params_size = 0;
+            let mut max_return_types_size = 0;
+            let mut accum_return_types_size = 0;
+            for func in &program.funcs {
+                let curr_params_size =
+                    func.signature.param_types.iter().fold(0, |accum, type_id| {
+                        match registry.get_type(type_id) {
+                            Ok(concrete_type) => {
+                                accum + concrete_type.layout(&registry).unwrap().size()
+                            }
+                            Err(_) => accum,
+                        }
+                    });
+                let curr_return_types_size =
+                    func.signature.param_types.iter().fold(0, |accum, type_id| {
+                        match registry.get_type(type_id) {
+                            Ok(concrete_type) => {
+                                accum + concrete_type.layout(&registry).unwrap().size()
+                            }
+                            Err(_) => accum,
+                        }
+                    });
+
+                max_params_size = cmp::max(max_params_size, curr_params_size);
+                max_return_types_size = cmp::max(max_return_types_size, curr_return_types_size);
+                accum_params_size += curr_params_size;
+                accum_return_types_size += curr_params_size;
+            }
+            stats.sierra_max_params_size = Some(max_params_size);
+            stats.sierra_avg_params_size = Some(accum_params_size / program.funcs.len());
+            stats.sierra_max_return_types_size = Some(max_return_types_size);
+            stats.sierra_avg_return_types_size =
+                Some(accum_return_types_size / program.funcs.len());
         }
 
         // Generate mappings between the entry point's selectors and their function indexes.

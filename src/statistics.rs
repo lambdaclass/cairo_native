@@ -21,6 +21,14 @@ pub struct Statistics {
     pub sierra_func_max_return_types: Option<usize>,
     /// Avg number of return types in a sierra function
     pub sierra_func_avg_return_types: Option<usize>,
+    /// Max size of params in a sierra function
+    pub sierra_max_params_size: Option<usize>,
+    /// Avg size of params in a sierra function
+    pub sierra_avg_params_size: Option<usize>,
+    /// Max size of return types in a sierra function
+    pub sierra_max_return_types_size: Option<usize>,
+    /// Avg size of return types in a sierra function
+    pub sierra_avg_return_types_size: Option<usize>,
     /// Number of statements for each distinct libfunc.
     pub sierra_libfunc_frequency: BTreeMap<String, u128>,
     /// Number of MLIR operations generated.
