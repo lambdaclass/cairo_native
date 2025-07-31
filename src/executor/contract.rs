@@ -250,10 +250,16 @@ impl AotContractExecutor {
 
             for type_declaration in &program.type_declarations {
                 if let Ok(type_concrete) = registry.get_type(&type_declaration.id) {
-                    *stats
-                        .max_types_sizes
-                        .entry(core_type_name(type_concrete))
-                        .or_insert(0) += type_concrete.layout(&registry).unwrap().size()
+                    let type_name = core_type_name(type_concrete);
+                    let max_size = *stats.max_types_sizes.entry(type_name.clone()).or_insert(0);
+                    let curr_size = type_concrete.layout(&registry).unwrap().size();
+
+                    if curr_size > max_size {
+                        stats
+                            .max_types_sizes
+                            .entry(type_name)
+                            .and_modify(|val| *val = curr_size);
+                    }
                 }
             }
         }
