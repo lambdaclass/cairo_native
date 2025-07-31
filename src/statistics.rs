@@ -41,6 +41,8 @@ pub struct Statistics {
     pub llvmir_virtual_register_count: Option<u128>,
     /// Number of LLVMIR instructions for each distinct opcode.
     pub llvmir_opcode_frequency: BTreeMap<String, u128>,
+    /// Max number of params in LLVMIR functions
+    pub llvmir_max_functions_params: Option<u32>,
     /// Total compilation time.
     pub compilation_total_time_ms: Option<u128>,
     /// Time spent at Sierra to MLIR.
