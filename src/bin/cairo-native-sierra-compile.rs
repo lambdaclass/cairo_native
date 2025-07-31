@@ -24,6 +24,8 @@ use tracing_subscriber::{EnvFilter, FmtSubscriber};
 /// scarb build
 /// cairo-native-sierra-compile target/dev/a.sierra.json a.so
 /// ```
+///
+/// NOTE: The `a.sierra.json` won't be generated for starknet contracts.
 #[derive(Parser, Debug)]
 #[clap(version, verbatim_doc_comment)]
 struct Args {
