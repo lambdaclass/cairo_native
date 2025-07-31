@@ -7,7 +7,7 @@ use crate::{
     metadata::MetadataStorage,
     native_panic,
     types::TypeBuilder,
-    utils::BlockExt,
+    utils::{BlockExt, ProgramRegistryExt},
 };
 use bumpalo::Bump;
 use cairo_lang_sierra::{
@@ -17,20 +17,31 @@ use cairo_lang_sierra::{
             signed::{Sint16Traits, Sint32Traits, Sint64Traits, Sint8Traits},
             unsigned::{Uint16Traits, Uint32Traits, Uint64Traits, Uint8Traits},
         },
-        lib_func::ParamSignature,
+        lib_func::{BranchSignature, ParamSignature},
         starknet::StarknetTypeConcrete,
         ConcreteLibfunc,
     },
     ids::FunctionId,
     program_registry::ProgramRegistry,
 };
+use itertools::Itertools;
 use melior::{
-    dialect::{arith, cf},
-    ir::{Block, BlockLike, BlockRef, Location, Module, Region, Value},
+    dialect::{arith, cf, llvm, ods},
+    ir::{
+        attribute::{FlatSymbolRefAttribute, StringAttribute, TypeAttribute},
+        operation::OperationBuilder,
+        r#type::IntegerType,
+        Attribute, Block, BlockLike, BlockRef, Location, Module, Region, Value,
+    },
     Context,
 };
 use num_bigint::BigInt;
-use std::{cell::Cell, error::Error, ops::Deref};
+use std::{
+    cell::Cell,
+    error::Error,
+    ops::Deref,
+    sync::atomic::{AtomicBool, Ordering},
+};
 
 mod array;
 mod r#bool;
@@ -555,4 +566,163 @@ fn build_noop<'ctx, 'this, const N: usize, const PROCESS_BUILTINS: bool>(
     }
 
     helper.br(entry, 0, &params, location)
+}
+
+/// This function builds a fake libfunc implementation, by mocking a call to a
+/// runtime function.
+///
+/// Useful to trick MLIR into thinking that it cannot optimize an unimplemented libfunc.
+///
+/// This function is for debugging only, and should never be used.
+#[allow(dead_code)]
+pub fn build_mock_libfunc<'ctx, 'this>(
+    context: &'ctx Context,
+    registry: &ProgramRegistry<CoreType, CoreLibfunc>,
+    entry: &'this Block<'ctx>,
+    location: Location<'ctx>,
+    helper: &LibfuncHelper<'ctx, 'this>,
+    metadata: &mut MetadataStorage,
+    branch_signatures: &[BranchSignature],
+) -> Result<()> {
+    let mut args = Vec::new();
+    for arg_idx in 0..entry.argument_count() {
+        args.push(entry.arg(arg_idx)?);
+    }
+
+    let flag_type = IntegerType::new(context, 8).into();
+    let ptr_type = llvm::r#type::pointer(context, 0);
+    let result_type = llvm::r#type::r#struct(context, &[flag_type, ptr_type], false);
+
+    // Mock a runtime call, and pass all libfunc arguments.
+    let result_ptr = build_mock_runtime_call(context, helper, entry, &args, location)?;
+
+    // We read the result as a structure, with a flag and a pointer.
+    // The flag determines which libfunc branch should we jump to.
+    let result = entry.load(context, location, result_ptr, result_type)?;
+    let flag = entry.extract_value(context, location, result, flag_type, 0)?;
+    let payload_ptr = entry.extract_value(context, location, result, ptr_type, 1)?;
+
+    let branches_idxs = (0..branch_signatures.len()).collect_vec();
+
+    // We will build one block per branch + a default block, and will use the
+    // flag to determine to which block to jump to.
+
+    // We assume that the flag is within the number of branches
+    // So the default block will be unreachable.
+    let default_block = {
+        let block = helper.append_block(Block::new(&[]));
+        block.append_operation(llvm::unreachable(location));
+        block
+    };
+
+    // For each branch, we build a block that will build the return arguments.
+    let mut destinations = Vec::new();
+    for &branch_idx in &branches_idxs {
+        let block = helper.append_block(Block::new(&[]));
+
+        // We build all the required types.
+        let mut branch_types = Vec::new();
+        for branch_var in &branch_signatures[branch_idx].vars {
+            let branch_var_type = registry.build_type(context, helper, metadata, &branch_var.ty)?;
+            branch_types.push(branch_var_type);
+        }
+
+        // The runtime call payload will be interpreted as a structure with as
+        // many pointers as there are output variables.
+        let branch_type = llvm::r#type::r#struct(
+            context,
+            &(0..branch_types.len()).map(|_| ptr_type).collect_vec(),
+            false,
+        );
+
+        let branch_result = block.load(context, location, payload_ptr, branch_type)?;
+
+        // We load each pointer to get the actual value we want to return.
+        let mut branch_results = Vec::new();
+        for (var_idx, var_type) in branch_types.iter().enumerate() {
+            let var_ptr =
+                block.extract_value(context, location, branch_result, ptr_type, var_idx)?;
+            let var = block.load(context, location, var_ptr, *var_type)?;
+
+            branch_results.push(var);
+        }
+
+        // We jump to the target branch.
+        helper.br(block, branch_idx, &branch_results, location)?;
+
+        let operands: &[Value] = &[];
+        destinations.push((block, operands));
+    }
+
+    // Switch to the target block according to the flag.
+    entry.append_operation(cf::switch(
+        context,
+        &branches_idxs.iter().map(|&x| x as i64).collect_vec(),
+        flag,
+        flag_type,
+        (default_block, &[]),
+        &destinations[..],
+        location,
+    )?);
+
+    Ok(())
+}
+
+/// This function builds a fake call to a runtime variable.
+///
+/// Useful to trick MLIR into thinking that it cannot optimize an unimplemented feature.
+///
+/// This function is for debugging only, and should never be used.
+#[allow(dead_code)]
+pub fn build_mock_runtime_call<'c, 'a>(
+    context: &'c Context,
+    module: &Module,
+    block: &'a Block<'c>,
+    args: &[Value<'c, 'a>],
+    location: Location<'c>,
+) -> Result<Value<'c, 'a>> {
+    let ptr_type = llvm::r#type::pointer(context, 0);
+
+    // First, declare the global if not declared.
+    // This should be added to the `RuntimeBindings` metadata, to ensure that
+    // it is declared once per module. Here we use a static for simplicity, but
+    // will fail if a single process is used to compile multiple modules.
+    static MOCK_RUNTIME_SYMBOL_DECLARED: AtomicBool = AtomicBool::new(false);
+    if !MOCK_RUNTIME_SYMBOL_DECLARED.swap(true, Ordering::Relaxed) {
+        module.body().append_operation(
+            ods::llvm::mlir_global(
+                context,
+                Region::new(),
+                TypeAttribute::new(ptr_type),
+                StringAttribute::new(context, "cairo_native__mock"),
+                Attribute::parse(context, "#llvm.linkage<weak>")
+                    .ok_or(CoreLibfuncBuilderError::ParseAttributeError)?,
+                location,
+            )
+            .into(),
+        );
+    }
+
+    // Obtain a pointer to the global. The global would contain a pointer to a function.
+    let function_ptr_ptr = block.append_op_result(
+        ods::llvm::mlir_addressof(
+            context,
+            ptr_type,
+            FlatSymbolRefAttribute::new(context, "cairo_native__mock"),
+            location,
+        )
+        .into(),
+    )?;
+
+    // Load the function pointer, and call the function
+    let function_ptr = block.load(context, location, function_ptr_ptr, ptr_type)?;
+    let result = block.append_op_result(
+        OperationBuilder::new("llvm.call", location)
+            .add_operands(&[function_ptr])
+            .add_operands(args)
+            .add_results(&[llvm::r#type::pointer(context, 0)])
+            .build()?,
+    )?;
+
+    Ok(result)
 }
