@@ -1,10 +1,6 @@
 //! # Various utilities
 
-pub(crate) use self::{
-    block_ext::{BlockExt, GepIndex},
-    program_registry_ext::ProgramRegistryExt,
-    range_ext::RangeExt,
-};
+pub(crate) use self::{program_registry_ext::ProgramRegistryExt, range_ext::RangeExt};
 use crate::{error::Result as NativeResult, metadata::MetadataStorage, native_panic, OptLevel};
 use cairo_lang_compiler::CompilerConfig;
 use cairo_lang_runner::token_gas_cost;
@@ -30,7 +26,6 @@ use std::{
 };
 use thiserror::Error;
 
-mod block_ext;
 pub mod mem_tracing;
 mod program_registry_ext;
 mod range_ext;

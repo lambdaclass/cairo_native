@@ -6,7 +6,7 @@ use crate::{
     metadata::MetadataStorage,
     native_assert, native_panic,
     types::TypeBuilder,
-    utils::{BlockExt, RangeExt, HALF_PRIME, PRIME},
+    utils::{RangeExt, HALF_PRIME, PRIME},
 };
 use cairo_lang_sierra::{
     extensions::{
@@ -19,6 +19,7 @@ use cairo_lang_sierra::{
 };
 use melior::{
     dialect::arith::{self, CmpiPredicate},
+    helpers::{ArithBlockExt, BuiltinBlockExt},
     ir::{r#type::IntegerType, Block, Location, Value, ValueLike},
     Context,
 };

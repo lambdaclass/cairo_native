@@ -6,7 +6,7 @@ use crate::{
     execution_result::EC_OP_BUILTIN_SIZE,
     libfuncs::increment_builtin_counter_conditionally_by,
     metadata::{runtime_bindings::RuntimeBindingsMeta, MetadataStorage},
-    utils::{get_integer_layout, BlockExt, ProgramRegistryExt, PRIME},
+    utils::{get_integer_layout, ProgramRegistryExt, PRIME},
 };
 use cairo_lang_sierra::{
     extensions::{
@@ -22,6 +22,7 @@ use melior::{
         arith::{self, CmpiPredicate},
         llvm,
     },
+    helpers::{ArithBlockExt, BuiltinBlockExt, LlvmBlockExt},
     ir::{operation::OperationBuilder, r#type::IntegerType, Block, Location},
     Context,
 };
