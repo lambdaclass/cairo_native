@@ -178,23 +178,23 @@ These are:
 
 ### `cairo-native-compile`
 ```bash
-Compiles a Cairo project outputting the generated MLIR and the shared library.
-Exits with 1 if the compilation or run fails, otherwise 0.
+Compiles Cairo/Sierra to Native machine code.
+Outputs the generated MLIR, and the final shared library.
 
 Usage: cairo-native-compile [OPTIONS] <PATH> [OUTPUT_MLIR] [OUTPUT_LIBRARY]
 
 Arguments:
-  <PATH>            The Cairo project path to compile and run its tests
-  [OUTPUT_MLIR]     The output path for the mlir, if none is passed, out.mlir will be the default
-  [OUTPUT_LIBRARY]  If a path is passed, a dynamic library will be compiled and saved at that path
+  <PATH>            The input path to compile. By default, it is intrepreted as a Cairo project
+  [OUTPUT_MLIR]     The output path for the generated MLIR [default: out.mlir]
+  [OUTPUT_LIBRARY]  The output path for the shared library [default: out.dylib]
 
 Options:
-  -s, --single-file            Whether path is a single file
-      --allow-warnings         Allows the compilation to succeed with warnings
-  -r, --replace-ids            Replaces sierra ids with human-readable ones
-  -O, --opt-level <OPT_LEVEL>  Optimization level, Valid: 0, 1, 2, 3. Values higher than 3 are considered as 3 [default: 0]
-  -h, --help                   Print help
-  -V, --version                Print version
+  -s, --single-file              Whether path is a single Cairo file
+      --sierra-json              Whether path is a single Sierra JSON file
+  -O, --opt-level <OPT_LEVEL>    Optimization level (Valid: 0, 1, 2, 3). Values higher than 3 are considered as 3 [default: 0]
+      --stats-path <STATS_PATH>  The compilation statistics path
+  -h, --help                     Print help (see more with '--help')
+  -V, --version                  Print version
 ```
 
 ###  `cairo-native-dump`
