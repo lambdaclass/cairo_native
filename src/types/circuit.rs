@@ -278,12 +278,13 @@ pub fn build_circuit_data<'ctx>(
 ///
 /// ## Layout:
 ///
-/// Holds N_VALUES elements, where each element is a u384 struct,
-/// A u384 struct contains 4 limbs, each a u96 integer.
+/// Holds 1 + N_VALUES + N_INPUTS elements, where each element is an u384 integer (u384i),
+///
+/// Also holds the modulus as a u384 struct. An u384 struct (u348s) contains 4 limbs, each a u96 integer.
 ///
 /// ```txt
 /// type = struct {
-///     data: *u384s,
+///     data: *u384i,
 ///     modulus: u384s,
 /// };
 ///
@@ -331,15 +332,15 @@ pub fn build_circuit_outputs<'ctx>(
                 0,
             )?;
 
-            let u384_struct_layout = layout_repeat(&get_integer_layout(96), 4)?.0;
+            let u384_integer_layout = get_integer_layout(384);
 
             let new_gates_ptr = build_array_dup(
                 context,
                 &entry,
                 location,
                 gates_ptr,
-                circuit.circuit_info.values.len(),
-                u384_struct_layout,
+                circuit.circuit_info.values.len() + circuit.circuit_info.n_inputs + 1,
+                u384_integer_layout,
             )?;
 
             let new_outputs = entry.insert_value(context, location, outputs, new_gates_ptr, 0)?;
