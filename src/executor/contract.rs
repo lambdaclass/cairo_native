@@ -266,6 +266,7 @@ impl AotContractExecutor {
                 }
             }
 
+            let mut circuits_count = 0;
             for type_declaration in &program.type_declarations {
                 if let Ok(type_concrete) = registry.get_type(&type_declaration.id) {
                     let type_id = format!("{}", type_declaration.id);
@@ -285,9 +286,16 @@ impl AotContractExecutor {
                             .entry(circuit_gate_name)
                             .or_insert(0) += 1;
                     }
+
+                    if let CoreTypeConcrete::Circuit(CircuitTypeConcrete::CircuitData(_)) =
+                        type_concrete
+                    {
+                        circuits_count += 1;
+                    }
                 }
             }
             stats.max_types_sizes.retain(|_, v| *v != 0);
+            stats.sierra_circuits_count = Some(circuits_count);
 
             let mut max_params_size = 0;
             let mut accum_params_size = 0;

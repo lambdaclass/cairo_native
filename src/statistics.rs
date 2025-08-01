@@ -13,26 +13,28 @@ pub struct Statistics {
     pub sierra_statement_count: Option<usize>,
     /// Number of user functions defined in the Sierra code.
     pub sierra_func_count: Option<usize>,
-    /// Max number of parameters in a sierra function
+    /// Max number of parameters in a Sierra function
     pub sierra_func_max_params: Option<usize>,
-    /// Avg number of parameters in a sierra function
+    /// Avg number of parameters in a Sierra function
     pub sierra_func_avg_params: Option<usize>,
-    /// Max number of return types in a sierra function
+    /// Max number of return types in a Sierra function
     pub sierra_func_max_return_types: Option<usize>,
-    /// Avg number of return types in a sierra function
+    /// Avg number of return types in a Sierra function
     pub sierra_func_avg_return_types: Option<usize>,
     /// Max size of params in a sierra function
     pub sierra_max_params_size: Option<usize>,
-    /// Avg size of params in a sierra function
+    /// Avg size of params in a Sierra function
     pub sierra_avg_params_size: Option<usize>,
-    /// Max size of return types in a sierra function
+    /// Max size of return types in a Sierra function
     pub sierra_max_return_types_size: Option<usize>,
-    /// Avg size of return types in a sierra function
+    /// Avg size of return types in a Sierra function
     pub sierra_avg_return_types_size: Option<usize>,
     /// Number of statements for each distinct libfunc.
     pub sierra_libfunc_frequency: BTreeMap<String, u128>,
     /// Number of times each circuit gate is used
     pub sierra_circuit_gates_count: BTreeMap<String, usize>,
+    /// Number of circuits in Sierra
+    pub sierra_circuits_count: Option<usize>,
     /// Number of MLIR operations generated.
     pub mlir_operation_count: Option<u128>,
     /// Number of MLIR operations generated for each distinct libfunc.
