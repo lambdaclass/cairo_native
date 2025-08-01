@@ -313,7 +313,7 @@ fn build_eval<'ctx, 'this>(
     let circuit_data = entry.arg(3)?;
     let circuit_modulus = entry.arg(4)?;
 
-    // arguments 5 and 6 are used to build the gate 0 (with constant value 1)
+    // Arguments 5 and 6 are used to build the gate 0 (with constant value 1).
     // let zero = entry.argument(5)?;
     // let one = entry.argument(6)?;
 
@@ -416,12 +416,19 @@ fn build_eval<'ctx, 'this>(
     Ok(())
 }
 
-/// Builds the evaluation of all circuit gates, returning:
-/// - An array of two branches, the success block and the error block respectively.
-///   - The error block contains the index of the first failure as argument.
-/// - A vector of the gate values. In case of failure, not all values are guaranteed to be computed.
+/// Builds the evaluation of the full circuit
 ///
-/// The original Cairo hint evaluates all gates, even in case of failure. This implementation exits on first error, as there is no need for the partial outputs yet.
+/// Returns two branches. The success block and the error block respectively.
+/// - The success block receives:
+///   - The evaluated circuit pointer.
+/// - The error block receives:
+///   - The evaluated circuit pointer.
+///   - The index of the first gate that could not be computed.
+///
+/// This function consumes the `circuit_data` input variable, and frees the underlying memory.
+///
+/// The original Cairo hint evaluates all gates, even in case of failure.
+/// This implementation exits on first error, as there is no need for the partial outputs yet.
 fn build_gate_evaluation<'ctx, 'this>(
     context: &'this Context,
     mut block: &'this Block<'ctx>,
@@ -491,7 +498,7 @@ fn build_gate_evaluation<'ctx, 'this>(
         circuit_input_length,
     );
 
-    // Free circuit data, as we already copied it to the full circuit array.
+    // Free input circuit data, as we already copied it to the full circuit array.
     block.append_operation(ReallocBindingsMeta::free(context, circuit_data, location)?);
 
     // Mark the input gates as known, and the remaining ones as unknown.
