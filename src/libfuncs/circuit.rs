@@ -327,7 +327,7 @@ fn build_eval<'ctx, 'this>(
         circuit_info.add_offsets.len() * ADD_MOD_BUILTIN_SIZE,
     )?;
 
-    let ([ok_block, err_block], gates) = build_gate_evaluation(
+    let [ok_block, err_block] = build_gate_evaluation(
         context,
         entry,
         location,
@@ -339,17 +339,6 @@ fn build_eval<'ctx, 'this>(
 
     // Ok case
     {
-        // We drop circuit_data, as its consumed by this libfunc.
-        if let Some(drop_overrides_meta) = metadata.get::<DropOverridesMeta>() {
-            drop_overrides_meta.invoke_override(
-                context,
-                ok_block,
-                location,
-                &info.signature.param_signatures[3].ty,
-                circuit_data,
-            )?;
-        }
-
         // Increase the mul mod builtin pointer by the number of evaluated gates.
         // If the evaluation succedes, then we assume that every gate was evaluated.
         // https://github.com/starkware-libs/cairo/blob/v2.12.0-dev.1/crates/cairo-lang-sierra-to-casm/src/invocations/circuit.rs?plain=1#L261
@@ -361,42 +350,11 @@ fn build_eval<'ctx, 'this>(
             circuit_info.mul_offsets.len() * MUL_MOD_BUILTIN_SIZE,
         )?;
 
-        // convert circuit output from integer representation to struct representation
-        let gates = gates
-            .into_iter()
-            .map(|value| u384_integer_to_struct(context, ok_block, location, value))
-            .collect::<Result<Vec<_>>>()?;
-
-        // Calculate full capacity for array.
-        let outputs_capacity = circuit_info.values.len();
-        let u384_struct_layout = layout_repeat(&get_integer_layout(96), 4)?.0;
-        let outputs_capacity_bytes = layout_repeat(&u384_struct_layout, outputs_capacity)?
-            .0
-            .pad_to_align()
-            .size();
-        let outputs_capacity_bytes_value =
-            ok_block.const_int(context, location, outputs_capacity_bytes, 64)?;
-
-        // Alloc memory for array.
-        let ptr_ty = llvm::r#type::pointer(context, 0);
-        let outputs_ptr = ok_block.append_op_result(llvm::zero(ptr_ty, location))?;
-        let outputs_ptr = ok_block.append_op_result(ReallocBindingsMeta::realloc(
-            context,
-            outputs_ptr,
-            outputs_capacity_bytes_value,
-            location,
-        )?)?;
-
-        for (i, gate) in gates.into_iter().enumerate() {
-            let value_ptr = ok_block.gep(
-                context,
-                location,
-                outputs_ptr,
-                &[GepIndex::Const(i as i32)],
-                build_u384_struct_type(context),
-            )?;
-            ok_block.store(context, location, value_ptr, gate)?;
-        }
+        // TODO: We are saving the whole circuit, including input gates. We
+        // should only save the gates that will be queried later. We are also
+        // saving them in integer form, and should probably be saved in struct
+        // form.
+        let circuit_ptr = ok_block.arg(0)?;
 
         let modulus_struct = u384_integer_to_struct(context, ok_block, location, circuit_modulus)?;
 
@@ -410,7 +368,7 @@ fn build_eval<'ctx, 'this>(
             helper,
             metadata,
             outputs_type_id,
-            &[outputs_ptr, modulus_struct],
+            &[circuit_ptr, modulus_struct],
         )?;
 
         helper.br(ok_block, 0, &[add_mod, mul_mod, outputs], location)?;
@@ -418,16 +376,10 @@ fn build_eval<'ctx, 'this>(
 
     // Error case
     {
-        // We drop circuit_data, as its consumed by this libfunc.
-        if let Some(drop_overrides_meta) = metadata.get::<DropOverridesMeta>() {
-            drop_overrides_meta.invoke_override(
-                context,
-                err_block,
-                location,
-                &info.signature.param_signatures[3].ty,
-                circuit_data,
-            )?;
-        }
+        let circuit_ptr = err_block.arg(0)?;
+
+        // Free circuit data, as we don't return it.
+        err_block.append_operation(ReallocBindingsMeta::free(context, circuit_ptr, location)?);
 
         // We only consider mul gates evaluated before failure
         // Increase the mul mod builtin pointer by the number of evaluated gates.
@@ -436,7 +388,7 @@ fn build_eval<'ctx, 'this>(
         // https://github.com/starkware-libs/cairo/blob/v2.12.0-dev.1/crates/cairo-lang-sierra-to-casm/src/invocations/circuit.rs?plain=1#L261
         let mul_mod = {
             let mul_mod_usage = err_block.muli(
-                err_block.arg(0)?,
+                err_block.arg(1)?,
                 err_block.const_int(context, location, MUL_MOD_BUILTIN_SIZE, 64)?,
                 location,
             )?;
@@ -478,33 +430,82 @@ fn build_gate_evaluation<'ctx, 'this>(
     circuit_info: &circuit::CircuitInfo,
     circuit_data: Value<'ctx, 'ctx>,
     circuit_modulus: Value<'ctx, 'ctx>,
-) -> Result<([&'this Block<'ctx>; 2], Vec<Value<'ctx, 'ctx>>)> {
-    // Throughout the evaluation of the circuit we maintain an array of known gate values
-    // Initially, it only contains the inputs of the circuit.
-    // Unknown values are represented as None
+) -> Result<[&'this Block<'ctx>; 2]> {
+    // Throughout the evaluation of the circuit we maintain an MLIR dynamic
+    // array of gate values. It will contain 1 + N_INPUTS + N_GATES elements.
+    //
+    // Initially, it only contains the inputs of the circuit and the gates
+    // values are undefined. Each gate evaluation will set the value of one
+    // gate, until all gates values are known. To know which gates have been
+    // evaluated, we keep a flag vector (compile-time).
 
-    let mut values = vec![None; 1 + circuit_info.n_inputs + circuit_info.values.len()];
-    values[0] = Some(block.const_int(context, location, 1, 384)?);
+    let ptr_type = llvm::r#type::pointer(context, 0);
+    let u384_type = IntegerType::new(context, 384).into();
+    let u384_layout = &get_integer_layout(384);
+
+    // Alloc memory for the full circuit.
+    let circuit_length = block.const_int(
+        context,
+        location,
+        (1 + circuit_info.n_inputs + circuit_info.values.len()) * u384_layout.pad_to_align().size(),
+        64,
+    )?;
+    let circuit_ptr = block.append_op_result(llvm::zero(ptr_type, location))?;
+    let circuit_ptr = block.append_op_result(ReallocBindingsMeta::realloc(
+        context,
+        circuit_ptr,
+        circuit_length,
+        location,
+    )?)?;
+
+    // Insert `1` as the first gate
+    let first_element_ptr = block.gep(
+        context,
+        location,
+        circuit_ptr,
+        &[GepIndex::Const(0)],
+        u384_type,
+    )?;
+    let k1_u384 = block.const_int(context, location, 1, 384)?;
+    block.store(context, location, first_element_ptr, k1_u384)?;
+
+    // Insert the known input gates
+    let input_start_ptr = block.gep(
+        context,
+        location,
+        circuit_ptr,
+        &[GepIndex::Const(1)],
+        u384_type,
+    )?;
+    let circuit_input_length = block.const_int(
+        context,
+        location,
+        circuit_info.n_inputs * u384_layout.pad_to_align().size(),
+        64,
+    )?;
+    block.memcpy(
+        context,
+        location,
+        circuit_data,
+        input_start_ptr,
+        circuit_input_length,
+    );
+
+    // Free circuit data, as we already copied it to the full circuit array.
+    block.append_operation(ReallocBindingsMeta::free(context, circuit_data, location)?);
+
+    // Mark the input gates as known, and the remaining ones as unknown.
+    let mut known_gates = vec![false; 1 + circuit_info.n_inputs + circuit_info.values.len()];
+    known_gates[0] = true;
     for i in 0..circuit_info.n_inputs {
-        let value_ptr = block.gep(
-            context,
-            location,
-            circuit_data,
-            &[GepIndex::Const(i as i32)],
-            IntegerType::new(context, 384).into(),
-        )?;
-        values[i + 1] = Some(block.load(
-            context,
-            location,
-            value_ptr,
-            IntegerType::new(context, 384).into(),
-        )?);
+        known_gates[i + 1] = true;
     }
 
-    let err_block = helper.append_block(Block::new(&[(
-        IntegerType::new(context, 64).into(),
-        location,
-    )]));
+    let err_block = helper.append_block(Block::new(&[
+        (ptr_type, location),
+        (IntegerType::new(context, 64).into(), location),
+    ]));
+    let ok_block = helper.append_block(Block::new(&[(ptr_type, location)]));
 
     let mut add_offsets = circuit_info.add_offsets.iter().peekable();
     let mut mul_offsets = circuit_info.mul_offsets.iter().enumerate();
@@ -512,10 +513,45 @@ fn build_gate_evaluation<'ctx, 'this>(
     // We loop until all gates have been solved
     loop {
         // We iterate the add gate offsets as long as we can
-        while let Some(&add_gate_offset) = add_offsets.peek() {
-            let lhs_value = values[add_gate_offset.lhs].to_owned();
-            let rhs_value = values[add_gate_offset.rhs].to_owned();
-            let output_value = values[add_gate_offset.output].to_owned();
+        while let Some(&gate_offset) = add_offsets.peek() {
+            // We calculate the pointer of each gate.
+            let lhs_value_ptr = block.gep(
+                context,
+                location,
+                circuit_ptr,
+                &[GepIndex::Const(gate_offset.lhs as i32)],
+                u384_type,
+            )?;
+            let rhs_value_ptr = block.gep(
+                context,
+                location,
+                circuit_ptr,
+                &[GepIndex::Const(gate_offset.rhs as i32)],
+                u384_type,
+            )?;
+            let output_value_ptr = block.gep(
+                context,
+                location,
+                circuit_ptr,
+                &[GepIndex::Const(gate_offset.output as i32)],
+                u384_type,
+            )?;
+            // Only dereference the pointers for known gates.
+            let lhs_value = if known_gates[gate_offset.lhs] {
+                Some(block.load(context, location, lhs_value_ptr, u384_type)?)
+            } else {
+                None
+            };
+            let rhs_value = if known_gates[gate_offset.rhs] {
+                Some(block.load(context, location, rhs_value_ptr, u384_type)?)
+            } else {
+                None
+            };
+            let output_value = if known_gates[gate_offset.output] {
+                Some(block.load(context, location, output_value_ptr, u384_type)?)
+            } else {
+                None
+            };
 
             // Depending on the values known at the time, we can deduce if we are dealing with an ADD gate or a SUB gate.
             match (lhs_value, rhs_value, output_value) {
@@ -544,7 +580,9 @@ fn build_gate_evaluation<'ctx, 'this>(
                     // Truncate back
                     let value =
                         block.trunci(value, IntegerType::new(context, 384).into(), location)?;
-                    values[add_gate_offset.output] = Some(value);
+
+                    block.store(context, location, output_value_ptr, value)?;
+                    known_gates[gate_offset.output] = true;
                 }
                 // SUB: lhs = out - rhs
                 (None, Some(rhs_value), Some(output_value)) => {
@@ -572,7 +610,9 @@ fn build_gate_evaluation<'ctx, 'this>(
                     // Truncate back
                     let value =
                         block.trunci(value, IntegerType::new(context, 384).into(), location)?;
-                    values[add_gate_offset.lhs] = Some(value);
+
+                    block.store(context, location, lhs_value_ptr, value)?;
+                    known_gates[gate_offset.lhs] = true;
                 }
                 // We can't solve this add gate yet, so we break from the loop
                 _ => break,
@@ -582,12 +622,45 @@ fn build_gate_evaluation<'ctx, 'this>(
         }
 
         // If we can't advance any more with add gate offsets, then we solve the next mul gate offset and go back to the start of the loop (solving add gate offsets).
-        if let Some((gate_offset_idx, &circuit::GateOffsets { lhs, rhs, output })) =
-            mul_offsets.next()
-        {
-            let lhs_value = values[lhs].to_owned();
-            let rhs_value = values[rhs].to_owned();
-            let output_value = values[output].to_owned();
+        if let Some((gate_offset_idx, gate_offset)) = mul_offsets.next() {
+            // We calculate the pointer of each gate.
+            let lhs_value_ptr = block.gep(
+                context,
+                location,
+                circuit_ptr,
+                &[GepIndex::Const(gate_offset.lhs as i32)],
+                u384_type,
+            )?;
+            let rhs_value_ptr = block.gep(
+                context,
+                location,
+                circuit_ptr,
+                &[GepIndex::Const(gate_offset.rhs as i32)],
+                u384_type,
+            )?;
+            let output_value_ptr = block.gep(
+                context,
+                location,
+                circuit_ptr,
+                &[GepIndex::Const(gate_offset.output as i32)],
+                u384_type,
+            )?;
+            // Only dereference the pointers for known gates.
+            let lhs_value = if known_gates[gate_offset.lhs] {
+                Some(block.load(context, location, lhs_value_ptr, u384_type)?)
+            } else {
+                None
+            };
+            let rhs_value = if known_gates[gate_offset.rhs] {
+                Some(block.load(context, location, rhs_value_ptr, u384_type)?)
+            } else {
+                None
+            };
+            let output_value = if known_gates[gate_offset.output] {
+                Some(block.load(context, location, output_value_ptr, u384_type)?)
+            } else {
+                None
+            };
 
             // Depending on the values known at the time, we can deduce if we are dealing with an MUL gate or a INV gate.
             match (lhs_value, rhs_value, output_value) {
@@ -616,7 +689,9 @@ fn build_gate_evaluation<'ctx, 'this>(
                     // Truncate back
                     let value =
                         block.trunci(value, IntegerType::new(context, 384).into(), location)?;
-                    values[output] = Some(value)
+
+                    block.store(context, location, output_value_ptr, value)?;
+                    known_gates[gate_offset.output] = true;
                 }
                 // INV: lhs = 1 / rhs
                 (None, Some(rhs_value), Some(_)) => {
@@ -662,7 +737,7 @@ fn build_gate_evaluation<'ctx, 'this>(
                         has_inverse_block,
                         err_block,
                         &[],
-                        &[gate_offset_idx_value],
+                        &[circuit_ptr, gate_offset_idx_value],
                         location,
                     ));
                     block = has_inverse_block;
@@ -691,7 +766,8 @@ fn build_gate_evaluation<'ctx, 'this>(
                     let inverse =
                         block.trunci(inverse, IntegerType::new(context, 384).into(), location)?;
 
-                    values[lhs] = Some(inverse);
+                    block.store(context, location, lhs_value_ptr, inverse)?;
+                    known_gates[gate_offset.lhs] = true;
                 }
                 // The imposibility to solve this mul gate offset would render the circuit unsolvable
                 _ => return Err(SierraAssertError::ImpossibleCircuit.into()),
@@ -702,15 +778,15 @@ fn build_gate_evaluation<'ctx, 'this>(
         }
     }
 
+    block.append_operation(cf::br(ok_block, &[circuit_ptr], location));
+
     // Validate all values have been calculated
     // Should only fail if the circuit is not solvable (bad form)
-    let values = values
-        .into_iter()
-        .skip(1 + circuit_info.n_inputs)
-        .collect::<Option<Vec<Value>>>()
-        .ok_or(SierraAssertError::ImpossibleCircuit)?;
+    if known_gates.iter().any(|&known_gate| !known_gate) {
+        Err(SierraAssertError::ImpossibleCircuit)?;
+    }
 
-    Ok(([block, err_block], values))
+    Ok([ok_block, err_block])
 }
 
 /// Generate MLIR operations for the `circuit_failure_guarantee_verify` libfunc.
@@ -876,16 +952,16 @@ fn build_get_output<'ctx, 'this>(
     };
     let output_type_id = &info.output_ty;
 
+    let u384_type = IntegerType::new(context, 384).into();
+
     let output_offset_idx = *circuit_info
         .values
         .get(output_type_id)
         .ok_or(SierraAssertError::BadTypeInfo)?;
 
-    let output_idx = output_offset_idx - circuit_info.n_inputs - 1;
-
     let outputs = entry.arg(0)?;
 
-    let values_ptr = entry.extract_value(
+    let circuit_ptr = entry.extract_value(
         context,
         location,
         outputs,
@@ -900,20 +976,15 @@ fn build_get_output<'ctx, 'this>(
         1,
     )?;
 
-    let output_struct_ptr = entry.gep(
+    let output_integer_ptr = entry.gep(
         context,
         location,
-        values_ptr,
-        &[GepIndex::Const(output_idx as i32)],
-        build_u384_struct_type(context),
+        circuit_ptr,
+        &[GepIndex::Const(output_offset_idx as i32)],
+        u384_type,
     )?;
-
-    let output_struct = entry.load(
-        context,
-        location,
-        output_struct_ptr,
-        build_u384_struct_type(context),
-    )?;
+    let output_integer = entry.load(context, location, output_integer_ptr, u384_type)?;
+    let output_struct = u384_integer_to_struct(context, entry, location, output_integer)?;
 
     let guarantee_type_id = &info.branch_signatures()[0].vars[1].ty;
     let guarantee = build_struct_value(
