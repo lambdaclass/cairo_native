@@ -101,7 +101,6 @@ use mlir_sys::{
 use std::{
     cell::Cell,
     collections::{hash_map::Entry, BTreeMap, HashMap, HashSet},
-    ffi::c_void,
     ops::Deref,
 };
 
@@ -653,17 +652,11 @@ fn compile_func(
                     // When statistics are enabled, we iterate from the start
                     // to the end block of the compiled libfunc, and count all the operations.
                     if let Some(&mut ref mut stats) = stats {
-                        unsafe extern "C" fn callback(
-                            _: mlir_sys::MlirOperation,
-                            data: *mut c_void,
-                        ) -> mlir_sys::MlirWalkResult {
-                            let data = data.cast::<u128>().as_mut().unwrap();
-                            *data += 1;
-                            0
-                        }
-                        let data = walk_mlir_block(*block, *helper.last_block.get(), callback, 0);
+                        let mut operations = 0;
+                        walk_mlir_block(*block, *helper.last_block.get(), &mut |_| operations += 1);
                         let name = libfunc_to_name(libfunc).to_string();
-                        *stats.mlir_operations_by_libfunc.entry(name).or_insert(0) += data;
+
+                        *stats.mlir_operations_by_libfunc.entry(name).or_insert(0) += operations;
                     }
 
                     native_assert!(

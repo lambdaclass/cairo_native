@@ -1,37 +1,42 @@
-use cairo_lang_sierra::extensions::{
-    array::ArrayConcreteLibfunc,
-    boolean::BoolConcreteLibfunc,
-    bounded_int::BoundedIntConcreteLibfunc,
-    boxing::BoxConcreteLibfunc,
-    bytes31::Bytes31ConcreteLibfunc,
-    casts::CastConcreteLibfunc,
-    circuit::CircuitConcreteLibfunc,
-    const_type::ConstConcreteLibfunc,
-    core::CoreConcreteLibfunc,
-    coupon::CouponConcreteLibfunc,
-    debug::DebugConcreteLibfunc,
-    ec::EcConcreteLibfunc,
-    enm::EnumConcreteLibfunc,
-    felt252::{Felt252BinaryOperationConcrete, Felt252BinaryOperator, Felt252Concrete},
-    felt252_dict::{Felt252DictConcreteLibfunc, Felt252DictEntryConcreteLibfunc},
-    gas::GasConcreteLibfunc,
-    int::{
-        signed::SintConcrete, signed128::Sint128Concrete, unsigned::UintConcrete,
-        unsigned128::Uint128Concrete, unsigned256::Uint256Concrete, unsigned512::Uint512Concrete,
-        IntOperator,
+use cairo_lang_sierra::{
+    extensions::{
+        array::ArrayConcreteLibfunc,
+        boolean::BoolConcreteLibfunc,
+        bounded_int::BoundedIntConcreteLibfunc,
+        boxing::BoxConcreteLibfunc,
+        bytes31::Bytes31ConcreteLibfunc,
+        casts::CastConcreteLibfunc,
+        circuit::{CircuitConcreteLibfunc, CircuitTypeConcrete},
+        const_type::ConstConcreteLibfunc,
+        core::{CoreConcreteLibfunc, CoreLibfunc, CoreType, CoreTypeConcrete},
+        coupon::CouponConcreteLibfunc,
+        debug::DebugConcreteLibfunc,
+        ec::EcConcreteLibfunc,
+        enm::EnumConcreteLibfunc,
+        felt252::{Felt252BinaryOperationConcrete, Felt252BinaryOperator, Felt252Concrete},
+        felt252_dict::{Felt252DictConcreteLibfunc, Felt252DictEntryConcreteLibfunc},
+        gas::GasConcreteLibfunc,
+        int::{
+            signed::SintConcrete, signed128::Sint128Concrete, unsigned::UintConcrete,
+            unsigned128::Uint128Concrete, unsigned256::Uint256Concrete,
+            unsigned512::Uint512Concrete, IntOperator,
+        },
+        mem::MemConcreteLibfunc,
+        nullable::NullableConcreteLibfunc,
+        pedersen::PedersenConcreteLibfunc,
+        poseidon::PoseidonConcreteLibfunc,
+        range::IntRangeConcreteLibfunc,
+        starknet::{
+            secp256::{Secp256ConcreteLibfunc, Secp256OpConcreteLibfunc},
+            testing::TestingConcreteLibfunc,
+            StarknetConcreteLibfunc, StarknetTypeConcrete,
+        },
+        structure::StructConcreteLibfunc,
     },
-    mem::MemConcreteLibfunc,
-    nullable::NullableConcreteLibfunc,
-    pedersen::PedersenConcreteLibfunc,
-    poseidon::PoseidonConcreteLibfunc,
-    range::IntRangeConcreteLibfunc,
-    starknet::{
-        secp256::{Secp256ConcreteLibfunc, Secp256OpConcreteLibfunc},
-        testing::TestingConcreteLibfunc,
-        StarknetConcreteLibfunc,
-    },
-    structure::StructConcreteLibfunc,
+    ids::ConcreteTypeId,
+    program_registry::ProgramRegistry,
 };
+use itertools::Itertools;
 
 pub const fn libfunc_to_name(value: &CoreConcreteLibfunc) -> &'static str {
     match value {
@@ -417,5 +422,132 @@ pub const fn libfunc_to_name(value: &CoreConcreteLibfunc) -> &'static str {
         CoreConcreteLibfunc::Blake(_) => "blake",
         CoreConcreteLibfunc::QM31(_) => "qm31",
         CoreConcreteLibfunc::UnsafePanic(_) => "unsafe_panic",
+    }
+}
+
+pub fn generic_type_to_name(
+    registry: &ProgramRegistry<CoreType, CoreLibfunc>,
+    name: &str,
+    args: &[ConcreteTypeId],
+) -> String {
+    format!(
+        "{}<{}>",
+        name,
+        args.iter()
+            .map(|field_type| {
+                registry
+                    .get_type(field_type)
+                    .expect("failed to find type in registry")
+            })
+            .map(|field_type| type_to_name(registry, field_type))
+            .join(",")
+    )
+}
+
+pub fn type_to_name(
+    registry: &ProgramRegistry<CoreType, CoreLibfunc>,
+    ty: &CoreTypeConcrete,
+) -> String {
+    match ty {
+        CoreTypeConcrete::Struct(info) => generic_type_to_name(registry, "struct", &info.members),
+        CoreTypeConcrete::Enum(info) => generic_type_to_name(registry, "enum", &info.variants),
+        CoreTypeConcrete::BoundedInt(info) => {
+            format!("bounded_int<{},{}>", info.range.lower, info.range.upper)
+        }
+        CoreTypeConcrete::Array(info) => {
+            generic_type_to_name(registry, "array", &[info.ty.clone()])
+        }
+        CoreTypeConcrete::Snapshot(info) => {
+            generic_type_to_name(registry, "snapshot", &[info.ty.clone()])
+        }
+        CoreTypeConcrete::Span(info) => generic_type_to_name(registry, "span", &[info.ty.clone()]),
+        CoreTypeConcrete::Felt252Dict(info) => {
+            generic_type_to_name(registry, "felt252_dict", &[info.ty.clone()])
+        }
+        CoreTypeConcrete::Felt252DictEntry(info) => {
+            generic_type_to_name(registry, "felt252_dict_entry", &[info.ty.clone()])
+        }
+        CoreTypeConcrete::SquashedFelt252Dict(info) => {
+            generic_type_to_name(registry, "squashed_felt252_dict", &[info.ty.clone()])
+        }
+        CoreTypeConcrete::NonZero(info) => {
+            generic_type_to_name(registry, "non_zero", &[info.ty.clone()])
+        }
+        CoreTypeConcrete::Box(info) => generic_type_to_name(registry, "box", &[info.ty.clone()]),
+        CoreTypeConcrete::Uninitialized(info) => {
+            generic_type_to_name(registry, "uninitialized", &[info.ty.clone()])
+        }
+        CoreTypeConcrete::Nullable(info) => {
+            generic_type_to_name(registry, "nullable", &[info.ty.clone()])
+        }
+        CoreTypeConcrete::Const(info) => {
+            generic_type_to_name(registry, "const", &[info.inner_ty.clone()])
+        }
+        CoreTypeConcrete::IntRange(info) => {
+            generic_type_to_name(registry, "int_range", &[info.ty.clone()])
+        }
+        CoreTypeConcrete::Starknet(selector) => match selector {
+            StarknetTypeConcrete::ClassHash(_) => String::from("class_hash"),
+            StarknetTypeConcrete::ContractAddress(_) => String::from("contract_address"),
+            StarknetTypeConcrete::StorageBaseAddress(_) => String::from("storage_base_address"),
+            StarknetTypeConcrete::StorageAddress(_) => String::from("storage_address"),
+            StarknetTypeConcrete::System(_) => String::from("system"),
+            StarknetTypeConcrete::Secp256Point(_) => String::from("secp256_point"),
+            StarknetTypeConcrete::Sha256StateHandle(_) => String::from("sha256_state_handle"),
+        },
+        CoreTypeConcrete::Circuit(selector) => match selector {
+            CircuitTypeConcrete::AddMod(_) => String::from("add_mod"),
+            CircuitTypeConcrete::MulMod(_) => String::from("mul_mod"),
+            CircuitTypeConcrete::AddModGate(_) => String::from("add_mod_gate"),
+            CircuitTypeConcrete::Circuit(_) => String::from("circuit"),
+            CircuitTypeConcrete::CircuitData(_) => String::from("circuit_data"),
+            CircuitTypeConcrete::CircuitOutputs(_) => String::from("circuit_outputs"),
+            CircuitTypeConcrete::CircuitPartialOutputs(_) => {
+                String::from("circuit_partial_outputs")
+            }
+            CircuitTypeConcrete::CircuitDescriptor(_) => String::from("circuit_descriptor"),
+            CircuitTypeConcrete::CircuitFailureGuarantee(_) => {
+                String::from("circuit_failure_guarantee")
+            }
+            CircuitTypeConcrete::CircuitInput(_) => String::from("circuit_input"),
+            CircuitTypeConcrete::CircuitInputAccumulator(_) => {
+                String::from("circuit_input_accumulator")
+            }
+            CircuitTypeConcrete::CircuitModulus(_) => String::from("circuit_modulus"),
+            CircuitTypeConcrete::InverseGate(_) => String::from("inverse_gate"),
+            CircuitTypeConcrete::MulModGate(_) => String::from("mul_mod_gate"),
+            CircuitTypeConcrete::SubModGate(_) => String::from("sub_mod_gate"),
+            CircuitTypeConcrete::U96Guarantee(_) => String::from("u96_guarantee"),
+            CircuitTypeConcrete::U96LimbsLessThanGuarantee(_) => {
+                String::from("u96_limbs_less_than_guarantee")
+            }
+        },
+        CoreTypeConcrete::Felt252(_) => String::from("felt252"),
+        CoreTypeConcrete::QM31(_) => String::from("qm31"),
+        CoreTypeConcrete::Uint8(_) => String::from("uint8"),
+        CoreTypeConcrete::Uint16(_) => String::from("uint16"),
+        CoreTypeConcrete::Uint32(_) => String::from("uint32"),
+        CoreTypeConcrete::Uint64(_) => String::from("uint64"),
+        CoreTypeConcrete::Uint128(_) => String::from("uint128"),
+        CoreTypeConcrete::Sint8(_) => String::from("sint8"),
+        CoreTypeConcrete::Sint16(_) => String::from("sint16"),
+        CoreTypeConcrete::Sint32(_) => String::from("sint32"),
+        CoreTypeConcrete::Sint64(_) => String::from("sint64"),
+        CoreTypeConcrete::Sint128(_) => String::from("sint128"),
+        CoreTypeConcrete::Uint128MulGuarantee(_) => String::from("uint128_mul_guarantee"),
+        CoreTypeConcrete::Bytes31(_) => String::from("bytes31"),
+        CoreTypeConcrete::GasBuiltin(_) => String::from("gas_builtin"),
+        CoreTypeConcrete::RangeCheck(_) => String::from("range_check"),
+        CoreTypeConcrete::Bitwise(_) => String::from("bitwise"),
+        CoreTypeConcrete::Pedersen(_) => String::from("pedersen"),
+        CoreTypeConcrete::Poseidon(_) => String::from("poseidon"),
+        CoreTypeConcrete::SegmentArena(_) => String::from("segment_arena"),
+        CoreTypeConcrete::RangeCheck96(_) => String::from("range_check96"),
+        CoreTypeConcrete::BuiltinCosts(_) => String::from("builtin_costs"),
+        CoreTypeConcrete::Coupon(_) => String::from("coupon"),
+        CoreTypeConcrete::Blake(_) => String::from("blake"),
+        CoreTypeConcrete::EcOp(_) => String::from("ec_op"),
+        CoreTypeConcrete::EcPoint(_) => String::from("ec_point"),
+        CoreTypeConcrete::EcState(_) => String::from("ec_state"),
     }
 }
