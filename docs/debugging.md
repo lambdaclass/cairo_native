@@ -450,14 +450,14 @@ If we find that a particular libfunc is taking too much time to compile/optimize
 For details on how to do this, see the debugging functions `build_mock_runtime_call` and `build_mock_libfunc`. The latter is fully generic, and can be used as a replacement for any libfunc implementation.
 
 For example, to check if the `eval_circuit` libfunc is taking too much time to compile, just replace this:
-```rust
+```rust,ignore
 // at src/libfuncs/circuit.rs
 CircuitConcreteLibfunc::Eval(info) => {
     build_eval(context, registry, entry, location, helper, metadata, info)
 }
 ```
 With this:
-```rust
+```rust,ignore
 CircuitConcreteLibfunc::Eval(info) => {
     build_mock_libfunc(context, registry, entry, location, helper, metadata, info.signature())
 }
