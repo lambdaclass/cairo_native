@@ -11,16 +11,10 @@
 
 use std::{
     any::{Any, TypeId},
-    collections::{hash_map::Entry, HashMap},
+    collections::{hash_map::Entry, BTreeMap, HashMap},
 };
 
-use cairo_lang_sierra::{
-    extensions::core::{CoreLibfunc, CoreType, CoreTypeConcrete},
-    ids::ConcreteTypeId,
-    program_registry::ProgramRegistry,
-};
-
-use crate::debug::type_to_name;
+use cairo_lang_sierra::ids::ConcreteTypeId;
 
 pub mod auto_breakpoint;
 pub mod debug_utils;
@@ -40,7 +34,7 @@ pub mod trace_dump;
 #[derive(Debug)]
 pub struct MetadataStorage {
     entries: HashMap<TypeId, Box<dyn Any>>,
-    types_freqs: HashMap<(String, String), usize>, // KEY = (declared_id, concrete_type)
+    types_freqs: BTreeMap<String, usize>, // KEY = (declared_id, concrete_type)
 }
 
 impl MetadataStorage {
@@ -120,17 +114,13 @@ impl MetadataStorage {
             .expect("the given type does not match the actual")
     }
 
-    pub fn increment_frequency(
-        &mut self,
-        type_id: &ConcreteTypeId,
-        concrete_type: &CoreTypeConcrete,
-        registry: &ProgramRegistry<CoreType, CoreLibfunc>,
-    ) {
+    pub fn increment_frequency(&mut self, type_id: &ConcreteTypeId) {
         let type_id_str = format!("{}", type_id);
-        let type_name = type_to_name(registry, concrete_type);
-        let tuple_key = (type_id_str, type_name);
+        *self.types_freqs.entry(type_id_str).or_insert(0) += 1;
+    }
 
-        *self.types_freqs.entry(tuple_key).or_insert(0) += 1;
+    pub fn types_frequencies(&self) -> BTreeMap<String, usize> {
+        self.types_freqs.clone()
     }
 }
 

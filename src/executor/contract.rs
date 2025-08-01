@@ -214,7 +214,9 @@ impl AotContractExecutor {
 
         // Compile the Sierra program.
         let NativeModule {
-            module, registry, ..
+            module,
+            registry,
+            metadata,
         } = context.compile(
             program,
             true,
@@ -247,6 +249,8 @@ impl AotContractExecutor {
                     *stats.sierra_libfunc_frequency.entry(name).or_insert(0) += 1;
                 }
             }
+
+            stats.sierra_declared_types_freq = metadata.types_frequencies();
         }
 
         // Generate mappings between the entry point's selectors and their function indexes.
