@@ -9,7 +9,6 @@ use crate::{
     },
     native_panic,
     types::TypeBuilder,
-    utils::BlockExt,
 };
 use cairo_lang_sierra::{
     extensions::{
@@ -21,6 +20,7 @@ use cairo_lang_sierra::{
 };
 use melior::{
     dialect::{llvm, ods},
+    helpers::{BuiltinBlockExt, LlvmBlockExt},
     ir::{r#type::IntegerType, Block, Location},
     Context,
 };
