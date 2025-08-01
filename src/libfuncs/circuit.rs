@@ -451,17 +451,18 @@ fn build_gate_evaluation<'ctx, 'this>(
     let u384_layout = &get_integer_layout(384);
 
     // Alloc memory for the full circuit.
-    let circuit_length = block.const_int(
+    let circuit_length = 1 + circuit_info.n_inputs + circuit_info.values.len();
+    let circuit_length_value = block.const_int(
         context,
         location,
-        (1 + circuit_info.n_inputs + circuit_info.values.len()) * u384_layout.pad_to_align().size(),
+        layout_repeat(u384_layout, circuit_length)?.0.size(),
         64,
     )?;
     let circuit_ptr = block.append_op_result(llvm::zero(ptr_type, location))?;
     let circuit_ptr = block.append_op_result(ReallocBindingsMeta::realloc(
         context,
         circuit_ptr,
-        circuit_length,
+        circuit_length_value,
         location,
     )?)?;
 
@@ -484,10 +485,10 @@ fn build_gate_evaluation<'ctx, 'this>(
         &[GepIndex::Const(1)],
         u384_type,
     )?;
-    let circuit_input_length = block.const_int(
+    let circuit_input_length_value = block.const_int(
         context,
         location,
-        circuit_info.n_inputs * u384_layout.pad_to_align().size(),
+        layout_repeat(u384_layout, circuit_info.n_inputs)?.0.size(),
         64,
     )?;
     block.memcpy(
@@ -495,7 +496,7 @@ fn build_gate_evaluation<'ctx, 'this>(
         location,
         circuit_data,
         input_start_ptr,
-        circuit_input_length,
+        circuit_input_length_value,
     );
 
     // Free input circuit data, as we already copied it to the full circuit array.
