@@ -8,20 +8,20 @@
 <a href=#8 id=8 data-nosnippet>8</a>    metadata::{enum_snapshot_variants::EnumSnapshotVariantsMeta, MetadataStorage},
 <a href=#9 id=9 data-nosnippet>9</a>    native_assert, native_panic,
 <a href=#10 id=10 data-nosnippet>10</a>    types::TypeBuilder,
-<a href=#11 id=11 data-nosnippet>11</a>    utils::BlockExt,
-<a href=#12 id=12 data-nosnippet>12</a>};
-<a href=#13 id=13 data-nosnippet>13</a><span class="kw">use </span>cairo_lang_sierra::{
-<a href=#14 id=14 data-nosnippet>14</a>    extensions::{
-<a href=#15 id=15 data-nosnippet>15</a>        core::{CoreLibfunc, CoreType},
-<a href=#16 id=16 data-nosnippet>16</a>        enm::{EnumConcreteLibfunc, EnumFromBoundedIntConcreteLibfunc, EnumInitConcreteLibfunc},
-<a href=#17 id=17 data-nosnippet>17</a>        lib_func::SignatureOnlyConcreteLibfunc,
-<a href=#18 id=18 data-nosnippet>18</a>        ConcreteLibfunc,
-<a href=#19 id=19 data-nosnippet>19</a>    },
-<a href=#20 id=20 data-nosnippet>20</a>    ids::ConcreteTypeId,
-<a href=#21 id=21 data-nosnippet>21</a>    program_registry::ProgramRegistry,
-<a href=#22 id=22 data-nosnippet>22</a>};
-<a href=#23 id=23 data-nosnippet>23</a><span class="kw">use </span>melior::{
-<a href=#24 id=24 data-nosnippet>24</a>    dialect::{arith, cf, llvm, ods},
+<a href=#11 id=11 data-nosnippet>11</a>};
+<a href=#12 id=12 data-nosnippet>12</a><span class="kw">use </span>cairo_lang_sierra::{
+<a href=#13 id=13 data-nosnippet>13</a>    extensions::{
+<a href=#14 id=14 data-nosnippet>14</a>        core::{CoreLibfunc, CoreType},
+<a href=#15 id=15 data-nosnippet>15</a>        enm::{EnumConcreteLibfunc, EnumFromBoundedIntConcreteLibfunc, EnumInitConcreteLibfunc},
+<a href=#16 id=16 data-nosnippet>16</a>        lib_func::SignatureOnlyConcreteLibfunc,
+<a href=#17 id=17 data-nosnippet>17</a>        ConcreteLibfunc,
+<a href=#18 id=18 data-nosnippet>18</a>    },
+<a href=#19 id=19 data-nosnippet>19</a>    ids::ConcreteTypeId,
+<a href=#20 id=20 data-nosnippet>20</a>    program_registry::ProgramRegistry,
+<a href=#21 id=21 data-nosnippet>21</a>};
+<a href=#22 id=22 data-nosnippet>22</a><span class="kw">use </span>melior::{
+<a href=#23 id=23 data-nosnippet>23</a>    dialect::{arith, cf, llvm, ods},
+<a href=#24 id=24 data-nosnippet>24</a>    helpers::{ArithBlockExt, BuiltinBlockExt, LlvmBlockExt},
 <a href=#25 id=25 data-nosnippet>25</a>    ir::{
 <a href=#26 id=26 data-nosnippet>26</a>        attribute::{DenseI64ArrayAttribute, IntegerAttribute},
 <a href=#27 id=27 data-nosnippet>27</a>        r#type::IntegerType,
