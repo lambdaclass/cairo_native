@@ -85,7 +85,7 @@
 
 use crate::{
     error::{Error, Result},
-    utils::{get_integer_layout, BlockExt},
+    utils::get_integer_layout,
 };
 use melior::{
     dialect::{
@@ -93,6 +93,7 @@ use melior::{
         llvm::{self},
         ods,
     },
+    helpers::{ArithBlockExt, BuiltinBlockExt, LlvmBlockExt},
     ir::{
         attribute::{FlatSymbolRefAttribute, IntegerAttribute, StringAttribute, TypeAttribute},
         operation::OperationBuilder,
@@ -192,12 +193,12 @@ impl DebugUtils {
             .into(),
         )?;
 
-        block.load(
+        Ok(block.load(
             context,
             location,
             global_address,
             llvm::r#type::pointer(context, 0),
-        )
+        )?)
     }
 
     pub fn breakpoint_marker(

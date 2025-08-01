@@ -1,10 +1,7 @@
 //! # `u256`-related libfuncs
 
-use super::{BlockExt, LibfuncHelper};
-use crate::{
-    error::Result, libfuncs::increment_builtin_counter_conditionally_by, metadata::MetadataStorage,
-    utils::ProgramRegistryExt,
-};
+use super::{increment_builtin_counter_conditionally_by, LibfuncHelper};
+use crate::{error::Result, metadata::MetadataStorage, utils::ProgramRegistryExt};
 use cairo_lang_sierra::{
     extensions::{
         core::{CoreLibfunc, CoreType},
@@ -19,6 +16,7 @@ use melior::{
         arith::{self, CmpiPredicate},
         llvm, ods, scf,
     },
+    helpers::BuiltinBlockExt,
     ir::{
         attribute::{DenseI64ArrayAttribute, IntegerAttribute},
         operation::OperationBuilder,
