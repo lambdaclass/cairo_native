@@ -490,13 +490,11 @@ fn increment_builtin_counter_by<'ctx: 'a, 'a>(
     value: Value<'ctx, '_>,
     amount: impl Into<BigInt>,
 ) -> crate::error::Result<Value<'ctx, 'a>> {
-    block
-        .append_op_result(arith::addi(
-            value,
-            block.const_int(context, location, amount.into(), 64)?,
-            location,
-        ))
-        .map_err(crate::error::Error::from)
+    Ok(block.append_op_result(arith::addi(
+        value,
+        block.const_int(context, location, amount.into(), 64)?,
+        location,
+    ))?)
 }
 
 fn increment_builtin_counter_conditionally_by<'ctx: 'a, 'a>(
@@ -516,14 +514,12 @@ fn increment_builtin_counter_conditionally_by<'ctx: 'a, 'a>(
     let false_incremented =
         block.append_op_result(arith::addi(value_to_inc, false_amount_value, location))?;
 
-    block
-        .append_op_result(arith::select(
-            condition,
-            true_incremented,
-            false_incremented,
-            location,
-        ))
-        .map_err(crate::error::Error::from)
+    Ok(block.append_op_result(arith::select(
+        condition,
+        true_incremented,
+        false_incremented,
+        location,
+    ))?)
 }
 
 fn build_noop<'ctx, 'this, const N: usize, const PROCESS_BUILTINS: bool>(

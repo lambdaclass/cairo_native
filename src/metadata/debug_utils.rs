@@ -193,14 +193,12 @@ impl DebugUtils {
             .into(),
         )?;
 
-        block
-            .load(
-                context,
-                location,
-                global_address,
-                llvm::r#type::pointer(context, 0),
-            )
-            .map_err(crate::error::Error::from)
+        Ok(block.load(
+            context,
+            location,
+            global_address,
+            llvm::r#type::pointer(context, 0),
+        )?)
     }
 
     pub fn breakpoint_marker(

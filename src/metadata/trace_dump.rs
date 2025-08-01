@@ -87,14 +87,12 @@ impl TraceDumpMeta {
             .into(),
         )?;
 
-        block
-            .load(
-                context,
-                location,
-                global_address,
-                llvm::r#type::pointer(context, 0),
-            )
-            .map_err(crate::error::Error::from)
+        Ok(block.load(
+            context,
+            location,
+            global_address,
+            llvm::r#type::pointer(context, 0),
+        )?)
     }
 
     #[allow(clippy::too_many_arguments)]
@@ -177,9 +175,7 @@ impl TraceDumpMeta {
             ))
             .unwrap();
 
-        block
-            .append_op_result(memref::load(trace_id_ptr, &[], location))
-            .map_err(crate::error::Error::from)
+        Ok(block.append_op_result(memref::load(trace_id_ptr, &[], location))?)
     }
 }
 

@@ -247,14 +247,12 @@ pub fn build_const_type_value<'ctx, 'this>(
             // Offset the value so that 0 matches with lower.
             let value = &value - &range.lower;
 
-            entry
-                .const_int(
-                    context,
-                    location,
-                    value,
-                    inner_type.integer_range(registry)?.offset_bit_width(),
-                )
-                .map_err(crate::error::Error::from)
+            Ok(entry.const_int(
+                context,
+                location,
+                value,
+                inner_type.integer_range(registry)?.offset_bit_width(),
+            )?)
         }
         CoreTypeConcrete::Felt252(_) => {
             let value = match &info.inner_data.as_slice() {
@@ -268,9 +266,7 @@ pub fn build_const_type_value<'ctx, 'this>(
                 _ => value,
             };
 
-            entry
-                .const_int_from_type(context, location, value, inner_ty)
-                .map_err(crate::error::Error::from)
+            Ok(entry.const_int_from_type(context, location, value, inner_ty)?)
         }
         CoreTypeConcrete::Starknet(
             StarknetTypeConcrete::ClassHash(_) | StarknetTypeConcrete::ContractAddress(_),
@@ -286,9 +282,7 @@ pub fn build_const_type_value<'ctx, 'this>(
                 _ => value,
             };
 
-            entry
-                .const_int_from_type(context, location, value, inner_ty)
-                .map_err(crate::error::Error::from)
+            Ok(entry.const_int_from_type(context, location, value, inner_ty)?)
         }
         CoreTypeConcrete::Uint8(_)
         | CoreTypeConcrete::Uint16(_)
@@ -301,9 +295,9 @@ pub fn build_const_type_value<'ctx, 'this>(
         | CoreTypeConcrete::Sint64(_)
         | CoreTypeConcrete::Sint128(_)
         | CoreTypeConcrete::Bytes31(_) => match &info.inner_data.as_slice() {
-            [GenericArg::Value(value)] => entry
-                .const_int_from_type(context, location, value.clone(), inner_ty)
-                .map_err(crate::error::Error::from),
+            [GenericArg::Value(value)] => {
+                Ok(entry.const_int_from_type(context, location, value.clone(), inner_ty)?)
+            }
             _ => Err(Error::ConstDataMismatch),
         },
         _ => native_panic!("const for type {} not implemented", info.inner_ty),

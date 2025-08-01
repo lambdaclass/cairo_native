@@ -159,14 +159,12 @@ impl RuntimeBindingsMeta {
             .into(),
         )?;
 
-        block
-            .load(
-                context,
-                location,
-                global_address,
-                llvm::r#type::pointer(context, 0),
-            )
-            .map_err(crate::error::Error::from)
+        Ok(block.load(
+            context,
+            location,
+            global_address,
+            llvm::r#type::pointer(context, 0),
+        )?)
     }
 
     /// Register if necessary, then invoke the `debug::print()` function.
@@ -457,15 +455,13 @@ impl RuntimeBindingsMeta {
             }
         };
 
-        block
-            .append_op_result(
-                OperationBuilder::new("llvm.call", location)
-                    .add_operands(&[function])
-                    .add_operands(&[size, align, drop_fn])
-                    .add_results(&[llvm::r#type::pointer(context, 0)])
-                    .build()?,
-            )
-            .map_err(crate::error::Error::from)
+        Ok(block.append_op_result(
+            OperationBuilder::new("llvm.call", location)
+                .add_operands(&[function])
+                .add_operands(&[size, align, drop_fn])
+                .add_results(&[llvm::r#type::pointer(context, 0)])
+                .build()?,
+        )?)
     }
 
     /// Register if necessary, then invoke the `dict_alloc_new()` function.
@@ -512,15 +508,13 @@ impl RuntimeBindingsMeta {
         let function =
             self.build_function(context, module, block, location, RuntimeBinding::DictDup)?;
 
-        block
-            .append_op_result(
-                OperationBuilder::new("llvm.call", location)
-                    .add_operands(&[function])
-                    .add_operands(&[ptr])
-                    .add_results(&[llvm::r#type::pointer(context, 0)])
-                    .build()?,
-            )
-            .map_err(crate::error::Error::from)
+        Ok(block.append_op_result(
+            OperationBuilder::new("llvm.call", location)
+                .add_operands(&[function])
+                .add_operands(&[ptr])
+                .add_results(&[llvm::r#type::pointer(context, 0)])
+                .build()?,
+        )?)
     }
 
     /// Register if necessary, then invoke the `dict_get()` function.
