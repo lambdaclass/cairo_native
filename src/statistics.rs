@@ -31,6 +31,8 @@ pub struct Statistics {
     pub sierra_avg_return_types_size: Option<usize>,
     /// Number of statements for each distinct libfunc.
     pub sierra_libfunc_frequency: BTreeMap<String, u128>,
+    /// Number of times each circuit gate is used
+    pub sierra_circuit_gates_count: BTreeMap<String, usize>,
     /// Number of MLIR operations generated.
     pub mlir_operation_count: Option<u128>,
     /// Number of MLIR operations generated for each distinct libfunc.

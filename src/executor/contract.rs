@@ -35,7 +35,7 @@ use crate::{
     arch::AbiArgument,
     clone_option_mut,
     context::NativeContext,
-    debug::libfunc_to_name,
+    debug::{circuit_gate_to_name, libfunc_to_name},
     error::{panic::ToNativeAssertError, Error, Result},
     execution_result::{
         BuiltinStats, ContractExecutionResult, ADD_MOD_BUILTIN_SIZE, BITWISE_BUILTIN_SIZE,
@@ -277,6 +277,13 @@ impl AotContractExecutor {
                             .max_types_sizes
                             .entry(type_id)
                             .and_modify(|val| *val = curr_size);
+                    }
+
+                    if let Some(circuit_gate_name) = circuit_gate_to_name(type_concrete) {
+                        *stats
+                            .sierra_circuit_gates_count
+                            .entry(circuit_gate_name)
+                            .or_insert(0) += 1;
                     }
                 }
             }
