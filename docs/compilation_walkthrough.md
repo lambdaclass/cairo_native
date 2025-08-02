@@ -189,7 +189,7 @@ LLVM_InitializeAllAsmParsers();
 After that we create a LLVM context, and pass it along the module to the
 `mlirTranslateModuleToLLVMIR` method:
 
-```rust ,ignore
+```rust,ignore
 let llvm_module = mlirTranslateModuleToLLVMIR(mlir_module_op, llvm_context);
 ```
 
