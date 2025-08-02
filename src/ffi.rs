@@ -130,30 +130,36 @@ pub fn module_to_object(
         if let Some(&mut ref mut stats) = stats {
             let mut llvmir_instruction_count = 0;
             let mut llvmir_virtual_register_count = 0;
+            let mut llvmir_max_functions_params_len = 0;
 
-            walk_llvm_instructions(llvm_module, |instruction| {
-                // Increase total instruction count.
-                llvmir_instruction_count += 1;
+            walk_llvm_instructions(
+                llvm_module,
+                &mut llvmir_max_functions_params_len,
+                |instruction| {
+                    // Increase total instruction count.
+                    llvmir_instruction_count += 1;
 
-                // Debug string looks like "LLVM{OP}".
-                let full_opcode = format!("{:?}", LLVMGetInstructionOpcode(instruction));
-                // Strip leading "LLVM".
-                let opcode = full_opcode
-                    .strip_prefix("LLVM")
-                    .map(str::to_string)
-                    .unwrap_or(full_opcode);
-                // Update opcode frequency map.
-                *stats.llvmir_opcode_frequency.entry(opcode).or_insert(0) += 1;
+                    // Debug string looks like "LLVM{OP}".
+                    let full_opcode = format!("{:?}", LLVMGetInstructionOpcode(instruction));
+                    // Strip leading "LLVM".
+                    let opcode = full_opcode
+                        .strip_prefix("LLVM")
+                        .map(str::to_string)
+                        .unwrap_or(full_opcode);
+                    // Update opcode frequency map.
+                    *stats.llvmir_opcode_frequency.entry(opcode).or_insert(0) += 1;
 
-                // Increase virtual register count, only if the
-                // instruction value is used somewhere.
-                let first_use = LLVMGetFirstUse(instruction);
-                if !first_use.is_null() {
-                    llvmir_virtual_register_count += 1;
-                }
-            });
+                    // Increase virtual register count, only if the
+                    // instruction value is used somewhere.
+                    let first_use = LLVMGetFirstUse(instruction);
+                    if !first_use.is_null() {
+                        llvmir_virtual_register_count += 1;
+                    }
+                },
+            );
 
             stats.llvmir_instruction_count = Some(llvmir_instruction_count);
+            stats.llvmir_max_functions_params = Some(llvmir_max_functions_params_len);
             stats.llvmir_virtual_register_count = Some(llvmir_virtual_register_count)
         }
 

@@ -35,7 +35,7 @@ use crate::{
     arch::AbiArgument,
     clone_option_mut,
     context::NativeContext,
-    debug::libfunc_to_name,
+    debug::{circuit_gate_to_name, libfunc_to_name},
     error::{panic::ToNativeAssertError, Error, Result},
     execution_result::{
         BuiltinStats, ContractExecutionResult, ADD_MOD_BUILTIN_SIZE, BITWISE_BUILTIN_SIZE,
@@ -79,7 +79,7 @@ use serde::{Deserialize, Serialize};
 use starknet_types_core::felt::Felt;
 use std::{
     alloc::Layout,
-    cmp::Ordering,
+    cmp::{self, Ordering},
     collections::BTreeMap,
     ffi::c_void,
     fs::{self, File},
@@ -210,6 +210,24 @@ impl AotContractExecutor {
             stats.sierra_libfunc_count = Some(program.libfunc_declarations.len());
             stats.sierra_statement_count = Some(program.statements.len());
             stats.sierra_func_count = Some(program.funcs.len());
+
+            let mut max_params = 0;
+            let mut max_return_types = 0;
+            let mut params_acum = 0;
+            let mut return_types_acum = 0;
+            for func in &program.funcs {
+                let curr_params_len = func.signature.ret_types.len();
+                let curr_return_types_len = func.signature.ret_types.len();
+
+                max_params = cmp::max(max_params, curr_params_len);
+                max_return_types = cmp::max(max_return_types, curr_return_types_len);
+                params_acum += curr_params_len;
+                return_types_acum += curr_return_types_len;
+            }
+            stats.sierra_func_max_params = Some(max_params);
+            stats.sierra_func_avg_params = Some(params_acum / program.funcs.len());
+            stats.sierra_func_max_return_types = Some(max_return_types);
+            stats.sierra_func_avg_return_types = Some(return_types_acum / program.funcs.len());
         }
 
         // Compile the Sierra program.
@@ -247,6 +265,72 @@ impl AotContractExecutor {
                     *stats.sierra_libfunc_frequency.entry(name).or_insert(0) += 1;
                 }
             }
+
+            let mut circuits_count = 0;
+            for type_declaration in &program.type_declarations {
+                if let Ok(type_concrete) = registry.get_type(&type_declaration.id) {
+                    let type_id = format!("{}", type_declaration.id);
+                    let max_size = *stats.max_types_sizes.entry(type_id.clone()).or_insert(0);
+                    let curr_size = type_concrete.layout(&registry).unwrap().size();
+
+                    if curr_size > max_size {
+                        stats
+                            .max_types_sizes
+                            .entry(type_id)
+                            .and_modify(|val| *val = curr_size);
+                    }
+
+                    if let Some(circuit_gate_name) = circuit_gate_to_name(type_concrete) {
+                        *stats
+                            .sierra_circuit_gates_count
+                            .entry(circuit_gate_name)
+                            .or_insert(0) += 1;
+                    }
+
+                    if let CoreTypeConcrete::Circuit(CircuitTypeConcrete::CircuitData(_)) =
+                        type_concrete
+                    {
+                        circuits_count += 1;
+                    }
+                }
+            }
+            stats.max_types_sizes.retain(|_, v| *v != 0);
+            stats.sierra_circuits_count = Some(circuits_count);
+
+            let mut max_params_size = 0;
+            let mut accum_params_size = 0;
+            let mut max_return_types_size = 0;
+            let mut accum_return_types_size = 0;
+            for func in &program.funcs {
+                let curr_params_size =
+                    func.signature.param_types.iter().fold(0, |accum, type_id| {
+                        match registry.get_type(type_id) {
+                            Ok(concrete_type) => {
+                                accum + concrete_type.layout(&registry).unwrap().size()
+                            }
+                            Err(_) => accum,
+                        }
+                    });
+                let curr_return_types_size =
+                    func.signature.param_types.iter().fold(0, |accum, type_id| {
+                        match registry.get_type(type_id) {
+                            Ok(concrete_type) => {
+                                accum + concrete_type.layout(&registry).unwrap().size()
+                            }
+                            Err(_) => accum,
+                        }
+                    });
+
+                max_params_size = cmp::max(max_params_size, curr_params_size);
+                max_return_types_size = cmp::max(max_return_types_size, curr_return_types_size);
+                accum_params_size += curr_params_size;
+                accum_return_types_size += curr_params_size;
+            }
+            stats.sierra_max_params_size = Some(max_params_size);
+            stats.sierra_avg_params_size = Some(accum_params_size / program.funcs.len());
+            stats.sierra_max_return_types_size = Some(max_return_types_size);
+            stats.sierra_avg_return_types_size =
+                Some(accum_return_types_size / program.funcs.len());
         }
 
         // Generate mappings between the entry point's selectors and their function indexes.

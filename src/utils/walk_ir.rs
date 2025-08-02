@@ -1,6 +1,6 @@
 use llvm_sys::{
     core::{
-        LLVMGetFirstBasicBlock, LLVMGetFirstFunction, LLVMGetFirstInstruction,
+        LLVMCountParams, LLVMGetFirstBasicBlock, LLVMGetFirstFunction, LLVMGetFirstInstruction,
         LLVMGetNextBasicBlock, LLVMGetNextFunction, LLVMGetNextInstruction,
     },
     prelude::{LLVMModuleRef, LLVMValueRef},
@@ -71,7 +71,11 @@ pub fn walk_mlir_block(
 ///
 /// As this function receives a closure rather than a function, there is no need
 /// to receive initial data, and can instead modify the captured environment.
-pub unsafe fn walk_llvm_instructions(llvm_module: LLVMModuleRef, mut f: impl FnMut(LLVMValueRef)) {
+pub unsafe fn walk_llvm_instructions(
+    llvm_module: LLVMModuleRef,
+    llvm_max_params: &mut u32,
+    mut f: impl FnMut(LLVMValueRef),
+) {
     let new_value = |function_ptr: *mut LLVMValue| {
         if function_ptr.is_null() {
             None
@@ -89,6 +93,10 @@ pub unsafe fn walk_llvm_instructions(llvm_module: LLVMModuleRef, mut f: impl FnM
 
     let mut current_function = new_value(LLVMGetFirstFunction(llvm_module));
     while let Some(function) = current_function {
+        let curr_params_len = LLVMCountParams(function);
+        if curr_params_len > *llvm_max_params {
+            *llvm_max_params = curr_params_len;
+        }
         let mut current_block = new_block(LLVMGetFirstBasicBlock(function));
         while let Some(block) = current_block {
             let mut current_instruction = new_value(LLVMGetFirstInstruction(block));
