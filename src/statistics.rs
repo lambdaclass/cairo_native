@@ -16,6 +16,8 @@ pub struct Statistics {
     pub sierra_func_count: Option<usize>,
     /// Number of statements for each distinct libfunc.
     pub sierra_libfunc_frequency: BTreeMap<String, u128>,
+    /// Number of times a Sierra declared type was built
+    pub sierra_declared_types_freq: BTreeMap<String, usize>,
     /// Number of MLIR operations generated.
     pub mlir_operation_count: Option<u128>,
     /// Number of MLIR operations generated for each distinct libfunc.
