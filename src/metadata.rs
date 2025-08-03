@@ -11,8 +11,10 @@
 
 use std::{
     any::{Any, TypeId},
-    collections::{hash_map::Entry, HashMap},
+    collections::{hash_map::Entry, BTreeMap, HashMap},
 };
+
+use cairo_lang_sierra::ids::ConcreteTypeId;
 
 pub mod auto_breakpoint;
 pub mod debug_utils;
@@ -32,6 +34,7 @@ pub mod trace_dump;
 #[derive(Debug)]
 pub struct MetadataStorage {
     entries: HashMap<TypeId, Box<dyn Any>>,
+    types_freqs: BTreeMap<String, usize>, // KEY = (declared_id, concrete_type)
 }
 
 impl MetadataStorage {
@@ -109,6 +112,15 @@ impl MetadataStorage {
             .or_insert_with(|| Box::new(meta_gen()))
             .downcast_mut::<T>()
             .expect("the given type does not match the actual")
+    }
+
+    pub fn increment_frequency(&mut self, type_id: &ConcreteTypeId) {
+        let type_id_str = format!("{}", type_id);
+        *self.types_freqs.entry(type_id_str).or_insert(0) += 1;
+    }
+
+    pub fn types_frequencies(&self) -> BTreeMap<String, usize> {
+        self.types_freqs.clone()
     }
 }
 

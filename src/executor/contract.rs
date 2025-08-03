@@ -232,7 +232,9 @@ impl AotContractExecutor {
 
         // Compile the Sierra program.
         let NativeModule {
-            module, registry, ..
+            module,
+            registry,
+            metadata,
         } = context.compile(
             program,
             true,
@@ -331,6 +333,7 @@ impl AotContractExecutor {
             stats.sierra_max_return_types_size = Some(max_return_types_size);
             stats.sierra_avg_return_types_size =
                 Some(accum_return_types_size / program.funcs.len());
+            stats.sierra_declared_types_freq = metadata.types_frequencies();
         }
 
         // Generate mappings between the entry point's selectors and their function indexes.

@@ -35,6 +35,8 @@ pub struct Statistics {
     pub sierra_circuit_gates_count: BTreeMap<String, usize>,
     /// Number of circuits in Sierra
     pub sierra_circuits_count: Option<usize>,
+    /// Number of times a Sierra declared type was built
+    pub sierra_declared_types_freq: BTreeMap<String, usize>,
     /// Number of MLIR operations generated.
     pub mlir_operation_count: Option<u128>,
     /// Number of MLIR operations generated for each distinct libfunc.

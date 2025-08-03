@@ -159,6 +159,7 @@ impl TypeBuilder for CoreTypeConcrete {
         metadata: &mut MetadataStorage,
         self_ty: &ConcreteTypeId,
     ) -> Result<Type<'ctx>, Self::Error> {
+        metadata.increment_frequency(self_ty);
         match self {
             Self::Array(info) => self::array::build(
                 context,
