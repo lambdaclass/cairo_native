@@ -1,3 +1,4 @@
+use cairo_lang_sierra::extensions::circuit::CircuitInfo;
 use serde::Serialize;
 use std::collections::BTreeMap;
 
@@ -86,6 +87,42 @@ impl Statistics {
             && self.compilation_llvm_to_object_time_ms.is_some()
             && self.compilation_linking_time_ms.is_some()
             && self.object_size_bytes.is_some()
+    }
+
+    pub fn add_circuit(&mut self, info: &CircuitInfo, circuits_count: &mut usize, type_id: String) {
+        *circuits_count += 1;
+        let mut add_gate_count = 0;
+        let mut sub_gate_count = 0;
+        let mut mul_gate_count = 0;
+        let mut inverse_gate_count = 0;
+        for gate_offset in &info.add_offsets {
+            if gate_offset.lhs > gate_offset.output {
+                // SUB
+                sub_gate_count += 1;
+            } else {
+                // ADD
+                add_gate_count += 1;
+            }
+        }
+
+        for gate_offset in &info.mul_offsets {
+            if gate_offset.lhs > gate_offset.output {
+                // INVERSE
+                inverse_gate_count += 1;
+            } else {
+                // MUL
+                mul_gate_count += 1;
+            }
+        }
+        self.sierra_gates_per_circuit.insert(
+            type_id.clone(),
+            (
+                add_gate_count,
+                sub_gate_count,
+                mul_gate_count,
+                inverse_gate_count,
+            ),
+        );
     }
 }
 

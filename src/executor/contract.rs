@@ -280,39 +280,7 @@ impl AotContractExecutor {
                     if let CoreTypeConcrete::Circuit(CircuitTypeConcrete::Circuit(info)) =
                         type_concrete
                     {
-                        circuits_count += 1;
-                        let mut add_gate_count = 0;
-                        let mut sub_gate_count = 0;
-                        let mut mul_gate_count = 0;
-                        let mut inverse_gate_count = 0;
-                        for gate_offset in &info.circuit_info.add_offsets {
-                            if gate_offset.lhs > gate_offset.output {
-                                // SUB
-                                sub_gate_count += 1;
-                            } else {
-                                // ADD
-                                add_gate_count += 1;
-                            }
-                        }
-
-                        for gate_offset in &info.circuit_info.mul_offsets {
-                            if gate_offset.lhs > gate_offset.output {
-                                // INVERSE
-                                inverse_gate_count += 1;
-                            } else {
-                                // MUL
-                                mul_gate_count += 1;
-                            }
-                        }
-                        stats.sierra_gates_per_circuit.insert(
-                            type_id.clone(),
-                            (
-                                add_gate_count,
-                                sub_gate_count,
-                                mul_gate_count,
-                                inverse_gate_count,
-                            ),
-                        );
+                        stats.add_circuit(&info.circuit_info, &mut circuits_count, type_id);
                     }
 
                     if let Some(circuit_gate_name) = circuit_gate_to_name(type_concrete) {
