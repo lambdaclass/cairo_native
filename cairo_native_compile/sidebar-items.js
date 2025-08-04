@@ -1,1 +1,1 @@
-window.SIDEBAR_ITEMS = {"enum":["RunMode"],"fn":["main"],"struct":["Args"]};
+window.SIDEBAR_ITEMS = {"fn":["main"],"struct":["Args"]};
