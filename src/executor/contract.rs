@@ -270,16 +270,16 @@ impl AotContractExecutor {
             for type_declaration in &program.type_declarations {
                 if let Ok(type_concrete) = registry.get_type(&type_declaration.id) {
                     let type_id = format!("{}", type_declaration.id);
-                    let max_size = *stats
+                    let type_size = type_concrete.layout(&registry).unwrap().size();
+                    stats
                         .sierra_declared_types_sizes
-                        .entry(type_id.clone())
-                        .or_insert(0);
-                    let curr_size = type_concrete.layout(&registry).unwrap().size();
+                        .insert(type_id.clone(), type_size);
 
                     //////////////////////////
                     if let CoreTypeConcrete::Circuit(CircuitTypeConcrete::Circuit(info)) =
                         type_concrete
                     {
+                        circuits_count += 1;
                         let mut add_gate_count = 0;
                         let mut sub_gate_count = 0;
                         let mut mul_gate_count = 0;
@@ -315,24 +315,11 @@ impl AotContractExecutor {
                     }
                     //////////////////////////
 
-                    if curr_size > max_size {
-                        stats
-                            .sierra_declared_types_sizes
-                            .entry(type_id)
-                            .and_modify(|val| *val = curr_size);
-                    }
-
                     if let Some(circuit_gate_name) = circuit_gate_to_name(type_concrete) {
                         *stats
                             .sierra_circuit_gates_count
                             .entry(circuit_gate_name)
                             .or_insert(0) += 1;
-                    }
-
-                    if let CoreTypeConcrete::Circuit(CircuitTypeConcrete::CircuitData(_)) =
-                        type_concrete
-                    {
-                        circuits_count += 1;
                     }
                 }
             }
