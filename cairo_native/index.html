@@ -93,7 +93,17 @@ export TABLEGEN_190_PREFIX=/usr/lib/llvm-19</code></pre></div>
 <p>The makefile <code>deps</code> target (which you should have ran before) installs LLVM 19
 with brew for you, afterwards you need to execute the <code>env.sh</code> script to setup
 the needed environment variables.</p>
-<div class="example-wrap"><pre class="language-bash"><code>source env.sh</code></pre></div><h4 id="make-targets"><a class="doc-anchor" href="#make-targets">§</a>Make targets:</h4>
+<div class="example-wrap"><pre class="language-bash"><code>source env.sh</code></pre></div><h5 id="configure-rust-analyzer-for-vscode"><a class="doc-anchor" href="#configure-rust-analyzer-for-vscode">§</a>Configure rust-analyzer for Vscode</h5>
+<p>If you are using vscode as your code editor, you’ll need to add this to you settings.json:</p>
+<div class="example-wrap"><pre class="language-json"><code>&quot;rust-analyzer.cargo.extraEnv&quot;: {
+  &quot;MLIR_SYS_190_PREFIX&quot;: &quot;&lt;path-to-llvm-19&gt;&quot;,
+  &quot;LLVM_SYS_191_PREFIX&quot;: &quot;&lt;path-to-llvm-19&gt;&quot;,
+  &quot;TABLEGEN_190_PREFIX&quot;: &quot;&lt;path-to-llvm-19&gt;&quot;,
+}</code></pre></div>
+<p>if you are on MacOs, you’ll need to add this extra line:</p>
+<div class="example-wrap"><pre class="language-json"><code>&quot;LIBRARY_PATH&quot;: &quot;/opt/homebrew/lib&quot;,</code></pre></div>
+<p>Without this additional config, rust-analyzer won’t be able to work properly</p>
+<h4 id="make-targets"><a class="doc-anchor" href="#make-targets">§</a>Make targets:</h4>
 <p>Running <code>make</code> by itself will check whether the required LLVM installation and
 corelib is found, and then list available targets.</p>
 <div class="example-wrap"><pre class="language-bash"><code>% make
