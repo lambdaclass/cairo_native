@@ -270,12 +270,54 @@ impl AotContractExecutor {
             for type_declaration in &program.type_declarations {
                 if let Ok(type_concrete) = registry.get_type(&type_declaration.id) {
                     let type_id = format!("{}", type_declaration.id);
-                    let max_size = *stats.max_types_sizes.entry(type_id.clone()).or_insert(0);
+                    let max_size = *stats
+                        .sierra_declared_types_sizes
+                        .entry(type_id.clone())
+                        .or_insert(0);
                     let curr_size = type_concrete.layout(&registry).unwrap().size();
+
+                    //////////////////////////
+                    if let CoreTypeConcrete::Circuit(CircuitTypeConcrete::Circuit(info)) =
+                        type_concrete
+                    {
+                        let mut add_gate_count = 0;
+                        let mut sub_gate_count = 0;
+                        let mut mul_gate_count = 0;
+                        let mut inverse_gate_count = 0;
+                        for gate_offset in &info.circuit_info.add_offsets {
+                            if gate_offset.lhs > gate_offset.output {
+                                // SUB
+                                sub_gate_count += 1;
+                            } else {
+                                // ADD
+                                add_gate_count += 1;
+                            }
+                        }
+
+                        for gate_offset in &info.circuit_info.mul_offsets {
+                            if gate_offset.lhs > gate_offset.output {
+                                // INVERSE
+                                inverse_gate_count += 1;
+                            } else {
+                                // MUL
+                                mul_gate_count += 1;
+                            }
+                        }
+                        stats.sierra_gates_per_circuit.insert(
+                            type_id.clone(),
+                            (
+                                add_gate_count,
+                                sub_gate_count,
+                                mul_gate_count,
+                                inverse_gate_count,
+                            ),
+                        );
+                    }
+                    //////////////////////////
 
                     if curr_size > max_size {
                         stats
-                            .max_types_sizes
+                            .sierra_declared_types_sizes
                             .entry(type_id)
                             .and_modify(|val| *val = curr_size);
                     }
@@ -294,7 +336,7 @@ impl AotContractExecutor {
                     }
                 }
             }
-            stats.max_types_sizes.retain(|_, v| *v != 0);
+            stats.sierra_declared_types_sizes.retain(|_, v| *v != 0);
             stats.sierra_circuits_count = Some(circuits_count);
 
             let mut max_params_size = 0;

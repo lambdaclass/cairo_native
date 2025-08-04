@@ -21,6 +21,8 @@ pub struct Statistics {
     pub sierra_func_max_return_types: Option<usize>,
     /// Avg number of return types in a Sierra function
     pub sierra_func_avg_return_types: Option<usize>,
+    /// Sizes of the declared types in Sierra
+    pub sierra_declared_types_sizes: BTreeMap<String, usize>,
     /// Max size of params in a sierra function
     pub sierra_max_params_size: Option<usize>,
     /// Avg size of params in a Sierra function
@@ -33,8 +35,10 @@ pub struct Statistics {
     pub sierra_libfunc_frequency: BTreeMap<String, u128>,
     /// Number of times each circuit gate is used
     pub sierra_circuit_gates_count: BTreeMap<String, usize>,
-    /// Number of circuits in Sierra
+    /// Number of circuits in Sierra.
     pub sierra_circuits_count: Option<usize>,
+    /// Number of gates for each Sierra circuit. Key has the counters in the following form -> (add,sub,mul,inv)
+    pub sierra_gates_per_circuit: BTreeMap<String, (usize, usize, usize, usize)>,
     /// Number of MLIR operations generated.
     pub mlir_operation_count: Option<u128>,
     /// Number of MLIR operations generated for each distinct libfunc.
@@ -63,8 +67,6 @@ pub struct Statistics {
     pub compilation_linking_time_ms: Option<u128>,
     /// Size of the compiled object.
     pub object_size_bytes: Option<usize>,
-    /// Maximum sizes for each of the types. Format: key = type_id | value = max_size
-    pub max_types_sizes: BTreeMap<String, usize>,
 }
 
 impl Statistics {
