@@ -35,7 +35,7 @@ use crate::{
     arch::AbiArgument,
     clone_option_mut,
     context::NativeContext,
-    debug::{circuit_gate_to_name, libfunc_to_name},
+    debug::{circuit_gate_to_name, libfunc_to_name, type_to_name},
     error::{panic::ToNativeAssertError, Error, Result},
     execution_result::{
         BuiltinStats, ContractExecutionResult, ADD_MOD_BUILTIN_SIZE, BITWISE_BUILTIN_SIZE,
@@ -271,11 +271,12 @@ impl AotContractExecutor {
                 if let Ok(type_concrete) = registry.get_type(&type_declaration.id) {
                     let type_id = format!("{}", type_declaration.id);
                     let type_size = type_concrete.layout(&registry).unwrap().size();
-                    stats
-                        .sierra_declared_types_sizes
-                        .insert(type_id.clone(), type_size);
+                    stats.sierra_declared_types_sizes.insert(
+                        format!("{},{}", type_id, type_to_name(&registry, type_concrete)),
+                        type_size,
+                    );
 
-                    //////////////////////////
+                    // Count the gates for the circuit
                     if let CoreTypeConcrete::Circuit(CircuitTypeConcrete::Circuit(info)) =
                         type_concrete
                     {
@@ -313,7 +314,6 @@ impl AotContractExecutor {
                             ),
                         );
                     }
-                    //////////////////////////
 
                     if let Some(circuit_gate_name) = circuit_gate_to_name(type_concrete) {
                         *stats
