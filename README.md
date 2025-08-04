@@ -134,6 +134,21 @@ the needed environment variables.
 source env.sh
 ```
 
+#### Configure rust-analyzer for Vscode
+If you are using vscode as your code editor, you'll need to add this to you settings.json:
+```json
+"rust-analyzer.cargo.extraEnv": {
+  "MLIR_SYS_190_PREFIX": "<path-to-llvm-19>",
+  "LLVM_SYS_191_PREFIX": "<path-to-llvm-19>",
+  "TABLEGEN_190_PREFIX": "<path-to-llvm-19>",
+}
+```
+if you are on MacOs, you'll need to add this extra line:
+```json
+"LIBRARY_PATH": "/opt/homebrew/lib",
+```
+Without this additional config, rust-analyzer won't be able to work properly
+
 ### Make targets:
 Running `make` by itself will check whether the required LLVM installation and
 corelib is found, and then list available targets.
