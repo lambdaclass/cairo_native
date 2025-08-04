@@ -216,7 +216,7 @@ impl AotContractExecutor {
             let mut params_acum = 0;
             let mut return_types_acum = 0;
             for func in &program.funcs {
-                let curr_params_len = func.signature.ret_types.len();
+                let curr_params_len = func.signature.param_types.len();
                 let curr_return_types_len = func.signature.ret_types.len();
 
                 max_params = cmp::max(max_params, curr_params_len);
