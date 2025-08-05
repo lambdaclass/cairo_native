@@ -464,12 +464,24 @@ fn build_eval<'ctx, 'this>(
     Ok(())
 }
 
-/// Builds the evaluation of all circuit gates, returning:
-/// - An array of two branches, the success block and the error block respectively.
-///   - The error block contains the index of the first failure as argument.
-/// - A vector of the gate values. In case of failure, not all values are guaranteed to be computed.
+/// Receives the circuit inputs, and buils the evaluation of the full circuit.
 ///
-/// The original Cairo hint evaluates all gates, even in case of failure. This implementation exits on first error, as there is no need for the partial outputs yet.
+/// Returns two branches. The success block and the error block respectively.
+/// - The success block receives nothing:
+/// - The error block receives:
+///   - The index of the first gate that could not be computed.
+///
+/// The evaluated gates are returned separately, as a vector of `MLIR` values.
+/// Note that in the case of error, not all MLIR values are guaranteed to have been computed,
+/// and should not be used carelessly.
+///
+/// TODO: Consider returning the evaluated gates through the block directly:
+/// - As a pointer to a heap allocated array of gates.
+/// - As a llvm struct/array of evaluted gates (its size could get really big).
+/// - As different arguments to the block (one argument per block).
+///
+/// The original Cairo hint evaluates all gates, even in case of failure.
+/// This implementation exits on first error, as there is no need for the partial outputs yet.
 fn build_gate_evaluation<'ctx, 'this>(
     context: &'this Context,
     mut block: &'this Block<'ctx>,
