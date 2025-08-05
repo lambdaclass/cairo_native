@@ -464,7 +464,7 @@ fn build_eval<'ctx, 'this>(
 /// Receives the circuit inputs, and buils the evaluation of the full circuit.
 ///
 /// Returns two branches. The success block and the error block respectively.
-/// - The success block receives nothing:
+/// - The success block receives nothing.
 /// - The error block receives:
 ///   - The index of the first gate that could not be computed.
 ///
@@ -892,6 +892,7 @@ fn build_get_output<'ctx, 'this>(
         .values
         .get(output_type_id)
         .ok_or(SierraAssertError::BadTypeInfo)?;
+
     let output_idx = output_offset_idx - circuit_info.n_inputs - 1;
 
     let outputs = entry.arg(0)?;
