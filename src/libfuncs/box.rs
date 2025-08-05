@@ -2,7 +2,7 @@
 //!
 //! A heap allocated value, which is internally a pointer that can't be null.
 
-use super::{BlockExt, LibfuncHelper};
+use super::LibfuncHelper;
 use crate::{
     error::Result,
     metadata::{realloc_bindings::ReallocBindingsMeta, MetadataStorage},
@@ -22,6 +22,7 @@ use melior::{
         llvm::{self, r#type::pointer, LoadStoreOptions},
         ods,
     },
+    helpers::BuiltinBlockExt,
     ir::{attribute::IntegerAttribute, r#type::IntegerType, Block, BlockLike, Location},
     Context,
 };

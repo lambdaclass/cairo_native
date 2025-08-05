@@ -4,11 +4,7 @@
 //! Because of this, this libfunc is a no-op.
 
 use super::LibfuncHelper;
-use crate::{
-    error::Result,
-    metadata::MetadataStorage,
-    utils::{BlockExt, ProgramRegistryExt},
-};
+use crate::{error::Result, metadata::MetadataStorage, utils::ProgramRegistryExt};
 use cairo_lang_sierra::{
     extensions::{
         core::{CoreLibfunc, CoreType},
@@ -20,6 +16,7 @@ use cairo_lang_sierra::{
 };
 use melior::{
     dialect::llvm,
+    helpers::BuiltinBlockExt,
     ir::{Block, Location},
     Context,
 };

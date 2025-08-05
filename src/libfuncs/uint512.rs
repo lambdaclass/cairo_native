@@ -1,11 +1,7 @@
 //! # `u512`-related libfuncs
 
 use super::LibfuncHelper;
-use crate::{
-    error::Result,
-    metadata::MetadataStorage,
-    utils::{BlockExt, ProgramRegistryExt},
-};
+use crate::{error::Result, metadata::MetadataStorage, utils::ProgramRegistryExt};
 use cairo_lang_sierra::{
     extensions::{
         core::{CoreLibfunc, CoreType},
@@ -17,6 +13,7 @@ use cairo_lang_sierra::{
 };
 use melior::{
     dialect::{arith, llvm},
+    helpers::{ArithBlockExt, BuiltinBlockExt, LlvmBlockExt},
     ir::{r#type::IntegerType, Block, Location, Value},
     Context,
 };
