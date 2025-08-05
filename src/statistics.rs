@@ -101,13 +101,13 @@ impl Statistics {
     /// Gets the size of the full set of params of a Sierra function
     pub fn get_func_params_size(
         &self,
-        types_ids: &Vec<ConcreteTypeId>,
+        types_ids: &[ConcreteTypeId],
         registry: &ProgramRegistry<CoreType, CoreLibfunc>,
     ) -> usize {
         types_ids
             .iter()
             .fold(0, |accum, type_id| match registry.get_type(type_id) {
-                Ok(concrete_type) => accum + concrete_type.layout(&registry).unwrap().size(),
+                Ok(concrete_type) => accum + concrete_type.layout(registry).unwrap().size(),
                 Err(_) => accum,
             })
     }
