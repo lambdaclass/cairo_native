@@ -342,7 +342,7 @@ pub fn build_circuit_outputs<'ctx>(
                 &entry,
                 location,
                 gates_ptr,
-                circuit.circuit_info.values.len() + circuit.circuit_info.n_inputs + 1,
+                circuit.circuit_info.values.len(),
                 u384_integer_layout,
             )?;
 
