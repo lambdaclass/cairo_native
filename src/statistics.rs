@@ -89,7 +89,16 @@ impl Statistics {
             && self.object_size_bytes.is_some()
     }
 
-    pub fn add_circuit(&mut self, info: &CircuitInfo, circuits_count: &mut usize, type_id: String) {
+    /// Adds the following circuit stats:
+    /// - Circuits count
+    /// - Gates per circuit
+    /// - Total of gates
+    pub fn add_circuit_stats(
+        &mut self,
+        info: &CircuitInfo,
+        circuits_count: &mut usize,
+        type_id: String,
+    ) {
         *circuits_count += 1;
         let mut add_gate_count = 0;
         let mut sub_gate_count = 0;
@@ -99,9 +108,17 @@ impl Statistics {
             if gate_offset.lhs > gate_offset.output {
                 // SUB
                 sub_gate_count += 1;
+                *self
+                    .sierra_circuit_gates_count
+                    .entry(String::from("SubGate"))
+                    .or_insert(0) += 1;
             } else {
                 // ADD
                 add_gate_count += 1;
+                *self
+                    .sierra_circuit_gates_count
+                    .entry(String::from("AddGate"))
+                    .or_insert(0) += 1;
             }
         }
 
@@ -109,9 +126,17 @@ impl Statistics {
             if gate_offset.lhs > gate_offset.output {
                 // INVERSE
                 inverse_gate_count += 1;
+                *self
+                    .sierra_circuit_gates_count
+                    .entry(String::from("InverseGate"))
+                    .or_insert(0) += 1;
             } else {
                 // MUL
                 mul_gate_count += 1;
+                *self
+                    .sierra_circuit_gates_count
+                    .entry(String::from("MulGate"))
+                    .or_insert(0) += 1;
             }
         }
         self.sierra_gates_per_circuit.insert(

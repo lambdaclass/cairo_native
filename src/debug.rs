@@ -551,14 +551,3 @@ pub fn type_to_name(
         CoreTypeConcrete::EcState(_) => String::from("ec_state"),
     }
 }
-
-pub fn circuit_gate_to_name(type_concrete: &CoreTypeConcrete) -> Option<String> {
-    let circuit_gate = match type_concrete {
-        CoreTypeConcrete::Circuit(CircuitTypeConcrete::AddModGate(_)) => "AddGate",
-        CoreTypeConcrete::Circuit(CircuitTypeConcrete::SubModGate(_)) => "SubGate",
-        CoreTypeConcrete::Circuit(CircuitTypeConcrete::MulModGate(_)) => "MulGate",
-        CoreTypeConcrete::Circuit(CircuitTypeConcrete::InverseGate(_)) => "InverseGate",
-        _ => return None,
-    };
-    Some(circuit_gate.to_string())
-}
