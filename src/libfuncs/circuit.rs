@@ -383,7 +383,7 @@ fn build_eval<'ctx, 'this>(
             location,
         )?)?;
 
-        // Insert evaluated gated into the array.
+        // Insert evaluated gates into the array.
         for (i, gate) in gates.into_iter().enumerate() {
             let value_ptr = ok_block.gep(
                 context,
@@ -461,7 +461,7 @@ fn build_eval<'ctx, 'this>(
     Ok(())
 }
 
-/// Receives the circuit inputs, and buils the evaluation of the full circuit.
+/// Receives the circuit inputs, and builds the evaluation of the full circuit.
 ///
 /// Returns two branches. The success block and the error block respectively.
 /// - The success block receives nothing.
@@ -475,7 +475,7 @@ fn build_eval<'ctx, 'this>(
 /// TODO: Consider returning the evaluated gates through the block directly:
 /// - As a pointer to a heap allocated array of gates.
 /// - As a llvm struct/array of evaluted gates (its size could get really big).
-/// - As different arguments to the block (one argument per block).
+/// - As arguments to the block (one argument per block).
 ///
 /// The original Cairo hint evaluates all gates, even in case of failure.
 /// This implementation exits on first error, as there is no need for the partial outputs yet.
