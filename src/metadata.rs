@@ -128,6 +128,7 @@ impl Default for MetadataStorage {
     fn default() -> Self {
         let mut metadata = Self {
             entries: Default::default(),
+            types_freqs: Default::default(),
         };
 
         metadata.insert(debug_utils::DebugUtils::default());
