@@ -57,7 +57,7 @@ use crate::{
     native_assert, native_panic,
     statistics::Statistics,
     types::TypeBuilder,
-    utils::{generate_function_name, walk_ir::walk_mlir_block, BlockExt},
+    utils::{generate_function_name, walk_ir::walk_mlir_block},
 };
 use bumpalo::Bump;
 use cairo_lang_sierra::{
@@ -79,6 +79,7 @@ use melior::{
         llvm::{self, LoadStoreOptions},
         memref,
     },
+    helpers::{ArithBlockExt, BuiltinBlockExt, LlvmBlockExt},
     ir::{
         attribute::{
             DenseI64ArrayAttribute, FlatSymbolRefAttribute, IntegerAttribute, StringAttribute,

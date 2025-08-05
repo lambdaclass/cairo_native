@@ -38,7 +38,7 @@ use crate::{
     metadata::{
         drop_overrides::DropOverridesMeta, dup_overrides::DupOverridesMeta, MetadataStorage,
     },
-    utils::{BlockExt, ProgramRegistryExt},
+    utils::ProgramRegistryExt,
 };
 use cairo_lang_sierra::{
     extensions::{
@@ -49,6 +49,7 @@ use cairo_lang_sierra::{
 };
 use melior::{
     dialect::{func, llvm},
+    helpers::{BuiltinBlockExt, LlvmBlockExt},
     ir::{Block, BlockLike, Location, Module, Region, Type},
     Context,
 };

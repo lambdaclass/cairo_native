@@ -1,4 +1,4 @@
-use super::{BlockExt, LibfuncHelper};
+use super::LibfuncHelper;
 use crate::{
     error::{panic::ToNativeAssertError, Result},
     execution_result::BITWISE_BUILTIN_SIZE,
@@ -33,6 +33,7 @@ use melior::{
         ods::{self, math},
         scf,
     },
+    helpers::{ArithBlockExt, BuiltinBlockExt, LlvmBlockExt},
     ir::{
         attribute::IntegerAttribute, operation::OperationBuilder, r#type::IntegerType, Block,
         BlockLike, Location, Region, ValueLike,
@@ -278,8 +279,9 @@ where
         metadata,
         &info.signature.branch_signatures[0].vars[0].ty,
     )?;
+    let constant: BigInt = info.c.into();
 
-    let value = entry.const_int_from_type(context, location, info.c, value_ty)?;
+    let value = entry.const_int_from_type(context, location, constant, value_ty)?;
 
     helper.br(entry, 0, &[value], location)
 }
@@ -963,9 +965,9 @@ fn build_wide_mul<'ctx, 'this>(
         .lower
         .is_zero()
     {
-        BlockExt::extui
+        ArithBlockExt::extui
     } else {
-        BlockExt::extsi
+        ArithBlockExt::extsi
     };
 
     let lhs = ext_fn(entry, entry.arg(0)?, result_ty, location)?;
