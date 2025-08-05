@@ -293,7 +293,7 @@ impl AotContractExecutor {
                 max_params_size = cmp::max(max_params_size, curr_params_size);
                 max_return_types_size = cmp::max(max_return_types_size, curr_return_types_size);
                 accum_params_size += curr_params_size;
-                accum_return_types_size += curr_params_size;
+                accum_return_types_size += curr_return_types_size;
             }
             stats.sierra_max_params_size = Some(max_params_size);
             stats.sierra_avg_params_size = Some(accum_params_size / program.funcs.len());
