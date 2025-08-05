@@ -594,12 +594,10 @@ fn build_gate_evaluation<'ctx, 'this>(
         }
 
         // If we can't advance any more with add gate offsets, then we solve the next mul gate offset and go back to the start of the loop (solving add gate offsets).
-        if let Some((gate_offset_idx, &circuit::GateOffsets { lhs, rhs, output })) =
-            mul_offsets.next()
-        {
-            let lhs_value = values[lhs].to_owned();
-            let rhs_value = values[rhs].to_owned();
-            let output_value = values[output].to_owned();
+        if let Some((gate_offset_idx, gate_offset)) = mul_offsets.next() {
+            let lhs_value = gates[gate_offset.lhs].to_owned();
+            let rhs_value = gates[gate_offset.rhs].to_owned();
+            let output_value = gates[gate_offset.output].to_owned();
 
             // Depending on the values known at the time, we can deduce if we are dealing with an MUL gate or a INV gate.
             match (lhs_value, rhs_value, output_value) {
@@ -628,7 +626,7 @@ fn build_gate_evaluation<'ctx, 'this>(
                     // Truncate back
                     let value =
                         block.trunci(value, IntegerType::new(context, 384).into(), location)?;
-                    values[output] = Some(value)
+                    gates[gate_offset.output] = Some(value)
                 }
                 // INV: lhs = 1 / rhs
                 (None, Some(rhs_value), Some(_)) => {
@@ -703,7 +701,7 @@ fn build_gate_evaluation<'ctx, 'this>(
                     let inverse =
                         block.trunci(inverse, IntegerType::new(context, 384).into(), location)?;
 
-                    values[lhs] = Some(inverse);
+                    gates[gate_offset.lhs] = Some(inverse);
                 }
                 // The imposibility to solve this mul gate offset would render the circuit unsolvable
                 _ => return Err(SierraAssertError::ImpossibleCircuit.into()),
