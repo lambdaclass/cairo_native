@@ -513,6 +513,7 @@ fn build_gate_evaluation<'ctx, 'this>(
         IntegerType::new(context, 64).into(),
         location,
     )]));
+    let ok_block = helper.append_block(Block::new(&[]));
 
     let mut add_offsets = circuit_info.add_offsets.iter().peekable();
     let mut mul_offsets = circuit_info.mul_offsets.iter().enumerate();
@@ -708,6 +709,8 @@ fn build_gate_evaluation<'ctx, 'this>(
         }
     }
 
+    block.append_operation(cf::br(ok_block, &[], location));
+
     // Validate all values have been calculated
     // Should only fail if the circuit is not solvable (bad form)
     let values = gates
@@ -716,7 +719,7 @@ fn build_gate_evaluation<'ctx, 'this>(
         .collect::<Option<Vec<Value>>>()
         .ok_or(SierraAssertError::ImpossibleCircuit)?;
 
-    Ok(([block, err_block], values))
+    Ok(([ok_block, err_block], values))
 }
 
 /// Generate MLIR operations for the `circuit_failure_guarantee_verify` libfunc.
