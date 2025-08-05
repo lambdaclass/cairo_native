@@ -14,31 +14,31 @@ pub struct Statistics {
     pub sierra_statement_count: Option<usize>,
     /// Number of user functions defined in the Sierra code.
     pub sierra_func_count: Option<usize>,
-    /// Max number of parameters in a Sierra function
+    /// Max number of parameters in a Sierra function.
     pub sierra_func_max_params: Option<usize>,
-    /// Avg number of parameters in a Sierra function
+    /// Avg number of parameters in a Sierra function.
     pub sierra_func_avg_params: Option<usize>,
-    /// Max number of return types in a Sierra function
+    /// Max number of return types in a Sierra function.
     pub sierra_func_max_return_types: Option<usize>,
-    /// Avg number of return types in a Sierra function
+    /// Avg number of return types in a Sierra function.
     pub sierra_func_avg_return_types: Option<usize>,
-    /// Sizes of the declared types in Sierra
+    /// Sizes of the declared types in Sierra.
     pub sierra_declared_types_sizes: BTreeMap<String, usize>,
-    /// Max size of params in a sierra function
+    /// Max size of params in a Sierra function.
     pub sierra_max_params_size: Option<usize>,
-    /// Avg size of params in a Sierra function
+    /// Avg size of params in a Sierra function.
     pub sierra_avg_params_size: Option<usize>,
-    /// Max size of return types in a Sierra function
+    /// Max size of return types in a Sierra function.
     pub sierra_max_return_types_size: Option<usize>,
-    /// Avg size of return types in a Sierra function
+    /// Avg size of return types in a Sierra function.
     pub sierra_avg_return_types_size: Option<usize>,
     /// Number of statements for each distinct libfunc.
     pub sierra_libfunc_frequency: BTreeMap<String, u128>,
-    /// Number of times each circuit gate is used
+    /// Number of times each circuit gate is used.
     pub sierra_circuit_gates_count: BTreeMap<String, usize>,
     /// Number of circuits in Sierra.
     pub sierra_circuits_count: Option<usize>,
-    /// Number of gates for each Sierra circuit. Key has the counters in the following form -> (add,sub,mul,inv)
+    /// Number of gates for each Sierra circuit. Value has the counters in the following form -> (add,sub,mul,inv)
     pub sierra_gates_per_circuit: BTreeMap<String, (usize, usize, usize, usize)>,
     /// Number of MLIR operations generated.
     pub mlir_operation_count: Option<u128>,
@@ -50,7 +50,7 @@ pub struct Statistics {
     pub llvmir_virtual_register_count: Option<u128>,
     /// Number of LLVMIR instructions for each distinct opcode.
     pub llvmir_opcode_frequency: BTreeMap<String, u128>,
-    /// Max number of params in LLVMIR functions
+    /// Max number of params in LLVMIR functions.
     pub llvmir_max_functions_params: Option<u32>,
     /// Total compilation time.
     pub compilation_total_time_ms: Option<u128>,
