@@ -9,7 +9,7 @@ use crate::{
     metadata::{tail_recursion::TailRecursionMeta, MetadataStorage},
     native_assert,
     types::TypeBuilder,
-    utils::{generate_function_name, BlockExt},
+    utils::generate_function_name,
 };
 use cairo_lang_sierra::{
     extensions::{
@@ -20,6 +20,7 @@ use cairo_lang_sierra::{
 };
 use melior::{
     dialect::{cf, index, llvm, memref},
+    helpers::{ArithBlockExt, BuiltinBlockExt, LlvmBlockExt},
     ir::{
         attribute::{DenseI32ArrayAttribute, FlatSymbolRefAttribute},
         operation::OperationBuilder,
