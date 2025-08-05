@@ -114,8 +114,8 @@ impl MetadataStorage {
             .expect("the given type does not match the actual")
     }
 
-    pub fn increment_frequency(&mut self, type_id: &ConcreteTypeId) {
-        let type_id_str = format!("{}", type_id);
+    pub fn increment_frequency(&mut self, type_id: &ConcreteTypeId, type_name: String) {
+        let type_id_str = format!("{},{}", type_id, type_name);
         *self.types_freqs.entry(type_id_str).or_insert(0) += 1;
     }
 

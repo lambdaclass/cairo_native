@@ -3,6 +3,7 @@
 //! Contains type generation stuff (aka. conversion from Sierra to MLIR types).
 
 use crate::{
+    debug::type_to_name,
     error::Error as CoreTypeBuilderError,
     libfuncs::LibfuncHelper,
     metadata::MetadataStorage,
@@ -159,7 +160,7 @@ impl TypeBuilder for CoreTypeConcrete {
         metadata: &mut MetadataStorage,
         self_ty: &ConcreteTypeId,
     ) -> Result<Type<'ctx>, Self::Error> {
-        metadata.increment_frequency(self_ty);
+        metadata.increment_frequency(self_ty, type_to_name(registry, self));
         match self {
             Self::Array(info) => self::array::build(
                 context,
