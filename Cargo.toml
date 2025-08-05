@@ -186,7 +186,7 @@ name = "libfuncs"
 harness = false
 
 [workspace]
-members = ["debug_utils/sierra-emu", "debug_utils/casm-data-flow"]
+members = ["debug_utils/sierra-emu", "debug_utils/casm-data-flow", "debug_utils/contract-utils"]
 
 [workspace.dependencies]
 sierra-emu = { path = "debug_utils/sierra-emu", version = "0.6.0" }
