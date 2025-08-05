@@ -249,7 +249,6 @@ impl AotContractExecutor {
                     *stats.sierra_libfunc_frequency.entry(name).or_insert(0) += 1;
                 }
             }
-
             stats.sierra_declared_types_freq = metadata.types_frequencies();
         }
 

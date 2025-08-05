@@ -9,12 +9,11 @@
 //!   - Pass extra compilation info to the libfunc generators (ex.
 //!     [TailRecursionMeta](self::tail_recursion)).
 
+use cairo_lang_sierra::ids::ConcreteTypeId;
 use std::{
     any::{Any, TypeId},
     collections::{hash_map::Entry, BTreeMap, HashMap},
 };
-
-use cairo_lang_sierra::ids::ConcreteTypeId;
 
 pub mod auto_breakpoint;
 pub mod debug_utils;
