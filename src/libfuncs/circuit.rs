@@ -717,13 +717,13 @@ fn build_gate_evaluation<'ctx, 'this>(
 
     // Validate all values have been calculated
     // Should only fail if the circuit is not solvable (bad form)
-    let values = gates
+    let evaluated_gates = gates
         .into_iter()
         .skip(1 + circuit_info.n_inputs)
         .collect::<Option<Vec<Value>>>()
         .ok_or(SierraAssertError::ImpossibleCircuit)?;
 
-    Ok(([ok_block, err_block], values))
+    Ok(([ok_block, err_block], evaluated_gates))
 }
 
 /// Generate MLIR operations for the `circuit_failure_guarantee_verify` libfunc.
