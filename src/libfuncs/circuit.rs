@@ -494,23 +494,19 @@ fn build_gate_evaluation<'ctx, 'this>(
     // Throughout the evaluation of the circuit we maintain an array of known gate values
     // Initially, it only contains the inputs of the circuit.
     // Unknown values are represented as None
+    let mut gates = vec![None; 1 + circuit_info.n_inputs + circuit_info.values.len()];
 
-    let mut values = vec![None; 1 + circuit_info.n_inputs + circuit_info.values.len()];
-    values[0] = Some(block.const_int(context, location, 1, 384)?);
+    gates[0] = Some(block.const_int(context, location, 1, 384)?);
+    let u384_type = IntegerType::new(context, 384).into();
     for i in 0..circuit_info.n_inputs {
         let value_ptr = block.gep(
             context,
             location,
             circuit_data,
             &[GepIndex::Const(i as i32)],
-            IntegerType::new(context, 384).into(),
+            u384_type,
         )?;
-        values[i + 1] = Some(block.load(
-            context,
-            location,
-            value_ptr,
-            IntegerType::new(context, 384).into(),
-        )?);
+        gates[i + 1] = Some(block.load(context, location, value_ptr, u384_type)?);
     }
 
     let err_block = helper.append_block(Block::new(&[(
@@ -714,7 +710,7 @@ fn build_gate_evaluation<'ctx, 'this>(
 
     // Validate all values have been calculated
     // Should only fail if the circuit is not solvable (bad form)
-    let values = values
+    let values = gates
         .into_iter()
         .skip(1 + circuit_info.n_inputs)
         .collect::<Option<Vec<Value>>>()
