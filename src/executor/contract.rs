@@ -286,23 +286,9 @@ impl AotContractExecutor {
             let mut accum_return_types_size = 0;
             for func in &program.funcs {
                 let curr_params_size =
-                    func.signature.param_types.iter().fold(0, |accum, type_id| {
-                        match registry.get_type(type_id) {
-                            Ok(concrete_type) => {
-                                accum + concrete_type.layout(&registry).unwrap().size()
-                            }
-                            Err(_) => accum,
-                        }
-                    });
+                    stats.get_func_params_size(&func.signature.param_types, &registry);
                 let curr_return_types_size =
-                    func.signature.param_types.iter().fold(0, |accum, type_id| {
-                        match registry.get_type(type_id) {
-                            Ok(concrete_type) => {
-                                accum + concrete_type.layout(&registry).unwrap().size()
-                            }
-                            Err(_) => accum,
-                        }
-                    });
+                    stats.get_func_params_size(&func.signature.ret_types, &registry);
 
                 max_params_size = cmp::max(max_params_size, curr_params_size);
                 max_return_types_size = cmp::max(max_return_types_size, curr_return_types_size);

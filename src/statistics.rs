@@ -1,6 +1,15 @@
-use cairo_lang_sierra::extensions::circuit::CircuitInfo;
+use cairo_lang_sierra::{
+    extensions::{
+        circuit::CircuitInfo,
+        core::{CoreLibfunc, CoreType},
+    },
+    ids::ConcreteTypeId,
+    program_registry::ProgramRegistry,
+};
 use serde::Serialize;
 use std::collections::BTreeMap;
+
+use crate::types::TypeBuilder;
 
 /// A set of compilation statistics gathered during the compilation.
 /// It should be completely filled at the end of the compilation.
@@ -87,6 +96,20 @@ impl Statistics {
             && self.compilation_llvm_to_object_time_ms.is_some()
             && self.compilation_linking_time_ms.is_some()
             && self.object_size_bytes.is_some()
+    }
+
+    /// Gets the size of the full set of params of a Sierra function
+    pub fn get_func_params_size(
+        &self,
+        types_ids: &Vec<ConcreteTypeId>,
+        registry: &ProgramRegistry<CoreType, CoreLibfunc>,
+    ) -> usize {
+        types_ids
+            .iter()
+            .fold(0, |accum, type_id| match registry.get_type(type_id) {
+                Ok(concrete_type) => accum + concrete_type.layout(&registry).unwrap().size(),
+                Err(_) => accum,
+            })
     }
 
     /// Adds the following circuit stats:
