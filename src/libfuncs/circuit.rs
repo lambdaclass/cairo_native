@@ -524,10 +524,10 @@ fn build_gate_evaluation<'ctx, 'this>(
     // We loop until all gates have been solved
     loop {
         // We iterate the add gate offsets as long as we can
-        while let Some(&add_gate_offset) = add_offsets.peek() {
-            let lhs_value = values[add_gate_offset.lhs].to_owned();
-            let rhs_value = values[add_gate_offset.rhs].to_owned();
-            let output_value = values[add_gate_offset.output].to_owned();
+        while let Some(&gate_offset) = add_offsets.peek() {
+            let lhs_value = gates[gate_offset.lhs].to_owned();
+            let rhs_value = gates[gate_offset.rhs].to_owned();
+            let output_value = gates[gate_offset.output].to_owned();
 
             // Depending on the values known at the time, we can deduce if we are dealing with an ADD gate or a SUB gate.
             match (lhs_value, rhs_value, output_value) {
@@ -556,7 +556,7 @@ fn build_gate_evaluation<'ctx, 'this>(
                     // Truncate back
                     let value =
                         block.trunci(value, IntegerType::new(context, 384).into(), location)?;
-                    values[add_gate_offset.output] = Some(value);
+                    gates[gate_offset.output] = Some(value);
                 }
                 // SUB: lhs = out - rhs
                 (None, Some(rhs_value), Some(output_value)) => {
@@ -584,7 +584,7 @@ fn build_gate_evaluation<'ctx, 'this>(
                     // Truncate back
                     let value =
                         block.trunci(value, IntegerType::new(context, 384).into(), location)?;
-                    values[add_gate_offset.lhs] = Some(value);
+                    gates[gate_offset.lhs] = Some(value);
                 }
                 // We can't solve this add gate yet, so we break from the loop
                 _ => break,
