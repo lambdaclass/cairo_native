@@ -331,15 +331,15 @@ pub fn build_circuit_outputs<'ctx>(
                 0,
             )?;
 
-            let u384_struct_layout = layout_repeat(&get_integer_layout(96), 4)?.0;
+            let u384_integer_layout = get_integer_layout(384);
 
             let new_gates_ptr = build_array_dup(
                 context,
                 &entry,
                 location,
                 gates_ptr,
-                circuit.circuit_info.values.len(),
-                u384_struct_layout,
+                circuit.circuit_info.values.len() + circuit.circuit_info.n_inputs + 1,
+                u384_integer_layout,
             )?;
 
             let new_outputs = entry.insert_value(context, location, outputs, new_gates_ptr, 0)?;

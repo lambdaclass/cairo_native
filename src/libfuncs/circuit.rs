@@ -362,15 +362,15 @@ fn build_eval<'ctx, 'this>(
         )?;
 
         // convert circuit output from integer representation to struct representation
-        let gates = gates
-            .into_iter()
-            .map(|value| u384_integer_to_struct(context, ok_block, location, value))
-            .collect::<Result<Vec<_>>>()?;
+        // let gates = gates
+        //     .into_iter()
+        //     .map(|value| u384_integer_to_struct(context, ok_block, location, value))
+        //     .collect::<Result<Vec<_>>>()?;
 
         // Calculate full capacity for array.
         let outputs_capacity = circuit_info.values.len();
-        let u384_struct_layout = layout_repeat(&get_integer_layout(96), 4)?.0;
-        let outputs_capacity_bytes = layout_repeat(&u384_struct_layout, outputs_capacity)?
+        let u384_integer_layout = get_integer_layout(384);
+        let outputs_capacity_bytes = layout_repeat(&u384_integer_layout, outputs_capacity)?
             .0
             .pad_to_align()
             .size();
@@ -393,7 +393,7 @@ fn build_eval<'ctx, 'this>(
                 location,
                 outputs_ptr,
                 &[GepIndex::Const(i as i32)],
-                build_u384_struct_type(context),
+                IntegerType::new(context, 384).into(),
             )?;
             ok_block.store(context, location, value_ptr, gate)?;
         }
@@ -876,16 +876,17 @@ fn build_get_output<'ctx, 'this>(
     };
     let output_type_id = &info.output_ty;
 
+    let u384_type = IntegerType::new(context, 384).into();
+
     let output_offset_idx = *circuit_info
         .values
         .get(output_type_id)
         .ok_or(SierraAssertError::BadTypeInfo)?;
-
     let output_idx = output_offset_idx - circuit_info.n_inputs - 1;
 
     let outputs = entry.arg(0)?;
 
-    let values_ptr = entry.extract_value(
+    let circuit_ptr = entry.extract_value(
         context,
         location,
         outputs,
@@ -900,20 +901,15 @@ fn build_get_output<'ctx, 'this>(
         1,
     )?;
 
-    let output_struct_ptr = entry.gep(
+    let output_integer_ptr = entry.gep(
         context,
         location,
-        values_ptr,
+        circuit_ptr,
         &[GepIndex::Const(output_idx as i32)],
-        build_u384_struct_type(context),
+        u384_type,
     )?;
-
-    let output_struct = entry.load(
-        context,
-        location,
-        output_struct_ptr,
-        build_u384_struct_type(context),
-    )?;
+    let output_integer = entry.load(context, location, output_integer_ptr, u384_type)?;
+    let output_struct = u384_integer_to_struct(context, entry, location, output_integer)?;
 
     let guarantee_type_id = &info.branch_signatures()[0].vars[1].ty;
     let guarantee = build_struct_value(
