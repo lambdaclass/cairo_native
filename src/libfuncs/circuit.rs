@@ -361,19 +361,15 @@ fn build_eval<'ctx, 'this>(
             circuit_info.mul_offsets.len() * MUL_MOD_BUILTIN_SIZE,
         )?;
 
-        // convert circuit output from integer representation to struct representation
-        // let gates = gates
-        //     .into_iter()
-        //     .map(|value| u384_integer_to_struct(context, ok_block, location, value))
-        //     .collect::<Result<Vec<_>>>()?;
+        // TODO: We are saving the whole circuit. We should only save the gates
+        // that will be queried later. We are also saving them in integer form,
+        // and should probably be saved in struct form.
 
-        // Calculate full capacity for array.
+        // Calculate capacity for array.
         let outputs_capacity = circuit_info.values.len();
         let u384_integer_layout = get_integer_layout(384);
-        let outputs_capacity_bytes = layout_repeat(&u384_integer_layout, outputs_capacity)?
-            .0
-            .pad_to_align()
-            .size();
+        let outputs_layout = layout_repeat(&u384_integer_layout, outputs_capacity)?.0;
+        let outputs_capacity_bytes = outputs_layout.pad_to_align().size();
         let outputs_capacity_bytes_value =
             ok_block.const_int(context, location, outputs_capacity_bytes, 64)?;
 
@@ -387,6 +383,7 @@ fn build_eval<'ctx, 'this>(
             location,
         )?)?;
 
+        // Insert evaluated gated into the array.
         for (i, gate) in gates.into_iter().enumerate() {
             let value_ptr = ok_block.gep(
                 context,
