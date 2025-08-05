@@ -278,12 +278,13 @@ pub fn build_circuit_data<'ctx>(
 ///
 /// ## Layout:
 ///
-/// Holds N_VALUES elements, where each element is a u384 struct,
-/// A u384 struct contains 4 limbs, each a u96 integer.
+/// Holds 1 + N_VALUES + N_INPUTS elements, where each element is an u384 integer (u384i),
+///
+/// Also holds the modulus as a u384 struct. An u384 struct (u348s) contains 4 limbs, each a u96 integer.
 ///
 /// ```txt
 /// type = struct {
-///     data: *u384s,
+///     data: *u384i,
 ///     modulus: u384s,
 /// };
 ///
