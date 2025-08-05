@@ -491,12 +491,16 @@ fn build_gate_evaluation<'ctx, 'this>(
     circuit_data: Value<'ctx, 'ctx>,
     circuit_modulus: Value<'ctx, 'ctx>,
 ) -> Result<([&'this Block<'ctx>; 2], Vec<Value<'ctx, 'ctx>>)> {
-    // Throughout the evaluation of the circuit we maintain an array of known gate values
-    // Initially, it only contains the inputs of the circuit.
-    // Unknown values are represented as None
+    // Each gate is represented as a MLIR value, and identified by an offset in the gate vector.
+    // - `None` implies that the gate value *has not* been compiled yet.
+    // - `Some` implies that the gate values *has* already been compiled, and therefore can be safely used.
+    // Initially, some gate values are already known.
     let mut gates = vec![None; 1 + circuit_info.n_inputs + circuit_info.values.len()];
 
+    // The first gate always has a value of 1. It is implicity referred by some gate offsets.
     gates[0] = Some(block.const_int(context, location, 1, 384)?);
+
+    // The input gates are also known at the start. We take them from the `circuit_data` array.
     let u384_type = IntegerType::new(context, 384).into();
     for i in 0..circuit_info.n_inputs {
         let value_ptr = block.gep(
