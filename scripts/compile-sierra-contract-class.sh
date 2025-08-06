@@ -7,7 +7,9 @@ Missing parameters to provide.
 
 Usage: $0 <contract_class_path> <opt_lvl> <output_path>
 
-Compiles a Sierra Contract Class, generates the MLIR and LLVMIR files and save along with the sierra and casm files
+Compiles a Sierra Contract Class, generates the MLIR and LLVMIR files 
+and saves then along with the Sierra and CASM files in <output_path>-files/.
+
 EOF
 }
 
@@ -24,7 +26,7 @@ fi
 CONTRACT_PATH=$1
 OPT_LVL=$2 
 OUTPUT_PATH=$3
-CLASS_HASH=${CONTRACT_PATH%.*.*}
+CLASS_HASH=${OUTPUT_PATH%.*}
 DEST_DIR=$CLASS_HASH-files
 SIERRA_PATH=$CLASS_HASH.sierra
 CASM_PATH=$CLASS_HASH.casm
@@ -40,7 +42,7 @@ fi
 # Extract the sierra from the contract class.
 cargo run -p contract-utils --bin contract-to-sierra $CONTRACT_PATH >> $SIERRA_PATH
 
-# # Lower sierra to casm
+# Lower sierra to casm
 ./cairo2/bin/sierra-compile $SIERRA_PATH $CASM_PATH
 
 echo "Compiling contract class..."
@@ -55,5 +57,10 @@ $LLVM_PATH/bin/opt dump-prepass.ll -passes="default<O$OPT_LVL>" -S -o dump-opt.l
 
 echo "Saving generated files"
 mkdir $DEST_DIR
+mv dump.mlir dump-debug-pretty.mlir dump-prepass-debug-pretty.mlir dump-prepass.ll dump-opt.ll $SIERRA_PATH $CASM_PATH $DEST_DIR 
 
-mv dump.mlir dump-prepass.ll dump-opt.ll $SIERRA_PATH $CASM_PATH $DEST_DIR
+echo "Cleaning..."
+rm dump-debug.mlir
+rm dump-prepass.mlir
+rm dump-prepass-debug-valid.mlir
+rm $CLASS_HASH.json
