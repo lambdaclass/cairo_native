@@ -23,24 +23,10 @@ pub struct Statistics {
     pub sierra_statement_count: Option<usize>,
     /// Number of user functions defined in the Sierra code.
     pub sierra_func_count: Option<usize>,
-    /// Max number of parameters in a Sierra function.
-    pub sierra_func_max_params: Option<usize>,
-    /// Avg number of parameters in a Sierra function.
-    pub sierra_func_avg_params: Option<usize>,
-    /// Max number of return types in a Sierra function.
-    pub sierra_func_max_return_types: Option<usize>,
-    /// Avg number of return types in a Sierra function.
-    pub sierra_func_avg_return_types: Option<usize>,
     /// Sizes of the declared types in Sierra.
     pub sierra_declared_types_sizes: BTreeMap<String, usize>,
-    /// Max size of params in a Sierra function.
-    pub sierra_max_params_size: Option<usize>,
-    /// Avg size of params in a Sierra function.
-    pub sierra_avg_params_size: Option<usize>,
-    /// Max size of return types in a Sierra function.
-    pub sierra_max_return_types_size: Option<usize>,
-    /// Avg size of return types in a Sierra function.
-    pub sierra_avg_return_types_size: Option<usize>,
+    /// Stats about params and return types of each Sierra function.
+    pub sierra_func_stats: BTreeMap<String, SierraFuncStats>,
     /// Number of statements for each distinct libfunc.
     pub sierra_libfunc_frequency: BTreeMap<String, u128>,
     /// Number of times each circuit gate is used.
@@ -79,6 +65,19 @@ pub struct Statistics {
     pub object_size_bytes: Option<usize>,
 }
 
+/// Contains the stats about a Sierra function:
+/// - params_quant: Quantity of params
+/// - params_total_size: Total size of all the params
+/// - return_types_quant: Quantity of return types
+/// - return_types_total_size: Total size of all the params
+#[derive(Debug, Default, Serialize)]
+pub struct SierraFuncStats {
+    pub params_quant: usize,
+    pub params_total_size: usize,
+    pub return_types_quant: usize,
+    pub return_types_total_size: usize,
+}
+
 impl Statistics {
     pub fn validate(&self) -> bool {
         self.sierra_type_count.is_some()
@@ -99,7 +98,7 @@ impl Statistics {
     }
 
     /// Gets the size of the full set of params of a Sierra function
-    pub fn get_func_params_size(
+    pub fn get_types_total_size(
         &self,
         types_ids: &[ConcreteTypeId],
         registry: &ProgramRegistry<CoreType, CoreLibfunc>,

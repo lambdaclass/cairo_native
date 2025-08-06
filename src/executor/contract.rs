@@ -47,7 +47,7 @@ use crate::{
     module::NativeModule,
     native_assert, native_panic,
     starknet::{handler::StarknetSyscallHandlerCallbacks, StarknetSyscallHandler},
-    statistics::Statistics,
+    statistics::{SierraFuncStats, Statistics},
     types::TypeBuilder,
     utils::{
         decode_error_message, generate_function_name, get_integer_layout, libc_free, libc_malloc,
@@ -79,7 +79,7 @@ use serde::{Deserialize, Serialize};
 use starknet_types_core::felt::Felt;
 use std::{
     alloc::Layout,
-    cmp::{self, Ordering},
+    cmp::Ordering,
     collections::BTreeMap,
     ffi::c_void,
     fs::{self, File},
@@ -210,18 +210,6 @@ impl AotContractExecutor {
             stats.sierra_libfunc_count = Some(program.libfunc_declarations.len());
             stats.sierra_statement_count = Some(program.statements.len());
             stats.sierra_func_count = Some(program.funcs.len());
-
-            let mut max_params = 0;
-            let mut max_return_types = 0;
-            for func in &program.funcs {
-                let curr_params_len = func.signature.param_types.len();
-                let curr_return_types_len = func.signature.ret_types.len();
-
-                max_params = cmp::max(max_params, curr_params_len);
-                max_return_types = cmp::max(max_return_types, curr_return_types_len);
-            }
-            stats.sierra_func_max_params = Some(max_params);
-            stats.sierra_func_max_return_types = Some(max_return_types);
         }
 
         // Compile the Sierra program.
@@ -280,26 +268,27 @@ impl AotContractExecutor {
             stats.sierra_declared_types_sizes.retain(|_, v| *v != 0);
             stats.sierra_circuits_count = Some(circuits_count);
 
-            let mut max_params_size = 0;
-            let mut accum_params_size = 0;
-            let mut max_return_types_size = 0;
-            let mut accum_return_types_size = 0;
             for func in &program.funcs {
-                let curr_params_size =
-                    stats.get_func_params_size(&func.signature.param_types, &registry);
-                let curr_return_types_size =
-                    stats.get_func_params_size(&func.signature.ret_types, &registry);
+                let func_id = func.id.to_string();
+                // Params
+                let params_quant = func.params.len();
+                let params_total_size =
+                    stats.get_types_total_size(&func.signature.param_types, &registry);
+                // Return types
+                let return_types_quant = func.signature.ret_types.len();
+                let return_types_total_size =
+                    stats.get_types_total_size(&func.signature.ret_types, &registry);
 
-                max_params_size = cmp::max(max_params_size, curr_params_size);
-                max_return_types_size = cmp::max(max_return_types_size, curr_return_types_size);
-                accum_params_size += curr_params_size;
-                accum_return_types_size += curr_return_types_size;
+                stats.sierra_func_stats.insert(
+                    func_id,
+                    SierraFuncStats {
+                        params_quant,
+                        params_total_size,
+                        return_types_quant,
+                        return_types_total_size,
+                    },
+                );
             }
-            stats.sierra_max_params_size = Some(max_params_size);
-            stats.sierra_avg_params_size = Some(accum_params_size / program.funcs.len());
-            stats.sierra_max_return_types_size = Some(max_return_types_size);
-            stats.sierra_avg_return_types_size =
-                Some(accum_return_types_size / program.funcs.len());
         }
 
         // Generate mappings between the entry point's selectors and their function indexes.
