@@ -57,10 +57,9 @@ $LLVM_PATH/bin/opt dump-prepass.ll -passes="default<O$OPT_LVL>" -S -o dump-opt.l
 
 echo "Saving generated files"
 mkdir $DEST_DIR
-mv dump.mlir dump-debug-pretty.mlir dump-prepass-debug-pretty.mlir dump-prepass.ll dump-opt.ll $SIERRA_PATH $CASM_PATH $DEST_DIR 
+mv $SIERRA_PATH $CASM_PATH $DEST_DIR 
+mv dump.mlir dump-debug-pretty.mlir dump-prepass-debug-pretty.mlir dump-prepass.ll dump-opt.ll dump-debug.mlir dump-prepass.mlir dump-prepass-debug-valid.mlir $DEST_DIR 
 
 echo "Cleaning..."
-rm dump-debug.mlir
-rm dump-prepass.mlir
-rm dump-prepass-debug-valid.mlir
 rm $CLASS_HASH.json
+rm $OUTPUT_PATH
