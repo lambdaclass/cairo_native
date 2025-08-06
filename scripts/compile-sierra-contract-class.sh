@@ -30,13 +30,14 @@ CLASS_HASH=${OUTPUT_PATH%.*}
 DEST_DIR=$CLASS_HASH-files
 SIERRA_PATH=$CLASS_HASH.sierra
 CASM_PATH=$CLASS_HASH.casm
+OS="$(uname -s)"
 
-if [[ "$(uname -s)" == "Darwin" ]]; then
+if [[ $OS == "Darwin" ]]; then
     LLVM_PATH="$(brew --prefix llvm@19)"
-elif [[ "$(uname -s)" == "Linux" ]]; then
+elif [[ $OS == "Linux" ]]; then
     LLVM_PATH="/usr/lib/llvm-19"
 else
-    echo "Unsupported OS: $(uname -s)"
+    echo "Unsupported OS: $OS"
 fi
 
 # Extract the sierra from the contract class.
