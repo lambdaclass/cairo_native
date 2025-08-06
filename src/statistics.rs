@@ -23,8 +23,8 @@ pub struct Statistics {
     pub sierra_statement_count: Option<usize>,
     /// Number of user functions defined in the Sierra code.
     pub sierra_func_count: Option<usize>,
-    /// Sizes of the declared types in Sierra.
-    pub sierra_declared_types_sizes: BTreeMap<String, usize>,
+    /// Stats of the declared types in Sierra.
+    pub sierra_declared_types_stats: BTreeMap<String, SierraDeclaredTypeStats>,
     /// Stats about params and return types of each Sierra function.
     pub sierra_func_stats: BTreeMap<String, SierraFuncStats>,
     /// Number of statements for each distinct libfunc.
@@ -76,6 +76,17 @@ pub struct SierraFuncStats {
     pub params_total_size: usize,
     pub return_types_quant: usize,
     pub return_types_total_size: usize,
+}
+
+/// Contains the stats for each Sierra declared type:
+/// - concrete_type: The concrete type (e.g Struct)
+/// - size: Layout size of the whole type
+/// - as_param_count: Number of times the type is used as a param in a libfunc
+#[derive(Debug, Default, Serialize)]
+pub struct SierraDeclaredTypeStats {
+    pub concrete_type: String,
+    pub size: usize,
+    pub as_param_count: usize,
 }
 
 impl Statistics {

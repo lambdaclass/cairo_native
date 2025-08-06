@@ -47,7 +47,7 @@ use crate::{
     module::NativeModule,
     native_assert, native_panic,
     starknet::{handler::StarknetSyscallHandlerCallbacks, StarknetSyscallHandler},
-    statistics::{SierraFuncStats, Statistics},
+    statistics::{SierraDeclaredTypeStats, SierraFuncStats, Statistics},
     types::TypeBuilder,
     utils::{
         decode_error_message, generate_function_name, get_integer_layout, libc_free, libc_malloc,
@@ -62,6 +62,7 @@ use cairo_lang_sierra::{
         core::{CoreLibfunc, CoreType, CoreTypeConcrete},
         gas::CostTokenType,
         starknet::StarknetTypeConcrete,
+        ConcreteLibfunc,
     },
     ids::FunctionId,
     program::{GenFunction, GenStatement, Program, StatementIdx},
@@ -240,22 +241,18 @@ impl AotContractExecutor {
         )?;
 
         if let Some(&mut ref mut stats) = stats {
-            for statement in &program.statements {
-                if let GenStatement::Invocation(invocation) = statement {
-                    let libfunc = registry.get_libfunc(&invocation.libfunc_id)?;
-                    let name = libfunc_to_name(libfunc).to_string();
-                    *stats.sierra_libfunc_frequency.entry(name).or_insert(0) += 1;
-                }
-            }
-
             let mut circuits_count = 0;
             for type_declaration in &program.type_declarations {
                 if let Ok(type_concrete) = registry.get_type(&type_declaration.id) {
-                    let type_id = format!("{}", type_declaration.id);
+                    let type_id = type_declaration.id.to_string();
                     let type_size = type_concrete.layout(&registry).unwrap().size();
-                    stats.sierra_declared_types_sizes.insert(
-                        format!("{},{}", type_id, type_to_name(&registry, type_concrete)),
-                        type_size,
+                    stats.sierra_declared_types_stats.insert(
+                        type_id.clone(),
+                        SierraDeclaredTypeStats {
+                            concrete_type: type_to_name(&registry, type_concrete),
+                            size: type_size,
+                            as_param_count: 0,
+                        },
                     );
 
                     if let CoreTypeConcrete::Circuit(CircuitTypeConcrete::Circuit(info)) =
@@ -265,8 +262,24 @@ impl AotContractExecutor {
                     }
                 }
             }
-            stats.sierra_declared_types_sizes.retain(|_, v| *v != 0);
             stats.sierra_circuits_count = Some(circuits_count);
+
+            for statement in &program.statements {
+                if let GenStatement::Invocation(invocation) = statement {
+                    let libfunc = registry.get_libfunc(&invocation.libfunc_id)?;
+                    let name = libfunc_to_name(libfunc).to_string();
+                    *stats.sierra_libfunc_frequency.entry(name).or_insert(0) += 1;
+
+                    for param in libfunc.param_signatures() {
+                        let param_ty = param.ty.to_string();
+                        if let Some(type_stats) =
+                            stats.sierra_declared_types_stats.get_mut(&param_ty)
+                        {
+                            type_stats.as_param_count += 1;
+                        }
+                    }
+                }
+            }
 
             for func in &program.funcs {
                 let func_id = func.id.to_string();
