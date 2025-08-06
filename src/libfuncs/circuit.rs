@@ -29,10 +29,14 @@ use cairo_lang_sierra::{
 use melior::{
     dialect::{
         arith::{self, CmpiPredicate},
-        cf, llvm,
+        cf, func, llvm,
     },
     helpers::{ArithBlockExt, BuiltinBlockExt, GepIndex, LlvmBlockExt},
-    ir::{r#type::IntegerType, Block, BlockLike, Location, Type, Value, ValueLike},
+    ir::{
+        attribute::{StringAttribute, TypeAttribute},
+        r#type::IntegerType,
+        Block, BlockLike, Location, Region, Type, Value, ValueLike,
+    },
     Context,
 };
 use num_traits::Signed;
@@ -996,6 +1000,30 @@ fn u384_struct_to_integer<'a>(
     let value = block.append_op_result(arith::ori(value, limb4, location))?;
 
     Ok(value)
+}
+
+fn u384_integer_to_struct_mlir<'a>(
+    context: &'a Context,
+    block: &'a Block<'a>,
+    location: Location<'a>,
+    integer: Value<'a, 'a>,
+) {
+    let return_type = build_u384_struct_type(context);
+    let integer_type = IntegerType::new(context, 384);
+    let location = Location::unknown(&context);
+    let inner_block = Block::new(&[(integer_type.into(), location)]); // Receives the integer from where it will get the 4 limbs
+
+    block.append_operation(func::func(
+        context,
+        StringAttribute::new(context, "u384_integer_to_struct"),
+        TypeAttribute::new(return_type),
+        region,
+        attributes,
+        location,
+    ));
+
+    let region = Region::new();
+    region.append_block(inner_block);
 }
 
 fn u384_integer_to_struct<'a>(

@@ -23,7 +23,11 @@ use cairo_lang_sierra::{
 use melior::{
     dialect::{func, llvm},
     helpers::{ArithBlockExt, BuiltinBlockExt, LlvmBlockExt},
-    ir::{r#type::IntegerType, Block, BlockLike, Location, Module, Region, Type, Value},
+    ir::{
+        attribute::{StringAttribute, TypeAttribute},
+        r#type::{FunctionType, IntegerType},
+        Block, BlockLike, Location, Module, Region, Type, Value,
+    },
     Context,
 };
 
@@ -517,6 +521,38 @@ pub fn layout(
 }
 
 pub fn build_u384_struct_type(context: &Context) -> Type<'_> {
+    let return_type = IntegerType::new(context, 96).into();
+    let location = Location::unknown(&context);
+    let region = Region::new();
+    let block = Block::new(&[]);
+    block.append_operation(func::r#return(
+        &[
+            IntegerType::new(context, 96).into(),
+            IntegerType::new(context, 96).into(),
+            IntegerType::new(context, 96).into(),
+            IntegerType::new(context, 96).into(),
+        ],
+        location.clone(),
+    ));
+    region.append_block(block);
+
+    let module = Module::new(location);
+    module.body().append_operation(func::func(
+        context,
+        StringAttribute::new(context, "create_u384"),
+        TypeAttribute::new(
+            FunctionType::new(
+                &context,
+                &[],
+                &[return_type, return_type, return_type, return_type],
+            )
+            .into(),
+        ),
+        region,
+        &[],
+        location,
+    ));
+
     llvm::r#type::r#struct(
         context,
         &[
