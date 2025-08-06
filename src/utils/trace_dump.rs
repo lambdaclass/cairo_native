@@ -73,6 +73,7 @@ use cairo_lang_sierra::{
 };
 use cairo_lang_utils::ordered_hash_map::OrderedHashMap;
 use melior::{
+    helpers::LlvmBlockExt,
     ir::{BlockRef, Location, Module, Value, ValueLike},
     Context,
 };
@@ -81,8 +82,6 @@ use crate::{
     metadata::{trace_dump::TraceDumpMeta, MetadataStorage},
     types::TypeBuilder,
 };
-
-use super::BlockExt;
 
 #[allow(clippy::too_many_arguments)]
 pub fn build_state_snapshot(

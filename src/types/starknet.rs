@@ -28,7 +28,6 @@ use crate::{
         drop_overrides::DropOverridesMeta, dup_overrides::DupOverridesMeta,
         realloc_bindings::ReallocBindingsMeta, MetadataStorage,
     },
-    utils::BlockExt,
 };
 use cairo_lang_sierra::{
     extensions::{
@@ -40,6 +39,7 @@ use cairo_lang_sierra::{
 };
 use melior::{
     dialect::{func, llvm, ods},
+    helpers::{ArithBlockExt, BuiltinBlockExt},
     ir::{
         attribute::IntegerAttribute, r#type::IntegerType, Block, BlockLike, Location, Module,
         Region, Type,

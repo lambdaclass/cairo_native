@@ -24,10 +24,7 @@
 //!
 //! See `cairo-native-run` for an example on how to do it.
 
-use crate::{
-    error::{Error, Result},
-    utils::BlockExt,
-};
+use crate::error::{Error, Result};
 use cairo_lang_sierra::{
     ids::ConcreteLibfuncId,
     program::{Program, Statement, StatementIdx},
@@ -38,6 +35,7 @@ use melior::{
         llvm::{self},
         memref, ods,
     },
+    helpers::{ArithBlockExt, BuiltinBlockExt, LlvmBlockExt},
     ir::{
         attribute::{FlatSymbolRefAttribute, StringAttribute, TypeAttribute},
         operation::OperationBuilder,
@@ -126,12 +124,12 @@ impl ProfilerMeta {
             .into(),
         )?;
 
-        block.load(
+        Ok(block.load(
             context,
             location,
             global_address,
             llvm::r#type::pointer(context, 0),
-        )
+        )?)
     }
 
     pub fn build_profile_id<'c, 'a>(
@@ -167,7 +165,7 @@ impl ProfilerMeta {
             ))
             .unwrap();
 
-        block.append_op_result(memref::load(trace_profile_ptr, &[], location))
+        Ok(block.append_op_result(memref::load(trace_profile_ptr, &[], location))?)
     }
 
     /// Gets the current timestamp.
@@ -247,6 +245,8 @@ impl ProfilerMeta {
         block: &'a Block<'c>,
         location: Location<'c>,
     ) -> Result<(Value<'c, 'a>, Value<'c, 'a>)> {
+        use melior::helpers::ArithBlockExt;
+
         let i64_ty = IntegerType::new(context, 64).into();
 
         let value = block.append_op_result(

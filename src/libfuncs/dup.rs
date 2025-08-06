@@ -5,7 +5,7 @@
 //!
 //! However, types like an array need special handling.
 
-use super::{BlockExt, LibfuncHelper};
+use super::LibfuncHelper;
 use crate::{
     error::Result,
     metadata::{dup_overrides::DupOverridesMeta, MetadataStorage},
@@ -18,6 +18,7 @@ use cairo_lang_sierra::{
     program_registry::ProgramRegistry,
 };
 use melior::{
+    helpers::BuiltinBlockExt,
     ir::{Block, Location},
     Context,
 };

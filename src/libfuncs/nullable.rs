@@ -3,7 +3,7 @@
 //! Like a Box but it can be null.
 
 use super::LibfuncHelper;
-use crate::{error::Result, metadata::MetadataStorage, utils::BlockExt};
+use crate::{error::Result, metadata::MetadataStorage};
 use cairo_lang_sierra::{
     extensions::{
         core::{CoreLibfunc, CoreType},
@@ -14,6 +14,7 @@ use cairo_lang_sierra::{
 };
 use melior::{
     dialect::{cf, llvm::r#type::pointer, ods},
+    helpers::BuiltinBlockExt,
     ir::{
         attribute::IntegerAttribute, operation::OperationBuilder, r#type::IntegerType, Block,
         BlockLike, Identifier, Location,

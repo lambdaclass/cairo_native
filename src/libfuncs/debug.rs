@@ -15,7 +15,7 @@ use crate::{
     metadata::{
         drop_overrides::DropOverridesMeta, runtime_bindings::RuntimeBindingsMeta, MetadataStorage,
     },
-    utils::{BlockExt, ProgramRegistryExt},
+    utils::ProgramRegistryExt,
 };
 use cairo_lang_sierra::{
     extensions::{
@@ -27,6 +27,7 @@ use cairo_lang_sierra::{
 };
 use melior::{
     dialect::{arith, cf, llvm},
+    helpers::{ArithBlockExt, BuiltinBlockExt, LlvmBlockExt},
     ir::{r#type::IntegerType, Block, Location},
     Context,
 };
