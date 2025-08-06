@@ -361,10 +361,6 @@ fn build_eval<'ctx, 'this>(
             circuit_info.mul_offsets.len() * MUL_MOD_BUILTIN_SIZE,
         )?;
 
-        // TODO: We are saving the whole circuit. We should only save the gates
-        // that will be queried later. We are also saving them in integer form,
-        // and should probably be saved in struct form.
-
         // Calculate capacity for array.
         let outputs_capacity = circuit_info.values.len();
         let u384_integer_layout = get_integer_layout(384);

@@ -279,19 +279,16 @@ pub fn build_circuit_data<'ctx>(
 /// ## Layout:
 ///
 /// Holds the evaluated circuit output gates and the circuit modulus.
-/// - The data is stored as a dynamic array of u384 integers (i384i).
-/// - The modulus is stored as a u384 in struct form (u384s).
-///
-/// TODO: Right know, the data array holds N_VALUES elements.
-/// We should store only the elements that will be queried later.
+/// - The data is stored as a dynamic array of u384 integers.
+/// - The modulus is stored as a u384 in struct form (multi-limb).
 ///
 /// ```txt
 /// type = struct {
-///     data: *u384i,
-///     modulus: u384s,
+///     data: *u384,
+///     modulus: u384struct,
 /// };
 ///
-/// u384s = struct {
+/// u384struct = struct {
 ///     limb1: u96,
 ///     limb2: u96,
 ///     limb3: u96,
