@@ -41,7 +41,7 @@ else
 fi
 
 # Extract the sierra from the contract class.
-cargo run -p contract-utils --bin contract-to-sierra $CONTRACT_PATH >> $SIERRA_PATH
+cargo run -p debug_utils --bin contract-to-sierra $CONTRACT_PATH >> $SIERRA_PATH
 
 # Lower sierra to casm
 ./cairo2/bin/sierra-compile $SIERRA_PATH $CASM_PATH

@@ -1432,15 +1432,6 @@ dependencies = [
 ]
 
 [[package]]
-name = "contract-utils"
-version = "0.6.0"
-dependencies = [
- "cairo-lang-starknet-classes",
- "clap",
- "serde_json",
-]
-
-[[package]]
 name = "convert_case"
 version = "0.7.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -1575,6 +1566,15 @@ dependencies = [
  "html-escape",
  "nom",
  "ordered-float",
+]
+
+[[package]]
+name = "debug_utils"
+version = "0.6.0"
+dependencies = [
+ "cairo-lang-starknet-classes",
+ "clap",
+ "serde_json",
 ]
 
 [[package]]

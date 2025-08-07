@@ -1,5 +1,5 @@
 [package]
-name = "contract-utils"
+name = "debug_utils"
 version.workspace = true
 edition.workspace = true
 license.workspace = true
