@@ -50,8 +50,8 @@ use crate::{
     statistics::{SierraDeclaredTypeStats, SierraFuncStats, Statistics},
     types::TypeBuilder,
     utils::{
-        decode_error_message, generate_function_name, get_integer_layout, libc_free, libc_malloc,
-        BuiltinCosts,
+        decode_error_message, generate_function_name, get_integer_layout, get_types_total_size,
+        libc_free, libc_malloc, BuiltinCosts,
     },
     OptLevel,
 };
@@ -287,11 +287,11 @@ impl AotContractExecutor {
                 // Params
                 let params_quant = func.params.len();
                 let params_total_size =
-                    stats.get_types_total_size(&func.signature.param_types, &registry);
+                    get_types_total_size(&func.signature.param_types, &registry);
                 // Return types
                 let return_types_quant = func.signature.ret_types.len();
                 let return_types_total_size =
-                    stats.get_types_total_size(&func.signature.ret_types, &registry);
+                    get_types_total_size(&func.signature.ret_types, &registry);
 
                 stats.sierra_func_stats.insert(
                     func_id,

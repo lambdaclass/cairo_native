@@ -112,20 +112,6 @@ impl Statistics {
             && self.object_size_bytes.is_some()
     }
 
-    /// Gets the size of the full set of params of a Sierra function
-    pub fn get_types_total_size(
-        &self,
-        types_ids: &[ConcreteTypeId],
-        registry: &ProgramRegistry<CoreType, CoreLibfunc>,
-    ) -> usize {
-        types_ids
-            .iter()
-            .fold(0, |accum, type_id| match registry.get_type(type_id) {
-                Ok(concrete_type) => accum + concrete_type.layout(registry).unwrap().size(),
-                Err(_) => accum,
-            })
-    }
-
     /// Counts the gates in a circuit
     pub fn add_circuit_gates(&mut self, info: &CircuitInfo) {
         for gate_offset in &info.add_offsets {
