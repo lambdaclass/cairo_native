@@ -38,7 +38,6 @@ CONTRACT_CLASS_FILE=$(basename $CONTRACT_PATH)
 CLASS_HASH=${CONTRACT_CLASS_FILE%.*}
 SIERRA_PATH=$CLASS_HASH.sierra
 CASM_PATH=$CLASS_HASH.casm
-OS="$(uname -s)"
 
 # Extract the sierra from the contract class.
 cargo run -p debug_utils --bin contract-to-sierra $CONTRACT_PATH >> $SIERRA_PATH
