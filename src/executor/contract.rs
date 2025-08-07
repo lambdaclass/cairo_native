@@ -241,7 +241,6 @@ impl AotContractExecutor {
         )?;
 
         if let Some(&mut ref mut stats) = stats {
-            let mut circuits_count = 0;
             for type_declaration in &program.type_declarations {
                 if let Ok(type_concrete) = registry.get_type(&type_declaration.id) {
                     let type_id = type_declaration.id.to_string();
@@ -249,7 +248,7 @@ impl AotContractExecutor {
                     if !type_concrete.is_builtin() {
                         // We dont want to add the builtins to the stats
                         stats.sierra_declared_types_stats.insert(
-                            type_id.clone(),
+                            type_id,
                             SierraDeclaredTypeStats {
                                 concrete_type: type_to_name(&registry, type_concrete),
                                 size: type_size,
@@ -261,11 +260,10 @@ impl AotContractExecutor {
                     if let CoreTypeConcrete::Circuit(CircuitTypeConcrete::Circuit(info)) =
                         type_concrete
                     {
-                        stats.add_circuit_stats(&info.circuit_info, &mut circuits_count, type_id);
+                        stats.add_circuit_gates(&info.circuit_info);
                     }
                 }
             }
-            stats.sierra_circuits_count = Some(circuits_count);
 
             for statement in &program.statements {
                 if let GenStatement::Invocation(invocation) = statement {

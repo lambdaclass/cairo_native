@@ -30,11 +30,7 @@ pub struct Statistics {
     /// Number of statements for each distinct libfunc.
     pub sierra_libfunc_frequency: BTreeMap<String, u128>,
     /// Number of times each circuit gate is used.
-    pub sierra_circuit_gates_count: BTreeMap<String, usize>,
-    /// Number of circuits in Sierra.
-    pub sierra_circuits_count: Option<usize>,
-    /// Number of gates for each Sierra circuit. Value has the counters in the following form -> (add,sub,mul,inv)
-    pub sierra_gates_per_circuit: BTreeMap<String, (usize, usize, usize, usize)>,
+    sierra_circuit_gates_count: CircuitGatesStats,
     /// Number of MLIR operations generated.
     pub mlir_operation_count: Option<u128>,
     /// Number of MLIR operations generated for each distinct libfunc.
@@ -89,6 +85,16 @@ pub struct SierraDeclaredTypeStats {
     pub as_param_count: usize,
 }
 
+/// Contains the quantity of each circuit gate
+/// in a contract
+#[derive(Debug, Default, Serialize)]
+struct CircuitGatesStats {
+    add_gate: usize,
+    sub_gate: usize,
+    mul_gate: usize,
+    inverse_gate: usize,
+}
+
 impl Statistics {
     pub fn validate(&self) -> bool {
         self.sierra_type_count.is_some()
@@ -122,65 +128,27 @@ impl Statistics {
             })
     }
 
-    /// Adds the following circuit stats:
-    /// - Circuits count
-    /// - Gates per circuit
-    /// - Total of gates
-    pub fn add_circuit_stats(
-        &mut self,
-        info: &CircuitInfo,
-        circuits_count: &mut usize,
-        type_id: String,
-    ) {
-        *circuits_count += 1;
-        let mut add_gate_count = 0;
-        let mut sub_gate_count = 0;
-        let mut mul_gate_count = 0;
-        let mut inverse_gate_count = 0;
+    /// Counts the gates in a circuit
+    pub fn add_circuit_gates(&mut self, info: &CircuitInfo) {
         for gate_offset in &info.add_offsets {
             if gate_offset.lhs > gate_offset.output {
                 // SUB
-                sub_gate_count += 1;
-                *self
-                    .sierra_circuit_gates_count
-                    .entry(String::from("SubGate"))
-                    .or_insert(0) += 1;
+                self.sierra_circuit_gates_count.sub_gate += 1;
             } else {
                 // ADD
-                add_gate_count += 1;
-                *self
-                    .sierra_circuit_gates_count
-                    .entry(String::from("AddGate"))
-                    .or_insert(0) += 1;
+                self.sierra_circuit_gates_count.add_gate += 1;
             }
         }
 
         for gate_offset in &info.mul_offsets {
             if gate_offset.lhs > gate_offset.output {
                 // INVERSE
-                inverse_gate_count += 1;
-                *self
-                    .sierra_circuit_gates_count
-                    .entry(String::from("InverseGate"))
-                    .or_insert(0) += 1;
+                self.sierra_circuit_gates_count.inverse_gate += 1;
             } else {
                 // MUL
-                mul_gate_count += 1;
-                *self
-                    .sierra_circuit_gates_count
-                    .entry(String::from("MulGate"))
-                    .or_insert(0) += 1;
+                self.sierra_circuit_gates_count.mul_gate += 1;
             }
         }
-        self.sierra_gates_per_circuit.insert(
-            type_id.clone(),
-            (
-                add_gate_count,
-                sub_gate_count,
-                mul_gate_count,
-                inverse_gate_count,
-            ),
-        );
     }
 }
 
