@@ -33,19 +33,12 @@ pub mod trace_dump;
 #[derive(Debug)]
 pub struct MetadataStorage {
     entries: HashMap<TypeId, Box<dyn Any>>,
-    pub types_freqs: Option<BTreeMap<String, usize>>, // We need an option so we do not use this big map every time, only when needed
+    types_freqs: BTreeMap<String, usize>, // KEY = (declared_id, concrete_type)
 }
 
 impl MetadataStorage {
     /// Create an empty metadata container.
     pub fn new() -> Self {
-        Self {
-            entries: Default::default(),
-            types_freqs: None,
-        }
-    }
-
-    pub fn new_with_types_freqs() -> Self {
         Self::default()
     }
 
@@ -120,14 +113,13 @@ impl MetadataStorage {
             .expect("the given type does not match the actual")
     }
 
-    /// If the metadata contains the hashmap used to store the frequencies of the types,
-    /// then we update the entry. If its not present, we don't do anything.
     pub fn increment_frequency(&mut self, type_id: &ConcreteTypeId, type_name: String) {
         let type_id_str = format!("{},{}", type_id, type_name);
+        *self.types_freqs.entry(type_id_str).or_insert(0) += 1;
+    }
 
-        if let Some(freqs) = self.types_freqs.as_mut() {
-            *freqs.entry(type_id_str).or_insert(0) += 1;
-        }
+    pub fn types_frequencies(&self) -> BTreeMap<String, usize> {
+        self.types_freqs.clone()
     }
 }
 
@@ -136,7 +128,7 @@ impl Default for MetadataStorage {
     fn default() -> Self {
         let mut metadata = Self {
             entries: Default::default(),
-            types_freqs: None,
+            types_freqs: Default::default(),
         };
 
         metadata.insert(debug_utils::DebugUtils::default());
