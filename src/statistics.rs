@@ -1,15 +1,6 @@
-use cairo_lang_sierra::{
-    extensions::{
-        circuit::CircuitInfo,
-        core::{CoreLibfunc, CoreType},
-    },
-    ids::ConcreteTypeId,
-    program_registry::ProgramRegistry,
-};
+use cairo_lang_sierra::extensions::circuit::{CircuitInfo, GateOffsets};
 use serde::Serialize;
 use std::collections::BTreeMap;
-
-use crate::types::TypeBuilder;
 
 /// A set of compilation statistics gathered during the compilation.
 /// It should be completely filled at the end of the compilation.
@@ -112,25 +103,59 @@ impl Statistics {
             && self.object_size_bytes.is_some()
     }
 
-    /// Counts the gates in a circuit
+    /// Counts the gates in a circuit. It uses the same algorithm used
+    /// to evaluate the gates on a circuit when evaluating it.
     pub fn add_circuit_gates(&mut self, info: &CircuitInfo) {
-        for gate_offset in &info.add_offsets {
-            if gate_offset.lhs > gate_offset.output {
-                // SUB
-                self.sierra_circuit_gates_count.sub_gate += 1;
-            } else {
-                // ADD
-                self.sierra_circuit_gates_count.add_gate += 1;
-            }
+        let mut known_gates = vec![false; 1 + info.n_inputs + info.values.len()];
+        known_gates[0] = true;
+        for i in 0..info.n_inputs {
+            known_gates[i + 1] = true;
         }
 
-        for gate_offset in &info.mul_offsets {
-            if gate_offset.lhs > gate_offset.output {
-                // INVERSE
-                self.sierra_circuit_gates_count.inverse_gate += 1;
+        let mut add_offsets = info.add_offsets.iter().peekable();
+        let mut mul_offsets = info.mul_offsets.iter();
+
+        loop {
+            while let Some(&add_gate_offset) = add_offsets.peek() {
+                let lhs = known_gates[add_gate_offset.lhs].to_owned();
+                let rhs = known_gates[add_gate_offset.rhs].to_owned();
+                let output = known_gates[add_gate_offset.output].to_owned();
+
+                match (lhs, rhs, output) {
+                    (true, true, false) => {
+                        // ADD
+                        self.sierra_circuit_gates_count.add_gate += 1;
+                        known_gates[add_gate_offset.output] = true;
+                    }
+                    (false, true, true) => {
+                        // SUB
+                        self.sierra_circuit_gates_count.sub_gate += 1;
+                        known_gates[add_gate_offset.lhs] = true;
+                    }
+                    _ => break,
+                }
+                add_offsets.next();
+            }
+
+            if let Some(&GateOffsets { lhs, rhs, output }) = mul_offsets.next() {
+                let lhs_value = known_gates[lhs];
+                let rhs_value = known_gates[rhs];
+                let output_value = known_gates[output];
+
+                match (lhs_value, rhs_value, output_value) {
+                    (true, true, false) => {
+                        // MUL
+                        self.sierra_circuit_gates_count.mul_gate += 1;
+                        known_gates[output] = true;
+                    }
+                    (false, true, true) => {
+                        self.sierra_circuit_gates_count.inverse_gate += 1;
+                        known_gates[lhs] = true;
+                    }
+                    _ => panic!("Imposible circuit"), // It should never reach this point, since it would have failed in the compilation before
+                }
             } else {
-                // MUL
-                self.sierra_circuit_gates_count.mul_gate += 1;
+                break;
             }
         }
     }
