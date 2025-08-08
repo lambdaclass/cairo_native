@@ -407,7 +407,6 @@ fn build_eval<'ctx, 'this>(
         // declare_u384_integer_to_struct_mlir_func(context, ok_block, location);
         let modulus_struct =
             call_u384_integer_to_struct_mlir_func(ok_block, location, context, circuit_modulus)?;
-        println!("Se llamo la funcion");
 
         // Build output struct
         let outputs_type_id = &info.branch_signatures()[0].vars[2].ty;

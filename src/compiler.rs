@@ -179,7 +179,7 @@ fn declare_u384_integer_to_struct_mlir_func<'a>(
     location: Location<'a>,
 ) {
     let return_type = build_u384_struct_type(context);
-    let integer_type = IntegerType::new(context, 384); // TODO: Does it make sense to have the 384 bits?
+    let integer_type = IntegerType::new(context, 384);
 
     // New block containing function. Receives the integer from where it will get the 4 limbs
     let inner_block = Block::new(&[(integer_type.into(), location)]);
@@ -221,17 +221,20 @@ fn declare_u384_integer_to_struct_mlir_func<'a>(
             &[limb1, limb2, limb3, limb4],
         )
         .unwrap();
+
+    inner_block.append_operation(llvm::r#return(Some(struct_value), location));
     ///////////////////////////////////////
 
     let region = Region::new();
     region.append_block(inner_block);
     let func_name = StringAttribute::new(context, "cairo_native__u384_integer_to_struct");
+
     // Append the function with the region that has the implementation to the block
-    module.body().append_operation(func::func(
+    module.body().append_operation(llvm::func(
         context,
         func_name,
         TypeAttribute::new(llvm::r#type::function(
-            llvm::r#type::r#struct(context, &[return_type], false),
+            return_type,
             &[integer_type.into()],
             false,
         )),
