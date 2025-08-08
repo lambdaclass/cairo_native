@@ -35,7 +35,7 @@ use crate::{
     arch::AbiArgument,
     clone_option_mut,
     context::NativeContext,
-    debug::libfunc_to_name,
+    debug::{libfunc_to_name, type_to_name},
     error::{panic::ToNativeAssertError, Error, Result},
     execution_result::{
         BuiltinStats, ContractExecutionResult, ADD_MOD_BUILTIN_SIZE, BITWISE_BUILTIN_SIZE,
@@ -250,6 +250,7 @@ impl AotContractExecutor {
                         stats.sierra_declared_types_stats.insert(
                             type_id,
                             SierraDeclaredTypeStats {
+                                concrete_type: type_to_name(&registry, type_concrete),
                                 size: type_size,
                                 as_param_count: 0,
                             },
@@ -284,21 +285,21 @@ impl AotContractExecutor {
             for func in &program.funcs {
                 let func_id = func.id.to_string();
                 // Params
-                let curr_params_quant = func.params.len();
-                let curr_params_total_size =
+                let params_quant = func.params.len();
+                let params_total_size =
                     get_types_total_size(&func.signature.param_types, &registry);
                 // Return types
-                let curr_return_types_quant = func.signature.ret_types.len();
-                let curr_return_types_total_size =
+                let return_types_quant = func.signature.ret_types.len();
+                let return_types_total_size =
                     get_types_total_size(&func.signature.ret_types, &registry);
 
                 stats.sierra_func_stats.insert(
                     func_id,
                     SierraFuncStats {
-                        params_quant: curr_params_quant as u16,
-                        params_total_size: curr_params_total_size as u32,
-                        return_types_quant: curr_return_types_quant as u16,
-                        return_types_total_size: curr_return_types_total_size as u32,
+                        params_quant,
+                        params_total_size,
+                        return_types_quant,
+                        return_types_total_size,
                     },
                 );
             }
