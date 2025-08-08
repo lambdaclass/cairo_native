@@ -56,7 +56,7 @@ use crate::{
     },
     native_assert, native_panic,
     statistics::Statistics,
-    types::TypeBuilder,
+    types::{circuit::build_u384_struct_type, TypeBuilder},
     utils::{generate_function_name, walk_ir::walk_mlir_block},
 };
 use bumpalo::Bump;
@@ -141,6 +141,8 @@ pub fn compile(
         }
     }
 
+    declare_u384_integer_to_struct_mlir_func(context, module, Location::unknown(context));
+
     // Sierra programs have the following structure:
     //   1. Type declarations, one per line.
     //   2. Libfunc declarations, one per line.
@@ -169,6 +171,74 @@ pub fn compile(
 
     tracing::info!("The program was compiled successfully.");
     Ok(())
+}
+
+fn declare_u384_integer_to_struct_mlir_func<'a>(
+    context: &'a Context,
+    module: &Module,
+    location: Location<'a>,
+) {
+    let return_type = build_u384_struct_type(context);
+    let integer_type = IntegerType::new(context, 384); // TODO: Does it make sense to have the 384 bits?
+
+    // New block containing function. Receives the integer from where it will get the 4 limbs
+    let inner_block = Block::new(&[(integer_type.into(), location)]);
+
+    /////// FUNCTION IMPLEMENTATION ///////
+    let argument: Value<'_, '_> = inner_block.argument(0).unwrap().into();
+    let u96_type = IntegerType::new(context, 96).into();
+    let limb1 = inner_block
+        .trunci(argument, IntegerType::new(context, 96).into(), location)
+        .unwrap();
+    let limb2 = {
+        let k96 = inner_block.const_int(context, location, 96, 384).unwrap();
+        let limb = inner_block.shrui(argument, k96, location).unwrap();
+        inner_block.trunci(limb, u96_type, location).unwrap()
+    };
+    let limb3 = {
+        let k192 = inner_block
+            .const_int(context, location, 96 * 2, 384)
+            .unwrap();
+        let limb = inner_block.shrui(argument, k192, location).unwrap();
+        inner_block.trunci(limb, u96_type, location).unwrap()
+    };
+    let limb4 = {
+        let k288 = inner_block
+            .const_int(context, location, 96 * 3, 384)
+            .unwrap();
+        let limb = inner_block.shrui(argument, k288, location).unwrap();
+        inner_block.trunci(limb, u96_type, location).unwrap()
+    };
+    let struct_type = build_u384_struct_type(context);
+    let struct_value = inner_block
+        .append_op_result(llvm::undef(struct_type, location))
+        .unwrap();
+    inner_block
+        .insert_values(
+            context,
+            location,
+            struct_value,
+            &[limb1, limb2, limb3, limb4],
+        )
+        .unwrap();
+    ///////////////////////////////////////
+
+    let region = Region::new();
+    region.append_block(inner_block);
+    let func_name = StringAttribute::new(context, "cairo_native__u384_integer_to_struct");
+    // Append the function with the region that has the implementation to the block
+    module.body().append_operation(func::func(
+        context,
+        func_name,
+        TypeAttribute::new(llvm::r#type::function(
+            llvm::r#type::r#struct(context, &[return_type], false),
+            &[integer_type.into()],
+            false,
+        )),
+        region,
+        &[],
+        location,
+    ));
 }
 
 /// Compile a single Sierra function.

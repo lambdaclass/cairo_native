@@ -36,7 +36,7 @@ use melior::{
         attribute::{FlatSymbolRefAttribute, StringAttribute, TypeAttribute},
         operation::OperationBuilder,
         r#type::IntegerType,
-        Block, BlockLike, Location, Region, Type, Value, ValueLike,
+        Block, BlockLike, Identifier, Location, Region, Type, Value, ValueLike,
     },
     Context,
 };
@@ -404,7 +404,7 @@ fn build_eval<'ctx, 'this>(
         }
 
         // let modulus_struct = u384_integer_to_struct(context, ok_block, location, circuit_modulus)?;
-        declare_u384_integer_to_struct_mlir_func(context, ok_block, location);
+        // declare_u384_integer_to_struct_mlir_func(context, ok_block, location);
         let modulus_struct =
             call_u384_integer_to_struct_mlir_func(ok_block, location, context, circuit_modulus)?;
         println!("Se llamo la funcion");
@@ -1007,74 +1007,6 @@ fn u384_struct_to_integer<'a>(
     Ok(value)
 }
 
-fn declare_u384_integer_to_struct_mlir_func<'a>(
-    context: &'a Context,
-    block: &'a Block<'a>,
-    location: Location<'a>,
-) {
-    let return_type = build_u384_struct_type(context);
-    let integer_type = IntegerType::new(context, 384); // TODO: Does it make sense to have the 384 bits?
-
-    // New block containing function. Receives the integer from where it will get the 4 limbs
-    let inner_block = Block::new(&[(integer_type.into(), location)]);
-
-    /////// FUNCTION IMPLEMENTATION ///////
-    let argument: Value<'_, '_> = inner_block.argument(0).unwrap().into();
-    let u96_type = IntegerType::new(context, 96).into();
-    let limb1 = inner_block
-        .trunci(argument, IntegerType::new(context, 96).into(), location)
-        .unwrap();
-    let limb2 = {
-        let k96 = inner_block.const_int(context, location, 96, 384).unwrap();
-        let limb = inner_block.shrui(argument, k96, location).unwrap();
-        inner_block.trunci(limb, u96_type, location).unwrap()
-    };
-    let limb3 = {
-        let k192 = inner_block
-            .const_int(context, location, 96 * 2, 384)
-            .unwrap();
-        let limb = inner_block.shrui(argument, k192, location).unwrap();
-        inner_block.trunci(limb, u96_type, location).unwrap()
-    };
-    let limb4 = {
-        let k288 = inner_block
-            .const_int(context, location, 96 * 3, 384)
-            .unwrap();
-        let limb = inner_block.shrui(argument, k288, location).unwrap();
-        inner_block.trunci(limb, u96_type, location).unwrap()
-    };
-    let struct_type = build_u384_struct_type(context);
-    let struct_value = inner_block
-        .append_op_result(llvm::undef(struct_type, location))
-        .unwrap();
-    inner_block
-        .insert_values(
-            context,
-            location,
-            struct_value,
-            &[limb1, limb2, limb3, limb4],
-        )
-        .unwrap();
-    ///////////////////////////////////////
-
-    let region = Region::new();
-    region.append_block(inner_block);
-    let func_name = StringAttribute::new(context, "cairo_native__u384_integer_to_struct");
-    // Append the function with the region that has the implementation to the block
-    block.append_operation(func::func(
-        context,
-        func_name,
-        TypeAttribute::new(llvm::r#type::function(
-            llvm::r#type::r#struct(context, &[return_type], false),
-            &[integer_type.into()],
-            false,
-        )),
-        region,
-        &[],
-        location,
-    ));
-}
-
 fn call_u384_integer_to_struct_mlir_func<'a>(
     block: &'a Block<'a>,
     location: Location<'a>,
@@ -1085,7 +1017,11 @@ fn call_u384_integer_to_struct_mlir_func<'a>(
     Ok(block
         .append_operation(
             OperationBuilder::new("llvm.call", location)
-                .add_operands(&[func_symbol.into()])
+                .add_attributes(&[(
+                    Identifier::new(context, "callee"),
+                    FlatSymbolRefAttribute::new(context, &"cairo_native__u384_integer_to_struct")
+                        .into(),
+                )])
                 .add_operands(&[integer])
                 .add_results(&[return_type])
                 .build()?,
