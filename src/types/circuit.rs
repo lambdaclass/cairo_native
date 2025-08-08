@@ -23,11 +23,7 @@ use cairo_lang_sierra::{
 use melior::{
     dialect::{func, llvm},
     helpers::{ArithBlockExt, BuiltinBlockExt, LlvmBlockExt},
-    ir::{
-        attribute::{StringAttribute, TypeAttribute},
-        r#type::{FunctionType, IntegerType},
-        Block, BlockLike, Location, Module, Region, Type, Value,
-    },
+    ir::{r#type::IntegerType, Block, BlockLike, Location, Module, Region, Type, Value},
     Context,
 };
 

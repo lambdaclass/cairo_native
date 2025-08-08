@@ -29,14 +29,12 @@ use cairo_lang_sierra::{
 use melior::{
     dialect::{
         arith::{self, CmpiPredicate},
-        cf, func, llvm, ods,
+        cf, llvm,
     },
     helpers::{ArithBlockExt, BuiltinBlockExt, GepIndex, LlvmBlockExt},
     ir::{
-        attribute::{FlatSymbolRefAttribute, StringAttribute, TypeAttribute},
-        operation::OperationBuilder,
-        r#type::IntegerType,
-        Block, BlockLike, Identifier, Location, Region, Type, Value, ValueLike,
+        attribute::FlatSymbolRefAttribute, operation::OperationBuilder, r#type::IntegerType, Block,
+        BlockLike, Identifier, Location, Type, Value, ValueLike,
     },
     Context,
 };
@@ -1018,7 +1016,7 @@ fn call_u384_integer_to_struct_mlir_func<'a>(
             OperationBuilder::new("llvm.call", location)
                 .add_attributes(&[(
                     Identifier::new(context, "callee"),
-                    FlatSymbolRefAttribute::new(context, &"cairo_native__u384_integer_to_struct")
+                    FlatSymbolRefAttribute::new(context, "cairo_native__u384_integer_to_struct")
                         .into(),
                 )])
                 .add_operands(&[integer])
