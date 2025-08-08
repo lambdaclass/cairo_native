@@ -11,7 +11,10 @@ use cairo_lang_sierra::{
 use num_bigint::{BigInt, BigUint};
 use serde::Serialize;
 use starknet_types_core::felt::Felt;
-use std::{collections::HashMap, ops::Range};
+use std::{
+    collections::{HashMap, HashSet},
+    ops::Range,
+};
 
 use crate::{debug::type_to_name, gas::BuiltinCosts};
 
@@ -247,7 +250,7 @@ impl Value {
                 "value is mismatch",
                 ty.info(),
                 self,
-                type_to_name(type_id, registry)
+                type_to_name(type_id, registry, HashSet::new())
             );
         }
 

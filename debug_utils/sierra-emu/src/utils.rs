@@ -1,3 +1,5 @@
+use std::collections::HashSet;
+
 use cairo_lang_sierra::{
     extensions::{
         core::{CoreLibfunc, CoreType, CoreTypeConcrete},
@@ -64,7 +66,7 @@ pub fn get_value_from_integer(
         CoreTypeConcrete::Felt252(_) => Value::Felt(value.into()),
         _ => panic!(
             "Cannot get integer value for a non-integer type: {}",
-            type_to_name(ty_id, registry)
+            type_to_name(ty_id, registry, HashSet::new())
         ),
     }
 }
@@ -109,7 +111,7 @@ pub fn integer_range(
         CoreTypeConcrete::NonZero(info) => integer_range(&info.ty, registry),
         _ => panic!(
             "Cannot get integer range value for a non-integer type {}",
-            type_to_name(ty_id, registry)
+            type_to_name(ty_id, registry, HashSet::new())
         ),
     }
 }

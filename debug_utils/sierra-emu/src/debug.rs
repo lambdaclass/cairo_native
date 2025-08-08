@@ -1,3 +1,5 @@
+use std::collections::HashSet;
+
 use cairo_lang_sierra::{
     extensions::{
         array::ArrayConcreteLibfunc,
@@ -430,35 +432,52 @@ pub fn libfunc_to_name(value: &CoreConcreteLibfunc) -> &'static str {
 pub fn type_to_name(
     ty_id: &ConcreteTypeId,
     registry: &ProgramRegistry<CoreType, CoreLibfunc>,
+    mut visited_types: HashSet<u64>,
 ) -> String {
     let ty = registry.get_type(ty_id).unwrap();
+    if visited_types.contains(&ty_id.id) {
+        return "".to_string();
+    }
+    visited_types.insert(ty_id.id);
     match ty {
         CoreTypeConcrete::Array(info) => {
-            format!("Array<{}>", type_to_name(&info.ty, registry))
+            format!("Array<{}>", type_to_name(&info.ty, registry, visited_types))
         }
         CoreTypeConcrete::Box(info) => {
-            format!("Box<{}>", type_to_name(&info.ty, registry))
+            format!("Box<{}>", type_to_name(&info.ty, registry, visited_types))
         }
         CoreTypeConcrete::Uninitialized(info) => {
-            format!("Uninitialized<{}>", type_to_name(&info.ty, registry))
+            format!(
+                "Uninitialized<{}>",
+                type_to_name(&info.ty, registry, visited_types)
+            )
         }
         CoreTypeConcrete::NonZero(info) => {
-            format!("NonZero<{}>", type_to_name(&info.ty, registry))
+            format!(
+                "NonZero<{}>",
+                type_to_name(&info.ty, registry, visited_types)
+            )
         }
         CoreTypeConcrete::Nullable(info) => {
-            format!("Nullable<{}>", type_to_name(&info.ty, registry))
+            format!(
+                "Nullable<{}>",
+                type_to_name(&info.ty, registry, visited_types)
+            )
         }
         CoreTypeConcrete::Span(info) => {
-            format!("Span<{}>", type_to_name(&info.ty, registry))
+            format!("Span<{}>", type_to_name(&info.ty, registry, visited_types))
         }
         CoreTypeConcrete::Snapshot(info) => {
-            format!("Snapshot<{}>", type_to_name(&info.ty, registry))
+            format!(
+                "Snapshot<{}>",
+                type_to_name(&info.ty, registry, visited_types)
+            )
         }
         CoreTypeConcrete::Struct(info) => {
             let fields = info
                 .members
                 .iter()
-                .map(|ty_id| type_to_name(ty_id, registry))
+                .map(|ty_id| type_to_name(ty_id, registry, visited_types.clone()))
                 .collect::<Vec<_>>();
             let fields = fields.join(", ");
 
@@ -468,7 +487,7 @@ pub fn type_to_name(
             let fields = info
                 .variants
                 .iter()
-                .map(|ty_id| type_to_name(ty_id, registry))
+                .map(|ty_id| type_to_name(ty_id, registry, visited_types.clone()))
                 .collect::<Vec<_>>();
             let fields = fields.join(", ");
 
@@ -544,7 +563,10 @@ pub fn type_to_name(
         CoreTypeConcrete::Bytes31(_) => String::from("Bytes31"),
         CoreTypeConcrete::BoundedInt(_) => String::from("BoundedInt"),
         CoreTypeConcrete::IntRange(info) => {
-            format!("IntRange<{}>", type_to_name(&info.ty, registry))
+            format!(
+                "IntRange<{}>",
+                type_to_name(&info.ty, registry, visited_types)
+            )
         }
         CoreTypeConcrete::Blake(_) => todo!(),
         CoreTypeConcrete::QM31(_) => todo!(),
@@ -564,7 +586,7 @@ pub fn debug_signature(
         "Params: {:#?}",
         params
             .iter()
-            .map(|p| type_to_name(&p.ty, registry))
+            .map(|p| type_to_name(&p.ty, registry, HashSet::new()))
             .collect::<Vec<_>>()
     );
     println!(
@@ -574,7 +596,7 @@ pub fn debug_signature(
             .map(|b| {
                 b.vars
                     .iter()
-                    .map(|vars| type_to_name(&vars.ty, registry))
+                    .map(|vars| type_to_name(&vars.ty, registry, HashSet::new()))
                     .collect::<Vec<_>>()
             })
             .collect::<Vec<_>>()

@@ -1,4 +1,4 @@
-use std::{num::ParseIntError, str::FromStr, sync::Arc};
+use std::{collections::HashSet, num::ParseIntError, str::FromStr, sync::Arc};
 
 use cairo_lang_sierra::{
     extensions::{
@@ -134,7 +134,7 @@ pub fn run_program(
                         _ => todo!(),
                     },
                     CoreTypeConcrete::EcOp(_) => Value::Unit,
-                    _ => todo!("{}", type_to_name(type_id, vm.registry())),
+                    _ => todo!("{}", type_to_name(type_id, vm.registry(), HashSet::new())),
                 }
             })
             .collect::<Vec<_>>(),
