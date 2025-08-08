@@ -32,7 +32,10 @@ use melior::{
         cf, llvm,
     },
     helpers::{ArithBlockExt, BuiltinBlockExt, GepIndex, LlvmBlockExt},
-    ir::{r#type::IntegerType, Block, BlockLike, Location, Type, Value, ValueLike},
+    ir::{
+        attribute::FlatSymbolRefAttribute, operation::OperationBuilder, r#type::IntegerType, Block,
+        BlockLike, Identifier, Location, Type, Value, ValueLike,
+    },
     Context,
 };
 use num_traits::Signed;
@@ -398,7 +401,10 @@ fn build_eval<'ctx, 'this>(
             ok_block.store(context, location, value_ptr, gate)?;
         }
 
-        let modulus_struct = u384_integer_to_struct(context, ok_block, location, circuit_modulus)?;
+        // let modulus_struct = u384_integer_to_struct(context, ok_block, location, circuit_modulus)?;
+        // declare_u384_integer_to_struct_mlir_func(context, ok_block, location);
+        let modulus_struct =
+            call_u384_integer_to_struct_mlir_func(ok_block, location, context, circuit_modulus)?;
 
         // Build output struct
         let outputs_type_id = &info.branch_signatures()[0].vars[2].ty;
@@ -996,6 +1002,29 @@ fn u384_struct_to_integer<'a>(
     let value = block.append_op_result(arith::ori(value, limb4, location))?;
 
     Ok(value)
+}
+
+fn call_u384_integer_to_struct_mlir_func<'a>(
+    block: &'a Block<'a>,
+    location: Location<'a>,
+    context: &'a Context,
+    integer: Value<'a, 'a>,
+) -> Result<Value<'a, 'a>> {
+    let return_type = build_u384_struct_type(context);
+    Ok(block
+        .append_operation(
+            OperationBuilder::new("llvm.call", location)
+                .add_attributes(&[(
+                    Identifier::new(context, "callee"),
+                    FlatSymbolRefAttribute::new(context, "cairo_native__u384_integer_to_struct")
+                        .into(),
+                )])
+                .add_operands(&[integer])
+                .add_results(&[return_type])
+                .build()?,
+        )
+        .result(0)?
+        .into())
 }
 
 fn u384_integer_to_struct<'a>(
