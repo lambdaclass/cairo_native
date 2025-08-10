@@ -81,7 +81,7 @@ use starknet_types_core::felt::Felt;
 use std::{
     alloc::Layout,
     cmp::Ordering,
-    collections::BTreeMap,
+    collections::{BTreeMap, HashSet},
     ffi::c_void,
     fs::{self, File},
     io,
@@ -250,7 +250,11 @@ impl AotContractExecutor {
                         stats.sierra_declared_types_stats.insert(
                             type_id,
                             SierraDeclaredTypeStats {
-                                concrete_type: type_to_name(&registry, type_concrete),
+                                concrete_type: type_to_name(
+                                    &registry,
+                                    type_concrete,
+                                    HashSet::new(),
+                                ),
                                 size: type_size,
                                 as_param_count: 0,
                             },

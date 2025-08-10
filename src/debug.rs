@@ -1,3 +1,8 @@
+use std::{
+    any::{Any, TypeId},
+    collections::HashSet,
+};
+
 use cairo_lang_sierra::{
     extensions::{
         array::ArrayConcreteLibfunc,
@@ -429,17 +434,19 @@ pub fn generic_type_to_name(
     registry: &ProgramRegistry<CoreType, CoreLibfunc>,
     name: &str,
     args: &[ConcreteTypeId],
+    visited_types: HashSet<TypeId>,
 ) -> String {
     format!(
         "{}<{}>",
         name,
         args.iter()
             .map(|field_type| {
-                registry
+                let concrete_type = registry
                     .get_type(field_type)
-                    .expect("failed to find type in registry")
+                    .expect("failed to find type in registry");
+                type_to_name(registry, concrete_type, visited_types.clone())
             })
-            .map(|field_type| type_to_name(registry, field_type))
+            .filter(|type_name| !type_name.is_empty())
             .join(",")
     )
 }
@@ -447,44 +454,64 @@ pub fn generic_type_to_name(
 pub fn type_to_name(
     registry: &ProgramRegistry<CoreType, CoreLibfunc>,
     ty: &CoreTypeConcrete,
+    mut visited_types: HashSet<TypeId>,
 ) -> String {
+    let type_id = ty.type_id();
+    if visited_types.contains(&type_id) {
+        return String::from("");
+    }
+    visited_types.insert(type_id);
     match ty {
-        CoreTypeConcrete::Struct(info) => generic_type_to_name(registry, "struct", &info.members),
-        CoreTypeConcrete::Enum(info) => generic_type_to_name(registry, "enum", &info.variants),
+        CoreTypeConcrete::Struct(info) => {
+            generic_type_to_name(registry, "struct", &info.members, visited_types)
+        }
+        CoreTypeConcrete::Enum(info) => {
+            generic_type_to_name(registry, "enum", &info.variants, visited_types)
+        }
         CoreTypeConcrete::BoundedInt(info) => {
             format!("bounded_int<{},{}>", info.range.lower, info.range.upper)
         }
         CoreTypeConcrete::Array(info) => {
-            generic_type_to_name(registry, "array", &[info.ty.clone()])
+            generic_type_to_name(registry, "array", &[info.ty.clone()], visited_types)
         }
         CoreTypeConcrete::Snapshot(info) => {
-            generic_type_to_name(registry, "snapshot", &[info.ty.clone()])
+            generic_type_to_name(registry, "snapshot", &[info.ty.clone()], visited_types)
         }
-        CoreTypeConcrete::Span(info) => generic_type_to_name(registry, "span", &[info.ty.clone()]),
+        CoreTypeConcrete::Span(info) => {
+            generic_type_to_name(registry, "span", &[info.ty.clone()], visited_types)
+        }
         CoreTypeConcrete::Felt252Dict(info) => {
-            generic_type_to_name(registry, "felt252_dict", &[info.ty.clone()])
+            generic_type_to_name(registry, "felt252_dict", &[info.ty.clone()], visited_types)
         }
-        CoreTypeConcrete::Felt252DictEntry(info) => {
-            generic_type_to_name(registry, "felt252_dict_entry", &[info.ty.clone()])
-        }
-        CoreTypeConcrete::SquashedFelt252Dict(info) => {
-            generic_type_to_name(registry, "squashed_felt252_dict", &[info.ty.clone()])
-        }
+        CoreTypeConcrete::Felt252DictEntry(info) => generic_type_to_name(
+            registry,
+            "felt252_dict_entry",
+            &[info.ty.clone()],
+            visited_types,
+        ),
+        CoreTypeConcrete::SquashedFelt252Dict(info) => generic_type_to_name(
+            registry,
+            "squashed_felt252_dict",
+            &[info.ty.clone()],
+            visited_types,
+        ),
         CoreTypeConcrete::NonZero(info) => {
-            generic_type_to_name(registry, "non_zero", &[info.ty.clone()])
+            generic_type_to_name(registry, "non_zero", &[info.ty.clone()], visited_types)
         }
-        CoreTypeConcrete::Box(info) => generic_type_to_name(registry, "box", &[info.ty.clone()]),
+        CoreTypeConcrete::Box(info) => {
+            generic_type_to_name(registry, "box", &[info.ty.clone()], visited_types)
+        }
         CoreTypeConcrete::Uninitialized(info) => {
-            generic_type_to_name(registry, "uninitialized", &[info.ty.clone()])
+            generic_type_to_name(registry, "uninitialized", &[info.ty.clone()], visited_types)
         }
         CoreTypeConcrete::Nullable(info) => {
-            generic_type_to_name(registry, "nullable", &[info.ty.clone()])
+            generic_type_to_name(registry, "nullable", &[info.ty.clone()], visited_types)
         }
         CoreTypeConcrete::Const(info) => {
-            generic_type_to_name(registry, "const", &[info.inner_ty.clone()])
+            generic_type_to_name(registry, "const", &[info.inner_ty.clone()], visited_types)
         }
         CoreTypeConcrete::IntRange(info) => {
-            generic_type_to_name(registry, "int_range", &[info.ty.clone()])
+            generic_type_to_name(registry, "int_range", &[info.ty.clone()], visited_types)
         }
         CoreTypeConcrete::Starknet(selector) => match selector {
             StarknetTypeConcrete::ClassHash(_) => String::from("class_hash"),
