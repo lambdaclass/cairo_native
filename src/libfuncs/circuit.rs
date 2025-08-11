@@ -32,7 +32,10 @@ use melior::{
         cf, llvm,
     },
     helpers::{ArithBlockExt, BuiltinBlockExt, GepIndex, LlvmBlockExt},
-    ir::{r#type::IntegerType, Block, BlockLike, Location, Type, Value, ValueLike},
+    ir::{
+        attribute::FlatSymbolRefAttribute, operation::OperationBuilder, r#type::IntegerType, Block,
+        BlockLike, Identifier, Location, Type, Value, ValueLike,
+    },
     Context,
 };
 use num_traits::Signed;
@@ -634,17 +637,33 @@ fn build_gate_evaluation<'ctx, 'this>(
                     let integer_type = rhs_value.r#type();
 
                     // Apply egcd to find gcd and inverse
-                    let egcd_result_block = build_euclidean_algorithm(
+                    let euclidean_result =
+                        call_euclidean_func(context, block, location, rhs_value, circuit_modulus);
+                    let gcd = block.extract_value(
                         context,
-                        block,
                         location,
-                        helper,
-                        rhs_value,
-                        circuit_modulus,
+                        euclidean_result,
+                        integer_type,
+                        0,
                     )?;
-                    let gcd = egcd_result_block.arg(0)?;
-                    let inverse = egcd_result_block.arg(1)?;
-                    block = egcd_result_block;
+                    let inverse = block.extract_value(
+                        context,
+                        location,
+                        euclidean_result,
+                        integer_type,
+                        1,
+                    )?;
+                    // let egcd_result_block = build_euclidean_algorithm(
+                    //     context,
+                    //     block,
+                    //     location,
+                    //     helper,
+                    //     rhs_value,
+                    //     circuit_modulus,
+                    // )?;
+                    // let gcd = egcd_result_block.arg(0)?;
+                    // let inverse = egcd_result_block.arg(1)?;
+                    // block = egcd_result_block;
 
                     // if the gcd is not 1, then fail (a and b are not coprimes)
                     let one = block.const_int_from_type(context, location, 1, integer_type)?;
@@ -711,6 +730,33 @@ fn build_gate_evaluation<'ctx, 'this>(
         .ok_or(SierraAssertError::ImpossibleCircuit)?;
 
     Ok(([block, err_block], values))
+}
+
+fn call_euclidean_func<'ctx>(
+    context: &'ctx Context,
+    block: &'ctx Block<'ctx>,
+    location: Location<'ctx>,
+    a: Value<'ctx, '_>,
+    b: Value<'ctx, '_>,
+) -> Value<'ctx, 'ctx> {
+    let integer_type: Type = IntegerType::new(context, 384 * 2).into();
+    let return_type = llvm::r#type::r#struct(context, &[integer_type, integer_type], false);
+    block
+        .append_operation(
+            OperationBuilder::new("llvm.call", location)
+                .add_attributes(&[(
+                    Identifier::new(context, "callee"),
+                    FlatSymbolRefAttribute::new(context, "cairo_native__euclidean_algorithm")
+                        .into(),
+                )])
+                .add_operands(&[a, b])
+                .add_results(&[return_type])
+                .build()
+                .unwrap(),
+        )
+        .result(0)
+        .unwrap()
+        .into()
 }
 
 /// Generate MLIR operations for the `circuit_failure_guarantee_verify` libfunc.

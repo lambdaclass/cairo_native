@@ -74,7 +74,7 @@ use cairo_lang_utils::ordered_hash_map::OrderedHashMap;
 use itertools::Itertools;
 use melior::{
     dialect::{
-        arith::CmpiPredicate,
+        arith::{self, CmpiPredicate},
         cf, func, index,
         llvm::{self, LoadStoreOptions},
         memref,
@@ -141,6 +141,23 @@ pub fn compile(
         }
     }
 
+    let location = Location::unknown(context); // TODO: WHICH LOCATION SHOULD I USE?
+    let integer_type: Type = IntegerType::new(context, 384 * 2).into();
+    let region = declare_euclidean_func(context, location, integer_type);
+    let func_name = StringAttribute::new(context, "cairo_native__euclidean_algorithm");
+    module.body().append_operation(llvm::func(
+        context,
+        func_name,
+        TypeAttribute::new(llvm::r#type::function(
+            llvm::r#type::r#struct(context, &[integer_type, integer_type], false),
+            &[integer_type, integer_type],
+            false,
+        )),
+        region,
+        &[],
+        location,
+    ));
+
     // Sierra programs have the following structure:
     //   1. Type declarations, one per line.
     //   2. Libfunc declarations, one per line.
@@ -169,6 +186,114 @@ pub fn compile(
 
     tracing::info!("The program was compiled successfully.");
     Ok(())
+}
+
+fn declare_euclidean_func<'ctx>(
+    context: &'ctx Context,
+    location: Location<'ctx>,
+    integer_type: Type<'_>,
+) -> Region<'ctx> {
+    let region = Region::new();
+
+    let entry_block = region.append_block(Block::new(&[
+        (integer_type, location),
+        (integer_type, location),
+    ]));
+
+    // The algorithm egcd works by calculating a series of remainders, each the remainder of dividing the previous two
+    // For the initial setup, r0 = b, r1 = a
+    // This order is chosen because if we reverse them, then the first iteration will just swap them
+    let remainder = entry_block.arg(0).unwrap();
+    let prev_remainder = entry_block.arg(1).unwrap();
+
+    // Similarly we'll calculate another series which starts 0,1,... and from which we will retrieve the modular inverse of a
+    let prev_inverse = entry_block
+        .const_int_from_type(context, location, 0, integer_type)
+        .unwrap();
+    let inverse = entry_block
+        .const_int_from_type(context, location, 1, integer_type)
+        .unwrap();
+
+    let loop_block = region.append_block(Block::new(&[
+        (integer_type, location),
+        (integer_type, location),
+        (integer_type, location),
+        (integer_type, location),
+    ]));
+    let end_block = region.append_block(Block::new(&[
+        (integer_type, location),
+        (integer_type, location),
+    ]));
+
+    entry_block.append_operation(cf::br(
+        &loop_block,
+        &[prev_remainder, remainder, prev_inverse, inverse],
+        location,
+    ));
+
+    // -- Loop body --
+    // Arguments are rem_(i-1), rem, inv_(i-1), inv
+    let prev_remainder = loop_block.arg(0).unwrap();
+    let remainder = loop_block.arg(1).unwrap();
+    let prev_inverse = loop_block.arg(2).unwrap();
+    let inverse = loop_block.arg(3).unwrap();
+
+    // First calculate q = rem_(i-1)/rem_i, rounded down
+    let quotient = loop_block
+        .append_op_result(arith::divui(prev_remainder, remainder, location))
+        .unwrap();
+
+    // Then r_(i+1) = r_(i-1) - q * r_i, and inv_(i+1) = inv_(i-1) - q * inv_i
+    let rem_times_quo = loop_block.muli(remainder, quotient, location).unwrap();
+    let inv_times_quo = loop_block.muli(inverse, quotient, location).unwrap();
+    let next_remainder = loop_block
+        .append_op_result(arith::subi(prev_remainder, rem_times_quo, location))
+        .unwrap();
+    let next_inverse = loop_block
+        .append_op_result(arith::subi(prev_inverse, inv_times_quo, location))
+        .unwrap();
+
+    // Check if r_(i+1) is 0
+    // If true, then:
+    // - r_i is the gcd of a and b
+    // - inv_i is the bezout coefficient x
+
+    let zero = loop_block
+        .const_int_from_type(context, location, 0, integer_type)
+        .unwrap();
+    let next_remainder_eq_zero = loop_block
+        .cmpi(context, CmpiPredicate::Eq, next_remainder, zero, location)
+        .unwrap();
+    loop_block.append_operation(cf::cond_br(
+        context,
+        next_remainder_eq_zero,
+        &end_block,
+        &loop_block,
+        &[remainder, inverse],
+        &[remainder, next_remainder, inverse, next_inverse],
+        location,
+    ));
+    // loop_block.append_operation(cf::br(&end_block, &[remainder, inverse], location));
+
+    //////// SAME AS libsfuncs/array.rs line 213 ////////
+    let results = end_block
+        .append_op_result(llvm::undef(
+            llvm::r#type::r#struct(context, &[integer_type, integer_type], false),
+            location,
+        ))
+        .unwrap();
+    let results = end_block
+        .insert_values(
+            context,
+            location,
+            results,
+            &[end_block.arg(0).unwrap(), end_block.arg(1).unwrap()],
+        )
+        .unwrap();
+    ////////////////////////////////////////////////
+    end_block.append_operation(llvm::r#return(Some(results), location));
+
+    region
 }
 
 /// Compile a single Sierra function.
