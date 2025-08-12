@@ -154,7 +154,10 @@ pub fn compile(
             false,
         )),
         region,
-        &[],
+        &[(
+            Identifier::new(context, "no_inline"),
+            Attribute::unit(context),
+        )],
         location,
     ));
 
