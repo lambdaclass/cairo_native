@@ -653,17 +653,6 @@ fn build_gate_evaluation<'ctx, 'this>(
                         integer_type,
                         1,
                     )?;
-                    // let egcd_result_block = build_euclidean_algorithm(
-                    //     context,
-                    //     block,
-                    //     location,
-                    //     helper,
-                    //     rhs_value,
-                    //     circuit_modulus,
-                    // )?;
-                    // let gcd = egcd_result_block.arg(0)?;
-                    // let inverse = egcd_result_block.arg(1)?;
-                    // block = egcd_result_block;
 
                     // if the gcd is not 1, then fail (a and b are not coprimes)
                     let one = block.const_int_from_type(context, location, 1, integer_type)?;
