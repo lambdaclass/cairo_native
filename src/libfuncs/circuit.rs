@@ -33,8 +33,8 @@ use melior::{
     },
     helpers::{ArithBlockExt, BuiltinBlockExt, GepIndex, LlvmBlockExt},
     ir::{
-        attribute::FlatSymbolRefAttribute, operation::OperationBuilder, r#type::IntegerType, Block,
-        BlockLike, Identifier, Location, Type, Value, ValueLike,
+        attribute::FlatSymbolRefAttribute, operation::OperationBuilder, r#type::IntegerType,
+        Attribute, Block, BlockLike, Identifier, Location, Type, Value, ValueLike,
     },
     Context,
 };
@@ -744,11 +744,17 @@ fn call_euclidean_func<'ctx>(
     block
         .append_operation(
             OperationBuilder::new("llvm.call", location)
-                .add_attributes(&[(
-                    Identifier::new(context, "callee"),
-                    FlatSymbolRefAttribute::new(context, "cairo_native__euclidean_algorithm")
-                        .into(),
-                )])
+                .add_attributes(&[
+                    (
+                        Identifier::new(context, "callee"),
+                        FlatSymbolRefAttribute::new(context, "cairo_native__euclidean_algorithm")
+                            .into(),
+                    ),
+                    (
+                        Identifier::new(context, "no_inline"),
+                        Attribute::unit(context),
+                    ),
+                ])
                 .add_operands(&[a, b])
                 .add_results(&[return_type])
                 .build()
