@@ -1,13 +1,20 @@
 //! # Various utilities
 
 pub(crate) use self::{program_registry_ext::ProgramRegistryExt, range_ext::RangeExt};
-use crate::{error::Result as NativeResult, metadata::MetadataStorage, native_panic, OptLevel};
+use crate::{
+    error::Result as NativeResult, metadata::MetadataStorage, native_panic, types::TypeBuilder,
+    OptLevel,
+};
 use cairo_lang_compiler::CompilerConfig;
 use cairo_lang_runner::token_gas_cost;
 use cairo_lang_sierra::{
-    extensions::gas::CostTokenType,
-    ids::FunctionId,
+    extensions::{
+        core::{CoreLibfunc, CoreType},
+        gas::CostTokenType,
+    },
+    ids::{ConcreteTypeId, FunctionId},
     program::{GenFunction, Program, StatementIdx},
+    program_registry::ProgramRegistry,
 };
 use melior::{
     ir::Module,
@@ -414,6 +421,19 @@ pub fn layout_repeat(layout: &Layout, n: usize) -> Result<(Layout, usize), Layou
     // The safe constructor is called here to enforce the isize size limit.
     let layout = Layout::from_size_align(alloc_size, layout.align()).map_err(|_| LayoutError)?;
     Ok((layout, padded_size))
+}
+
+/// Gets the size of the full set of params of a Sierra function
+pub fn get_types_total_size(
+    types_ids: &[ConcreteTypeId],
+    registry: &ProgramRegistry<CoreType, CoreLibfunc>,
+) -> usize {
+    types_ids
+        .iter()
+        .fold(0, |accum, type_id| match registry.get_type(type_id) {
+            Ok(concrete_type) => accum + concrete_type.layout(registry).unwrap().size(),
+            Err(_) => accum,
+        })
 }
 
 #[cfg(test)]

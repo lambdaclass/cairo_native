@@ -1,6 +1,6 @@
-use std::collections::BTreeMap;
-
+use cairo_lang_sierra::extensions::circuit::{CircuitInfo, GateOffsets};
 use serde::Serialize;
+use std::collections::BTreeMap;
 
 /// A set of compilation statistics gathered during the compilation.
 /// It should be completely filled at the end of the compilation.
@@ -14,8 +14,14 @@ pub struct Statistics {
     pub sierra_statement_count: Option<usize>,
     /// Number of user functions defined in the Sierra code.
     pub sierra_func_count: Option<usize>,
+    /// Stats of the declared types in Sierra.
+    pub sierra_declared_types_stats: BTreeMap<String, SierraDeclaredTypeStats>,
+    /// Stats about params and return types of each Sierra function.
+    pub sierra_func_stats: BTreeMap<String, SierraFuncStats>,
     /// Number of statements for each distinct libfunc.
     pub sierra_libfunc_frequency: BTreeMap<String, u128>,
+    /// Number of times each circuit gate is used.
+    sierra_circuit_gates_count: CircuitGatesStats,
     /// Number of MLIR operations generated.
     pub mlir_operation_count: Option<u128>,
     /// Number of MLIR operations generated for each distinct libfunc.
@@ -44,6 +50,40 @@ pub struct Statistics {
     pub object_size_bytes: Option<usize>,
 }
 
+/// Contains the stats about a Sierra function:
+/// - params_quant: Quantity of params
+/// - params_total_size: Total size of all the params
+/// - return_types_quant: Quantity of return types
+/// - return_types_total_size: Total size of all the params
+#[derive(Debug, Default, Serialize)]
+pub struct SierraFuncStats {
+    pub params_quant: usize,
+    pub params_total_size: usize,
+    pub return_types_quant: usize,
+    pub return_types_total_size: usize,
+}
+
+/// Contains the stats for each Sierra declared type:
+/// - concrete_type: The concrete type (e.g Struct)
+/// - size: Layout size of the whole type
+/// - as_param_count: Number of times the type is used as a param in a libfunc
+#[derive(Debug, Default, Serialize)]
+pub struct SierraDeclaredTypeStats {
+    pub concrete_type: String,
+    pub size: usize,
+    pub as_param_count: usize,
+}
+
+/// Contains the quantity of each circuit gate
+/// in a contract
+#[derive(Debug, Default, Serialize)]
+struct CircuitGatesStats {
+    add_gate: usize,
+    sub_gate: usize,
+    mul_gate: usize,
+    inverse_gate: usize,
+}
+
 impl Statistics {
     pub fn validate(&self) -> bool {
         self.sierra_type_count.is_some()
@@ -61,6 +101,63 @@ impl Statistics {
             && self.compilation_llvm_to_object_time_ms.is_some()
             && self.compilation_linking_time_ms.is_some()
             && self.object_size_bytes.is_some()
+    }
+
+    /// Counts the gates in a circuit. It uses the same algorithm used
+    /// to evaluate the gates on a circuit when evaluating it.
+    pub fn add_circuit_gates(&mut self, info: &CircuitInfo) {
+        let mut known_gates = vec![false; 1 + info.n_inputs + info.values.len()];
+        known_gates[0] = true;
+        for i in 0..info.n_inputs {
+            known_gates[i + 1] = true;
+        }
+
+        let mut add_offsets = info.add_offsets.iter().peekable();
+        let mut mul_offsets = info.mul_offsets.iter();
+
+        loop {
+            while let Some(&add_gate_offset) = add_offsets.peek() {
+                let lhs = known_gates[add_gate_offset.lhs].to_owned();
+                let rhs = known_gates[add_gate_offset.rhs].to_owned();
+                let output = known_gates[add_gate_offset.output].to_owned();
+
+                match (lhs, rhs, output) {
+                    (true, true, false) => {
+                        // ADD
+                        self.sierra_circuit_gates_count.add_gate += 1;
+                        known_gates[add_gate_offset.output] = true;
+                    }
+                    (false, true, true) => {
+                        // SUB
+                        self.sierra_circuit_gates_count.sub_gate += 1;
+                        known_gates[add_gate_offset.lhs] = true;
+                    }
+                    _ => break,
+                }
+                add_offsets.next();
+            }
+
+            if let Some(&GateOffsets { lhs, rhs, output }) = mul_offsets.next() {
+                let lhs_value = known_gates[lhs];
+                let rhs_value = known_gates[rhs];
+                let output_value = known_gates[output];
+
+                match (lhs_value, rhs_value, output_value) {
+                    (true, true, false) => {
+                        // MUL
+                        self.sierra_circuit_gates_count.mul_gate += 1;
+                        known_gates[output] = true;
+                    }
+                    (false, true, true) => {
+                        self.sierra_circuit_gates_count.inverse_gate += 1;
+                        known_gates[lhs] = true;
+                    }
+                    _ => panic!("Imposible circuit"), // It should never reach this point, since it would have failed in the compilation before
+                }
+            } else {
+                break;
+            }
+        }
     }
 }
 
