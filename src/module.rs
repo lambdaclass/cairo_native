@@ -62,7 +62,7 @@ impl<'m> NativeModule<'m> {
         &self.metadata
     }
 
-    pub const fn module(&self) -> &Module {
+    pub const fn module(&'_ self) -> &'_ Module<'_> {
         &self.module
     }
 

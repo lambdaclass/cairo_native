@@ -676,6 +676,9 @@ fn parse_result(
         CoreTypeConcrete::Blake(_) => native_panic!("blake not yet implemented as results"),
         // 2.12.0
         CoreTypeConcrete::QM31(_) => native_panic!("qm31 not yet implemented as results"),
+        CoreTypeConcrete::GasReserve(_) => {
+            native_panic!("gas reserve not yet implemented as results")
+        }
     }
 }
 

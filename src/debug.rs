@@ -16,6 +16,7 @@ use cairo_lang_sierra::{
         felt252::{Felt252BinaryOperationConcrete, Felt252BinaryOperator, Felt252Concrete},
         felt252_dict::{Felt252DictConcreteLibfunc, Felt252DictEntryConcreteLibfunc},
         gas::GasConcreteLibfunc,
+        gas_reserve::GasReserveConcreteLibfunc,
         int::{
             signed::SintConcrete, signed128::Sint128Concrete, unsigned::UintConcrete,
             unsigned128::Uint128Concrete, unsigned256::Uint256Concrete,
@@ -422,6 +423,11 @@ pub const fn libfunc_to_name(value: &CoreConcreteLibfunc) -> &'static str {
         CoreConcreteLibfunc::Blake(_) => "blake",
         CoreConcreteLibfunc::QM31(_) => "qm31",
         CoreConcreteLibfunc::UnsafePanic(_) => "unsafe_panic",
+        CoreConcreteLibfunc::DummyFunctionCall(_) => "dummy_function_call",
+        CoreConcreteLibfunc::GasReserve(selector) => match selector {
+            GasReserveConcreteLibfunc::Create(_) => "gas_reserve_create",
+            GasReserveConcreteLibfunc::Utilize(_) => "gas_reserve_utilize",
+        },
     }
 }
 
@@ -455,36 +461,44 @@ pub fn type_to_name(
             format!("bounded_int<{},{}>", info.range.lower, info.range.upper)
         }
         CoreTypeConcrete::Array(info) => {
-            generic_type_to_name(registry, "array", &[info.ty.clone()])
+            generic_type_to_name(registry, "array", std::slice::from_ref(&info.ty))
         }
         CoreTypeConcrete::Snapshot(info) => {
-            generic_type_to_name(registry, "snapshot", &[info.ty.clone()])
+            generic_type_to_name(registry, "snapshot", std::slice::from_ref(&info.ty))
         }
-        CoreTypeConcrete::Span(info) => generic_type_to_name(registry, "span", &[info.ty.clone()]),
+        CoreTypeConcrete::Span(info) => {
+            generic_type_to_name(registry, "span", std::slice::from_ref(&info.ty))
+        }
         CoreTypeConcrete::Felt252Dict(info) => {
-            generic_type_to_name(registry, "felt252_dict", &[info.ty.clone()])
+            generic_type_to_name(registry, "felt252_dict", std::slice::from_ref(&info.ty))
         }
-        CoreTypeConcrete::Felt252DictEntry(info) => {
-            generic_type_to_name(registry, "felt252_dict_entry", &[info.ty.clone()])
-        }
-        CoreTypeConcrete::SquashedFelt252Dict(info) => {
-            generic_type_to_name(registry, "squashed_felt252_dict", &[info.ty.clone()])
-        }
+        CoreTypeConcrete::Felt252DictEntry(info) => generic_type_to_name(
+            registry,
+            "felt252_dict_entry",
+            std::slice::from_ref(&info.ty),
+        ),
+        CoreTypeConcrete::SquashedFelt252Dict(info) => generic_type_to_name(
+            registry,
+            "squashed_felt252_dict",
+            std::slice::from_ref(&info.ty),
+        ),
         CoreTypeConcrete::NonZero(info) => {
-            generic_type_to_name(registry, "non_zero", &[info.ty.clone()])
+            generic_type_to_name(registry, "non_zero", std::slice::from_ref(&info.ty))
         }
-        CoreTypeConcrete::Box(info) => generic_type_to_name(registry, "box", &[info.ty.clone()]),
+        CoreTypeConcrete::Box(info) => {
+            generic_type_to_name(registry, "box", std::slice::from_ref(&info.ty))
+        }
         CoreTypeConcrete::Uninitialized(info) => {
-            generic_type_to_name(registry, "uninitialized", &[info.ty.clone()])
+            generic_type_to_name(registry, "uninitialized", std::slice::from_ref(&info.ty))
         }
         CoreTypeConcrete::Nullable(info) => {
-            generic_type_to_name(registry, "nullable", &[info.ty.clone()])
+            generic_type_to_name(registry, "nullable", std::slice::from_ref(&info.ty))
         }
         CoreTypeConcrete::Const(info) => {
-            generic_type_to_name(registry, "const", &[info.inner_ty.clone()])
+            generic_type_to_name(registry, "const", std::slice::from_ref(&info.inner_ty))
         }
         CoreTypeConcrete::IntRange(info) => {
-            generic_type_to_name(registry, "int_range", &[info.ty.clone()])
+            generic_type_to_name(registry, "int_range", std::slice::from_ref(&info.ty))
         }
         CoreTypeConcrete::Starknet(selector) => match selector {
             StarknetTypeConcrete::ClassHash(_) => String::from("class_hash"),
@@ -549,5 +563,6 @@ pub fn type_to_name(
         CoreTypeConcrete::EcOp(_) => String::from("ec_op"),
         CoreTypeConcrete::EcPoint(_) => String::from("ec_point"),
         CoreTypeConcrete::EcState(_) => String::from("ec_state"),
+        CoreTypeConcrete::GasReserve(_) => String::from("gas_reserve"),
     }
 }

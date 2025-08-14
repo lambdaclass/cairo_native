@@ -812,6 +812,7 @@ pub mod trace_dump_runtime {
             }
             CoreTypeConcrete::IntRange(_)
             | CoreTypeConcrete::Blake(_)
+            | CoreTypeConcrete::GasReserve(_)
             | CoreTypeConcrete::QM31(_) => {
                 todo!()
             }

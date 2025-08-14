@@ -257,6 +257,8 @@ impl LibfuncBuilder for CoreConcreteLibfunc {
             ),
             Self::QM31(_) => native_panic!("Implement QM31 libfunc"),
             Self::UnsafePanic(_) => native_panic!("Implement unsafe_panic libfunc"),
+            Self::GasReserve(_) => native_panic!("Implement gas_reserve libfunc"),
+            Self::DummyFunctionCall(_) => native_panic!("Implement dummy_function_call libfunc"),
         }
     }
 

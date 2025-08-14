@@ -240,6 +240,7 @@ impl Value {
             CoreTypeConcrete::IntRange(_) => matches!(self, Self::IntRange { .. }),
             CoreTypeConcrete::Blake(_) => todo!(),
             CoreTypeConcrete::QM31(_) => todo!(),
+            CoreTypeConcrete::GasReserve(_) => todo!(),
         };
 
         if !res {

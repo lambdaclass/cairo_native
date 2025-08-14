@@ -2,7 +2,7 @@
 
 UNAME := $(shell uname)
 SCARB_VERSION = 2.11.2
-CAIRO_2_VERSION = 2.12.0-dev.1
+CAIRO_2_VERSION = 2.12.0
 
 # Usage is the default target for newcomers running `make`.
 .PHONY: usage
@@ -133,7 +133,7 @@ deps: deps-macos
 endif
 	-rm -rf corelib
 	-ln -s cairo2/corelib corelib
-	git apply corelib.patch
+	patch -p0 -E < corelib.patch
 
 .PHONY: deps-macos
 deps-macos: build-cairo-2-compiler-macos install-scarb-macos

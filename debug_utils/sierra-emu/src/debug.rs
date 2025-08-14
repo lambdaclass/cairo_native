@@ -16,6 +16,7 @@ use cairo_lang_sierra::{
         felt252::{Felt252BinaryOperationConcrete, Felt252BinaryOperator, Felt252Concrete},
         felt252_dict::{Felt252DictConcreteLibfunc, Felt252DictEntryConcreteLibfunc},
         gas::GasConcreteLibfunc,
+        gas_reserve::GasReserveConcreteLibfunc,
         int::{
             signed::SintConcrete, signed128::Sint128Concrete, unsigned::UintConcrete,
             unsigned128::Uint128Concrete, unsigned256::Uint256Concrete,
@@ -424,6 +425,11 @@ pub fn libfunc_to_name(value: &CoreConcreteLibfunc) -> &'static str {
         CoreConcreteLibfunc::Trace(_) => todo!(),
         CoreConcreteLibfunc::QM31(_) => todo!(),
         CoreConcreteLibfunc::UnsafePanic(_) => todo!(),
+        CoreConcreteLibfunc::DummyFunctionCall(_) => "dummy_function_call",
+        CoreConcreteLibfunc::GasReserve(selector) => match selector {
+            GasReserveConcreteLibfunc::Create(_) => "gas_reserve_create",
+            GasReserveConcreteLibfunc::Utilize(_) => "gas_reserve_utilize",
+        },
     }
 }
 
@@ -490,7 +496,6 @@ pub fn type_to_name(
                 String::from("Starknet::Sha256StateHandle")
             }
         },
-
         CoreTypeConcrete::Bitwise(_) => String::from("Bitwise"),
         CoreTypeConcrete::Circuit(selector) => match selector {
             CircuitTypeConcrete::AddMod(_) => String::from("AddMod"),
@@ -548,6 +553,7 @@ pub fn type_to_name(
         }
         CoreTypeConcrete::Blake(_) => todo!(),
         CoreTypeConcrete::QM31(_) => todo!(),
+        CoreTypeConcrete::GasReserve(_) => String::from("GasReserve"),
     }
 }
 
