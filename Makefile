@@ -133,7 +133,7 @@ deps: deps-macos
 endif
 	-rm -rf corelib
 	-ln -s cairo2/corelib corelib
-	git apply corelib.patch
+	patch -E < corelib.patch
 
 .PHONY: deps-macos
 deps-macos: build-cairo-2-compiler-macos install-scarb-macos
