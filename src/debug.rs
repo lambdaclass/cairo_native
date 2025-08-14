@@ -16,6 +16,7 @@ use cairo_lang_sierra::{
         felt252::{Felt252BinaryOperationConcrete, Felt252BinaryOperator, Felt252Concrete},
         felt252_dict::{Felt252DictConcreteLibfunc, Felt252DictEntryConcreteLibfunc},
         gas::GasConcreteLibfunc,
+        gas_reserve::GasReserveConcreteLibfunc,
         int::{
             signed::SintConcrete, signed128::Sint128Concrete, unsigned::UintConcrete,
             unsigned128::Uint128Concrete, unsigned256::Uint256Concrete,
@@ -422,6 +423,11 @@ pub const fn libfunc_to_name(value: &CoreConcreteLibfunc) -> &'static str {
         CoreConcreteLibfunc::Blake(_) => "blake",
         CoreConcreteLibfunc::QM31(_) => "qm31",
         CoreConcreteLibfunc::UnsafePanic(_) => "unsafe_panic",
+        CoreConcreteLibfunc::DummyFunctionCall(_) => "dummy_function_call",
+        CoreConcreteLibfunc::GasReserve(selector) => match selector {
+            GasReserveConcreteLibfunc::Create(_) => "gas_reserve_create",
+            GasReserveConcreteLibfunc::Utilize(_) => "gas_reserve_utilize",
+        },
     }
 }
 
@@ -549,5 +555,6 @@ pub fn type_to_name(
         CoreTypeConcrete::EcOp(_) => String::from("ec_op"),
         CoreTypeConcrete::EcPoint(_) => String::from("ec_point"),
         CoreTypeConcrete::EcState(_) => String::from("ec_state"),
+        CoreTypeConcrete::GasReserve(_) => String::from("gas_reserve"),
     }
 }
