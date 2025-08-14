@@ -1,168 +1,218 @@
-This patch is applied to the downloaded corelib, to remove tests for unimplemented libfuncs.
-This patch allows us to not need to add the full corelib to the repository.
-
-diff --git a/cairo2/corelib/src/test.cairo b/cairo2/corelib/src/test.cairo
-index 39072873c..3ae171a6f 100644
---- a/cairo2/corelib/src/test.cairo
-+++ b/cairo2/corelib/src/test.cairo
-@@ -22,7 +22,6 @@ mod num_test;
- mod option_test;
- mod plugins_test;
- mod print_test;
--mod qm31_test;
- mod range_test;
- mod result_test;
- mod secp256k1_test;
-diff --git a/cairo2/corelib/src/test/dict_test.cairo b/cairo2/corelib/src/test/dict_test.cairo
-index 6fe7ea306..b5d5604ff 100644
---- a/cairo2/corelib/src/test/dict_test.cairo
-+++ b/cairo2/corelib/src/test/dict_test.cairo
-@@ -176,11 +176,3 @@ fn test_dict_from_collect_with_duplicate_keys() {
-     let mut dict = array![(0, 1_u32), (0, 2_u32)].into_iter().collect::<Felt252Dict<_>>();
-     assert_eq!(dict[0], 2);
- }
--
--#[test]
--fn test_array_from_squash_dict() {
--    let mut dict: Felt252Dict<u32> = (0..5_u32).into_iter().map(|x| (x.into(), x)).collect();
--    assert_eq!(
--        dict.squash().into_entries(), array![(0, 0, 0), (1, 0, 1), (2, 0, 2), (3, 0, 3), (4, 0, 4)],
--    );
--}
-diff --git a/cairo2/corelib/src/test/hash_test.cairo b/cairo2/corelib/src/test/hash_test.cairo
-index 64dca71a6..17bf43e13 100644
---- a/cairo2/corelib/src/test/hash_test.cairo
-+++ b/cairo2/corelib/src/test/hash_test.cairo
-@@ -1,4 +1,3 @@
--use crate::blake::{blake2s_compress, blake2s_finalize};
- use crate::hash::{HashStateExTrait, HashStateTrait};
- use crate::poseidon::PoseidonTrait;
- use crate::test::test_utils::assert_eq;
-@@ -86,30 +85,3 @@ fn test_user_defined_hash() {
-         'Bad hash of StructForHash',
-     );
- }
--
--
--#[test]
--fn test_blake2s() {
--    let state = BoxTrait::new([0_u32; 8]);
--    let msg = BoxTrait::new([0_u32; 16]);
--    let byte_count = 64_u32;
--
--    let res = blake2s_compress(state, byte_count, msg).unbox();
--
--    assert_eq!(
--        res,
--        [
--            3893814314, 2107143640, 4255525973, 2730947657, 3397056017, 3710875177, 3168346915,
--            365144891,
--        ],
--    );
--
--    let res = blake2s_finalize(state, byte_count, msg).unbox();
--    assert_eq!(
--        res,
--        [
--            128291589, 1454945417, 3191583614, 1491889056, 794023379, 651000200, 3725903680,
--            1044330286,
--        ],
--    );
--}
-diff --git a/cairo2/corelib/src/test/qm31_test.cairo b/cairo2/corelib/src/test/qm31_test.cairo
-deleted file mode 100644
-index ef64d5c51..000000000
---- a/cairo2/corelib/src/test/qm31_test.cairo
-+++ /dev/null
-@@ -1,67 +0,0 @@
--use core::qm31::{QM31Trait, m31, qm31, qm31_const};
--
--#[test]
--fn test_qm31_add_and_sub() {
--    let a = qm31_const::<0x544b2fba, 0x673cff77, 0x60713d44, 0x499602d2>();
--    let b = qm31_const::<0x499602d2, 0x544b2fba, 0x673cff77, 0x60713d44>();
--    let c = qm31_const::<0x1de1328d, 0x3b882f32, 0x47ae3cbc, 0x2a074017>();
--    assert!(a + b == c);
--    assert!(b + a == c);
--    assert!(c - a == b);
--    assert!(c - b == a);
--}
--
--#[test]
--fn test_qm31_mul_and_div() {
--    let a = qm31_const::<0x544b2fba, 0x673cff77, 0x60713d44, 0x499602d2>();
--    let b = qm31_const::<0x4b18de99, 0x55f6fb62, 0x6e2290d9, 0x7cd851b9>();
--    let c = qm31_const::<0x38810ab4, 0x5a0fd30a, 0x2527b81e, 0x4b1ed1cd>();
--    assert!(a * b == c);
--    assert!(b * a == c);
--    assert!(c / a == b);
--    assert!(c / b == a);
--}
--
--#[test]
--fn test_qm31_inverse() {
--    let one = qm31_const::<1, 0, 0, 0>();
--    let a = qm31_const::<0x4b18de99, 0x55f6fb62, 0x6e2290d9, 0x7cd851b9>();
--    assert!((one / a) * a == one);
--    let a = qm31_const::<1, 2, 3, 4>();
--    assert!((one / a) * a == one);
--    let a = qm31_const::<0x6849959f, 0x31bf5a51, 0x730c2120, 0x7b0430a5>();
--    assert!((one / a) * a == one);
--}
--
--#[test]
--fn test_pack() {
--    assert!(QM31Trait::new(1, 2, 3, 4) == qm31_const::<1, 2, 3, 4>());
--    assert!(QM31Trait::new(2, 3, 4, 1) == qm31_const::<2, 3, 4, 1>());
--    assert!(QM31Trait::new(3, 4, 1, 2) == qm31_const::<3, 4, 1, 2>());
--    assert!(QM31Trait::new(4, 1, 2, 3) == qm31_const::<4, 1, 2, 3>());
--}
--
--#[test]
--fn test_unpack() {
--    assert_eq!(qm31_const::<1, 2, 3, 4>().unpack(), [1, 2, 3, 4]);
--    assert_eq!(qm31_const::<2, 3, 4, 1>().unpack(), [2, 3, 4, 1]);
--    assert_eq!(qm31_const::<3, 4, 1, 2>().unpack(), [3, 4, 1, 2]);
--    assert_eq!(qm31_const::<4, 1, 2, 3>().unpack(), [4, 1, 2, 3]);
--}
--
--#[test]
--fn test_m31_into_qm31() {
--    assert_eq!(Into::<m31, qm31>::into(1).unpack(), [1, 0, 0, 0]);
--    assert_eq!(Into::<m31, qm31>::into(2).unpack(), [2, 0, 0, 0]);
--    assert_eq!(Into::<m31, qm31>::into(3).unpack(), [3, 0, 0, 0]);
--    assert_eq!(Into::<m31, qm31>::into(4).unpack(), [4, 0, 0, 0]);
--}
--use core::qm31::m31_ops;
--
--#[test]
--fn test_m31_ops() {
--    assert_eq!(m31_ops::add(0x544b2fba, 0x4b18de99), 0x1f640e54);
--    assert_eq!(m31_ops::sub(0x4b18de99, 0x544b2fba), 0x76cdaede);
--    assert_eq!(m31_ops::mul(0x544b2fba, 0x4b18de99), 0x3d3740d1);
--    assert_eq!(m31_ops::div(0x544b2fba, 0x4b18de99), 0x4b887296);
--}
-diff --git a/cairo2/corelib/src/test/testing_test.cairo b/cairo2/corelib/src/test/testing_test.cairo
-index 52df78e78..ede469abe 100644
---- a/cairo2/corelib/src/test/testing_test.cairo
-+++ b/cairo2/corelib/src/test/testing_test.cairo
-@@ -135,19 +135,6 @@ fn identity<T>(t: T) -> T {
-     t
- }
- 
--#[test]
--fn test_get_unspent_gas() {
--    let one = identity(1);
--    let two = identity(2);
--    let prev = crate::testing::get_unspent_gas();
--    let _three = identity(one + two);
--    let after = crate::testing::get_unspent_gas();
--    let expected_cost = 100 // `one + two`.
--        + 300 // `identity(...)`.
--        + 2300; // `get_unspent_gas()`.
--    assert_eq!(prev - after, expected_cost);
--}
--
- #[derive(Drop, Debug, PartialEq)]
- struct NoCopy {
-     value: u8,
+diff --color=auto -crBN cairo2/corelib/src/test/dict_test.cairo cairo2/corelib_patched/src/test/dict_test.cairo
+*** cairo2/corelib/src/test/dict_test.cairo	Sun Aug  3 06:21:20 2025
+--- cairo2/corelib_patched/src/test/dict_test.cairo	Thu Aug 14 15:11:55 2025
+***************
+*** 176,186 ****
+      let mut dict = array![(0, 1_u32), (0, 2_u32)].into_iter().collect::<Felt252Dict<_>>();
+      assert_eq!(dict[0], 2);
+  }
+- 
+- #[test]
+- fn test_array_from_squash_dict() {
+-     let mut dict: Felt252Dict<u32> = (0..5_u32).into_iter().map(|x| (x.into(), x)).collect();
+-     assert_eq!(
+-         dict.squash().into_entries(), array![(0, 0, 0), (1, 0, 1), (2, 0, 2), (3, 0, 3), (4, 0, 4)],
+-     );
+- }
+--- 176,178 ----
+diff --color=auto -crBN cairo2/corelib/src/test/gas_reserve_test.cairo cairo2/corelib_patched/src/test/gas_reserve_test.cairo
+*** cairo2/corelib/src/test/gas_reserve_test.cairo	Sun Aug  3 06:21:20 2025
+--- cairo2/corelib_patched/src/test/gas_reserve_test.cairo	Wed Dec 31 21:00:00 1969
+***************
+*** 1,29 ****
+- use core::gas::{GasReserve, gas_reserve_create, gas_reserve_utilize};
+- 
+- // Allow implicitly dropping GasReserve instances.
+- impl GasReserveDrop of Drop<GasReserve> {}
+- 
+- #[test]
+- fn test_create_and_utilize_gas_reserve() {
+-     let gas0 = crate::testing::get_available_gas();
+- 
+-     // Buy and redeposit a GasReserve.
+-     let reserve1 = gas_reserve_create(1000).unwrap();
+-     let gas1 = crate::testing::get_available_gas();
+-     gas_reserve_utilize(reserve1);
+-     let gas2 = crate::testing::get_available_gas();
+- 
+-     // Buy the rest of the available gas.
+-     let reserve2 = gas_reserve_create(gas2).unwrap();
+-     let gas3 = crate::testing::get_available_gas();
+- 
+-     // Try to buy another reserve. This should fail.
+-     let reserve3_opt = gas_reserve_create(1);
+- 
+-     gas_reserve_utilize(reserve2);
+-     assert!(reserve3_opt.is_none());
+- 
+-     assert_eq!(gas1, gas0 - 1000);
+-     assert_eq!(gas2, gas0);
+-     assert_eq!(gas3, 0);
+- }
+--- 0 ----
+diff --color=auto -crBN cairo2/corelib/src/test/hash_test.cairo cairo2/corelib_patched/src/test/hash_test.cairo
+*** cairo2/corelib/src/test/hash_test.cairo	Sun Aug  3 06:21:20 2025
+--- cairo2/corelib_patched/src/test/hash_test.cairo	Thu Aug 14 15:13:05 2025
+***************
+*** 1,4 ****
+- use crate::blake::{blake2s_compress, blake2s_finalize};
+  use crate::hash::{HashStateExTrait, HashStateTrait};
+  use crate::poseidon::PoseidonTrait;
+  use crate::test::test_utils::assert_eq;
+--- 1,3 ----
+***************
+*** 84,115 ****
+              .finalize(),
+          @PoseidonTrait::new().update(10).update(6).update(17).finalize(),
+          'Bad hash of StructForHash',
+-     );
+- }
+- 
+- 
+- #[test]
+- fn test_blake2s() {
+-     let state = BoxTrait::new([0_u32; 8]);
+-     let msg = BoxTrait::new([0_u32; 16]);
+-     let byte_count = 64_u32;
+- 
+-     let res = blake2s_compress(state, byte_count, msg).unbox();
+- 
+-     assert_eq!(
+-         res,
+-         [
+-             3893814314, 2107143640, 4255525973, 2730947657, 3397056017, 3710875177, 3168346915,
+-             365144891,
+-         ],
+-     );
+- 
+-     let res = blake2s_finalize(state, byte_count, msg).unbox();
+-     assert_eq!(
+-         res,
+-         [
+-             128291589, 1454945417, 3191583614, 1491889056, 794023379, 651000200, 3725903680,
+-             1044330286,
+-         ],
+      );
+  }
+--- 83,87 ----
+diff --color=auto -crBN cairo2/corelib/src/test/qm31_test.cairo cairo2/corelib_patched/src/test/qm31_test.cairo
+*** cairo2/corelib/src/test/qm31_test.cairo	Sun Aug  3 06:21:20 2025
+--- cairo2/corelib_patched/src/test/qm31_test.cairo	Wed Dec 31 21:00:00 1969
+***************
+*** 1,67 ****
+- use core::qm31::{QM31Trait, m31, qm31, qm31_const};
+- 
+- #[test]
+- fn test_qm31_add_and_sub() {
+-     let a = qm31_const::<0x544b2fba, 0x673cff77, 0x60713d44, 0x499602d2>();
+-     let b = qm31_const::<0x499602d2, 0x544b2fba, 0x673cff77, 0x60713d44>();
+-     let c = qm31_const::<0x1de1328d, 0x3b882f32, 0x47ae3cbc, 0x2a074017>();
+-     assert!(a + b == c);
+-     assert!(b + a == c);
+-     assert!(c - a == b);
+-     assert!(c - b == a);
+- }
+- 
+- #[test]
+- fn test_qm31_mul_and_div() {
+-     let a = qm31_const::<0x544b2fba, 0x673cff77, 0x60713d44, 0x499602d2>();
+-     let b = qm31_const::<0x4b18de99, 0x55f6fb62, 0x6e2290d9, 0x7cd851b9>();
+-     let c = qm31_const::<0x38810ab4, 0x5a0fd30a, 0x2527b81e, 0x4b1ed1cd>();
+-     assert!(a * b == c);
+-     assert!(b * a == c);
+-     assert!(c / a == b);
+-     assert!(c / b == a);
+- }
+- 
+- #[test]
+- fn test_qm31_inverse() {
+-     let one = qm31_const::<1, 0, 0, 0>();
+-     let a = qm31_const::<0x4b18de99, 0x55f6fb62, 0x6e2290d9, 0x7cd851b9>();
+-     assert!((one / a) * a == one);
+-     let a = qm31_const::<1, 2, 3, 4>();
+-     assert!((one / a) * a == one);
+-     let a = qm31_const::<0x6849959f, 0x31bf5a51, 0x730c2120, 0x7b0430a5>();
+-     assert!((one / a) * a == one);
+- }
+- 
+- #[test]
+- fn test_pack() {
+-     assert!(QM31Trait::new(1, 2, 3, 4) == qm31_const::<1, 2, 3, 4>());
+-     assert!(QM31Trait::new(2, 3, 4, 1) == qm31_const::<2, 3, 4, 1>());
+-     assert!(QM31Trait::new(3, 4, 1, 2) == qm31_const::<3, 4, 1, 2>());
+-     assert!(QM31Trait::new(4, 1, 2, 3) == qm31_const::<4, 1, 2, 3>());
+- }
+- 
+- #[test]
+- fn test_unpack() {
+-     assert_eq!(qm31_const::<1, 2, 3, 4>().unpack(), [1, 2, 3, 4]);
+-     assert_eq!(qm31_const::<2, 3, 4, 1>().unpack(), [2, 3, 4, 1]);
+-     assert_eq!(qm31_const::<3, 4, 1, 2>().unpack(), [3, 4, 1, 2]);
+-     assert_eq!(qm31_const::<4, 1, 2, 3>().unpack(), [4, 1, 2, 3]);
+- }
+- 
+- #[test]
+- fn test_m31_into_qm31() {
+-     assert_eq!(Into::<m31, qm31>::into(1).unpack(), [1, 0, 0, 0]);
+-     assert_eq!(Into::<m31, qm31>::into(2).unpack(), [2, 0, 0, 0]);
+-     assert_eq!(Into::<m31, qm31>::into(3).unpack(), [3, 0, 0, 0]);
+-     assert_eq!(Into::<m31, qm31>::into(4).unpack(), [4, 0, 0, 0]);
+- }
+- use core::qm31::m31_ops;
+- 
+- #[test]
+- fn test_m31_ops() {
+-     assert_eq!(m31_ops::add(0x544b2fba, 0x4b18de99), 0x1f640e54);
+-     assert_eq!(m31_ops::sub(0x4b18de99, 0x544b2fba), 0x76cdaede);
+-     assert_eq!(m31_ops::mul(0x544b2fba, 0x4b18de99), 0x3d3740d1);
+-     assert_eq!(m31_ops::div(0x544b2fba, 0x4b18de99), 0x4b887296);
+- }
+--- 0 ----
+diff --color=auto -crBN cairo2/corelib/src/test/testing_test.cairo cairo2/corelib_patched/src/test/testing_test.cairo
+*** cairo2/corelib/src/test/testing_test.cairo	Sun Aug  3 06:21:20 2025
+--- cairo2/corelib_patched/src/test/testing_test.cairo	Thu Aug 14 15:18:20 2025
+***************
+*** 135,153 ****
+      t
+  }
+  
+- #[test]
+- fn test_get_unspent_gas() {
+-     let one = identity(1);
+-     let two = identity(2);
+-     let prev = crate::testing::get_unspent_gas();
+-     let _three = identity(one + two);
+-     let after = crate::testing::get_unspent_gas();
+-     let expected_cost = 100 // `one + two`.
+-         + 300 // `identity(...)`.
+-         + 2300; // `get_unspent_gas()`.
+-     assert_eq!(prev - after, expected_cost);
+- }
+- 
+  #[derive(Drop, Debug, PartialEq)]
+  struct NoCopy {
+      value: u8,
+--- 135,140 ----
+diff --color=auto -crBN cairo2/corelib/src/test.cairo cairo2/corelib_patched/src/test.cairo
+*** cairo2/corelib/src/test.cairo	Sun Aug  3 06:21:20 2025
+--- cairo2/corelib_patched/src/test.cairo	Thu Aug 14 15:12:11 2025
+***************
+*** 12,18 ****
+  mod ec_test;
+  mod felt_test;
+  mod fmt_test;
+- mod gas_reserve_test;
+  mod hash_test;
+  mod integer_test;
+  mod iter_test;
+--- 12,17 ----
+***************
+*** 24,30 ****
+  mod option_test;
+  mod plugins_test;
+  mod print_test;
+- mod qm31_test;
+  mod range_test;
+  mod result_test;
+  mod secp256k1_test;
+--- 23,28 ----
