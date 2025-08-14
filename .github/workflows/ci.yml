@@ -352,7 +352,7 @@ jobs:
       uses: Swatinem/rust-cache@v2
     - name: Install dependencies
       run: |
-        make build-cairo-2-compiler
+        make deps
         cd ./debug_utils/sierra-emu
         make corelib
     - name: Build
