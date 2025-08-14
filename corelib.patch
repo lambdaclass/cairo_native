@@ -1,3 +1,6 @@
+This patch is applied to the downloaded corelib, to remove tests for unimplemented libfuncs.
+This patch allows us to not need to add the full corelib to the repository.
+
 diff --color=auto -crBN cairo2/corelib/src/starknet/account.cairo cairo2/corelib_patched/src/starknet/account.cairo
 *** cairo2/corelib/src/starknet/account.cairo	Sun Aug  3 06:21:20 2025
 --- cairo2/corelib_patched/src/starknet/account.cairo	Thu Aug 14 15:31:37 2025
