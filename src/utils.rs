@@ -430,10 +430,11 @@ pub fn get_types_total_size(
 ) -> usize {
     types_ids
         .iter()
-        .fold(0, |accum, type_id| match registry.get_type(type_id) {
-            Ok(concrete_type) => accum + concrete_type.layout(registry).unwrap().size(),
-            Err(_) => accum,
+        .map(|type_id| match registry.get_type(type_id) {
+            Ok(concrete_type) => concrete_type.layout(registry).unwrap().size(),
+            Err(_) => 0,
         })
+        .sum()
 }
 
 #[cfg(test)]
