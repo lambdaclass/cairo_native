@@ -2,6 +2,8 @@ use cairo_lang_sierra::extensions::circuit::{CircuitInfo, GateOffsets};
 use serde::Serialize;
 use std::collections::BTreeMap;
 
+use crate::{error::Result, native_panic};
+
 /// A set of compilation statistics gathered during the compilation.
 /// It should be completely filled at the end of the compilation.
 #[derive(Default, Serialize)]
@@ -105,7 +107,7 @@ impl Statistics {
 
     /// Counts the gates in a circuit. It uses the same algorithm used
     /// to evaluate the gates on a circuit when evaluating it.
-    pub fn add_circuit_gates(&mut self, info: &CircuitInfo) {
+    pub fn add_circuit_gates(&mut self, info: &CircuitInfo) -> Result<()> {
         let mut known_gates = vec![false; 1 + info.n_inputs + info.values.len()];
         known_gates[0] = true;
         for i in 0..info.n_inputs {
@@ -152,12 +154,13 @@ impl Statistics {
                         self.sierra_circuit_gates_count.inverse_gate += 1;
                         known_gates[lhs] = true;
                     }
-                    _ => panic!("Imposible circuit"), // It should never reach this point, since it would have failed in the compilation before
+                    _ => native_panic!("Imposible circuit"), // It should never reach this point, since it would have failed in the compilation before
                 }
             } else {
                 break;
             }
         }
+        Ok(())
     }
 }
 
