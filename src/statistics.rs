@@ -122,12 +122,12 @@ impl Statistics {
                 match (lhs, rhs, output) {
                     (true, true, false) => {
                         // ADD
-                        self.sierra_circuit_gates_count.add_gate += 1;
+                        self.sierra_circuit_gates_count.add_gate_count += 1;
                         known_gates[add_gate_offset.output] = true;
                     }
                     (false, true, true) => {
                         // SUB
-                        self.sierra_circuit_gates_count.sub_gate += 1;
+                        self.sierra_circuit_gates_count.sub_gate_count += 1;
                         known_gates[add_gate_offset.lhs] = true;
                     }
                     _ => break,
@@ -143,11 +143,11 @@ impl Statistics {
                 match (lhs_value, rhs_value, output_value) {
                     (true, true, false) => {
                         // MUL
-                        self.sierra_circuit_gates_count.mul_gate += 1;
+                        self.sierra_circuit_gates_count.mul_gate_count += 1;
                         known_gates[output] = true;
                     }
                     (false, true, true) => {
-                        self.sierra_circuit_gates_count.inverse_gate += 1;
+                        self.sierra_circuit_gates_count.inverse_gate_count += 1;
                         known_gates[lhs] = true;
                     }
                     _ => native_panic!("Imposible circuit"), // It should never reach this point, since it would have failed in the compilation before
