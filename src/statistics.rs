@@ -73,7 +73,7 @@ pub struct SierraDeclaredTypeStats {
 }
 
 /// Contains the quantity of each circuit gate
-/// in a contract
+/// in a program
 #[derive(Debug, Default, Serialize)]
 struct CircuitGatesStats {
     add_gate_count: usize,
