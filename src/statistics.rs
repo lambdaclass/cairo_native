@@ -76,10 +76,10 @@ pub struct SierraDeclaredTypeStats {
 /// in a contract
 #[derive(Debug, Default, Serialize)]
 struct CircuitGatesStats {
-    add_gate: usize,
-    sub_gate: usize,
-    mul_gate: usize,
-    inverse_gate: usize,
+    add_gate_count: usize,
+    sub_gate_count: usize,
+    mul_gate_count: usize,
+    inverse_gate_count: usize,
 }
 
 impl Statistics {
