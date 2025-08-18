@@ -52,16 +52,12 @@ pub struct Statistics {
     pub object_size_bytes: Option<usize>,
 }
 
-/// Contains the stats about a Sierra function:
-/// - params_quant: Quantity of params
+/// Contains the following stats about a Sierra function:
 /// - params_total_size: Total size of all the params
-/// - return_types_quant: Quantity of return types
 /// - return_types_total_size: Total size of all the params
 #[derive(Debug, Default, Serialize)]
 pub struct SierraFuncStats {
-    pub params_quant: usize,
     pub params_total_size: usize,
-    pub return_types_quant: usize,
     pub return_types_total_size: usize,
 }
 
