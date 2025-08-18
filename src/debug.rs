@@ -451,6 +451,12 @@ pub fn generic_type_to_name(
     )
 }
 
+/// Builds a string representation of a `CoreTypeConcrete` name
+/// by recursively iterating its structure.
+///
+/// Since this can lead to infinite recursion, a `HashSet` is used to
+/// track visited types and stop the iteration if a type has already
+/// been encountered.
 pub fn type_to_name(
     registry: &ProgramRegistry<CoreType, CoreLibfunc>,
     ty: &CoreTypeConcrete,

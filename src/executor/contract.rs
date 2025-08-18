@@ -264,7 +264,7 @@ impl AotContractExecutor {
                     if let CoreTypeConcrete::Circuit(CircuitTypeConcrete::Circuit(info)) =
                         type_concrete
                     {
-                        stats.add_circuit_gates(&info.circuit_info);
+                        stats.add_circuit_gates(&info.circuit_info)?;
                     }
                 }
             }
@@ -289,20 +289,16 @@ impl AotContractExecutor {
             for func in &program.funcs {
                 let func_id = func.id.to_string();
                 // Params
-                let params_quant = func.params.len();
                 let params_total_size =
                     get_types_total_size(&func.signature.param_types, &registry);
                 // Return types
-                let return_types_quant = func.signature.ret_types.len();
                 let return_types_total_size =
                     get_types_total_size(&func.signature.ret_types, &registry);
 
                 stats.sierra_func_stats.insert(
                     func_id,
                     SierraFuncStats {
-                        params_quant,
                         params_total_size,
-                        return_types_quant,
                         return_types_total_size,
                     },
                 );
