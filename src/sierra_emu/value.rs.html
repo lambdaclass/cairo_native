@@ -1,4 +1,4 @@
-<!DOCTYPE html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1.0"><meta name="generator" content="rustdoc"><meta name="description" content="Source of the Rust file `debug_utils/sierra-emu/src/value.rs`."><title>value.rs - source</title><script>if(window.location.protocol!=="file:")document.head.insertAdjacentHTML("beforeend","SourceSerif4-Regular-6b053e98.ttf.woff2,FiraSans-Italic-81dc35de.woff2,FiraSans-Regular-0fe48ade.woff2,FiraSans-MediumItalic-ccf7e434.woff2,FiraSans-Medium-e1aa3f0a.woff2,SourceCodePro-Regular-8badfe75.ttf.woff2,SourceCodePro-Semibold-aa29a496.ttf.woff2".split(",").map(f=>`<link rel="preload" as="font" type="font/woff2" crossorigin href="../../static.files/${f}">`).join(""))</script><link rel="stylesheet" href="../../static.files/normalize-9960930a.css"><link rel="stylesheet" href="../../static.files/rustdoc-6c3ea77c.css"><meta name="rustdoc-vars" data-root-path="../../" data-static-root-path="../../static.files/" data-current-crate="sierra_emu" data-themes="" data-resource-suffix="" data-rustdoc-version="1.86.0 (05f9846f8 2025-03-31)" data-channel="1.86.0" data-search-js="search-581efc7a.js" data-settings-js="settings-6dad6058.js" ><script src="../../static.files/storage-3a5871a4.js"></script><script defer src="../../static.files/src-script-b8d3f215.js"></script><script defer src="../../src-files.js"></script><script defer src="../../static.files/main-4d63596a.js"></script><noscript><link rel="stylesheet" href="../../static.files/noscript-893ab5e7.css"></noscript><link rel="alternate icon" type="image/png" href="../../static.files/favicon-32x32-6580c154.png"><link rel="icon" type="image/svg+xml" href="../../static.files/favicon-044be391.svg"></head><body class="rustdoc src"><!--[if lte IE 11]><div class="warning">This old browser is unsupported and will most likely display funky things.</div><![endif]--><nav class="sidebar"><div class="src-sidebar-title"><h2>Files</h2></div></nav><div class="sidebar-resizer"></div><main><rustdoc-search></rustdoc-search><section id="main-content" class="content"><div class="main-heading"><h1><div class="sub-heading">sierra_emu/</div>value.rs</h1><rustdoc-toolbar></rustdoc-toolbar></div><div class="example-wrap digits-3"><pre class="rust"><code><a href=#1 id=1 data-nosnippet>1</a><span class="kw">use </span>cairo_lang_sierra::{
+<!DOCTYPE html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1.0"><meta name="generator" content="rustdoc"><meta name="description" content="Source of the Rust file `debug_utils/sierra-emu/src/value.rs`."><title>value.rs - source</title><script>if(window.location.protocol!=="file:")document.head.insertAdjacentHTML("beforeend","SourceSerif4-Regular-6b053e98.ttf.woff2,FiraSans-Italic-81dc35de.woff2,FiraSans-Regular-0fe48ade.woff2,FiraSans-MediumItalic-ccf7e434.woff2,FiraSans-Medium-e1aa3f0a.woff2,SourceCodePro-Regular-8badfe75.ttf.woff2,SourceCodePro-Semibold-aa29a496.ttf.woff2".split(",").map(f=>`<link rel="preload" as="font" type="font/woff2" crossorigin href="../../static.files/${f}">`).join(""))</script><link rel="stylesheet" href="../../static.files/normalize-9960930a.css"><link rel="stylesheet" href="../../static.files/rustdoc-84e720fa.css"><meta name="rustdoc-vars" data-root-path="../../" data-static-root-path="../../static.files/" data-current-crate="sierra_emu" data-themes="" data-resource-suffix="" data-rustdoc-version="1.89.0 (29483883e 2025-08-04)" data-channel="1.89.0" data-search-js="search-92309212.js" data-settings-js="settings-5514c975.js" ><script src="../../static.files/storage-4e99c027.js"></script><script defer src="../../static.files/src-script-813739b1.js"></script><script defer src="../../src-files.js"></script><script defer src="../../static.files/main-fd3af306.js"></script><noscript><link rel="stylesheet" href="../../static.files/noscript-32bb7600.css"></noscript><link rel="alternate icon" type="image/png" href="../../static.files/favicon-32x32-6580c154.png"><link rel="icon" type="image/svg+xml" href="../../static.files/favicon-044be391.svg"></head><body class="rustdoc src"><!--[if lte IE 11]><div class="warning">This old browser is unsupported and will most likely display funky things.</div><![endif]--><nav class="sidebar"><div class="src-sidebar-title"><h2>Files</h2></div></nav><div class="sidebar-resizer" title="Drag to resize sidebar"></div><main><rustdoc-search></rustdoc-search><section id="main-content" class="content"><div class="main-heading"><h1><div class="sub-heading">sierra_emu/</div>value.rs</h1><rustdoc-toolbar></rustdoc-toolbar></div><div class="example-wrap digits-3"><pre class="rust"><code><a href=#1 id=1 data-nosnippet>1</a><span class="kw">use </span>cairo_lang_sierra::{
 <a href=#2 id=2 data-nosnippet>2</a>    extensions::{
 <a href=#3 id=3 data-nosnippet>3</a>        circuit::CircuitTypeConcrete,
 <a href=#4 id=4 data-nosnippet>4</a>        core::{CoreLibfunc, CoreType, CoreTypeConcrete},
@@ -240,61 +240,62 @@
 <a href=#240 id=240 data-nosnippet>240</a>            CoreTypeConcrete::IntRange(<span class="kw">_</span>) =&gt; <span class="macro">matches!</span>(<span class="self">self</span>, <span class="self">Self</span>::IntRange { .. }),
 <a href=#241 id=241 data-nosnippet>241</a>            CoreTypeConcrete::Blake(<span class="kw">_</span>) =&gt; <span class="macro">todo!</span>(),
 <a href=#242 id=242 data-nosnippet>242</a>            CoreTypeConcrete::QM31(<span class="kw">_</span>) =&gt; <span class="macro">todo!</span>(),
-<a href=#243 id=243 data-nosnippet>243</a>        };
-<a href=#244 id=244 data-nosnippet>244</a>
-<a href=#245 id=245 data-nosnippet>245</a>        <span class="kw">if </span>!res {
-<a href=#246 id=246 data-nosnippet>246</a>            <span class="macro">dbg!</span>(
-<a href=#247 id=247 data-nosnippet>247</a>                <span class="string">"value is mismatch"</span>,
-<a href=#248 id=248 data-nosnippet>248</a>                ty.info(),
-<a href=#249 id=249 data-nosnippet>249</a>                <span class="self">self</span>,
-<a href=#250 id=250 data-nosnippet>250</a>                type_to_name(type_id, registry)
-<a href=#251 id=251 data-nosnippet>251</a>            );
-<a href=#252 id=252 data-nosnippet>252</a>        }
-<a href=#253 id=253 data-nosnippet>253</a>
-<a href=#254 id=254 data-nosnippet>254</a>        res
-<a href=#255 id=255 data-nosnippet>255</a>    }
-<a href=#256 id=256 data-nosnippet>256</a>
-<a href=#257 id=257 data-nosnippet>257</a>    <span class="attr">#[doc(hidden)]
-<a href=#258 id=258 data-nosnippet>258</a>    </span><span class="kw">pub fn </span>parse_felt(value: <span class="kw-2">&amp;</span>str) -&gt; <span class="self">Self </span>{
-<a href=#259 id=259 data-nosnippet>259</a>        <span class="self">Self</span>::Felt(<span class="kw">if </span>value.starts_with(<span class="string">"0x"</span>) {
-<a href=#260 id=260 data-nosnippet>260</a>            Felt::from_hex(value).unwrap()
-<a href=#261 id=261 data-nosnippet>261</a>        } <span class="kw">else </span>{
-<a href=#262 id=262 data-nosnippet>262</a>            Felt::from_dec_str(value).unwrap()
-<a href=#263 id=263 data-nosnippet>263</a>        })
-<a href=#264 id=264 data-nosnippet>264</a>    }
-<a href=#265 id=265 data-nosnippet>265</a>}
-<a href=#266 id=266 data-nosnippet>266</a>
-<a href=#267 id=267 data-nosnippet>267</a><span class="macro">macro_rules!</span> impl_conversions {
-<a href=#268 id=268 data-nosnippet>268</a>    ( $( <span class="macro-nonterminal">$t</span>:ty <span class="kw">as </span><span class="macro-nonterminal">$i</span>:ident ; )+ ) =&gt; { $(
-<a href=#269 id=269 data-nosnippet>269</a>        <span class="kw">impl </span>From&lt;<span class="macro-nonterminal">$t</span>&gt; <span class="kw">for </span>Value {
-<a href=#270 id=270 data-nosnippet>270</a>            <span class="kw">fn </span>from(value: <span class="macro-nonterminal">$t</span>) -&gt; <span class="self">Self </span>{
-<a href=#271 id=271 data-nosnippet>271</a>                <span class="self">Self</span>::<span class="macro-nonterminal">$i</span>(value)
-<a href=#272 id=272 data-nosnippet>272</a>            }
-<a href=#273 id=273 data-nosnippet>273</a>        }
-<a href=#274 id=274 data-nosnippet>274</a>
-<a href=#275 id=275 data-nosnippet>275</a>        <span class="kw">impl </span>TryFrom&lt;Value&gt; <span class="kw">for </span><span class="macro-nonterminal">$t </span>{
-<a href=#276 id=276 data-nosnippet>276</a>            <span class="kw">type </span>Error = Value;
-<a href=#277 id=277 data-nosnippet>277</a>
-<a href=#278 id=278 data-nosnippet>278</a>            <span class="kw">fn </span>try_from(value: Value) -&gt; <span class="prelude-ty">Result</span>&lt;<span class="self">Self</span>, <span class="self">Self</span>::Error&gt; {
-<a href=#279 id=279 data-nosnippet>279</a>                <span class="kw">match </span>value {
-<a href=#280 id=280 data-nosnippet>280</a>                    Value::<span class="macro-nonterminal">$i</span>(value) =&gt; <span class="prelude-val">Ok</span>(value),
-<a href=#281 id=281 data-nosnippet>281</a>                    <span class="kw">_ </span>=&gt; <span class="prelude-val">Err</span>(value),
-<a href=#282 id=282 data-nosnippet>282</a>                }
-<a href=#283 id=283 data-nosnippet>283</a>            }
-<a href=#284 id=284 data-nosnippet>284</a>        }
-<a href=#285 id=285 data-nosnippet>285</a>    )+ };
-<a href=#286 id=286 data-nosnippet>286</a>}
-<a href=#287 id=287 data-nosnippet>287</a>
-<a href=#288 id=288 data-nosnippet>288</a><span class="macro">impl_conversions!</span> {
-<a href=#289 id=289 data-nosnippet>289</a>    Felt <span class="kw">as </span>Felt;
-<a href=#290 id=290 data-nosnippet>290</a>    u8   <span class="kw">as </span>U8;
-<a href=#291 id=291 data-nosnippet>291</a>    u16  <span class="kw">as </span>U16;
-<a href=#292 id=292 data-nosnippet>292</a>    u32  <span class="kw">as </span>U32;
-<a href=#293 id=293 data-nosnippet>293</a>    u64  <span class="kw">as </span>U64;
-<a href=#294 id=294 data-nosnippet>294</a>    u128 <span class="kw">as </span>U128;
-<a href=#295 id=295 data-nosnippet>295</a>    i8   <span class="kw">as </span>I8;
-<a href=#296 id=296 data-nosnippet>296</a>    i16  <span class="kw">as </span>I16;
-<a href=#297 id=297 data-nosnippet>297</a>    i32  <span class="kw">as </span>I32;
-<a href=#298 id=298 data-nosnippet>298</a>    i64  <span class="kw">as </span>I64;
-<a href=#299 id=299 data-nosnippet>299</a>    i128 <span class="kw">as </span>I128;
-<a href=#300 id=300 data-nosnippet>300</a>}</code></pre></div></section></main></body></html>
+<a href=#243 id=243 data-nosnippet>243</a>            CoreTypeConcrete::GasReserve(<span class="kw">_</span>) =&gt; <span class="macro">todo!</span>(),
+<a href=#244 id=244 data-nosnippet>244</a>        };
+<a href=#245 id=245 data-nosnippet>245</a>
+<a href=#246 id=246 data-nosnippet>246</a>        <span class="kw">if </span>!res {
+<a href=#247 id=247 data-nosnippet>247</a>            <span class="macro">dbg!</span>(
+<a href=#248 id=248 data-nosnippet>248</a>                <span class="string">"value is mismatch"</span>,
+<a href=#249 id=249 data-nosnippet>249</a>                ty.info(),
+<a href=#250 id=250 data-nosnippet>250</a>                <span class="self">self</span>,
+<a href=#251 id=251 data-nosnippet>251</a>                type_to_name(type_id, registry)
+<a href=#252 id=252 data-nosnippet>252</a>            );
+<a href=#253 id=253 data-nosnippet>253</a>        }
+<a href=#254 id=254 data-nosnippet>254</a>
+<a href=#255 id=255 data-nosnippet>255</a>        res
+<a href=#256 id=256 data-nosnippet>256</a>    }
+<a href=#257 id=257 data-nosnippet>257</a>
+<a href=#258 id=258 data-nosnippet>258</a>    <span class="attr">#[doc(hidden)]
+<a href=#259 id=259 data-nosnippet>259</a>    </span><span class="kw">pub fn </span>parse_felt(value: <span class="kw-2">&amp;</span>str) -&gt; <span class="self">Self </span>{
+<a href=#260 id=260 data-nosnippet>260</a>        <span class="self">Self</span>::Felt(<span class="kw">if </span>value.starts_with(<span class="string">"0x"</span>) {
+<a href=#261 id=261 data-nosnippet>261</a>            Felt::from_hex(value).unwrap()
+<a href=#262 id=262 data-nosnippet>262</a>        } <span class="kw">else </span>{
+<a href=#263 id=263 data-nosnippet>263</a>            Felt::from_dec_str(value).unwrap()
+<a href=#264 id=264 data-nosnippet>264</a>        })
+<a href=#265 id=265 data-nosnippet>265</a>    }
+<a href=#266 id=266 data-nosnippet>266</a>}
+<a href=#267 id=267 data-nosnippet>267</a>
+<a href=#268 id=268 data-nosnippet>268</a><span class="macro">macro_rules!</span> impl_conversions {
+<a href=#269 id=269 data-nosnippet>269</a>    ( $( <span class="macro-nonterminal">$t</span>:ty <span class="kw">as </span><span class="macro-nonterminal">$i</span>:ident ; )+ ) =&gt; { $(
+<a href=#270 id=270 data-nosnippet>270</a>        <span class="kw">impl </span>From&lt;<span class="macro-nonterminal">$t</span>&gt; <span class="kw">for </span>Value {
+<a href=#271 id=271 data-nosnippet>271</a>            <span class="kw">fn </span>from(value: <span class="macro-nonterminal">$t</span>) -&gt; <span class="self">Self </span>{
+<a href=#272 id=272 data-nosnippet>272</a>                <span class="self">Self</span>::<span class="macro-nonterminal">$i</span>(value)
+<a href=#273 id=273 data-nosnippet>273</a>            }
+<a href=#274 id=274 data-nosnippet>274</a>        }
+<a href=#275 id=275 data-nosnippet>275</a>
+<a href=#276 id=276 data-nosnippet>276</a>        <span class="kw">impl </span>TryFrom&lt;Value&gt; <span class="kw">for </span><span class="macro-nonterminal">$t </span>{
+<a href=#277 id=277 data-nosnippet>277</a>            <span class="kw">type </span>Error = Value;
+<a href=#278 id=278 data-nosnippet>278</a>
+<a href=#279 id=279 data-nosnippet>279</a>            <span class="kw">fn </span>try_from(value: Value) -&gt; <span class="prelude-ty">Result</span>&lt;<span class="self">Self</span>, <span class="self">Self</span>::Error&gt; {
+<a href=#280 id=280 data-nosnippet>280</a>                <span class="kw">match </span>value {
+<a href=#281 id=281 data-nosnippet>281</a>                    Value::<span class="macro-nonterminal">$i</span>(value) =&gt; <span class="prelude-val">Ok</span>(value),
+<a href=#282 id=282 data-nosnippet>282</a>                    <span class="kw">_ </span>=&gt; <span class="prelude-val">Err</span>(value),
+<a href=#283 id=283 data-nosnippet>283</a>                }
+<a href=#284 id=284 data-nosnippet>284</a>            }
+<a href=#285 id=285 data-nosnippet>285</a>        }
+<a href=#286 id=286 data-nosnippet>286</a>    )+ };
+<a href=#287 id=287 data-nosnippet>287</a>}
+<a href=#288 id=288 data-nosnippet>288</a>
+<a href=#289 id=289 data-nosnippet>289</a><span class="macro">impl_conversions!</span> {
+<a href=#290 id=290 data-nosnippet>290</a>    Felt <span class="kw">as </span>Felt;
+<a href=#291 id=291 data-nosnippet>291</a>    u8   <span class="kw">as </span>U8;
+<a href=#292 id=292 data-nosnippet>292</a>    u16  <span class="kw">as </span>U16;
+<a href=#293 id=293 data-nosnippet>293</a>    u32  <span class="kw">as </span>U32;
+<a href=#294 id=294 data-nosnippet>294</a>    u64  <span class="kw">as </span>U64;
+<a href=#295 id=295 data-nosnippet>295</a>    u128 <span class="kw">as </span>U128;
+<a href=#296 id=296 data-nosnippet>296</a>    i8   <span class="kw">as </span>I8;
+<a href=#297 id=297 data-nosnippet>297</a>    i16  <span class="kw">as </span>I16;
+<a href=#298 id=298 data-nosnippet>298</a>    i32  <span class="kw">as </span>I32;
+<a href=#299 id=299 data-nosnippet>299</a>    i64  <span class="kw">as </span>I64;
+<a href=#300 id=300 data-nosnippet>300</a>    i128 <span class="kw">as </span>I128;
+<a href=#301 id=301 data-nosnippet>301</a>}</code></pre></div></section></main></body></html>

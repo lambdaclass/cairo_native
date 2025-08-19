@@ -1,5 +1,5 @@
 (function() {
-    var implementors = Object.fromEntries([["sierra_emu",[["impl <a class=\"trait\" href=\"https://doc.rust-lang.org/1.86.0/core/str/traits/trait.FromStr.html\" title=\"trait core::str::traits::FromStr\">FromStr</a> for <a class=\"enum\" href=\"sierra_emu/enum.EntryPoint.html\" title=\"enum sierra_emu::EntryPoint\">EntryPoint</a>"]]]]);
+    var implementors = Object.fromEntries([["sierra_emu",[["impl <a class=\"trait\" href=\"https://doc.rust-lang.org/1.89.0/core/str/traits/trait.FromStr.html\" title=\"trait core::str::traits::FromStr\">FromStr</a> for <a class=\"enum\" href=\"sierra_emu/enum.EntryPoint.html\" title=\"enum sierra_emu::EntryPoint\">EntryPoint</a>"]]]]);
     if (window.register_implementors) {
         window.register_implementors(implementors);
     } else {
