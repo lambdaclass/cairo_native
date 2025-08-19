@@ -59,6 +59,7 @@ pub struct Statistics {
 pub struct SierraFuncStats {
     pub params_total_size: usize,
     pub return_types_total_size: usize,
+    pub times_used: usize,
 }
 
 /// Contains the stats for each Sierra declared type:
