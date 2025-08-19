@@ -641,6 +641,9 @@ impl StarknetSyscallHandler for &mut StubSyscallHandler {
                     serialized_log
                 })
                 .unwrap_or_default(),
+            "is_config_mode" => {
+                vec![Felt::ZERO, Felt::ZERO]
+            }
             _ => vec![],
         }
     }
