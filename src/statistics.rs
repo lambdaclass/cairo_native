@@ -23,7 +23,7 @@ pub struct Statistics {
     /// Number of statements for each distinct libfunc.
     pub sierra_libfunc_frequency: BTreeMap<String, u128>,
     /// Number of times each circuit gate is used.
-    sierra_circuit_gates_count: CircuitGatesStats,
+    pub sierra_circuit_gates_count: CircuitGatesStats,
     /// Number of MLIR operations generated.
     pub mlir_operation_count: Option<u128>,
     /// Number of MLIR operations generated for each distinct libfunc.
@@ -75,7 +75,7 @@ pub struct SierraDeclaredTypeStats {
 /// Contains the quantity of each circuit gate
 /// in a program
 #[derive(Debug, Default, Serialize)]
-struct CircuitGatesStats {
+pub struct CircuitGatesStats {
     add_gate_count: usize,
     sub_gate_count: usize,
     mul_gate_count: usize,
