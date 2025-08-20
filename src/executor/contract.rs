@@ -35,7 +35,7 @@ use crate::{
     arch::AbiArgument,
     clone_option_mut,
     context::NativeContext,
-    debug::{libfunc_to_name, type_to_name},
+    debug::libfunc_to_name,
     error::{panic::ToNativeAssertError, Error, Result},
     execution_result::{
         BuiltinStats, ContractExecutionResult, ADD_MOD_BUILTIN_SIZE, BITWISE_BUILTIN_SIZE,
@@ -81,7 +81,7 @@ use starknet_types_core::felt::Felt;
 use std::{
     alloc::Layout,
     cmp::Ordering,
-    collections::{BTreeMap, HashSet},
+    collections::BTreeMap,
     ffi::c_void,
     fs::{self, File},
     io,
@@ -243,18 +243,13 @@ impl AotContractExecutor {
         if let Some(&mut ref mut stats) = stats {
             for type_declaration in &program.type_declarations {
                 if let Ok(type_concrete) = registry.get_type(&type_declaration.id) {
-                    let type_id = type_declaration.id.to_string();
+                    let type_id = type_declaration.id.id;
                     let type_size = type_concrete.layout(&registry).unwrap().size();
                     if !type_concrete.is_builtin() {
                         // We dont want to add the builtins to the stats
                         stats.sierra_declared_types_stats.insert(
                             type_id,
                             SierraDeclaredTypeStats {
-                                concrete_type: type_to_name(
-                                    &registry,
-                                    type_concrete,
-                                    HashSet::new(),
-                                ),
                                 size: type_size,
                                 as_param_count: 0,
                             },
@@ -276,9 +271,9 @@ impl AotContractExecutor {
                     *stats.sierra_libfunc_frequency.entry(name).or_insert(0) += 1;
 
                     for param in libfunc.param_signatures() {
-                        let param_ty = param.ty.to_string();
+                        let param_type_id = param.ty.id;
                         if let Some(type_stats) =
-                            stats.sierra_declared_types_stats.get_mut(&param_ty)
+                            stats.sierra_declared_types_stats.get_mut(&param_type_id)
                         {
                             type_stats.as_param_count += 1;
                         }
