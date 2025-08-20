@@ -423,7 +423,7 @@ pub fn layout_repeat(layout: &Layout, n: usize) -> Result<(Layout, usize), Layou
     Ok((layout, padded_size))
 }
 
-/// Gets the size of the full set of params of a Sierra function
+/// Returns the total layout size for the given types.
 pub fn get_types_total_size(
     types_ids: &[ConcreteTypeId],
     registry: &ProgramRegistry<CoreType, CoreLibfunc>,
