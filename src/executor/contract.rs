@@ -292,7 +292,7 @@ impl AotContractExecutor {
                     SierraFuncStats {
                         params_total_size,
                         return_types_total_size,
-                        times_used: 0,
+                        times_called: 0,
                     },
                 );
             }
@@ -304,7 +304,7 @@ impl AotContractExecutor {
                         if let CoreConcreteLibfunc::FunctionCall(function_call_libfunc) = libfunc {
                             let func_id = function_call_libfunc.function.id.to_string();
                             let func_entry = stats.sierra_func_stats.get_mut(&func_id).unwrap();
-                            func_entry.times_used += 1;
+                            func_entry.times_called += 1;
                         }
                     }
                     GenStatement::Return(_) => continue,

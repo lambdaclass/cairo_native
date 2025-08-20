@@ -53,22 +53,22 @@ pub struct Statistics {
 }
 
 /// Contains the following stats about a Sierra function:
-/// - params_total_size: Total size of all the params
-/// - return_types_total_size: Total size of all the params
 #[derive(Debug, Default, Serialize)]
 pub struct SierraFuncStats {
+    /// Total size of all the params
     pub params_total_size: usize,
+    /// Total size of all the return types
     pub return_types_total_size: usize,
-    pub times_used: usize,
+    /// Total of times the function is called
+    pub times_called: usize,
 }
 
 /// Contains the stats for each Sierra declared type:
-/// - concrete_type: The concrete type (e.g Struct)
-/// - size: Layout size of the whole type
-/// - as_param_count: Number of times the type is used as a param in a libfunc
 #[derive(Debug, Default, Serialize)]
 pub struct SierraDeclaredTypeStats {
+    /// Layout size of the whole type
     pub size: usize,
+    /// Number of times the type is used as a param in a libfunc
     pub as_param_count: usize,
 }
 
