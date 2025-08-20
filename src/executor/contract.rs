@@ -245,16 +245,13 @@ impl AotContractExecutor {
                 if let Ok(type_concrete) = registry.get_type(&type_declaration.id) {
                     let type_id = type_declaration.id.id;
                     let type_size = type_concrete.layout(&registry).unwrap().size();
-                    if !type_concrete.is_builtin() {
-                        // We dont want to add the builtins to the stats
-                        stats.sierra_declared_types_stats.insert(
-                            type_id,
-                            SierraDeclaredTypeStats {
-                                size: type_size,
-                                as_param_count: 0,
-                            },
-                        );
-                    }
+                    stats.sierra_declared_types_stats.insert(
+                        type_id,
+                        SierraDeclaredTypeStats {
+                            size: type_size,
+                            as_param_count: 0,
+                        },
+                    );
 
                     if let CoreTypeConcrete::Circuit(CircuitTypeConcrete::Circuit(info)) =
                         type_concrete
