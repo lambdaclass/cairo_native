@@ -543,9 +543,12 @@ pub fn type_to_name(
             std::slice::from_ref(&info.ty),
             visited_types,
         ),
-        CoreTypeConcrete::Const(info) => {
-            generic_type_to_name(registry, "const", &[info.inner_ty.clone()], visited_types)
-        }
+        CoreTypeConcrete::Const(info) => generic_type_to_name(
+            registry,
+            "const",
+            std::slice::from_ref(&info.inner_ty),
+            visited_types,
+        ),
         CoreTypeConcrete::IntRange(info) => generic_type_to_name(
             registry,
             "int_range",
