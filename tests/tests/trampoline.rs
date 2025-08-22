@@ -55,7 +55,7 @@ fn invoke1_felt252() {
             run_program(
                 &program,
                 &format!("{0}::{0}::main", module_name),
-                &[x.clone()]
+                std::slice::from_ref(&x)
             ),
             ExecutionResult {
                 remaining_gas: None,
@@ -85,7 +85,7 @@ fn invoke1_u8() {
             run_program(
                 &program,
                 &format!("{0}::{0}::main", module_name),
-                &[x.clone()]
+                std::slice::from_ref(&x)
             ),
             ExecutionResult {
                 remaining_gas: None,
@@ -115,7 +115,7 @@ fn invoke1_u16() {
             run_program(
                 &program,
                 &format!("{0}::{0}::main", module_name),
-                &[x.clone()]
+                std::slice::from_ref(&x)
             ),
             ExecutionResult {
                 remaining_gas: None,
@@ -145,7 +145,7 @@ fn invoke1_u32() {
             run_program(
                 &program,
                 &format!("{0}::{0}::main", module_name),
-                &[x.clone()]
+                std::slice::from_ref(&x)
             ),
             ExecutionResult {
                 remaining_gas: None,
@@ -175,7 +175,7 @@ fn invoke1_u64() {
             run_program(
                 &program,
                 &format!("{0}::{0}::main", module_name),
-                &[x.clone()]
+                std::slice::from_ref(&x)
             ),
             ExecutionResult {
                 remaining_gas: None,
@@ -205,7 +205,7 @@ fn invoke1_u128() {
             run_program(
                 &program,
                 &format!("{0}::{0}::main", module_name),
-                &[x.clone()]
+                std::slice::from_ref(&x)
             ),
             ExecutionResult {
                 remaining_gas: None,
@@ -238,7 +238,7 @@ fn invoke1_tuple1_felt252() {
             run_program(
                 &program,
                 &format!("{0}::{0}::main", module_name),
-                &[x.clone()]
+                std::slice::from_ref(&x)
             ),
             ExecutionResult {
                 remaining_gas: None,
@@ -271,7 +271,7 @@ fn invoke1_tuple1_u64() {
             run_program(
                 &program,
                 &format!("{0}::{0}::main", module_name),
-                &[x.clone()]
+                std::slice::from_ref(&x)
             ),
             ExecutionResult {
                 remaining_gas: None,
@@ -310,7 +310,7 @@ fn invoke1_tuple5_u8_u16_u32_u64_u128() {
             run_program(
                 &program,
                 &format!("{0}::{0}::main", module_name),
-                &[x.clone()]
+                std::slice::from_ref(&x)
             ),
             ExecutionResult {
                 remaining_gas: None,
@@ -340,7 +340,7 @@ fn invoke1_array_felt252() {
             run_program(
                 &program,
                 &format!("{0}::{0}::main", module_name),
-                &[x.clone()]
+                std::slice::from_ref(&x)
             ),
             ExecutionResult {
                 remaining_gas: None,
@@ -381,7 +381,7 @@ fn invoke1_enum1_unit() {
         run_program(
             &program,
             &format!("{0}::{0}::main", module_name),
-            &[x.clone()]
+            std::slice::from_ref(&x)
         ),
         ExecutionResult {
             remaining_gas: None,
@@ -413,7 +413,7 @@ fn invoke1_enum1_u64() {
             run_program(
                 &program,
                 &format!("{0}::{0}::main", module_name),
-                &[x.clone()]
+                std::slice::from_ref(&x)
             ),
             ExecutionResult {
                 remaining_gas: None,
@@ -451,7 +451,7 @@ fn invoke1_enum1_felt252() {
             run_program(
                 &program,
                 &format!("{0}::{0}::main", module_name),
-                &[x.clone()]
+                std::slice::from_ref(&x)
             ),
             ExecutionResult {
                 remaining_gas: None,
@@ -502,7 +502,7 @@ fn invoke1_enum2_u8_u16() {
             run_program(
                 &program,
                 &format!("{0}::{0}::main", module_name),
-                &[x.clone()]
+                std::slice::from_ref(&x)
             ),
             ExecutionResult {
                 remaining_gas: None,
