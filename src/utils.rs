@@ -1,13 +1,20 @@
 //! # Various utilities
 
 pub(crate) use self::{program_registry_ext::ProgramRegistryExt, range_ext::RangeExt};
-use crate::{error::Result as NativeResult, metadata::MetadataStorage, native_panic, OptLevel};
+use crate::{
+    error::Result as NativeResult, metadata::MetadataStorage, native_panic, types::TypeBuilder,
+    OptLevel,
+};
 use cairo_lang_compiler::CompilerConfig;
 use cairo_lang_runner::token_gas_cost;
 use cairo_lang_sierra::{
-    extensions::gas::CostTokenType,
-    ids::FunctionId,
+    extensions::{
+        core::{CoreLibfunc, CoreType},
+        gas::CostTokenType,
+    },
+    ids::{ConcreteTypeId, FunctionId},
     program::{GenFunction, Program, StatementIdx},
+    program_registry::ProgramRegistry,
 };
 use melior::{
     ir::Module,
@@ -414,6 +421,20 @@ pub fn layout_repeat(layout: &Layout, n: usize) -> Result<(Layout, usize), Layou
     // The safe constructor is called here to enforce the isize size limit.
     let layout = Layout::from_size_align(alloc_size, layout.align()).map_err(|_| LayoutError)?;
     Ok((layout, padded_size))
+}
+
+/// Returns the total layout size for the given types.
+pub fn get_types_total_size(
+    types_ids: &[ConcreteTypeId],
+    registry: &ProgramRegistry<CoreType, CoreLibfunc>,
+) -> crate::error::Result<usize> {
+    let mut total_size = 0;
+    for type_id in types_ids {
+        let type_concrete = registry.get_type(type_id)?;
+        let layout = type_concrete.layout(registry)?;
+        total_size += layout.size();
+    }
+    Ok(total_size)
 }
 
 #[cfg(test)]
