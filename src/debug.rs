@@ -1,8 +1,3 @@
-use std::{
-    any::{Any, TypeId},
-    collections::HashSet,
-};
-
 use cairo_lang_sierra::{
     extensions::{
         array::ArrayConcreteLibfunc,
@@ -440,7 +435,6 @@ pub fn generic_type_to_name(
     registry: &ProgramRegistry<CoreType, CoreLibfunc>,
     name: &str,
     args: &[ConcreteTypeId],
-    visited_types: HashSet<TypeId>,
 ) -> String {
     format!(
         "{}<{}>",
@@ -450,7 +444,7 @@ pub fn generic_type_to_name(
                 let concrete_type = registry
                     .get_type(field_type)
                     .expect("failed to find type in registry");
-                type_to_name(registry, concrete_type, visited_types.clone())
+                type_to_name(registry, concrete_type)
             })
             .filter(|type_name| !type_name.is_empty())
             .join(",")
@@ -459,102 +453,56 @@ pub fn generic_type_to_name(
 
 /// Builds a string representation of a `CoreTypeConcrete` name
 /// by recursively iterating its structure.
-///
-/// Since this can lead to infinite recursion, a `HashSet` is used to
-/// track visited types and stop the iteration if a type has already
-/// been encountered.
 pub fn type_to_name(
     registry: &ProgramRegistry<CoreType, CoreLibfunc>,
     ty: &CoreTypeConcrete,
-    mut visited_types: HashSet<TypeId>,
 ) -> String {
-    let type_id = ty.type_id();
-    if visited_types.contains(&type_id) {
-        return String::from("");
-    }
-    visited_types.insert(type_id);
     match ty {
-        CoreTypeConcrete::Struct(info) => {
-            generic_type_to_name(registry, "struct", &info.members, visited_types)
-        }
-        CoreTypeConcrete::Enum(info) => {
-            generic_type_to_name(registry, "enum", &info.variants, visited_types)
-        }
+        CoreTypeConcrete::Struct(info) => generic_type_to_name(registry, "struct", &info.members),
+        CoreTypeConcrete::Enum(info) => generic_type_to_name(registry, "enum", &info.variants),
         CoreTypeConcrete::BoundedInt(info) => {
             format!("bounded_int<{},{}>", info.range.lower, info.range.upper)
         }
-        CoreTypeConcrete::Array(info) => generic_type_to_name(
-            registry,
-            "array",
-            std::slice::from_ref(&info.ty),
-            visited_types,
-        ),
-        CoreTypeConcrete::Snapshot(info) => generic_type_to_name(
-            registry,
-            "snapshot",
-            std::slice::from_ref(&info.ty),
-            visited_types,
-        ),
-        CoreTypeConcrete::Span(info) => generic_type_to_name(
-            registry,
-            "span",
-            std::slice::from_ref(&info.ty),
-            visited_types,
-        ),
-        CoreTypeConcrete::Felt252Dict(info) => generic_type_to_name(
-            registry,
-            "felt252_dict",
-            std::slice::from_ref(&info.ty),
-            visited_types,
-        ),
+        CoreTypeConcrete::Array(info) => {
+            generic_type_to_name(registry, "array", std::slice::from_ref(&info.ty))
+        }
+        CoreTypeConcrete::Snapshot(info) => {
+            generic_type_to_name(registry, "snapshot", std::slice::from_ref(&info.ty))
+        }
+        CoreTypeConcrete::Span(info) => {
+            generic_type_to_name(registry, "span", std::slice::from_ref(&info.ty))
+        }
+        CoreTypeConcrete::Felt252Dict(info) => {
+            generic_type_to_name(registry, "felt252_dict", std::slice::from_ref(&info.ty))
+        }
         CoreTypeConcrete::Felt252DictEntry(info) => generic_type_to_name(
             registry,
             "felt252_dict_entry",
             std::slice::from_ref(&info.ty),
-            visited_types,
         ),
         CoreTypeConcrete::SquashedFelt252Dict(info) => generic_type_to_name(
             registry,
             "squashed_felt252_dict",
             std::slice::from_ref(&info.ty),
-            visited_types,
         ),
-        CoreTypeConcrete::NonZero(info) => generic_type_to_name(
-            registry,
-            "non_zero",
-            std::slice::from_ref(&info.ty),
-            visited_types,
-        ),
-        CoreTypeConcrete::Box(info) => generic_type_to_name(
-            registry,
-            "box",
-            std::slice::from_ref(&info.ty),
-            visited_types,
-        ),
-        CoreTypeConcrete::Uninitialized(info) => generic_type_to_name(
-            registry,
-            "uninitialized",
-            std::slice::from_ref(&info.ty),
-            visited_types,
-        ),
-        CoreTypeConcrete::Nullable(info) => generic_type_to_name(
-            registry,
-            "nullable",
-            std::slice::from_ref(&info.ty),
-            visited_types,
-        ),
-        CoreTypeConcrete::Const(info) => generic_type_to_name(
-            registry,
-            "const",
-            std::slice::from_ref(&info.inner_ty),
-            visited_types,
-        ),
-        CoreTypeConcrete::IntRange(info) => generic_type_to_name(
-            registry,
-            "int_range",
-            std::slice::from_ref(&info.ty),
-            visited_types,
-        ),
+        CoreTypeConcrete::NonZero(info) => {
+            generic_type_to_name(registry, "non_zero", std::slice::from_ref(&info.ty))
+        }
+        CoreTypeConcrete::Box(info) => {
+            generic_type_to_name(registry, "box", std::slice::from_ref(&info.ty))
+        }
+        CoreTypeConcrete::Uninitialized(info) => {
+            generic_type_to_name(registry, "uninitialized", std::slice::from_ref(&info.ty))
+        }
+        CoreTypeConcrete::Nullable(info) => {
+            generic_type_to_name(registry, "nullable", std::slice::from_ref(&info.ty))
+        }
+        CoreTypeConcrete::Const(info) => {
+            generic_type_to_name(registry, "const", std::slice::from_ref(&info.inner_ty))
+        }
+        CoreTypeConcrete::IntRange(info) => {
+            generic_type_to_name(registry, "int_range", std::slice::from_ref(&info.ty))
+        }
         CoreTypeConcrete::Starknet(selector) => match selector {
             StarknetTypeConcrete::ClassHash(_) => String::from("class_hash"),
             StarknetTypeConcrete::ContractAddress(_) => String::from("contract_address"),
