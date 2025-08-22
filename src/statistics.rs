@@ -19,7 +19,7 @@ pub struct Statistics {
     /// Stats of the declared types in Sierra.
     pub sierra_declared_types_stats: BTreeMap<u64, SierraDeclaredTypeStats>,
     /// Stats about params and return types of each Sierra function.
-    pub sierra_func_stats: BTreeMap<String, SierraFuncStats>,
+    pub sierra_func_stats: BTreeMap<u64, SierraFuncStats>,
     /// Number of statements for each distinct libfunc.
     pub sierra_libfunc_frequency: BTreeMap<String, u128>,
     /// Number of times each circuit gate is used.

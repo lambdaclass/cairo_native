@@ -279,7 +279,7 @@ impl AotContractExecutor {
             }
 
             for func in &program.funcs {
-                let func_id = func.id.to_string();
+                let func_id = func.id.id;
                 // Params
                 let params_total_size =
                     get_types_total_size(&func.signature.param_types, &registry)?;
@@ -302,7 +302,7 @@ impl AotContractExecutor {
                     GenStatement::Invocation(gen_invocation) => {
                         let libfunc = registry.get_libfunc(&gen_invocation.libfunc_id)?;
                         if let CoreConcreteLibfunc::FunctionCall(function_call_libfunc) = libfunc {
-                            let func_id = function_call_libfunc.function.id.to_string();
+                            let func_id = function_call_libfunc.function.id.id;
                             let func_entry = stats.sierra_func_stats.get_mut(&func_id).unwrap();
                             func_entry.times_called += 1;
                         }
