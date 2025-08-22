@@ -143,9 +143,9 @@ pub(crate) use libc::{free as libc_free, malloc as libc_malloc, realloc as libc_
 /// If the program includes function identifiers, return those. Otherwise return `f` followed by the
 /// identifier number.
 pub fn generate_function_name(
-    function_id: &FunctionId,
+    function_id: &'_ FunctionId,
     is_for_contract_executor: bool,
-) -> Cow<str> {
+) -> Cow<'_, str> {
     // Generic functions can omit their type in the debug_name, leading to multiple functions
     // having the same name, we solve this by adding the id number even if the function has a debug_name
 
