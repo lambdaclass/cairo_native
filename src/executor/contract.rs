@@ -244,7 +244,7 @@ impl AotContractExecutor {
             for type_declaration in &program.type_declarations {
                 if let Ok(type_concrete) = registry.get_type(&type_declaration.id) {
                     let type_id = type_declaration.id.id;
-                    let type_size = type_concrete.layout(&registry).unwrap().size();
+                    let type_size = type_concrete.layout(&registry)?.size();
                     stats.sierra_declared_types_stats.insert(
                         type_id,
                         SierraDeclaredTypeStats {
@@ -282,10 +282,10 @@ impl AotContractExecutor {
                 let func_id = func.id.to_string();
                 // Params
                 let params_total_size =
-                    get_types_total_size(&func.signature.param_types, &registry);
+                    get_types_total_size(&func.signature.param_types, &registry)?;
                 // Return types
                 let return_types_total_size =
-                    get_types_total_size(&func.signature.ret_types, &registry);
+                    get_types_total_size(&func.signature.ret_types, &registry)?;
 
                 stats.sierra_func_stats.insert(
                     func_id,
@@ -300,7 +300,7 @@ impl AotContractExecutor {
             for statement in &program.statements {
                 match statement {
                     GenStatement::Invocation(gen_invocation) => {
-                        let libfunc = registry.get_libfunc(&gen_invocation.libfunc_id).unwrap();
+                        let libfunc = registry.get_libfunc(&gen_invocation.libfunc_id)?;
                         if let CoreConcreteLibfunc::FunctionCall(function_call_libfunc) = libfunc {
                             let func_id = function_call_libfunc.function.id.to_string();
                             let func_entry = stats.sierra_func_stats.get_mut(&func_id).unwrap();

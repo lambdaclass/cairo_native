@@ -427,14 +427,14 @@ pub fn layout_repeat(layout: &Layout, n: usize) -> Result<(Layout, usize), Layou
 pub fn get_types_total_size(
     types_ids: &[ConcreteTypeId],
     registry: &ProgramRegistry<CoreType, CoreLibfunc>,
-) -> usize {
-    types_ids
-        .iter()
-        .map(|type_id| match registry.get_type(type_id) {
-            Ok(concrete_type) => concrete_type.layout(registry).unwrap().size(),
-            Err(_) => 0,
-        })
-        .sum()
+) -> crate::error::Result<usize> {
+    let mut total_size = 0;
+    for type_id in types_ids {
+        let type_concrete = registry.get_type(type_id)?;
+        let layout = type_concrete.layout(registry)?;
+        total_size += layout.size();
+    }
+    Ok(total_size)
 }
 
 #[cfg(test)]
