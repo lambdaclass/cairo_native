@@ -441,18 +441,15 @@ pub fn generic_type_to_name(
         name,
         args.iter()
             .map(|field_type| {
-                let concrete_type = registry
+                registry
                     .get_type(field_type)
-                    .expect("failed to find type in registry");
-                type_to_name(registry, concrete_type)
+                    .expect("failed to find type in registry")
             })
-            .filter(|type_name| !type_name.is_empty())
+            .map(|field_type| type_to_name(registry, field_type))
             .join(",")
     )
 }
 
-/// Builds a string representation of a `CoreTypeConcrete` name
-/// by recursively iterating its structure.
 pub fn type_to_name(
     registry: &ProgramRegistry<CoreType, CoreLibfunc>,
     ty: &CoreTypeConcrete,
