@@ -66,12 +66,12 @@ impl NativeContext {
     /// If `ignore_debug_names` is true then debug names will not be added to function names.
     /// Mainly useful for the ContractExecutor.
     pub fn compile(
-        &self,
+        &'_ self,
         program: &Program,
         ignore_debug_names: bool,
         gas_metadata_config: Option<MetadataComputationConfig>,
         stats: Option<&mut Statistics>,
-    ) -> Result<NativeModule, Error> {
+    ) -> Result<NativeModule<'_>, Error> {
         static INITIALIZED: OnceLock<()> = OnceLock::new();
         INITIALIZED.get_or_init(|| unsafe {
             LLVM_InitializeAllTargets();
