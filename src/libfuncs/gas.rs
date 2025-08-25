@@ -5,7 +5,7 @@ use crate::{
     error::{panic::ToNativeAssertError, Error, Result},
     metadata::{gas::GasCost, runtime_bindings::RuntimeBindingsMeta, MetadataStorage},
     native_panic,
-    utils::{BlockExt, BuiltinCosts, GepIndex},
+    utils::BuiltinCosts,
 };
 use cairo_lang_sierra::{
     extensions::{
@@ -17,6 +17,7 @@ use cairo_lang_sierra::{
 };
 use melior::{
     dialect::{arith::CmpiPredicate, ods},
+    helpers::{ArithBlockExt, BuiltinBlockExt, GepIndex, LlvmBlockExt},
     ir::{r#type::IntegerType, Block, Location, Value},
     Context,
 };
@@ -312,6 +313,6 @@ mod test {
         );
 
         let result = run_program(&program, "run_test", &[]);
-        assert_eq!(result.remaining_gas, Some(18446744073709545665));
+        assert_eq!(result.remaining_gas, Some(18446744073709545165));
     }
 }

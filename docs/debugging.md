@@ -445,7 +445,31 @@ In the `scripts` folder of starknet-replay, you can find useful scripts for debu
   ./scripts/diff-trace-flow.sh 1
   ```
 - `string-to-felt`: Converts the given string to a felt. Can be used to search in the code where a specific error message was generated.
-  ```bash
-  > ./scripts/string-to-felt.sh "u256_mul Overflow"
-  753235365f6d756c204f766572666c6f77
-  ```
+    ```bash
+    > ./scripts/string-to-felt.sh "u256_mul Overflow"
+    753235365f6d756c204f766572666c6f77
+    ```
+
+## Debugging Compilation
+
+If we encounter contracts/programs that take too long to compile, the first step is to pinpoint what is causing the long compilation times.
+
+If we find that a particular libfunc is taking too much time to compile/optimize, we should consider moving that libfunc to the runtime. First, we need to check if it would give any improvements at all. To do this, we can "fake" a runtime call to trick the compiler into thinking that a particular libfunc is implemented externally. If we just "delete" the libfunc implementation, we may allow the compiler to optimize a lot of instructions away. This would hide the actual problem.
+
+For details on how to do this, see the debugging functions `build_mock_runtime_call` and `build_mock_libfunc`. The latter is fully generic, and can be used as a replacement for any libfunc implementation.
+
+For example, to check if the `eval_circuit` libfunc is taking too much time to compile, just replace this:
+```rust,ignore
+// at src/libfuncs/circuit.rs
+CircuitConcreteLibfunc::Eval(info) => {
+    build_eval(context, registry, entry, location, helper, metadata, info)
+}
+```
+With this:
+```rust,ignore
+CircuitConcreteLibfunc::Eval(info) => {
+    build_mock_libfunc(context, registry, entry, location, helper, metadata, info.signature())
+}
+```
+
+Note that sometimes the problem is not a libfunc, but the actual types involved. In these cases mocking a libunc may not help, as doing so would have to operate with those complex types anyway (particularly, loading them from pointers).

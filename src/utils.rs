@@ -1,10 +1,6 @@
 //! # Various utilities
 
-pub(crate) use self::{
-    block_ext::{BlockExt, GepIndex},
-    program_registry_ext::ProgramRegistryExt,
-    range_ext::RangeExt,
-};
+pub(crate) use self::{program_registry_ext::ProgramRegistryExt, range_ext::RangeExt};
 use crate::{error::Result as NativeResult, metadata::MetadataStorage, native_panic, OptLevel};
 use cairo_lang_compiler::CompilerConfig;
 use cairo_lang_runner::token_gas_cost;
@@ -30,7 +26,6 @@ use std::{
 };
 use thiserror::Error;
 
-mod block_ext;
 pub mod mem_tracing;
 mod program_registry_ext;
 mod range_ext;
@@ -141,9 +136,9 @@ pub(crate) use libc::{free as libc_free, malloc as libc_malloc, realloc as libc_
 /// If the program includes function identifiers, return those. Otherwise return `f` followed by the
 /// identifier number.
 pub fn generate_function_name(
-    function_id: &FunctionId,
+    function_id: &'_ FunctionId,
     is_for_contract_executor: bool,
-) -> Cow<str> {
+) -> Cow<'_, str> {
     // Generic functions can omit their type in the debug_name, leading to multiple functions
     // having the same name, we solve this by adding the id number even if the function has a debug_name
 

@@ -1,4 +1,4 @@
-use super::{BlockExt, LibfuncHelper};
+use super::LibfuncHelper;
 use crate::{
     error::{panic::ToNativeAssertError, Result},
     execution_result::BITWISE_BUILTIN_SIZE,
@@ -33,6 +33,7 @@ use melior::{
         ods::{self, math},
         scf,
     },
+    helpers::{ArithBlockExt, BuiltinBlockExt, LlvmBlockExt},
     ir::{
         attribute::IntegerAttribute, operation::OperationBuilder, r#type::IntegerType, Block,
         BlockLike, Location, Region, ValueLike,
@@ -278,8 +279,9 @@ where
         metadata,
         &info.signature.branch_signatures[0].vars[0].ty,
     )?;
+    let constant: BigInt = info.c.into();
 
-    let value = entry.const_int_from_type(context, location, info.c, value_ty)?;
+    let value = entry.const_int_from_type(context, location, constant, value_ty)?;
 
     helper.br(entry, 0, &[value], location)
 }
@@ -491,7 +493,7 @@ fn build_from_felt252<'ctx, 'this>(
     // With the range check size being 2**128
     // https://github.com/starkware-libs/cairo/blob/v2.12.0-dev.1/crates/cairo-lang-sierra-to-casm/src/invocations/range_reduction.rs#L26
     let rc_size = BigInt::from(1) << 128;
-    let range_check = super::increment_builtin_counter_by_if(
+    let range_check = super::increment_builtin_counter_conditionally_by(
         context,
         entry,
         location,
@@ -921,7 +923,7 @@ fn build_u128s_from_felt252<'ctx, 'this>(
     // The sierra-to-casm compiler uses the range check builtin a total of 3 times when the value is greater than u128 max.
     // Otherwise it will be used once.
     // https://github.com/starkware-libs/cairo/blob/v2.12.0-dev.1/crates/cairo-lang-sierra-to-casm/src/invocations/int/unsigned128.rs#L234
-    let range_check = super::increment_builtin_counter_by_if(
+    let range_check = super::increment_builtin_counter_conditionally_by(
         context,
         entry,
         location,
@@ -963,9 +965,9 @@ fn build_wide_mul<'ctx, 'this>(
         .lower
         .is_zero()
     {
-        BlockExt::extui
+        ArithBlockExt::extui
     } else {
-        BlockExt::extsi
+        ArithBlockExt::extsi
     };
 
     let lhs = ext_fn(entry, entry.arg(0)?, result_ty, location)?;

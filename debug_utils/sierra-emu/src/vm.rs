@@ -525,5 +525,7 @@ fn eval<'a>(
         CoreConcreteLibfunc::Felt252SquashedDict(_) => todo!(),
         CoreConcreteLibfunc::Trace(_) => todo!(),
         CoreConcreteLibfunc::UnsafePanic(_) => todo!(),
+        CoreConcreteLibfunc::DummyFunctionCall(_) => todo!(),
+        CoreConcreteLibfunc::GasReserve(_) => todo!(),
     }
 }

@@ -2,7 +2,7 @@
 
 UNAME := $(shell uname)
 SCARB_VERSION = 2.11.2
-CAIRO_2_VERSION = 2.12.0-dev.1
+CAIRO_2_VERSION = 2.12.0
 
 # Usage is the default target for newcomers running `make`.
 .PHONY: usage
@@ -66,11 +66,7 @@ test: check-llvm needs-cairo2 build-alexandria
 
 .PHONY: test-cairo
 test-cairo: check-llvm needs-cairo2
-	cargo r --profile ci --bin cairo-native-test -- corelib \
-		--skip-compilation core::test::dict_test::test_array_from_squash_dict \
-		--skip-compilation core::test::hash_test::test_blake2s \
-		--skip-compilation core::test::testing_test::test_get_unspent_gas \
-		--skip-compilation core::test::qm31_test::
+	cargo r --profile ci --bin cairo-native-test -- --compare-with-cairo-vm corelib
 
 .PHONY: proptest
 proptest: check-llvm needs-cairo2
@@ -137,6 +133,7 @@ deps: deps-macos
 endif
 	-rm -rf corelib
 	-ln -s cairo2/corelib corelib
+	patch -p0 -E < corelib.patch
 
 .PHONY: deps-macos
 deps-macos: build-cairo-2-compiler-macos install-scarb-macos

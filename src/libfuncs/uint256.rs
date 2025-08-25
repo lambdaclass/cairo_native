@@ -1,10 +1,7 @@
 //! # `u256`-related libfuncs
 
-use super::{BlockExt, LibfuncHelper};
-use crate::{
-    error::Result, libfuncs::increment_builtin_counter_by_if, metadata::MetadataStorage,
-    utils::ProgramRegistryExt,
-};
+use super::{increment_builtin_counter_conditionally_by, LibfuncHelper};
+use crate::{error::Result, metadata::MetadataStorage, utils::ProgramRegistryExt};
 use cairo_lang_sierra::{
     extensions::{
         core::{CoreLibfunc, CoreType},
@@ -19,6 +16,7 @@ use melior::{
         arith::{self, CmpiPredicate},
         llvm, ods, scf,
     },
+    helpers::BuiltinBlockExt,
     ir::{
         attribute::{DenseI64ArrayAttribute, IntegerAttribute},
         operation::OperationBuilder,
@@ -933,7 +931,7 @@ pub fn build_u256_guarantee_inv_mod_n<'ctx, 'this>(
     // The sierra-to-casm compiler uses the range check builtin a total of 9 times if the inverse is
     // not equal to 0 and lhs is invertible. Otherwise it will be used 7 times.
     // https://github.com/starkware-libs/cairo/blob/v2.12.0-dev.1/crates/cairo-lang-sierra-to-casm/src/invocations/int/unsigned256.rs#L21
-    let range_check = increment_builtin_counter_by_if(
+    let range_check = increment_builtin_counter_conditionally_by(
         context,
         entry,
         location,
