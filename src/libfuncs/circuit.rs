@@ -8,7 +8,8 @@ use crate::{
     execution_result::{ADD_MOD_BUILTIN_SIZE, MUL_MOD_BUILTIN_SIZE, RANGE_CHECK96_BUILTIN_SIZE},
     libfuncs::r#struct::build_struct_value,
     metadata::{
-        drop_overrides::DropOverridesMeta, realloc_bindings::ReallocBindingsMeta, MetadataStorage,
+        drop_overrides::DropOverridesMeta, realloc_bindings::ReallocBindingsMeta,
+        runtime_bindings::RuntimeBindingsMeta, MetadataStorage,
     },
     native_panic,
     types::{circuit::build_u384_struct_type, TypeBuilder},
@@ -32,10 +33,7 @@ use melior::{
         cf, llvm,
     },
     helpers::{ArithBlockExt, BuiltinBlockExt, GepIndex, LlvmBlockExt},
-    ir::{
-        attribute::FlatSymbolRefAttribute, operation::OperationBuilder, r#type::IntegerType,
-        Attribute, Block, BlockLike, Identifier, Location, Type, Value, ValueLike,
-    },
+    ir::{r#type::IntegerType, Block, BlockLike, Location, Type, Value, ValueLike},
     Context,
 };
 use num_traits::Signed;
@@ -335,6 +333,7 @@ fn build_eval<'ctx, 'this>(
         entry,
         location,
         helper,
+        metadata,
         circuit_info,
         circuit_data,
         circuit_modulus,
@@ -483,6 +482,7 @@ fn build_gate_evaluation<'ctx, 'this>(
     mut block: &'this Block<'ctx>,
     location: Location<'ctx>,
     helper: &LibfuncHelper<'ctx, 'this>,
+    metadata: &mut MetadataStorage,
     circuit_info: &circuit::CircuitInfo,
     circuit_data: Value<'ctx, 'ctx>,
     circuit_modulus: Value<'ctx, 'ctx>,
@@ -641,13 +641,19 @@ fn build_gate_evaluation<'ctx, 'this>(
                     let integer_type = rhs_value.r#type();
 
                     // Apply egcd to find gcd and inverse
-                    let euclidean_result = call_euclidean_algorithm_func(
-                        context,
-                        block,
-                        location,
-                        rhs_value,
-                        circuit_modulus,
-                    );
+                    let euclidean_result = match metadata.get_mut::<RuntimeBindingsMeta>() {
+                        Some(runtime_bindings) => runtime_bindings.libfunc_build_eval(
+                            context,
+                            helper.module,
+                            block,
+                            location,
+                            rhs_value,
+                            circuit_modulus,
+                        )?,
+                        None => native_panic!(
+                            "Unable to get the RuntimeBindingsMeta from MetadataStorage"
+                        ),
+                    };
                     let gcd = block.extract_value(
                         context,
                         location,
@@ -732,38 +738,38 @@ fn build_gate_evaluation<'ctx, 'this>(
     Ok(([ok_block, err_block], evaluated_gates))
 }
 
-fn call_euclidean_algorithm_func<'ctx>(
-    context: &'ctx Context,
-    block: &'ctx Block<'ctx>,
-    location: Location<'ctx>,
-    a: Value<'ctx, '_>,
-    b: Value<'ctx, '_>,
-) -> Value<'ctx, 'ctx> {
-    let integer_type: Type = IntegerType::new(context, 384 * 2).into();
-    let return_type = llvm::r#type::r#struct(context, &[integer_type, integer_type], false);
-    block
-        .append_operation(
-            OperationBuilder::new("llvm.call", location)
-                .add_attributes(&[
-                    (
-                        Identifier::new(context, "callee"),
-                        FlatSymbolRefAttribute::new(context, "cairo_native__euclidean_algorithm")
-                            .into(),
-                    ),
-                    (
-                        Identifier::new(context, "no_inline"),
-                        Attribute::unit(context),
-                    ),
-                ])
-                .add_operands(&[a, b])
-                .add_results(&[return_type])
-                .build()
-                .unwrap(),
-        )
-        .result(0)
-        .unwrap()
-        .into()
-}
+// fn call_euclidean_algorithm_func<'ctx>(
+//     context: &'ctx Context,
+//     block: &'ctx Block<'ctx>,
+//     location: Location<'ctx>,
+//     a: Value<'ctx, '_>,
+//     b: Value<'ctx, '_>,
+// ) -> Value<'ctx, 'ctx> {
+//     let integer_type: Type = IntegerType::new(context, 384 * 2).into();
+//     let return_type = llvm::r#type::r#struct(context, &[integer_type, integer_type], false);
+//     block
+//         .append_operation(
+//             OperationBuilder::new("llvm.call", location)
+//                 .add_attributes(&[
+//                     (
+//                         Identifier::new(context, "callee"),
+//                         FlatSymbolRefAttribute::new(context, "cairo_native__euclidean_algorithm")
+//                             .into(),
+//                     ),
+//                     (
+//                         Identifier::new(context, "no_inline"),
+//                         Attribute::unit(context),
+//                     ),
+//                 ])
+//                 .add_operands(&[a, b])
+//                 .add_results(&[return_type])
+//                 .build()
+//                 .unwrap(),
+//         )
+//         .result(0)
+//         .unwrap()
+//         .into()
+// }
 
 /// Generate MLIR operations for the `circuit_failure_guarantee_verify` libfunc.
 /// NOOP
