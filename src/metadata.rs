@@ -114,11 +114,11 @@ impl MetadataStorage {
             .expect("the given type does not match the actual")
     }
 
-    pub fn increment_frequency(&mut self, type_id: &ConcreteTypeId, type_name: String) {
+    pub fn increment_frequency(&mut self, type_id: &ConcreteTypeId) {
         *self.types_freqs.entry(type_id.id).or_insert(0) += 1;
     }
 
-    pub fn types_frequencies(&self) -> BTreeMap<String, u64> {
+    pub fn types_frequencies(&self) -> BTreeMap<u64, u64> {
         self.types_freqs.clone()
     }
 }
