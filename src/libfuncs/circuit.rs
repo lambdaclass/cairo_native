@@ -395,7 +395,6 @@ fn build_eval<'ctx, 'this>(
         }
 
         // let modulus_struct = u384_integer_to_struct(context, ok_block, location, circuit_modulus)?;
-        // declare_u384_integer_to_struct_mlir_func(context, ok_block, location);
         let modulus_struct =
             call_u384_integer_to_struct_mlir_func(ok_block, location, context, circuit_modulus)?;
 
@@ -922,7 +921,9 @@ fn build_get_output<'ctx, 'this>(
         u384_type,
     )?;
     let output_integer = entry.load(context, location, output_integer_ptr, u384_type)?;
-    let output_struct = u384_integer_to_struct(context, entry, location, output_integer)?;
+    // let output_struct = u384_integer_to_struct(context, entry, location, output_integer)?;
+    let output_struct =
+        call_u384_integer_to_struct_mlir_func(entry, location, context, output_integer)?;
 
     let guarantee_type_id = &info.branch_signatures()[0].vars[1].ty;
     let guarantee = build_struct_value(
@@ -1030,41 +1031,41 @@ fn call_u384_integer_to_struct_mlir_func<'a>(
         .into())
 }
 
-fn u384_integer_to_struct<'a>(
-    context: &'a Context,
-    block: &'a Block<'a>,
-    location: Location<'a>,
-    integer: Value<'a, 'a>,
-) -> Result<Value<'a, 'a>> {
-    let u96_type = IntegerType::new(context, 96).into();
+// fn u384_integer_to_struct<'a>(
+//     context: &'a Context,
+//     block: &'a Block<'a>,
+//     location: Location<'a>,
+//     integer: Value<'a, 'a>,
+// ) -> Result<Value<'a, 'a>> {
+//     let u96_type = IntegerType::new(context, 96).into();
 
-    let limb1 = block.trunci(integer, IntegerType::new(context, 96).into(), location)?;
-    let limb2 = {
-        let k96 = block.const_int(context, location, 96, 384)?;
-        let limb = block.shrui(integer, k96, location)?;
-        block.trunci(limb, u96_type, location)?
-    };
-    let limb3 = {
-        let k192 = block.const_int(context, location, 96 * 2, 384)?;
-        let limb = block.shrui(integer, k192, location)?;
-        block.trunci(limb, u96_type, location)?
-    };
-    let limb4 = {
-        let k288 = block.const_int(context, location, 96 * 3, 384)?;
-        let limb = block.shrui(integer, k288, location)?;
-        block.trunci(limb, u96_type, location)?
-    };
+//     let limb1 = block.trunci(integer, IntegerType::new(context, 96).into(), location)?;
+//     let limb2 = {
+//         let k96 = block.const_int(context, location, 96, 384)?;
+//         let limb = block.shrui(integer, k96, location)?;
+//         block.trunci(limb, u96_type, location)?
+//     };
+//     let limb3 = {
+//         let k192 = block.const_int(context, location, 96 * 2, 384)?;
+//         let limb = block.shrui(integer, k192, location)?;
+//         block.trunci(limb, u96_type, location)?
+//     };
+//     let limb4 = {
+//         let k288 = block.const_int(context, location, 96 * 3, 384)?;
+//         let limb = block.shrui(integer, k288, location)?;
+//         block.trunci(limb, u96_type, location)?
+//     };
 
-    let struct_type = build_u384_struct_type(context);
-    let struct_value = block.append_op_result(llvm::undef(struct_type, location))?;
+//     let struct_type = build_u384_struct_type(context);
+//     let struct_value = block.append_op_result(llvm::undef(struct_type, location))?;
 
-    Ok(block.insert_values(
-        context,
-        location,
-        struct_value,
-        &[limb1, limb2, limb3, limb4],
-    )?)
-}
+//     Ok(block.insert_values(
+//         context,
+//         location,
+//         struct_value,
+//         &[limb1, limb2, limb3, limb4],
+//     )?)
+// }
 
 /// The extended euclidean algorithm calculates the greatest common divisor (gcd) of two integers a and b,
 /// as well as the bezout coefficients x and y such that ax+by=gcd(a,b)
