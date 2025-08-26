@@ -213,7 +213,7 @@ fn declare_u384_integer_to_struct_mlir_func<'a>(
     let struct_value = inner_block
         .append_op_result(llvm::undef(struct_type, location))
         .unwrap();
-    inner_block
+    let result = inner_block
         .insert_values(
             context,
             location,
@@ -222,7 +222,7 @@ fn declare_u384_integer_to_struct_mlir_func<'a>(
         )
         .unwrap();
 
-    inner_block.append_operation(llvm::r#return(Some(struct_value), location));
+    inner_block.append_operation(llvm::r#return(Some(result), location));
     ///////////////////////////////////////
 
     let region = Region::new();
