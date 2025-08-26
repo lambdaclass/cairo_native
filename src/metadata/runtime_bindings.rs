@@ -113,7 +113,7 @@ impl RuntimeBinding {
             RuntimeBinding::GetCostsBuiltin => {
                 crate::runtime::cairo_native__get_costs_builtin as *const ()
             }
-            RuntimeBinding::EvalCircuit => std::ptr::null() as *const (),
+            RuntimeBinding::EvalCircuit => std::ptr::null(),
             #[cfg(feature = "with-cheatcode")]
             RuntimeBinding::VtableCheatcode => {
                 crate::starknet::cairo_native__vtable_cheatcode as *const ()
@@ -839,7 +839,7 @@ fn declare_euclidean_algorithm_func<'ctx>(
         .unwrap();
     end_block.append_operation(llvm::r#return(Some(results), location));
 
-    let func_name = StringAttribute::new(context, &func_symbol);
+    let func_name = StringAttribute::new(context, func_symbol);
     module.body().append_operation(llvm::func(
         context,
         func_name,

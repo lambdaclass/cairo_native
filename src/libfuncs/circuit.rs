@@ -477,6 +477,7 @@ fn build_eval<'ctx, 'this>(
 ///
 /// The original Cairo hint evaluates all gates, even in case of failure.
 /// This implementation exits on first error, as there is no need for the partial outputs yet.
+#[allow(clippy::too_many_arguments)]
 fn build_gate_evaluation<'ctx, 'this>(
     context: &'this Context,
     mut block: &'this Block<'ctx>,
