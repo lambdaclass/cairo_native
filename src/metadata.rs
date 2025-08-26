@@ -33,7 +33,8 @@ pub mod trace_dump;
 #[derive(Debug)]
 pub struct MetadataStorage {
     entries: HashMap<TypeId, Box<dyn Any>>,
-    types_freqs: BTreeMap<String, u64>, // KEY = (declared_id, concrete_type)
+    /// Number of times each declared type is built
+    types_freqs: BTreeMap<u64, u64>,
 }
 
 impl MetadataStorage {
@@ -114,8 +115,7 @@ impl MetadataStorage {
     }
 
     pub fn increment_frequency(&mut self, type_id: &ConcreteTypeId, type_name: String) {
-        let type_id_str = format!("{},{}", type_id, type_name);
-        *self.types_freqs.entry(type_id_str).or_insert(0) += 1;
+        *self.types_freqs.entry(type_id.id).or_insert(0) += 1;
     }
 
     pub fn types_frequencies(&self) -> BTreeMap<String, u64> {
