@@ -1,1 +1,1 @@
-window.SIDEBAR_ITEMS = {"struct":["Statistics"]};
+window.SIDEBAR_ITEMS = {"struct":["CircuitGatesStats","SierraDeclaredTypeStats","SierraFuncStats","Statistics"]};
