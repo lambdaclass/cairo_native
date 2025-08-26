@@ -641,8 +641,13 @@ fn build_gate_evaluation<'ctx, 'this>(
                     let integer_type = rhs_value.r#type();
 
                     // Apply egcd to find gcd and inverse
-                    let euclidean_result =
-                        call_euclidean_func(context, block, location, rhs_value, circuit_modulus);
+                    let euclidean_result = call_euclidean_algorithm_func(
+                        context,
+                        block,
+                        location,
+                        rhs_value,
+                        circuit_modulus,
+                    );
                     let gcd = block.extract_value(
                         context,
                         location,
@@ -727,7 +732,7 @@ fn build_gate_evaluation<'ctx, 'this>(
     Ok(([ok_block, err_block], evaluated_gates))
 }
 
-fn call_euclidean_func<'ctx>(
+fn call_euclidean_algorithm_func<'ctx>(
     context: &'ctx Context,
     block: &'ctx Block<'ctx>,
     location: Location<'ctx>,

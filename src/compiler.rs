@@ -141,9 +141,9 @@ pub fn compile(
         }
     }
 
-    let location = Location::unknown(context); // TODO: WHICH LOCATION SHOULD I USE?
+    let location = Location::unknown(context);
     let integer_type: Type = IntegerType::new(context, 384 * 2).into();
-    let region = declare_euclidean_func(context, location, integer_type);
+    let region = declare_euclidean_algorithm_func(context, location, integer_type);
     let func_name = StringAttribute::new(context, "cairo_native__euclidean_algorithm");
     module.body().append_operation(llvm::func(
         context,
@@ -191,7 +191,7 @@ pub fn compile(
     Ok(())
 }
 
-fn declare_euclidean_func<'ctx>(
+fn declare_euclidean_algorithm_func<'ctx>(
     context: &'ctx Context,
     location: Location<'ctx>,
     integer_type: Type<'_>,
@@ -260,7 +260,6 @@ fn declare_euclidean_func<'ctx>(
     // If true, then:
     // - r_i is the gcd of a and b
     // - inv_i is the bezout coefficient x
-
     let zero = loop_block
         .const_int_from_type(context, location, 0, integer_type)
         .unwrap();
@@ -276,9 +275,8 @@ fn declare_euclidean_func<'ctx>(
         &[remainder, next_remainder, inverse, next_inverse],
         location,
     ));
-    // loop_block.append_operation(cf::br(&end_block, &[remainder, inverse], location));
 
-    //////// SAME AS libsfuncs/array.rs line 213 ////////
+    // Create the struct that will contain the results
     let results = end_block
         .append_op_result(llvm::undef(
             llvm::r#type::r#struct(context, &[integer_type, integer_type], false),
@@ -293,7 +291,6 @@ fn declare_euclidean_func<'ctx>(
             &[end_block.arg(0).unwrap(), end_block.arg(1).unwrap()],
         )
         .unwrap();
-    ////////////////////////////////////////////////
     end_block.append_operation(llvm::r#return(Some(results), location));
 
     region
