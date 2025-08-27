@@ -4,7 +4,7 @@
 
 use super::{increment_builtin_counter_by, LibfuncHelper};
 use crate::{
-    error::{Result, SierraAssertError},
+    error::{panic::ToNativeAssertError, Result, SierraAssertError},
     execution_result::{ADD_MOD_BUILTIN_SIZE, MUL_MOD_BUILTIN_SIZE, RANGE_CHECK96_BUILTIN_SIZE},
     libfuncs::r#struct::build_struct_value,
     metadata::{
@@ -642,19 +642,19 @@ fn build_gate_evaluation<'ctx, 'this>(
                     let integer_type = rhs_value.r#type();
 
                     // Apply egcd to find gcd and inverse
-                    let euclidean_result = match metadata.get_mut::<RuntimeBindingsMeta>() {
-                        Some(runtime_bindings) => runtime_bindings.libfunc_build_eval(
-                            context,
-                            helper.module,
-                            block,
-                            location,
-                            rhs_value,
-                            circuit_modulus,
-                        )?,
-                        None => native_panic!(
-                            "Unable to get the RuntimeBindingsMeta from MetadataStorage"
-                        ),
-                    };
+                    let runtime_bindings_meta = metadata
+                        .get_mut::<RuntimeBindingsMeta>()
+                        .to_native_assert_error(
+                            "Unable to get the RuntimeBindingsMeta from MetadataStorage",
+                        )?;
+                    let euclidean_result = runtime_bindings_meta.libfunc_build_eval(
+                        context,
+                        helper.module,
+                        block,
+                        location,
+                        rhs_value,
+                        circuit_modulus,
+                    )?;
                     // Extract the values from the result struct
                     let gcd = block.extract_value(
                         context,
