@@ -113,7 +113,7 @@ impl RuntimeBinding {
             RuntimeBinding::GetCostsBuiltin => {
                 crate::runtime::cairo_native__get_costs_builtin as *const ()
             }
-            RuntimeBinding::EvalCircuit => std::ptr::null(),
+            RuntimeBinding::EvalCircuit => unimplemented!(),
             #[cfg(feature = "with-cheatcode")]
             RuntimeBinding::VtableCheatcode => {
                 crate::starknet::cairo_native__vtable_cheatcode as *const ()
