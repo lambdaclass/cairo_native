@@ -141,26 +141,6 @@ pub fn compile(
         }
     }
 
-    // let location = Location::unknown(context);
-    // let integer_type: Type = IntegerType::new(context, 384 * 2).into();
-    // let region = declare_euclidean_algorithm_func(context, location, integer_type);
-    // let func_name = StringAttribute::new(context, "cairo_native__euclidean_algorithm");
-    // module.body().append_operation(llvm::func(
-    //     context,
-    //     func_name,
-    //     TypeAttribute::new(llvm::r#type::function(
-    //         llvm::r#type::r#struct(context, &[integer_type, integer_type], false),
-    //         &[integer_type, integer_type],
-    //         false,
-    //     )),
-    //     region,
-    //     &[(
-    //         Identifier::new(context, "no_inline"),
-    //         Attribute::unit(context),
-    //     )],
-    //     location,
-    // ));
-
     // Sierra programs have the following structure:
     //   1. Type declarations, one per line.
     //   2. Libfunc declarations, one per line.

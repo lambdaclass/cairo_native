@@ -739,39 +739,6 @@ fn build_gate_evaluation<'ctx, 'this>(
     Ok(([ok_block, err_block], evaluated_gates))
 }
 
-// fn call_euclidean_algorithm_func<'ctx>(
-//     context: &'ctx Context,
-//     block: &'ctx Block<'ctx>,
-//     location: Location<'ctx>,
-//     a: Value<'ctx, '_>,
-//     b: Value<'ctx, '_>,
-// ) -> Value<'ctx, 'ctx> {
-//     let integer_type: Type = IntegerType::new(context, 384 * 2).into();
-//     let return_type = llvm::r#type::r#struct(context, &[integer_type, integer_type], false);
-//     block
-//         .append_operation(
-//             OperationBuilder::new("llvm.call", location)
-//                 .add_attributes(&[
-//                     (
-//                         Identifier::new(context, "callee"),
-//                         FlatSymbolRefAttribute::new(context, "cairo_native__euclidean_algorithm")
-//                             .into(),
-//                     ),
-//                     (
-//                         Identifier::new(context, "no_inline"),
-//                         Attribute::unit(context),
-//                     ),
-//                 ])
-//                 .add_operands(&[a, b])
-//                 .add_results(&[return_type])
-//                 .build()
-//                 .unwrap(),
-//         )
-//         .result(0)
-//         .unwrap()
-//         .into()
-// }
-
 /// Generate MLIR operations for the `circuit_failure_guarantee_verify` libfunc.
 /// NOOP
 #[allow(clippy::too_many_arguments)]
