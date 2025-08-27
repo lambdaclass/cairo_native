@@ -189,7 +189,7 @@ impl RuntimeBindingsMeta {
         let integer_type: Type = IntegerType::new(context, 384 * 2).into();
         let func_symbol = RuntimeBinding::EvalCircuit.symbol();
         if self.active_map.insert(RuntimeBinding::EvalCircuit) {
-            declare_euclidean_algorithm_func(module, context, location, integer_type, func_symbol);
+            declare_euclidean_algorithm_func(module, context, location, integer_type, func_symbol)?;
         }
         // The struct returned by the function that contains both of the results
         let return_type = llvm::r#type::r#struct(context, &[integer_type, integer_type], false);
@@ -208,8 +208,7 @@ impl RuntimeBindingsMeta {
                     ])
                     .add_operands(&[rhs_value, circuit_modulus])
                     .add_results(&[return_type])
-                    .build()
-                    .unwrap(),
+                    .build()?,
             )
             .result(0)?
             .into())
@@ -741,7 +740,7 @@ fn declare_euclidean_algorithm_func<'ctx>(
     location: Location<'ctx>,
     integer_type: Type<'_>,
     func_symbol: &str,
-) {
+) -> Result<()> {
     let region = Region::new();
 
     let entry_block = region.append_block(Block::new(&[
@@ -752,16 +751,12 @@ fn declare_euclidean_algorithm_func<'ctx>(
     // The algorithm egcd works by calculating a series of remainders, each the remainder of dividing the previous two
     // For the initial setup, r0 = b, r1 = a
     // This order is chosen because if we reverse them, then the first iteration will just swap them
-    let remainder = entry_block.arg(0).unwrap();
-    let prev_remainder = entry_block.arg(1).unwrap();
+    let remainder = entry_block.arg(0)?;
+    let prev_remainder = entry_block.arg(1)?;
 
     // Similarly we'll calculate another series which starts 0,1,... and from which we will retrieve the modular inverse of a
-    let prev_inverse = entry_block
-        .const_int_from_type(context, location, 0, integer_type)
-        .unwrap();
-    let inverse = entry_block
-        .const_int_from_type(context, location, 1, integer_type)
-        .unwrap();
+    let prev_inverse = entry_block.const_int_from_type(context, location, 0, integer_type)?;
+    let inverse = entry_block.const_int_from_type(context, location, 1, integer_type)?;
 
     let loop_block = region.append_block(Block::new(&[
         (integer_type, location),
@@ -782,36 +777,30 @@ fn declare_euclidean_algorithm_func<'ctx>(
 
     // -- Loop body --
     // Arguments are rem_(i-1), rem, inv_(i-1), inv
-    let prev_remainder = loop_block.arg(0).unwrap();
-    let remainder = loop_block.arg(1).unwrap();
-    let prev_inverse = loop_block.arg(2).unwrap();
-    let inverse = loop_block.arg(3).unwrap();
+    let prev_remainder = loop_block.arg(0)?;
+    let remainder = loop_block.arg(1)?;
+    let prev_inverse = loop_block.arg(2)?;
+    let inverse = loop_block.arg(3)?;
 
     // First calculate q = rem_(i-1)/rem_i, rounded down
-    let quotient = loop_block
-        .append_op_result(arith::divui(prev_remainder, remainder, location))
-        .unwrap();
+    let quotient =
+        loop_block.append_op_result(arith::divui(prev_remainder, remainder, location))?;
 
     // Then r_(i+1) = r_(i-1) - q * r_i, and inv_(i+1) = inv_(i-1) - q * inv_i
-    let rem_times_quo = loop_block.muli(remainder, quotient, location).unwrap();
-    let inv_times_quo = loop_block.muli(inverse, quotient, location).unwrap();
-    let next_remainder = loop_block
-        .append_op_result(arith::subi(prev_remainder, rem_times_quo, location))
-        .unwrap();
-    let next_inverse = loop_block
-        .append_op_result(arith::subi(prev_inverse, inv_times_quo, location))
-        .unwrap();
+    let rem_times_quo = loop_block.muli(remainder, quotient, location)?;
+    let inv_times_quo = loop_block.muli(inverse, quotient, location)?;
+    let next_remainder =
+        loop_block.append_op_result(arith::subi(prev_remainder, rem_times_quo, location))?;
+    let next_inverse =
+        loop_block.append_op_result(arith::subi(prev_inverse, inv_times_quo, location))?;
 
     // Check if r_(i+1) is 0
     // If true, then:
     // - r_i is the gcd of a and b
     // - inv_i is the bezout coefficient x
-    let zero = loop_block
-        .const_int_from_type(context, location, 0, integer_type)
-        .unwrap();
-    let next_remainder_eq_zero = loop_block
-        .cmpi(context, CmpiPredicate::Eq, next_remainder, zero, location)
-        .unwrap();
+    let zero = loop_block.const_int_from_type(context, location, 0, integer_type)?;
+    let next_remainder_eq_zero =
+        loop_block.cmpi(context, CmpiPredicate::Eq, next_remainder, zero, location)?;
     loop_block.append_operation(cf::cond_br(
         context,
         next_remainder_eq_zero,
@@ -823,20 +812,16 @@ fn declare_euclidean_algorithm_func<'ctx>(
     ));
 
     // Create the struct that will contain the results
-    let results = end_block
-        .append_op_result(llvm::undef(
-            llvm::r#type::r#struct(context, &[integer_type, integer_type], false),
-            location,
-        ))
-        .unwrap();
-    let results = end_block
-        .insert_values(
-            context,
-            location,
-            results,
-            &[end_block.arg(0).unwrap(), end_block.arg(1).unwrap()],
-        )
-        .unwrap();
+    let results = end_block.append_op_result(llvm::undef(
+        llvm::r#type::r#struct(context, &[integer_type, integer_type], false),
+        location,
+    ))?;
+    let results = end_block.insert_values(
+        context,
+        location,
+        results,
+        &[end_block.arg(0)?, end_block.arg(1)?],
+    )?;
     end_block.append_operation(llvm::r#return(Some(results), location));
 
     let func_name = StringAttribute::new(context, func_symbol);
@@ -855,4 +840,5 @@ fn declare_euclidean_algorithm_func<'ctx>(
         )],
         location,
     ));
+    Ok(())
 }
