@@ -191,7 +191,7 @@ impl RuntimeBindingsMeta {
         if self.active_map.insert(RuntimeBinding::EvalCircuit) {
             declare_euclidean_algorithm_func(module, context, location, integer_type, func_symbol);
         }
-
+        // The struct returned by the function that contains both of the results
         let return_type = llvm::r#type::r#struct(context, &[integer_type, integer_type], false);
         Ok(block
             .append_operation(
