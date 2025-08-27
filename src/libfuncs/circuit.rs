@@ -655,6 +655,7 @@ fn build_gate_evaluation<'ctx, 'this>(
                             "Unable to get the RuntimeBindingsMeta from MetadataStorage"
                         ),
                     };
+                    // Extract the values from the result struct
                     let gcd = block.extract_value(
                         context,
                         location,
