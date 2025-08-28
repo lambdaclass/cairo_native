@@ -8,13 +8,17 @@ use crate::{
     libfuncs::LibfuncHelper,
 };
 use melior::{
-    dialect::{llvm, ods},
+    dialect::{
+        arith::{self, CmpiPredicate},
+        cf, llvm, ods,
+    },
     helpers::{ArithBlockExt, BuiltinBlockExt, LlvmBlockExt},
     ir::{
         attribute::{FlatSymbolRefAttribute, StringAttribute, TypeAttribute},
         operation::OperationBuilder,
         r#type::IntegerType,
-        Attribute, Block, BlockLike, Location, Module, OperationRef, Region, Value,
+        Attribute, Block, BlockLike, Identifier, Location, Module, OperationRef, Region, Type,
+        Value,
     },
     Context,
 };
@@ -41,6 +45,7 @@ enum RuntimeBinding {
     DictDup,
     GetCostsBuiltin,
     DebugPrint,
+    CircuitDivMod,
     #[cfg(feature = "with-cheatcode")]
     VtableCheatcode,
 }
@@ -65,6 +70,7 @@ impl RuntimeBinding {
             RuntimeBinding::DictDrop => "cairo_native__dict_drop",
             RuntimeBinding::DictDup => "cairo_native__dict_dup",
             RuntimeBinding::GetCostsBuiltin => "cairo_native__get_costs_builtin",
+            RuntimeBinding::CircuitDivMod => "cairo_native__div_mod_operation",
             #[cfg(feature = "with-cheatcode")]
             RuntimeBinding::VtableCheatcode => "cairo_native__vtable_cheatcode",
         }
@@ -107,6 +113,7 @@ impl RuntimeBinding {
             RuntimeBinding::GetCostsBuiltin => {
                 crate::runtime::cairo_native__get_costs_builtin as *const ()
             }
+            RuntimeBinding::CircuitDivMod => unreachable!(),
             #[cfg(feature = "with-cheatcode")]
             RuntimeBinding::VtableCheatcode => {
                 crate::starknet::cairo_native__vtable_cheatcode as *const ()
@@ -165,6 +172,53 @@ impl RuntimeBindingsMeta {
             global_address,
             llvm::r#type::pointer(context, 0),
         )?)
+    }
+
+    /// Register if necessary the euclidean algorithm used in circuit inverse gates
+    pub fn euclidean_algorithm<'c, 'a>(
+        &mut self,
+        context: &'c Context,
+        module: &Module,
+        block: &'a Block<'c>,
+        location: Location<'c>,
+        rhs_value: Value<'c, '_>,
+        circuit_modulus: Value<'c, '_>,
+    ) -> Result<Value<'c, 'a>>
+    where
+        'c: 'a,
+    {
+        let integer_type: Type = IntegerType::new(context, 384 * 2).into();
+        let func_symbol = RuntimeBinding::CircuitDivMod.symbol();
+        if self.active_map.insert(RuntimeBinding::CircuitDivMod) {
+            register_euclidean_algorithm_mlir_func(
+                module,
+                context,
+                location,
+                integer_type,
+                func_symbol,
+            )?;
+        }
+        // The struct returned by the function that contains both of the results
+        let return_type = llvm::r#type::r#struct(context, &[integer_type, integer_type], false);
+        Ok(block
+            .append_operation(
+                OperationBuilder::new("llvm.call", location)
+                    .add_attributes(&[
+                        (
+                            Identifier::new(context, "callee"),
+                            FlatSymbolRefAttribute::new(context, func_symbol).into(),
+                        ),
+                        (
+                            Identifier::new(context, "no_inline"),
+                            Attribute::unit(context),
+                        ),
+                    ])
+                    .add_operands(&[rhs_value, circuit_modulus])
+                    .add_results(&[return_type])
+                    .build()?,
+            )
+            .result(0)?
+            .into())
     }
 
     /// Register if necessary, then invoke the `debug::print()` function.
@@ -685,4 +739,113 @@ pub fn setup_runtime(find_symbol_ptr: impl Fn(&str) -> Option<*mut c_void>) {
             unsafe { *global = binding.function_ptr() };
         }
     }
+}
+
+fn register_euclidean_algorithm_mlir_func<'ctx>(
+    module: &Module,
+    context: &'ctx Context,
+    location: Location<'ctx>,
+    integer_type: Type<'_>,
+    func_symbol: &str,
+) -> Result<()> {
+    let region = Region::new();
+
+    let entry_block = region.append_block(Block::new(&[
+        (integer_type, location),
+        (integer_type, location),
+    ]));
+
+    // The algorithm egcd works by calculating a series of remainders, each the remainder of dividing the previous two
+    // For the initial setup, r0 = b, r1 = a
+    // This order is chosen because if we reverse them, then the first iteration will just swap them
+    let remainder = entry_block.arg(0)?;
+    let prev_remainder = entry_block.arg(1)?;
+
+    // Similarly we'll calculate another series which starts 0,1,... and from which we will retrieve the modular inverse of a
+    let prev_inverse = entry_block.const_int_from_type(context, location, 0, integer_type)?;
+    let inverse = entry_block.const_int_from_type(context, location, 1, integer_type)?;
+
+    let loop_block = region.append_block(Block::new(&[
+        (integer_type, location),
+        (integer_type, location),
+        (integer_type, location),
+        (integer_type, location),
+    ]));
+    let end_block = region.append_block(Block::new(&[
+        (integer_type, location),
+        (integer_type, location),
+    ]));
+
+    entry_block.append_operation(cf::br(
+        &loop_block,
+        &[prev_remainder, remainder, prev_inverse, inverse],
+        location,
+    ));
+
+    // -- Loop body --
+    // Arguments are rem_(i-1), rem, inv_(i-1), inv
+    let prev_remainder = loop_block.arg(0)?;
+    let remainder = loop_block.arg(1)?;
+    let prev_inverse = loop_block.arg(2)?;
+    let inverse = loop_block.arg(3)?;
+
+    // First calculate q = rem_(i-1)/rem_i, rounded down
+    let quotient =
+        loop_block.append_op_result(arith::divui(prev_remainder, remainder, location))?;
+
+    // Then r_(i+1) = r_(i-1) - q * r_i, and inv_(i+1) = inv_(i-1) - q * inv_i
+    let rem_times_quo = loop_block.muli(remainder, quotient, location)?;
+    let inv_times_quo = loop_block.muli(inverse, quotient, location)?;
+    let next_remainder =
+        loop_block.append_op_result(arith::subi(prev_remainder, rem_times_quo, location))?;
+    let next_inverse =
+        loop_block.append_op_result(arith::subi(prev_inverse, inv_times_quo, location))?;
+
+    // Check if r_(i+1) is 0
+    // If true, then:
+    // - r_i is the gcd of a and b
+    // - inv_i is the bezout coefficient x
+    let zero = loop_block.const_int_from_type(context, location, 0, integer_type)?;
+    let next_remainder_eq_zero =
+        loop_block.cmpi(context, CmpiPredicate::Eq, next_remainder, zero, location)?;
+    loop_block.append_operation(cf::cond_br(
+        context,
+        next_remainder_eq_zero,
+        &end_block,
+        &loop_block,
+        &[remainder, inverse],
+        &[remainder, next_remainder, inverse, next_inverse],
+        location,
+    ));
+
+    // Create the struct that will contain the results
+    let results = end_block.append_op_result(llvm::undef(
+        llvm::r#type::r#struct(context, &[integer_type, integer_type], false),
+        location,
+    ))?;
+    let results = end_block.insert_values(
+        context,
+        location,
+        results,
+        &[end_block.arg(0)?, end_block.arg(1)?],
+    )?;
+    end_block.append_operation(llvm::r#return(Some(results), location));
+
+    let func_name = StringAttribute::new(context, func_symbol);
+    module.body().append_operation(llvm::func(
+        context,
+        func_name,
+        TypeAttribute::new(llvm::r#type::function(
+            llvm::r#type::r#struct(context, &[integer_type, integer_type], false),
+            &[integer_type, integer_type],
+            false,
+        )),
+        region,
+        &[(
+            Identifier::new(context, "no_inline"),
+            Attribute::unit(context),
+        )],
+        location,
+    ));
+    Ok(())
 }
