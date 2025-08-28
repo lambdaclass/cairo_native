@@ -45,7 +45,7 @@ enum RuntimeBinding {
     DictDup,
     GetCostsBuiltin,
     DebugPrint,
-    CircuitInvMod,
+    CircuitDivMod,
     #[cfg(feature = "with-cheatcode")]
     VtableCheatcode,
 }
@@ -70,7 +70,7 @@ impl RuntimeBinding {
             RuntimeBinding::DictDrop => "cairo_native__dict_drop",
             RuntimeBinding::DictDup => "cairo_native__dict_dup",
             RuntimeBinding::GetCostsBuiltin => "cairo_native__get_costs_builtin",
-            RuntimeBinding::CircuitInvMod => "cairo_native__eval_circuit",
+            RuntimeBinding::CircuitDivMod => "cairo_native__div_mod_operation",
             #[cfg(feature = "with-cheatcode")]
             RuntimeBinding::VtableCheatcode => "cairo_native__vtable_cheatcode",
         }
@@ -113,7 +113,7 @@ impl RuntimeBinding {
             RuntimeBinding::GetCostsBuiltin => {
                 crate::runtime::cairo_native__get_costs_builtin as *const ()
             }
-            RuntimeBinding::CircuitInvMod => unreachable!(),
+            RuntimeBinding::CircuitDivMod => unreachable!(),
             #[cfg(feature = "with-cheatcode")]
             RuntimeBinding::VtableCheatcode => {
                 crate::starknet::cairo_native__vtable_cheatcode as *const ()
@@ -188,9 +188,9 @@ impl RuntimeBindingsMeta {
         'c: 'a,
     {
         let integer_type: Type = IntegerType::new(context, 384 * 2).into();
-        let func_symbol = RuntimeBinding::CircuitInvMod.symbol();
-        if self.active_map.insert(RuntimeBinding::CircuitInvMod) {
-            register_euclidean_algorithm_func(
+        let func_symbol = RuntimeBinding::CircuitDivMod.symbol();
+        if self.active_map.insert(RuntimeBinding::CircuitDivMod) {
+            register_euclidean_algorithm_mlir_func(
                 module,
                 context,
                 location,
@@ -741,7 +741,7 @@ pub fn setup_runtime(find_symbol_ptr: impl Fn(&str) -> Option<*mut c_void>) {
     }
 }
 
-fn register_euclidean_algorithm_func<'ctx>(
+fn register_euclidean_algorithm_mlir_func<'ctx>(
     module: &Module,
     context: &'ctx Context,
     location: Location<'ctx>,
