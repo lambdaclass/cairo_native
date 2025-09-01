@@ -757,7 +757,7 @@ fn build_egcd_function<'ctx>(
 
     let a = entry_block.arg(0)?;
     let b = entry_block.arg(1)?;
-    // The algorithm egcd works by calculating a series of remainders, each the remainder of dividing the previous two
+    // The egcd algorithm works by calculating a series of remainders, each the remainder of dividing the previous two
     // For the initial setup, r0 = b, r1 = a.
     // This order is chosen because if we reverse them, then the first iteration will just swap them
     let remainder = a;
