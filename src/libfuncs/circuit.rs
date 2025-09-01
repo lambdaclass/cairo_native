@@ -647,7 +647,7 @@ fn build_gate_evaluation<'ctx, 'this>(
                         .to_native_assert_error(
                             "Unable to get the RuntimeBindingsMeta from MetadataStorage",
                         )?;
-                    let euclidean_result = runtime_bindings_meta.euclidean_algorithm(
+                    let euclidean_result = runtime_bindings_meta.extended_euclidean_algorithm(
                         context,
                         helper.module,
                         block,
