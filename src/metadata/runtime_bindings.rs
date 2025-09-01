@@ -202,16 +202,10 @@ impl RuntimeBindingsMeta {
         Ok(block
             .append_operation(
                 OperationBuilder::new("llvm.call", location)
-                    .add_attributes(&[
-                        (
-                            Identifier::new(context, "callee"),
-                            FlatSymbolRefAttribute::new(context, func_symbol).into(),
-                        ),
-                        (
-                            Identifier::new(context, "no_inline"),
-                            Attribute::unit(context),
-                        ),
-                    ])
+                    .add_attributes(&[(
+                        Identifier::new(context, "callee"),
+                        FlatSymbolRefAttribute::new(context, func_symbol).into(),
+                    )])
                     .add_operands(&[rhs_value, circuit_modulus])
                     .add_results(&[return_type])
                     .build()?,
