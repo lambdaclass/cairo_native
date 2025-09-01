@@ -45,7 +45,7 @@ enum RuntimeBinding {
     DictDup,
     GetCostsBuiltin,
     DebugPrint,
-    CircuitDivMod,
+    ExtendedEuclideanAlgorithm,
     #[cfg(feature = "with-cheatcode")]
     VtableCheatcode,
 }
@@ -70,7 +70,9 @@ impl RuntimeBinding {
             RuntimeBinding::DictDrop => "cairo_native__dict_drop",
             RuntimeBinding::DictDup => "cairo_native__dict_dup",
             RuntimeBinding::GetCostsBuiltin => "cairo_native__get_costs_builtin",
-            RuntimeBinding::CircuitDivMod => "cairo_native__div_mod_operation",
+            RuntimeBinding::ExtendedEuclideanAlgorithm => {
+                "cairo_native__extended_euclidean_algorithm"
+            }
             #[cfg(feature = "with-cheatcode")]
             RuntimeBinding::VtableCheatcode => "cairo_native__vtable_cheatcode",
         }
@@ -113,7 +115,7 @@ impl RuntimeBinding {
             RuntimeBinding::GetCostsBuiltin => {
                 crate::runtime::cairo_native__get_costs_builtin as *const ()
             }
-            RuntimeBinding::CircuitDivMod => unreachable!(),
+            RuntimeBinding::ExtendedEuclideanAlgorithm => unreachable!(),
             #[cfg(feature = "with-cheatcode")]
             RuntimeBinding::VtableCheatcode => {
                 crate::starknet::cairo_native__vtable_cheatcode as *const ()
@@ -174,8 +176,8 @@ impl RuntimeBindingsMeta {
         )?)
     }
 
-    /// Register if necessary the euclidean algorithm used in circuit inverse gates
-    pub fn euclidean_algorithm<'c, 'a>(
+    /// Register if necessary the extended euclidean algorithm used in circuit inverse gates
+    pub fn extended_euclidean_algorithm<'c, 'a>(
         &mut self,
         context: &'c Context,
         module: &Module,
@@ -188,15 +190,12 @@ impl RuntimeBindingsMeta {
         'c: 'a,
     {
         let integer_type: Type = IntegerType::new(context, 384 * 2).into();
-        let func_symbol = RuntimeBinding::CircuitDivMod.symbol();
-        if self.active_map.insert(RuntimeBinding::CircuitDivMod) {
-            register_euclidean_algorithm_mlir_func(
-                module,
-                context,
-                location,
-                integer_type,
-                func_symbol,
-            )?;
+        let func_symbol = RuntimeBinding::ExtendedEuclideanAlgorithm.symbol();
+        if self
+            .active_map
+            .insert(RuntimeBinding::ExtendedEuclideanAlgorithm)
+        {
+            build_egcd_function(module, context, location, integer_type, func_symbol)?;
         }
         // The struct returned by the function that contains both of the results
         let return_type = llvm::r#type::r#struct(context, &[integer_type, integer_type], false);
@@ -741,7 +740,7 @@ pub fn setup_runtime(find_symbol_ptr: impl Fn(&str) -> Option<*mut c_void>) {
     }
 }
 
-fn register_euclidean_algorithm_mlir_func<'ctx>(
+fn build_egcd_function<'ctx>(
     module: &Module,
     context: &'ctx Context,
     location: Location<'ctx>,
