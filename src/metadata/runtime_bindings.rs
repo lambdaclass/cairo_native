@@ -176,7 +176,7 @@ impl RuntimeBindingsMeta {
         )?)
     }
 
-    /// Register if necessary the extended euclidean algorithm used in circuit inverse gates
+    /// Build if necessary the extended euclidean algorithm used in circuit inverse gates
     pub fn extended_euclidean_algorithm<'c, 'a>(
         &mut self,
         context: &'c Context,
