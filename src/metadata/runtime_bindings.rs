@@ -189,14 +189,14 @@ impl RuntimeBindingsMeta {
     where
         'c: 'a,
     {
-        let integer_type: Type = IntegerType::new(context, 384 * 2).into();
         let func_symbol = RuntimeBinding::ExtendedEuclideanAlgorithm.symbol();
         if self
             .active_map
             .insert(RuntimeBinding::ExtendedEuclideanAlgorithm)
         {
-            build_egcd_function(module, context, location, integer_type, func_symbol)?;
+            build_egcd_function(module, context, location, func_symbol)?;
         }
+        let integer_type: Type = IntegerType::new(context, 384 * 2).into();
         // The struct returned by the function that contains both of the results
         let return_type = llvm::r#type::r#struct(context, &[integer_type, integer_type], false);
         Ok(block
@@ -744,9 +744,9 @@ fn build_egcd_function<'ctx>(
     module: &Module,
     context: &'ctx Context,
     location: Location<'ctx>,
-    integer_type: Type<'_>,
     func_symbol: &str,
 ) -> Result<()> {
+    let integer_type: Type = IntegerType::new(context, 384 * 2).into();
     let region = Region::new();
 
     let entry_block = region.append_block(Block::new(&[
