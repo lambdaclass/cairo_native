@@ -845,7 +845,7 @@ fn build_egcd_function<'ctx>(
         )),
         region,
         &[(
-            Identifier::new(context, "no_inline"),
+            Identifier::new(context, "no_inline"), // Adding this attribute significantly improves compilation
             Attribute::unit(context),
         )],
         location,
