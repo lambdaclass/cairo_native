@@ -740,6 +740,7 @@ pub fn setup_runtime(find_symbol_ptr: impl Fn(&str) -> Option<*mut c_void>) {
 /// See https://en.wikipedia.org/wiki/Extended_Euclidean_algorithm
 ///
 /// Given two numbers a, b. It returns a block with gcd(a, b) and the bezout coefficient x.
+/// Both of these numbers are received as arguments in the entry block.
 fn build_egcd_function<'ctx>(
     module: &Module,
     context: &'ctx Context,
