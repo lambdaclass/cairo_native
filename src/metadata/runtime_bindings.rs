@@ -740,6 +740,12 @@ pub fn setup_runtime(find_symbol_ptr: impl Fn(&str) -> Option<*mut c_void>) {
     }
 }
 
+/// The extended euclidean algorithm calculates the greatest common divisor (gcd) of two integers a and b,
+/// as well as the bezout coefficients x and y such that ax+by=gcd(a,b)
+/// if gcd(a,b) = 1, then x is the modular multiplicative inverse of a modulo b.
+/// See https://en.wikipedia.org/wiki/Extended_Euclidean_algorithm
+///
+/// Given two numbers a, b. It returns a block with gcd(a, b) and the bezout coefficient x.
 fn build_egcd_function<'ctx>(
     module: &Module,
     context: &'ctx Context,
@@ -754,14 +760,16 @@ fn build_egcd_function<'ctx>(
         (integer_type, location),
     ]));
 
+    let a = entry_block.arg(0)?;
+    let b = entry_block.arg(1)?;
     // The algorithm egcd works by calculating a series of remainders, each the remainder of dividing the previous two
-    // For the initial setup, r0 = block_args[1], r1 = block_args[0]
+    // For the initial setup, r0 = b, r1 = a.
     // This order is chosen because if we reverse them, then the first iteration will just swap them
-    let remainder = entry_block.arg(0)?;
-    let prev_remainder = entry_block.arg(1)?;
+    let remainder = a;
+    let prev_remainder = b;
 
     // Similarly we'll calculate another series which starts 0,1,... and from which we
-    // will retrieve themodular inverse of block_args[0]
+    // will retrieve themodular inverse of a
     let prev_inverse = entry_block.const_int_from_type(context, location, 0, integer_type)?;
     let inverse = entry_block.const_int_from_type(context, location, 1, integer_type)?;
 
@@ -803,7 +811,7 @@ fn build_egcd_function<'ctx>(
 
     // Check if r_(i+1) is 0
     // If true, then:
-    // - r_i is the gcd of block_args[0] and block_args[1]
+    // - r_i is the gcd of a and b
     // - inv_i is the bezout coefficient x
     let zero = loop_block.const_int_from_type(context, location, 0, integer_type)?;
     let next_remainder_eq_zero =
