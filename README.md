@@ -48,7 +48,7 @@ use. This can be done by adding `cairo-native = "0.6.0"` to your Cargo.toml
 
 ### Dependencies
 - Linux or macOS (aarch64 included) only for now
-- LLVM 19 with MLIR: On debian you can use [apt.llvm.org](https://apt.llvm.org/),
+- LLVM 20 with MLIR: On debian you can use [apt.llvm.org](https://apt.llvm.org/),
   on macOS you can use brew
 - Rust 1.78.0 or later, since we make use of the u128
   [abi change](https://blog.rust-lang.org/2024/03/30/i128-layout-update.html).
@@ -64,14 +64,14 @@ make deps
 ```
 
 #### Linux
-Since Linux distributions change widely, you need to install LLVM 19 via your
+Since Linux distributions change widely, you need to install LLVM 20 via your
 package manager, compile it or check if the current release has a Linux binary.
 
 If you are on Debian/Ubuntu, check out the repository https://apt.llvm.org/
 Then you can install with:
 
 ```bash
-sudo apt-get install llvm-19 llvm-19-dev llvm-19-runtime clang-19 clang-tools-19 lld-19 libpolly-19-dev libmlir-19-dev mlir-19-tools
+sudo apt-get install llvm-20 llvm-20-dev llvm-20-runtime clang-20 clang-tools-20 lld-20 libpolly-20-dev libmlir-20-dev mlir-20-tools
 ```
 
 If you decide to build from source, here are some indications:
@@ -80,8 +80,8 @@ If you decide to build from source, here are some indications:
 
 ```bash
 # Go to https://github.com/llvm/llvm-project/releases
-# Download the latest LLVM 19 release:
-# The blob to download is called llvm-project-19.x.x.src.tar.xz
+# Download the latest LLVM 20 release:
+# The blob to download is called llvm-project-20.x.x.src.tar.xz
 
 # For example
 wget https://github.com/llvm/llvm-project/releases/download/llvmorg-19.1.7/llvm-project-19.1.7.src.tar.xz
@@ -91,12 +91,12 @@ cd llvm-project-19.1.5.src.tar
 mkdir build
 cd build
 
-# The following cmake command configures the build to be installed to /opt/llvm-19
+# The following cmake command configures the build to be installed to /opt/llvm-20
 cmake -G Ninja ../llvm \
    -DLLVM_ENABLE_PROJECTS="mlir;clang;clang-tools-extra;lld;polly" \
    -DLLVM_BUILD_EXAMPLES=OFF \
    -DLLVM_TARGETS_TO_BUILD="Native" \
-   -DCMAKE_INSTALL_PREFIX=/opt/llvm-19 \
+   -DCMAKE_INSTALL_PREFIX=/opt/llvm-20 \
    -DCMAKE_BUILD_TYPE=RelWithDebInfo \
    -DLLVM_PARALLEL_LINK_JOBS=4 \
    -DLLVM_ENABLE_BINDINGS=OFF \
@@ -108,14 +108,14 @@ ninja install
 
 </details>
 
-Setup a environment variable called `MLIR_SYS_190_PREFIX`, `LLVM_SYS_191_PREFIX`
-and `TABLEGEN_190_PREFIX` pointing to the llvm directory:
+Setup a environment variable called `MLIR_SYS_200_PREFIX`, `LLVM_SYS_201_PREFIX`
+and `TABLEGEN_200_PREFIX` pointing to the llvm directory:
 
 ```bash
-# For Debian/Ubuntu using the repository, the path will be /usr/lib/llvm-19
-export MLIR_SYS_190_PREFIX=/usr/lib/llvm-19
-export LLVM_SYS_191_PREFIX=/usr/lib/llvm-19
-export TABLEGEN_190_PREFIX=/usr/lib/llvm-19
+# For Debian/Ubuntu using the repository, the path will be /usr/lib/llvm-20
+export MLIR_SYS_200_PREFIX=/usr/lib/llvm-20
+export LLVM_SYS_201_PREFIX=/usr/lib/llvm-20
+export TABLEGEN_200_PREFIX=/usr/lib/llvm-20
 ```
 
 Alternatively, if installed from Debian/Ubuntu repository, then you can use
@@ -126,7 +126,7 @@ source env.sh
 ```
 
 #### MacOS
-The makefile `deps` target (which you should have ran before) installs LLVM 19
+The makefile `deps` target (which you should have ran before) installs LLVM 20
 with brew for you, afterwards you need to execute the `env.sh` script to setup
 the needed environment variables.
 
@@ -138,9 +138,9 @@ source env.sh
 If you are using vscode as your code editor, you'll need to add this to you settings.json:
 ```json
 "rust-analyzer.cargo.extraEnv": {
-  "MLIR_SYS_190_PREFIX": "<path-to-llvm-19>",
-  "LLVM_SYS_191_PREFIX": "<path-to-llvm-19>",
-  "TABLEGEN_190_PREFIX": "<path-to-llvm-19>",
+  "MLIR_SYS_200_PREFIX": "<path-to-llvm-20>",
+  "LLVM_SYS_201_PREFIX": "<path-to-llvm-20>",
+  "TABLEGEN_200_PREFIX": "<path-to-llvm-20>",
 }
 ```
 if you are on MacOs, you'll need to add this extra line:
@@ -367,14 +367,14 @@ Options:
 - [hyperfine](https://github.com/sharkdp/hyperfine): `cargo install hyperfine`
 - [cairo 2.12.0-dev.0](https://github.com/starkware-libs/cairo)
 - Cairo Corelibs
-- LLVM 19 with MLIR
+- LLVM 20 with MLIR
 
 You need to setup some environment variables:
 
 ```bash
-$MLIR_SYS_190_PREFIX=/path/to/llvm19  # Required for non-standard LLVM install locations.
-$LLVM_SYS_191_PREFIX=/path/to/llvm19  # Required for non-standard LLVM install locations.
-$TABLEGEN_190_PREFIX=/path/to/llvm19  # Required for non-standard LLVM install locations.
+$MLIR_SYS_200_PREFIX=/path/to/llvm20  # Required for non-standard LLVM install locations.
+$LLVM_SYS_201_PREFIX=/path/to/llvm20  # Required for non-standard LLVM install locations.
+$TABLEGEN_200_PREFIX=/path/to/llvm20  # Required for non-standard LLVM install locations.
 ```
 
 You can then run the `bench` makefile target:

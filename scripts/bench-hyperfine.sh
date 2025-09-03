@@ -2,7 +2,7 @@
 
 # Configuration.
 ROOT_DIR="$(dirname "$(readlink -f "${0%/*}")")"
-MLIR_DIR="$MLIR_SYS_190_PREFIX"
+MLIR_DIR="$MLIR_SYS_200_PREFIX"
 
 CAIRO_SRCS=$(find \
     "$ROOT_DIR/programs/benches" \
@@ -25,7 +25,7 @@ then
 fi
 if [[ -z "$MLIR_DIR" ]]
 then
-    echo "${bold}MLIR_DIR is empty. Did you forget to set MLIR_SYS_190_PREFIX?${normal}"
+    echo "${bold}MLIR_DIR is empty. Did you forget to set MLIR_SYS_200_PREFIX?${normal}"
     exit 1
 fi
 

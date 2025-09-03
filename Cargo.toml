@@ -83,9 +83,9 @@ educe = "0.5.11" # can't update until https://github.com/magiclen/educe/issues/2
 itertools = "0.14.0"
 lazy_static = "1.5"
 libc = "0.2"
-llvm-sys = "191.0.0"
-melior = { version = "0.21.0", features = ["ods-dialects", "helpers"] }
-mlir-sys = { version = "0.4.1" }
+llvm-sys = "201.0.1"
+melior = { version = "0.25.0", features = ["ods-dialects", "helpers"] }
+mlir-sys = { version = "0.5.0" }
 num-bigint.workspace = true
 num-traits.workspace = true
 starknet-types-core = { workspace = true, default-features = false, features = [
