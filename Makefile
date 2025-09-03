@@ -176,12 +176,16 @@ cairo-%.tar:
 install-scarb:
 	curl --proto '=https' --tlsv1.2 -sSf https://docs.swmansion.com/scarb/install.sh | \
 	sed 's/bash_completion_block/bash_completions_block/g' | \
+	sed 's/fish_completion_block/fish_completions_block/g' | \
+	sed 's/zsh_completion_block/zsh_completions_block/g' | \
 	sh -s -- --no-modify-path --version $(SCARB_VERSION)
 
 .PHONY: install-scarb-macos
 install-scarb-macos:
 	curl --proto '=https' --tlsv1.2 -sSf https://docs.swmansion.com/scarb/install.sh | \
 	sed 's/bash_completion_block/bash_completions_block/g' | \
+	sed 's/fish_completion_block/fish_completions_block/g' | \
+	sed 's/zsh_completion_block/zsh_completions_block/g' | \
 	sh -s -- --version $(SCARB_VERSION)
 
 .PHONY: build-alexandria
