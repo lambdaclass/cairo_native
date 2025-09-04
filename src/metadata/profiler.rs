@@ -24,7 +24,10 @@
 //!
 //! See `cairo-native-run` for an example on how to do it.
 
-use crate::error::{Error, Result};
+use crate::{
+    error::{Error, Result},
+    utils::block_ext::{BlockExt, LLVMCalleType},
+};
 use cairo_lang_sierra::{
     ids::ConcreteLibfuncId,
     program::{Program, Statement, StatementIdx},
@@ -314,14 +317,14 @@ impl ProfilerMeta {
         let callback_ptr =
             self.build_function(context, module, block, location, ProfilerBinding::PushStmt)?;
 
-        block.append_operation(
-            ods::llvm::call(
-                context,
-                &[callback_ptr, trace_id, statement_idx, delta_value],
-                location,
-            )
-            .into(),
-        );
+        block.llvm_call(
+            context,
+            LLVMCalleType::FuncPtr(callback_ptr),
+            &[callback_ptr, trace_id, statement_idx, delta_value],
+            &[],
+            &[],
+            location,
+        )?;
 
         Ok(())
     }

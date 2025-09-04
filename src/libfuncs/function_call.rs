@@ -9,7 +9,10 @@ use crate::{
     metadata::{tail_recursion::TailRecursionMeta, MetadataStorage},
     native_assert,
     types::TypeBuilder,
-    utils::generate_function_name,
+    utils::{
+        block_ext::{BlockExt, LLVMCalleType},
+        generate_function_name,
+    },
 };
 use cairo_lang_sierra::{
     extensions::{
@@ -22,10 +25,8 @@ use melior::{
     dialect::{cf, index, llvm, memref},
     helpers::{ArithBlockExt, BuiltinBlockExt, LlvmBlockExt},
     ir::{
-        attribute::{DenseI32ArrayAttribute, FlatSymbolRefAttribute},
-        operation::OperationBuilder,
-        r#type::IntegerType,
-        Attribute, Block, BlockLike, Identifier, Location, Type, Value,
+        attribute::DenseI32ArrayAttribute, r#type::IntegerType, Attribute, Block, BlockLike,
+        Identifier, Location, Type, Value,
     },
     Context,
 };
@@ -185,27 +186,18 @@ pub fn build<'ctx, 'this>(
         } else {
             None
         };
-
-        let function_call_result = entry.append_op_result(
-            OperationBuilder::new("llvm.call", location)
-                .add_attributes(&[
-                    (
-                        Identifier::new(context, "callee"),
-                        FlatSymbolRefAttribute::new(
-                            context,
-                            &format!("impl${}", generate_function_name(&info.function.id, false)),
-                        )
-                        .into(),
-                    ),
-                    (
-                        Identifier::new(context, "CConv"),
-                        Attribute::parse(context, "#llvm.cconv<fastcc>")
-                            .ok_or(Error::ParseAttributeError)?,
-                    ),
-                ])
-                .add_operands(&arguments)
-                .add_results(&[llvm::r#type::r#struct(context, &result_types, false)])
-                .build()?,
+        let function_sym = &format!("impl${}", generate_function_name(&info.function.id, false));
+        let function_call_result = entry.llvm_call(
+            context,
+            LLVMCalleType::Symbol(&function_sym),
+            &arguments,
+            &[(
+                Identifier::new(context, "CConv"),
+                Attribute::parse(context, "#llvm.cconv<fastcc>")
+                    .ok_or(Error::ParseAttributeError)?,
+            )],
+            &[llvm::r#type::r#struct(context, &result_types, false)],
+            location,
         )?;
 
         let mut results = Vec::new();

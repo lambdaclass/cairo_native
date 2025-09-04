@@ -33,6 +33,7 @@ use std::{
 };
 use thiserror::Error;
 
+pub mod block_ext;
 pub mod mem_tracing;
 mod program_registry_ext;
 mod range_ext;

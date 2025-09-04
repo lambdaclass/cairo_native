@@ -11,10 +11,12 @@ use melior::{
     dialect::{llvm, ods},
     helpers::{ArithBlockExt, BuiltinBlockExt, LlvmBlockExt},
     ir::{
-        attribute::{FlatSymbolRefAttribute, StringAttribute, TypeAttribute},
+        attribute::{
+            DenseI32ArrayAttribute, FlatSymbolRefAttribute, StringAttribute, TypeAttribute,
+        },
         operation::OperationBuilder,
         r#type::IntegerType,
-        Attribute, Block, BlockLike, Location, Module, OperationRef, Region, Value,
+        Attribute, Block, BlockLike, Identifier, Location, Module, OperationRef, Region, Value,
     },
     Context,
 };
@@ -188,6 +190,16 @@ impl RuntimeBindingsMeta {
         Ok(block
             .append_operation(
                 OperationBuilder::new("llvm.call", location)
+                    .add_attributes(&[
+                        (
+                            Identifier::new(context, "operandSegmentSizes"),
+                            DenseI32ArrayAttribute::new(context, &[1, 3]).into(),
+                        ),
+                        (
+                            Identifier::new(context, "operandBundleSizes"),
+                            DenseI32ArrayAttribute::new(context, &[0]).into(),
+                        ),
+                    ])
                     .add_operands(&[function])
                     .add_operands(&[target_fd, values_ptr, values_len])
                     .add_results(&[IntegerType::new(context, 32).into()])
@@ -217,6 +229,16 @@ impl RuntimeBindingsMeta {
 
         Ok(block.append_operation(
             OperationBuilder::new("llvm.call", location)
+                .add_attributes(&[
+                    (
+                        Identifier::new(context, "operandSegmentSizes"),
+                        DenseI32ArrayAttribute::new(context, &[1, 3]).into(),
+                    ),
+                    (
+                        Identifier::new(context, "operandBundleSizes"),
+                        DenseI32ArrayAttribute::new(context, &[0]).into(),
+                    ),
+                ])
                 .add_operands(&[function])
                 .add_operands(&[dst_ptr, lhs_ptr, rhs_ptr])
                 .build()?,
@@ -249,6 +271,16 @@ impl RuntimeBindingsMeta {
 
         Ok(block.append_operation(
             OperationBuilder::new("llvm.call", location)
+                .add_attributes(&[
+                    (
+                        Identifier::new(context, "operandSegmentSizes"),
+                        DenseI32ArrayAttribute::new(context, &[1, 3]).into(),
+                    ),
+                    (
+                        Identifier::new(context, "operandBundleSizes"),
+                        DenseI32ArrayAttribute::new(context, &[0]).into(),
+                    ),
+                ])
                 .add_operands(&[function])
                 .add_operands(&[op0_ptr, op1_ptr, op2_ptr])
                 .build()?,
@@ -277,6 +309,16 @@ impl RuntimeBindingsMeta {
 
         Ok(block.append_operation(
             OperationBuilder::new("llvm.call", location)
+                .add_attributes(&[
+                    (
+                        Identifier::new(context, "operandSegmentSizes"),
+                        DenseI32ArrayAttribute::new(context, &[1, 1]).into(),
+                    ),
+                    (
+                        Identifier::new(context, "operandBundleSizes"),
+                        DenseI32ArrayAttribute::new(context, &[0]).into(),
+                    ),
+                ])
                 .add_operands(&[function])
                 .add_operands(&[point_ptr])
                 .add_results(&[IntegerType::new(context, 1).into()])
@@ -306,6 +348,16 @@ impl RuntimeBindingsMeta {
 
         Ok(block.append_operation(
             OperationBuilder::new("llvm.call", location)
+                .add_attributes(&[
+                    (
+                        Identifier::new(context, "operandSegmentSizes"),
+                        DenseI32ArrayAttribute::new(context, &[1, 1]).into(),
+                    ),
+                    (
+                        Identifier::new(context, "operandBundleSizes"),
+                        DenseI32ArrayAttribute::new(context, &[0]).into(),
+                    ),
+                ])
                 .add_operands(&[function])
                 .add_operands(&[point_ptr])
                 .add_results(&[IntegerType::new(context, 1).into()])
@@ -335,6 +387,16 @@ impl RuntimeBindingsMeta {
 
         Ok(block.append_operation(
             OperationBuilder::new("llvm.call", location)
+                .add_attributes(&[
+                    (
+                        Identifier::new(context, "operandSegmentSizes"),
+                        DenseI32ArrayAttribute::new(context, &[1, 1]).into(),
+                    ),
+                    (
+                        Identifier::new(context, "operandBundleSizes"),
+                        DenseI32ArrayAttribute::new(context, &[0]).into(),
+                    ),
+                ])
                 .add_operands(&[function])
                 .add_operands(&[state_ptr])
                 .build()?,
@@ -359,6 +421,16 @@ impl RuntimeBindingsMeta {
 
         Ok(block.append_operation(
             OperationBuilder::new("llvm.call", location)
+                .add_attributes(&[
+                    (
+                        Identifier::new(context, "operandSegmentSizes"),
+                        DenseI32ArrayAttribute::new(context, &[1, 2]).into(),
+                    ),
+                    (
+                        Identifier::new(context, "operandBundleSizes"),
+                        DenseI32ArrayAttribute::new(context, &[0]).into(),
+                    ),
+                ])
                 .add_operands(&[function])
                 .add_operands(&[state_ptr, point_ptr])
                 .build()?,
@@ -390,6 +462,16 @@ impl RuntimeBindingsMeta {
 
         Ok(block.append_operation(
             OperationBuilder::new("llvm.call", location)
+                .add_attributes(&[
+                    (
+                        Identifier::new(context, "operandSegmentSizes"),
+                        DenseI32ArrayAttribute::new(context, &[1, 3]).into(),
+                    ),
+                    (
+                        Identifier::new(context, "operandBundleSizes"),
+                        DenseI32ArrayAttribute::new(context, &[0]).into(),
+                    ),
+                ])
                 .add_operands(&[function])
                 .add_operands(&[state_ptr, scalar_ptr, point_ptr])
                 .build()?,
@@ -418,6 +500,16 @@ impl RuntimeBindingsMeta {
 
         Ok(block.append_operation(
             OperationBuilder::new("llvm.call", location)
+                .add_attributes(&[
+                    (
+                        Identifier::new(context, "operandSegmentSizes"),
+                        DenseI32ArrayAttribute::new(context, &[1, 2]).into(),
+                    ),
+                    (
+                        Identifier::new(context, "operandBundleSizes"),
+                        DenseI32ArrayAttribute::new(context, &[0]).into(),
+                    ),
+                ])
                 .add_operands(&[function])
                 .add_operands(&[point_ptr, state_ptr])
                 .add_results(&[IntegerType::new(context, 1).into()])
@@ -457,6 +549,16 @@ impl RuntimeBindingsMeta {
 
         Ok(block.append_op_result(
             OperationBuilder::new("llvm.call", location)
+                .add_attributes(&[
+                    (
+                        Identifier::new(context, "operandSegmentSizes"),
+                        DenseI32ArrayAttribute::new(context, &[1, 3]).into(),
+                    ),
+                    (
+                        Identifier::new(context, "operandBundleSizes"),
+                        DenseI32ArrayAttribute::new(context, &[0]).into(),
+                    ),
+                ])
                 .add_operands(&[function])
                 .add_operands(&[size, align, drop_fn])
                 .add_results(&[llvm::r#type::pointer(context, 0)])
@@ -484,6 +586,16 @@ impl RuntimeBindingsMeta {
 
         Ok(block.append_operation(
             OperationBuilder::new("llvm.call", location)
+                .add_attributes(&[
+                    (
+                        Identifier::new(context, "operandSegmentSizes"),
+                        DenseI32ArrayAttribute::new(context, &[1, 1]).into(),
+                    ),
+                    (
+                        Identifier::new(context, "operandBundleSizes"),
+                        DenseI32ArrayAttribute::new(context, &[0]).into(),
+                    ),
+                ])
                 .add_operands(&[function])
                 .add_operands(&[ptr])
                 .build()?,
@@ -510,6 +622,16 @@ impl RuntimeBindingsMeta {
 
         Ok(block.append_op_result(
             OperationBuilder::new("llvm.call", location)
+                .add_attributes(&[
+                    (
+                        Identifier::new(context, "operandSegmentSizes"),
+                        DenseI32ArrayAttribute::new(context, &[1, 1]).into(),
+                    ),
+                    (
+                        Identifier::new(context, "operandBundleSizes"),
+                        DenseI32ArrayAttribute::new(context, &[0]).into(),
+                    ),
+                ])
                 .add_operands(&[function])
                 .add_operands(&[ptr])
                 .add_results(&[llvm::r#type::pointer(context, 0)])
@@ -547,6 +669,16 @@ impl RuntimeBindingsMeta {
 
         let is_present = block.append_op_result(
             OperationBuilder::new("llvm.call", location)
+                .add_attributes(&[
+                    (
+                        Identifier::new(context, "operandSegmentSizes"),
+                        DenseI32ArrayAttribute::new(context, &[1, 3]).into(),
+                    ),
+                    (
+                        Identifier::new(context, "operandBundleSizes"),
+                        DenseI32ArrayAttribute::new(context, &[0]).into(),
+                    ),
+                ])
                 .add_operands(&[function])
                 .add_operands(&[dict_ptr, key_ptr, value_ptr])
                 .add_results(&[IntegerType::new(context, c_int::BITS).into()])
@@ -587,6 +719,16 @@ impl RuntimeBindingsMeta {
 
         Ok(block.append_operation(
             OperationBuilder::new("llvm.call", location)
+                .add_attributes(&[
+                    (
+                        Identifier::new(context, "operandSegmentSizes"),
+                        DenseI32ArrayAttribute::new(context, &[1, 3]).into(),
+                    ),
+                    (
+                        Identifier::new(context, "operandBundleSizes"),
+                        DenseI32ArrayAttribute::new(context, &[0]).into(),
+                    ),
+                ])
                 .add_operands(&[function])
                 .add_operands(&[dict_ptr, range_check_ptr, gas_ptr])
                 .add_results(&[IntegerType::new(context, 64).into()])
@@ -616,6 +758,16 @@ impl RuntimeBindingsMeta {
 
         Ok(block.append_operation(
             OperationBuilder::new("llvm.call", location)
+                .add_attributes(&[
+                    (
+                        Identifier::new(context, "operandSegmentSizes"),
+                        DenseI32ArrayAttribute::new(context, &[1, 0]).into(),
+                    ),
+                    (
+                        Identifier::new(context, "operandBundleSizes"),
+                        DenseI32ArrayAttribute::new(context, &[0]).into(),
+                    ),
+                ])
                 .add_operands(&[function])
                 .add_results(&[llvm::r#type::pointer(context, 0)])
                 .build()?,
@@ -652,6 +804,16 @@ impl RuntimeBindingsMeta {
 
         Ok(block.append_operation(
             OperationBuilder::new("llvm.call", location)
+                .add_attributes(&[
+                    (
+                        Identifier::new(context, "operandSegmentSizes"),
+                        DenseI32ArrayAttribute::new(context, &[1, 3]).into(),
+                    ),
+                    (
+                        Identifier::new(context, "operandBundleSizes"),
+                        DenseI32ArrayAttribute::new(context, &[0]).into(),
+                    ),
+                ])
                 .add_operands(&[function])
                 .add_operands(&[result_ptr, selector_ptr, args])
                 .build()?,

@@ -57,7 +57,11 @@ use crate::{
     native_assert, native_panic,
     statistics::Statistics,
     types::TypeBuilder,
-    utils::{generate_function_name, walk_ir::walk_mlir_block},
+    utils::{
+        block_ext::{BlockExt, LLVMCalleType},
+        generate_function_name,
+        walk_ir::walk_mlir_block,
+    },
 };
 use bumpalo::Bump;
 use cairo_lang_sierra::{
@@ -81,11 +85,7 @@ use melior::{
     },
     helpers::{ArithBlockExt, BuiltinBlockExt, LlvmBlockExt},
     ir::{
-        attribute::{
-            DenseI64ArrayAttribute, FlatSymbolRefAttribute, IntegerAttribute, StringAttribute,
-            TypeAttribute,
-        },
-        operation::OperationBuilder,
+        attribute::{DenseI64ArrayAttribute, IntegerAttribute, StringAttribute, TypeAttribute},
         r#type::{FunctionType, IntegerType, MemRefType},
         Attribute, AttributeLike, Block, BlockLike, BlockRef, Identifier, Location, Module, Region,
         RegionLike, Type, Value,
@@ -1424,22 +1424,16 @@ fn generate_entry_point_wrapper<'c>(
         args.push(block.argument(i)?.into());
     }
 
-    let result = block.append_op_result(
-        OperationBuilder::new("llvm.call", location)
-            .add_attributes(&[
-                (
-                    Identifier::new(context, "callee"),
-                    FlatSymbolRefAttribute::new(context, private_symbol).into(),
-                ),
-                (
-                    Identifier::new(context, "CConv"),
-                    Attribute::parse(context, "#llvm.cconv<fastcc>")
-                        .ok_or(Error::ParseAttributeError)?,
-                ),
-            ])
-            .add_operands(&args)
-            .add_results(&[llvm::r#type::r#struct(context, ret_types, false)])
-            .build()?,
+    let result = block.llvm_call(
+        context,
+        LLVMCalleType::Symbol(private_symbol),
+        &args,
+        &[(
+            Identifier::new(context, "CConv"),
+            Attribute::parse(context, "#llvm.cconv<fastcc>").ok_or(Error::ParseAttributeError)?,
+        )],
+        &[llvm::r#type::r#struct(context, ret_types, false)],
+        location,
     )?;
 
     let mut returns = Vec::with_capacity(ret_types.len());

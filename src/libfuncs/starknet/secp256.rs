@@ -3,7 +3,10 @@ use crate::{
     libfuncs::LibfuncHelper,
     metadata::MetadataStorage,
     starknet::handler::StarknetSyscallHandlerCallbacks,
-    utils::{get_integer_layout, ProgramRegistryExt},
+    utils::{
+        block_ext::{BlockExt, LLVMCalleType},
+        get_integer_layout, ProgramRegistryExt,
+    },
 };
 use cairo_lang_sierra::{
     extensions::{
@@ -17,10 +20,7 @@ use cairo_lang_sierra::{
 use melior::{
     dialect::llvm::{self, LoadStoreOptions},
     helpers::{GepIndex, LlvmBlockExt},
-    ir::{
-        attribute::DenseI32ArrayAttribute, operation::OperationBuilder, r#type::IntegerType, Block,
-        BlockLike, Location,
-    },
+    ir::{attribute::DenseI32ArrayAttribute, r#type::IntegerType, Block, BlockLike, Location},
     Context,
 };
 use std::alloc::Layout;
@@ -205,18 +205,14 @@ pub fn build_k1_new<'ctx, 'this>(
         .result(0)?
         .into();
 
-    entry.append_operation(
-        OperationBuilder::new("llvm.call", location)
-            .add_operands(&[
-                fn_ptr,
-                result_ptr,
-                ptr,
-                gas_builtin_ptr,
-                x_arg_ptr,
-                y_arg_ptr,
-            ])
-            .build()?,
-    );
+    entry.llvm_call(
+        context,
+        LLVMCalleType::FuncPtr(fn_ptr),
+        &[result_ptr, ptr, gas_builtin_ptr, x_arg_ptr, y_arg_ptr],
+        &[],
+        &[],
+        location,
+    )?;
 
     let result = entry.load(
         context,
@@ -415,18 +411,14 @@ pub fn build_k1_add<'ctx, 'this>(
         .result(0)?
         .into();
 
-    entry.append_operation(
-        OperationBuilder::new("llvm.call", location)
-            .add_operands(&[
-                fn_ptr,
-                result_ptr,
-                ptr,
-                gas_builtin_ptr,
-                p0_arg_ptr,
-                p1_arg_ptr,
-            ])
-            .build()?,
-    );
+    entry.llvm_call(
+        context,
+        LLVMCalleType::FuncPtr(fn_ptr),
+        &[result_ptr, ptr, gas_builtin_ptr, p0_arg_ptr, p1_arg_ptr],
+        &[],
+        &[],
+        location,
+    )?;
 
     let result = entry.load(
         context,
@@ -625,18 +617,14 @@ pub fn build_k1_mul<'ctx, 'this>(
         .result(0)?
         .into();
 
-    entry.append_operation(
-        OperationBuilder::new("llvm.call", location)
-            .add_operands(&[
-                fn_ptr,
-                result_ptr,
-                ptr,
-                gas_builtin_ptr,
-                p_arg_ptr,
-                scalar_arg_ptr,
-            ])
-            .build()?,
-    );
+    entry.llvm_call(
+        context,
+        LLVMCalleType::FuncPtr(fn_ptr),
+        &[result_ptr, ptr, gas_builtin_ptr, p_arg_ptr, scalar_arg_ptr],
+        &[],
+        &[],
+        location,
+    )?;
 
     let result = entry.load(
         context,
@@ -830,18 +818,20 @@ pub fn build_k1_get_point_from_x<'ctx, 'this>(
         .result(0)?
         .into();
 
-    entry.append_operation(
-        OperationBuilder::new("llvm.call", location)
-            .add_operands(&[
-                fn_ptr,
-                result_ptr,
-                ptr,
-                gas_builtin_ptr,
-                x_arg_ptr,
-                y_parity_arg_ptr,
-            ])
-            .build()?,
-    );
+    entry.llvm_call(
+        context,
+        LLVMCalleType::FuncPtr(fn_ptr),
+        &[
+            result_ptr,
+            ptr,
+            gas_builtin_ptr,
+            x_arg_ptr,
+            y_parity_arg_ptr,
+        ],
+        &[],
+        &[],
+        location,
+    )?;
 
     let result = entry.load(
         context,
@@ -1050,11 +1040,14 @@ pub fn build_k1_get_xy<'ctx, 'this>(
         .result(0)?
         .into();
 
-    entry.append_operation(
-        OperationBuilder::new("llvm.call", location)
-            .add_operands(&[fn_ptr, result_ptr, ptr, gas_builtin_ptr, p_arg_ptr])
-            .build()?,
-    );
+    entry.llvm_call(
+        context,
+        LLVMCalleType::FuncPtr(fn_ptr),
+        &[result_ptr, ptr, gas_builtin_ptr, p_arg_ptr],
+        &[],
+        &[],
+        location,
+    )?;
 
     let result = entry.load(
         context,
@@ -1289,18 +1282,14 @@ pub fn build_r1_new<'ctx, 'this>(
         .result(0)?
         .into();
 
-    entry.append_operation(
-        OperationBuilder::new("llvm.call", location)
-            .add_operands(&[
-                fn_ptr,
-                result_ptr,
-                ptr,
-                gas_builtin_ptr,
-                x_arg_ptr,
-                y_arg_ptr,
-            ])
-            .build()?,
-    );
+    entry.llvm_call(
+        context,
+        LLVMCalleType::FuncPtr(fn_ptr),
+        &[result_ptr, ptr, gas_builtin_ptr, x_arg_ptr, y_arg_ptr],
+        &[],
+        &[],
+        location,
+    )?;
 
     let result = entry.load(
         context,
@@ -1500,18 +1489,14 @@ pub fn build_r1_add<'ctx, 'this>(
         .result(0)?
         .into();
 
-    entry.append_operation(
-        OperationBuilder::new("llvm.call", location)
-            .add_operands(&[
-                fn_ptr,
-                result_ptr,
-                ptr,
-                gas_builtin_ptr,
-                p0_arg_ptr,
-                p1_arg_ptr,
-            ])
-            .build()?,
-    );
+    entry.llvm_call(
+        context,
+        LLVMCalleType::FuncPtr(fn_ptr),
+        &[result_ptr, ptr, gas_builtin_ptr, p0_arg_ptr, p1_arg_ptr],
+        &[],
+        &[],
+        location,
+    )?;
 
     let result = entry.load(
         context,
@@ -1713,18 +1698,14 @@ pub fn build_r1_mul<'ctx, 'this>(
         .result(0)?
         .into();
 
-    entry.append_operation(
-        OperationBuilder::new("llvm.call", location)
-            .add_operands(&[
-                fn_ptr,
-                result_ptr,
-                ptr,
-                gas_builtin_ptr,
-                p_arg_ptr,
-                scalar_arg_ptr,
-            ])
-            .build()?,
-    );
+    entry.llvm_call(
+        context,
+        LLVMCalleType::FuncPtr(fn_ptr),
+        &[result_ptr, ptr, gas_builtin_ptr, p_arg_ptr, scalar_arg_ptr],
+        &[],
+        &[],
+        location,
+    )?;
 
     let result = entry.load(
         context,
@@ -1921,18 +1902,20 @@ pub fn build_r1_get_point_from_x<'ctx, 'this>(
         .result(0)?
         .into();
 
-    entry.append_operation(
-        OperationBuilder::new("llvm.call", location)
-            .add_operands(&[
-                fn_ptr,
-                result_ptr,
-                ptr,
-                gas_builtin_ptr,
-                x_arg_ptr,
-                y_parity_arg_ptr,
-            ])
-            .build()?,
-    );
+    entry.llvm_call(
+        context,
+        LLVMCalleType::FuncPtr(fn_ptr),
+        &[
+            result_ptr,
+            ptr,
+            gas_builtin_ptr,
+            x_arg_ptr,
+            y_parity_arg_ptr,
+        ],
+        &[],
+        &[],
+        location,
+    )?;
 
     let result = entry.load(
         context,
@@ -2142,11 +2125,14 @@ pub fn build_r1_get_xy<'ctx, 'this>(
         .result(0)?
         .into();
 
-    entry.append_operation(
-        OperationBuilder::new("llvm.call", location)
-            .add_operands(&[fn_ptr, result_ptr, ptr, gas_builtin_ptr, p_arg_ptr])
-            .build()?,
-    );
+    entry.llvm_call(
+        context,
+        LLVMCalleType::FuncPtr(fn_ptr),
+        &[result_ptr, ptr, gas_builtin_ptr, p_arg_ptr],
+        &[],
+        &[],
+        location,
+    )?;
 
     let result = entry.load(
         context,
