@@ -13,7 +13,7 @@ use melior::{
     helpers::{BuiltinBlockExt, LlvmBlockExt},
     ir::{
         attribute::{FlatSymbolRefAttribute, StringAttribute, TypeAttribute},
-        Attribute, Block, BlockLike, Identifier, Location, Module, Region,
+        Attribute, Block, BlockLike, Identifier, Location, Module, Region, RegionLike,
     },
     Context,
 };

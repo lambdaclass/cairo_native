@@ -88,14 +88,15 @@ use melior::{
         operation::OperationBuilder,
         r#type::{FunctionType, IntegerType, MemRefType},
         Attribute, AttributeLike, Block, BlockLike, BlockRef, Identifier, Location, Module, Region,
-        Type, Value,
+        RegionLike, Type, Value,
     },
     Context,
 };
 use mlir_sys::{
-    mlirDisctinctAttrCreate, mlirLLVMDICompileUnitAttrGet, mlirLLVMDIFileAttrGet,
-    mlirLLVMDIModuleAttrGet, mlirLLVMDIModuleAttrGetScope, mlirLLVMDISubprogramAttrGet,
-    mlirLLVMDISubroutineTypeAttrGet, MlirLLVMDIEmissionKind_MlirLLVMDIEmissionKindFull,
+    mlirAttributeGetNull, mlirDisctinctAttrCreate, mlirLLVMDICompileUnitAttrGet,
+    mlirLLVMDIFileAttrGet, mlirLLVMDIModuleAttrGet, mlirLLVMDIModuleAttrGetScope,
+    mlirLLVMDISubprogramAttrGet, mlirLLVMDISubroutineTypeAttrGet,
+    MlirLLVMDIEmissionKind_MlirLLVMDIEmissionKindFull,
     MlirLLVMDINameTableKind_MlirLLVMDINameTableKindDefault,
 };
 use std::{
@@ -350,6 +351,8 @@ fn compile_func(
 
             mlirLLVMDISubprogramAttrGet(
                 context.to_raw(),
+                mlirAttributeGetNull(),
+                false,
                 id,
                 module_scope,
                 file_attr.to_raw(),
@@ -360,6 +363,10 @@ fn compile_func(
                 (sierra_stmt_start_offset + function.entry_point.0) as u32,
                 0x8, // dwarf subprogram flag: definition
                 ty,
+                0,
+                std::ptr::null(),
+                0,
+                std::ptr::null(),
             )
         })
     };

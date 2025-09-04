@@ -19,7 +19,7 @@ use cairo_lang_sierra::{
 use melior::{
     dialect::{llvm, scf},
     helpers::{ArithBlockExt, BuiltinBlockExt, LlvmBlockExt},
-    ir::{r#type::IntegerType, Block, BlockLike, Location, Region},
+    ir::{r#type::IntegerType, Block, BlockLike, Location, Region, RegionLike},
     Context,
 };
 use std::cell::Cell;

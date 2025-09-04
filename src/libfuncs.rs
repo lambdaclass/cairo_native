@@ -32,7 +32,7 @@ use melior::{
         attribute::{FlatSymbolRefAttribute, StringAttribute, TypeAttribute},
         operation::OperationBuilder,
         r#type::IntegerType,
-        Attribute, Block, BlockLike, BlockRef, Location, Module, Region, Value,
+        Attribute, Block, BlockLike, BlockRef, Location, Module, Region, RegionLike, Value,
     },
     Context,
 };

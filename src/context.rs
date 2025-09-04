@@ -23,7 +23,7 @@ use melior::{
     ir::{
         attribute::StringAttribute,
         operation::{OperationBuilder, OperationPrintingFlags},
-        Attribute, AttributeLike, Block, Identifier, Location, Module, Region,
+        Attribute, AttributeLike, Block, Identifier, Location, Module, Region, RegionLike,
     },
     utility::{register_all_dialects, register_all_llvm_translations, register_all_passes},
     Context,

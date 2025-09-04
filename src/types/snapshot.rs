@@ -31,7 +31,7 @@ use cairo_lang_sierra::{
 use melior::{
     dialect::func,
     helpers::BuiltinBlockExt,
-    ir::{Block, BlockLike, Location, Module, Region, Type},
+    ir::{Block, BlockLike, Location, Module, Region, RegionLike, Type},
     Context,
 };
 

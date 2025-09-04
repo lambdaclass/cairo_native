@@ -24,7 +24,7 @@ use cairo_lang_sierra::{
 use melior::{
     dialect::{cf, func},
     helpers::{ArithBlockExt, BuiltinBlockExt, LlvmBlockExt},
-    ir::{BlockLike, Region},
+    ir::{BlockLike, Region, RegionLike},
 };
 use melior::{
     dialect::{llvm, ods},
