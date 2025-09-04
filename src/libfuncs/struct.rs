@@ -87,11 +87,6 @@ pub fn build_struct_value<'ctx, 'this>(
 ) -> Result<Value<'ctx, 'this>> {
     let struct_ty = registry.build_type(context, helper, metadata, struct_type)?;
 
-    let mut accumulator = entry
-        .append_operation(llvm::undef(struct_ty, location))
-        .result(0)?
-        .into();
-
     let struct_type = registry.get_type(struct_type)?;
 
     // LLVM fails when inserting zero-sized types into a struct.
@@ -114,6 +109,7 @@ pub fn build_struct_value<'ctx, 'this>(
         }
     };
 
+    let mut accumulator = entry.append_op_result(llvm::undef(struct_ty, location))?;
     for (idx, field) in fields.iter().enumerate() {
         if zst_fields[idx] {
             continue;
