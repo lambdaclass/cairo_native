@@ -2,11 +2,12 @@
 
 use super::LibfuncHelper;
 use crate::{
-    error::Result, metadata::MetadataStorage, types::TypeBuilder, utils::ProgramRegistryExt,
+    error::Result, metadata::MetadataStorage, native_panic, types::TypeBuilder,
+    utils::ProgramRegistryExt,
 };
 use cairo_lang_sierra::{
     extensions::{
-        core::{CoreLibfunc, CoreType},
+        core::{CoreLibfunc, CoreType, CoreTypeConcrete},
         lib_func::SignatureOnlyConcreteLibfunc,
         structure::StructConcreteLibfunc,
         ConcreteLibfunc,
@@ -86,9 +87,33 @@ pub fn build_struct_value<'ctx, 'this>(
 ) -> Result<Value<'ctx, 'this>> {
     let struct_ty = registry.build_type(context, helper, metadata, struct_type)?;
 
-    let acc = entry.append_operation(llvm::undef(struct_ty, location));
+    let mut accumulator = entry
+        .append_operation(llvm::undef(struct_ty, location))
+        .result(0)?
+        .into();
 
-    Ok(entry.insert_values(context, location, acc.result(0)?.into(), fields)?)
+    let struct_type = registry.get_type(struct_type)?;
+
+    let field_types = if let CoreTypeConcrete::Struct(struct_type) = &struct_type {
+        &struct_type.members
+    } else {
+        native_panic!("expected a struct type")
+    };
+
+    for (idx, (field, field_type_id)) in fields.iter().zip(field_types).enumerate() {
+        let field_type = registry.get_type(field_type_id)?;
+
+        // HOTFIX: LLVM fails when inserting zero-sized types into a struct.
+        // We are ignoring them until we bump to next LLVM release.
+        // See: https://github.com/llvm/llvm-project/issues/107198.
+        if field_type.is_zst(registry)? {
+            continue;
+        }
+
+        accumulator = entry.insert_value(context, location, accumulator, *field, idx)?
+    }
+
+    Ok(accumulator)
 }
 
 /// Generate MLIR operations for the `struct_deconstruct` libfunc.
