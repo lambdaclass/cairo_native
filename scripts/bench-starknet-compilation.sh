@@ -1,5 +1,18 @@
 #!/bin/sh
 
+print_usage() {
+cat <<EOF
+Usage: $0 (<class_hash> <net>)+
+
+Benchmarks the compilation of the given classes. Receives any number of pairs of
+class_hash and network, separated by whitespace.
+EOF
+}
+
+if ! [ "$#" -ge "2" ]; then
+	print_usage
+fi
+
 mkdir -p bench_data
 
 echo "Building starknet-native-compile"
