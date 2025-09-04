@@ -190,24 +190,24 @@ members = ["debug_utils", "debug_utils/sierra-emu", "debug_utils/casm-data-flow"
 
 [workspace.dependencies]
 sierra-emu = { path = "debug_utils/sierra-emu", version = "0.6.0" }
-cairo-lang-casm = "=2.12.1"
-cairo-lang-compiler = "=2.12.1"
-cairo-lang-defs = "=2.12.1"
-cairo-lang-filesystem = "=2.12.1"
-cairo-lang-runner = "=2.12.1"
-cairo-lang-semantic = "=2.12.1"
-cairo-lang-sierra = "=2.12.1"
-cairo-lang-sierra-ap-change = "=2.12.1"
-cairo-lang-sierra-gas = "=2.12.1"
-cairo-lang-sierra-generator = "=2.12.1"
-cairo-lang-sierra-to-casm = "=2.12.1"
-cairo-lang-starknet = "=2.12.1"
-cairo-lang-starknet-classes = "=2.12.1"
-cairo-lang-test-plugin = "=2.12.1"
-cairo-lang-utils = "=2.12.1"
-starknet-crypto = "0.7.3"
-starknet-curve = "0.5.1"
-starknet-types-core = { version = "0.1.7", default-features = false }
+cairo-lang-casm = {path ="../cairo/crates/cairo-lang-casm"}
+cairo-lang-compiler = {path ="../cairo/crates/cairo-lang-compiler"}
+cairo-lang-defs = {path ="../cairo/crates/cairo-lang-defs"}
+cairo-lang-filesystem = {path ="../cairo/crates/cairo-lang-filesystem"}
+cairo-lang-runner = {path ="../cairo/crates/cairo-lang-runner"}
+cairo-lang-semantic = {path ="../cairo/crates/cairo-lang-semantic"}
+cairo-lang-sierra = {path ="../cairo/crates/cairo-lang-sierra"}
+cairo-lang-sierra-ap-change = {path ="../cairo/crates/cairo-lang-sierra-ap-change"}
+cairo-lang-sierra-gas = {path ="../cairo/crates/cairo-lang-sierra-gas"}
+cairo-lang-sierra-generator = {path ="../cairo/crates/cairo-lang-sierra-generator"}
+cairo-lang-sierra-to-casm = {path ="../cairo/crates/cairo-lang-sierra-to-casm"}
+cairo-lang-starknet = {path ="../cairo/crates/cairo-lang-starknet"}
+cairo-lang-starknet-classes = {path ="../cairo/crates/cairo-lang-starknet-classes"}
+cairo-lang-test-plugin = {path ="../cairo/crates/cairo-lang-test-plugin"}
+cairo-lang-utils = {path ="../cairo/crates/cairo-lang-utils"}
+starknet-crypto = "0.8.0"
+starknet-curve = "0.6.0"
+starknet-types-core = { version = "0.2.0", default-features = false }
 num-bigint = "0.4.6"
 num-integer = "0.1.46"
 num-traits = "0.2"
