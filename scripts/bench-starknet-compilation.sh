@@ -47,7 +47,7 @@ while [ "$#" -ge "2" ]; do
 
 	if [ -s "$raw_class_path" ];  then
 		echo "Compiling $class"
-	  ./target/release/starknet-native-compile -O3 \
+	  ./target/release/starknet-native-compile -O2 \
 			"$raw_class_path" "$compiled_class_path" \
 			--stats "$stats_class_path"
 
