@@ -6,7 +6,7 @@ use crate::{
 };
 use cairo_lang_sierra::{
     extensions::{
-        core::{CoreLibfunc, CoreType},
+        core::{CoreLibfunc, CoreType, CoreTypeConcrete},
         lib_func::SignatureOnlyConcreteLibfunc,
         structure::StructConcreteLibfunc,
         ConcreteLibfunc,
@@ -98,15 +98,15 @@ pub fn build_struct_value<'ctx, 'this>(
     // See: https://github.com/llvm/llvm-project/issues/107198.
     // We will manually skip ZST fields, as inserting a ZST is a noop, and there
     // is no point on building that operation.
-    let zst_fields = match struct_type.members() {
-        Some(members) => {
+    let zst_fields = match struct_type {
+        CoreTypeConcrete::Struct(info) => {
             // If the type is a struct, we check for each member if its a ZST.
-            members
+            info.members
                 .iter()
                 .map(|member| registry.get_type(member)?.is_zst(registry))
                 .try_collect()?
         }
-        None => {
+        _ => {
             // There are many Sierra types represented as an LLVM struct, but
             // are not of Sierra struct type. In these cases we assume that
             // their members are not ZST.
