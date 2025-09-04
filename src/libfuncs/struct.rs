@@ -2,12 +2,11 @@
 
 use super::LibfuncHelper;
 use crate::{
-    error::Result, metadata::MetadataStorage, native_panic, types::TypeBuilder,
-    utils::ProgramRegistryExt,
+    error::Result, metadata::MetadataStorage, types::TypeBuilder, utils::ProgramRegistryExt,
 };
 use cairo_lang_sierra::{
     extensions::{
-        core::{CoreLibfunc, CoreType, CoreTypeConcrete},
+        core::{CoreLibfunc, CoreType},
         lib_func::SignatureOnlyConcreteLibfunc,
         structure::StructConcreteLibfunc,
         ConcreteLibfunc,
@@ -15,6 +14,7 @@ use cairo_lang_sierra::{
     ids::ConcreteTypeId,
     program_registry::ProgramRegistry,
 };
+use itertools::Itertools;
 use melior::{
     dialect::llvm,
     helpers::{BuiltinBlockExt, LlvmBlockExt},
@@ -94,19 +94,28 @@ pub fn build_struct_value<'ctx, 'this>(
 
     let struct_type = registry.get_type(struct_type)?;
 
-    let field_types = if let CoreTypeConcrete::Struct(struct_type) = &struct_type {
-        &struct_type.members
-    } else {
-        native_panic!("expected a struct type")
+    // LLVM fails when inserting zero-sized types into a struct.
+    // See: https://github.com/llvm/llvm-project/issues/107198.
+    // We will manually skip ZST fields, as inserting a ZST is a noop, and there
+    // is no point on building that operation.
+    let zst_fields = match struct_type.members() {
+        Some(members) => {
+            // If the type is a struct, we check for each member if its a ZST.
+            members
+                .iter()
+                .map(|member| registry.get_type(member)?.is_zst(registry))
+                .try_collect()?
+        }
+        None => {
+            // There are many Sierra types represented as an LLVM struct, but
+            // are not of Sierra struct type. In these cases we assume that
+            // their members are not ZST.
+            vec![false; fields.len()]
+        }
     };
 
-    for (idx, (field, field_type_id)) in fields.iter().zip(field_types).enumerate() {
-        let field_type = registry.get_type(field_type_id)?;
-
-        // HOTFIX: LLVM fails when inserting zero-sized types into a struct.
-        // We are ignoring them until we bump to next LLVM release.
-        // See: https://github.com/llvm/llvm-project/issues/107198.
-        if field_type.is_zst(registry)? {
+    for (idx, field) in fields.iter().enumerate() {
+        if zst_fields[idx] {
             continue;
         }
 

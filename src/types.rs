@@ -136,6 +136,9 @@ pub trait TypeBuilder {
     /// TODO: How is it used?
     fn variants(&self) -> Option<&[ConcreteTypeId]>;
 
+    /// If the type is a struct type, return all members.
+    fn members(&self) -> Option<&[ConcreteTypeId]>;
+
     #[allow(clippy::too_many_arguments)]
     fn build_default<'ctx, 'this>(
         &self,
@@ -971,6 +974,13 @@ impl TypeBuilder for CoreTypeConcrete {
             Self::Uint128(_) => entry.const_int(context, location, 0, 128)?,
             _ => native_panic!("unsupported dict value type"),
         })
+    }
+
+    fn members(&self) -> Option<&[ConcreteTypeId]> {
+        match self {
+            Self::Struct(info) => Some(&info.members),
+            _ => None,
+        }
     }
 }
 
