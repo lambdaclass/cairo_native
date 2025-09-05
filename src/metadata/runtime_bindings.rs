@@ -193,11 +193,11 @@ impl RuntimeBindingsMeta {
                     .add_attributes(&[
                         (
                             Identifier::new(context, "operandSegmentSizes"),
-                            DenseI32ArrayAttribute::new(context, &[1, 3]).into(),
+                            DenseI32ArrayAttribute::new(context, &[4, 0]).into(),
                         ),
                         (
-                            Identifier::new(context, "operandBundleSizes"),
-                            DenseI32ArrayAttribute::new(context, &[0]).into(),
+                            Identifier::new(context, "op_bundle_sizes"),
+                            DenseI32ArrayAttribute::new(context, &[]).into(),
                         ),
                     ])
                     .add_operands(&[function])
@@ -232,11 +232,11 @@ impl RuntimeBindingsMeta {
                 .add_attributes(&[
                     (
                         Identifier::new(context, "operandSegmentSizes"),
-                        DenseI32ArrayAttribute::new(context, &[1, 3]).into(),
+                        DenseI32ArrayAttribute::new(context, &[4, 0]).into(),
                     ),
                     (
-                        Identifier::new(context, "operandBundleSizes"),
-                        DenseI32ArrayAttribute::new(context, &[0]).into(),
+                        Identifier::new(context, "op_bundle_sizes"),
+                        DenseI32ArrayAttribute::new(context, &[]).into(),
                     ),
                 ])
                 .add_operands(&[function])
@@ -274,11 +274,11 @@ impl RuntimeBindingsMeta {
                 .add_attributes(&[
                     (
                         Identifier::new(context, "operandSegmentSizes"),
-                        DenseI32ArrayAttribute::new(context, &[1, 3]).into(),
+                        DenseI32ArrayAttribute::new(context, &[4, 0]).into(),
                     ),
                     (
-                        Identifier::new(context, "operandBundleSizes"),
-                        DenseI32ArrayAttribute::new(context, &[0]).into(),
+                        Identifier::new(context, "op_bundle_sizes"),
+                        DenseI32ArrayAttribute::new(context, &[]).into(),
                     ),
                 ])
                 .add_operands(&[function])
@@ -312,11 +312,11 @@ impl RuntimeBindingsMeta {
                 .add_attributes(&[
                     (
                         Identifier::new(context, "operandSegmentSizes"),
-                        DenseI32ArrayAttribute::new(context, &[1, 1]).into(),
+                        DenseI32ArrayAttribute::new(context, &[2, 0]).into(),
                     ),
                     (
-                        Identifier::new(context, "operandBundleSizes"),
-                        DenseI32ArrayAttribute::new(context, &[0]).into(),
+                        Identifier::new(context, "op_bundle_sizes"),
+                        DenseI32ArrayAttribute::new(context, &[]).into(),
                     ),
                 ])
                 .add_operands(&[function])
@@ -351,11 +351,11 @@ impl RuntimeBindingsMeta {
                 .add_attributes(&[
                     (
                         Identifier::new(context, "operandSegmentSizes"),
-                        DenseI32ArrayAttribute::new(context, &[1, 1]).into(),
+                        DenseI32ArrayAttribute::new(context, &[2, 0]).into(),
                     ),
                     (
-                        Identifier::new(context, "operandBundleSizes"),
-                        DenseI32ArrayAttribute::new(context, &[0]).into(),
+                        Identifier::new(context, "op_bundle_sizes"),
+                        DenseI32ArrayAttribute::new(context, &[]).into(),
                     ),
                 ])
                 .add_operands(&[function])
@@ -390,11 +390,11 @@ impl RuntimeBindingsMeta {
                 .add_attributes(&[
                     (
                         Identifier::new(context, "operandSegmentSizes"),
-                        DenseI32ArrayAttribute::new(context, &[1, 1]).into(),
+                        DenseI32ArrayAttribute::new(context, &[2, 0]).into(),
                     ),
                     (
-                        Identifier::new(context, "operandBundleSizes"),
-                        DenseI32ArrayAttribute::new(context, &[0]).into(),
+                        Identifier::new(context, "op_bundle_sizes"),
+                        DenseI32ArrayAttribute::new(context, &[]).into(),
                     ),
                 ])
                 .add_operands(&[function])
@@ -424,11 +424,11 @@ impl RuntimeBindingsMeta {
                 .add_attributes(&[
                     (
                         Identifier::new(context, "operandSegmentSizes"),
-                        DenseI32ArrayAttribute::new(context, &[1, 2]).into(),
+                        DenseI32ArrayAttribute::new(context, &[3, 0]).into(),
                     ),
                     (
-                        Identifier::new(context, "operandBundleSizes"),
-                        DenseI32ArrayAttribute::new(context, &[0]).into(),
+                        Identifier::new(context, "op_bundle_sizes"),
+                        DenseI32ArrayAttribute::new(context, &[]).into(),
                     ),
                 ])
                 .add_operands(&[function])
@@ -465,11 +465,11 @@ impl RuntimeBindingsMeta {
                 .add_attributes(&[
                     (
                         Identifier::new(context, "operandSegmentSizes"),
-                        DenseI32ArrayAttribute::new(context, &[1, 3]).into(),
+                        DenseI32ArrayAttribute::new(context, &[4, 0]).into(),
                     ),
                     (
-                        Identifier::new(context, "operandBundleSizes"),
-                        DenseI32ArrayAttribute::new(context, &[0]).into(),
+                        Identifier::new(context, "op_bundle_sizes"),
+                        DenseI32ArrayAttribute::new(context, &[]).into(),
                     ),
                 ])
                 .add_operands(&[function])
@@ -503,11 +503,11 @@ impl RuntimeBindingsMeta {
                 .add_attributes(&[
                     (
                         Identifier::new(context, "operandSegmentSizes"),
-                        DenseI32ArrayAttribute::new(context, &[1, 2]).into(),
+                        DenseI32ArrayAttribute::new(context, &[3, 0]).into(),
                     ),
                     (
-                        Identifier::new(context, "operandBundleSizes"),
-                        DenseI32ArrayAttribute::new(context, &[0]).into(),
+                        Identifier::new(context, "op_bundle_sizes"),
+                        DenseI32ArrayAttribute::new(context, &[]).into(),
                     ),
                 ])
                 .add_operands(&[function])
@@ -552,11 +552,11 @@ impl RuntimeBindingsMeta {
                 .add_attributes(&[
                     (
                         Identifier::new(context, "operandSegmentSizes"),
-                        DenseI32ArrayAttribute::new(context, &[1, 3]).into(),
+                        DenseI32ArrayAttribute::new(context, &[4, 0]).into(),
                     ),
                     (
-                        Identifier::new(context, "operandBundleSizes"),
-                        DenseI32ArrayAttribute::new(context, &[0]).into(),
+                        Identifier::new(context, "op_bundle_sizes"),
+                        DenseI32ArrayAttribute::new(context, &[]).into(),
                     ),
                 ])
                 .add_operands(&[function])
@@ -589,11 +589,11 @@ impl RuntimeBindingsMeta {
                 .add_attributes(&[
                     (
                         Identifier::new(context, "operandSegmentSizes"),
-                        DenseI32ArrayAttribute::new(context, &[1, 1]).into(),
+                        DenseI32ArrayAttribute::new(context, &[2, 0]).into(),
                     ),
                     (
-                        Identifier::new(context, "operandBundleSizes"),
-                        DenseI32ArrayAttribute::new(context, &[0]).into(),
+                        Identifier::new(context, "op_bundle_sizes"),
+                        DenseI32ArrayAttribute::new(context, &[]).into(),
                     ),
                 ])
                 .add_operands(&[function])
@@ -625,11 +625,11 @@ impl RuntimeBindingsMeta {
                 .add_attributes(&[
                     (
                         Identifier::new(context, "operandSegmentSizes"),
-                        DenseI32ArrayAttribute::new(context, &[1, 1]).into(),
+                        DenseI32ArrayAttribute::new(context, &[2, 0]).into(),
                     ),
                     (
-                        Identifier::new(context, "operandBundleSizes"),
-                        DenseI32ArrayAttribute::new(context, &[0]).into(),
+                        Identifier::new(context, "op_bundle_sizes"),
+                        DenseI32ArrayAttribute::new(context, &[]).into(),
                     ),
                 ])
                 .add_operands(&[function])
@@ -672,11 +672,11 @@ impl RuntimeBindingsMeta {
                 .add_attributes(&[
                     (
                         Identifier::new(context, "operandSegmentSizes"),
-                        DenseI32ArrayAttribute::new(context, &[1, 3]).into(),
+                        DenseI32ArrayAttribute::new(context, &[4, 0]).into(),
                     ),
                     (
-                        Identifier::new(context, "operandBundleSizes"),
-                        DenseI32ArrayAttribute::new(context, &[0]).into(),
+                        Identifier::new(context, "op_bundle_sizes"),
+                        DenseI32ArrayAttribute::new(context, &[]).into(),
                     ),
                 ])
                 .add_operands(&[function])
@@ -722,11 +722,11 @@ impl RuntimeBindingsMeta {
                 .add_attributes(&[
                     (
                         Identifier::new(context, "operandSegmentSizes"),
-                        DenseI32ArrayAttribute::new(context, &[1, 3]).into(),
+                        DenseI32ArrayAttribute::new(context, &[4, 0]).into(),
                     ),
                     (
-                        Identifier::new(context, "operandBundleSizes"),
-                        DenseI32ArrayAttribute::new(context, &[0]).into(),
+                        Identifier::new(context, "op_bundle_sizes"),
+                        DenseI32ArrayAttribute::new(context, &[]).into(),
                     ),
                 ])
                 .add_operands(&[function])
@@ -764,8 +764,8 @@ impl RuntimeBindingsMeta {
                         DenseI32ArrayAttribute::new(context, &[1, 0]).into(),
                     ),
                     (
-                        Identifier::new(context, "operandBundleSizes"),
-                        DenseI32ArrayAttribute::new(context, &[0]).into(),
+                        Identifier::new(context, "op_bundle_sizes"),
+                        DenseI32ArrayAttribute::new(context, &[]).into(),
                     ),
                 ])
                 .add_operands(&[function])
@@ -804,16 +804,10 @@ impl RuntimeBindingsMeta {
 
         Ok(block.append_operation(
             OperationBuilder::new("llvm.call", location)
-                .add_attributes(&[
-                    (
-                        Identifier::new(context, "operandSegmentSizes"),
-                        DenseI32ArrayAttribute::new(context, &[1, 3]).into(),
-                    ),
-                    (
-                        Identifier::new(context, "operandBundleSizes"),
-                        DenseI32ArrayAttribute::new(context, &[0]).into(),
-                    ),
-                ])
+                .add_attributes(&[(
+                    Identifier::new(context, "operandSegmentSizes"),
+                    DenseI32ArrayAttribute::new(context, &[4, 0]).into(),
+                )])
                 .add_operands(&[function])
                 .add_operands(&[result_ptr, selector_ptr, args])
                 .build()?,

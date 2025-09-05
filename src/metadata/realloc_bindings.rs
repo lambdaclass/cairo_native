@@ -68,6 +68,7 @@ impl ReallocBindingsMeta {
         location: Location<'c>,
     ) -> Result<Operation<'c>, Error> {
         OperationBuilder::new("llvm.call", location)
+            .add_operands(&[ptr, len])
             .add_attributes(&[
                 (
                     Identifier::new(context, "callee"),
@@ -75,14 +76,13 @@ impl ReallocBindingsMeta {
                 ),
                 (
                     Identifier::new(context, "operandSegmentSizes"),
-                    DenseI32ArrayAttribute::new(context, &[0, 2]).into(),
+                    DenseI32ArrayAttribute::new(context, &[2, 0]).into(),
                 ),
                 (
-                    Identifier::new(context, "operandBundleSizes"),
-                    DenseI32ArrayAttribute::new(context, &[0]).into(),
+                    Identifier::new(context, "op_bundle_sizes"),
+                    DenseI32ArrayAttribute::new(context, &[]).into(),
                 ),
             ])
-            .add_operands(&[ptr, len])
             .add_results(&[llvm::r#type::pointer(context, 0)])
             .build()
     }
@@ -94,6 +94,8 @@ impl ReallocBindingsMeta {
         location: Location<'c>,
     ) -> Result<Operation<'c>, Error> {
         OperationBuilder::new("llvm.call", location)
+            .add_operands(&[ptr])
+            .add_operands(&[])
             .add_attributes(&[
                 (
                     Identifier::new(context, "callee"),
@@ -101,14 +103,13 @@ impl ReallocBindingsMeta {
                 ),
                 (
                     Identifier::new(context, "operandSegmentSizes"),
-                    DenseI32ArrayAttribute::new(context, &[0, 1]).into(),
+                    DenseI32ArrayAttribute::new(context, &[1, 0]).into(),
                 ),
                 (
-                    Identifier::new(context, "operandBundleSizes"),
-                    DenseI32ArrayAttribute::new(context, &[0]).into(),
+                    Identifier::new(context, "op_bundle_sizes"),
+                    DenseI32ArrayAttribute::new(context, &[]).into(),
                 ),
             ])
-            .add_operands(&[ptr])
             .build()
     }
 }
