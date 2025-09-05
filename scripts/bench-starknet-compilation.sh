@@ -79,7 +79,7 @@ download() {
 }
 
 compile() {
-	echo "class_hash,network,time" > "$OUTPUT"
+	echo "class_hash,network,time_ms" > "$OUTPUT"
 
 	while [ "$#" -ge "2" ]; do
 		class="$1"
