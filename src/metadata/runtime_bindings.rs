@@ -183,7 +183,11 @@ impl RuntimeBindingsMeta {
         )?)
     }
 
-    /// Build if necessary the extended euclidean algorithm used in circuit inverse gates
+    /// Build if necessary the extended euclidean algorithm used in circuit inverse gates.
+    ///
+    /// After checking, calls the MLIR function with arguments `a` and `b` which are the initial remainders
+    /// used in the algorithm and returns a `Value` containing a struct where the first element is the
+    /// greatest common divisor of `a` and `b` and the second element is the bezout coefficient x.
     pub fn extended_euclidean_algorithm<'c, 'a>(
         &mut self,
         context: &'c Context,
