@@ -190,8 +190,8 @@ impl RuntimeBindingsMeta {
         module: &Module,
         block: &'a Block<'c>,
         location: Location<'c>,
-        rhs_value: Value<'c, '_>,
-        circuit_modulus: Value<'c, '_>,
+        a: Value<'c, '_>,
+        b: Value<'c, '_>,
     ) -> Result<Value<'c, 'a>>
     where
         'c: 'a,
@@ -213,7 +213,7 @@ impl RuntimeBindingsMeta {
                         Identifier::new(context, "callee"),
                         FlatSymbolRefAttribute::new(context, func_symbol).into(),
                     )])
-                    .add_operands(&[rhs_value, circuit_modulus])
+                    .add_operands(&[a, b])
                     .add_results(&[return_type])
                     .build()?,
             )
