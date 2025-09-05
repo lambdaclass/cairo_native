@@ -78,8 +78,14 @@ impl RuntimeBinding {
         }
     }
 
-    const fn function_ptr(self) -> *const () {
-        match self {
+    /// Returns an `Option` with a function pointer depending on how the binding is implemented.
+    ///
+    /// - For external bindings (implemented in Rust), it returns `Some`, containing
+    ///   a pointer to the corresponding Rust function
+    /// - For internal bindings (implemented in MLIR), it returns `None`, since those
+    ///   functions are defined within MLIR and invoked by name
+    const fn function_ptr(self) -> Option<*const ()> {
+        let function_ptr = match self {
             RuntimeBinding::DebugPrint => {
                 crate::runtime::cairo_native__libfunc__debug__print as *const ()
             }
@@ -115,12 +121,13 @@ impl RuntimeBinding {
             RuntimeBinding::GetCostsBuiltin => {
                 crate::runtime::cairo_native__get_costs_builtin as *const ()
             }
-            RuntimeBinding::ExtendedEuclideanAlgorithm => unreachable!(),
+            RuntimeBinding::ExtendedEuclideanAlgorithm => return None,
             #[cfg(feature = "with-cheatcode")]
             RuntimeBinding::VtableCheatcode => {
                 crate::starknet::cairo_native__vtable_cheatcode as *const ()
             }
-        }
+        };
+        Some(function_ptr)
     }
 }
 
@@ -729,7 +736,11 @@ pub fn setup_runtime(find_symbol_ptr: impl Fn(&str) -> Option<*mut c_void>) {
     ] {
         if let Some(global) = find_symbol_ptr(binding.symbol()) {
             let global = global.cast::<*const ()>();
-            unsafe { *global = binding.function_ptr() };
+            unsafe {
+                if let Some(function_ptr) = binding.function_ptr() {
+                    *global = function_ptr;
+                };
+            }
         }
     }
 }
