@@ -84,10 +84,10 @@ If you decide to build from source, here are some indications:
 # The blob to download is called llvm-project-20.x.x.src.tar.xz
 
 # For example
-wget https://github.com/llvm/llvm-project/releases/download/llvmorg-19.1.7/llvm-project-19.1.7.src.tar.xz
-tar xf llvm-project-19.1.5.src.tar.xz
+wget https://github.com/llvm/llvm-project/releases/download/llvmorg-20.1.8/llvm-project-20.1.8.src.tar.xz
+tar xf llvm-project-20.1.8.src.tar.xz
 
-cd llvm-project-19.1.5.src.tar
+cd llvm-project-20.1.8.src.tar
 mkdir build
 cd build
 

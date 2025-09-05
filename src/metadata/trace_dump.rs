@@ -13,7 +13,6 @@ use melior::{
     helpers::{ArithBlockExt, BuiltinBlockExt, LlvmBlockExt},
     ir::{
         attribute::{FlatSymbolRefAttribute, StringAttribute, TypeAttribute},
-        operation::OperationBuilder,
         r#type::{IntegerType, MemRefType},
         Attribute, Block, BlockLike, Location, Module, Region, Value,
     },

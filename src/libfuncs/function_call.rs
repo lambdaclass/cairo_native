@@ -186,7 +186,7 @@ pub fn build<'ctx, 'this>(
         } else {
             None
         };
-        let function_sym = &format!("impl${}", generate_function_name(&info.function.id, false));
+        let function_sym = format!("impl${}", generate_function_name(&info.function.id, false));
         let function_call_result = entry.llvm_call(
             context,
             LLVMCalleType::Symbol(&function_sym),

@@ -68,7 +68,7 @@ impl<'ctx, 'this> BlockExt<'ctx, 'this> for Block<'ctx> {
                     ),
                     (
                         Identifier::new(context, "callee"),
-                        FlatSymbolRefAttribute::new(context, &sym).into(),
+                        FlatSymbolRefAttribute::new(context, sym).into(),
                     ),
                 ]),
                 LLVMCalleType::FuncPtr(ptr) => op
