@@ -21,7 +21,7 @@ use cairo_lang_sierra::{
 };
 use melior::{
     dialect::{arith, cf, llvm, ods},
-    helpers::{ArithBlockExt, BuiltinBlockExt, LlvmBlockExt},
+    helpers::{ArithBlockExt, BuiltinBlockExt, GepIndex, LlvmBlockExt},
     ir::{
         attribute::{DenseI64ArrayAttribute, IntegerAttribute},
         r#type::IntegerType,
@@ -128,56 +128,40 @@ pub fn build_enum_value<'ctx, 'this>(
         0 => native_panic!("attempt to initialize a zero-variant enum"),
         1 => payload_value,
         _ => {
-            let enum_ty = llvm::r#type::r#struct(
+            let enum_ptr = helper.init_block().alloca1(
                 context,
-                &[
-                    tag_ty,
-                    if payload_type_info.is_zst(registry)? {
-                        llvm::r#type::array(IntegerType::new(context, 8).into(), 0)
-                    } else {
-                        variant_tys[variant_index].0
-                    },
-                ],
-                false,
-            );
+                location,
+                type_info.build(context, helper, registry, metadata, enum_type)?,
+                layout.align(),
+            )?;
+            let enum_tag_ptr = entry.gep(
+                context,
+                location,
+                enum_ptr,
+                &[GepIndex::Const(0)],
+                type_info.build(context, helper, registry, metadata, enum_type)?,
+            )?;
+            let enum_payload_ptr = entry.gep(
+                context,
+                location,
+                enum_ptr,
+                &[GepIndex::Const(1)],
+                type_info.build(context, helper, registry, metadata, enum_type)?,
+            )?;
 
-            let tag_val = entry
-                .append_operation(arith::constant(
-                    context,
-                    IntegerAttribute::new(tag_ty, variant_index.try_into()?).into(),
-                    location,
-                ))
-                .result(0)?
-                .into();
+            let tag_value = entry.const_int_from_type(context, location, variant_index, tag_ty)?;
+            entry.store(context, location, enum_tag_ptr, tag_value)?;
 
-            let val = entry.append_op_result(llvm::undef(enum_ty, location))?;
-            let val = entry.insert_value(context, location, val, tag_val, 0)?;
-
-            let mut val = if payload_type_info.is_zst(registry)? {
-                val
-            } else {
-                entry.insert_value(context, location, val, payload_value, 1)?
+            if !payload_type_info.is_zst(registry)? {
+                entry.store(context, location, enum_payload_ptr, payload_value)?;
             };
 
-            if type_info.is_memory_allocated(registry)? {
-                let stack_ptr = helper.init_block().alloca1(
-                    context,
-                    location,
-                    type_info.build(context, helper, registry, metadata, enum_type)?,
-                    layout.align(),
-                )?;
-
-                // Convert the enum from the concrete variant to the internal representation.
-                entry.store(context, location, stack_ptr, val)?;
-                val = entry.load(
-                    context,
-                    location,
-                    stack_ptr,
-                    type_info.build(context, helper, registry, metadata, enum_type)?,
-                )?;
-            };
-
-            val
+            entry.load(
+                context,
+                location,
+                enum_ptr,
+                type_info.build(context, helper, registry, metadata, enum_type)?,
+            )?
         }
     })
 }
