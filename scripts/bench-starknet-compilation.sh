@@ -91,7 +91,7 @@ compile() {
 		compiled_class_path="$WORK/compiled-$class.out"
 
 		echo "Compiling $class"
-	  target/release/starknet-native-compile -O "$NATIVE_OPT_LEVEL" \
+		target/release/starknet-native-compile -O "$NATIVE_OPT_LEVEL" \
 			"$raw_class_path" "$compiled_class_path" \
 			--stats "$stats_class_path"
 		time=$(jq '.compilation_total_time_ms' "$stats_class_path" --raw-output)
