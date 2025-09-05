@@ -64,7 +64,7 @@ impl NativeContext {
     /// Returns the corresponding NativeModule struct.
     ///
     /// If `ignore_debug_names` is true then debug names will not be added to function names.
-    /// Mainly useful for the ContractExecutor.
+    /// Mainly useful for the AotContractExecutor.
     pub fn compile(
         &'_ self,
         program: &Program,
