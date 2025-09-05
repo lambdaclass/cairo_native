@@ -128,6 +128,19 @@ pub fn build_enum_value<'ctx, 'this>(
         0 => native_panic!("attempt to initialize a zero-variant enum"),
         1 => payload_value,
         _ => {
+            let enum_ty = llvm::r#type::r#struct(
+                context,
+                &[
+                    tag_ty,
+                    if payload_type_info.is_zst(registry)? {
+                        llvm::r#type::array(IntegerType::new(context, 8).into(), 0)
+                    } else {
+                        variant_tys[variant_index].0
+                    },
+                ],
+                false,
+            );
+
             let enum_ptr = helper.init_block().alloca1(
                 context,
                 location,
@@ -139,14 +152,14 @@ pub fn build_enum_value<'ctx, 'this>(
                 location,
                 enum_ptr,
                 &[GepIndex::Const(0), GepIndex::Const(0)],
-                type_info.build(context, helper, registry, metadata, enum_type)?,
+                enum_ty,
             )?;
             let enum_payload_ptr = entry.gep(
                 context,
                 location,
                 enum_ptr,
                 &[GepIndex::Const(0), GepIndex::Const(1)],
-                type_info.build(context, helper, registry, metadata, enum_type)?,
+                enum_ty,
             )?;
 
             let tag_value = entry.const_int_from_type(context, location, variant_index, tag_ty)?;
