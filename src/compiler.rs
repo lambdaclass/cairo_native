@@ -66,7 +66,7 @@ use cairo_lang_sierra::{
         core::{CoreConcreteLibfunc, CoreLibfunc, CoreType},
         ConcreteLibfunc,
     },
-    ids::{ConcreteTypeId, VarId},
+    ids::{ConcreteTypeId, FunctionId, VarId},
     program::{Function, Invocation, Program, Statement, StatementIdx},
     program_registry::ProgramRegistry,
 };
@@ -129,6 +129,7 @@ pub fn compile(
     context: &Context,
     module: &Module,
     program: &Program,
+    public: HashSet<FunctionId>,
     registry: &ProgramRegistry<CoreType, CoreLibfunc>,
     metadata: &mut MetadataStorage,
     di_compile_unit_id: Attribute,
@@ -158,6 +159,7 @@ pub fn compile(
             module,
             registry,
             function,
+            public.contains(&function.id),
             &program.statements,
             metadata,
             di_compile_unit_id,
@@ -185,6 +187,7 @@ fn compile_func(
     module: &Module,
     registry: &ProgramRegistry<CoreType, CoreLibfunc>,
     function: &Function,
+    public: bool,
     statements: &[Statement],
     metadata: &mut MetadataStorage,
     di_compile_unit_id: Attribute,
@@ -1014,20 +1017,22 @@ fn compile_func(
         ),
     ));
 
-    generate_entry_point_wrapper(
-        context,
-        module,
-        function_name.as_ref(),
-        &inner_function_name,
-        &pre_entry_block_args,
-        &return_types,
-        Location::new(
+    if public {
+        generate_entry_point_wrapper(
             context,
-            "program.sierra",
-            sierra_stmt_start_offset + function.entry_point.0,
-            0,
-        ),
-    )?;
+            module,
+            function_name.as_ref(),
+            &inner_function_name,
+            &pre_entry_block_args,
+            &return_types,
+            Location::new(
+                context,
+                "program.sierra",
+                sierra_stmt_start_offset + function.entry_point.0,
+                0,
+            ),
+        )?;
+    }
 
     tracing::debug!("Done generating function {}.", function.id);
     Ok(())

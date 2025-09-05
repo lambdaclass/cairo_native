@@ -5,6 +5,7 @@ use crate::{
 };
 use cairo_lang_sierra::program::Program;
 use libloading::Library;
+use std::collections::HashSet;
 use std::{
     collections::HashMap,
     fmt::{self, Debug},
@@ -45,9 +46,13 @@ where
             module,
             registry,
             mut metadata,
-        } = self
-            .context
-            .compile(program, false, Some(Default::default()), None)?;
+        } = self.context.compile(
+            program,
+            false,
+            HashSet::default(),
+            Some(Default::default()),
+            None,
+        )?;
 
         // Compile module into an object.
         let object_data = crate::ffi::module_to_object(&module, opt_level, None)?;

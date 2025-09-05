@@ -10,6 +10,7 @@ use crate::{
 };
 use cairo_lang_sierra::{
     extensions::core::{CoreLibfunc, CoreType},
+    ids::FunctionId,
     program::Program,
     program_registry::ProgramRegistry,
 };
@@ -33,7 +34,7 @@ use mlir_sys::{
     mlirLLVMDIModuleAttrGet, MlirLLVMDIEmissionKind_MlirLLVMDIEmissionKindFull,
     MlirLLVMDINameTableKind_MlirLLVMDINameTableKindDefault,
 };
-use std::{sync::OnceLock, time::Instant};
+use std::{collections::HashSet, sync::OnceLock, time::Instant};
 
 /// Context of IRs, dialects and passes for Cairo programs compilation.
 #[derive(Debug, Eq, PartialEq)]
@@ -69,6 +70,7 @@ impl NativeContext {
         &'_ self,
         program: &Program,
         ignore_debug_names: bool,
+        public: HashSet<FunctionId>,
         gas_metadata_config: Option<MetadataComputationConfig>,
         stats: Option<&mut Statistics>,
     ) -> Result<NativeModule<'_>, Error> {
@@ -174,6 +176,7 @@ impl NativeContext {
             &self.context,
             &module,
             program,
+            public,
             &registry,
             &mut metadata,
             unsafe { Attribute::from_raw(di_unit_id) },

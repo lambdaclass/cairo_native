@@ -219,6 +219,13 @@ impl AotContractExecutor {
         } = context.compile(
             program,
             true,
+            chain!(
+                entry_points.constructor.iter(),
+                entry_points.external.iter(),
+                entry_points.l1_handler.iter(),
+            )
+            .map(|x| FunctionId::new(x.function_idx as u64))
+            .collect(),
             Some(MetadataComputationConfig {
                 function_set_costs: chain!(
                     entry_points.constructor.iter(),

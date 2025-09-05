@@ -1,6 +1,7 @@
 use crate::error::Result;
 use crate::{context::NativeContext, executor::JitNativeExecutor, OptLevel};
 use cairo_lang_sierra::program::Program;
+use std::collections::HashSet;
 use std::{
     collections::HashMap,
     fmt::{self, Debug},
@@ -46,9 +47,13 @@ where
         program: &Program,
         opt_level: OptLevel,
     ) -> Result<Arc<JitNativeExecutor<'a>>> {
-        let module = self
-            .context
-            .compile(program, false, Some(Default::default()), None)?;
+        let module = self.context.compile(
+            program,
+            false,
+            HashSet::default(),
+            Some(Default::default()),
+            None,
+        )?;
         let executor = JitNativeExecutor::from_native_module(module, opt_level)?;
 
         let executor = Arc::new(executor);
