@@ -8,7 +8,8 @@ usage() {
 cat <<EOF 
 usage: $0 (<class-hash> <network>)+
 
-Receives pairs of class-hash and network, and benchmarks their compilation. For example, the following command benchmarks the compilation of four mainnet
+Receives pairs of class-hash and network, and benchmarks their compilation.
+For example, the following command benchmarks the compilation of four mainnet
 contract classes:
 
 \`\`\`
