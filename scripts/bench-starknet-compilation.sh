@@ -79,7 +79,7 @@ download() {
 }
 
 compile() {
-	echo "class_hash,network,time_ms" > "$OUTPUT"
+	echo "class_hash,network,time_ms,size_bytes" > "$OUTPUT"
 
 	while [ "$#" -ge "2" ]; do
 		class="$1"
@@ -95,8 +95,9 @@ compile() {
 			"$raw_class_path" "$compiled_class_path" \
 			--stats "$stats_class_path"
 		time=$(jq '.compilation_total_time_ms' "$stats_class_path" --raw-output)
+		size=$(jq '.object_size_bytes' "$stats_class_path" --raw-output)
 
-		echo "$class,$net,$time" >> "$OUTPUT"
+		echo "$class,$net,$time,$size" >> "$OUTPUT"
 	done
 }
 
