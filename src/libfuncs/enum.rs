@@ -138,14 +138,14 @@ pub fn build_enum_value<'ctx, 'this>(
                 context,
                 location,
                 enum_ptr,
-                &[GepIndex::Const(0)],
+                &[GepIndex::Const(0), GepIndex::Const(0)],
                 type_info.build(context, helper, registry, metadata, enum_type)?,
             )?;
             let enum_payload_ptr = entry.gep(
                 context,
                 location,
                 enum_ptr,
-                &[GepIndex::Const(1)],
+                &[GepIndex::Const(0), GepIndex::Const(1)],
                 type_info.build(context, helper, registry, metadata, enum_type)?,
             )?;
 
