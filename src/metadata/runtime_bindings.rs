@@ -6,17 +6,15 @@
 use crate::{
     error::{Error, Result},
     libfuncs::LibfuncHelper,
+    utils::operations_ext::{llvm_call, LLVMCalleType},
 };
 use melior::{
     dialect::{llvm, ods},
     helpers::{ArithBlockExt, BuiltinBlockExt, LlvmBlockExt},
     ir::{
-        attribute::{
-            DenseI32ArrayAttribute, FlatSymbolRefAttribute, StringAttribute, TypeAttribute,
-        },
-        operation::OperationBuilder,
+        attribute::{FlatSymbolRefAttribute, StringAttribute, TypeAttribute},
         r#type::IntegerType,
-        Attribute, Block, BlockLike, Identifier, Location, Module, OperationRef, Region, Value,
+        Attribute, Block, BlockLike, Location, Module, OperationRef, Region, Value,
     },
     Context,
 };
@@ -186,27 +184,16 @@ impl RuntimeBindingsMeta {
     {
         let function =
             self.build_function(context, module, block, location, RuntimeBinding::DebugPrint)?;
+        let func_call = llvm_call(
+            context,
+            LLVMCalleType::FuncPtr(function),
+            &[target_fd, values_ptr, values_len],
+            &[],
+            &[IntegerType::new(context, 32).into()],
+            location,
+        )?;
 
-        Ok(block
-            .append_operation(
-                OperationBuilder::new("llvm.call", location)
-                    .add_attributes(&[
-                        (
-                            Identifier::new(context, "operandSegmentSizes"),
-                            DenseI32ArrayAttribute::new(context, &[4, 0]).into(),
-                        ),
-                        (
-                            Identifier::new(context, "op_bundle_sizes"),
-                            DenseI32ArrayAttribute::new(context, &[]).into(),
-                        ),
-                    ])
-                    .add_operands(&[function])
-                    .add_operands(&[target_fd, values_ptr, values_len])
-                    .add_results(&[IntegerType::new(context, 32).into()])
-                    .build()?,
-            )
-            .result(0)?
-            .into())
+        Ok(block.append_op_result(func_call)?)
     }
 
     /// Register if necessary, then invoke the `pedersen()` function.
@@ -227,22 +214,14 @@ impl RuntimeBindingsMeta {
         let function =
             self.build_function(context, module, block, location, RuntimeBinding::Pedersen)?;
 
-        Ok(block.append_operation(
-            OperationBuilder::new("llvm.call", location)
-                .add_attributes(&[
-                    (
-                        Identifier::new(context, "operandSegmentSizes"),
-                        DenseI32ArrayAttribute::new(context, &[4, 0]).into(),
-                    ),
-                    (
-                        Identifier::new(context, "op_bundle_sizes"),
-                        DenseI32ArrayAttribute::new(context, &[]).into(),
-                    ),
-                ])
-                .add_operands(&[function])
-                .add_operands(&[dst_ptr, lhs_ptr, rhs_ptr])
-                .build()?,
-        ))
+        Ok(block.append_operation(llvm_call(
+            context,
+            LLVMCalleType::FuncPtr(function),
+            &[dst_ptr, lhs_ptr, rhs_ptr],
+            &[],
+            &[],
+            location,
+        )?))
     }
 
     /// Register if necessary, then invoke the `poseidon()` function.
@@ -269,22 +248,14 @@ impl RuntimeBindingsMeta {
             RuntimeBinding::HadesPermutation,
         )?;
 
-        Ok(block.append_operation(
-            OperationBuilder::new("llvm.call", location)
-                .add_attributes(&[
-                    (
-                        Identifier::new(context, "operandSegmentSizes"),
-                        DenseI32ArrayAttribute::new(context, &[4, 0]).into(),
-                    ),
-                    (
-                        Identifier::new(context, "op_bundle_sizes"),
-                        DenseI32ArrayAttribute::new(context, &[]).into(),
-                    ),
-                ])
-                .add_operands(&[function])
-                .add_operands(&[op0_ptr, op1_ptr, op2_ptr])
-                .build()?,
-        ))
+        Ok(block.append_operation(llvm_call(
+            context,
+            LLVMCalleType::FuncPtr(function),
+            &[op0_ptr, op1_ptr, op2_ptr],
+            &[],
+            &[],
+            location,
+        )?))
     }
 
     /// Register if necessary, then invoke the `ec_point_from_x_nz()` function.
@@ -307,23 +278,14 @@ impl RuntimeBindingsMeta {
             RuntimeBinding::EcPointFromXNz,
         )?;
 
-        Ok(block.append_operation(
-            OperationBuilder::new("llvm.call", location)
-                .add_attributes(&[
-                    (
-                        Identifier::new(context, "operandSegmentSizes"),
-                        DenseI32ArrayAttribute::new(context, &[2, 0]).into(),
-                    ),
-                    (
-                        Identifier::new(context, "op_bundle_sizes"),
-                        DenseI32ArrayAttribute::new(context, &[]).into(),
-                    ),
-                ])
-                .add_operands(&[function])
-                .add_operands(&[point_ptr])
-                .add_results(&[IntegerType::new(context, 1).into()])
-                .build()?,
-        ))
+        Ok(block.append_operation(llvm_call(
+            context,
+            LLVMCalleType::FuncPtr(function),
+            &[point_ptr],
+            &[],
+            &[IntegerType::new(context, 1).into()],
+            location,
+        )?))
     }
 
     /// Register if necessary, then invoke the `ec_point_try_new_nz()` function.
@@ -346,23 +308,14 @@ impl RuntimeBindingsMeta {
             RuntimeBinding::EcPointTryNewNz,
         )?;
 
-        Ok(block.append_operation(
-            OperationBuilder::new("llvm.call", location)
-                .add_attributes(&[
-                    (
-                        Identifier::new(context, "operandSegmentSizes"),
-                        DenseI32ArrayAttribute::new(context, &[2, 0]).into(),
-                    ),
-                    (
-                        Identifier::new(context, "op_bundle_sizes"),
-                        DenseI32ArrayAttribute::new(context, &[]).into(),
-                    ),
-                ])
-                .add_operands(&[function])
-                .add_operands(&[point_ptr])
-                .add_results(&[IntegerType::new(context, 1).into()])
-                .build()?,
-        ))
+        Ok(block.append_operation(llvm_call(
+            context,
+            LLVMCalleType::FuncPtr(function),
+            &[point_ptr],
+            &[],
+            &[IntegerType::new(context, 1).into()],
+            location,
+        )?))
     }
 
     /// Register if necessary, then invoke the `ec_state_init()` function.
@@ -385,22 +338,14 @@ impl RuntimeBindingsMeta {
             RuntimeBinding::EcStateInit,
         )?;
 
-        Ok(block.append_operation(
-            OperationBuilder::new("llvm.call", location)
-                .add_attributes(&[
-                    (
-                        Identifier::new(context, "operandSegmentSizes"),
-                        DenseI32ArrayAttribute::new(context, &[2, 0]).into(),
-                    ),
-                    (
-                        Identifier::new(context, "op_bundle_sizes"),
-                        DenseI32ArrayAttribute::new(context, &[]).into(),
-                    ),
-                ])
-                .add_operands(&[function])
-                .add_operands(&[state_ptr])
-                .build()?,
-        ))
+        Ok(block.append_operation(llvm_call(
+            context,
+            LLVMCalleType::FuncPtr(function),
+            &[state_ptr],
+            &[],
+            &[],
+            location,
+        )?))
     }
 
     /// Register if necessary, then invoke the `ec_state_add()` function.
@@ -419,22 +364,14 @@ impl RuntimeBindingsMeta {
         let function =
             self.build_function(context, module, block, location, RuntimeBinding::EcStateAdd)?;
 
-        Ok(block.append_operation(
-            OperationBuilder::new("llvm.call", location)
-                .add_attributes(&[
-                    (
-                        Identifier::new(context, "operandSegmentSizes"),
-                        DenseI32ArrayAttribute::new(context, &[3, 0]).into(),
-                    ),
-                    (
-                        Identifier::new(context, "op_bundle_sizes"),
-                        DenseI32ArrayAttribute::new(context, &[]).into(),
-                    ),
-                ])
-                .add_operands(&[function])
-                .add_operands(&[state_ptr, point_ptr])
-                .build()?,
-        ))
+        Ok(block.append_operation(llvm_call(
+            context,
+            LLVMCalleType::FuncPtr(function),
+            &[state_ptr, point_ptr],
+            &[],
+            &[],
+            location,
+        )?))
     }
 
     /// Register if necessary, then invoke the `ec_state_add_mul()` function.
@@ -460,22 +397,14 @@ impl RuntimeBindingsMeta {
             RuntimeBinding::EcStateAddMul,
         )?;
 
-        Ok(block.append_operation(
-            OperationBuilder::new("llvm.call", location)
-                .add_attributes(&[
-                    (
-                        Identifier::new(context, "operandSegmentSizes"),
-                        DenseI32ArrayAttribute::new(context, &[4, 0]).into(),
-                    ),
-                    (
-                        Identifier::new(context, "op_bundle_sizes"),
-                        DenseI32ArrayAttribute::new(context, &[]).into(),
-                    ),
-                ])
-                .add_operands(&[function])
-                .add_operands(&[state_ptr, scalar_ptr, point_ptr])
-                .build()?,
-        ))
+        Ok(block.append_operation(llvm_call(
+            context,
+            LLVMCalleType::FuncPtr(function),
+            &[state_ptr, scalar_ptr, point_ptr],
+            &[],
+            &[],
+            location,
+        )?))
     }
 
     pub fn libfunc_ec_state_try_finalize_nz<'c, 'a>(
@@ -498,23 +427,14 @@ impl RuntimeBindingsMeta {
             RuntimeBinding::EcStateTryFinalizeNz,
         )?;
 
-        Ok(block.append_operation(
-            OperationBuilder::new("llvm.call", location)
-                .add_attributes(&[
-                    (
-                        Identifier::new(context, "operandSegmentSizes"),
-                        DenseI32ArrayAttribute::new(context, &[3, 0]).into(),
-                    ),
-                    (
-                        Identifier::new(context, "op_bundle_sizes"),
-                        DenseI32ArrayAttribute::new(context, &[]).into(),
-                    ),
-                ])
-                .add_operands(&[function])
-                .add_operands(&[point_ptr, state_ptr])
-                .add_results(&[IntegerType::new(context, 1).into()])
-                .build()?,
-        ))
+        Ok(block.append_operation(llvm_call(
+            context,
+            LLVMCalleType::FuncPtr(function),
+            &[point_ptr, state_ptr],
+            &[],
+            &[IntegerType::new(context, 1).into()],
+            location,
+        )?))
     }
 
     /// Register if necessary, then invoke the `dict_alloc_new()` function.
@@ -547,23 +467,16 @@ impl RuntimeBindingsMeta {
             }
         };
 
-        Ok(block.append_op_result(
-            OperationBuilder::new("llvm.call", location)
-                .add_attributes(&[
-                    (
-                        Identifier::new(context, "operandSegmentSizes"),
-                        DenseI32ArrayAttribute::new(context, &[4, 0]).into(),
-                    ),
-                    (
-                        Identifier::new(context, "op_bundle_sizes"),
-                        DenseI32ArrayAttribute::new(context, &[]).into(),
-                    ),
-                ])
-                .add_operands(&[function])
-                .add_operands(&[size, align, drop_fn])
-                .add_results(&[llvm::r#type::pointer(context, 0)])
-                .build()?,
-        )?)
+        let func_call = llvm_call(
+            context,
+            LLVMCalleType::FuncPtr(function),
+            &[size, align, drop_fn],
+            &[],
+            &[llvm::r#type::pointer(context, 0)],
+            location,
+        )?;
+
+        Ok(block.append_op_result(func_call)?)
     }
 
     /// Register if necessary, then invoke the `dict_alloc_new()` function.
@@ -584,22 +497,14 @@ impl RuntimeBindingsMeta {
         let function =
             self.build_function(context, module, block, location, RuntimeBinding::DictDrop)?;
 
-        Ok(block.append_operation(
-            OperationBuilder::new("llvm.call", location)
-                .add_attributes(&[
-                    (
-                        Identifier::new(context, "operandSegmentSizes"),
-                        DenseI32ArrayAttribute::new(context, &[2, 0]).into(),
-                    ),
-                    (
-                        Identifier::new(context, "op_bundle_sizes"),
-                        DenseI32ArrayAttribute::new(context, &[]).into(),
-                    ),
-                ])
-                .add_operands(&[function])
-                .add_operands(&[ptr])
-                .build()?,
-        ))
+        Ok(block.append_operation(llvm_call(
+            context,
+            LLVMCalleType::FuncPtr(function),
+            &[ptr],
+            &[],
+            &[],
+            location,
+        )?))
     }
 
     /// Register if necessary, then invoke the `dict_alloc_new()` function.
@@ -620,23 +525,16 @@ impl RuntimeBindingsMeta {
         let function =
             self.build_function(context, module, block, location, RuntimeBinding::DictDup)?;
 
-        Ok(block.append_op_result(
-            OperationBuilder::new("llvm.call", location)
-                .add_attributes(&[
-                    (
-                        Identifier::new(context, "operandSegmentSizes"),
-                        DenseI32ArrayAttribute::new(context, &[2, 0]).into(),
-                    ),
-                    (
-                        Identifier::new(context, "op_bundle_sizes"),
-                        DenseI32ArrayAttribute::new(context, &[]).into(),
-                    ),
-                ])
-                .add_operands(&[function])
-                .add_operands(&[ptr])
-                .add_results(&[llvm::r#type::pointer(context, 0)])
-                .build()?,
-        )?)
+        let func_call = llvm_call(
+            context,
+            LLVMCalleType::FuncPtr(function),
+            &[ptr],
+            &[],
+            &[llvm::r#type::pointer(context, 0)],
+            location,
+        )?;
+
+        Ok(block.append_op_result(func_call)?)
     }
 
     /// Register if necessary, then invoke the `dict_get()` function.
@@ -667,23 +565,16 @@ impl RuntimeBindingsMeta {
             align_of::<*mut ()>(),
         )?;
 
-        let is_present = block.append_op_result(
-            OperationBuilder::new("llvm.call", location)
-                .add_attributes(&[
-                    (
-                        Identifier::new(context, "operandSegmentSizes"),
-                        DenseI32ArrayAttribute::new(context, &[4, 0]).into(),
-                    ),
-                    (
-                        Identifier::new(context, "op_bundle_sizes"),
-                        DenseI32ArrayAttribute::new(context, &[]).into(),
-                    ),
-                ])
-                .add_operands(&[function])
-                .add_operands(&[dict_ptr, key_ptr, value_ptr])
-                .add_results(&[IntegerType::new(context, c_int::BITS).into()])
-                .build()?,
+        let func_call = llvm_call(
+            context,
+            LLVMCalleType::FuncPtr(function),
+            &[dict_ptr, key_ptr, value_ptr],
+            &[],
+            &[IntegerType::new(context, c_int::BITS).into()],
+            location,
         )?;
+
+        let is_present = block.append_op_result(func_call)?;
 
         let value_ptr = block.load(
             context,
@@ -717,23 +608,14 @@ impl RuntimeBindingsMeta {
         let function =
             self.build_function(context, module, block, location, RuntimeBinding::DictSquash)?;
 
-        Ok(block.append_operation(
-            OperationBuilder::new("llvm.call", location)
-                .add_attributes(&[
-                    (
-                        Identifier::new(context, "operandSegmentSizes"),
-                        DenseI32ArrayAttribute::new(context, &[4, 0]).into(),
-                    ),
-                    (
-                        Identifier::new(context, "op_bundle_sizes"),
-                        DenseI32ArrayAttribute::new(context, &[]).into(),
-                    ),
-                ])
-                .add_operands(&[function])
-                .add_operands(&[dict_ptr, range_check_ptr, gas_ptr])
-                .add_results(&[IntegerType::new(context, 64).into()])
-                .build()?,
-        ))
+        Ok(block.append_operation(llvm_call(
+            context,
+            LLVMCalleType::FuncPtr(function),
+            &[dict_ptr, range_check_ptr, gas_ptr],
+            &[],
+            &[IntegerType::new(context, 64).into()],
+            location,
+        )?))
     }
 
     // Register if necessary, then invoke the `get_costs_builtin()` function.
@@ -756,22 +638,14 @@ impl RuntimeBindingsMeta {
             RuntimeBinding::GetCostsBuiltin,
         )?;
 
-        Ok(block.append_operation(
-            OperationBuilder::new("llvm.call", location)
-                .add_attributes(&[
-                    (
-                        Identifier::new(context, "operandSegmentSizes"),
-                        DenseI32ArrayAttribute::new(context, &[1, 0]).into(),
-                    ),
-                    (
-                        Identifier::new(context, "op_bundle_sizes"),
-                        DenseI32ArrayAttribute::new(context, &[]).into(),
-                    ),
-                ])
-                .add_operands(&[function])
-                .add_results(&[llvm::r#type::pointer(context, 0)])
-                .build()?,
-        ))
+        Ok(block.append_operation(llvm_call(
+            context,
+            LLVMCalleType::FuncPtr(function),
+            &[],
+            &[],
+            &[llvm::r#type::pointer(context, 0)],
+            location,
+        )?))
     }
 
     /// Register if necessary, then invoke the `vtable_cheatcode()` runtime function.
@@ -794,6 +668,8 @@ impl RuntimeBindingsMeta {
     where
         'c: 'a,
     {
+        use crate::utils::operations_ext::{llvm_call, LLVMCalleType};
+
         let function = self.build_function(
             context,
             module,
@@ -802,16 +678,14 @@ impl RuntimeBindingsMeta {
             RuntimeBinding::VtableCheatcode,
         )?;
 
-        Ok(block.append_operation(
-            OperationBuilder::new("llvm.call", location)
-                .add_attributes(&[(
-                    Identifier::new(context, "operandSegmentSizes"),
-                    DenseI32ArrayAttribute::new(context, &[4, 0]).into(),
-                )])
-                .add_operands(&[function])
-                .add_operands(&[result_ptr, selector_ptr, args])
-                .build()?,
-        ))
+        Ok(block.append_operation(llvm_call(
+            context,
+            LLVMCalleType::FuncPtr(function),
+            &[result_ptr, selector_ptr, args],
+            &[],
+            &[],
+            location,
+        )?))
     }
 }
 
