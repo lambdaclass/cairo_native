@@ -754,8 +754,8 @@ pub fn setup_runtime(find_symbol_ptr: impl Fn(&str) -> Option<*mut c_void>) {
 /// if gcd(a,b) = 1, then x is the modular multiplicative inverse of a modulo b.
 /// See https://en.wikipedia.org/wiki/Extended_Euclidean_algorithm
 ///
-/// Given two numbers a, b. It returns a block with gcd(a, b) and the bezout coefficient x.
-/// Both of these numbers are received as arguments in the entry block.
+/// This function declares a MLIR function that given two numbers a and b, returns a MLIR struct with gcd(a, b)
+/// and the bezout coefficient x. The declaration is done in the body of the module.
 fn build_egcd_function<'ctx>(
     module: &Module,
     context: &'ctx Context,
