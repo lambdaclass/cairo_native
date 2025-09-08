@@ -6,7 +6,7 @@ use llvm_sys::{
     prelude::{LLVMModuleRef, LLVMValueRef},
     LLVMBasicBlock, LLVMValue,
 };
-use melior::ir::{BlockLike, BlockRef, OperationRef, RegionLike};
+use melior::ir::{operation::OperationLike, BlockLike, BlockRef, OperationRef, RegionLike};
 
 /// Traverses the given operation tree in preorder.
 ///

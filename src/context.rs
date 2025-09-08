@@ -22,7 +22,7 @@ use melior::{
     dialect::DialectRegistry,
     ir::{
         attribute::StringAttribute,
-        operation::{OperationBuilder, OperationPrintingFlags},
+        operation::{OperationBuilder, OperationLike, OperationPrintingFlags},
         Attribute, AttributeLike, Block, Identifier, Location, Module, Region, RegionLike,
     },
     utility::{register_all_dialects, register_all_llvm_translations, register_all_passes},

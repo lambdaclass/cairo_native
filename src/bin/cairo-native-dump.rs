@@ -10,7 +10,7 @@ use cairo_lang_starknet::{
 };
 use cairo_native::context::NativeContext;
 use clap::Parser;
-use melior::ir::operation::OperationPrintingFlags;
+use melior::ir::operation::{OperationLike, OperationPrintingFlags};
 use std::{
     ffi::OsStr,
     fs,
