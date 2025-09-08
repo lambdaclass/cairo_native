@@ -7,10 +7,7 @@ use crate::{
     metadata::MetadataStorage,
     native_panic,
     types::TypeBuilder,
-    utils::{
-        block_ext::{BlockExt, LLVMCalleType},
-        ProgramRegistryExt,
-    },
+    utils::{operations_ext::llvm_call, ProgramRegistryExt},
 };
 use bumpalo::Bump;
 use cairo_lang_sierra::{
@@ -303,6 +300,11 @@ where
         cairo_lang_sierra::program::StatementIdx,
         (Value<'ctx, 'this>, Value<'ctx, 'this>),
     )>,
+}
+
+pub(crate) enum LLVMCalleType<'c, 'a> {
+    Symbol(&'a str),
+    FuncPtr(Value<'c, 'a>),
 }
 
 impl<'ctx, 'this> LibfuncHelper<'ctx, 'this>
@@ -721,7 +723,7 @@ pub fn build_mock_runtime_call<'c, 'a>(
 
     // Load the function pointer, and call the function
     let function_ptr = block.load(context, location, function_ptr_ptr, ptr_type)?;
-    let result = block.llvm_call(
+    let func_call = llvm_call(
         context,
         LLVMCalleType::FuncPtr(function_ptr),
         args,
@@ -730,5 +732,5 @@ pub fn build_mock_runtime_call<'c, 'a>(
         location,
     )?;
 
-    Ok(result)
+    Ok(block.append_op_result(func_call)?)
 }

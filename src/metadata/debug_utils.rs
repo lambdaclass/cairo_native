@@ -85,10 +85,8 @@
 
 use crate::{
     error::{Error, Result},
-    utils::{
-        block_ext::{BlockExt, LLVMCalleType},
-        get_integer_layout,
-    },
+    libfuncs::LLVMCalleType,
+    utils::{get_integer_layout, operations_ext::llvm_call},
 };
 use melior::{
     dialect::{
@@ -219,7 +217,7 @@ impl DebugUtils {
             DebugBinding::BreakpointMarker,
         )?;
 
-        block.llvm_call(
+        let func_call = llvm_call(
             context,
             LLVMCalleType::FuncPtr(function),
             &[],
@@ -227,6 +225,8 @@ impl DebugUtils {
             &[],
             location,
         )?;
+
+        block.append_operation(func_call);
 
         Ok(())
     }
@@ -293,7 +293,7 @@ impl DebugUtils {
             .result(0)?
             .into();
 
-        block.llvm_call(
+        let func_call = llvm_call(
             context,
             LLVMCalleType::FuncPtr(function),
             &[ptr, len],
@@ -301,6 +301,8 @@ impl DebugUtils {
             &[],
             location,
         )?;
+
+        block.append_operation(func_call);
 
         Ok(())
     }
@@ -316,7 +318,7 @@ impl DebugUtils {
         let function =
             self.build_function(context, module, block, location, DebugBinding::PrintPointer)?;
 
-        block.llvm_call(
+        let func_call = llvm_call(
             context,
             LLVMCalleType::FuncPtr(function),
             &[value],
@@ -324,6 +326,8 @@ impl DebugUtils {
             &[],
             location,
         )?;
+
+        block.append_operation(func_call);
 
         Ok(())
     }
@@ -339,7 +343,7 @@ impl DebugUtils {
         let function =
             self.build_function(context, module, block, location, DebugBinding::PrintI1)?;
 
-        block.llvm_call(
+        let func_call = llvm_call(
             context,
             LLVMCalleType::FuncPtr(function),
             &[value],
@@ -347,6 +351,8 @@ impl DebugUtils {
             &[],
             location,
         )?;
+
+        block.append_operation(func_call);
 
         Ok(())
     }
@@ -416,7 +422,7 @@ impl DebugUtils {
             .result(0)?
             .into();
 
-        block.llvm_call(
+        let func_call = llvm_call(
             context,
             LLVMCalleType::FuncPtr(function),
             &[l0, l1, l2, l3],
@@ -424,6 +430,8 @@ impl DebugUtils {
             &[],
             location,
         )?;
+
+        block.append_operation(func_call);
 
         Ok(())
     }
@@ -439,7 +447,7 @@ impl DebugUtils {
         let function =
             self.build_function(context, module, block, location, DebugBinding::PrintI8)?;
 
-        block.llvm_call(
+        let func_call = llvm_call(
             context,
             LLVMCalleType::FuncPtr(function),
             &[value],
@@ -447,6 +455,8 @@ impl DebugUtils {
             &[],
             location,
         )?;
+
+        block.append_operation(func_call);
 
         Ok(())
     }
@@ -462,7 +472,7 @@ impl DebugUtils {
         let function =
             self.build_function(context, module, block, location, DebugBinding::PrintI32)?;
 
-        block.llvm_call(
+        let func_call = llvm_call(
             context,
             LLVMCalleType::FuncPtr(function),
             &[value],
@@ -470,6 +480,8 @@ impl DebugUtils {
             &[],
             location,
         )?;
+
+        block.append_operation(func_call);
 
         Ok(())
     }
@@ -485,7 +497,7 @@ impl DebugUtils {
         let function =
             self.build_function(context, module, block, location, DebugBinding::PrintI64)?;
 
-        block.llvm_call(
+        let func_call = llvm_call(
             context,
             LLVMCalleType::FuncPtr(function),
             &[value],
@@ -493,6 +505,8 @@ impl DebugUtils {
             &[],
             location,
         )?;
+
+        block.append_operation(func_call);
 
         Ok(())
     }
@@ -531,7 +545,7 @@ impl DebugUtils {
             .result(0)?
             .into();
 
-        block.llvm_call(
+        let func_call = llvm_call(
             context,
             LLVMCalleType::FuncPtr(function),
             &[value_lo, value_hi],
@@ -539,6 +553,8 @@ impl DebugUtils {
             &[],
             location,
         )?;
+
+        block.append_operation(func_call);
 
         Ok(())
     }
@@ -565,7 +581,7 @@ impl DebugUtils {
 
         let len = block.const_int(context, location, len, 64)?;
 
-        block.llvm_call(
+        let func_call = llvm_call(
             context,
             LLVMCalleType::FuncPtr(function),
             &[ptr, len],
@@ -573,6 +589,8 @@ impl DebugUtils {
             &[],
             location,
         )?;
+
+        block.append_operation(func_call);
 
         Ok(())
     }

@@ -4,12 +4,10 @@ use super::LibfuncHelper;
 use crate::{
     error::{Error, Result},
     ffi::get_struct_field_type_at,
+    libfuncs::LLVMCalleType,
     metadata::{drop_overrides::DropOverridesMeta, MetadataStorage},
     starknet::handler::StarknetSyscallHandlerCallbacks,
-    utils::{
-        block_ext::{BlockExt, LLVMCalleType},
-        get_integer_layout, ProgramRegistryExt, PRIME,
-    },
+    utils::{get_integer_layout, operations_ext::llvm_call, ProgramRegistryExt, PRIME},
 };
 use cairo_lang_sierra::{
     extensions::{
@@ -286,7 +284,7 @@ pub fn build_call_contract<'ctx, 'this>(
     )?;
     let fn_ptr = entry.load(context, location, fn_ptr, llvm::r#type::pointer(context, 0))?;
 
-    entry.llvm_call(
+    entry.append_operation(llvm_call(
         context,
         LLVMCalleType::FuncPtr(fn_ptr),
         &[
@@ -300,7 +298,7 @@ pub fn build_call_contract<'ctx, 'this>(
         &[],
         &[],
         location,
-    )?;
+    )?);
 
     let result = entry.load(
         context,
@@ -568,7 +566,7 @@ pub fn build_storage_read<'ctx, 'this>(
     )?;
     let fn_ptr = entry.load(context, location, fn_ptr, llvm::r#type::pointer(context, 0))?;
 
-    entry.llvm_call(
+    entry.append_operation(llvm_call(
         context,
         LLVMCalleType::FuncPtr(fn_ptr),
         &[
@@ -581,7 +579,7 @@ pub fn build_storage_read<'ctx, 'this>(
         &[],
         &[],
         location,
-    )?;
+    )?);
 
     let result = entry.load(
         context,
@@ -736,7 +734,7 @@ pub fn build_storage_write<'ctx, 'this>(
     )?;
     let fn_ptr = entry.load(context, location, fn_ptr, llvm::r#type::pointer(context, 0))?;
 
-    entry.llvm_call(
+    entry.append_operation(llvm_call(
         context,
         LLVMCalleType::FuncPtr(fn_ptr),
         &[
@@ -750,7 +748,7 @@ pub fn build_storage_write<'ctx, 'this>(
         &[],
         &[],
         location,
-    )?;
+    )?);
 
     let result = entry.load(
         context,
@@ -1058,14 +1056,14 @@ pub fn build_emit_event<'ctx, 'this>(
     )?;
     let fn_ptr = entry.load(context, location, fn_ptr, llvm::r#type::pointer(context, 0))?;
 
-    entry.llvm_call(
+    entry.append_operation(llvm_call(
         context,
         LLVMCalleType::FuncPtr(fn_ptr),
         &[result_ptr, ptr, gas_builtin_ptr, keys_arg_ptr, data_arg_ptr],
         &[],
         &[],
         location,
-    )?;
+    )?);
 
     let result = entry.load(
         context,
@@ -1209,14 +1207,14 @@ pub fn build_get_block_hash<'ctx, 'this>(
     )?;
     let fn_ptr = entry.load(context, location, fn_ptr, llvm::r#type::pointer(context, 0))?;
 
-    entry.llvm_call(
+    entry.append_operation(llvm_call(
         context,
         LLVMCalleType::FuncPtr(fn_ptr),
         &[result_ptr, ptr, gas_builtin_ptr, entry.arg(2)?],
         &[],
         &[],
         location,
-    )?;
+    )?);
 
     let result = entry.load(
         context,
@@ -1354,14 +1352,14 @@ pub fn build_get_execution_info<'ctx, 'this>(
     )?;
     let fn_ptr = entry.load(context, location, fn_ptr, llvm::r#type::pointer(context, 0))?;
 
-    entry.llvm_call(
+    entry.append_operation(llvm_call(
         context,
         LLVMCalleType::FuncPtr(fn_ptr),
         &[result_ptr, ptr, gas_builtin_ptr],
         &[],
         &[],
         location,
-    )?;
+    )?);
 
     let result = entry.load(
         context,
@@ -1499,14 +1497,14 @@ pub fn build_get_execution_info_v2<'ctx, 'this>(
     )?;
     let fn_ptr = entry.load(context, location, fn_ptr, llvm::r#type::pointer(context, 0))?;
 
-    entry.llvm_call(
+    entry.append_operation(llvm_call(
         context,
         LLVMCalleType::FuncPtr(fn_ptr),
         &[result_ptr, ptr, gas_builtin_ptr],
         &[],
         &[],
         location,
-    )?;
+    )?);
 
     let result = entry.load(
         context,
@@ -1724,7 +1722,7 @@ pub fn build_deploy<'ctx, 'this>(
     )?;
     let fn_ptr = entry.load(context, location, fn_ptr, llvm::r#type::pointer(context, 0))?;
 
-    entry.llvm_call(
+    entry.append_operation(llvm_call(
         context,
         LLVMCalleType::FuncPtr(fn_ptr),
         &[
@@ -1748,7 +1746,7 @@ pub fn build_deploy<'ctx, 'this>(
         &[],
         &[],
         location,
-    )?;
+    )?);
 
     let result = entry.load(
         context,
@@ -1920,14 +1918,14 @@ pub fn build_keccak<'ctx, 'this>(
     )?;
     let fn_ptr = entry.load(context, location, fn_ptr, llvm::r#type::pointer(context, 0))?;
 
-    entry.llvm_call(
+    entry.append_operation(llvm_call(
         context,
         LLVMCalleType::FuncPtr(fn_ptr),
         &[result_ptr, ptr, gas_builtin_ptr, input_arg_ptr],
         &[],
         &[],
         location,
-    )?;
+    )?);
 
     let result = entry.load(
         context,
@@ -2099,7 +2097,7 @@ pub fn build_library_call<'ctx, 'this>(
     )?;
     let fn_ptr = entry.load(context, location, fn_ptr, llvm::r#type::pointer(context, 0))?;
 
-    entry.llvm_call(
+    entry.append_operation(llvm_call(
         context,
         LLVMCalleType::FuncPtr(fn_ptr),
         &[
@@ -2113,7 +2111,7 @@ pub fn build_library_call<'ctx, 'this>(
         &[],
         &[],
         location,
-    )?;
+    )?);
 
     let result = entry.load(
         context,
@@ -2316,7 +2314,7 @@ pub fn build_meta_tx_v0<'ctx, 'this>(
     )?;
     let fn_ptr = entry.load(context, location, fn_ptr, llvm::r#type::pointer(context, 0))?;
 
-    entry.llvm_call(
+    entry.append_operation(llvm_call(
         context,
         LLVMCalleType::FuncPtr(fn_ptr),
         &[
@@ -2331,7 +2329,7 @@ pub fn build_meta_tx_v0<'ctx, 'this>(
         &[],
         &[],
         location,
-    )?;
+    )?);
 
     let result = entry.load(
         context,
@@ -2484,14 +2482,14 @@ pub fn build_replace_class<'ctx, 'this>(
     )?;
     let fn_ptr = entry.load(context, location, fn_ptr, llvm::r#type::pointer(context, 0))?;
 
-    entry.llvm_call(
+    entry.append_operation(llvm_call(
         context,
         LLVMCalleType::FuncPtr(fn_ptr),
         &[result_ptr, ptr, gas_builtin_ptr, class_hash_arg_ptr],
         &[],
         &[],
         location,
-    )?;
+    )?);
 
     let result = entry.load(
         context,
@@ -2657,7 +2655,7 @@ pub fn build_send_message_to_l1<'ctx, 'this>(
     )?;
     let fn_ptr = entry.load(context, location, fn_ptr, llvm::r#type::pointer(context, 0))?;
 
-    entry.llvm_call(
+    entry.append_operation(llvm_call(
         context,
         LLVMCalleType::FuncPtr(fn_ptr),
         &[
@@ -2670,7 +2668,7 @@ pub fn build_send_message_to_l1<'ctx, 'this>(
         &[],
         &[],
         location,
-    )?;
+    )?);
 
     let result = entry.load(
         context,
@@ -2820,7 +2818,7 @@ pub fn build_sha256_process_block_syscall<'ctx, 'this>(
     )?;
     let fn_ptr = entry.load(context, location, fn_ptr, llvm::r#type::pointer(context, 0))?;
 
-    entry.llvm_call(
+    entry.append_operation(llvm_call(
         context,
         LLVMCalleType::FuncPtr(fn_ptr),
         &[
@@ -2833,7 +2831,7 @@ pub fn build_sha256_process_block_syscall<'ctx, 'this>(
         &[],
         &[],
         location,
-    )?;
+    )?);
 
     registry.build_type(
         context,
@@ -2973,14 +2971,14 @@ pub fn build_get_class_hash_at<'ctx, 'this>(
     )?;
     let fn_ptr = entry.load(context, location, fn_ptr, llvm::r#type::pointer(context, 0))?;
 
-    entry.llvm_call(
+    entry.append_operation(llvm_call(
         context,
         LLVMCalleType::FuncPtr(fn_ptr),
         &[result_ptr, ptr, gas_builtin_ptr, contract_address_ptr],
         &[],
         &[],
         location,
-    )?;
+    )?);
 
     let result = entry.load(
         context,

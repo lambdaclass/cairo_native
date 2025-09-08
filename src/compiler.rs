@@ -48,7 +48,7 @@ use crate::{
     clone_option_mut,
     debug::libfunc_to_name,
     error::{panic::ToNativeAssertError, Error},
-    libfuncs::{BranchArg, LibfuncBuilder, LibfuncHelper},
+    libfuncs::{BranchArg, LLVMCalleType, LibfuncBuilder, LibfuncHelper},
     metadata::{
         gas::{GasCost, GasMetadata},
         tail_recursion::TailRecursionMeta,
@@ -57,11 +57,7 @@ use crate::{
     native_assert, native_panic,
     statistics::Statistics,
     types::TypeBuilder,
-    utils::{
-        block_ext::{BlockExt, LLVMCalleType},
-        generate_function_name,
-        walk_ir::walk_mlir_block,
-    },
+    utils::{generate_function_name, operations_ext::llvm_call, walk_ir::walk_mlir_block},
 };
 use bumpalo::Bump;
 use cairo_lang_sierra::{
@@ -1424,7 +1420,7 @@ fn generate_entry_point_wrapper<'c>(
         args.push(block.argument(i)?.into());
     }
 
-    let result = block.llvm_call(
+    let func_call = llvm_call(
         context,
         LLVMCalleType::Symbol(private_symbol),
         &args,
@@ -1435,6 +1431,8 @@ fn generate_entry_point_wrapper<'c>(
         &[llvm::r#type::r#struct(context, ret_types, false)],
         location,
     )?;
+
+    let result = block.append_op_result(func_call)?;
 
     let mut returns = Vec::with_capacity(ret_types.len());
     for (i, ty) in ret_types.iter().enumerate() {

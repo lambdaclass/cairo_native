@@ -2,7 +2,8 @@
 
 use crate::{
     error::{Error, Result},
-    utils::block_ext::{BlockExt, LLVMCalleType},
+    libfuncs::LLVMCalleType,
+    utils::operations_ext::llvm_call,
 };
 use cairo_lang_sierra::{
     ids::{ConcreteTypeId, VarId},
@@ -116,7 +117,7 @@ impl TraceDumpMeta {
         let function =
             self.build_function(context, module, block, location, TraceBinding::State)?;
 
-        block.llvm_call(
+        let func_call = llvm_call(
             context,
             LLVMCalleType::FuncPtr(function),
             &[trace_id, var_id, value_ty, value_ptr],
@@ -124,6 +125,8 @@ impl TraceDumpMeta {
             &[],
             location,
         )?;
+
+        block.append_operation(func_call);
 
         Ok(())
     }
@@ -141,7 +144,7 @@ impl TraceDumpMeta {
 
         let function = self.build_function(context, module, block, location, TraceBinding::Push)?;
 
-        block.llvm_call(
+        let func_call = llvm_call(
             context,
             LLVMCalleType::FuncPtr(function),
             &[trace_id, statement_idx],
@@ -149,6 +152,8 @@ impl TraceDumpMeta {
             &[],
             location,
         )?;
+
+        block.append_operation(func_call);
 
         Ok(())
     }

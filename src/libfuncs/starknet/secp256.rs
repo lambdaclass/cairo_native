@@ -1,12 +1,9 @@
 use crate::{
     error::Result,
-    libfuncs::LibfuncHelper,
+    libfuncs::{LLVMCalleType, LibfuncHelper},
     metadata::MetadataStorage,
     starknet::handler::StarknetSyscallHandlerCallbacks,
-    utils::{
-        block_ext::{BlockExt, LLVMCalleType},
-        get_integer_layout, ProgramRegistryExt,
-    },
+    utils::{get_integer_layout, operations_ext::llvm_call, ProgramRegistryExt},
 };
 use cairo_lang_sierra::{
     extensions::{
@@ -205,14 +202,14 @@ pub fn build_k1_new<'ctx, 'this>(
         .result(0)?
         .into();
 
-    entry.llvm_call(
+    entry.append_operation(llvm_call(
         context,
         LLVMCalleType::FuncPtr(fn_ptr),
         &[result_ptr, ptr, gas_builtin_ptr, x_arg_ptr, y_arg_ptr],
         &[],
         &[],
         location,
-    )?;
+    )?);
 
     let result = entry.load(
         context,
@@ -411,14 +408,14 @@ pub fn build_k1_add<'ctx, 'this>(
         .result(0)?
         .into();
 
-    entry.llvm_call(
+    entry.append_operation(llvm_call(
         context,
         LLVMCalleType::FuncPtr(fn_ptr),
         &[result_ptr, ptr, gas_builtin_ptr, p0_arg_ptr, p1_arg_ptr],
         &[],
         &[],
         location,
-    )?;
+    )?);
 
     let result = entry.load(
         context,
@@ -617,14 +614,14 @@ pub fn build_k1_mul<'ctx, 'this>(
         .result(0)?
         .into();
 
-    entry.llvm_call(
+    entry.append_operation(llvm_call(
         context,
         LLVMCalleType::FuncPtr(fn_ptr),
         &[result_ptr, ptr, gas_builtin_ptr, p_arg_ptr, scalar_arg_ptr],
         &[],
         &[],
         location,
-    )?;
+    )?);
 
     let result = entry.load(
         context,
@@ -818,7 +815,7 @@ pub fn build_k1_get_point_from_x<'ctx, 'this>(
         .result(0)?
         .into();
 
-    entry.llvm_call(
+    entry.append_operation(llvm_call(
         context,
         LLVMCalleType::FuncPtr(fn_ptr),
         &[
@@ -831,7 +828,7 @@ pub fn build_k1_get_point_from_x<'ctx, 'this>(
         &[],
         &[],
         location,
-    )?;
+    )?);
 
     let result = entry.load(
         context,
@@ -1040,14 +1037,14 @@ pub fn build_k1_get_xy<'ctx, 'this>(
         .result(0)?
         .into();
 
-    entry.llvm_call(
+    entry.append_operation(llvm_call(
         context,
         LLVMCalleType::FuncPtr(fn_ptr),
         &[result_ptr, ptr, gas_builtin_ptr, p_arg_ptr],
         &[],
         &[],
         location,
-    )?;
+    )?);
 
     let result = entry.load(
         context,
@@ -1282,14 +1279,14 @@ pub fn build_r1_new<'ctx, 'this>(
         .result(0)?
         .into();
 
-    entry.llvm_call(
+    entry.append_operation(llvm_call(
         context,
         LLVMCalleType::FuncPtr(fn_ptr),
         &[result_ptr, ptr, gas_builtin_ptr, x_arg_ptr, y_arg_ptr],
         &[],
         &[],
         location,
-    )?;
+    )?);
 
     let result = entry.load(
         context,
@@ -1489,14 +1486,14 @@ pub fn build_r1_add<'ctx, 'this>(
         .result(0)?
         .into();
 
-    entry.llvm_call(
+    entry.append_operation(llvm_call(
         context,
         LLVMCalleType::FuncPtr(fn_ptr),
         &[result_ptr, ptr, gas_builtin_ptr, p0_arg_ptr, p1_arg_ptr],
         &[],
         &[],
         location,
-    )?;
+    )?);
 
     let result = entry.load(
         context,
@@ -1698,14 +1695,14 @@ pub fn build_r1_mul<'ctx, 'this>(
         .result(0)?
         .into();
 
-    entry.llvm_call(
+    entry.append_operation(llvm_call(
         context,
         LLVMCalleType::FuncPtr(fn_ptr),
         &[result_ptr, ptr, gas_builtin_ptr, p_arg_ptr, scalar_arg_ptr],
         &[],
         &[],
         location,
-    )?;
+    )?);
 
     let result = entry.load(
         context,
@@ -1902,7 +1899,7 @@ pub fn build_r1_get_point_from_x<'ctx, 'this>(
         .result(0)?
         .into();
 
-    entry.llvm_call(
+    entry.append_operation(llvm_call(
         context,
         LLVMCalleType::FuncPtr(fn_ptr),
         &[
@@ -1915,7 +1912,7 @@ pub fn build_r1_get_point_from_x<'ctx, 'this>(
         &[],
         &[],
         location,
-    )?;
+    )?);
 
     let result = entry.load(
         context,
@@ -2125,14 +2122,14 @@ pub fn build_r1_get_xy<'ctx, 'this>(
         .result(0)?
         .into();
 
-    entry.llvm_call(
+    entry.append_operation(llvm_call(
         context,
         LLVMCalleType::FuncPtr(fn_ptr),
         &[result_ptr, ptr, gas_builtin_ptr, p_arg_ptr],
         &[],
         &[],
         location,
-    )?;
+    )?);
 
     let result = entry.load(
         context,

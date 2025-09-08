@@ -6,13 +6,11 @@
 use super::LibfuncHelper;
 use crate::{
     error::{Error, Result},
+    libfuncs::LLVMCalleType,
     metadata::{tail_recursion::TailRecursionMeta, MetadataStorage},
     native_assert,
     types::TypeBuilder,
-    utils::{
-        block_ext::{BlockExt, LLVMCalleType},
-        generate_function_name,
-    },
+    utils::{generate_function_name, operations_ext::llvm_call},
 };
 use cairo_lang_sierra::{
     extensions::{
@@ -186,8 +184,9 @@ pub fn build<'ctx, 'this>(
         } else {
             None
         };
+
         let function_sym = format!("impl${}", generate_function_name(&info.function.id, false));
-        let function_call_result = entry.llvm_call(
+        let func_call = llvm_call(
             context,
             LLVMCalleType::Symbol(&function_sym),
             &arguments,
@@ -199,6 +198,7 @@ pub fn build<'ctx, 'this>(
             &[llvm::r#type::r#struct(context, &result_types, false)],
             location,
         )?;
+        let function_call_result = entry.append_op_result(func_call)?;
 
         let mut results = Vec::new();
         match has_return_ptr {
