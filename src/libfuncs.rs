@@ -7,7 +7,10 @@ use crate::{
     metadata::MetadataStorage,
     native_panic,
     types::TypeBuilder,
-    utils::{operations_ext::{llvm_call, LLVMCalleType}, ProgramRegistryExt},
+    utils::{
+        operations_ext::{llvm_call, LLVMCalleType},
+        ProgramRegistryExt,
+    },
 };
 use bumpalo::Bump;
 use cairo_lang_sierra::{

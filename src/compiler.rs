@@ -57,7 +57,11 @@ use crate::{
     native_assert, native_panic,
     statistics::Statistics,
     types::TypeBuilder,
-    utils::{generate_function_name, operations_ext::{llvm_call, LLVMCalleType}, walk_ir::walk_mlir_block},
+    utils::{
+        generate_function_name,
+        operations_ext::{llvm_call, LLVMCalleType},
+        walk_ir::walk_mlir_block,
+    },
 };
 use bumpalo::Bump;
 use cairo_lang_sierra::{
@@ -360,9 +364,9 @@ fn compile_func(
                 0x8, // dwarf subprogram flag: definition
                 ty,
                 0,
-                std::ptr::null(),
+                std::ptr::null(), // subprogram's retained nodes, we don't need any
                 0,
-                std::ptr::null(),
+                std::ptr::null(), // subprogram's annotations, we don't need any
             )
         })
     };

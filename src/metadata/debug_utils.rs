@@ -85,7 +85,10 @@
 
 use crate::{
     error::{Error, Result},
-    utils::{get_integer_layout, operations_ext::{llvm_call, LLVMCalleType}},
+    utils::{
+        get_integer_layout,
+        operations_ext::{llvm_call, LLVMCalleType},
+    },
 };
 use melior::{
     dialect::{
