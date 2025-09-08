@@ -1,7 +1,7 @@
 use anyhow::Context;
 use cairo_lang_sierra::program::VersionedProgram;
 use cairo_native::context::NativeContext;
-use melior::ir::operation::OperationPrintingFlags;
+use melior::ir::operation::{OperationLike, OperationPrintingFlags};
 use scarb_metadata::{MetadataCommand, ScarbCommand};
 use std::{env, fs};
 
