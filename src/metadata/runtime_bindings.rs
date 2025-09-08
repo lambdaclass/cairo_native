@@ -811,7 +811,7 @@ fn build_egcd_function<'ctx>(
     let quotient =
         loop_block.append_op_result(arith::divui(prev_remainder, remainder, location))?;
 
-    // Then r_(i+1) = r_(i-1) - q * r_i, and inv_(i+1) = inv_(i-1) - q * inv_i
+    // Then rem_(i+1) = rem_(i-1) - q * rem_i, and inv_(i+1) = inv_(i-1) - q * inv_i
     let rem_times_quo = loop_block.muli(remainder, quotient, location)?;
     let inv_times_quo = loop_block.muli(inverse, quotient, location)?;
     let next_remainder =
@@ -819,9 +819,9 @@ fn build_egcd_function<'ctx>(
     let next_inverse =
         loop_block.append_op_result(arith::subi(prev_inverse, inv_times_quo, location))?;
 
-    // Check if r_(i+1) is 0
+    // Check if rem_(i+1) is 0
     // If true, then:
-    // - r_i is the gcd of a and b
+    // - rem_i is the gcd of a and b
     // - inv_i is the bezout coefficient x
     let zero = loop_block.const_int_from_type(context, location, 0, integer_type)?;
     let next_remainder_eq_zero =
