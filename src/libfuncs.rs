@@ -7,7 +7,7 @@ use crate::{
     metadata::MetadataStorage,
     native_panic,
     types::TypeBuilder,
-    utils::{operations_ext::llvm_call, ProgramRegistryExt},
+    utils::{operations_ext::{llvm_call, LLVMCalleType}, ProgramRegistryExt},
 };
 use bumpalo::Bump;
 use cairo_lang_sierra::{
@@ -300,11 +300,6 @@ where
         cairo_lang_sierra::program::StatementIdx,
         (Value<'ctx, 'this>, Value<'ctx, 'this>),
     )>,
-}
-
-pub(crate) enum LLVMCalleType<'c, 'a> {
-    Symbol(&'a str),
-    FuncPtr(Value<'c, 'a>),
 }
 
 impl<'ctx, 'this> LibfuncHelper<'ctx, 'this>

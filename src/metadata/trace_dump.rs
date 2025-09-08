@@ -2,8 +2,7 @@
 
 use crate::{
     error::{Error, Result},
-    libfuncs::LLVMCalleType,
-    utils::operations_ext::llvm_call,
+    utils::operations_ext::{llvm_call, LLVMCalleType},
 };
 use cairo_lang_sierra::{
     ids::{ConcreteTypeId, VarId},

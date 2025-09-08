@@ -48,7 +48,7 @@ use crate::{
     clone_option_mut,
     debug::libfunc_to_name,
     error::{panic::ToNativeAssertError, Error},
-    libfuncs::{BranchArg, LLVMCalleType, LibfuncBuilder, LibfuncHelper},
+    libfuncs::{BranchArg, LibfuncBuilder, LibfuncHelper},
     metadata::{
         gas::{GasCost, GasMetadata},
         tail_recursion::TailRecursionMeta,
@@ -57,7 +57,7 @@ use crate::{
     native_assert, native_panic,
     statistics::Statistics,
     types::TypeBuilder,
-    utils::{generate_function_name, operations_ext::llvm_call, walk_ir::walk_mlir_block},
+    utils::{generate_function_name, operations_ext::{llvm_call, LLVMCalleType}, walk_ir::walk_mlir_block},
 };
 use bumpalo::Bump;
 use cairo_lang_sierra::{

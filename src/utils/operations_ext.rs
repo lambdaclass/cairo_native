@@ -7,7 +7,12 @@ use melior::{
     Context,
 };
 
-use crate::{error::Result, libfuncs::LLVMCalleType};
+use crate::error::Result;
+
+pub(crate) enum LLVMCalleType<'c, 'a> {
+    Symbol(&'a str),
+    FuncPtr(Value<'c, 'a>),
+}
 
 /// Helper function to perform an `llvm.call` operation.
 ///

@@ -54,6 +54,7 @@ use lambdaworks_math::{
     },
     unsigned_integer::element::UnsignedInteger,
 };
+use melior::ir::operation::OperationLike;
 use num_bigint::{BigInt, BigUint, Sign};
 use pretty_assertions_sorted::assert_eq_sorted;
 use proptest::{strategy::Strategy, test_runner::TestCaseError};
