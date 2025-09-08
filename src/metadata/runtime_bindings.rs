@@ -779,7 +779,7 @@ fn build_egcd_function<'ctx>(
     let prev_remainder = b;
 
     // Similarly we'll calculate another series which starts 0,1,... and from which we
-    // will retrieve themodular inverse of a
+    // will retrieve the modular inverse of a
     let prev_inverse = entry_block.const_int_from_type(context, location, 0, integer_type)?;
     let inverse = entry_block.const_int_from_type(context, location, 1, integer_type)?;
 
