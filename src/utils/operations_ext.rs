@@ -9,7 +9,7 @@ use melior::{
 
 use crate::error::Result;
 
-pub(crate) enum LLVMCalleType<'c, 'a> {
+pub enum LLVMCalleType<'c, 'a> {
     Symbol(&'a str),
     FuncPtr(Value<'c, 'a>),
 }
@@ -27,7 +27,7 @@ pub(crate) enum LLVMCalleType<'c, 'a> {
 ///
 /// If the call was to be performed with the function pointer, the latter should not be included in `args`
 /// as part of the call operands since that is already handled by the function itself.
-pub(crate) fn llvm_call<'c, 'a>(
+pub fn llvm_call<'c, 'a>(
     context: &'c Context,
     calle_type: LLVMCalleType<'c, 'a>,
     args: &[Value<'c, 'a>],
