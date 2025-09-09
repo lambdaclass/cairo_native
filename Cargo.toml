@@ -20,9 +20,6 @@ repository.workspace = true
 resolver = "2"
 
 [features]
-default = []
-build-cli = []
-scarb = []
 with-cheatcode = []
 with-debug-utils = []
 with-mem-tracing = []
@@ -71,11 +68,6 @@ cairo-lang-starknet.workspace = true
 cairo-lang-utils.workspace = true
 cairo-lang-starknet-classes.workspace = true
 libloading.workspace = true
-tracing-subscriber = { version = "0.3.19", features = [
-    "env-filter",
-    "json",
-    "registry",
-], optional = true }
 serde = { workspace = true, features = ["derive"] }
 # needed to interface with cairo-lang-*
 keccak = "0.1.5"
@@ -104,6 +96,7 @@ test-case = "3.3"
 walkdir = "2.5.0"
 serde_json = { version = "1.0.128" }
 rayon = "1.10.0"
+tracing-subscriber = { version = "0.3.19", features = ["env-filter", "json", "registry"] }
 
 [profile.optimized-dev]
 inherits = "dev"
