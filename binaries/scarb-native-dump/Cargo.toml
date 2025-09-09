@@ -9,4 +9,3 @@ cairo-native.workspace = true
 melior.workspace = true
 scarb-metadata.workspace = true
 serde_json.workspace = true
-serde.workspace = true

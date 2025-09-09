@@ -9,4 +9,3 @@ cairo-lang-starknet-classes.workspace = true
 cairo-native = { workspace = true }
 clap = { workspace = true, features = ["derive"] }
 serde_json.workspace = true
-serde.workspace = true

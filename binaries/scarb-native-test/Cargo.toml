@@ -11,4 +11,3 @@ clap = { workspace = true, features = ["derive"] }
 scarb-metadata.workspace = true
 scarb-ui.workspace = true
 serde_json.workspace = true
-serde.workspace = true
