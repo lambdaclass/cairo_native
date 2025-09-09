@@ -1,0 +1,21 @@
+[package]
+name = "cairo-native-run"
+edition.workspace = true
+
+[features]
+with-libfunc-profiling = []
+with-trace-dump = []
+
+[dependencies]
+anyhow.workspace = true
+cairo-lang-compiler.workspace = true
+cairo-lang-runner.workspace = true
+cairo-lang-sierra-to-casm.workspace = true
+cairo-lang-sierra.workspace = true
+cairo-native = { workspace = true, features = ["with-libfunc-profiling", "with-trace-dump"]}
+cairo-native-bin-utils.workspace = true
+clap = { workspace = true, features = ["derive"] }
+serde_json.workspace = true
+serde.workspace = true
+tracing-subscriber.workspace = true
+tracing.workspace = true

@@ -1,0 +1,12 @@
+[package]
+name = "starknet-native-compile"
+edition.workspace = true
+
+[dependencies]
+anyhow.workspace = true
+cairo-lang-sierra.workspace = true
+cairo-lang-starknet-classes.workspace = true
+cairo-native = { workspace = true }
+clap = { workspace = true, features = ["derive"] }
+serde_json.workspace = true
+serde.workspace = true
