@@ -136,7 +136,7 @@ rand = "0.9.0"
 starknet-curve.workspace = true
 
 [dev-dependencies]
-cairo-vm = { git = "https://github.com/lambdaclass/cairo-vm", rev = "368e3fb311601a33ff8945e784eaa332f1fd499a", features = ["cairo-1-hints"] }
+cairo-vm = { git = "https://github.com/lambdaclass/cairo-vm", rev = "742e9ae3de8b55f4a5dc44831f06068712f2f0c5", features = ["cairo-1-hints"] }
 cairo-lang-semantic = { workspace = true, features = ["testing"] }
 cairo-lang-sierra-generator.workspace = true
 criterion = { version = "0.5.1", features = ["html_reports"] }
