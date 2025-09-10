@@ -33,7 +33,7 @@ jobs:
           repository: lambdaclass/starknet-replay
           path: starknet-replay
           # https://github.com/lambdaclass/starknet-replay/pull/190
-          ref: 0dae27d107bf6822bae779a68f9bd2ee980c2d27
+          ref: 3ac3ed9cb574f974705a0b3ae2b720cd94616216
       # We need native to use the linux deps ci action
       - name: Checkout Native
         uses: actions/checkout@v4
