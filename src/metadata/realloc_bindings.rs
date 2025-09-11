@@ -6,7 +6,9 @@
 use melior::{
     dialect::llvm,
     ir::{
-        attribute::{FlatSymbolRefAttribute, StringAttribute, TypeAttribute},
+        attribute::{
+            DenseI32ArrayAttribute, FlatSymbolRefAttribute, StringAttribute, TypeAttribute,
+        },
         operation::OperationBuilder,
         r#type::IntegerType,
         BlockLike, Identifier, Location, Module, Operation, Region, Value,
@@ -66,11 +68,21 @@ impl ReallocBindingsMeta {
         location: Location<'c>,
     ) -> Result<Operation<'c>, Error> {
         OperationBuilder::new("llvm.call", location)
-            .add_attributes(&[(
-                Identifier::new(context, "callee"),
-                FlatSymbolRefAttribute::new(context, "realloc").into(),
-            )])
             .add_operands(&[ptr, len])
+            .add_attributes(&[
+                (
+                    Identifier::new(context, "callee"),
+                    FlatSymbolRefAttribute::new(context, "realloc").into(),
+                ),
+                (
+                    Identifier::new(context, "operandSegmentSizes"),
+                    DenseI32ArrayAttribute::new(context, &[2, 0]).into(),
+                ),
+                (
+                    Identifier::new(context, "op_bundle_sizes"),
+                    DenseI32ArrayAttribute::new(context, &[]).into(),
+                ),
+            ])
             .add_results(&[llvm::r#type::pointer(context, 0)])
             .build()
     }
@@ -82,11 +94,22 @@ impl ReallocBindingsMeta {
         location: Location<'c>,
     ) -> Result<Operation<'c>, Error> {
         OperationBuilder::new("llvm.call", location)
-            .add_attributes(&[(
-                Identifier::new(context, "callee"),
-                FlatSymbolRefAttribute::new(context, "free").into(),
-            )])
             .add_operands(&[ptr])
+            .add_operands(&[])
+            .add_attributes(&[
+                (
+                    Identifier::new(context, "callee"),
+                    FlatSymbolRefAttribute::new(context, "free").into(),
+                ),
+                (
+                    Identifier::new(context, "operandSegmentSizes"),
+                    DenseI32ArrayAttribute::new(context, &[1, 0]).into(),
+                ),
+                (
+                    Identifier::new(context, "op_bundle_sizes"),
+                    DenseI32ArrayAttribute::new(context, &[]).into(),
+                ),
+            ])
             .build()
     }
 }

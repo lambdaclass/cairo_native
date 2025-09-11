@@ -85,7 +85,10 @@
 
 use crate::{
     error::{Error, Result},
-    utils::get_integer_layout,
+    utils::{
+        get_integer_layout,
+        operations_ext::{llvm_call, LLVMCalleType},
+    },
 };
 use melior::{
     dialect::{
@@ -216,11 +219,16 @@ impl DebugUtils {
             DebugBinding::BreakpointMarker,
         )?;
 
-        block.append_operation(
-            OperationBuilder::new("llvm.call", location)
-                .add_operands(&[function])
-                .build()?,
-        );
+        let func_call = llvm_call(
+            context,
+            LLVMCalleType::FuncPtr(function),
+            &[],
+            &[],
+            &[],
+            location,
+        )?;
+
+        block.append_operation(func_call);
 
         Ok(())
     }
@@ -287,12 +295,16 @@ impl DebugUtils {
             .result(0)?
             .into();
 
-        block.append_operation(
-            OperationBuilder::new("llvm.call", location)
-                .add_operands(&[function])
-                .add_operands(&[ptr, len])
-                .build()?,
-        );
+        let func_call = llvm_call(
+            context,
+            LLVMCalleType::FuncPtr(function),
+            &[ptr, len],
+            &[],
+            &[],
+            location,
+        )?;
+
+        block.append_operation(func_call);
 
         Ok(())
     }
@@ -308,12 +320,16 @@ impl DebugUtils {
         let function =
             self.build_function(context, module, block, location, DebugBinding::PrintPointer)?;
 
-        block.append_operation(
-            OperationBuilder::new("llvm.call", location)
-                .add_operands(&[function])
-                .add_operands(&[value])
-                .build()?,
-        );
+        let func_call = llvm_call(
+            context,
+            LLVMCalleType::FuncPtr(function),
+            &[value],
+            &[],
+            &[],
+            location,
+        )?;
+
+        block.append_operation(func_call);
 
         Ok(())
     }
@@ -329,12 +345,16 @@ impl DebugUtils {
         let function =
             self.build_function(context, module, block, location, DebugBinding::PrintI1)?;
 
-        block.append_operation(
-            OperationBuilder::new("llvm.call", location)
-                .add_operands(&[function])
-                .add_operands(&[value])
-                .build()?,
-        );
+        let func_call = llvm_call(
+            context,
+            LLVMCalleType::FuncPtr(function),
+            &[value],
+            &[],
+            &[],
+            location,
+        )?;
+
+        block.append_operation(func_call);
 
         Ok(())
     }
@@ -404,12 +424,16 @@ impl DebugUtils {
             .result(0)?
             .into();
 
-        block.append_operation(
-            OperationBuilder::new("llvm.call", location)
-                .add_operands(&[function])
-                .add_operands(&[l0, l1, l2, l3])
-                .build()?,
-        );
+        let func_call = llvm_call(
+            context,
+            LLVMCalleType::FuncPtr(function),
+            &[l0, l1, l2, l3],
+            &[],
+            &[],
+            location,
+        )?;
+
+        block.append_operation(func_call);
 
         Ok(())
     }
@@ -425,12 +449,16 @@ impl DebugUtils {
         let function =
             self.build_function(context, module, block, location, DebugBinding::PrintI8)?;
 
-        block.append_operation(
-            OperationBuilder::new("llvm.call", location)
-                .add_operands(&[function])
-                .add_operands(&[value])
-                .build()?,
-        );
+        let func_call = llvm_call(
+            context,
+            LLVMCalleType::FuncPtr(function),
+            &[value],
+            &[],
+            &[],
+            location,
+        )?;
+
+        block.append_operation(func_call);
 
         Ok(())
     }
@@ -446,12 +474,16 @@ impl DebugUtils {
         let function =
             self.build_function(context, module, block, location, DebugBinding::PrintI32)?;
 
-        block.append_operation(
-            OperationBuilder::new("llvm.call", location)
-                .add_operands(&[function])
-                .add_operands(&[value])
-                .build()?,
-        );
+        let func_call = llvm_call(
+            context,
+            LLVMCalleType::FuncPtr(function),
+            &[value],
+            &[],
+            &[],
+            location,
+        )?;
+
+        block.append_operation(func_call);
 
         Ok(())
     }
@@ -467,12 +499,16 @@ impl DebugUtils {
         let function =
             self.build_function(context, module, block, location, DebugBinding::PrintI64)?;
 
-        block.append_operation(
-            OperationBuilder::new("llvm.call", location)
-                .add_operands(&[function])
-                .add_operands(&[value])
-                .build()?,
-        );
+        let func_call = llvm_call(
+            context,
+            LLVMCalleType::FuncPtr(function),
+            &[value],
+            &[],
+            &[],
+            location,
+        )?;
+
+        block.append_operation(func_call);
 
         Ok(())
     }
@@ -511,12 +547,16 @@ impl DebugUtils {
             .result(0)?
             .into();
 
-        block.append_operation(
-            OperationBuilder::new("llvm.call", location)
-                .add_operands(&[function])
-                .add_operands(&[value_lo, value_hi])
-                .build()?,
-        );
+        let func_call = llvm_call(
+            context,
+            LLVMCalleType::FuncPtr(function),
+            &[value_lo, value_hi],
+            &[],
+            &[],
+            location,
+        )?;
+
+        block.append_operation(func_call);
 
         Ok(())
     }
@@ -543,12 +583,16 @@ impl DebugUtils {
 
         let len = block.const_int(context, location, len, 64)?;
 
-        block.append_operation(
-            OperationBuilder::new("llvm.call", location)
-                .add_operands(&[function])
-                .add_operands(&[ptr, len])
-                .build()?,
-        );
+        let func_call = llvm_call(
+            context,
+            LLVMCalleType::FuncPtr(function),
+            &[ptr, len],
+            &[],
+            &[],
+            location,
+        )?;
+
+        block.append_operation(func_call);
 
         Ok(())
     }

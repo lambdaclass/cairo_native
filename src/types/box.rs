@@ -34,7 +34,7 @@ use melior::{
     helpers::{ArithBlockExt, BuiltinBlockExt, LlvmBlockExt},
     ir::{
         attribute::IntegerAttribute, r#type::IntegerType, Block, BlockLike, Location, Module,
-        Region, Type,
+        Region, RegionLike, Type,
     },
     Context,
 };

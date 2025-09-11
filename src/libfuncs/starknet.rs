@@ -4,9 +4,10 @@ use super::LibfuncHelper;
 use crate::{
     error::{Error, Result},
     ffi::get_struct_field_type_at,
+    libfuncs::LLVMCalleType,
     metadata::{drop_overrides::DropOverridesMeta, MetadataStorage},
     starknet::handler::StarknetSyscallHandlerCallbacks,
-    utils::{get_integer_layout, ProgramRegistryExt, PRIME},
+    utils::{get_integer_layout, operations_ext::llvm_call, ProgramRegistryExt, PRIME},
 };
 use cairo_lang_sierra::{
     extensions::{
@@ -25,8 +26,8 @@ use melior::{
     },
     helpers::{ArithBlockExt, BuiltinBlockExt, GepIndex, LlvmBlockExt},
     ir::{
-        attribute::DenseI64ArrayAttribute, operation::OperationBuilder, r#type::IntegerType,
-        Attribute, Block, BlockLike, Location, Type, ValueLike,
+        attribute::DenseI64ArrayAttribute, r#type::IntegerType, Attribute, Block, BlockLike,
+        Location, Type, ValueLike,
     },
     Context,
 };
@@ -283,19 +284,21 @@ pub fn build_call_contract<'ctx, 'this>(
     )?;
     let fn_ptr = entry.load(context, location, fn_ptr, llvm::r#type::pointer(context, 0))?;
 
-    entry.append_operation(
-        OperationBuilder::new("llvm.call", location)
-            .add_operands(&[
-                fn_ptr,
-                result_ptr,
-                ptr,
-                gas_builtin_ptr,
-                address_arg_ptr,
-                entry_point_selector_arg_ptr,
-                calldata_arg_ptr,
-            ])
-            .build()?,
-    );
+    entry.append_operation(llvm_call(
+        context,
+        LLVMCalleType::FuncPtr(fn_ptr),
+        &[
+            result_ptr,
+            ptr,
+            gas_builtin_ptr,
+            address_arg_ptr,
+            entry_point_selector_arg_ptr,
+            calldata_arg_ptr,
+        ],
+        &[],
+        &[],
+        location,
+    )?);
 
     let result = entry.load(
         context,
@@ -563,18 +566,20 @@ pub fn build_storage_read<'ctx, 'this>(
     )?;
     let fn_ptr = entry.load(context, location, fn_ptr, llvm::r#type::pointer(context, 0))?;
 
-    entry.append_operation(
-        OperationBuilder::new("llvm.call", location)
-            .add_operands(&[
-                fn_ptr,
-                result_ptr,
-                ptr,
-                gas_builtin_ptr,
-                entry.arg(2)?,
-                address_arg_ptr,
-            ])
-            .build()?,
-    );
+    entry.append_operation(llvm_call(
+        context,
+        LLVMCalleType::FuncPtr(fn_ptr),
+        &[
+            result_ptr,
+            ptr,
+            gas_builtin_ptr,
+            entry.arg(2)?,
+            address_arg_ptr,
+        ],
+        &[],
+        &[],
+        location,
+    )?);
 
     let result = entry.load(
         context,
@@ -729,19 +734,21 @@ pub fn build_storage_write<'ctx, 'this>(
     )?;
     let fn_ptr = entry.load(context, location, fn_ptr, llvm::r#type::pointer(context, 0))?;
 
-    entry.append_operation(
-        OperationBuilder::new("llvm.call", location)
-            .add_operands(&[
-                fn_ptr,
-                result_ptr,
-                ptr,
-                gas_builtin_ptr,
-                entry.arg(2)?,
-                address_arg_ptr,
-                value_arg_ptr,
-            ])
-            .build()?,
-    );
+    entry.append_operation(llvm_call(
+        context,
+        LLVMCalleType::FuncPtr(fn_ptr),
+        &[
+            result_ptr,
+            ptr,
+            gas_builtin_ptr,
+            entry.arg(2)?,
+            address_arg_ptr,
+            value_arg_ptr,
+        ],
+        &[],
+        &[],
+        location,
+    )?);
 
     let result = entry.load(
         context,
@@ -1049,18 +1056,14 @@ pub fn build_emit_event<'ctx, 'this>(
     )?;
     let fn_ptr = entry.load(context, location, fn_ptr, llvm::r#type::pointer(context, 0))?;
 
-    entry.append_operation(
-        OperationBuilder::new("llvm.call", location)
-            .add_operands(&[
-                fn_ptr,
-                result_ptr,
-                ptr,
-                gas_builtin_ptr,
-                keys_arg_ptr,
-                data_arg_ptr,
-            ])
-            .build()?,
-    );
+    entry.append_operation(llvm_call(
+        context,
+        LLVMCalleType::FuncPtr(fn_ptr),
+        &[result_ptr, ptr, gas_builtin_ptr, keys_arg_ptr, data_arg_ptr],
+        &[],
+        &[],
+        location,
+    )?);
 
     let result = entry.load(
         context,
@@ -1204,11 +1207,14 @@ pub fn build_get_block_hash<'ctx, 'this>(
     )?;
     let fn_ptr = entry.load(context, location, fn_ptr, llvm::r#type::pointer(context, 0))?;
 
-    entry.append_operation(
-        OperationBuilder::new("llvm.call", location)
-            .add_operands(&[fn_ptr, result_ptr, ptr, gas_builtin_ptr, entry.arg(2)?])
-            .build()?,
-    );
+    entry.append_operation(llvm_call(
+        context,
+        LLVMCalleType::FuncPtr(fn_ptr),
+        &[result_ptr, ptr, gas_builtin_ptr, entry.arg(2)?],
+        &[],
+        &[],
+        location,
+    )?);
 
     let result = entry.load(
         context,
@@ -1346,11 +1352,14 @@ pub fn build_get_execution_info<'ctx, 'this>(
     )?;
     let fn_ptr = entry.load(context, location, fn_ptr, llvm::r#type::pointer(context, 0))?;
 
-    entry.append_operation(
-        OperationBuilder::new("llvm.call", location)
-            .add_operands(&[fn_ptr, result_ptr, ptr, gas_builtin_ptr])
-            .build()?,
-    );
+    entry.append_operation(llvm_call(
+        context,
+        LLVMCalleType::FuncPtr(fn_ptr),
+        &[result_ptr, ptr, gas_builtin_ptr],
+        &[],
+        &[],
+        location,
+    )?);
 
     let result = entry.load(
         context,
@@ -1488,11 +1497,14 @@ pub fn build_get_execution_info_v2<'ctx, 'this>(
     )?;
     let fn_ptr = entry.load(context, location, fn_ptr, llvm::r#type::pointer(context, 0))?;
 
-    entry.append_operation(
-        OperationBuilder::new("llvm.call", location)
-            .add_operands(&[fn_ptr, result_ptr, ptr, gas_builtin_ptr])
-            .build()?,
-    );
+    entry.append_operation(llvm_call(
+        context,
+        LLVMCalleType::FuncPtr(fn_ptr),
+        &[result_ptr, ptr, gas_builtin_ptr],
+        &[],
+        &[],
+        location,
+    )?);
 
     let result = entry.load(
         context,
@@ -1710,29 +1722,31 @@ pub fn build_deploy<'ctx, 'this>(
     )?;
     let fn_ptr = entry.load(context, location, fn_ptr, llvm::r#type::pointer(context, 0))?;
 
-    entry.append_operation(
-        OperationBuilder::new("llvm.call", location)
-            .add_operands(&[
-                fn_ptr,
-                result_ptr,
-                ptr,
-                gas_builtin_ptr,
-                class_hash_arg_ptr,
-                contract_address_salt_arg_ptr,
-                calldata_arg_ptr,
-                entry
-                    .append_operation(llvm::extract_value(
-                        context,
-                        entry.arg(5)?,
-                        DenseI64ArrayAttribute::new(context, &[0]),
-                        IntegerType::new(context, 1).into(),
-                        location,
-                    ))
-                    .result(0)?
-                    .into(),
-            ])
-            .build()?,
-    );
+    entry.append_operation(llvm_call(
+        context,
+        LLVMCalleType::FuncPtr(fn_ptr),
+        &[
+            result_ptr,
+            ptr,
+            gas_builtin_ptr,
+            class_hash_arg_ptr,
+            contract_address_salt_arg_ptr,
+            calldata_arg_ptr,
+            entry
+                .append_operation(llvm::extract_value(
+                    context,
+                    entry.arg(5)?,
+                    DenseI64ArrayAttribute::new(context, &[0]),
+                    IntegerType::new(context, 1).into(),
+                    location,
+                ))
+                .result(0)?
+                .into(),
+        ],
+        &[],
+        &[],
+        location,
+    )?);
 
     let result = entry.load(
         context,
@@ -1904,11 +1918,14 @@ pub fn build_keccak<'ctx, 'this>(
     )?;
     let fn_ptr = entry.load(context, location, fn_ptr, llvm::r#type::pointer(context, 0))?;
 
-    entry.append_operation(
-        OperationBuilder::new("llvm.call", location)
-            .add_operands(&[fn_ptr, result_ptr, ptr, gas_builtin_ptr, input_arg_ptr])
-            .build()?,
-    );
+    entry.append_operation(llvm_call(
+        context,
+        LLVMCalleType::FuncPtr(fn_ptr),
+        &[result_ptr, ptr, gas_builtin_ptr, input_arg_ptr],
+        &[],
+        &[],
+        location,
+    )?);
 
     let result = entry.load(
         context,
@@ -2080,19 +2097,21 @@ pub fn build_library_call<'ctx, 'this>(
     )?;
     let fn_ptr = entry.load(context, location, fn_ptr, llvm::r#type::pointer(context, 0))?;
 
-    entry.append_operation(
-        OperationBuilder::new("llvm.call", location)
-            .add_operands(&[
-                fn_ptr,
-                result_ptr,
-                ptr,
-                gas_builtin_ptr,
-                class_hash_arg_ptr,
-                function_selector_arg_ptr,
-                calldata_arg_ptr,
-            ])
-            .build()?,
-    );
+    entry.append_operation(llvm_call(
+        context,
+        LLVMCalleType::FuncPtr(fn_ptr),
+        &[
+            result_ptr,
+            ptr,
+            gas_builtin_ptr,
+            class_hash_arg_ptr,
+            function_selector_arg_ptr,
+            calldata_arg_ptr,
+        ],
+        &[],
+        &[],
+        location,
+    )?);
 
     let result = entry.load(
         context,
@@ -2295,20 +2314,22 @@ pub fn build_meta_tx_v0<'ctx, 'this>(
     )?;
     let fn_ptr = entry.load(context, location, fn_ptr, llvm::r#type::pointer(context, 0))?;
 
-    entry.append_operation(
-        OperationBuilder::new("llvm.call", location)
-            .add_operands(&[
-                fn_ptr,
-                result_ptr,
-                ptr,
-                gas_builtin_ptr,
-                address_arg_ptr,
-                entry_point_selector_arg_ptr,
-                calldata_arg_ptr,
-                signature_arg_ptr,
-            ])
-            .build()?,
-    );
+    entry.append_operation(llvm_call(
+        context,
+        LLVMCalleType::FuncPtr(fn_ptr),
+        &[
+            result_ptr,
+            ptr,
+            gas_builtin_ptr,
+            address_arg_ptr,
+            entry_point_selector_arg_ptr,
+            calldata_arg_ptr,
+            signature_arg_ptr,
+        ],
+        &[],
+        &[],
+        location,
+    )?);
 
     let result = entry.load(
         context,
@@ -2461,11 +2482,14 @@ pub fn build_replace_class<'ctx, 'this>(
     )?;
     let fn_ptr = entry.load(context, location, fn_ptr, llvm::r#type::pointer(context, 0))?;
 
-    entry.append_operation(
-        OperationBuilder::new("llvm.call", location)
-            .add_operands(&[fn_ptr, result_ptr, ptr, gas_builtin_ptr, class_hash_arg_ptr])
-            .build()?,
-    );
+    entry.append_operation(llvm_call(
+        context,
+        LLVMCalleType::FuncPtr(fn_ptr),
+        &[result_ptr, ptr, gas_builtin_ptr, class_hash_arg_ptr],
+        &[],
+        &[],
+        location,
+    )?);
 
     let result = entry.load(
         context,
@@ -2631,18 +2655,20 @@ pub fn build_send_message_to_l1<'ctx, 'this>(
     )?;
     let fn_ptr = entry.load(context, location, fn_ptr, llvm::r#type::pointer(context, 0))?;
 
-    entry.append_operation(
-        OperationBuilder::new("llvm.call", location)
-            .add_operands(&[
-                fn_ptr,
-                result_ptr,
-                ptr,
-                gas_builtin_ptr,
-                to_address_arg_ptr,
-                payload_arg_ptr,
-            ])
-            .build()?,
-    );
+    entry.append_operation(llvm_call(
+        context,
+        LLVMCalleType::FuncPtr(fn_ptr),
+        &[
+            result_ptr,
+            ptr,
+            gas_builtin_ptr,
+            to_address_arg_ptr,
+            payload_arg_ptr,
+        ],
+        &[],
+        &[],
+        location,
+    )?);
 
     let result = entry.load(
         context,
@@ -2792,18 +2818,20 @@ pub fn build_sha256_process_block_syscall<'ctx, 'this>(
     )?;
     let fn_ptr = entry.load(context, location, fn_ptr, llvm::r#type::pointer(context, 0))?;
 
-    entry.append_operation(
-        OperationBuilder::new("llvm.call", location)
-            .add_operands(&[
-                fn_ptr,
-                result_ptr,
-                ptr,
-                gas_builtin_ptr,
-                sha256_prev_state_ptr,
-                sha256_current_block_ptr,
-            ])
-            .build()?,
-    );
+    entry.append_operation(llvm_call(
+        context,
+        LLVMCalleType::FuncPtr(fn_ptr),
+        &[
+            result_ptr,
+            ptr,
+            gas_builtin_ptr,
+            sha256_prev_state_ptr,
+            sha256_current_block_ptr,
+        ],
+        &[],
+        &[],
+        location,
+    )?);
 
     registry.build_type(
         context,
@@ -2943,17 +2971,14 @@ pub fn build_get_class_hash_at<'ctx, 'this>(
     )?;
     let fn_ptr = entry.load(context, location, fn_ptr, llvm::r#type::pointer(context, 0))?;
 
-    entry.append_operation(
-        OperationBuilder::new("llvm.call", location)
-            .add_operands(&[
-                fn_ptr,
-                result_ptr,
-                ptr,
-                gas_builtin_ptr,
-                contract_address_ptr,
-            ])
-            .build()?,
-    );
+    entry.append_operation(llvm_call(
+        context,
+        LLVMCalleType::FuncPtr(fn_ptr),
+        &[result_ptr, ptr, gas_builtin_ptr, contract_address_ptr],
+        &[],
+        &[],
+        location,
+    )?);
 
     let result = entry.load(
         context,

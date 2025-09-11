@@ -57,7 +57,11 @@ use crate::{
     native_assert, native_panic,
     statistics::Statistics,
     types::TypeBuilder,
-    utils::{generate_function_name, walk_ir::walk_mlir_block},
+    utils::{
+        generate_function_name,
+        operations_ext::{llvm_call, LLVMCalleType},
+        walk_ir::walk_mlir_block,
+    },
 };
 use bumpalo::Bump;
 use cairo_lang_sierra::{
@@ -81,21 +85,18 @@ use melior::{
     },
     helpers::{ArithBlockExt, BuiltinBlockExt, LlvmBlockExt},
     ir::{
-        attribute::{
-            DenseI64ArrayAttribute, FlatSymbolRefAttribute, IntegerAttribute, StringAttribute,
-            TypeAttribute,
-        },
-        operation::OperationBuilder,
+        attribute::{DenseI64ArrayAttribute, IntegerAttribute, StringAttribute, TypeAttribute},
         r#type::{FunctionType, IntegerType, MemRefType},
         Attribute, AttributeLike, Block, BlockLike, BlockRef, Identifier, Location, Module, Region,
-        Type, Value,
+        RegionLike, Type, Value,
     },
     Context,
 };
 use mlir_sys::{
-    mlirDisctinctAttrCreate, mlirLLVMDICompileUnitAttrGet, mlirLLVMDIFileAttrGet,
-    mlirLLVMDIModuleAttrGet, mlirLLVMDIModuleAttrGetScope, mlirLLVMDISubprogramAttrGet,
-    mlirLLVMDISubroutineTypeAttrGet, MlirLLVMDIEmissionKind_MlirLLVMDIEmissionKindFull,
+    mlirAttributeGetNull, mlirDisctinctAttrCreate, mlirLLVMDICompileUnitAttrGet,
+    mlirLLVMDIFileAttrGet, mlirLLVMDIModuleAttrGet, mlirLLVMDIModuleAttrGetScope,
+    mlirLLVMDISubprogramAttrGet, mlirLLVMDISubroutineTypeAttrGet,
+    MlirLLVMDIEmissionKind_MlirLLVMDIEmissionKindFull,
     MlirLLVMDINameTableKind_MlirLLVMDINameTableKindDefault,
 };
 use std::{
@@ -350,6 +351,8 @@ fn compile_func(
 
             mlirLLVMDISubprogramAttrGet(
                 context.to_raw(),
+                mlirAttributeGetNull(),
+                false,
                 id,
                 module_scope,
                 file_attr.to_raw(),
@@ -360,6 +363,10 @@ fn compile_func(
                 (sierra_stmt_start_offset + function.entry_point.0) as u32,
                 0x8, // dwarf subprogram flag: definition
                 ty,
+                0,
+                std::ptr::null(), // subprogram's retained nodes, we don't need any
+                0,
+                std::ptr::null(), // subprogram's annotations, we don't need any
             )
         })
     };
@@ -1417,23 +1424,19 @@ fn generate_entry_point_wrapper<'c>(
         args.push(block.argument(i)?.into());
     }
 
-    let result = block.append_op_result(
-        OperationBuilder::new("llvm.call", location)
-            .add_attributes(&[
-                (
-                    Identifier::new(context, "callee"),
-                    FlatSymbolRefAttribute::new(context, private_symbol).into(),
-                ),
-                (
-                    Identifier::new(context, "CConv"),
-                    Attribute::parse(context, "#llvm.cconv<fastcc>")
-                        .ok_or(Error::ParseAttributeError)?,
-                ),
-            ])
-            .add_operands(&args)
-            .add_results(&[llvm::r#type::r#struct(context, ret_types, false)])
-            .build()?,
+    let func_call = llvm_call(
+        context,
+        LLVMCalleType::Symbol(private_symbol),
+        &args,
+        &[(
+            Identifier::new(context, "CConv"),
+            Attribute::parse(context, "#llvm.cconv<fastcc>").ok_or(Error::ParseAttributeError)?,
+        )],
+        &[llvm::r#type::r#struct(context, ret_types, false)],
+        location,
     )?;
+
+    let result = block.append_op_result(func_call)?;
 
     let mut returns = Vec::with_capacity(ret_types.len());
     for (i, ty) in ret_types.iter().enumerate() {

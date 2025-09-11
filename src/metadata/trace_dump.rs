@@ -1,6 +1,9 @@
 #![cfg(feature = "with-trace-dump")]
 
-use crate::error::{Error, Result};
+use crate::{
+    error::{Error, Result},
+    utils::operations_ext::{llvm_call, LLVMCalleType},
+};
 use cairo_lang_sierra::{
     ids::{ConcreteTypeId, VarId},
     program::StatementIdx,
@@ -10,7 +13,6 @@ use melior::{
     helpers::{ArithBlockExt, BuiltinBlockExt, LlvmBlockExt},
     ir::{
         attribute::{FlatSymbolRefAttribute, StringAttribute, TypeAttribute},
-        operation::OperationBuilder,
         r#type::{IntegerType, MemRefType},
         Attribute, Block, BlockLike, Location, Module, Region, Value,
     },
@@ -113,12 +115,17 @@ impl TraceDumpMeta {
 
         let function =
             self.build_function(context, module, block, location, TraceBinding::State)?;
-        block.append_operation(
-            OperationBuilder::new("llvm.call", location)
-                .add_operands(&[function])
-                .add_operands(&[trace_id, var_id, value_ty, value_ptr])
-                .build()?,
-        );
+
+        let func_call = llvm_call(
+            context,
+            LLVMCalleType::FuncPtr(function),
+            &[trace_id, var_id, value_ty, value_ptr],
+            &[],
+            &[],
+            location,
+        )?;
+
+        block.append_operation(func_call);
 
         Ok(())
     }
@@ -136,12 +143,16 @@ impl TraceDumpMeta {
 
         let function = self.build_function(context, module, block, location, TraceBinding::Push)?;
 
-        block.append_operation(
-            OperationBuilder::new("llvm.call", location)
-                .add_operands(&[function])
-                .add_operands(&[trace_id, statement_idx])
-                .build()?,
-        );
+        let func_call = llvm_call(
+            context,
+            LLVMCalleType::FuncPtr(function),
+            &[trace_id, statement_idx],
+            &[],
+            &[],
+            location,
+        )?;
+
+        block.append_operation(func_call);
 
         Ok(())
     }

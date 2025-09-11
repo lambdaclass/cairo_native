@@ -40,7 +40,7 @@ use cairo_lang_sierra::{
 };
 use melior::{
     dialect::{arith, llvm},
-    ir::{r#type::IntegerType, Block, Location, Module, Type},
+    ir::{r#type::IntegerType, Block, Location, Module, RegionLike, Type},
     Context,
 };
 use melior::{

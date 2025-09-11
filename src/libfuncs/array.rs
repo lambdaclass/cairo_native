@@ -27,7 +27,8 @@ use melior::{
     },
     helpers::{ArithBlockExt, BuiltinBlockExt, GepIndex, LlvmBlockExt},
     ir::{
-        attribute::IntegerAttribute, r#type::IntegerType, Block, BlockLike, Location, Region, Value,
+        attribute::IntegerAttribute, r#type::IntegerType, Block, BlockLike, Location, Region,
+        RegionLike, Value,
     },
     Context,
 };

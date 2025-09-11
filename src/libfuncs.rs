@@ -7,7 +7,10 @@ use crate::{
     metadata::MetadataStorage,
     native_panic,
     types::TypeBuilder,
-    utils::ProgramRegistryExt,
+    utils::{
+        operations_ext::{llvm_call, LLVMCalleType},
+        ProgramRegistryExt,
+    },
 };
 use bumpalo::Bump;
 use cairo_lang_sierra::{
@@ -30,9 +33,8 @@ use melior::{
     helpers::{ArithBlockExt, BuiltinBlockExt, LlvmBlockExt},
     ir::{
         attribute::{FlatSymbolRefAttribute, StringAttribute, TypeAttribute},
-        operation::OperationBuilder,
         r#type::IntegerType,
-        Attribute, Block, BlockLike, BlockRef, Location, Module, Region, Value,
+        Attribute, Block, BlockLike, BlockRef, Location, Module, Region, RegionLike, Value,
     },
     Context,
 };
@@ -719,13 +721,14 @@ pub fn build_mock_runtime_call<'c, 'a>(
 
     // Load the function pointer, and call the function
     let function_ptr = block.load(context, location, function_ptr_ptr, ptr_type)?;
-    let result = block.append_op_result(
-        OperationBuilder::new("llvm.call", location)
-            .add_operands(&[function_ptr])
-            .add_operands(args)
-            .add_results(&[llvm::r#type::pointer(context, 0)])
-            .build()?,
+    let func_call = llvm_call(
+        context,
+        LLVMCalleType::FuncPtr(function_ptr),
+        args,
+        &[],
+        &[llvm::r#type::pointer(context, 0)],
+        location,
     )?;
 
-    Ok(result)
+    Ok(block.append_op_result(func_call)?)
 }

@@ -777,7 +777,7 @@ dependencies = [
  "anyhow",
  "cairo-lang-utils",
  "const-fnv1a-hash",
- "convert_case 0.8.0",
+ "convert_case",
  "derivative",
  "itertools 0.14.0",
  "lalrpop",
@@ -924,7 +924,7 @@ dependencies = [
  "cairo-lang-sierra",
  "cairo-lang-sierra-to-casm",
  "cairo-lang-utils",
- "convert_case 0.8.0",
+ "convert_case",
  "itertools 0.14.0",
  "num-bigint",
  "num-integer",
@@ -1365,9 +1365,9 @@ dependencies = [
 
 [[package]]
 name = "comrak"
-version = "0.33.0"
+version = "0.37.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "39bff2cbb80102771ca62bd2375bc6f6611dc1493373440b23aa08a155538708"
+checksum = "2a4f05e73ca9a30af27bebc13600f91fd1651b2ec7d139ca82a89df7ca583af1"
 dependencies = [
  "caseless",
  "entities",
@@ -1433,15 +1433,6 @@ dependencies = [
  "proc-macro2",
  "quote",
  "unicode-xid",
-]
-
-[[package]]
-name = "convert_case"
-version = "0.7.1"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "bb402b8d4c85569410425650ce3eddc7d698ed96d39a73f941b08fb63082f1e7"
-dependencies = [
- "unicode-segmentation",
 ]
 
 [[package]]
@@ -2330,9 +2321,9 @@ checksum = "cd945864f07fe9f5371a27ad7b52a172b4b499999f1d97574c9fa68373937e12"
 
 [[package]]
 name = "llvm-sys"
-version = "191.0.0"
+version = "201.0.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "893cddf1adf0354b93411e413553dd4daf5c43195d73f1acfa1e394bdd371456"
+checksum = "9bb947e8b79254ca10d496d0798a9ba1287dcf68e50a92b016fec1cc45bef447"
 dependencies = [
  "anyhow",
  "cc",
@@ -2388,9 +2379,9 @@ dependencies = [
 
 [[package]]
 name = "melior"
-version = "0.21.0"
+version = "0.23.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "f2af6454b7bcd7edc8c2060a3726a18ceaed60e25c34d9f8de9c6b44e82eb647"
+checksum = "8a965d90213b0759491eeff1a94a3daf3c87918b13d2411227c1be8c26df6293"
 dependencies = [
  "melior-macro",
  "mlir-sys",
@@ -2398,12 +2389,12 @@ dependencies = [
 
 [[package]]
 name = "melior-macro"
-version = "0.14.0"
+version = "0.16.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "a99671327250df8e24e56d8304474a970e7a2c6bb8f6dc71382d188136fe4d1b"
+checksum = "49d9020b35c25d0f40d125e660386b6a374a9f79285d58f67eb8301b9509e6ef"
 dependencies = [
  "comrak",
- "convert_case 0.7.1",
+ "convert_case",
  "proc-macro2",
  "quote",
  "regex",
@@ -2445,9 +2436,9 @@ dependencies = [
 
 [[package]]
 name = "mlir-sys"
-version = "0.4.2"
+version = "0.5.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "cee4047ffefa7e9853412025a98b38a66968584543918cf084a6e4df9144b71b"
+checksum = "8e9348dd263d2680d657635d9dd084cdcd785d7486a41332ffa4c926d5882b54"
 dependencies = [
  "bindgen",
 ]
@@ -3624,9 +3615,9 @@ checksum = "55937e1799185b12863d447f42597ed69d9928686b8d88a1df17376a097d8369"
 
 [[package]]
 name = "tblgen"
-version = "0.5.2"
+version = "0.6.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "c155c9310c9e11e6f642b4c8a30ae572ea0cad013d5c9e28bb264b52fa8163bb"
+checksum = "836472eafcc544aa0167f880c0998d4a77b422d22100186e67fc6daf35cab94c"
 dependencies = [
  "bindgen",
  "cc",

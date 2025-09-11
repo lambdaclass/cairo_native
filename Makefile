@@ -28,13 +28,13 @@ usage: check-llvm needs-cairo2
 
 .PHONY: check-llvm
 check-llvm:
-ifndef MLIR_SYS_190_PREFIX
-	$(error Could not find a suitable LLVM 19 toolchain (mlir), please set MLIR_SYS_190_PREFIX env pointing to the LLVM 19 dir)
+ifndef MLIR_SYS_200_PREFIX
+	$(error Could not find a suitable LLVM 20 toolchain (mlir), please set MLIR_SYS_200_PREFIX env pointing to the LLVM 20 dir)
 endif
-ifndef TABLEGEN_190_PREFIX
-	$(error Could not find a suitable LLVM 19 toolchain (tablegen), please set TABLEGEN_190_PREFIX env pointing to the LLVM 19 dir)
+ifndef TABLEGEN_200_PREFIX
+	$(error Could not find a suitable LLVM 20 toolchain (tablegen), please set TABLEGEN_200_PREFIX env pointing to the LLVM 20 dir)
 endif
-	@echo "LLVM is correctly set at $(MLIR_SYS_190_PREFIX)."
+	@echo "LLVM is correctly set at $(MLIR_SYS_200_PREFIX)."
 
 .PHONY: needs-cairo2
 needs-cairo2:
@@ -137,14 +137,14 @@ endif
 
 .PHONY: deps-macos
 deps-macos: build-cairo-2-compiler-macos install-scarb-macos
-	-brew install llvm@19 --quiet
+	-brew install llvm@20 --quiet
 	@echo "You can execute the env-macos.sh script to setup the needed env variables."
 
 # CI use only
 .PHONY: deps-ci-linux build-cairo-2-compiler install-scarb
 deps-ci-linux:
 ifeq ($(UNAME), Linux)
-	-wget https://apt.llvm.org/llvm.sh && chmod +x llvm.sh && sudo ./llvm.sh 19
+	-wget https://apt.llvm.org/llvm.sh && chmod +x llvm.sh && sudo ./llvm.sh 20
 endif
 
 cairo-repo-2-dir = cairo2

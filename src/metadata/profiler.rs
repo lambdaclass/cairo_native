@@ -37,7 +37,9 @@ use melior::{
     },
     helpers::{ArithBlockExt, BuiltinBlockExt, LlvmBlockExt},
     ir::{
-        attribute::{FlatSymbolRefAttribute, StringAttribute, TypeAttribute},
+        attribute::{
+            DenseI32ArrayAttribute, FlatSymbolRefAttribute, StringAttribute, TypeAttribute,
+        },
         operation::OperationBuilder,
         r#type::{IntegerType, MemRefType},
         Attribute, Block, BlockLike, Identifier, Location, Module, Region, Value,
@@ -318,6 +320,8 @@ impl ProfilerMeta {
             ods::llvm::call(
                 context,
                 &[callback_ptr, trace_id, statement_idx, delta_value],
+                &[],
+                DenseI32ArrayAttribute::new(context, &[]),
                 location,
             )
             .into(),

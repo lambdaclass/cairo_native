@@ -25,7 +25,7 @@ runs:
     - name: Add LLVM Debian repository
       uses: myci-actions/add-deb-repo@11
       with:
-        repo: deb http://apt.llvm.org/jammy/ llvm-toolchain-jammy-19 main
+        repo: deb http://apt.llvm.org/jammy/ llvm-toolchain-jammy-20 main
         repo-name: llvm-repo
         keys-asc: https://apt.llvm.org/llvm-snapshot.gpg.key
     - name: Update and upgrade APT
@@ -33,4 +33,4 @@ runs:
       run: sudo apt-get update && sudo apt-get upgrade -y
     - name: Install LLVM
       shell: bash
-      run: sudo apt-get install llvm-19 llvm-19-dev llvm-19-runtime clang-19 clang-tools-19 lld-19 libpolly-19-dev libmlir-19-dev mlir-19-tools
+      run: sudo apt-get install llvm-20 llvm-20-dev llvm-20-runtime clang-20 clang-tools-20 lld-20 libpolly-20-dev libmlir-20-dev mlir-20-tools

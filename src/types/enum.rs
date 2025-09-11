@@ -421,7 +421,9 @@ use cairo_lang_sierra::{
 use melior::{
     dialect::{cf, func, llvm},
     helpers::{BuiltinBlockExt, LlvmBlockExt},
-    ir::{r#type::IntegerType, Block, BlockLike, Location, Module, Region, Type, Value},
+    ir::{
+        r#type::IntegerType, Block, BlockLike, Location, Module, Region, RegionLike, Type, Value,
+    },
     Context,
 };
 use std::{
