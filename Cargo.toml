@@ -96,6 +96,7 @@ walkdir = "2.5.0"
 serde_json = { version = "1.0.128" }
 rayon = "1.10.0"
 tracing-subscriber = { version = "0.3.19", features = ["env-filter", "json", "registry"] }
+cairo-lang-sierra-generator.workspace = true
 
 [profile.optimized-dev]
 inherits = "dev"
@@ -178,7 +179,7 @@ scarb-ui = "0.1.5"
 serde = "1.0.0"
 serde_json = "1.0.128"
 sierra-emu = { path = "debug_utils/sierra-emu", version = "0.6.1" }
-starknet-crypto = "0.7.3"
+starknet-crypto = "0.8.1"
 starknet-curve = "0.6.0"
 starknet-types-core = "0.2.0"
 stats_alloc = "0.1.10"
