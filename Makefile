@@ -45,15 +45,15 @@ endif
 
 .PHONY: build
 build: check-llvm
-	cargo build --release --features=scarb
+	cargo build --release
 
 .PHONY: build-natives
 build-native: check-llvm
-	RUSTFLAGS="-C target-cpu=native" cargo build --release --features=scarb
+	RUSTFLAGS="-C target-cpu=native" cargo build --release
 
 .PHONY: build-dev
 build-dev: check-llvm
-	cargo build --profile optimized-dev --features=scarb
+	cargo build --profile optimized-dev
 
 .PHONY: check
 check: check-llvm
@@ -62,7 +62,7 @@ check: check-llvm
 
 .PHONY: test
 test: check-llvm needs-cairo2 build-alexandria
-	cargo test --profile ci --features=scarb,with-cheatcode,with-debug-utils
+	cargo test --profile ci --features=with-cheatcode,with-debug-utils
 
 .PHONY: test-cairo
 test-cairo: check-llvm needs-cairo2
@@ -70,20 +70,20 @@ test-cairo: check-llvm needs-cairo2
 
 .PHONY: proptest
 proptest: check-llvm needs-cairo2
-	cargo test --profile ci --features=scarb,with-cheatcode,with-debug-utils proptest
+	cargo test --profile ci --features=with-cheatcode,with-debug-utils proptest
 
 .PHONY: test-cli
 test-ci: check-llvm needs-cairo2 build-alexandria
-	cargo test --profile ci --features=scarb,with-cheatcode,with-debug-utils
+	cargo test --profile ci --features=with-cheatcode,with-debug-utils
 
 .PHONY: proptest-cli
 proptest-ci: check-llvm needs-cairo2
-	cargo test --profile ci --features=scarb,with-cheatcode,with-debug-utils proptest
+	cargo test --profile ci --features=with-cheatcode,with-debug-utils proptest
 
 .PHONY: coverage
 coverage: check-llvm needs-cairo2 build-alexandria
-	cargo llvm-cov --verbose --profile ci --features=scarb,with-cheatcode,with-debug-utils --workspace --lcov --output-path lcov.info
-	cargo llvm-cov --verbose --profile ci --features=scarb,with-cheatcode,with-debug-utils --lcov --output-path lcov-test.info run --bin cairo-native-test -- corelib
+	cargo llvm-cov --verbose --profile ci --features=with-cheatcode,with-debug-utils --workspace --lcov --output-path lcov.info
+	cargo llvm-cov --verbose --profile ci --features=with-cheatcode,with-debug-utils --lcov --output-path lcov-test.info run --bin cairo-native-test -- corelib
 
 .PHONY: doc
 doc: check-llvm
@@ -101,7 +101,7 @@ bench: needs-cairo2
 
 .PHONY: bench-ci
 bench-ci: check-llvm needs-cairo2
-	cargo criterion --features=scarb,with-cheatcode,with-debug-utils
+	cargo criterion --features=with-cheatcode,with-debug-utils
 
 .PHONY: stress-test
 stress-test: check-llvm
@@ -117,7 +117,7 @@ stress-clean:
 
 .PHONY: install
 install: check-llvm
-	RUSTFLAGS="-C target-cpu=native" cargo install --features=scarb,with-cheatcode --locked --path .
+	RUSTFLAGS="-C target-cpu=native" cargo install --features=with-cheatcode --locked --path .
 
 .PHONY: clean
 clean: stress-clean
