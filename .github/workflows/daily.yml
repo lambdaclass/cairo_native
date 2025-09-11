@@ -104,7 +104,7 @@ jobs:
         id: restore-rpc-calls
         uses: actions/cache/restore@v4.2.0
         with:
-          path: starknet-replay/rpc_cache
+          path: starknet-replay/cache
           key: cache-${{matrix.block}}-${{ github.run_id }}
           restore-keys: |
             cache-${{matrix.block}}
