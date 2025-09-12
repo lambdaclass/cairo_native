@@ -40,14 +40,14 @@ SIERRA_PATH=$CLASS_HASH.sierra
 CASM_PATH=$CLASS_HASH.casm
 
 # Extract the sierra from the contract class.
-cargo run -p debug_utils --bin contract-to-sierra $CONTRACT_PATH > $SIERRA_PATH
+cargo run -p debug_utils --package contract-to-sierra $CONTRACT_PATH > $SIERRA_PATH
 
 # Lower sierra to casm
 ./cairo2/bin/sierra-compile $SIERRA_PATH $CASM_PATH
 
 echo "Compiling contract class..."
 # Set NATIVE_DEBUG_DUMP to generate mlir files.
-NATIVE_DEBUG_DUMP=true cargo run --release --bin starknet-native-compile -- -O $OPT_LVL $CONTRACT_PATH output
+NATIVE_DEBUG_DUMP=true cargo run --release --package starknet-native-compile -- -O $OPT_LVL $CONTRACT_PATH output
 
 echo "Converting optimized mlir into llvmir unoptimized..."
 $LLVM_SYS_191_PREFIX/bin/mlir-translate -mlir-to-llvmir dump.mlir > dump-prepass.ll

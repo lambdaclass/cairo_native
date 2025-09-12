@@ -4,4 +4,4 @@
 
 cargo run --profile=optimized-dev \
     --features=build-cli \
-    --bin="cairo-native-dump" -- programs/erc20.cairo --starknet
+    --package cairo-native-dump -- programs/erc20.cairo --starknet

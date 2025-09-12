@@ -66,7 +66,7 @@ test: check-llvm needs-cairo2 build-alexandria
 
 .PHONY: test-cairo
 test-cairo: check-llvm needs-cairo2
-	cargo r --profile ci --bin cairo-native-test -- --compare-with-cairo-vm corelib
+	cargo r --profile ci --package cairo-native-test -- --compare-with-cairo-vm corelib
 
 .PHONY: proptest
 proptest: check-llvm needs-cairo2
@@ -83,7 +83,7 @@ proptest-ci: check-llvm needs-cairo2
 .PHONY: coverage
 coverage: check-llvm needs-cairo2 build-alexandria
 	cargo llvm-cov --verbose --profile ci --features=with-cheatcode,with-debug-utils --workspace --lcov --output-path lcov.info
-	cargo llvm-cov --verbose --profile ci --features=with-cheatcode,with-debug-utils --lcov --output-path lcov-test.info run --bin cairo-native-test -- corelib
+	cargo llvm-cov --verbose --profile ci --features=with-cheatcode,with-debug-utils --lcov --output-path lcov-test.info run --package cairo-native-test -- corelib
 
 .PHONY: doc
 doc: check-llvm
@@ -95,8 +95,8 @@ doc-open: check-llvm
 
 .PHONY: bench
 bench: needs-cairo2
-	cargo b --release --bin cairo-native-run
-	cargo b --release --bin cairo-native-compile
+	cargo b --release --package cairo-native-run
+	cargo b --release --package cairo-native-compile
 	./scripts/bench-hyperfine.sh
 
 .PHONY: bench-ci
@@ -105,7 +105,7 @@ bench-ci: check-llvm needs-cairo2
 
 .PHONY: stress-test
 stress-test: check-llvm
-	RUST_LOG=cairo_native_stress=DEBUG cargo run --bin cairo-native-stress 1000000 --output cairo-native-stress-logs.jsonl
+	RUST_LOG=cairo_native_stress=DEBUG cargo run --package cairo-native-stress 1000000 --output cairo-native-stress-logs.jsonl
 
 .PHONY: stress-plot
 stress-plot:
