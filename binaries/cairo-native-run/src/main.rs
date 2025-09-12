@@ -14,14 +14,12 @@ use cairo_native::{
     metadata::gas::GasMetadata,
     starknet_stub::StubSyscallHandler,
 };
+use cairo_native_bin_utils::{find_function, result_to_runresult};
 use clap::{Parser, ValueEnum};
 #[cfg(feature = "with-libfunc-profiling")]
 use std::collections::HashMap;
 use std::path::PathBuf;
 use tracing_subscriber::{EnvFilter, FmtSubscriber};
-use utils::{find_function, result_to_runresult};
-
-mod utils;
 
 #[derive(Clone, Debug, ValueEnum)]
 enum RunMode {

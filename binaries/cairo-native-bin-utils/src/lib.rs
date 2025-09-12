@@ -1,4 +1,3 @@
-#![cfg(feature = "build-cli")]
 #![allow(dead_code)]
 
 use anyhow::bail;
@@ -16,7 +15,7 @@ use std::vec::IntoIter;
 
 pub mod test;
 
-pub(super) struct RunArgs {
+pub struct RunArgs {
     pub run_mode: RunMode,
     pub opt_level: u8,
     pub compare_with_vm: bool,

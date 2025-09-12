@@ -5,8 +5,6 @@ use melior::ir::operation::OperationPrintingFlags;
 use scarb_metadata::{MetadataCommand, ScarbCommand};
 use std::{env, fs};
 
-mod utils;
-
 /// Compiles all packages from a Scarb project on the current directory.
 fn main() -> anyhow::Result<()> {
     let metadata = MetadataCommand::new().inherit_stderr().exec()?;

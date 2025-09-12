@@ -48,7 +48,7 @@ mkdir -p $WORK
 
 echo "Building starknet-native-compile"
 echo
-cargo build --release --bin starknet-native-compile --color never --quiet
+cargo build --release --package starknet-native-compile --color never --quiet
 
 download() {
 	while [ "$#" -ge "2" ]; do
