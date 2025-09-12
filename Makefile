@@ -45,7 +45,7 @@ endif
 
 .PHONY: build
 build: check-llvm
-	cargo build --release
+	cargo build --release --workspace
 
 .PHONY: build-natives
 build-native: check-llvm
