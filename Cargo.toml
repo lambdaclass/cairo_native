@@ -114,7 +114,7 @@ with-mem-tracing = []
 with-libfunc-profiling = []
 with-segfault-catcher = []
 with-trace-dump = ["dep:sierra-emu"]
-testing-utils = ["dep:cairo-lang-compiler"]
+testing = ["dep:cairo-lang-compiler"]
 
 [dependencies]
 aquamarine.workspace = true
@@ -164,6 +164,7 @@ rand.workspace = true
 starknet-curve.workspace = true
 
 [dev-dependencies]
+cairo-lang-compiler.workspace = true
 cairo-lang-filesystem.workspace = true
 cairo-lang-runner.workspace = true
 cairo-lang-sierra-generator.workspace = true
@@ -212,3 +213,15 @@ harness = false
 [[bench]]
 name = "libfuncs"
 harness = false
+
+[[test]]
+name = "entry"
+required-features = [ "testing" ]
+
+[[example]]
+name = "invoke"
+required-features = [ "testing" ]
+
+[[example]]
+name = "easy_api"
+required-features = [ "testing" ]

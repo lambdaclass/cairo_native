@@ -36,7 +36,7 @@ mod range_ext;
 #[cfg(feature = "with-segfault-catcher")]
 pub mod safe_runner;
 pub mod sierra_gen;
-#[cfg(feature = "testing-utils")]
+#[cfg(any(feature = "testing", test))]
 pub mod testing;
 pub mod trace_dump;
 pub mod walk_ir;
