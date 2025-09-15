@@ -10,7 +10,7 @@
 //! When implementing libfuncs, the `GasCost` metadata entry already contains
 //! the `GasCost` for the current sierra statement
 
-use cairo_lang_runner::token_gas_cost;
+use crate::utils::token_gas_cost;
 use cairo_lang_sierra::{
     extensions::gas::CostTokenType,
     ids::FunctionId,

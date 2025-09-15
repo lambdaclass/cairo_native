@@ -5,8 +5,6 @@ use crate::{
     error::Result as NativeResult, metadata::MetadataStorage, native_panic, types::TypeBuilder,
     OptLevel,
 };
-use cairo_lang_compiler::CompilerConfig;
-use cairo_lang_runner::token_gas_cost;
 use cairo_lang_sierra::{
     extensions::{
         core::{CoreLibfunc, CoreType},
@@ -24,12 +22,11 @@ use melior::{
 use num_bigint::{BigInt, BigUint, Sign};
 use serde::{Deserialize, Serialize};
 use starknet_types_core::felt::Felt;
-use std::sync::{Arc, LazyLock};
+use std::sync::LazyLock;
 use std::{
     alloc::Layout,
     borrow::Cow,
     fmt::{self, Display},
-    path::Path,
 };
 use thiserror::Error;
 
@@ -39,6 +36,8 @@ mod range_ext;
 #[cfg(feature = "with-segfault-catcher")]
 pub mod safe_runner;
 pub mod sierra_gen;
+#[cfg(feature = "testing-utils")]
+pub mod testing;
 pub mod trace_dump;
 pub mod walk_ir;
 
@@ -105,6 +104,27 @@ impl Default for BuiltinCosts {
             add_mod: token_gas_cost(CostTokenType::AddMod) as u64,
             mul_mod: token_gas_cost(CostTokenType::MulMod) as u64,
         }
+    }
+}
+
+// Returns the approximated token gas costs.
+//
+// This function was taken from the cairo-lang-runner crate.
+pub fn token_gas_cost(token_type: CostTokenType) -> usize {
+    match token_type {
+        CostTokenType::Const => 1,
+        CostTokenType::Step
+        | CostTokenType::Hole
+        | CostTokenType::RangeCheck
+        | CostTokenType::RangeCheck96 => {
+            panic!("Token type {token_type:?} has no gas cost.")
+        }
+        CostTokenType::Pedersen => 4050,
+        CostTokenType::Poseidon => 491,
+        CostTokenType::Bitwise => 583,
+        CostTokenType::EcOp => 4085,
+        CostTokenType::AddMod => 230,
+        CostTokenType::MulMod => 604,
     }
 }
 
@@ -200,34 +220,6 @@ pub fn get_integer_layout(width: u32) -> Layout {
         Layout::from_size_align((width as usize).next_multiple_of(8) >> 3, 16)
             .expect("layout size rounded up to the next multiple of 16 should never be greater than ISIZE::MAX")
     }
-}
-
-/// Compile a cairo program found at the given path to sierra.
-pub fn cairo_to_sierra(program: &Path) -> crate::error::Result<Arc<Program>> {
-    if program
-        .extension()
-        .map(|x| {
-            x.to_ascii_lowercase()
-                .to_string_lossy()
-                .eq_ignore_ascii_case("cairo")
-        })
-        .unwrap_or(false)
-    {
-        cairo_lang_compiler::compile_cairo_project_at_path(
-            program,
-            CompilerConfig {
-                replace_ids: true,
-                ..Default::default()
-            },
-        )
-        .map_err(|err| crate::error::Error::ProgramParser(err.to_string()))
-    } else {
-        let source = std::fs::read_to_string(program)?;
-        cairo_lang_sierra::ProgramParser::new()
-            .parse(&source)
-            .map_err(|err| crate::error::Error::ProgramParser(err.to_string()))
-    }
-    .map(Arc::new)
 }
 
 /// Returns the given entry point if present.
@@ -440,8 +432,12 @@ pub fn get_types_total_size(
 #[cfg(test)]
 pub mod test {
     use crate::{
-        context::NativeContext, execution_result::ExecutionResult, executor::JitNativeExecutor,
-        starknet_stub::StubSyscallHandler, utils::*, values::Value,
+        context::NativeContext,
+        execution_result::ExecutionResult,
+        executor::JitNativeExecutor,
+        starknet_stub::StubSyscallHandler,
+        utils::{testing::cairo_to_sierra, *},
+        values::Value,
     };
     use cairo_lang_compiler::{
         compile_prepared_db, db::RootDatabase, diagnostics::DiagnosticsReporter,

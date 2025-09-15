@@ -26,6 +26,7 @@ with-mem-tracing = []
 with-libfunc-profiling = []
 with-segfault-catcher = []
 with-trace-dump = ["dep:sierra-emu"]
+testing-utils = ["dep:cairo-lang-compiler"]
 
 # the aquamarine dep is only used in docs and cannot be detected as used by cargo udeps
 [package.metadata.cargo-udeps.ignore]
@@ -34,69 +35,68 @@ normal = ["aquamarine"]
 [dependencies]
 aquamarine = "0.6.0"
 bumpalo = "3.16.0"
-cairo-lang-compiler.workspace = true
-cairo-lang-filesystem.workspace = true
-cairo-lang-runner.workspace = true
+cairo-lang-compiler = { workspace = true, optional = true }
 cairo-lang-sierra.workspace = true
-cairo-lang-sierra-to-casm.workspace = true
+cairo-lang-utils.workspace = true
 educe = "0.5.11" # can't update until https://github.com/magiclen/educe/issues/27
 itertools.workspace = true
 lazy_static = "1.5"
 libc = "0.2"
+libloading.workspace = true
 llvm-sys = "191.0.0"
 melior = { workspace = true, features = ["ods-dialects", "helpers"] }
 mlir-sys = { version = "0.4.1" }
 num-bigint.workspace = true
+num-integer.workspace = true
 num-traits.workspace = true
-starknet-types-core = { workspace = true, features = [
-    "std",
-    "serde",
-    "num-traits",
-] }
+serde = { workspace = true, features = ["derive"] }
+serde_json.workspace = true
+sierra-emu = { workspace = true, optional = true }
+starknet-types-core = { workspace = true, features = [ "std", "serde", "num-traits" ] }
 tempfile.workspace = true
 thiserror = "2.0.9"
 tracing = "0.1"
 utf8_iter = "1.0.4"
-sierra-emu = { workspace = true, optional = true }
 
-
-# CLI dependencies
+# Gas cost computation dependencies. Removing these implies either duplicating
+# code or moving shared code to another crate.
+cairo-lang-sierra-to-casm.workspace = true
 cairo-lang-sierra-ap-change.workspace = true
 cairo-lang-sierra-gas.workspace = true
-cairo-lang-starknet.workspace = true
-cairo-lang-utils.workspace = true
-cairo-lang-starknet-classes.workspace = true
-libloading.workspace = true
-serde = { workspace = true, features = ["derive"] }
-# needed to interface with cairo-lang-*
-keccak = "0.1.5"
-sha2 = "0.10.8"                                          # needed for the syscall handler stub
-serde_json.workspace = true
 
-# for the syscallhandler stub to match blockifier
-ark-secp256k1 = "0.5.0"
-ark-secp256r1 = "0.5.0"
+# Contract compilation dependencies.
+cairo-lang-starknet-classes.workspace = true
+
+# Syscall handler implementation dependencies.
 ark-ec = "0.5.0"
 ark-ff = "0.5.0"
-num-integer.workspace = true
+ark-secp256k1 = "0.5.0"
+ark-secp256r1 = "0.5.0"
+keccak = "0.1.5"
+sha2 = "0.10.8"
 
-# Runtime functions
+# Runtime library dependencies.
 rand = "0.9.0"
 starknet-curve.workspace = true
 
 [dev-dependencies]
-cairo-vm = { git = "https://github.com/lambdaclass/cairo-vm", rev = "742e9ae3de8b55f4a5dc44831f06068712f2f0c5", features = ["cairo-1-hints"] }
+cairo-lang-filesystem.workspace = true
+cairo-lang-runner.workspace = true
+cairo-lang-sierra-generator.workspace = true
+cairo-lang-starknet.workspace = true
 criterion = { version = "0.5.1", features = ["html_reports"] }
 lambdaworks-math = "0.11.0"
 pretty_assertions_sorted = "1.2.3"
 proptest = "1.5.0"
-rstest = "0.24.0"
-test-case = "3.3"
-walkdir = "2.5.0"
-serde_json = { version = "1.0.128" }
 rayon = "1.10.0"
+rstest = "0.24.0"
+serde_json = { version = "1.0.128" }
+test-case = "3.3"
 tracing-subscriber = { version = "0.3.19", features = ["env-filter", "json", "registry"] }
-cairo-lang-sierra-generator.workspace = true
+walkdir = "2.5.0"
+
+# We can't use the crates.io dependency because of a cycle in the dependency chain.
+cairo-vm = { git = "https://github.com/lambdaclass/cairo-vm", rev = "742e9ae3de8b55f4a5dc44831f06068712f2f0c5", features = ["cairo-1-hints"] }
 
 [profile.optimized-dev]
 inherits = "dev"

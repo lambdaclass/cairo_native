@@ -11,7 +11,7 @@ pub fn prepare_programs(path: &str) -> Vec<(Arc<Program>, String)> {
             let path = e.path();
             match path.extension().map(|x| x.to_str().unwrap()) {
                 Some("cairo") => Some((
-                    cairo_native::utils::cairo_to_sierra(path).unwrap(),
+                    cairo_native::utils::testing::cairo_to_sierra(path).unwrap(),
                     path.display().to_string(),
                 )),
                 _ => None,
