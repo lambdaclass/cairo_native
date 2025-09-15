@@ -1,3 +1,5 @@
+#![cfg(feature = "testing")]
+
 use cairo_lang_runner::SierraCasmRunner;
 use cairo_lang_sierra::program::Program;
 use std::sync::Arc;

@@ -205,14 +205,17 @@ opt-level = 1
 [[bench]]
 name = "benches"
 harness = false
+required-features = [ "testing" ]
 
 [[bench]]
 name = "compile_time"
 harness = false
+required-features = [ "testing" ]
 
 [[bench]]
 name = "libfuncs"
 harness = false
+required-features = [ "testing" ]
 
 [[test]]
 name = "entry"
