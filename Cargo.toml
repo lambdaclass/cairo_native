@@ -27,6 +27,7 @@ ark-ec = "0.5.0"
 ark-ff = "0.5.0"
 ark-secp256k1 = "0.5.0"
 ark-secp256r1 = "0.5.0"
+bincode = "2.0.1"
 bumpalo = "3.16.0"
 cairo-lang-casm = "=2.12.2"
 cairo-lang-compiler = "=2.12.2"
@@ -87,6 +88,9 @@ tracing = "0.1"
 tracing-subscriber = "0.3.19"
 utf8_iter = "1.0.4"
 walkdir = "2.5.0"
+
+# We can't use the crates.io dependency because of a cycle in the dependency chain.
+cairo-vm = { git = "https://github.com/lambdaclass/cairo-vm", rev = "742e9ae3de8b55f4a5dc44831f06068712f2f0c5" }
 
 [package]
 name = "cairo-native"
@@ -174,9 +178,7 @@ serde_json.workspace = true
 test-case.workspace = true
 tracing-subscriber = { workspace = true, features = ["env-filter", "json", "registry"] }
 walkdir.workspace = true
-
-# We can't use the crates.io dependency because of a cycle in the dependency chain.
-cairo-vm = { git = "https://github.com/lambdaclass/cairo-vm", rev = "742e9ae3de8b55f4a5dc44831f06068712f2f0c5", features = ["cairo-1-hints"] }
+cairo-vm = { workspace = true, features = ["cairo-1-hints"] }
 
 [profile.optimized-dev]
 inherits = "dev"
