@@ -84,10 +84,6 @@ with-segfault-catcher = []
 with-trace-dump = ["dep:sierra-emu"]
 testing-utils = ["dep:cairo-lang-compiler"]
 
-# the aquamarine dep is only used in docs and cannot be detected as used by cargo udeps
-[package.metadata.cargo-udeps.ignore]
-normal = ["aquamarine"]
-
 [dependencies]
 aquamarine = "0.6.0"
 bumpalo = "3.16.0"
