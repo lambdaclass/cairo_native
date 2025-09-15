@@ -80,8 +80,14 @@ impl RuntimeBinding {
         }
     }
 
-    const fn function_ptr(self) -> *const () {
-        match self {
+    /// Returns an `Option` with a function pointer depending on how the binding is implemented.
+    ///
+    /// - For external bindings (implemented in Rust), it returns `Some`, containing
+    ///   a pointer to the corresponding Rust function
+    /// - For internal bindings (implemented in MLIR), it returns `None`, since those
+    ///   functions are defined within MLIR and invoked by name
+    const fn function_ptr(self) -> Option<*const ()> {
+        let function_ptr = match self {
             RuntimeBinding::DebugPrint => {
                 crate::runtime::cairo_native__libfunc__debug__print as *const ()
             }
@@ -117,7 +123,7 @@ impl RuntimeBinding {
             RuntimeBinding::GetCostsBuiltin => {
                 crate::runtime::cairo_native__get_costs_builtin as *const ()
             }
-            RuntimeBinding::ExtendedEuclideanAlgorithm => unreachable!(),
+            RuntimeBinding::ExtendedEuclideanAlgorithm => return None,
             RuntimeBinding::CircuitOperation => {
                 unreachable!()
             }
@@ -125,7 +131,8 @@ impl RuntimeBinding {
             RuntimeBinding::VtableCheatcode => {
                 crate::starknet::cairo_native__vtable_cheatcode as *const ()
             }
-        }
+        };
+        Some(function_ptr)
     }
 }
 
@@ -188,15 +195,19 @@ impl RuntimeBindingsMeta {
         )?)
     }
 
-    /// Build if necessary the extended euclidean algorithm used in circuit inverse gates
+    /// Build if necessary the extended euclidean algorithm used in circuit inverse gates.
+    ///
+    /// After checking, calls the MLIR function with arguments `a` and `b` which are the initial remainders
+    /// used in the algorithm and returns a `Value` containing a struct where the first element is the
+    /// greatest common divisor of `a` and `b` and the second element is the bezout coefficient x.
     pub fn extended_euclidean_algorithm<'c, 'a>(
         &mut self,
         context: &'c Context,
         module: &Module,
         block: &'a Block<'c>,
         location: Location<'c>,
-        rhs_value: Value<'c, '_>,
-        circuit_modulus: Value<'c, '_>,
+        a: Value<'c, '_>,
+        b: Value<'c, '_>,
     ) -> Result<Value<'c, 'a>>
     where
         'c: 'a,
@@ -218,7 +229,7 @@ impl RuntimeBindingsMeta {
                         Identifier::new(context, "callee"),
                         FlatSymbolRefAttribute::new(context, func_symbol).into(),
                     )])
-                    .add_operands(&[rhs_value, circuit_modulus])
+                    .add_operands(&[a, b])
                     .add_results(&[return_type])
                     .build()?,
             )
@@ -777,7 +788,11 @@ pub fn setup_runtime(find_symbol_ptr: impl Fn(&str) -> Option<*mut c_void>) {
     ] {
         if let Some(global) = find_symbol_ptr(binding.symbol()) {
             let global = global.cast::<*const ()>();
-            unsafe { *global = binding.function_ptr() };
+            unsafe {
+                if let Some(function_ptr) = binding.function_ptr() {
+                    *global = function_ptr;
+                };
+            }
         }
     }
 }
@@ -787,8 +802,8 @@ pub fn setup_runtime(find_symbol_ptr: impl Fn(&str) -> Option<*mut c_void>) {
 /// if gcd(a,b) = 1, then x is the modular multiplicative inverse of a modulo b.
 /// See https://en.wikipedia.org/wiki/Extended_Euclidean_algorithm
 ///
-/// Given two numbers a, b. It returns a block with gcd(a, b) and the bezout coefficient x.
-/// Both of these numbers are received as arguments in the entry block.
+/// This function declares a MLIR function that given two numbers a and b, returns a MLIR struct with gcd(a, b)
+/// and the bezout coefficient x. The declaration is done in the body of the module.
 fn build_egcd_function<'ctx>(
     module: &Module,
     context: &'ctx Context,
@@ -805,14 +820,14 @@ fn build_egcd_function<'ctx>(
 
     let a = entry_block.arg(0)?;
     let b = entry_block.arg(1)?;
-    // The egcd algorithm works by calculating a series of remainders, each the remainder of dividing the previous two
-    // For the initial setup, r0 = b, r1 = a.
+    // The egcd algorithm works by calculating a series of remainders `rem`, being each `rem_i` the remainder of dividing `rem_{i-1}` with `rem_{i-2}`
+    // For the initial setup, rem_0 = b, rem_1 = a.
     // This order is chosen because if we reverse them, then the first iteration will just swap them
     let remainder = a;
     let prev_remainder = b;
 
     // Similarly we'll calculate another series which starts 0,1,... and from which we
-    // will retrieve themodular inverse of a
+    // will retrieve the modular inverse of a
     let prev_inverse = entry_block.const_int_from_type(context, location, 0, integer_type)?;
     let inverse = entry_block.const_int_from_type(context, location, 1, integer_type)?;
 
@@ -844,7 +859,7 @@ fn build_egcd_function<'ctx>(
     let quotient =
         loop_block.append_op_result(arith::divui(prev_remainder, remainder, location))?;
 
-    // Then r_(i+1) = r_(i-1) - q * r_i, and inv_(i+1) = inv_(i-1) - q * inv_i
+    // Then rem_(i+1) = rem_(i-1) - q * rem_i, and inv_(i+1) = inv_(i-1) - q * inv_i
     let rem_times_quo = loop_block.muli(remainder, quotient, location)?;
     let inv_times_quo = loop_block.muli(inverse, quotient, location)?;
     let next_remainder =
@@ -852,9 +867,9 @@ fn build_egcd_function<'ctx>(
     let next_inverse =
         loop_block.append_op_result(arith::subi(prev_inverse, inv_times_quo, location))?;
 
-    // Check if r_(i+1) is 0
+    // Check if rem_(i+1) is 0
     // If true, then:
-    // - r_i is the gcd of a and b
+    // - rem_i is the gcd of a and b
     // - inv_i is the bezout coefficient x
     let zero = loop_block.const_int_from_type(context, location, 0, integer_type)?;
     let next_remainder_eq_zero =

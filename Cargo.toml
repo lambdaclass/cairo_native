@@ -1,5 +1,5 @@
 [workspace.package]
-version = "0.6.0"
+version = "0.6.1"
 edition = "2021"
 license = "Apache-2.0"
 repository = "https://github.com/lambdaclass/cairo_native"
@@ -77,7 +77,6 @@ cairo-lang-filesystem.workspace = true
 cairo-lang-runner.workspace = true
 cairo-lang-semantic.workspace = true
 cairo-lang-sierra.workspace = true
-cairo-lang-sierra-generator.workspace = true
 cairo-lang-sierra-to-casm.workspace = true
 educe = "0.5.11" # can't update until https://github.com/magiclen/educe/issues/27
 itertools = "0.14.0"
@@ -137,8 +136,9 @@ rand = "0.9.0"
 starknet-curve.workspace = true
 
 [dev-dependencies]
-cairo-vm = { git = "https://github.com/lambdaclass/cairo-vm", rev = "368e3fb311601a33ff8945e784eaa332f1fd499a", features = ["cairo-1-hints"] }
+cairo-vm = { git = "https://github.com/lambdaclass/cairo-vm", rev = "742e9ae3de8b55f4a5dc44831f06068712f2f0c5", features = ["cairo-1-hints"] }
 cairo-lang-semantic = { workspace = true, features = ["testing"] }
+cairo-lang-sierra-generator.workspace = true
 criterion = { version = "0.5.1", features = ["html_reports"] }
 lambdaworks-math = "0.11.0"
 pretty_assertions_sorted = "1.2.3"
@@ -189,25 +189,25 @@ harness = false
 members = ["debug_utils", "debug_utils/sierra-emu", "debug_utils/casm-data-flow"]
 
 [workspace.dependencies]
-sierra-emu = { path = "debug_utils/sierra-emu", version = "0.6.0" }
-cairo-lang-casm = "=2.12.0"
-cairo-lang-compiler = "=2.12.0"
-cairo-lang-defs = "=2.12.0"
-cairo-lang-filesystem = "=2.12.0"
-cairo-lang-runner = "=2.12.0"
-cairo-lang-semantic = "=2.12.0"
-cairo-lang-sierra = "=2.12.0"
-cairo-lang-sierra-ap-change = "=2.12.0"
-cairo-lang-sierra-gas = "=2.12.0"
-cairo-lang-sierra-generator = "=2.12.0"
-cairo-lang-sierra-to-casm = "=2.12.0"
-cairo-lang-starknet = "=2.12.0"
-cairo-lang-starknet-classes = "=2.12.0"
-cairo-lang-test-plugin = "=2.12.0"
-cairo-lang-utils = "=2.12.0"
-starknet-crypto = "0.7.3"
-starknet-curve = "0.5.1"
-starknet-types-core = { version = "0.1.7", default-features = false }
+sierra-emu = { path = "debug_utils/sierra-emu", version = "0.6.1" }
+cairo-lang-casm = "~2.12.3"
+cairo-lang-compiler = "~2.12.3"
+cairo-lang-defs = "~2.12.3"
+cairo-lang-filesystem = "~2.12.3"
+cairo-lang-runner = "~2.12.3"
+cairo-lang-semantic = "~2.12.3"
+cairo-lang-sierra = "~2.12.3"
+cairo-lang-sierra-ap-change = "~2.12.3"
+cairo-lang-sierra-gas = "~2.12.3"
+cairo-lang-sierra-generator = "~2.12.3"
+cairo-lang-sierra-to-casm = "~2.12.3"
+cairo-lang-starknet = "~2.12.3"
+cairo-lang-starknet-classes = "~2.12.3"
+cairo-lang-test-plugin = "~2.12.3"
+cairo-lang-utils = "~2.12.3"
+starknet-crypto = "0.8.0"
+starknet-curve = "0.6.0"
+starknet-types-core = { version = "0.2.0", default-features = false }
 num-bigint = "0.4.6"
 num-integer = "0.1.46"
 num-traits = "0.2"

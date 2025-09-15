@@ -128,7 +128,9 @@ pub fn main() {
 
     assert_eq!(retdata, expected_retdata);
 
-    runner.relocate(true).expect("failed to relocate trace");
+    runner
+        .relocate(true, true)
+        .expect("failed to relocate trace");
 
     let trace_file = File::create(cli_args.trace_path).expect("failed to create trace file");
     let mut trace_writer = FileWriter::new(trace_file);
