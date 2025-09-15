@@ -22,6 +22,12 @@ repository = "https://github.com/lambdaclass/cairo_native"
 
 [workspace.dependencies]
 anyhow = "1.0"
+aquamarine = "0.6.0"
+ark-ec = "0.5.0"
+ark-ff = "0.5.0"
+ark-secp256k1 = "0.5.0"
+ark-secp256r1 = "0.5.0"
+bumpalo = "3.16.0"
 cairo-lang-casm = "=2.12.2"
 cairo-lang-compiler = "=2.12.2"
 cairo-lang-defs = "=2.12.2"
@@ -41,24 +47,42 @@ cairo-native-bin-utils.path = "binaries/cairo-native-bin-utils"
 cairo-native.path = "."
 clap = "4.5.23"
 colored = "2.1.0"
+criterion = "0.5.1"
+educe = "0.5.11" # can't update until https://github.com/magiclen/educe/issues/27
 itertools = "0.14.0"
+keccak = "0.1.5"
+lambdaworks-math = "0.11.0"
+lazy_static = "1.5"
+libc = "0.2"
 libloading = "0.8.6"
+llvm-sys = "191.0.0"
 melior = "0.21.0"
+mlir-sys = "0.4.1"
 num-bigint = "0.4.6"
 num-integer = "0.1.46"
 num-traits = "0.2"
+pretty_assertions_sorted = "1.2.3"
+proptest = "1.5.0"
+rand = "0.9.0"
+rayon = "1.10.0"
+rstest = "0.24.0"
 scarb-metadata = "1.12.0"
 scarb-ui = "0.1.5"
 serde = "1.0.0"
 serde_json = "1.0.128"
+sha2 = "0.10.8"
 sierra-emu = { path = "debug_utils/sierra-emu", version = "0.6.1" }
 starknet-crypto = "0.8.1"
 starknet-curve = "0.6.0"
 starknet-types-core = "0.2.0"
 stats_alloc = "0.1.10"
 tempfile = "3.15.0"
+test-case = "3.3"
+thiserror = "2.0.9"
 tracing = "0.1"
 tracing-subscriber = "0.3.19"
+utf8_iter = "1.0.4"
+walkdir = "2.5.0"
 
 [package]
 name = "cairo-native"
@@ -85,19 +109,19 @@ with-trace-dump = ["dep:sierra-emu"]
 testing-utils = ["dep:cairo-lang-compiler"]
 
 [dependencies]
-aquamarine = "0.6.0"
-bumpalo = "3.16.0"
+aquamarine.workspace = true
+bumpalo.workspace = true
 cairo-lang-compiler = { workspace = true, optional = true }
 cairo-lang-sierra.workspace = true
 cairo-lang-utils.workspace = true
-educe = "0.5.11" # can't update until https://github.com/magiclen/educe/issues/27
+educe.workspace = true
 itertools.workspace = true
-lazy_static = "1.5"
-libc = "0.2"
+lazy_static.workspace = true
+libc.workspace = true
 libloading.workspace = true
-llvm-sys = "191.0.0"
+llvm-sys.workspace = true
 melior = { workspace = true, features = ["ods-dialects", "helpers"] }
-mlir-sys = { version = "0.4.1" }
+mlir-sys.workspace = true
 num-bigint.workspace = true
 num-integer.workspace = true
 num-traits.workspace = true
@@ -106,9 +130,9 @@ serde_json.workspace = true
 sierra-emu = { workspace = true, optional = true }
 starknet-types-core = { workspace = true, features = [ "std", "serde", "num-traits" ] }
 tempfile.workspace = true
-thiserror = "2.0.9"
-tracing = "0.1"
-utf8_iter = "1.0.4"
+thiserror.workspace = true
+tracing.workspace = true
+utf8_iter.workspace = true
 
 # Gas cost computation dependencies. Removing these implies either duplicating
 # code or moving shared code to another crate.
@@ -120,15 +144,15 @@ cairo-lang-sierra-gas.workspace = true
 cairo-lang-starknet-classes.workspace = true
 
 # Syscall handler implementation dependencies.
-ark-ec = "0.5.0"
-ark-ff = "0.5.0"
-ark-secp256k1 = "0.5.0"
-ark-secp256r1 = "0.5.0"
-keccak = "0.1.5"
-sha2 = "0.10.8"
+ark-ec.workspace = true
+ark-ff.workspace = true
+ark-secp256k1.workspace = true
+ark-secp256r1.workspace = true
+keccak.workspace = true
+sha2.workspace = true
 
 # Runtime library dependencies.
-rand = "0.9.0"
+rand.workspace = true
 starknet-curve.workspace = true
 
 [dev-dependencies]
@@ -136,16 +160,16 @@ cairo-lang-filesystem.workspace = true
 cairo-lang-runner.workspace = true
 cairo-lang-sierra-generator.workspace = true
 cairo-lang-starknet.workspace = true
-criterion = { version = "0.5.1", features = ["html_reports"] }
-lambdaworks-math = "0.11.0"
-pretty_assertions_sorted = "1.2.3"
-proptest = "1.5.0"
-rayon = "1.10.0"
-rstest = "0.24.0"
-serde_json = { version = "1.0.128" }
-test-case = "3.3"
-tracing-subscriber = { version = "0.3.19", features = ["env-filter", "json", "registry"] }
-walkdir = "2.5.0"
+criterion = { workspace = true, features = ["html_reports"] }
+lambdaworks-math.workspace = true
+pretty_assertions_sorted.workspace = true
+proptest.workspace = true
+rayon.workspace = true
+rstest.workspace = true
+serde_json.workspace = true
+test-case.workspace = true
+tracing-subscriber = { workspace = true, features = ["env-filter", "json", "registry"] }
+walkdir.workspace = true
 
 # We can't use the crates.io dependency because of a cycle in the dependency chain.
 cairo-vm = { git = "https://github.com/lambdaclass/cairo-vm", rev = "742e9ae3de8b55f4a5dc44831f06068712f2f0c5", features = ["cairo-1-hints"] }
