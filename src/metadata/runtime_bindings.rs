@@ -124,9 +124,7 @@ impl RuntimeBinding {
                 crate::runtime::cairo_native__get_costs_builtin as *const ()
             }
             RuntimeBinding::ExtendedEuclideanAlgorithm => return None,
-            RuntimeBinding::CircuitOperation => {
-                unreachable!()
-            }
+            RuntimeBinding::CircuitOperation => return None,
             #[cfg(feature = "with-cheatcode")]
             RuntimeBinding::VtableCheatcode => {
                 crate::starknet::cairo_native__vtable_cheatcode as *const ()
@@ -959,7 +957,7 @@ where
                 1 => {
                     let value = block.addi(lhs, modulus, location)?;
                     block.subi(value, rhs, location)?
-                },
+                }
                 2 => block.muli(lhs, rhs, location)?,
                 3 => todo!("Implement inversion operation"),
                 _ => unreachable!(),
