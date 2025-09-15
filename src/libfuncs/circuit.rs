@@ -8,8 +8,10 @@ use crate::{
     execution_result::{ADD_MOD_BUILTIN_SIZE, MUL_MOD_BUILTIN_SIZE, RANGE_CHECK96_BUILTIN_SIZE},
     libfuncs::r#struct::build_struct_value,
     metadata::{
-        drop_overrides::DropOverridesMeta, realloc_bindings::ReallocBindingsMeta,
-        runtime_bindings::RuntimeBindingsMeta, MetadataStorage,
+        drop_overrides::DropOverridesMeta,
+        realloc_bindings::ReallocBindingsMeta,
+        runtime_bindings::{CircuitOpType, RuntimeBindingsMeta},
+        MetadataStorage,
     },
     native_panic,
     types::{circuit::build_u384_struct_type, TypeBuilder},
@@ -488,6 +490,10 @@ fn build_gate_evaluation<'ctx, 'this>(
     circuit_data: Value<'ctx, 'ctx>,
     circuit_modulus: Value<'ctx, 'ctx>,
 ) -> Result<([&'this Block<'ctx>; 2], Vec<Value<'ctx, 'ctx>>)> {
+    let runtime_bindings_meta = metadata
+        .get_mut::<RuntimeBindingsMeta>()
+        .to_native_assert_error("Unable to get the RuntimeBindingsMeta from MetadataStorage")?;
+
     // Each gate is represented as a MLIR value, and identified by an offset in the gate vector.
     // - `None` implies that the gate value *has not* been compiled yet.
     // - `Some` implies that the gate values *has* already been compiled, and therefore can be safely used.
@@ -519,6 +525,17 @@ fn build_gate_evaluation<'ctx, 'this>(
     let mut add_offsets = circuit_info.add_offsets.iter().peekable();
     let mut mul_offsets = circuit_info.mul_offsets.iter().enumerate();
 
+    // let circuit_modulus_u385 = block.extui(
+    //     circuit_modulus,
+    //     IntegerType::new(context, 384 + 1).into(),
+    //     location,
+    // )?;
+    let circuit_modulus_u768 = block.extui(
+        circuit_modulus,
+        IntegerType::new(context, 384 * 2).into(),
+        location,
+    )?;
+
     // We loop until all gates have been solved
     loop {
         // We iterate the add gate offsets as long as we can
@@ -534,26 +551,25 @@ fn build_gate_evaluation<'ctx, 'this>(
                     // Extend to avoid overflow
                     let lhs_value = block.extui(
                         lhs_value,
-                        IntegerType::new(context, 384 + 1).into(),
+                        IntegerType::new(context, 384 * 2).into(),
                         location,
                     )?;
                     let rhs_value = block.extui(
                         rhs_value,
-                        IntegerType::new(context, 384 + 1).into(),
-                        location,
-                    )?;
-                    let circuit_modulus = block.extui(
-                        circuit_modulus,
-                        IntegerType::new(context, 384 + 1).into(),
+                        IntegerType::new(context, 384 * 2).into(),
                         location,
                     )?;
                     // value = (lhs_value + rhs_value) % circuit_modulus
-                    let value = block.addi(lhs_value, rhs_value, location)?;
-                    let value =
-                        block.append_op_result(arith::remui(value, circuit_modulus, location))?;
-                    // Truncate back
-                    let value =
-                        block.trunci(value, IntegerType::new(context, 384).into(), location)?;
+                    let value = runtime_bindings_meta.circuit_operation(
+                        context,
+                        helper.module,
+                        block,
+                        location,
+                        CircuitOpType::Add,
+                        lhs_value,
+                        rhs_value,
+                        circuit_modulus_u768,
+                    )?;
                     gates[gate_offset.output] = Some(value);
                 }
                 // SUB: lhs = out - rhs
@@ -561,27 +577,25 @@ fn build_gate_evaluation<'ctx, 'this>(
                     // Extend to avoid overflow
                     let rhs_value = block.extui(
                         rhs_value,
-                        IntegerType::new(context, 384 + 1).into(),
+                        IntegerType::new(context, 384 * 2).into(),
                         location,
                     )?;
                     let output_value = block.extui(
                         output_value,
-                        IntegerType::new(context, 384 + 1).into(),
-                        location,
-                    )?;
-                    let circuit_modulus = block.extui(
-                        circuit_modulus,
-                        IntegerType::new(context, 384 + 1).into(),
+                        IntegerType::new(context, 384 * 2).into(),
                         location,
                     )?;
                     // value = (output_value + circuit_modulus - rhs_value) % circuit_modulus
-                    let value = block.addi(output_value, circuit_modulus, location)?;
-                    let value = block.append_op_result(arith::subi(value, rhs_value, location))?;
-                    let value =
-                        block.append_op_result(arith::remui(value, circuit_modulus, location))?;
-                    // Truncate back
-                    let value =
-                        block.trunci(value, IntegerType::new(context, 384).into(), location)?;
+                    let value = runtime_bindings_meta.circuit_operation(
+                        context,
+                        helper.module,
+                        block,
+                        location,
+                        CircuitOpType::Sub,
+                        output_value,
+                        rhs_value,
+                        circuit_modulus_u768,
+                    )?;
                     gates[gate_offset.lhs] = Some(value);
                 }
                 // We can't solve this add gate yet, so we break from the loop
@@ -612,18 +626,17 @@ fn build_gate_evaluation<'ctx, 'this>(
                         IntegerType::new(context, 384 * 2).into(),
                         location,
                     )?;
-                    let circuit_modulus = block.extui(
-                        circuit_modulus,
-                        IntegerType::new(context, 384 * 2).into(),
-                        location,
-                    )?;
                     // value = (lhs_value * rhs_value) % circuit_modulus
-                    let value = block.muli(lhs_value, rhs_value, location)?;
-                    let value =
-                        block.append_op_result(arith::remui(value, circuit_modulus, location))?;
-                    // Truncate back
-                    let value =
-                        block.trunci(value, IntegerType::new(context, 384).into(), location)?;
+                    let value = runtime_bindings_meta.circuit_operation(
+                        context,
+                        helper.module,
+                        block,
+                        location,
+                        CircuitOpType::Mul,
+                        lhs_value,
+                        rhs_value,
+                        circuit_modulus_u768,
+                    )?;
                     gates[gate_offset.output] = Some(value)
                 }
                 // INV: lhs = 1 / rhs
@@ -634,26 +647,16 @@ fn build_gate_evaluation<'ctx, 'this>(
                         IntegerType::new(context, 384 * 2).into(),
                         location,
                     )?;
-                    let circuit_modulus = block.extui(
-                        circuit_modulus,
-                        IntegerType::new(context, 384 * 2).into(),
-                        location,
-                    )?;
                     let integer_type = rhs_value.r#type();
 
                     // Apply egcd to find gcd and inverse
-                    let runtime_bindings_meta = metadata
-                        .get_mut::<RuntimeBindingsMeta>()
-                        .to_native_assert_error(
-                            "Unable to get the RuntimeBindingsMeta from MetadataStorage",
-                        )?;
                     let euclidean_result = runtime_bindings_meta.extended_euclidean_algorithm(
                         context,
                         helper.module,
                         block,
                         location,
                         rhs_value,
-                        circuit_modulus,
+                        circuit_modulus_u768,
                     )?;
                     // Extract the values from the result struct
                     let gcd = block.extract_value(
@@ -704,7 +707,7 @@ fn build_gate_evaluation<'ctx, 'this>(
                         ))
                         .result(0)?
                         .into();
-                    let wrapped_inverse = block.addi(inverse, circuit_modulus, location)?;
+                    let wrapped_inverse = block.addi(inverse, circuit_modulus_u768, location)?;
                     let inverse = block.append_op_result(arith::select(
                         is_negative,
                         wrapped_inverse,

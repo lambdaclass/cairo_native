@@ -46,6 +46,7 @@ enum RuntimeBinding {
     GetCostsBuiltin,
     DebugPrint,
     ExtendedEuclideanAlgorithm,
+    CircuitOperation,
     #[cfg(feature = "with-cheatcode")]
     VtableCheatcode,
 }
@@ -73,6 +74,7 @@ impl RuntimeBinding {
             RuntimeBinding::ExtendedEuclideanAlgorithm => {
                 "cairo_native__extended_euclidean_algorithm"
             }
+            RuntimeBinding::CircuitOperation => "cairo_native__circuit_operation",
             #[cfg(feature = "with-cheatcode")]
             RuntimeBinding::VtableCheatcode => "cairo_native__vtable_cheatcode",
         }
@@ -116,6 +118,9 @@ impl RuntimeBinding {
                 crate::runtime::cairo_native__get_costs_builtin as *const ()
             }
             RuntimeBinding::ExtendedEuclideanAlgorithm => unreachable!(),
+            RuntimeBinding::CircuitOperation => {
+                unreachable!()
+            }
             #[cfg(feature = "with-cheatcode")]
             RuntimeBinding::VtableCheatcode => {
                 crate::starknet::cairo_native__vtable_cheatcode as *const ()
@@ -128,6 +133,13 @@ impl RuntimeBinding {
 #[derive(Debug, Default)]
 pub struct RuntimeBindingsMeta {
     active_map: HashSet<RuntimeBinding>,
+}
+
+pub enum CircuitOpType {
+    Add,
+    Sub,
+    Mul,
+    Inv,
 }
 
 impl RuntimeBindingsMeta {
@@ -212,6 +224,42 @@ impl RuntimeBindingsMeta {
             )
             .result(0)?
             .into())
+    }
+
+    /// Build if necessary the circuit operation function, use to perform circuit operations.
+    #[allow(clippy::too_many_arguments)]
+    pub fn circuit_operation<'c, 'a>(
+        &mut self,
+        context: &'c Context,
+        module: &Module,
+        block: &'a Block<'c>,
+        location: Location<'c>,
+        op: CircuitOpType,
+        lhs_value: Value<'c, '_>,
+        rhs_value: Value<'c, '_>,
+        circuit_modulus: Value<'c, '_>,
+    ) -> Result<Value<'c, 'a>>
+    where
+        'c: 'a,
+    {
+        let func_symbol = RuntimeBinding::CircuitOperation.symbol();
+        if self.active_map.insert(RuntimeBinding::CircuitOperation) {
+            build_circuit_operation(context, module, location, func_symbol)?;
+        }
+
+        let op_tag = block.const_int(context, location, op as u8, 2)?;
+        let return_type = IntegerType::new(context, 384).into();
+
+        Ok(block.append_op_result(
+            OperationBuilder::new("llvm.call", location)
+                .add_attributes(&[(
+                    Identifier::new(context, "callee"),
+                    FlatSymbolRefAttribute::new(context, func_symbol).into(),
+                )])
+                .add_operands(&[op_tag, lhs_value, rhs_value, circuit_modulus])
+                .add_results(&[return_type])
+                .build()?,
+        )?)
     }
 
     /// Register if necessary, then invoke the `debug::print()` function.
@@ -850,5 +898,99 @@ fn build_egcd_function<'ctx>(
         )],
         location,
     ));
+    Ok(())
+}
+
+fn build_circuit_operation<'ctx, 'this>(
+    context: &'ctx Context,
+    module: &Module,
+    location: Location<'ctx>,
+    func_symbol: &str,
+) -> Result<()>
+where
+    'this: 'ctx,
+{
+    let func_name = StringAttribute::new(context, func_symbol);
+    let u2_ty = IntegerType::new(context, 2).into();
+    let u384_ty: Type = IntegerType::new(context, 384).into();
+    let u768_ty = IntegerType::new(context, 384 * 2).into();
+    let region = {
+        let region = Region::new();
+        let entry_block = region.append_block(Block::new(&[
+            (u2_ty, location),
+            (u768_ty, location),
+            (u768_ty, location),
+            (u768_ty, location),
+        ]));
+
+        let op_flag = entry_block.arg(0)?;
+        let lhs = entry_block.arg(1)?;
+        let rhs = entry_block.arg(2)?;
+        let modulus = entry_block.arg(3)?;
+
+        let cases_values = (0..3).collect::<Vec<_>>();
+        let default_block = region.append_block(Block::new(&[]));
+        let op_blocks = (0..3).map(|_| Block::new(&[])).collect::<Vec<_>>();
+
+        // Default block.
+        {
+            default_block.append_operation(llvm::unreachable(location));
+        }
+
+        // Operation block cases.
+        for (tag, block) in op_blocks.iter().enumerate() {
+            let result = match tag {
+                0 => block.addi(lhs, rhs, location)?,
+                1 => {
+                    let value = block.addi(lhs, modulus, location)?;
+                    block.subi(value, rhs, location)?
+                },
+                2 => block.muli(lhs, rhs, location)?,
+                3 => todo!("Implement inversion operation"),
+                _ => unreachable!(),
+            };
+            let result = block.append_op_result(arith::remui(result, modulus, location))?;
+            // Truncate back
+            let result = block.trunci(result, IntegerType::new(context, 384).into(), location)?;
+
+            block.append_operation(llvm::r#return(Some(result), location));
+        }
+
+        entry_block.append_operation(cf::switch(
+            context,
+            &cases_values,
+            op_flag,
+            u2_ty,
+            (&default_block, &[]),
+            &op_blocks
+                .iter()
+                .map(|block| (block, [].as_slice()))
+                .collect::<Vec<_>>(),
+            location,
+        )?);
+
+        for block in op_blocks.into_iter() {
+            region.append_block(block);
+        }
+
+        region
+    };
+
+    module.body().append_operation(llvm::func(
+        context,
+        func_name,
+        TypeAttribute::new(llvm::r#type::function(
+            u384_ty,
+            &[u2_ty, u768_ty, u768_ty, u768_ty],
+            false,
+        )),
+        region,
+        &[(
+            Identifier::new(context, "no_inline"), // Adding this attribute significantly improves compilation
+            Attribute::unit(context),
+        )],
+        location,
+    ));
+
     Ok(())
 }
