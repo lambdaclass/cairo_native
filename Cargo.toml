@@ -1,8 +1,64 @@
+[workspace]
+members = [
+    "debug_utils",
+    "debug_utils/sierra-emu",
+    "debug_utils/casm-data-flow",
+    "debug_utils/cairo-native-stress",
+    "binaries/cairo-native-compile",
+    "binaries/cairo-native-dump",
+    "binaries/cairo-native-run",
+    "binaries/cairo-native-test",
+    "binaries/scarb-native-dump",
+    "binaries/scarb-native-test",
+    "binaries/starknet-native-compile",
+    "binaries/cairo-native-bin-utils",
+]
+
 [workspace.package]
 version = "0.6.1"
 edition = "2021"
 license = "Apache-2.0"
 repository = "https://github.com/lambdaclass/cairo_native"
+
+[workspace.dependencies]
+anyhow = "1.0"
+cairo-lang-casm = "=2.12.2"
+cairo-lang-compiler = "=2.12.2"
+cairo-lang-defs = "=2.12.2"
+cairo-lang-filesystem = "=2.12.2"
+cairo-lang-runner = "=2.12.2"
+cairo-lang-semantic = "=2.12.2"
+cairo-lang-sierra = "=2.12.2"
+cairo-lang-sierra-ap-change = "=2.12.2"
+cairo-lang-sierra-gas = "=2.12.2"
+cairo-lang-sierra-generator = "=2.12.2"
+cairo-lang-sierra-to-casm = "=2.12.2"
+cairo-lang-starknet = "=2.12.2"
+cairo-lang-starknet-classes = "=2.12.2"
+cairo-lang-test-plugin = "=2.12.2"
+cairo-lang-utils = "=2.12.2"
+cairo-native-bin-utils.path = "binaries/cairo-native-bin-utils"
+cairo-native.path = "."
+clap = "4.5.23"
+colored = "2.1.0"
+itertools = "0.14.0"
+libloading = "0.8.6"
+melior = "0.21.0"
+num-bigint = "0.4.6"
+num-integer = "0.1.46"
+num-traits = "0.2"
+scarb-metadata = "1.12.0"
+scarb-ui = "0.1.5"
+serde = "1.0.0"
+serde_json = "1.0.128"
+sierra-emu = { path = "debug_utils/sierra-emu", version = "0.6.1" }
+starknet-crypto = "0.8.1"
+starknet-curve = "0.6.0"
+starknet-types-core = "0.2.0"
+stats_alloc = "0.1.10"
+tempfile = "3.15.0"
+tracing = "0.1"
+tracing-subscriber = "0.3.19"
 
 [package]
 name = "cairo-native"
@@ -130,59 +186,3 @@ harness = false
 [[bench]]
 name = "libfuncs"
 harness = false
-
-[workspace]
-members = [
-    "debug_utils",
-    "debug_utils/sierra-emu",
-    "debug_utils/casm-data-flow",
-    "debug_utils/cairo-native-stress",
-    "binaries/cairo-native-compile",
-    "binaries/cairo-native-dump",
-    "binaries/cairo-native-run",
-    "binaries/cairo-native-test",
-    "binaries/scarb-native-dump",
-    "binaries/scarb-native-test",
-    "binaries/starknet-native-compile",
-    "binaries/cairo-native-bin-utils",
-]
-
-[workspace.dependencies]
-anyhow = "1.0"
-cairo-lang-casm = "=2.12.2"
-cairo-lang-compiler = "=2.12.2"
-cairo-lang-defs = "=2.12.2"
-cairo-lang-filesystem = "=2.12.2"
-cairo-lang-runner = "=2.12.2"
-cairo-lang-semantic = "=2.12.2"
-cairo-lang-sierra = "=2.12.2"
-cairo-lang-sierra-ap-change = "=2.12.2"
-cairo-lang-sierra-gas = "=2.12.2"
-cairo-lang-sierra-generator = "=2.12.2"
-cairo-lang-sierra-to-casm = "=2.12.2"
-cairo-lang-starknet = "=2.12.2"
-cairo-lang-starknet-classes = "=2.12.2"
-cairo-lang-test-plugin = "=2.12.2"
-cairo-lang-utils = "=2.12.2"
-cairo-native-bin-utils.path = "binaries/cairo-native-bin-utils"
-cairo-native.path = "."
-clap = "4.5.23"
-colored = "2.1.0"
-itertools = "0.14.0"
-libloading = "0.8.6"
-melior = "0.21.0"
-num-bigint = "0.4.6"
-num-integer = "0.1.46"
-num-traits = "0.2"
-scarb-metadata = "1.12.0"
-scarb-ui = "0.1.5"
-serde = "1.0.0"
-serde_json = "1.0.128"
-sierra-emu = { path = "debug_utils/sierra-emu", version = "0.6.1" }
-starknet-crypto = "0.8.1"
-starknet-curve = "0.6.0"
-starknet-types-core = "0.2.0"
-stats_alloc = "0.1.10"
-tempfile = "3.15.0"
-tracing = "0.1"
-tracing-subscriber = "0.3.19"
