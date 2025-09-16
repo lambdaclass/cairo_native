@@ -5,6 +5,7 @@ use crate::{
     error::Result as NativeResult, metadata::MetadataStorage, native_panic, types::TypeBuilder,
     OptLevel,
 };
+use cairo_lang_runner::token_gas_cost;
 use cairo_lang_sierra::{
     extensions::{
         core::{CoreLibfunc, CoreType},
@@ -104,27 +105,6 @@ impl Default for BuiltinCosts {
             add_mod: token_gas_cost(CostTokenType::AddMod) as u64,
             mul_mod: token_gas_cost(CostTokenType::MulMod) as u64,
         }
-    }
-}
-
-// Returns the approximated token gas costs.
-//
-// This function was taken from the cairo-lang-runner crate.
-pub fn token_gas_cost(token_type: CostTokenType) -> usize {
-    match token_type {
-        CostTokenType::Const => 1,
-        CostTokenType::Step
-        | CostTokenType::Hole
-        | CostTokenType::RangeCheck
-        | CostTokenType::RangeCheck96 => {
-            panic!("Token type {token_type:?} has no gas cost.")
-        }
-        CostTokenType::Pedersen => 4050,
-        CostTokenType::Poseidon => 491,
-        CostTokenType::Bitwise => 583,
-        CostTokenType::EcOp => 4085,
-        CostTokenType::AddMod => 230,
-        CostTokenType::MulMod => 604,
     }
 }
 
