@@ -1,1 +1,1 @@
-window.SIDEBAR_ITEMS = {"enum":["TestKind"],"fn":["deserialize_test_compilation","main"],"mod":["utils"],"struct":["Args","TargetGroupDeduplicator"]};
+window.SIDEBAR_ITEMS = {"enum":["TestKind"],"fn":["deserialize_test_compilation","main"],"struct":["Args","TargetGroupDeduplicator"]};

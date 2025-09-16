@@ -1,1 +1,1 @@
-window.SIDEBAR_ITEMS = {"enum":["RunMode"],"fn":["main","process_profile"],"mod":["utils"],"struct":["Args","LibfuncProfileSummary"]};
+window.SIDEBAR_ITEMS = {"enum":["RunMode"],"fn":["main","process_profile"],"struct":["Args","LibfuncProfileSummary"]};

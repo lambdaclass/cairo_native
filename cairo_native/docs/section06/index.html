@@ -10,7 +10,7 @@
 <div class="example-wrap"><pre class="language-bash"><code>export NATIVE_DEBUG_DUMP_PREPASS=1
 export NATIVE_DEBUG_DUMP=1</code></pre></div><h4 id="debugging-with-lldb"><a class="doc-anchor" href="#debugging-with-lldb">§</a>Debugging with LLDB</h4>
 <p>To debug with LLDB (or another debugger), we must compile the binary with the <code>with-debug-utils</code> feature.</p>
-<div class="example-wrap"><pre class="language-bash"><code>cargo build --bin cairo-native-run --features with-debug-utils</code></pre></div>
+<div class="example-wrap"><pre class="language-bash"><code>cargo build --package cairo-native-run --features with-debug-utils</code></pre></div>
 <p>Then, we can add the a debugger breakpoint trap. To add it at a given sierra statement, we can set the following env var:</p>
 <div class="example-wrap"><pre class="language-bash"><code>export NATIVE_DEBUG_TRAP_AT_STMT=10</code></pre></div>
 <p>The trap instruction may not end up exactly where the statement is.</p>
