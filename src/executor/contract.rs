@@ -303,7 +303,12 @@ impl AotContractExecutor {
                         let libfunc = registry.get_libfunc(&gen_invocation.libfunc_id)?;
                         if let CoreConcreteLibfunc::FunctionCall(function_call_libfunc) = libfunc {
                             let func_id = function_call_libfunc.function.id.id;
-                            let func_entry = stats.sierra_func_stats.get_mut(&func_id).unwrap();
+                            let func_entry = stats
+                                .sierra_func_stats
+                                .get_mut(&func_id)
+                                .to_native_assert_error(&format!(
+                                    "Function ID {func_id}, should be present in the stats"
+                                ))?;
                             func_entry.times_called += 1;
                         }
                     }
