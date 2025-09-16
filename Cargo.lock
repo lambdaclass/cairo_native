@@ -1035,7 +1035,6 @@ dependencies = [
 name = "cairo-native"
 version = "0.6.1"
 dependencies = [
- "anyhow",
  "aquamarine",
  "ark-ec",
  "ark-ff 0.5.0",
@@ -1043,10 +1042,8 @@ dependencies = [
  "ark-secp256r1",
  "bumpalo",
  "cairo-lang-compiler",
- "cairo-lang-defs",
  "cairo-lang-filesystem",
  "cairo-lang-runner",
- "cairo-lang-semantic",
  "cairo-lang-sierra",
  "cairo-lang-sierra-ap-change",
  "cairo-lang-sierra-gas",
@@ -1054,12 +1051,8 @@ dependencies = [
  "cairo-lang-sierra-to-casm",
  "cairo-lang-starknet",
  "cairo-lang-starknet-classes",
- "cairo-lang-test-plugin",
  "cairo-lang-utils",
  "cairo-vm 3.0.0-rc.2",
- "cc",
- "clap",
- "colored 2.2.0",
  "criterion",
  "educe 0.5.11",
  "itertools 0.14.0",
@@ -1079,15 +1072,12 @@ dependencies = [
  "rand 0.9.1",
  "rayon",
  "rstest",
- "scarb-metadata",
- "scarb-ui",
  "serde",
  "serde_json",
  "sha2",
  "sierra-emu",
  "starknet-curve",
  "starknet-types-core",
- "stats_alloc",
  "tempfile",
  "test-case",
  "thiserror",
@@ -1095,6 +1085,104 @@ dependencies = [
  "tracing-subscriber",
  "utf8_iter",
  "walkdir",
+]
+
+[[package]]
+name = "cairo-native-bin-utils"
+version = "0.0.0"
+dependencies = [
+ "anyhow",
+ "cairo-lang-runner",
+ "cairo-lang-sierra",
+ "cairo-lang-sierra-to-casm",
+ "cairo-lang-starknet",
+ "cairo-lang-test-plugin",
+ "cairo-lang-utils",
+ "cairo-native",
+ "clap",
+ "colored 2.2.0",
+ "itertools 0.14.0",
+ "num-traits",
+ "scarb-metadata",
+ "starknet-types-core",
+ "tracing",
+]
+
+[[package]]
+name = "cairo-native-compile"
+version = "0.0.0"
+dependencies = [
+ "anyhow",
+ "cairo-lang-compiler",
+ "cairo-native",
+ "clap",
+ "serde_json",
+ "tracing",
+ "tracing-subscriber",
+]
+
+[[package]]
+name = "cairo-native-dump"
+version = "0.0.0"
+dependencies = [
+ "cairo-lang-compiler",
+ "cairo-lang-defs",
+ "cairo-lang-semantic",
+ "cairo-lang-sierra",
+ "cairo-lang-starknet",
+ "cairo-native",
+ "clap",
+ "melior",
+ "tracing",
+ "tracing-subscriber",
+]
+
+[[package]]
+name = "cairo-native-run"
+version = "0.0.0"
+dependencies = [
+ "anyhow",
+ "cairo-lang-compiler",
+ "cairo-lang-runner",
+ "cairo-lang-sierra",
+ "cairo-lang-sierra-to-casm",
+ "cairo-native",
+ "cairo-native-bin-utils",
+ "clap",
+ "serde_json",
+ "tracing",
+ "tracing-subscriber",
+]
+
+[[package]]
+name = "cairo-native-stress"
+version = "0.0.0"
+dependencies = [
+ "cairo-lang-sierra",
+ "cairo-lang-starknet",
+ "cairo-native",
+ "clap",
+ "libloading",
+ "num-bigint",
+ "stats_alloc",
+ "tempfile",
+ "tracing",
+ "tracing-subscriber",
+]
+
+[[package]]
+name = "cairo-native-test"
+version = "0.0.0"
+dependencies = [
+ "anyhow",
+ "cairo-lang-compiler",
+ "cairo-lang-filesystem",
+ "cairo-lang-starknet",
+ "cairo-lang-test-plugin",
+ "cairo-native-bin-utils",
+ "clap",
+ "tracing",
+ "tracing-subscriber",
 ]
 
 [[package]]
@@ -3205,6 +3293,32 @@ dependencies = [
 ]
 
 [[package]]
+name = "scarb-native-dump"
+version = "0.0.0"
+dependencies = [
+ "anyhow",
+ "cairo-lang-sierra",
+ "cairo-native",
+ "melior",
+ "scarb-metadata",
+ "serde_json",
+]
+
+[[package]]
+name = "scarb-native-test"
+version = "0.0.0"
+dependencies = [
+ "anyhow",
+ "cairo-lang-sierra",
+ "cairo-lang-test-plugin",
+ "cairo-native-bin-utils",
+ "clap",
+ "scarb-metadata",
+ "scarb-ui",
+ "serde_json",
+]
+
+[[package]]
 name = "scarb-ui"
 version = "0.1.5"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -3510,6 +3624,18 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "22c898ae81b6409532374cf237f1bd752d068b96c6ad500af9ebbd0d9bb712f6"
 dependencies = [
  "starknet-types-core",
+]
+
+[[package]]
+name = "starknet-native-compile"
+version = "0.0.0"
+dependencies = [
+ "anyhow",
+ "cairo-lang-sierra",
+ "cairo-lang-starknet-classes",
+ "cairo-native",
+ "clap",
+ "serde_json",
 ]
 
 [[package]]
