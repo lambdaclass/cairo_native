@@ -2,7 +2,7 @@ name: Starknet Blocks
 
 on:
   pull_request:
-    branches: [main]
+    branches: [main, v0.6]
   merge_group:
     types: [checks_requested]
 
