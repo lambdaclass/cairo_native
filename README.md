@@ -24,7 +24,6 @@ to machine code via MLIR and LLVM.
 
 - [Getting Started](#getting-started)
 - [Included Tools](#included-tools)
-  - [Scripts](#scripts)
   - [cairo-native-compile](#cairo-native-compile)
   - [cairo-native-dump](#cairo-native-dump)
   - [cairo-native-run](#cairo-native-run)
@@ -32,6 +31,7 @@ to machine code via MLIR and LLVM.
   - [cairo-native-stress](#cairo-native-stress)
   - [scarb-native-dump](#scarb-native-dump)
   - [scarb-native-test](#scarb-native-test)
+  - [starknet-native-compile](#starknet-native-compile)
 - [Benchmarking](#benchmarking)
 
 For in-depth documentation, see the [developer documentation][].
@@ -47,6 +47,7 @@ use. This can be done by adding `cairo-native = "0.6.1"` to your Cargo.toml
 ## Getting Started
 
 ### Dependencies
+
 - Linux or macOS (aarch64 included) only for now
 - LLVM 19 with MLIR: On debian you can use [apt.llvm.org](https://apt.llvm.org/),
   on macOS you can use brew
@@ -55,6 +56,7 @@ use. This can be done by adding `cairo-native = "0.6.1"` to your Cargo.toml
 - Git
 
 ### Setup
+
 > This step applies to all operating systems.
 
 Run the following make target to install the dependencies (**both Linux and macOS**):
@@ -64,6 +66,7 @@ make deps
 ```
 
 #### Linux
+
 Since Linux distributions change widely, you need to install LLVM 19 via your
 package manager, compile it or check if the current release has a Linux binary.
 
@@ -126,6 +129,7 @@ source env.sh
 ```
 
 #### MacOS
+
 The makefile `deps` target (which you should have ran before) installs LLVM 19
 with brew for you, afterwards you need to execute the `env.sh` script to setup
 the needed environment variables.
@@ -150,6 +154,7 @@ if you are on MacOs, you'll need to add this extra line:
 Without this additional config, rust-analyzer won't be able to work properly
 
 ### Make targets:
+
 Running `make` by itself will check whether the required LLVM installation and
 corelib is found, and then list available targets.
 
@@ -170,7 +175,7 @@ Usage:
     doc-open:     Builds and opens documentation in browser.
     bench:        Runs the hyperfine benchmark script.
     bench-ci:     Runs the criterion benchmarks for CI.
-    install:      Invokes cargo to install the cairo-native tools.
+    install:      Invokes cargo to install cairo-native tools.
     clean:        Cleans the built artifacts.
     stress-test   Runs a command which runs stress tests.
     stress-plot   Plots the results of the stress test command.
@@ -178,11 +183,11 @@ Usage:
 ```
 
 ## Included Tools
+
 Aside from the compilation and execution engine library, Cairo Native includes
 a few command-line tools to aid development, and some useful scripts.
 
-These are:
-- The contents of the `/scripts/` folder
+These are the contents of the `/src/bin` folder
 - `cairo-native-compile`
 - `cairo-native-dump`
 - `cairo-native-run`
@@ -190,8 +195,10 @@ These are:
 - `cairo-native-stress`
 - `scarb-native-dump`
 - `scarb-native-test`
+- `starknet-native-compile`
 
 ### `cairo-native-compile`
+
 ```bash
 Compiles Cairo/Sierra to Native machine code.
 Outputs the generated MLIR, and the final shared library.
@@ -213,6 +220,7 @@ Options:
 ```
 
 ###  `cairo-native-dump`
+
 ```bash
 Usage: cairo-native-dump [OPTIONS] <INPUT>
 
@@ -226,10 +234,11 @@ Options:
 ```
 
 ### `cairo-native-run`
+
 This tool allows to run programs using the JIT engine, like the `cairo-run`
 tool, the parameters can only be felt values.
 
-Example: `echo '1' | cairo-native-run 'program.cairo' 'program::program::main' --inputs - --outputs -`
+Example: `cairo-native-run --available-gas 10000 './programs/array_get.cairo'`
 
 ```bash
 Exits with 1 if the compilation or run fails, otherwise 0.
@@ -250,6 +259,7 @@ Options:
 ```
 
 ### `cairo-native-test`
+
 This tool mimics the `cairo-test`
 [tool](https://github.com/starkware-libs/cairo/tree/main/crates/cairo-lang-test-runner)
 and is identical to it in interface, the only feature it doesn't have is the profiler.
@@ -261,36 +271,66 @@ Exits with 1 if the compilation or run fails, otherwise 0.
 Usage: cairo-native-test [OPTIONS] <PATH>
 
 Arguments:
-  <PATH>  The Cairo project path to compile and run its tests
+  <PATH>
+          The Cairo project path to compile and run its tests
 
 Options:
-  -s, --single-file            Whether path is a single file
-      --allow-warnings         Allows the compilation to succeed with warnings
-  -f, --filter <FILTER>        The filter for the tests, running only tests containing the filter string [default: ]
-      --include-ignored        Should we run ignored tests as well
-      --ignored                Should we run only the ignored tests
-      --starknet               Should we add the starknet plugin to run the tests
-      --run-mode <RUN_MODE>    Run with JIT or AOT (compiled) [default: jit] [possible values: aot, jit]
-  -O, --opt-level <OPT_LEVEL>  Optimization level, Valid: 0, 1, 2, 3. Values higher than 3 are considered as 3 [default: 0]
-  -h, --help                   Print help
-  -V, --version                Print version
+  -s, --single-file
+          Whether path is a single file
+
+      --allow-warnings
+          Allows the compilation to succeed with warnings
+
+  -f, --filter <FILTER>
+          The filter for the tests, running only tests containing the filter string
+          
+          [default: ]
+
+      --skip-compilation <SKIP_COMPILATION>
+          Skips compilation for tests/functions containing any of the given filters. Unlike `--filter`, the matching tests are not even compiled by native.
+          
+          DISCLAIMER: This is a hacky and temporary flag, used to run corelib tests when not all libfuncs are implemented.
+
+      --include-ignored
+          Should we run ignored tests as well
+
+      --ignored
+          Should we run only the ignored tests
+
+      --starknet
+          Should we add the starknet plugin to run the tests
+
+      --run-mode <RUN_MODE>
+          Run with JIT or AOT (compiled)
+          
+          [default: jit]
+          [possible values: aot, jit]
+
+  -O, --opt-level <OPT_LEVEL>
+          Optimization level, Valid: 0, 1, 2, 3. Values higher than 3 are considered as 3
+          
+          [default: 0]
+
+  -h, --help
+          Print help (see a summary with '-h')
+
+  -V, --version
+          Print version
 ```
 
 For single files, you can use the `-s, --single-file` option.
 
-For a project, it needs to have a `cairo_project.toml` specifying the
-`crate_roots`. You can find an example under the `cairo-tests/` folder, which
-is a cairo project that works with this tool.
-
 ```bash
 cairo-native-test -s myfile.cairo
-
-cairo-native-test ./cairo-tests/
 ```
+
+For a project, it needs to have a `cairo_project.toml` specifying the
+`crate_roots`.
 
 This will run all the tests (functions marked with the `#[test]` attribute).
 
 ### `cairo-native-stress`
+
 This tool runs a stress test on Cairo Native.
 
 ```bash
@@ -331,6 +371,7 @@ make stress-clean
 ```
 
 ### `scarb-native-dump`
+
 This tool mimics the `scarb build` [command](https://github.com/software-mansion/scarb/tree/main/extensions/scarb-cairo-test).
 You can download it on our [releases](https://github.com/lambdaclass/cairo_native/releases) page.
 
@@ -339,6 +380,7 @@ behave like `scarb build`, leaving the MLIR files under the `target/` folder
 besides the generated JSON sierra files.
 
 ### `scarb-native-test`
+
 This tool mimics the `scarb test` [command](https://github.com/software-mansion/scarb/tree/main/extensions/scarb-cairo-test).
 You can download it on our [releases](https://github.com/lambdaclass/cairo_native/releases) page.
 
@@ -355,8 +397,28 @@ Options:
   -f, --filter <FILTER>        Run only tests whose name contain FILTER [default: ]
       --include-ignored        Run ignored and not ignored tests
       --ignored                Run only ignored tests
+  -t, --test-kind <TEST_KIND>  Choose test kind to run [possible values: unit, integration, all]
       --run-mode <RUN_MODE>    Run with JIT or AOT (compiled) [default: jit] [possible values: aot, jit]
   -O, --opt-level <OPT_LEVEL>  Optimization level, Valid: 0, 1, 2, 3. Values higher than 3 are considered as 3 [default: 0]
+  -h, --help                   Print help
+  -V, --version                Print version
+```
+
+### `starknet-native-compile`
+
+```bash
+Given a Sierra file (as saved in Starknet's contract tree), extracts the sierra_program from it into readable Sierra code, compiles it to a shared library, and saves the result to the given output path. Keep in mind, that when specifying the 
+output file path it should have a .so extension in Linux and a .dylib extension in Macos.
+
+Usage: starknet-native-compile [OPTIONS] <PATH> <OUTPUT>
+
+Arguments:
+  <PATH>    The path of the Sierra file to compile
+  <OUTPUT>  The output file path
+
+Options:
+  -O, --opt-level <OPT_LEVEL>  Optimization level, Valid: 0, 1, 2, 3. Values higher than 3 are considered as 3 [default: 0]
+      --stats <STATS>          Output path for compilation statistics
   -h, --help                   Print help
   -V, --version                Print version
 ```
@@ -364,6 +426,7 @@ Options:
 ## Benchmarking
 
 ### Requirements
+
 - [hyperfine](https://github.com/sharkdp/hyperfine): `cargo install hyperfine`
 - [cairo 2.12.3](https://github.com/starkware-libs/cairo)
 - Cairo Corelibs

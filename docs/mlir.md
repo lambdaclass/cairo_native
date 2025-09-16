@@ -3,6 +3,7 @@
 Check out the new MLIR Workshop: https://lambdaclass.github.io/mlir-workshop/
 
 ## How MLIR Works
+
 MLIR is composed of **dialects**, which is like a IR of it's own, and this
 IR can be converted to another dialect IR (if the functionality exists).
 This is what makes MLIR shine.
@@ -12,6 +13,7 @@ Some commonly used dialects in this project:
 - The cf dialect: It contains basic control flow operations, such as the `br` and `cond_br`, which are unconditional and conditional jumps.
 
 ### The IR
+
 The MLIR IR is composed recursively like this: `Operation -> Region -> Block -> Operations`
 
 Each operation has 1 or more region, each region has 1 or more blocks, each
@@ -20,6 +22,7 @@ block has 1 or more operations.
 This way a MLIR program can be composed.
 
 ### Transformations and passes
+
 MLIR provides a set of transformations that can optimize the IR.
 Such as `canonicalize`.
 

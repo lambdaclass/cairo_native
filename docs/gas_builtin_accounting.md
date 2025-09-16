@@ -6,10 +6,11 @@ gas and builtins during execution.
 ## Gas
 
 ### Introduction
+
 Gas management in a blockchain environment involves accounting for the amount
 of computation performed during the execution of a transaction. This is used
 to accurately charge the user at the end of the execution or to revert early
-if the transaction consumes more gas than provided by the sender.
+if the transaction consumes more gas than what it was provided by the sender.
 
 This documentation assumes prior knowledge about Sierra and about the way
 gas accounting is performed in Sierra. For those seeking to deepen their
@@ -19,11 +20,13 @@ and greged’s about
 [gas accounting in Sierra](https://blog.kakarot.org/understanding-sierra-gas-accounting-19d6141d28b9).
 
 ### Gas builtin
+
 The gas builtin is used in Sierra in order to perform gas accounting. It is
 passed as an input to all function calls and holds the current remaining
 gas. It is represented in MLIR by a simple `u64`.
 
 ### Gas metadata
+
 The process of calculating gas begins at the very outset of the compilation
 process. During the initial setup of the Sierra program, metadata about the
 program, including gas information, is extracted. Using gas helper functions
@@ -32,14 +35,15 @@ the consumed cost (steps, memory holes, builtins usage) for each statement
 in the Sierra code is stored in a HashMap.
 
 ### Withdrawing gas
+
 The action of withdrawing gas can be split in two steps:
 
-- **Calculating Total Gas Cost**: Using the previously constructed HashMap,
+1. **Calculating Total Gas Cost**: Using the previously constructed HashMap,
   we iterate over the various cost tokens (including steps, built-in usage,
   and memory holes) for the statement, convert them into a
   [common gas unit](https://github.com/starkware-libs/cairo/blob/v2.7.1/crates/cairo-lang-runner/src/lib.rs#L136),
   and sum them up to get the total gas cost for the statement.
-- **Executing Gas Withdrawal**: The previously calculated gas cost is used
+2. **Executing Gas Withdrawal**: The previously calculated gas cost is used
   when the current statement is a `withdraw_gas` libfunc call.
 
 The `withdraw_gas` libfunc takes the current leftover gas as input and uses
@@ -50,6 +54,7 @@ branches based on whether the remaining gas is greater than or equal to the
 amount being withdrawn.
 
 ### Example
+
 Let's illustrate this with a simple example using the following Cairo 1 code:
 
 ```rust,ignore
@@ -119,13 +124,14 @@ llvm.func @"test::test::run_test[expr16](f0)"(%arg0: i64 loc(unknown), %arg1: i1
 ```
 
 Here, we see the constant `2680` defined at the begining of the function.
-In basic block 1, the withdraw_gas operations are performed: by comparing
+In basic block 1, the `withdraw_gas` operations are performed: by comparing
 `%28` (remaining gas) and `%13` (gas cost), the result stored in `%32`
 determines the conditional branching. A saturating subtraction between the
 remaining gas and the gas cost is then performed, updating the remaining gas
 in the IR.
 
 ### Final gas usage
+
 The final gas usage can be easily retrieved from the gas builtin value
 returned by the function. This is accomplished when
 [parsing the return values](https://github.com/lambdaclass/cairo_native/blob/65face8194054b7ed396a34a60e7b1595197543a/src/executor.rs#L286)
@@ -161,17 +167,19 @@ gas accounting.
 ## Builtins Counter
 
 ### Introduction
+
 The Cairo Native compiler records the usage of each builtins in order to
 provide information about the program's builtins consumption.
 This information is NOT used for the gas calculation, as the gas cost of
-builtins is already taken into account during the [gas accounting process](./gas.md).
+builtins is already taken into account during the gas accounting process.
 The builtins counter types can each be found in the [types folder](../src/types/).
 Taking the [Pedersen hash](../src/types/pedersen.rs) as an example, we see
-that the counters will be represented as i64 integers in MLIR.
+that the counters will be represented as `i64` integers in MLIR.
 Counters are then simply incremented by one each time the builtins are
 called from within the program.
 
 ### Example
+
 Let us consider the following Cairo program which uses the `pedersen` builtin:
 
 ```rust,ignore
