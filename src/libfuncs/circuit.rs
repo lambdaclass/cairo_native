@@ -503,8 +503,12 @@ fn build_gate_evaluation<'ctx, 'this>(
     // The first gate always has a value of 1. It is implicity referred by some gate offsets.
     gates[0] = Some(block.const_int(context, location, 1, 384)?);
 
-    // The input gates are also known at the start. We take them from the `circuit_data` array.
     let u384_type = IntegerType::new(context, 384).into();
+    let u768_type = IntegerType::new(context, 768).into();
+
+    let circuit_modulus_u768 = block.extui(circuit_modulus, u768_type, location)?;
+
+    // The input gates are also known at the start. We take them from the `circuit_data` array.
     for i in 0..circuit_info.n_inputs {
         let value_ptr = block.gep(
             context,
@@ -525,17 +529,6 @@ fn build_gate_evaluation<'ctx, 'this>(
     let mut add_offsets = circuit_info.add_offsets.iter().peekable();
     let mut mul_offsets = circuit_info.mul_offsets.iter().enumerate();
 
-    // let circuit_modulus_u385 = block.extui(
-    //     circuit_modulus,
-    //     IntegerType::new(context, 384 + 1).into(),
-    //     location,
-    // )?;
-    let circuit_modulus_u768 = block.extui(
-        circuit_modulus,
-        IntegerType::new(context, 384 * 2).into(),
-        location,
-    )?;
-
     // We loop until all gates have been solved
     loop {
         // We iterate the add gate offsets as long as we can
@@ -548,19 +541,7 @@ fn build_gate_evaluation<'ctx, 'this>(
             match (lhs_value, rhs_value, output_value) {
                 // ADD: lhs + rhs = out
                 (Some(lhs_value), Some(rhs_value), None) => {
-                    // Extend to avoid overflow
-                    let lhs_value = block.extui(
-                        lhs_value,
-                        IntegerType::new(context, 384 * 2).into(),
-                        location,
-                    )?;
-                    let rhs_value = block.extui(
-                        rhs_value,
-                        IntegerType::new(context, 384 * 2).into(),
-                        location,
-                    )?;
-                    // value = (lhs_value + rhs_value) % circuit_modulus
-                    let value = runtime_bindings_meta.circuit_operation(
+                    let value = runtime_bindings_meta.circuit_arith_operation(
                         context,
                         helper.module,
                         block,
@@ -568,25 +549,13 @@ fn build_gate_evaluation<'ctx, 'this>(
                         CircuitOpType::Add,
                         lhs_value,
                         rhs_value,
-                        circuit_modulus_u768,
+                        circuit_modulus,
                     )?;
                     gates[gate_offset.output] = Some(value);
                 }
                 // SUB: lhs = out - rhs
                 (None, Some(rhs_value), Some(output_value)) => {
-                    // Extend to avoid overflow
-                    let rhs_value = block.extui(
-                        rhs_value,
-                        IntegerType::new(context, 384 * 2).into(),
-                        location,
-                    )?;
-                    let output_value = block.extui(
-                        output_value,
-                        IntegerType::new(context, 384 * 2).into(),
-                        location,
-                    )?;
-                    // value = (output_value + circuit_modulus - rhs_value) % circuit_modulus
-                    let value = runtime_bindings_meta.circuit_operation(
+                    let value = runtime_bindings_meta.circuit_arith_operation(
                         context,
                         helper.module,
                         block,
@@ -594,7 +563,7 @@ fn build_gate_evaluation<'ctx, 'this>(
                         CircuitOpType::Sub,
                         output_value,
                         rhs_value,
-                        circuit_modulus_u768,
+                        circuit_modulus,
                     )?;
                     gates[gate_offset.lhs] = Some(value);
                 }
@@ -615,19 +584,7 @@ fn build_gate_evaluation<'ctx, 'this>(
             match (lhs_value, rhs_value, output_value) {
                 // MUL: lhs * rhs = out
                 (Some(lhs_value), Some(rhs_value), None) => {
-                    // Extend to avoid overflow
-                    let lhs_value = block.extui(
-                        lhs_value,
-                        IntegerType::new(context, 384 * 2).into(),
-                        location,
-                    )?;
-                    let rhs_value = block.extui(
-                        rhs_value,
-                        IntegerType::new(context, 384 * 2).into(),
-                        location,
-                    )?;
-                    // value = (lhs_value * rhs_value) % circuit_modulus
-                    let value = runtime_bindings_meta.circuit_operation(
+                    let value = runtime_bindings_meta.circuit_arith_operation(
                         context,
                         helper.module,
                         block,
@@ -635,18 +592,14 @@ fn build_gate_evaluation<'ctx, 'this>(
                         CircuitOpType::Mul,
                         lhs_value,
                         rhs_value,
-                        circuit_modulus_u768,
+                        circuit_modulus,
                     )?;
                     gates[gate_offset.output] = Some(value)
                 }
                 // INV: lhs = 1 / rhs
                 (None, Some(rhs_value), Some(_)) => {
                     // Extend to avoid overflow
-                    let rhs_value = block.extui(
-                        rhs_value,
-                        IntegerType::new(context, 384 * 2).into(),
-                        location,
-                    )?;
+                    let rhs_value = block.extui(rhs_value, u768_type, location)?;
                     let integer_type = rhs_value.r#type();
 
                     // Apply egcd to find gcd and inverse
@@ -716,8 +669,7 @@ fn build_gate_evaluation<'ctx, 'this>(
                     ))?;
 
                     // Truncate back
-                    let inverse =
-                        block.trunci(inverse, IntegerType::new(context, 384).into(), location)?;
+                    let inverse = block.trunci(inverse, u384_type, location)?;
 
                     gates[gate_offset.lhs] = Some(inverse);
                 }
