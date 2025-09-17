@@ -1049,10 +1049,22 @@ where
             false,
         )),
         region,
-        &[(
-            Identifier::new(context, "no_inline"),
-            Attribute::unit(context),
-        )],
+        &[
+            (
+                Identifier::new(context, "no_inline"),
+                Attribute::unit(context),
+            ),
+            // Remove unwind metadata setup.
+            (
+                Identifier::new(context, "nounwind"),
+                Attribute::unit(context),
+            ),
+            // Guarantee to LLVM the function won't access memory at all.
+            (
+                Identifier::new(context, "readnone"),
+                Attribute::unit(context),
+            ),
+        ],
         location,
     ));
 

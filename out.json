@@ -1,0 +1,1 @@
+{"version":"V0","entry_points":{"0x48641e98173c0acd0df447a2d3ae3db134577142690a40acd9b1181cbf82e2":{"function_id":0,"builtins":["RangeCheck","Bitwise","Poseidon","RangeCheck96","CircuitAdd","CircuitMul","Gas","System"]}}}
