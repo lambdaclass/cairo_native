@@ -46,11 +46,15 @@ jobs:
           path: sequencer
           # https://github.com/lambdaclass/sequencer/pull/79
           ref: 096d0c4baf87eb41dc4a6facad75a17170c3a967
-      - name: Cache RPC Calls
-        uses: actions/cache@v4.2.0
+      
+      - name: Restore RPC Calls
+        id: restore-rpc-calls
+        uses: actions/cache/restore@v4.2.0
         with:
           path: starknet-replay/cache
-          key: cache-${{matrix.block}}-${{matrix.runner}}
+          key: cache-${{matrix.block}}-${{ github.run_id }}
+          restore-keys: |
+            cache-${{matrix.block}}
 
       # Install dependencies
       - uses: ./cairo_native/.github/actions/install-linux-deps
@@ -103,7 +107,14 @@ jobs:
         with:
           name: dump-${{matrix.block}}-${{matrix.runner}}
           path: starknet-replay/state_dumps/${{matrix.runner}}
-
+        
+      - name: Save RPC Calls
+        uses: actions/cache/save@v4.2.0
+        if: ${{ always() && matrix.runner == 'vm' }}
+        with:
+          path: starknet-replay/cache
+          key: ${{ steps.restore-rpc-calls.outputs.cache-primary-key }}
+          
   compare-dumps:
     name: Compare Dumps
     needs: [run-blocks]
