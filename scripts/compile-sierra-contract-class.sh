@@ -47,7 +47,7 @@ cargo run -p debug_utils --bin contract-to-sierra $CONTRACT_PATH > $SIERRA_PATH
 
 echo "Compiling contract class..."
 # Set NATIVE_DEBUG_DUMP to generate mlir files.
-NATIVE_DEBUG_DUMP=true cargo run --release --bin starknet-native-compile -- -O $OPT_LVL $CONTRACT_PATH output
+NATIVE_DEBUG_DUMP=true cargo run --release --package starknet-native-compile -- -O $OPT_LVL $CONTRACT_PATH output
 
 echo "Converting optimized mlir into llvmir unoptimized..."
 $LLVM_SYS_191_PREFIX/bin/mlir-translate -mlir-to-llvmir dump.mlir > dump-prepass.ll
