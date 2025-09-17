@@ -7,15 +7,13 @@ use cairo_lang_compiler::{
 use cairo_lang_filesystem::cfg::{Cfg, CfgSet};
 use cairo_lang_starknet::starknet_plugin_suite;
 use cairo_lang_test_plugin::{compile_test_prepared_db, test_plugin_suite, TestsCompilationConfig};
-use clap::Parser;
-use std::path::PathBuf;
-use tracing_subscriber::{EnvFilter, FmtSubscriber};
-use utils::{
+use cairo_native_bin_utils::{
     test::{display_tests_summary, filter_test_cases, run_tests},
     RunArgs, RunMode,
 };
-
-mod utils;
+use clap::Parser;
+use std::path::PathBuf;
+use tracing_subscriber::{EnvFilter, FmtSubscriber};
 
 /// Compiles a Cairo project and runs all the functions marked as `#[test]`.
 /// Exits with 1 if the compilation or run fails, otherwise 0.

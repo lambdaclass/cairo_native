@@ -19,44 +19,7 @@ repository.workspace = true
 # https://doc.rust-lang.org/edition-guide/rust-2021/default-cargo-resolver.html
 resolver = "2"
 
-[[bin]]
-name = "cairo-native-dump"
-required-features = ["build-cli"]
-
-[[bin]]
-name = "cairo-native-run"
-required-features = ["build-cli"]
-
-[[bin]]
-name = "cairo-native-test"
-required-features = ["build-cli"]
-
-[[bin]]
-name = "cairo-native-stress"
-required-features = ["build-cli"]
-
-[[bin]]
-name = "scarb-native-test"
-required-features = ["scarb"]
-
-[[bin]]
-name = "scarb-native-dump"
-required-features = ["scarb"]
-
-[[bin]]
-name = "starknet-native-compile"
-required-features = ["build-cli"]
-
 [features]
-default = ["build-cli"]
-build-cli = [
-    "dep:clap",
-    "dep:tracing-subscriber",
-    "dep:anyhow",
-    "dep:cairo-lang-test-plugin",
-    "dep:colored",
-]
-scarb = ["build-cli", "dep:scarb-ui", "dep:scarb-metadata"]
 with-cheatcode = []
 with-debug-utils = []
 with-mem-tracing = []
@@ -72,27 +35,25 @@ normal = ["aquamarine"]
 aquamarine = "0.6.0"
 bumpalo = "3.16.0"
 cairo-lang-compiler.workspace = true
-cairo-lang-defs.workspace = true
 cairo-lang-filesystem.workspace = true
 cairo-lang-runner.workspace = true
-cairo-lang-semantic.workspace = true
 cairo-lang-sierra.workspace = true
 cairo-lang-sierra-to-casm.workspace = true
 educe = "0.5.11" # can't update until https://github.com/magiclen/educe/issues/27
-itertools = "0.14.0"
+itertools.workspace = true
 lazy_static = "1.5"
 libc = "0.2"
 llvm-sys = "191.0.0"
-melior = { version = "0.21.0", features = ["ods-dialects", "helpers"] }
+melior = { workspace = true, features = ["ods-dialects", "helpers"] }
 mlir-sys = { version = "0.4.1" }
 num-bigint.workspace = true
 num-traits.workspace = true
-starknet-types-core = { workspace = true, default-features = false, features = [
+starknet-types-core = { workspace = true, features = [
     "std",
     "serde",
     "num-traits",
 ] }
-tempfile = "3.15.0"
+tempfile.workspace = true
 thiserror = "2.0.9"
 tracing = "0.1"
 utf8_iter = "1.0.4"
@@ -105,24 +66,12 @@ cairo-lang-sierra-gas.workspace = true
 cairo-lang-starknet.workspace = true
 cairo-lang-utils.workspace = true
 cairo-lang-starknet-classes.workspace = true
-clap = { version = "4.5.23", features = ["derive"], optional = true }
-libloading = "0.8.6"
-tracing-subscriber = { version = "0.3.19", features = [
-    "env-filter",
-    "json",
-    "registry",
-], optional = true }
-serde = { version = "1.0", features = ["derive"] }
-anyhow = { version = "1.0", optional = true }
-cairo-lang-test-plugin = { workspace = true, optional = true }
-colored = { version = "2.1.0", optional = true }
+libloading.workspace = true
+serde = { workspace = true, features = ["derive"] }
 # needed to interface with cairo-lang-*
 keccak = "0.1.5"
 sha2 = "0.10.8"                                          # needed for the syscall handler stub
-scarb-metadata = { version = "1.12.0", optional = true }
-scarb-ui = { version = "0.1.5", optional = true }
-serde_json = { version = "1.0.128" }
-stats_alloc = "0.1.10"
+serde_json.workspace = true
 
 # for the syscallhandler stub to match blockifier
 ark-secp256k1 = "0.5.0"
@@ -137,8 +86,6 @@ starknet-curve.workspace = true
 
 [dev-dependencies]
 cairo-vm = { git = "https://github.com/lambdaclass/cairo-vm", rev = "742e9ae3de8b55f4a5dc44831f06068712f2f0c5", features = ["cairo-1-hints"] }
-cairo-lang-semantic = { workspace = true, features = ["testing"] }
-cairo-lang-sierra-generator.workspace = true
 criterion = { version = "0.5.1", features = ["html_reports"] }
 lambdaworks-math = "0.11.0"
 pretty_assertions_sorted = "1.2.3"
@@ -148,9 +95,8 @@ test-case = "3.3"
 walkdir = "2.5.0"
 serde_json = { version = "1.0.128" }
 rayon = "1.10.0"
-
-[build-dependencies]
-cc = "1.2.7"
+tracing-subscriber = { version = "0.3.19", features = ["env-filter", "json", "registry"] }
+cairo-lang-sierra-generator.workspace = true
 
 [profile.optimized-dev]
 inherits = "dev"
@@ -186,10 +132,23 @@ name = "libfuncs"
 harness = false
 
 [workspace]
-members = ["debug_utils", "debug_utils/sierra-emu", "debug_utils/casm-data-flow"]
+members = [
+    "debug_utils",
+    "debug_utils/sierra-emu",
+    "debug_utils/casm-data-flow",
+    "debug_utils/cairo-native-stress",
+    "binaries/cairo-native-compile",
+    "binaries/cairo-native-dump",
+    "binaries/cairo-native-run",
+    "binaries/cairo-native-test",
+    "binaries/scarb-native-dump",
+    "binaries/scarb-native-test",
+    "binaries/starknet-native-compile",
+    "binaries/cairo-native-bin-utils",
+]
 
 [workspace.dependencies]
-sierra-emu = { path = "debug_utils/sierra-emu", version = "0.6.1" }
+anyhow = "1.0"
 cairo-lang-casm = "~2.12.3"
 cairo-lang-compiler = "~2.12.3"
 cairo-lang-defs = "~2.12.3"
@@ -205,9 +164,25 @@ cairo-lang-starknet = "~2.12.3"
 cairo-lang-starknet-classes = "~2.12.3"
 cairo-lang-test-plugin = "~2.12.3"
 cairo-lang-utils = "~2.12.3"
-starknet-crypto = "0.8.0"
-starknet-curve = "0.6.0"
-starknet-types-core = { version = "0.2.0", default-features = false }
+cairo-native-bin-utils.path = "binaries/cairo-native-bin-utils"
+cairo-native.path = "."
+clap = "4.5.23"
+colored = "2.1.0"
+itertools = "0.14.0"
+libloading = "0.8.6"
+melior = "0.21.0"
 num-bigint = "0.4.6"
 num-integer = "0.1.46"
 num-traits = "0.2"
+scarb-metadata = "1.12.0"
+scarb-ui = "0.1.5"
+serde = "1.0.0"
+serde_json = "1.0.128"
+sierra-emu = { path = "debug_utils/sierra-emu", version = "0.6.1" }
+starknet-crypto = "0.8.1"
+starknet-curve = "0.6.0"
+starknet-types-core = "0.2.0"
+stats_alloc = "0.1.10"
+tempfile = "3.15.0"
+tracing = "0.1"
+tracing-subscriber = "0.3.19"
