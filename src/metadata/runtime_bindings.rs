@@ -4,7 +4,7 @@
 //! compilation context.
 
 use crate::{
-    error::{Error, Result},
+    error::{CompilerError, Error, Result},
     libfuncs::LibfuncHelper,
 };
 use melior::{
@@ -46,9 +46,7 @@ enum RuntimeBinding {
     GetCostsBuiltin,
     DebugPrint,
     ExtendedEuclideanAlgorithm,
-    CircuitAddOperation,
-    CircuitSubOperation,
-    CircuitMulOperation,
+    CircuitArithOperation,
     #[cfg(feature = "with-cheatcode")]
     VtableCheatcode,
 }
@@ -76,9 +74,7 @@ impl RuntimeBinding {
             RuntimeBinding::ExtendedEuclideanAlgorithm => {
                 "cairo_native__extended_euclidean_algorithm"
             }
-            RuntimeBinding::CircuitAddOperation => "cairo_native__circuit_add_operation",
-            RuntimeBinding::CircuitSubOperation => "cairo_native__circuit_sub_operation",
-            RuntimeBinding::CircuitMulOperation => "cairo_native__circuit_mul_operation",
+            RuntimeBinding::CircuitArithOperation => "cairo_native__circuit_arith_operation",
             #[cfg(feature = "with-cheatcode")]
             RuntimeBinding::VtableCheatcode => "cairo_native__vtable_cheatcode",
         }
@@ -128,9 +124,7 @@ impl RuntimeBinding {
                 crate::runtime::cairo_native__get_costs_builtin as *const ()
             }
             RuntimeBinding::ExtendedEuclideanAlgorithm => return None,
-            RuntimeBinding::CircuitAddOperation
-            | RuntimeBinding::CircuitSubOperation
-            | RuntimeBinding::CircuitMulOperation => return None,
+            RuntimeBinding::CircuitArithOperation => return None,
             #[cfg(feature = "with-cheatcode")]
             RuntimeBinding::VtableCheatcode => {
                 crate::starknet::cairo_native__vtable_cheatcode as *const ()
@@ -258,30 +252,15 @@ impl RuntimeBindingsMeta {
     where
         'c: 'a,
     {
-        let func_symbol = match op {
-            CircuitOpType::Add => {
-                let func_symbol = RuntimeBinding::CircuitAddOperation.symbol();
-                if self.active_map.insert(RuntimeBinding::CircuitAddOperation) {
-                    build_circuit_add_operation(context, module, location, func_symbol)?;
-                }
-                func_symbol
-            }
-            CircuitOpType::Sub => {
-                let func_symbol = RuntimeBinding::CircuitSubOperation.symbol();
-                if self.active_map.insert(RuntimeBinding::CircuitSubOperation) {
-                    build_circuit_sub_operation(context, module, location, func_symbol)?;
-                }
-                func_symbol
-            }
-            CircuitOpType::Mul => {
-                let func_symbol = RuntimeBinding::CircuitMulOperation.symbol();
-                if self.active_map.insert(RuntimeBinding::CircuitMulOperation) {
-                    build_circuit_mul_operation(context, module, location, func_symbol)?;
-                }
-                func_symbol
-            }
-        };
+        let func_symbol = RuntimeBinding::CircuitArithOperation.symbol();
+        if self
+            .active_map
+            .insert(RuntimeBinding::CircuitArithOperation)
+        {
+            build_circuit_arith_operation(context, module, location, func_symbol)?;
+        }
 
+        let op_tag = block.const_int(context, location, op as u8, 2)?;
         let return_type = IntegerType::new(context, 384).into();
 
         Ok(block.append_op_result(
@@ -290,7 +269,7 @@ impl RuntimeBindingsMeta {
                     Identifier::new(context, "callee"),
                     FlatSymbolRefAttribute::new(context, func_symbol).into(),
                 )])
-                .add_operands(&[lhs_value, rhs_value, circuit_modulus])
+                .add_operands(&[op_tag, lhs_value, rhs_value, circuit_modulus])
                 .add_results(&[return_type])
                 .build()?,
         )?)
@@ -939,12 +918,13 @@ fn build_egcd_function<'ctx>(
     Ok(())
 }
 
-/// Build function for circuit add operations.
+/// Build function for circuit arithmetic operations.
 ///
-/// It builds an mlir function to perform circuit's addition operations.
-/// This allows us to reduce the amount of inlined operations in the mlir generated,
+/// It builds an mlir function to perform most circuit's arithmetic operations
+/// with the exception of the inversion since it is handled separately. This
+/// allows us to reduce the amount of inlined operations in the mlir generated,
 /// significantly reducing the compilation time of circuits.
-fn build_circuit_add_operation<'ctx, 'this>(
+fn build_circuit_arith_operation<'ctx, 'this>(
     context: &'ctx Context,
     module: &Module,
     location: Location<'ctx>,
@@ -954,182 +934,108 @@ where
     'this: 'ctx,
 {
     let func_name = StringAttribute::new(context, func_symbol);
+    let u2_ty = IntegerType::new(context, 2).into();
     let u384_ty: Type = IntegerType::new(context, 384).into();
     let u385_ty: Type = IntegerType::new(context, 385).into();
-
-    let region = {
-        let region = Region::new();
-        let block = region.append_block(Block::new(&[
-            (u384_ty, location),
-            (u384_ty, location),
-            (u384_ty, location),
-        ]));
-
-        // We need to extend the operands to avoid overflows while
-        // operating. Since we are perfoming an addition, we need
-        // at leat a bit width of 385 + 1.
-        let lhs = block.extui(block.arg(0)?, u385_ty, location)?;
-        let rhs = block.extui(block.arg(1)?, u385_ty, location)?;
-        let modulus = block.extui(block.arg(2)?, u385_ty, location)?;
-        
-        // (lhs + rhs) % modulus
-        let result = block.addi(lhs, rhs, location)?;
-        let result = block.append_op_result(arith::remui(result, modulus, location))?;
-        // Truncate back
-        let result = block.trunci(result, u384_ty, location)?;
-
-        block.append_operation(llvm::r#return(Some(result), location));
-
-        region
-    };
-
-    module.body().append_operation(llvm::func(
-        context,
-        func_name,
-        TypeAttribute::new(llvm::r#type::function(
-            u384_ty,
-            &[u384_ty, u384_ty, u384_ty],
-            false,
-        )),
-        region,
-        &[
-            (
-                Identifier::new(context, "no_inline"),
-                Attribute::unit(context),
-            ),
-            // Remove unwind metadata setup.
-            (
-                Identifier::new(context, "nounwind"),
-                Attribute::unit(context),
-            ),
-            // Guarantee to LLVM the function won't access memory at all.
-            (
-                Identifier::new(context, "readnone"),
-                Attribute::unit(context),
-            ),
-        ],
-        location,
-    ));
-
-    Ok(())
-}
-
-/// Build function for circuit add operations.
-///
-/// It builds an mlir function to perform circuit's subtraction operations.
-/// This allows us to reduce the amount of inlined operations in the mlir generated,
-/// significantly reducing the compilation time of circuits.
-fn build_circuit_sub_operation<'ctx, 'this>(
-    context: &'ctx Context,
-    module: &Module,
-    location: Location<'ctx>,
-    func_symbol: &str,
-) -> Result<()>
-where
-    'this: 'ctx,
-{
-    let func_name = StringAttribute::new(context, func_symbol);
-    let u384_ty: Type = IntegerType::new(context, 384).into();
-    let u385_ty: Type = IntegerType::new(context, 385).into();
-
-    let region = {
-        let region = Region::new();
-        let block = region.append_block(Block::new(&[
-            (u384_ty, location),
-            (u384_ty, location),
-            (u384_ty, location),
-        ]));
-
-        // We need to extend the operands to avoid overflows while
-        // operating. Since we are perfoming an addition, we need
-        // at leat a bit width of 385 + 1.
-        let lhs = block.extui(block.arg(0)?, u385_ty, location)?;
-        let rhs = block.extui(block.arg(1)?, u385_ty, location)?;
-        let modulus = block.extui(block.arg(2)?, u385_ty, location)?;
-        
-        // (lhs + modulus - rhs) % modulus
-        let partial_result = block.addi(lhs, modulus, location)?;
-        let result = block.subi(partial_result, rhs, location)?;
-        let result = block.append_op_result(arith::remui(result, modulus, location))?;
-        // Truncate back
-        let result = block.trunci(result, u384_ty, location)?;
-
-        block.append_operation(llvm::r#return(Some(result), location));
-
-        region
-    };
-
-    module.body().append_operation(llvm::func(
-        context,
-        func_name,
-        TypeAttribute::new(llvm::r#type::function(
-            u384_ty,
-            &[u384_ty, u384_ty, u384_ty],
-            false,
-        )),
-        region,
-        &[
-            (
-                Identifier::new(context, "no_inline"),
-                Attribute::unit(context),
-            ),
-            // Remove unwind metadata setup.
-            (
-                Identifier::new(context, "nounwind"),
-                Attribute::unit(context),
-            ),
-            // Guarantee to LLVM the function won't access memory at all.
-            (
-                Identifier::new(context, "readnone"),
-                Attribute::unit(context),
-            ),
-        ],
-        location,
-    ));
-
-    Ok(())
-}
-
-/// Build function for circuit add operations.
-///
-/// It builds an mlir function to perform circuit's multiplication operations.
-/// This allows us to reduce the amount of inlined operations in the mlir generated,
-/// significantly reducing the compilation time of circuits.
-fn build_circuit_mul_operation<'ctx, 'this>(
-    context: &'ctx Context,
-    module: &Module,
-    location: Location<'ctx>,
-    func_symbol: &str,
-) -> Result<()>
-where
-    'this: 'ctx,
-{
-    let func_name = StringAttribute::new(context, func_symbol);
-    let u384_ty: Type = IntegerType::new(context, 384).into();
     let u768_ty = IntegerType::new(context, 768).into();
 
     let region = {
         let region = Region::new();
-        let block = region.append_block(Block::new(&[
+        let entry_block = region.append_block(Block::new(&[
+            (u2_ty, location),
             (u384_ty, location),
             (u384_ty, location),
             (u384_ty, location),
         ]));
 
-        // We need to extend the operands to avoid overflows while
-        // operating. Since we are perfoming an addition, we need
-        // at leat a bit width of 385 * 2.
-        let lhs = block.extui(block.arg(0)?, u768_ty, location)?;
-        let rhs = block.extui(block.arg(1)?, u768_ty, location)?;
-        let modulus = block.extui(block.arg(2)?, u768_ty, location)?;
+        let op_tag = entry_block.arg(0)?;
+        let lhs = entry_block.arg(1)?;
+        let rhs = entry_block.arg(2)?;
+        let mut modulus = entry_block.arg(3)?;
 
-        // (lhs * rhs) % modulus
-        let result = block.muli(lhs, rhs, location)?;
-        let result = block.append_op_result(arith::remui(result, modulus, location))?;
-        // Truncate back
-        let result = block.trunci(result, u384_ty, location)?;
+        let cases_values = (0..3).collect::<Vec<_>>();
+        let default_block = region.append_block(Block::new(&[]));
+        let op_blocks = (0..3).map(|_| Block::new(&[])).collect::<Vec<_>>();
 
-        block.append_operation(llvm::r#return(Some(result), location));
+        // Default block. This should be unreachable as the op_tag is not defined by the user.
+        {
+            let k0 = default_block.const_int(context, location, 0, 1)?;
+
+            // Arthmetic operations' tag go from 0 to 2 (add, sub, mul)
+            default_block.append_operation(cf::assert(
+                context,
+                k0,
+                "Invalid tag for circuit arith operation",
+                location,
+            ));
+            default_block.append_operation(llvm::unreachable(location));
+        }
+
+        // Switch cases' operation blocks.
+        for (tag, block) in op_blocks.iter().enumerate() {
+            let result = match tag {
+                // result = lhs_value + rhs_value
+                0 => {
+                    // We need to extend the operands to avoid overflows while
+                    // operating. Since we are perfoming an addition, we need
+                    // at leat a bit width of 385 + 1.
+                    let lhs = entry_block.extui(lhs, u385_ty, location)?;
+                    let rhs = entry_block.extui(rhs, u385_ty, location)?;
+                    modulus = entry_block.extui(modulus, u385_ty, location)?;
+
+                    block.addi(lhs, rhs, location)?
+                }
+                // result = output_value + circuit_modulus - rhs_value
+                1 => {
+                    // We need to extend the operands to avoid overflows while
+                    // operating. Since we are perfoming a substraction, we
+                    // need at leat a bit width of 384 + 1.
+                    let lhs = entry_block.extui(lhs, u385_ty, location)?;
+                    let rhs = entry_block.extui(rhs, u385_ty, location)?;
+                    modulus = entry_block.extui(modulus, u385_ty, location)?;
+
+                    let partial_result = block.addi(lhs, modulus, location)?;
+                    block.subi(partial_result, rhs, location)?
+                }
+                // result = lhs_value * rhs_value
+                2 => {
+                    // We need to extend the operands to avoid overflows while
+                    // operating. Since we are perfoming a multiplication, we need at leat a bit width
+                    // of 284 * 2.
+                    let lhs = entry_block.extui(lhs, u768_ty, location)?;
+                    let rhs = entry_block.extui(rhs, u768_ty, location)?;
+                    modulus = entry_block.extui(modulus, u768_ty, location)?;
+
+                    block.muli(lhs, rhs, location)?
+                }
+                t => return Err(Error::from(CompilerError::InvalidTagForCircuitArithOp(t))),
+            };
+
+            // result % circuit_modulus
+            let result = block.append_op_result(arith::remui(result, modulus, location))?;
+            // Truncate back
+            let result = block.trunci(result, u384_ty, location)?;
+
+            block.append_operation(llvm::r#return(Some(result), location));
+        }
+
+        entry_block.append_operation(cf::switch(
+            context,
+            &cases_values,
+            op_tag,
+            u2_ty,
+            (&default_block, &[]),
+            &op_blocks
+                .iter()
+                .map(|block| (block, [].as_slice()))
+                .collect::<Vec<_>>(),
+            location,
+        )?);
+
+        // We need to append the cases to the region.
+        for block in op_blocks.into_iter() {
+            region.append_block(block);
+        }
 
         region
     };
@@ -1139,7 +1045,7 @@ where
         func_name,
         TypeAttribute::new(llvm::r#type::function(
             u384_ty,
-            &[u384_ty, u384_ty, u384_ty],
+            &[u2_ty, u384_ty, u384_ty, u384_ty],
             false,
         )),
         region,
