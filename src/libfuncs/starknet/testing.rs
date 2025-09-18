@@ -1,7 +1,7 @@
 #![cfg(feature = "with-cheatcode")]
 
 use crate::{
-    error::Result,
+    error::{panic::ToNativeAssertError, Result},
     libfuncs::LibfuncHelper,
     metadata::{runtime_bindings::RuntimeBindingsMeta, MetadataStorage},
     utils::{get_integer_layout, ProgramRegistryExt},
@@ -100,7 +100,7 @@ pub fn build<'ctx, 'this>(
     // Call runtime cheatcode syscall wrapper
     metadata
         .get_mut::<RuntimeBindingsMeta>()
-        .expect("Runtime library not available.")
+        .to_native_assert_error("runtime bindings should be available")?
         .vtable_cheatcode(
             context,
             helper,
