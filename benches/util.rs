@@ -1,3 +1,5 @@
+#![cfg(feature = "testing")]
+
 use cairo_lang_runner::SierraCasmRunner;
 use cairo_lang_sierra::program::Program;
 use std::sync::Arc;
@@ -11,7 +13,7 @@ pub fn prepare_programs(path: &str) -> Vec<(Arc<Program>, String)> {
             let path = e.path();
             match path.extension().map(|x| x.to_str().unwrap()) {
                 Some("cairo") => Some((
-                    cairo_native::utils::cairo_to_sierra(path).unwrap(),
+                    cairo_native::utils::testing::cairo_to_sierra(path).unwrap(),
                     path.display().to_string(),
                 )),
                 _ => None,

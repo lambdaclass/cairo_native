@@ -1,5 +1,5 @@
 use cairo_native::{
-    context::NativeContext, executor::JitNativeExecutor, utils::cairo_to_sierra, Value,
+    context::NativeContext, executor::JitNativeExecutor, utils::testing::cairo_to_sierra, Value,
 };
 use starknet_types_core::felt::Felt;
 use std::path::Path;
