@@ -1,0 +1,73 @@
+name: Bench
+
+on:
+  pull_request:
+    branches: [main]
+  merge_group:
+    types: [checks_requested]
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+env:
+  CARGO_TERM_COLOR: always
+
+jobs:
+    run-criterion-bench:
+        name: Run Criterion Bench
+        runs-on: ubuntu-24.04
+        env:
+          MLIR_SYS_190_PREFIX: /usr/lib/llvm-19/
+          TABLEGEN_190_PREFIX: /usr/lib/llvm-19/
+          LLVM_SYS_191_PREFIX: /usr/lib/llvm-19/
+        steps:
+            - name: Checkout commit
+              uses: actions/checkout@v4
+              with:
+                path: cairo_native
+
+            # Install dependencies and free space
+            - name: Install linux deps
+              uses: ./cairo_native/.github/actions/install-linux-deps
+
+            - name: Setup rust env
+              uses: dtolnay/rust-toolchain@1.89.0
+            
+            - name: Run head bench
+              run: cargo bench --bench benches -- --save-baseline bench-head
+
+            - name: Checkout commit
+              uses: actions/checkout@v4
+              with:
+                path: cairo_native
+                ref: main
+
+            - name: Run base bench
+              run: cargo bench --bench benches -- --save-baseline bench-base
+
+            - name: Install critcmp
+              run: cargo install critcmp
+
+            - name: Compre HEAD vs BASE
+              run: critcmp bench-base bench-head | tee bench-results.md
+        
+            - name: Find Bench Comment
+              continue-on-error: true
+              uses: peter-evans/find-comment@v3
+              id: fc
+              with:
+                issue-number: ${{ github.event.pull_request.number }}
+                comment-author: "github-actions[bot]"
+                body-includes: Criterion results Main vs HEAD
+
+            - name: Create or update bench comment
+              continue-on-error: true
+              uses: peter-evans/create-or-update-comment@v4
+              with:
+                comment-id: ${{ steps.fc.outputs.comment-id }}
+                issue-number: ${{ github.event.pull_request.number }}
+                body-path: bench-results.md
+                edit-mode: replace
+                
+            
