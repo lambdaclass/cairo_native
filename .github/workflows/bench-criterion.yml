@@ -14,48 +14,44 @@ env:
   CARGO_TERM_COLOR: always
 
 jobs:
-    bench-criterion:
-        name: Criterion
+    run-criterion-bench:
+        name: Run Criterion Bench
         runs-on: ubuntu-24.04
-        strategy:
-          matrix: 
-            branchl: [base, head]
         env:
-          CARGO_REGISTRIES_CRATES_IO_PROTOCOL: sparse
           MLIR_SYS_190_PREFIX: /usr/lib/llvm-19/
           TABLEGEN_190_PREFIX: /usr/lib/llvm-19/
           LLVM_SYS_191_PREFIX: /usr/lib/llvm-19/
         steps:
-            - name: Checkout Native
+            - name: Checkout commit
               uses: actions/checkout@v4
               with:
                 path: cairo_native
+
             # Install dependencies and free space
-            - uses: ./cairo_native/.github/actions/install-linux-deps
-            
+            - name: Install linux deps
+              uses: ./cairo_native/.github/actions/install-linux-deps
+
             - name: Setup rust env
               uses: dtolnay/rust-toolchain@1.89.0
             
-            - name: Retreive cached dependecies
-              uses: Swatinem/rust-cache@v2
-            
-            - name: Install deps
-              run: make deps
-            
+            - name: Run head bench
+              run: cargo bench --bench benches -- --save-baseline bench-head
+
+            - name: Checkout commit
+              uses: actions/checkout@v4
+              with:
+                path: cairo_native
+                ref: main
+
+            - name: Run base bench
+              run: cargo bench --bench benches -- --save-baseline bench-base
+
             - name: Install critcmp
               run: cargo install critcmp
 
-            - name: Checkout commit ${{ matrix.branch }}
-              uses: actions/checkout@v4
-              with:
-                ref: ${{ github.event.pull_request[matrix.branch].sha }}
-            
-            - name: Run execution benches in ${{ matrix.branch }}
-              run: cargo bench --bench benches -- --save-baseline ${{ matrix.branch }}
-            
             - name: Compre HEAD vs BASE
-              run: critcmp base head | tee bench-results.md
-            
+              run: critcmp bench-base bench-head | tee bench-results.md
+        
             - name: Find Bench Comment
               continue-on-error: true
               uses: peter-evans/find-comment@v3
