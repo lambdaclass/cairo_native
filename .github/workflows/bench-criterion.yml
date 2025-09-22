@@ -31,8 +31,11 @@ jobs:
             - name: Install linux deps
               uses: ./cairo_native/.github/actions/install-linux-deps
 
-            - name: Setup rust env
-              uses: dtolnay/rust-toolchain@1.89.0
+            - uses: dtolnay/rust-toolchain@1.89.0
+            - uses: Swatinem/rust-cache@v2
+
+            - name: install deps
+              run: make deps
             
             - name: Run head bench
               run: |
