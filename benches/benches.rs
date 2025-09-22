@@ -85,11 +85,11 @@ fn compare(c: &mut Criterion, path: impl AsRef<Path>) {
 
 fn criterion_benchmark(c: &mut Criterion) {
     compare(c, "programs/benches/dict_snapshot.cairo");
-    // compare(c, "programs/benches/dict_insert.cairo");
-    // compare(c, "programs/benches/factorial_2M.cairo");
-    // compare(c, "programs/benches/fib_2M.cairo");
-    // compare(c, "programs/benches/linear_search.cairo");
-    // compare(c, "programs/benches/logistic_map.cairo");
+    compare(c, "programs/benches/dict_insert.cairo");
+    compare(c, "programs/benches/factorial_2M.cairo");
+    compare(c, "programs/benches/fib_2M.cairo");
+    compare(c, "programs/benches/linear_search.cairo");
+    compare(c, "programs/benches/logistic_map.cairo");
 }
 
 fn load_contract(path: impl AsRef<Path>) -> Program {
