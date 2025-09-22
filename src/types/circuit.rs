@@ -278,12 +278,15 @@ pub fn build_circuit_data<'ctx>(
 ///
 /// ## Layout:
 ///
-/// Holds the evaluated circuit output gates and the circuit modulus.
+/// Holds the reference count, the evaluated circuit output gates and the circuit modulus.
+/// - The reference count is stored as a u8. Tells the amount of currently alived references
+///   to the output value.
 /// - The data is stored as a dynamic array of u384 integers.
 /// - The modulus is stored as a u384 in struct form (multi-limb).
 ///
 /// ```txt
 /// type = struct {
+///     reference_count: u8,
 ///     data: *u384,
 ///     modulus: u384struct,
 /// };

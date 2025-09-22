@@ -927,7 +927,7 @@ fn build_get_output<'ctx, 'this>(
         location,
         outputs,
         build_u384_struct_type(context),
-        1,
+        2,
     )?;
 
     let output_integer_ptr = entry.gep(
@@ -953,10 +953,6 @@ fn build_get_output<'ctx, 'this>(
     )?;
 
     // We drop the circuit outputs value, as its consumed by this libfunc.
-    // NOTE: As this libfunc consumes circuit_outputs, this implies that
-    // calling it multiple times involves duplicating the circuit outputs
-    // each time. This could be fixed by implementing a reference counter,
-    // like we do with regular arrays.
     if let Some(drop_overrides_meta) = metadata.get::<DropOverridesMeta>() {
         drop_overrides_meta.invoke_override(
             context,
