@@ -245,10 +245,10 @@
 <a href=#245 id=245 data-nosnippet>245</a>
 <a href=#246 id=246 data-nosnippet>246</a><span class="kw">fn </span>random_ec_point() -&gt; AffinePoint {
 <a href=#247 id=247 data-nosnippet>247</a>    <span class="comment">// https://github.com/starkware-libs/cairo/blob/aaad921bba52e729dc24ece07fab2edf09ccfa15/crates/cairo-lang-runner/src/casm_run/mod.rs#L1802
-<a href=#248 id=248 data-nosnippet>248</a>    </span><span class="kw">let </span><span class="kw-2">mut </span>rng = rand::thread_rng();
+<a href=#248 id=248 data-nosnippet>248</a>    </span><span class="kw">let </span><span class="kw-2">mut </span>rng = rand::rng();
 <a href=#249 id=249 data-nosnippet>249</a>    <span class="kw">let </span>(random_x, random_y) = <span class="kw">loop </span>{
 <a href=#250 id=250 data-nosnippet>250</a>        <span class="comment">// Randominzing 31 bytes to make sure is in range.
-<a href=#251 id=251 data-nosnippet>251</a>        </span><span class="kw">let </span>x_bytes: [u8; <span class="number">31</span>] = rng.gen();
+<a href=#251 id=251 data-nosnippet>251</a>        </span><span class="kw">let </span>x_bytes: [u8; <span class="number">31</span>] = rng.random();
 <a href=#252 id=252 data-nosnippet>252</a>        <span class="kw">let </span>random_x = Felt::from_bytes_be_slice(<span class="kw-2">&amp;</span>x_bytes);
 <a href=#253 id=253 data-nosnippet>253</a>        <span class="kw">let </span>random_y_squared = random_x * random_x * random_x + random_x + BETA;
 <a href=#254 id=254 data-nosnippet>254</a>        <span class="kw">if let </span><span class="prelude-val">Some</span>(random_y) = random_y_squared.sqrt() {
