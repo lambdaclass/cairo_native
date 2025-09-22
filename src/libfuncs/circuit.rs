@@ -397,7 +397,7 @@ fn build_eval<'ctx, 'this>(
 
         // Build output struct
         let outputs_type_id = &info.branch_signatures()[0].vars[2].ty;
-        let ref_count = entry.const_int(context, location, 1, 8)?;
+        let ref_count = ok_block.const_int(context, location, 1, 8)?;
         let outputs = build_struct_value(
             context,
             registry,

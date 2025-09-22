@@ -346,7 +346,7 @@ pub fn build_circuit_outputs<'ctx>(
                 context,
                 location,
                 outputs,
-                llvm::r#type::pointer(context, 0),
+                u8_ty,
                 0,
             )?;
 
