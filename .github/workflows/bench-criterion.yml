@@ -35,7 +35,9 @@ jobs:
               uses: dtolnay/rust-toolchain@1.89.0
             
             - name: Run head bench
-              run: cargo bench --bench benches -- --save-baseline bench-head
+              run: |
+                cd cairo_native
+                cargo bench --bench benches -- --save-baseline bench-head
 
             - name: Checkout commit
               uses: actions/checkout@v4
@@ -44,7 +46,9 @@ jobs:
                 ref: main
 
             - name: Run base bench
-              run: cargo bench --bench benches -- --save-baseline bench-base
+              run: |
+                cd cairo_native
+                cargo bench --bench benches -- --save-baseline bench-base
 
             - name: Install critcmp
               run: cargo install critcmp
