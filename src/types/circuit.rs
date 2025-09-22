@@ -324,9 +324,9 @@ pub fn build_circuit_outputs<'ctx>(
             let ref_count = entry.extract_value(context, location, outputs, u8_ty, 0)?;
             let ref_count_inc = entry.addi(ref_count, k1, location)?;
 
-            entry.insert_value(context, location, outputs, ref_count_inc, 0)?;
+            let output_new = entry.insert_value(context, location, outputs, ref_count_inc, 0)?;
 
-            entry.append_operation(func::r#return(&[outputs, outputs], location));
+            entry.append_operation(func::r#return(&[output_new, output_new], location));
 
             Ok(Some(region))
         },
@@ -345,13 +345,7 @@ pub fn build_circuit_outputs<'ctx>(
             let k1 = entry.const_int(context, location, 1, 8)?;
 
             let outputs = entry.arg(0)?;
-            let ref_count = entry.extract_value(
-                context,
-                location,
-                outputs,
-                u8_ty,
-                0,
-            )?;
+            let ref_count = entry.extract_value(context, location, outputs, u8_ty, 0)?;
 
             // Check that the reference counting is different from 1. If it is equeal to 1, then it is shared.
             let is_shared = entry.cmpi(context, CmpiPredicate::Ne, ref_count, k1, location)?;
