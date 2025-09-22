@@ -38,7 +38,7 @@ jobs:
             - uses: dtolnay/rust-toolchain@1.89.0
             - uses: Swatinem/rust-cache@v2
 
-            - name: install deps
+            - name: install deps head
               run: make deps
             
             - name: Run head bench
@@ -49,6 +49,9 @@ jobs:
               with:
                 path: cairo_native
                 ref: main
+
+            - name: install deps base
+              run: make deps
 
             - name: Run base bench
               run: cargo bench --bench benches -- --save-baseline bench-base
