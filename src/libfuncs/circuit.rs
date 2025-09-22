@@ -397,6 +397,7 @@ fn build_eval<'ctx, 'this>(
 
         // Build output struct
         let outputs_type_id = &info.branch_signatures()[0].vars[2].ty;
+        let ref_count = entry.const_int(context, location, 1, 8)?;
         let outputs = build_struct_value(
             context,
             registry,
@@ -405,7 +406,7 @@ fn build_eval<'ctx, 'this>(
             helper,
             metadata,
             outputs_type_id,
-            &[outputs_ptr, modulus_struct],
+            &[ref_count, outputs_ptr, modulus_struct],
         )?;
 
         helper.br(ok_block, 0, &[add_mod, mul_mod, outputs], location)?;
@@ -919,7 +920,7 @@ fn build_get_output<'ctx, 'this>(
         location,
         outputs,
         llvm::r#type::pointer(context, 0),
-        0,
+        1,
     )?;
     let modulus_struct = entry.extract_value(
         context,

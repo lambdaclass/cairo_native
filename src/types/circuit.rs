@@ -21,7 +21,7 @@ use cairo_lang_sierra::{
     program_registry::ProgramRegistry,
 };
 use melior::{
-    dialect::{func, llvm},
+    dialect::{arith::CmpiPredicate, func, llvm, scf},
     helpers::{ArithBlockExt, BuiltinBlockExt, LlvmBlockExt},
     ir::{r#type::IntegerType, Block, BlockLike, Location, Module, Region, Type, Value},
     Context,
@@ -302,14 +302,7 @@ pub fn build_circuit_outputs<'ctx>(
     metadata: &mut MetadataStorage,
     info: WithSelf<InfoOnlyConcreteType>,
 ) -> Result<Type<'ctx>> {
-    let Some(GenericArg::Type(circuit_type_id)) = info.info.long_id.generic_args.first() else {
-        return Err(SierraAssertError::BadTypeInfo.into());
-    };
-    let CoreTypeConcrete::Circuit(CircuitTypeConcrete::Circuit(circuit)) =
-        registry.get_type(circuit_type_id)?
-    else {
-        return Err(SierraAssertError::BadTypeInfo.into());
-    };
+    let u8_ty = IntegerType::new(context, 8).into();
 
     DupOverridesMeta::register_with(
         context,
@@ -322,29 +315,15 @@ pub fn build_circuit_outputs<'ctx>(
             let region = Region::new();
             let value_ty = registry.build_type(context, module, metadata, info.self_ty())?;
             let entry = region.append_block(Block::new(&[(value_ty, location)]));
+            let k1 = entry.const_int(context, location, 1, 8)?;
 
             let outputs = entry.arg(0)?;
-            let gates_ptr = entry.extract_value(
-                context,
-                location,
-                outputs,
-                llvm::r#type::pointer(context, 0),
-                0,
-            )?;
+            let ref_count = entry.extract_value(context, location, outputs, u8_ty, 0)?;
+            let ref_count_inc = entry.addi(ref_count, k1, location)?;
 
-            let u384_integer_layout = get_integer_layout(384);
+            entry.insert_value(context, location, outputs, ref_count_inc, 0)?;
 
-            let new_gates_ptr = build_array_dup(
-                context,
-                &entry,
-                location,
-                gates_ptr,
-                circuit.circuit_info.values.len(),
-                u384_integer_layout,
-            )?;
-
-            let new_outputs = entry.insert_value(context, location, outputs, new_gates_ptr, 0)?;
-            entry.append_operation(func::r#return(&[outputs, new_outputs], location));
+            entry.append_operation(func::r#return(&[outputs, outputs], location));
 
             Ok(Some(region))
         },
@@ -360,9 +339,10 @@ pub fn build_circuit_outputs<'ctx>(
             let region = Region::new();
             let value_ty = registry.build_type(context, module, metadata, info.self_ty())?;
             let entry = region.append_block(Block::new(&[(value_ty, location)]));
+            let k1 = entry.const_int(context, location, 1, 8)?;
 
             let outputs = entry.arg(0)?;
-            let gates_ptr = entry.extract_value(
+            let ref_count = entry.extract_value(
                 context,
                 location,
                 outputs,
@@ -370,7 +350,46 @@ pub fn build_circuit_outputs<'ctx>(
                 0,
             )?;
 
-            entry.append_operation(ReallocBindingsMeta::free(context, gates_ptr, location)?);
+            // Check that the reference counting is different from 1. If it is equeal to 1, then it is shared.
+            let is_shared = entry.cmpi(context, CmpiPredicate::Ne, ref_count, k1, location)?;
+
+            entry.append_operation(scf::r#if(
+                is_shared,
+                &[],
+                {
+                    // If it is shared then decrement the reference counting.
+                    let region = Region::new();
+                    let entry = region.append_block(Block::new(&[]));
+                    let ref_count_dec = entry.subi(ref_count, k1, location)?;
+
+                    entry.insert_value(context, location, ref_count_dec, outputs, 0)?;
+
+                    entry.append_operation(scf::r#yield(&[], location));
+
+                    region
+                },
+                {
+                    // If it is not shared then free the memory.
+                    let region = Region::new();
+                    let entry = region.append_block(Block::new(&[]));
+
+                    let gates_ptr = entry.extract_value(
+                        context,
+                        location,
+                        outputs,
+                        llvm::r#type::pointer(context, 0),
+                        1,
+                    )?;
+
+                    entry
+                        .append_operation(ReallocBindingsMeta::free(context, gates_ptr, location)?);
+                    entry.append_operation(scf::r#yield(&[], location));
+
+                    region
+                },
+                location,
+            ));
+
             entry.append_operation(func::r#return(&[], location));
 
             Ok(Some(region))
@@ -380,6 +399,7 @@ pub fn build_circuit_outputs<'ctx>(
     Ok(llvm::r#type::r#struct(
         context,
         &[
+            u8_ty,
             llvm::r#type::pointer(context, 0),
             build_u384_struct_type(context),
         ],
