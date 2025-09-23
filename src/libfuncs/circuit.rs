@@ -372,7 +372,8 @@ fn build_eval<'ctx, 'this>(
         let outputs_capatity_bytes = outputs_prefix_layout
             .extend(layout_repeat(&elem_stride, circuit_info.values.len())?.0)?
             .0
-            .pad_to_align().size();
+            .pad_to_align()
+            .size();
         let outputs_capacity_bytes_value =
             ok_block.const_int(context, location, outputs_capatity_bytes, 64)?;
 

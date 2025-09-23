@@ -278,10 +278,10 @@ pub fn build_circuit_data<'ctx>(
 ///
 /// ## Layout:
 ///
-/// Holds the reference count, the evaluated circuit output gates and the circuit modulus.
-/// - The reference count is stored as a u8. Tells the amount of currently alived references
-///   to the output value.
-/// - The data is stored as a dynamic array of u384 integers.
+/// Holds the evaluated circuit output gates and the circuit modulus.
+/// - The data is stored as a dynamic array, which contains:
+///     * Reference counter.
+///     * Circuit output data (u384s).
 /// - The modulus is stored as a u384 in struct form (multi-limb).
 ///
 /// ```txt
@@ -296,10 +296,6 @@ pub fn build_circuit_data<'ctx>(
 ///     limb3: u96,
 ///     limb4: u96,
 /// }
-/// 
-/// The allocation pontier, data, contains:
-///   * Reference counter.
-///   * Circuit outputs. 
 /// ```
 pub fn build_circuit_outputs<'ctx>(
     context: &'ctx Context,
