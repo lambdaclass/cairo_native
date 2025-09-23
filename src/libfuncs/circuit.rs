@@ -8,11 +8,13 @@ use crate::{
     execution_result::{ADD_MOD_BUILTIN_SIZE, MUL_MOD_BUILTIN_SIZE, RANGE_CHECK96_BUILTIN_SIZE},
     libfuncs::r#struct::build_struct_value,
     metadata::{
-        drop_overrides::DropOverridesMeta, realloc_bindings::ReallocBindingsMeta,
-        runtime_bindings::RuntimeBindingsMeta, MetadataStorage,
+        debug_utils::DebugUtils, drop_overrides::DropOverridesMeta, realloc_bindings::ReallocBindingsMeta, runtime_bindings::RuntimeBindingsMeta, MetadataStorage
     },
     native_panic,
-    types::{circuit::build_u384_struct_type, TypeBuilder},
+    types::{
+        circuit::{build_u384_struct_type, calc_circuit_output_prefix_layout},
+        TypeBuilder,
+    },
     utils::{get_integer_layout, layout_repeat, ProgramRegistryExt},
 };
 use cairo_lang_sierra::{
@@ -363,13 +365,15 @@ fn build_eval<'ctx, 'this>(
             circuit_info.mul_offsets.len() * MUL_MOD_BUILTIN_SIZE,
         )?;
 
-        // Calculate capacity for array.
         let outputs_capacity = circuit_info.values.len();
         let u384_integer_layout = get_integer_layout(384);
-        let outputs_layout = layout_repeat(&u384_integer_layout, outputs_capacity)?.0;
-        let outputs_capacity_bytes = outputs_layout.pad_to_align().size();
+        let outputs_prefix_layout = calc_circuit_output_prefix_layout();
+        let outputs_layout = outputs_prefix_layout
+            .extend(layout_repeat(&u384_integer_layout, outputs_capacity)?.0)?
+            .0
+            .pad_to_align();
         let outputs_capacity_bytes_value =
-            ok_block.const_int(context, location, outputs_capacity_bytes, 64)?;
+            ok_block.const_int(context, location, outputs_layout.size(), 64)?;
 
         // Alloc memory for array.
         let ptr_ty = llvm::r#type::pointer(context, 0);
@@ -381,13 +385,19 @@ fn build_eval<'ctx, 'this>(
             location,
         )?)?;
 
+        // Insert initial reference count, equal to 1.
+        let k1 = ok_block.const_int(context, location, 1, 32)?;
+        ok_block.store(context, location, outputs_ptr, k1)?;
+
         // Insert evaluated gates into the array.
         for (i, gate) in gates.into_iter().enumerate() {
             let value_ptr = ok_block.gep(
                 context,
                 location,
                 outputs_ptr,
-                &[GepIndex::Const(i as i32)],
+                &[GepIndex::Const(
+                    outputs_prefix_layout.size() as i32 + i as i32,
+                )],
                 IntegerType::new(context, 384).into(),
             )?;
             ok_block.store(context, location, value_ptr, gate)?;
@@ -397,7 +407,6 @@ fn build_eval<'ctx, 'this>(
 
         // Build output struct
         let outputs_type_id = &info.branch_signatures()[0].vars[2].ty;
-        let ref_count = ok_block.const_int(context, location, 1, 8)?;
         let outputs = build_struct_value(
             context,
             registry,
@@ -406,7 +415,7 @@ fn build_eval<'ctx, 'this>(
             helper,
             metadata,
             outputs_type_id,
-            &[ref_count, outputs_ptr, modulus_struct],
+            &[outputs_ptr, modulus_struct],
         )?;
 
         helper.br(ok_block, 0, &[add_mod, mul_mod, outputs], location)?;
@@ -920,23 +929,34 @@ fn build_get_output<'ctx, 'this>(
         location,
         outputs,
         llvm::r#type::pointer(context, 0),
-        1,
+        0,
     )?;
     let modulus_struct = entry.extract_value(
         context,
         location,
         outputs,
         build_u384_struct_type(context),
-        2,
+        1,
     )?;
 
+    let circuit_output_prefix_offset = calc_circuit_output_prefix_layout().size();
+    metadata
+                .get_mut::<DebugUtils>()
+                .unwrap()
+                .debug_print(context, helper.module, &entry, "AFTER OUTPUT", location)?;
     let output_integer_ptr = entry.gep(
         context,
         location,
         circuit_ptr,
-        &[GepIndex::Const(output_idx as i32)],
+        &[GepIndex::Const(
+           circuit_output_prefix_offset as i32 + output_idx as i32,
+        )],
         u384_type,
     )?;
+    metadata
+                .get_mut::<DebugUtils>()
+                .unwrap()
+                .debug_print(context, helper.module, &entry, "BEFORE OUTPUT", location)?;
     let output_integer = entry.load(context, location, output_integer_ptr, u384_type)?;
     let output_struct = u384_integer_to_struct(context, entry, location, output_integer)?;
 

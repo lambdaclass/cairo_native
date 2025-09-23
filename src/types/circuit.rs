@@ -6,8 +6,8 @@ use super::WithSelf;
 use crate::{
     error::{Result, SierraAssertError},
     metadata::{
-        drop_overrides::DropOverridesMeta, dup_overrides::DupOverridesMeta,
-        realloc_bindings::ReallocBindingsMeta, MetadataStorage,
+        debug_utils::DebugUtils, drop_overrides::DropOverridesMeta,
+        dup_overrides::DupOverridesMeta, realloc_bindings::ReallocBindingsMeta, MetadataStorage,
     },
     utils::{get_integer_layout, layout_repeat, ProgramRegistryExt},
 };
@@ -22,7 +22,7 @@ use cairo_lang_sierra::{
 };
 use melior::{
     dialect::{arith::CmpiPredicate, func, llvm, scf},
-    helpers::{ArithBlockExt, BuiltinBlockExt, LlvmBlockExt},
+    helpers::{ArithBlockExt, BuiltinBlockExt, GepIndex, LlvmBlockExt},
     ir::{r#type::IntegerType, Block, BlockLike, Location, Module, Region, Type, Value},
     Context,
 };
@@ -305,8 +305,6 @@ pub fn build_circuit_outputs<'ctx>(
     metadata: &mut MetadataStorage,
     info: WithSelf<InfoOnlyConcreteType>,
 ) -> Result<Type<'ctx>> {
-    let u8_ty = IntegerType::new(context, 8).into();
-
     DupOverridesMeta::register_with(
         context,
         module,
@@ -318,15 +316,42 @@ pub fn build_circuit_outputs<'ctx>(
             let region = Region::new();
             let value_ty = registry.build_type(context, module, metadata, info.self_ty())?;
             let entry = region.append_block(Block::new(&[(value_ty, location)]));
-            let k1 = entry.const_int(context, location, 1, 8)?;
+            let k1 = entry.const_int(context, location, 1, 32)?;
 
             let outputs = entry.arg(0)?;
-            let ref_count = entry.extract_value(context, location, outputs, u8_ty, 0)?;
+            let gates_ptr = entry.extract_value(
+                context,
+                location,
+                outputs,
+                llvm::r#type::pointer(context, 0),
+                0,
+            )?;
+            let ref_count_ptr = entry.gep(
+                context,
+                location,
+                gates_ptr,
+                &[GepIndex::Const(0)],
+                IntegerType::new(context, 8).into(),
+            )?;
+            let ref_count = entry.load(
+                context,
+                location,
+                ref_count_ptr,
+                IntegerType::new(context, 32).into(),
+            )?;
             let ref_count_inc = entry.addi(ref_count, k1, location)?;
 
-            let output_new = entry.insert_value(context, location, outputs, ref_count_inc, 0)?;
+            metadata
+                .get_mut::<DebugUtils>()
+                .unwrap()
+                .debug_print(context, module, &entry, "DUP", location)?;
+            metadata
+                .get_mut::<DebugUtils>()
+                .unwrap()
+                .print_i32(context, module, &entry, ref_count, location)?;
 
-            entry.append_operation(func::r#return(&[output_new, output_new], location));
+            entry.store(context, location, ref_count_ptr, ref_count_inc)?;
+            entry.append_operation(func::r#return(&[outputs, outputs], location));
 
             Ok(Some(region))
         },
@@ -342,13 +367,42 @@ pub fn build_circuit_outputs<'ctx>(
             let region = Region::new();
             let value_ty = registry.build_type(context, module, metadata, info.self_ty())?;
             let entry = region.append_block(Block::new(&[(value_ty, location)]));
-            let k1 = entry.const_int(context, location, 1, 8)?;
+            let k1 = entry.const_int(context, location, 1, 32)?;
 
             let outputs = entry.arg(0)?;
-            let ref_count = entry.extract_value(context, location, outputs, u8_ty, 0)?;
+            let gates_ptr = entry.extract_value(
+                context,
+                location,
+                outputs,
+                llvm::r#type::pointer(context, 0),
+                0,
+            )?;
+
+            let ref_count_ptr = entry.gep(
+                context,
+                location,
+                gates_ptr,
+                &[GepIndex::Const(0)],
+                IntegerType::new(context, 8).into(),
+            )?;
+            let ref_count = entry.load(
+                context,
+                location,
+                ref_count_ptr,
+                IntegerType::new(context, 32).into(),
+            )?;
 
             // Check that the reference counting is different from 1. If it is equeal to 1, then it is shared.
             let is_shared = entry.cmpi(context, CmpiPredicate::Ne, ref_count, k1, location)?;
+
+            metadata
+                .get_mut::<DebugUtils>()
+                .unwrap()
+                .debug_print(context, module, &entry, "DROP", location)?;
+            metadata
+                .get_mut::<DebugUtils>()
+                .unwrap()
+                .print_i32(context, module, &entry, ref_count, location)?;
 
             entry.append_operation(scf::r#if(
                 is_shared,
@@ -359,8 +413,7 @@ pub fn build_circuit_outputs<'ctx>(
                     let entry = region.append_block(Block::new(&[]));
                     let ref_count_dec = entry.subi(ref_count, k1, location)?;
 
-                    entry.insert_value(context, location, ref_count_dec, outputs, 0)?;
-
+                    entry.store(context, location, ref_count_ptr, ref_count_dec)?;
                     entry.append_operation(scf::r#yield(&[], location));
 
                     region
@@ -369,14 +422,6 @@ pub fn build_circuit_outputs<'ctx>(
                     // If it is not shared then free the memory.
                     let region = Region::new();
                     let entry = region.append_block(Block::new(&[]));
-
-                    let gates_ptr = entry.extract_value(
-                        context,
-                        location,
-                        outputs,
-                        llvm::r#type::pointer(context, 0),
-                        1,
-                    )?;
 
                     entry
                         .append_operation(ReallocBindingsMeta::free(context, gates_ptr, location)?);
@@ -396,7 +441,6 @@ pub fn build_circuit_outputs<'ctx>(
     Ok(llvm::r#type::r#struct(
         context,
         &[
-            u8_ty,
             llvm::r#type::pointer(context, 0),
             build_u384_struct_type(context),
         ],
@@ -545,4 +589,12 @@ pub fn build_u384_struct_type(context: &Context) -> Type<'_> {
         ],
         false,
     )
+}
+
+pub fn calc_circuit_output_prefix_layout() -> Layout {
+    let u384_layout = get_integer_layout(384);
+    get_integer_layout(32)
+        .align_to(u384_layout.align())
+        .expect("layout size rounded up to the next multiple of layout alignment should never be greater than ISIZE::MAX")
+        .pad_to_align()
 }
