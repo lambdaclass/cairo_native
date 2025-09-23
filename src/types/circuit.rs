@@ -6,8 +6,8 @@ use super::WithSelf;
 use crate::{
     error::{Result, SierraAssertError},
     metadata::{
-        debug_utils::DebugUtils, drop_overrides::DropOverridesMeta,
-        dup_overrides::DupOverridesMeta, realloc_bindings::ReallocBindingsMeta, MetadataStorage,
+        drop_overrides::DropOverridesMeta, dup_overrides::DupOverridesMeta,
+        realloc_bindings::ReallocBindingsMeta, MetadataStorage,
     },
     utils::{get_integer_layout, layout_repeat, ProgramRegistryExt},
 };
@@ -341,15 +341,6 @@ pub fn build_circuit_outputs<'ctx>(
             )?;
             let ref_count_inc = entry.addi(ref_count, k1, location)?;
 
-            metadata
-                .get_mut::<DebugUtils>()
-                .unwrap()
-                .debug_print(context, module, &entry, "DUP", location)?;
-            metadata
-                .get_mut::<DebugUtils>()
-                .unwrap()
-                .print_i32(context, module, &entry, ref_count, location)?;
-
             entry.store(context, location, ref_count_ptr, ref_count_inc)?;
             entry.append_operation(func::r#return(&[outputs, outputs], location));
 
@@ -394,15 +385,6 @@ pub fn build_circuit_outputs<'ctx>(
 
             // Check that the reference counting is different from 1. If it is equeal to 1, then it is shared.
             let is_shared = entry.cmpi(context, CmpiPredicate::Ne, ref_count, k1, location)?;
-
-            metadata
-                .get_mut::<DebugUtils>()
-                .unwrap()
-                .debug_print(context, module, &entry, "DROP", location)?;
-            metadata
-                .get_mut::<DebugUtils>()
-                .unwrap()
-                .print_i32(context, module, &entry, ref_count, location)?;
 
             entry.append_operation(scf::r#if(
                 is_shared,

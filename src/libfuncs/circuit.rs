@@ -8,7 +8,8 @@ use crate::{
     execution_result::{ADD_MOD_BUILTIN_SIZE, MUL_MOD_BUILTIN_SIZE, RANGE_CHECK96_BUILTIN_SIZE},
     libfuncs::r#struct::build_struct_value,
     metadata::{
-        debug_utils::DebugUtils, drop_overrides::DropOverridesMeta, realloc_bindings::ReallocBindingsMeta, runtime_bindings::RuntimeBindingsMeta, MetadataStorage
+        drop_overrides::DropOverridesMeta, realloc_bindings::ReallocBindingsMeta,
+        runtime_bindings::RuntimeBindingsMeta, MetadataStorage,
     },
     native_panic,
     types::{
@@ -365,11 +366,11 @@ fn build_eval<'ctx, 'this>(
             circuit_info.mul_offsets.len() * MUL_MOD_BUILTIN_SIZE,
         )?;
 
-        let outputs_capacity = circuit_info.values.len();
-        let u384_integer_layout = get_integer_layout(384);
+        // Calculate capacity for array.
+        let elem_stride = get_integer_layout(384);
         let outputs_prefix_layout = calc_circuit_output_prefix_layout();
         let outputs_layout = outputs_prefix_layout
-            .extend(layout_repeat(&u384_integer_layout, outputs_capacity)?.0)?
+            .extend(layout_repeat(&elem_stride, circuit_info.values.len())?.0)?
             .0
             .pad_to_align();
         let outputs_capacity_bytes_value =
@@ -396,7 +397,7 @@ fn build_eval<'ctx, 'this>(
                 location,
                 outputs_ptr,
                 &[GepIndex::Const(
-                    outputs_prefix_layout.size() as i32 + i as i32,
+                    outputs_prefix_layout.size() as i32 + elem_stride.size() as i32 * i as i32,
                 )],
                 IntegerType::new(context, 384).into(),
             )?;
@@ -939,24 +940,18 @@ fn build_get_output<'ctx, 'this>(
         1,
     )?;
 
-    let circuit_output_prefix_offset = calc_circuit_output_prefix_layout().size();
-    metadata
-                .get_mut::<DebugUtils>()
-                .unwrap()
-                .debug_print(context, helper.module, &entry, "AFTER OUTPUT", location)?;
+    let circuit_output_prefix_offset = calc_circuit_output_prefix_layout().size() as i32;
+    let elem_stride = get_integer_layout(384).size() as i32;
     let output_integer_ptr = entry.gep(
         context,
         location,
         circuit_ptr,
         &[GepIndex::Const(
-           circuit_output_prefix_offset as i32 + output_idx as i32,
+            circuit_output_prefix_offset + elem_stride * output_idx as i32,
         )],
         u384_type,
     )?;
-    metadata
-                .get_mut::<DebugUtils>()
-                .unwrap()
-                .debug_print(context, helper.module, &entry, "BEFORE OUTPUT", location)?;
+
     let output_integer = entry.load(context, location, output_integer_ptr, u384_type)?;
     let output_struct = u384_integer_to_struct(context, entry, location, output_integer)?;
 
