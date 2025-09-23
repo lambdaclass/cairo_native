@@ -227,7 +227,7 @@ pub mod trace_dump_runtime {
 
     use crate::{
         starknet::ArrayAbi,
-        types::TypeBuilder,
+        types::{circuit::calc_circuit_output_prefix_layout, TypeBuilder},
         utils::{get_integer_layout, layout_repeat},
     };
 
@@ -572,17 +572,21 @@ pub mod trace_dump_runtime {
                     let n_outputs = circuit.circuit_info.values.len();
                     let mut values = Vec::with_capacity(n_outputs);
 
-                    let (u384_struct_layout, _) = layout_repeat(&u96_layout, 4).unwrap();
-                    let (gates_array_layout, gate_stride) =
-                        layout_repeat(&u384_struct_layout, n_outputs).unwrap();
-                    let (_, modulus_offset) =
-                        gates_array_layout.extend(u384_struct_layout).unwrap();
+                    let (gate_stride, _) = layout_repeat(&u96_layout, 4).unwrap();
+                    let outputs_prefix_layout = calc_circuit_output_prefix_layout();
+                    let gates_array_layout = outputs_prefix_layout
+                        .extend(layout_repeat(&gate_stride, n_outputs).unwrap().0)
+                        .unwrap()
+                        .0
+                        .pad_to_align();
+                    let (_, modulus_offset) = gates_array_layout.extend(gate_stride).unwrap();
 
                     let value_ptr = value_ptr.cast::<[u8; 12]>();
 
                     // get gate values
                     for i in 0..n_outputs {
-                        let gate_ptr = value_ptr.byte_add(gate_stride * i);
+                        let gate_ptr = value_ptr
+                            .byte_add(outputs_prefix_layout.size() + gate_stride.size() * i);
                         values.push(u384_struct_to_bigint(gate_ptr, 4));
                     }
 
