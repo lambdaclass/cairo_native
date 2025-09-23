@@ -398,11 +398,12 @@ fn build_eval<'ctx, 'this>(
                 location,
                 outputs_ptr,
                 &[GepIndex::Const(
-                    // The offset is calculated as the prefix, which is the 4 
+                    // The offset is calculated as the prefix, which is the 4
                     // bytes from the reference counter plus the extra padding.
                     // Then, we need to add the element stride time the current
                     // index.
-                    outputs_prefix_layout.size() as i32 + elem_stride.pad_to_align().size() as i32 * i as i32,
+                    outputs_prefix_layout.size() as i32
+                        + elem_stride.pad_to_align().size() as i32 * i as i32,
                 )],
                 IntegerType::new(context, 384).into(),
             )?;
@@ -952,7 +953,7 @@ fn build_get_output<'ctx, 'this>(
         location,
         circuit_ptr,
         &[GepIndex::Const(
-            // The offset is calculated as the prefix, which is the 4 
+            // The offset is calculated as the prefix, which is the 4
             // bytes from the reference counter plus the extra padding.
             // Then, we need to add the element stride time the current
             // index.

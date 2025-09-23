@@ -406,6 +406,7 @@ pub fn build_circuit_outputs<'ctx>(
 
                     entry
                         .append_operation(ReallocBindingsMeta::free(context, gates_ptr, location)?);
+
                     entry.append_operation(scf::r#yield(&[], location));
 
                     region
@@ -462,6 +463,7 @@ pub fn build_array_dup<'ctx, 'this>(
     let new_inputs_ptr = {
         let ptr_ty = llvm::r#type::pointer(context, 0);
         let new_inputs_ptr = block.append_op_result(llvm::zero(ptr_ty, location))?;
+
         block.append_op_result(ReallocBindingsMeta::realloc(
             context,
             new_inputs_ptr,

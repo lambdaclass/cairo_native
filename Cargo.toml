@@ -109,7 +109,6 @@ repository.workspace = true
 resolver = "2"
 
 [features]
-default = ["with-debug-utils"]
 with-cheatcode = []
 with-debug-utils = []
 with-mem-tracing = []
