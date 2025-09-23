@@ -566,7 +566,6 @@ pub mod trace_dump_runtime {
                     else {
                         panic!("generic arg should be a Circuit");
                     };
-
                     let u96_layout = get_integer_layout(96);
 
                     let n_outputs = circuit.circuit_info.values.len();
@@ -586,7 +585,7 @@ pub mod trace_dump_runtime {
                     // get gate values
                     for i in 0..n_outputs {
                         let gate_ptr = value_ptr
-                            .byte_add(outputs_prefix_layout.size() + gate_stride.size() * i);
+                            .byte_add(outputs_prefix_layout.size() + gate_stride.pad_to_align().size() * i);
                         values.push(u384_struct_to_bigint(gate_ptr, 4));
                     }
 

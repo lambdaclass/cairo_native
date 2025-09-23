@@ -398,7 +398,11 @@ fn build_eval<'ctx, 'this>(
                 location,
                 outputs_ptr,
                 &[GepIndex::Const(
-                    outputs_prefix_layout.size() as i32 + elem_stride.size() as i32 * i as i32,
+                    // The offset is calculated as the prefix, which is the 4 
+                    // bytes from the reference counter plus the extra padding.
+                    // Then, we need to add the element stride time the current
+                    // index.
+                    outputs_prefix_layout.size() as i32 + elem_stride.pad_to_align().size() as i32 * i as i32,
                 )],
                 IntegerType::new(context, 384).into(),
             )?;
@@ -942,12 +946,16 @@ fn build_get_output<'ctx, 'this>(
     )?;
 
     let circuit_output_prefix_offset = calc_circuit_output_prefix_layout().size() as i32;
-    let elem_stride = get_integer_layout(384).size() as i32;
+    let elem_stride = get_integer_layout(384).pad_to_align().size() as i32;
     let output_integer_ptr = entry.gep(
         context,
         location,
         circuit_ptr,
         &[GepIndex::Const(
+            // The offset is calculated as the prefix, which is the 4 
+            // bytes from the reference counter plus the extra padding.
+            // Then, we need to add the element stride time the current
+            // index.
             circuit_output_prefix_offset + elem_stride * output_idx as i32,
         )],
         u384_type,
