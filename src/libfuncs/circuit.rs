@@ -366,15 +366,15 @@ fn build_eval<'ctx, 'this>(
             circuit_info.mul_offsets.len() * MUL_MOD_BUILTIN_SIZE,
         )?;
 
-        // Calculate capacity for array.
         let elem_stride = get_integer_layout(384);
+        // Calculate capacity for array.
         let outputs_prefix_layout = calc_circuit_output_prefix_layout();
-        let outputs_layout = outputs_prefix_layout
+        let outputs_capatity_bytes = outputs_prefix_layout
             .extend(layout_repeat(&elem_stride, circuit_info.values.len())?.0)?
             .0
-            .pad_to_align();
+            .pad_to_align().size();
         let outputs_capacity_bytes_value =
-            ok_block.const_int(context, location, outputs_layout.size(), 64)?;
+            ok_block.const_int(context, location, outputs_capatity_bytes, 64)?;
 
         // Alloc memory for array.
         let ptr_ty = llvm::r#type::pointer(context, 0);
