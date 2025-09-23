@@ -286,8 +286,7 @@ pub fn build_circuit_data<'ctx>(
 ///
 /// ```txt
 /// type = struct {
-///     reference_count: u8,
-///     data: *u384,
+///     data: *void,
 ///     modulus: u384struct,
 /// };
 ///
@@ -297,6 +296,10 @@ pub fn build_circuit_data<'ctx>(
 ///     limb3: u96,
 ///     limb4: u96,
 /// }
+/// 
+/// The allocation pontier, data, contains:
+///   * Reference counter.
+///   * Circuit outputs. 
 /// ```
 pub fn build_circuit_outputs<'ctx>(
     context: &'ctx Context,
