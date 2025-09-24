@@ -94,8 +94,7 @@ impl<'m> JitNativeExecutor<'m> {
     ) -> Result<ExecutionResult, Error> {
         let available_gas = self
             .gas_metadata
-            .get_initial_available_gas(function_id, gas)
-            .map_err(crate::error::Error::GasMetadataError)?;
+            .get_initial_available_gas(function_id, gas)?;
 
         super::invoke_dynamic(
             &self.registry,
@@ -118,8 +117,7 @@ impl<'m> JitNativeExecutor<'m> {
     ) -> Result<ExecutionResult, Error> {
         let available_gas = self
             .gas_metadata
-            .get_initial_available_gas(function_id, gas)
-            .map_err(crate::error::Error::GasMetadataError)?;
+            .get_initial_available_gas(function_id, gas)?;
 
         super::invoke_dynamic(
             &self.registry,
@@ -141,8 +139,7 @@ impl<'m> JitNativeExecutor<'m> {
     ) -> Result<ContractExecutionResult, Error> {
         let available_gas = self
             .gas_metadata
-            .get_initial_available_gas(function_id, gas)
-            .map_err(crate::error::Error::GasMetadataError)?;
+            .get_initial_available_gas(function_id, gas)?;
 
         ContractExecutionResult::from_execution_result(super::invoke_dynamic(
             &self.registry,
