@@ -366,16 +366,13 @@ fn build_eval<'ctx, 'this>(
             circuit_info.mul_offsets.len() * MUL_MOD_BUILTIN_SIZE,
         )?;
 
-        let elem_stride = get_integer_layout(384);
+        let u384_layout = get_integer_layout(384);
         // Calculate capacity for array.
-        let outputs_prefix_layout = calc_circuit_output_prefix_layout();
-        let outputs_capatity_bytes = outputs_prefix_layout
-            .extend(layout_repeat(&elem_stride, circuit_info.values.len())?.0)?
-            .0
-            .pad_to_align()
-            .size();
+        let (data_layout, elem_stride) = layout_repeat(&u384_layout, circuit_info.values.len())?;
+        let (outputs_layout, data_start_offset) =
+            calc_circuit_output_prefix_layout().extend(data_layout)?;
         let outputs_capacity_bytes_value =
-            ok_block.const_int(context, location, outputs_capatity_bytes, 64)?;
+            ok_block.const_int(context, location, outputs_layout.pad_to_align().size(), 64)?;
 
         // Alloc memory for array.
         let ptr_ty = llvm::r#type::pointer(context, 0);
@@ -391,20 +388,23 @@ fn build_eval<'ctx, 'this>(
         let k1 = ok_block.const_int(context, location, 1, 32)?;
         ok_block.store(context, location, outputs_ptr, k1)?;
 
+        let data_ptr = ok_block.gep(
+            context,
+            location,
+            outputs_ptr,
+            &[GepIndex::Const(
+                data_start_offset as i32,
+            )],
+            IntegerType::new(context, 8).into(),
+        )?;
+
         // Insert evaluated gates into the array.
         for (i, gate) in gates.into_iter().enumerate() {
             let value_ptr = ok_block.gep(
                 context,
                 location,
-                outputs_ptr,
-                &[GepIndex::Const(
-                    // The offset is calculated as the prefix, which is the 4
-                    // bytes from the reference counter plus the extra padding.
-                    // Then, we need to add the element stride time the current
-                    // index.
-                    outputs_prefix_layout.size() as i32
-                        + elem_stride.pad_to_align().size() as i32 * i as i32,
-                )],
+                data_ptr,
+                &[GepIndex::Const(i as i32)],
                 IntegerType::new(context, 384).into(),
             )?;
             ok_block.store(context, location, value_ptr, gate)?;
@@ -946,19 +946,21 @@ fn build_get_output<'ctx, 'this>(
         1,
     )?;
 
-    let circuit_output_prefix_offset = calc_circuit_output_prefix_layout().size() as i32;
-    let elem_stride = get_integer_layout(384).pad_to_align().size() as i32;
-    let output_integer_ptr = entry.gep(
+    let data_start_offset = calc_circuit_output_prefix_layout().size() as i32;
+    let elem_stride = get_integer_layout(384).size() as i32;
+
+    let data_ptr = entry.gep(
         context,
         location,
         circuit_ptr,
-        &[GepIndex::Const(
-            // The offset is calculated as the prefix, which is the 4
-            // bytes from the reference counter plus the extra padding.
-            // Then, we need to add the element stride time the current
-            // index.
-            circuit_output_prefix_offset + elem_stride * output_idx as i32,
-        )],
+        &[GepIndex::Const(data_start_offset)],
+        IntegerType::new(context, 8).into(),
+    )?;
+    let output_integer_ptr = entry.gep(
+        context,
+        location,
+        data_ptr,
+        &[GepIndex::Const(output_idx as i32)],
         u384_type,
     )?;
 

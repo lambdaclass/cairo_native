@@ -325,22 +325,15 @@ pub fn build_circuit_outputs<'ctx>(
                 llvm::r#type::pointer(context, 0),
                 0,
             )?;
-            let ref_count_ptr = entry.gep(
-                context,
-                location,
-                gates_ptr,
-                &[GepIndex::Const(0)],
-                IntegerType::new(context, 8).into(),
-            )?;
             let ref_count = entry.load(
                 context,
                 location,
-                ref_count_ptr,
+                gates_ptr,
                 IntegerType::new(context, 32).into(),
             )?;
             let ref_count_inc = entry.addi(ref_count, k1, location)?;
 
-            entry.store(context, location, ref_count_ptr, ref_count_inc)?;
+            entry.store(context, location, gates_ptr, ref_count_inc)?;
             entry.append_operation(func::r#return(&[outputs, outputs], location));
 
             Ok(Some(region))
@@ -367,18 +360,10 @@ pub fn build_circuit_outputs<'ctx>(
                 llvm::r#type::pointer(context, 0),
                 0,
             )?;
-
-            let ref_count_ptr = entry.gep(
-                context,
-                location,
-                gates_ptr,
-                &[GepIndex::Const(0)],
-                IntegerType::new(context, 8).into(),
-            )?;
             let ref_count = entry.load(
                 context,
                 location,
-                ref_count_ptr,
+                gates_ptr,
                 IntegerType::new(context, 32).into(),
             )?;
 
@@ -394,7 +379,7 @@ pub fn build_circuit_outputs<'ctx>(
                     let entry = region.append_block(Block::new(&[]));
                     let ref_count_dec = entry.subi(ref_count, k1, location)?;
 
-                    entry.store(context, location, ref_count_ptr, ref_count_dec)?;
+                    entry.store(context, location, gates_ptr, ref_count_dec)?;
                     entry.append_operation(scf::r#yield(&[], location));
 
                     region
