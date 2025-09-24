@@ -2,7 +2,7 @@ use anyhow::Context;
 use cairo_lang_compiler::project::check_compiler_path;
 use cairo_native::{
     clone_option_mut, context::NativeContext, module_to_object, object_to_shared_lib,
-    statistics::Statistics, utils::cairo_to_sierra,
+    statistics::Statistics, utils::testing::cairo_to_sierra,
 };
 use clap::Parser;
 use std::{

@@ -245,10 +245,10 @@ fn eval_point_from_x(
 
 fn random_ec_point() -> AffinePoint {
     // https://github.com/starkware-libs/cairo/blob/aaad921bba52e729dc24ece07fab2edf09ccfa15/crates/cairo-lang-runner/src/casm_run/mod.rs#L1802
-    let mut rng = rand::thread_rng();
+    let mut rng = rand::rng();
     let (random_x, random_y) = loop {
         // Randominzing 31 bytes to make sure is in range.
-        let x_bytes: [u8; 31] = rng.gen();
+        let x_bytes: [u8; 31] = rng.random();
         let random_x = Felt::from_bytes_be_slice(&x_bytes);
         let random_y_squared = random_x * random_x * random_x + random_x + BETA;
         if let Some(random_y) = random_y_squared.sqrt() {
