@@ -368,7 +368,7 @@ fn build_eval<'ctx, 'this>(
 
         let u384_layout = get_integer_layout(384);
         // Calculate capacity for array.
-        let (data_layout, elem_stride) = layout_repeat(&u384_layout, circuit_info.values.len())?;
+        let (data_layout, _) = layout_repeat(&u384_layout, circuit_info.values.len())?;
         let (outputs_layout, data_start_offset) =
             calc_circuit_output_prefix_layout().extend(data_layout)?;
         let outputs_capacity_bytes_value =
@@ -945,7 +945,6 @@ fn build_get_output<'ctx, 'this>(
     )?;
 
     let data_start_offset = calc_circuit_output_prefix_layout().size() as i32;
-    let elem_stride = get_integer_layout(384).size() as i32;
 
     let data_ptr = entry.gep(
         context,

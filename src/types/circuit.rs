@@ -22,7 +22,7 @@ use cairo_lang_sierra::{
 };
 use melior::{
     dialect::{arith::CmpiPredicate, func, llvm, scf},
-    helpers::{ArithBlockExt, BuiltinBlockExt, GepIndex, LlvmBlockExt},
+    helpers::{ArithBlockExt, BuiltinBlockExt, LlvmBlockExt},
     ir::{r#type::IntegerType, Block, BlockLike, Location, Module, Region, Type, Value},
     Context,
 };
