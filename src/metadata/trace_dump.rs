@@ -579,6 +579,10 @@ pub mod trace_dump_runtime {
                         gates_array_layout.extend(u384_struct_layout).unwrap();
 
                     let value_ptr = {
+                        // The poiter holds:
+                        //    1. Reference counter.
+                        //.   2. data.
+                        // So we need to offset it before we can use it.
                         let data_start_offset = calc_circuit_output_prefix_layout().size();
                         value_ptr.byte_add(data_start_offset).cast::<[u8; 12]>()
                     };
