@@ -60,7 +60,7 @@ jobs:
               run: cargo install critcmp
 
             - name: Compre HEAD vs BASE
-              run: critcmp bench-base bench-head | tee bench-results.md
+              run: critcmp bench-base bench-head > bench-results.md
         
             - name: Find Bench Comment
               continue-on-error: true
