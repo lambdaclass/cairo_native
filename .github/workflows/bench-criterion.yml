@@ -42,7 +42,7 @@ jobs:
               run: make deps
             
             - name: Run head bench
-              run: cargo bench --bench benches -- --save-baseline bench-head
+              run: cargo bench -F testing --bench benches -- --save-baseline bench-head
 
             - name: Checkout commit
               uses: actions/checkout@v4
@@ -54,7 +54,7 @@ jobs:
               run: make deps
 
             - name: Run base bench
-              run: cargo bench --bench benches -- --save-baseline bench-base
+              run: cargo bench -F testing --bench benches -- --save-baseline bench-base
 
             - name: Install critcmp
               run: cargo install critcmp
