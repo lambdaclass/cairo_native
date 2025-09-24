@@ -392,9 +392,7 @@ fn build_eval<'ctx, 'this>(
             context,
             location,
             outputs_ptr,
-            &[GepIndex::Const(
-                data_start_offset as i32,
-            )],
+            &[GepIndex::Const(data_start_offset as i32)],
             IntegerType::new(context, 8).into(),
         )?;
 
