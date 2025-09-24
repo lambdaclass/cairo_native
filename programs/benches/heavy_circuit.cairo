@@ -79,7 +79,7 @@ pub fn get_BLS12_381_modulus() -> CircuitModulus {
 // https://github.com/keep-starknet-strange/garaga/blob/5c5859e6dc5515f542c310cb38a149602e774112/src/src/circuits/ec.cairo#L425
 // Clear cofactor of a point in the BLS12-381 elliptic curve
 #[inline(always)]
-pub fn main() -> (G1Point, G1Point, G1Point, G1Point) {
+pub fn main() {
     let P = G1Point {
         x: u384 {
             limb0: 0x23893f1bb0fdb0533584b05f,
@@ -874,6 +874,70 @@ pub fn main() -> (G1Point, G1Point, G1Point, G1Point) {
     let res3 = G1Point { x: t, y: q };
     let res4 = G1Point { x: v, y: u };
     let res: G1Point = G1Point { x: outputs.get_output(t749), y: outputs.get_output(t752) };
-    return (res, res2, res3, res4);
+
+    assert!(
+        res == G1Point {
+            x: u384 {
+                limb0: 0x966bbf6b40495135d64e8445,
+                limb1: 0xe7e5816060e6d6856794c74d,
+                limb2: 0xcae62806e0b4deb02cd14386,
+                limb3: 0x12919edd4f026b8fa0380126,
+            },
+            y: u384 {
+                limb0: 0x81d18af9aaf1c42f1e12adab,
+                limb1: 0x35b102fefb16391f131039ac,
+                limb2: 0xb5b62010fda1cb3a95b50e85,
+                limb3: 0x47a6379686999e8c75a13a2,
+            },
+        },
+    );
+    assert!(
+        res2 == G1Point {
+            x: u384 {
+                limb0: 0xf7d1e59fa12650234b7c4853,
+                limb1: 0xb98777fc8ee13a38a8d9fa85,
+                limb2: 0x7b7ea8a3b794e087da148e6e,
+                limb3: 0x54a533902c34b719d06be20,
+            },
+            y: u384 {
+                limb0: 0xcb52b7f91535bb690a4a6d77,
+                limb1: 0x22325808d07b4e771299f4fa,
+                limb2: 0x27e3458deb3b849a9ecadf0f,
+                limb3: 0x918dc9fe0831e03d2d17c8f,
+            },
+        },
+    );
+    assert!(
+        res3 == G1Point {
+            x: u384 {
+                limb0: 0x6b09443f86f6c8be07f4c397,
+                limb1: 0x5fa81c326f6c21a0520e4476,
+                limb2: 0xc739a6a9e6625dd2e63e52c9,
+                limb3: 0x12c14b07845e7d85c2d42a3f,
+            },
+            y: u384 {
+                limb0: 0x834cba27c7cb12ff7ac5c4fe,
+                limb1: 0xdfb21c3692644ed40d33eb8,
+                limb2: 0x3423a390f39327dc09894c64,
+                limb3: 0x8855aaa5924f8c6d1d81408,
+            },
+        },
+    );
+    assert!(
+        res4 == G1Point {
+            x: u384 {
+                limb0: 0xd03e56bba244e3f23198ad13,
+                limb1: 0x12b9813e841b0fabc6663a2b,
+                limb2: 0x2e7377405ca6fe32aa29efdc,
+                limb3: 0x53588598706dcedc0aa6525,
+            },
+            y: u384 {
+                limb0: 0x944fb925591cf74e9ddb850a,
+                limb1: 0x1b590c574a54e78059c14452,
+                limb2: 0xdfe363ed2f57c4db9055e58b,
+                limb3: 0x1493543e52a5eae16aa9cbc2,
+            },
+        },
+    );
 }
 
