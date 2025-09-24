@@ -168,7 +168,7 @@ jobs:
         uses: actions/cache/save@v4.2.0
         if: ${{ always() && matrix.runner == 'vm' }}
         with:
-          path: starknet-replay/rpc_cache
+          path: starknet-replay/cache
           key: ${{ steps.restore-rpc-calls.outputs.cache-primary-key }}
 
   compare:
