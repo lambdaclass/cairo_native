@@ -3,7 +3,7 @@
 use super::LibfuncHelper;
 use crate::{
     error::Result,
-    metadata::{ MetadataStorage},
+    metadata::MetadataStorage,
     utils::{ProgramRegistryExt, PRIME},
 };
 use cairo_lang_sierra::{
@@ -81,11 +81,9 @@ pub fn build_binary_operation<'ctx, 'this>(
         }
         Felt252BinaryOperationConcrete::WithConst(operation) => {
             let value = match operation.c.sign() {
-                Sign::Minus => {
-                    (BigInt::from_biguint(Sign::Plus, PRIME.clone()) + &operation.c)
-                        .magnitude()
-                        .clone()
-                }
+                Sign::Minus => (BigInt::from_biguint(Sign::Plus, PRIME.clone()) + &operation.c)
+                    .magnitude()
+                    .clone(),
                 _ => operation.c.magnitude().clone(),
             };
 
@@ -697,7 +695,8 @@ pub mod test {
             jit_struct!(
                 f("0").into(),
                 f("1").into(),
-                f("1809251394333065606848661391547535052811553607665798349986546028067936010240").into(),
+                f("1809251394333065606848661391547535052811553607665798349986546028067936010240")
+                    .into(),
                 f("-1").into(),
                 f("1").into(),
                 f("-1").into(),
