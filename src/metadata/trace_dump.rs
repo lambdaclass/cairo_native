@@ -227,7 +227,7 @@ pub mod trace_dump_runtime {
 
     use crate::{
         starknet::ArrayAbi,
-        types::TypeBuilder,
+        types::{circuit::calc_circuit_output_prefix_layout, TypeBuilder},
         utils::{get_integer_layout, layout_repeat},
     };
 
@@ -578,7 +578,14 @@ pub mod trace_dump_runtime {
                     let (_, modulus_offset) =
                         gates_array_layout.extend(u384_struct_layout).unwrap();
 
-                    let value_ptr = value_ptr.cast::<[u8; 12]>();
+                    let value_ptr = {
+                        // The poiter holds:
+                        //    1. Reference counter.
+                        //.   2. data.
+                        // So we need to offset it before we can use it.
+                        let data_start_offset = calc_circuit_output_prefix_layout().size();
+                        value_ptr.byte_add(data_start_offset).cast::<[u8; 12]>()
+                    };
 
                     // get gate values
                     for i in 0..n_outputs {

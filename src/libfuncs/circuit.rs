@@ -12,7 +12,10 @@ use crate::{
         runtime_bindings::RuntimeBindingsMeta, MetadataStorage,
     },
     native_panic,
-    types::{circuit::build_u384_struct_type, TypeBuilder},
+    types::{
+        circuit::{build_u384_struct_type, calc_circuit_output_prefix_layout},
+        TypeBuilder,
+    },
     utils::{get_integer_layout, layout_repeat, ProgramRegistryExt},
 };
 use cairo_lang_sierra::{
@@ -363,13 +366,13 @@ fn build_eval<'ctx, 'this>(
             circuit_info.mul_offsets.len() * MUL_MOD_BUILTIN_SIZE,
         )?;
 
+        let u384_layout = get_integer_layout(384);
         // Calculate capacity for array.
-        let outputs_capacity = circuit_info.values.len();
-        let u384_integer_layout = get_integer_layout(384);
-        let outputs_layout = layout_repeat(&u384_integer_layout, outputs_capacity)?.0;
-        let outputs_capacity_bytes = outputs_layout.pad_to_align().size();
+        let (data_layout, _) = layout_repeat(&u384_layout, circuit_info.values.len())?;
+        let (outputs_layout, data_start_offset) =
+            calc_circuit_output_prefix_layout().extend(data_layout)?;
         let outputs_capacity_bytes_value =
-            ok_block.const_int(context, location, outputs_capacity_bytes, 64)?;
+            ok_block.const_int(context, location, outputs_layout.pad_to_align().size(), 64)?;
 
         // Alloc memory for array.
         let ptr_ty = llvm::r#type::pointer(context, 0);
@@ -381,12 +384,24 @@ fn build_eval<'ctx, 'this>(
             location,
         )?)?;
 
+        // Insert initial reference count, equal to 1.
+        let k1 = ok_block.const_int(context, location, 1, 32)?;
+        ok_block.store(context, location, outputs_ptr, k1)?;
+
+        let data_ptr = ok_block.gep(
+            context,
+            location,
+            outputs_ptr,
+            &[GepIndex::Const(data_start_offset as i32)],
+            IntegerType::new(context, 8).into(),
+        )?;
+
         // Insert evaluated gates into the array.
         for (i, gate) in gates.into_iter().enumerate() {
             let value_ptr = ok_block.gep(
                 context,
                 location,
-                outputs_ptr,
+                data_ptr,
                 &[GepIndex::Const(i as i32)],
                 IntegerType::new(context, 384).into(),
             )?;
@@ -929,13 +944,23 @@ fn build_get_output<'ctx, 'this>(
         1,
     )?;
 
-    let output_integer_ptr = entry.gep(
+    let data_start_offset = calc_circuit_output_prefix_layout().size() as i32;
+
+    let data_ptr = entry.gep(
         context,
         location,
         circuit_ptr,
+        &[GepIndex::Const(data_start_offset)],
+        IntegerType::new(context, 8).into(),
+    )?;
+    let output_integer_ptr = entry.gep(
+        context,
+        location,
+        data_ptr,
         &[GepIndex::Const(output_idx as i32)],
         u384_type,
     )?;
+
     let output_integer = entry.load(context, location, output_integer_ptr, u384_type)?;
     let output_struct = u384_integer_to_struct(context, entry, location, output_integer)?;
 
@@ -952,10 +977,6 @@ fn build_get_output<'ctx, 'this>(
     )?;
 
     // We drop the circuit outputs value, as its consumed by this libfunc.
-    // NOTE: As this libfunc consumes circuit_outputs, this implies that
-    // calling it multiple times involves duplicating the circuit outputs
-    // each time. This could be fixed by implementing a reference counter,
-    // like we do with regular arrays.
     if let Some(drop_overrides_meta) = metadata.get::<DropOverridesMeta>() {
         drop_overrides_meta.invoke_override(
             context,

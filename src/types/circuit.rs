@@ -21,7 +21,7 @@ use cairo_lang_sierra::{
     program_registry::ProgramRegistry,
 };
 use melior::{
-    dialect::{func, llvm},
+    dialect::{arith::CmpiPredicate, func, llvm, scf},
     helpers::{ArithBlockExt, BuiltinBlockExt, LlvmBlockExt},
     ir::{r#type::IntegerType, Block, BlockLike, Location, Module, Region, Type, Value},
     Context,
@@ -279,12 +279,14 @@ pub fn build_circuit_data<'ctx>(
 /// ## Layout:
 ///
 /// Holds the evaluated circuit output gates and the circuit modulus.
-/// - The data is stored as a dynamic array of u384 integers.
+/// - The data is stored as a dynamic array, which contains:
+///     * Reference counter.
+///     * Circuit output data (u384s).
 /// - The modulus is stored as a u384 in struct form (multi-limb).
 ///
 /// ```txt
 /// type = struct {
-///     data: *u384,
+///     data: *void,
 ///     modulus: u384struct,
 /// };
 ///
@@ -302,15 +304,6 @@ pub fn build_circuit_outputs<'ctx>(
     metadata: &mut MetadataStorage,
     info: WithSelf<InfoOnlyConcreteType>,
 ) -> Result<Type<'ctx>> {
-    let Some(GenericArg::Type(circuit_type_id)) = info.info.long_id.generic_args.first() else {
-        return Err(SierraAssertError::BadTypeInfo.into());
-    };
-    let CoreTypeConcrete::Circuit(CircuitTypeConcrete::Circuit(circuit)) =
-        registry.get_type(circuit_type_id)?
-    else {
-        return Err(SierraAssertError::BadTypeInfo.into());
-    };
-
     DupOverridesMeta::register_with(
         context,
         module,
@@ -322,6 +315,7 @@ pub fn build_circuit_outputs<'ctx>(
             let region = Region::new();
             let value_ty = registry.build_type(context, module, metadata, info.self_ty())?;
             let entry = region.append_block(Block::new(&[(value_ty, location)]));
+            let k1 = entry.const_int(context, location, 1, 32)?;
 
             let outputs = entry.arg(0)?;
             let gates_ptr = entry.extract_value(
@@ -331,20 +325,16 @@ pub fn build_circuit_outputs<'ctx>(
                 llvm::r#type::pointer(context, 0),
                 0,
             )?;
-
-            let u384_integer_layout = get_integer_layout(384);
-
-            let new_gates_ptr = build_array_dup(
+            let ref_count = entry.load(
                 context,
-                &entry,
                 location,
                 gates_ptr,
-                circuit.circuit_info.values.len(),
-                u384_integer_layout,
+                IntegerType::new(context, 32).into(),
             )?;
+            let ref_count_inc = entry.addi(ref_count, k1, location)?;
 
-            let new_outputs = entry.insert_value(context, location, outputs, new_gates_ptr, 0)?;
-            entry.append_operation(func::r#return(&[outputs, new_outputs], location));
+            entry.store(context, location, gates_ptr, ref_count_inc)?;
+            entry.append_operation(func::r#return(&[outputs, outputs], location));
 
             Ok(Some(region))
         },
@@ -360,6 +350,7 @@ pub fn build_circuit_outputs<'ctx>(
             let region = Region::new();
             let value_ty = registry.build_type(context, module, metadata, info.self_ty())?;
             let entry = region.append_block(Block::new(&[(value_ty, location)]));
+            let k1 = entry.const_int(context, location, 1, 32)?;
 
             let outputs = entry.arg(0)?;
             let gates_ptr = entry.extract_value(
@@ -369,8 +360,45 @@ pub fn build_circuit_outputs<'ctx>(
                 llvm::r#type::pointer(context, 0),
                 0,
             )?;
+            let ref_count = entry.load(
+                context,
+                location,
+                gates_ptr,
+                IntegerType::new(context, 32).into(),
+            )?;
 
-            entry.append_operation(ReallocBindingsMeta::free(context, gates_ptr, location)?);
+            // Check that the reference counting is different from 1. If it is equeal to 1, then it is shared.
+            let is_shared = entry.cmpi(context, CmpiPredicate::Ne, ref_count, k1, location)?;
+
+            entry.append_operation(scf::r#if(
+                is_shared,
+                &[],
+                {
+                    // If it is shared then decrement the reference counting.
+                    let region = Region::new();
+                    let entry = region.append_block(Block::new(&[]));
+                    let ref_count_dec = entry.subi(ref_count, k1, location)?;
+
+                    entry.store(context, location, gates_ptr, ref_count_dec)?;
+                    entry.append_operation(scf::r#yield(&[], location));
+
+                    region
+                },
+                {
+                    // If it is not shared then free the memory.
+                    let region = Region::new();
+                    let entry = region.append_block(Block::new(&[]));
+
+                    entry
+                        .append_operation(ReallocBindingsMeta::free(context, gates_ptr, location)?);
+
+                    entry.append_operation(scf::r#yield(&[], location));
+
+                    region
+                },
+                location,
+            ));
+
             entry.append_operation(func::r#return(&[], location));
 
             Ok(Some(region))
@@ -420,6 +448,7 @@ pub fn build_array_dup<'ctx, 'this>(
     let new_inputs_ptr = {
         let ptr_ty = llvm::r#type::pointer(context, 0);
         let new_inputs_ptr = block.append_op_result(llvm::zero(ptr_ty, location))?;
+
         block.append_op_result(ReallocBindingsMeta::realloc(
             context,
             new_inputs_ptr,
@@ -528,4 +557,12 @@ pub fn build_u384_struct_type(context: &Context) -> Type<'_> {
         ],
         false,
     )
+}
+
+pub fn calc_circuit_output_prefix_layout() -> Layout {
+    let u384_layout = get_integer_layout(384);
+    get_integer_layout(32)
+        .align_to(u384_layout.align())
+        .expect("layout size rounded up to the next multiple of layout alignment should never be greater than ISIZE::MAX")
+        .pad_to_align()
 }
