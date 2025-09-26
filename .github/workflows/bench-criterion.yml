@@ -60,8 +60,17 @@ jobs:
               run: cargo install critcmp
 
             - name: Compre HEAD vs BASE
-              run: critcmp bench-base bench-head > bench-results.md
-        
+              run: critcmp bench-base bench-head | tee -a comment_body.md
+      
+            - name: Create or update bench comment
+              continue-on-error: true
+              uses: peter-evans/create-or-update-comment@v4
+              with:
+                comment-id: ${{ github.event.pull_request.number }}
+                issue-number: ${{ github.event.pull_request.number }}
+                body-path: comment_body.md
+                edit-mode: replace
+
             - name: Find Bench Comment
               continue-on-error: true
               uses: peter-evans/find-comment@v3
@@ -70,14 +79,5 @@ jobs:
                 issue-number: ${{ github.event.pull_request.number }}
                 comment-author: "github-actions[bot]"
                 body-includes: Criterion results Main vs HEAD
-
-            - name: Create or update bench comment
-              continue-on-error: true
-              uses: peter-evans/create-or-update-comment@v4
-              with:
-                comment-id: ${{ steps.fc.outputs.comment-id }}
-                issue-number: ${{ github.event.pull_request.number }}
-                body-path: bench-results.md
-                edit-mode: replace
                 
             
