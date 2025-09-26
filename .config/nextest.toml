@@ -1,0 +1,4 @@
+[profile.ci]
+inherits = "dev"
+opt-level = 3
+debug = "line-tables-only"
