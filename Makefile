@@ -62,7 +62,7 @@ check: check-llvm
 
 .PHONY: test
 test: check-llvm needs-cairo2 build-alexandria
-	cargo test --profile ci --features=with-cheatcode,with-debug-utils,testing
+	cargo nextest run --profile ci --features=with-cheatcode,with-debug-utils,testing
 
 .PHONY: test-cairo
 test-cairo: check-llvm needs-cairo2
@@ -70,15 +70,15 @@ test-cairo: check-llvm needs-cairo2
 
 .PHONY: proptest
 proptest: check-llvm needs-cairo2
-	cargo test --profile ci --features=with-cheatcode,with-debug-utils,testing proptest
+	cargo nextest run --profile ci --features=with-cheatcode,with-debug-utils,testing proptest
 
 .PHONY: test-cli
 test-ci: check-llvm needs-cairo2 build-alexandria
-	cargo test --profile ci --features=with-cheatcode,with-debug-utils,testing
+	cargo nextest run --profile ci --features=with-cheatcode,with-debug-utils,testing
 
 .PHONY: proptest-cli
 proptest-ci: check-llvm needs-cairo2
-	cargo test --profile ci --features=with-cheatcode,with-debug-utils,testing proptest
+	cargo nextest run --profile ci --features=with-cheatcode,with-debug-utils,testing proptest
 
 .PHONY: coverage
 coverage: check-llvm needs-cairo2 build-alexandria
