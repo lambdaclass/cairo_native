@@ -1,3 +1,5 @@
+#![cfg(any(test, feature = "testing"))]
+
 use std::{fmt::Formatter, fs, io::Write, path::Path, sync::Arc};
 
 use cairo_lang_compiler::CompilerConfig;
