@@ -208,7 +208,7 @@ pub fn build_bool_to_felt252<'ctx, 'this>(
 #[cfg(test)]
 mod test {
     use crate::{
-        utils::test::{jit_enum, jit_struct, load_cairo, run_program},
+        utils::testing::{jit_enum, jit_struct, load_cairo, run_program},
         values::Value,
     };
 

@@ -161,7 +161,7 @@ pub fn build_from_felt252<'ctx, 'this>(
 
 #[cfg(test)]
 mod test {
-    use crate::utils::test::{
+    use crate::utils::testing::{
         jit_enum, jit_panic, jit_struct, load_cairo, run_program_assert_output,
     };
     use cairo_lang_sierra::program::Program;

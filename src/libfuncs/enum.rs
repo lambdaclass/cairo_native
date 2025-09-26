@@ -545,7 +545,7 @@ pub fn build_snapshot_match<'ctx, 'this>(
 mod test {
     use crate::{
         context::NativeContext,
-        utils::test::{jit_enum, jit_struct, load_cairo, run_program_assert_output},
+        utils::testing::{jit_enum, jit_struct, load_cairo, run_program_assert_output},
     };
     use cairo_lang_sierra::program::Program;
     use lazy_static::lazy_static;

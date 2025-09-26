@@ -142,7 +142,7 @@ mod tests {
             trace_dump_runtime::{TraceDump, TRACE_DUMP},
             TraceBinding,
         },
-        utils::test::load_cairo,
+        utils::testing::load_cairo,
         OptLevel,
     };
 

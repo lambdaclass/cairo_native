@@ -1305,7 +1305,7 @@ mod test {
     use crate::{
         utils::{
             felt252_str,
-            test::{jit_enum, jit_panic, jit_struct, load_cairo, run_program},
+            testing::{jit_enum, jit_panic, jit_struct, load_cairo, run_program},
         },
         values::Value,
     };

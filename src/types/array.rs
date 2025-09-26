@@ -420,7 +420,7 @@ pub fn calc_data_prefix_offset(layout: Layout) -> usize {
 #[cfg(test)]
 mod test {
     use crate::{
-        utils::test::{load_cairo, run_program},
+        utils::testing::{load_cairo, run_program},
         values::Value,
     };
     use pretty_assertions_sorted::assert_eq;
