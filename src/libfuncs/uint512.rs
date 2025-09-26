@@ -160,7 +160,7 @@ pub fn build_divmod_u256<'ctx, 'this>(
 #[cfg(test)]
 mod test {
     use crate::{
-        utils::test::{jit_struct, load_cairo, run_program_assert_output},
+        utils::testing::{jit_struct, load_cairo, run_program_assert_output},
         values::Value,
     };
     use cairo_lang_sierra::program::Program;

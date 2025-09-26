@@ -138,7 +138,7 @@ fn build_drop<'ctx>(
 #[cfg(test)]
 mod test {
     use crate::{
-        utils::test::{jit_dict, load_cairo, run_program},
+        utils::testing::{jit_dict, load_cairo, run_program},
         values::Value,
     };
     use pretty_assertions_sorted::assert_eq;

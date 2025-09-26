@@ -118,7 +118,7 @@ pub fn build_hades_permutation<'ctx>(
 
 #[cfg(test)]
 mod test {
-    use crate::utils::test::{jit_struct, load_cairo, run_program_assert_output};
+    use crate::utils::testing::{jit_struct, load_cairo, run_program_assert_output};
 
     use starknet_types_core::felt::Felt;
 

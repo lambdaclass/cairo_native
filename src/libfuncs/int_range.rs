@@ -141,7 +141,7 @@ pub fn build_int_range_pop_front<'ctx, 'this>(
 #[cfg(test)]
 mod test {
     use crate::{
-        utils::test::{jit_enum, jit_struct, load_cairo, run_program_assert_output},
+        utils::testing::{jit_enum, jit_struct, load_cairo, run_program_assert_output},
         values::Value,
     };
     use cairo_lang_sierra::program::Program;
