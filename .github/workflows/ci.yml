@@ -115,7 +115,7 @@ jobs:
     steps:
       - uses: actions/checkout@v4
       - name: Install testing tools
-        uses: taiki-e/install-action
+        uses: taiki-e/install-action@v2
         with:
           tool: cargo-nextest
       - name: check and free hdd space left
