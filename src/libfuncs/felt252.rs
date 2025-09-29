@@ -423,7 +423,24 @@ pub mod test {
         static ref FELT252_DIV_CONST: (String, Program) = load_cairo! {
             extern fn felt252_div_const<const rhs: felt252>(lhs: felt252) -> felt252 nopanic;
 
-            fn run_test() -> (felt252, felt252, felt252, felt252, felt252, felt252, felt252) {
+            fn run_test() -> (
+                felt252,
+                felt252,
+                felt252,
+                felt252,
+                felt252,
+                felt252,
+                felt252,
+                felt252,
+                felt252,
+                felt252,
+                felt252,
+                felt252,
+                felt252,
+                felt252,
+                felt252,
+                felt252
+            ) {
                 (
                     felt252_div_const::<1>(0),
                     felt252_div_const::<1>(1),
@@ -432,6 +449,15 @@ pub mod test {
                     felt252_div_const::<-1>(-1),
                     felt252_div_const::<-1>(1),
                     felt252_div_const::<1>(-1),
+                    felt252_div_const::<500>(1000),
+                    felt252_div_const::<256>(1024),
+                    felt252_div_const::<-256>(1024),
+                    felt252_div_const::<256>(-1024),
+                    felt252_div_const::<-256>(-1024),
+                    felt252_div_const::<8>(64),
+                    felt252_div_const::<8>(-64),
+                    felt252_div_const::<-8>(64),
+                    felt252_div_const::<-8>(-64),
                 )
             }
         };
@@ -701,6 +727,15 @@ pub mod test {
                 f("1").into(),
                 f("-1").into(),
                 f("-1").into(),
+                f("2").into(),
+                f("4").into(),
+                f("-4").into(),
+                f("-4").into(),
+                f("4").into(),
+                f("8").into(),
+                f("-8").into(),
+                f("-8").into(),
+                f("8").into(),
             )
         );
     }
