@@ -1,14 +1,14 @@
 #![cfg(any(test, feature = "testing"))]
 
-use std::{fmt::Formatter, fs, io::Write, path::Path, sync::Arc};
-
 use cairo_lang_compiler::CompilerConfig;
 use cairo_lang_filesystem::db::init_dev_corelib;
-use cairo_lang_sierra::{
-    program::{FunctionSignature, Program},
-    ProgramParser,
-};
+#[cfg(test)]
+use cairo_lang_sierra::program::FunctionSignature;
+use cairo_lang_sierra::{program::Program, ProgramParser};
 use cairo_lang_starknet::{compile::compile_contract_in_prepared_db, starknet_plugin_suite};
+#[cfg(test)]
+use std::{fmt::Formatter, io::Write};
+use std::{fs, path::Path, sync::Arc};
 
 use crate::{
     context::NativeContext, execution_result::ExecutionResult, executor::JitNativeExecutor,
@@ -20,46 +20,49 @@ use cairo_lang_compiler::{
 use cairo_lang_starknet_classes::contract_class::ContractClass;
 use std::env::var;
 
+#[macro_export]
 macro_rules! load_cairo {
         ( $( $program:tt )+ ) => {
             $crate::utils::testing::load_cairo_str(stringify!($($program)+))
         };
     }
+#[macro_export]
 macro_rules! load_starknet {
         ( $( $program:tt )+ ) => {
             $crate::utils::testing::load_starknet_str(stringify!($($program)+))
         };
     }
+#[macro_export]
 macro_rules! load_starknet_contract {
         ( $( $program:tt )+ ) => {
             $crate::utils::testing::load_starknet_contract_str(stringify!($($program)+))
         };
     }
-pub(crate) use load_cairo;
-pub(crate) use load_starknet;
-pub(crate) use load_starknet_contract;
 
 // Helper macros for faster testing.
+#[macro_export]
 macro_rules! jit_struct {
         ($($y:expr),* $(,)? ) => {
-            crate::values::Value::Struct {
+            $crate::values::Value::Struct {
                 fields: vec![$($y), *],
                 debug_name: None
             }
         };
     }
+#[macro_export]
 macro_rules! jit_enum {
     ( $tag:expr, $value:expr ) => {
-        crate::values::Value::Enum {
+        $crate::values::Value::Enum {
             tag: $tag,
             value: Box::new($value),
             debug_name: None,
         }
     };
 }
+#[macro_export]
 macro_rules! jit_dict {
         ( $($key:expr $(=>)+ $value:expr),* $(,)? ) => {
-            crate::values::Value::Felt252Dict {
+            $crate::values::Value::Felt252Dict {
                 value: {
                     let mut map = std::collections::HashMap::new();
                     $(map.insert($key.into(), $value.into());)*
@@ -69,18 +72,15 @@ macro_rules! jit_dict {
             }
         };
     }
+#[macro_export]
 macro_rules! jit_panic {
         ( $($value:expr)? ) => {
-            crate::utils::testing::jit_enum!(1, crate::utils::testing::jit_struct!(
-                crate::utils::testing::jit_struct!(),
+            $crate::jit_enum!(1, $crate::jit_struct!(
+                $crate::jit_struct!(),
                 [$($value), *].into()
             ))
         };
     }
-pub(crate) use jit_dict;
-pub(crate) use jit_enum;
-pub(crate) use jit_panic;
-pub(crate) use jit_struct;
 
 /// Compile a cairo program found at the given path to sierra.
 pub fn cairo_to_sierra(program: &Path) -> crate::error::Result<Arc<Program>> {
@@ -110,11 +110,11 @@ pub fn cairo_to_sierra(program: &Path) -> crate::error::Result<Arc<Program>> {
     .map(Arc::new)
 }
 
-pub(crate) fn load_cairo_str(program_str: &str) -> (String, Program) {
+pub fn load_cairo_str(program_str: &str) -> (String, Program) {
     compile_program(program_str, RootDatabase::default())
 }
 
-pub(crate) fn load_starknet_str(program_str: &str) -> (String, Program) {
+pub fn load_starknet_str(program_str: &str) -> (String, Program) {
     compile_program(
         program_str,
         RootDatabase::builder()
@@ -124,7 +124,7 @@ pub(crate) fn load_starknet_str(program_str: &str) -> (String, Program) {
     )
 }
 
-pub(crate) fn load_starknet_contract_str(program_str: &str) -> (String, ContractClass) {
+pub fn load_starknet_contract_str(program_str: &str) -> (String, ContractClass) {
     compile_contract(
         program_str,
         RootDatabase::builder()

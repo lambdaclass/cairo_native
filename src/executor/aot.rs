@@ -208,7 +208,7 @@ mod tests {
     use crate::{
         context::NativeContext,
         starknet_stub::StubSyscallHandler,
-        utils::testing::{load_cairo, load_starknet},
+        {load_cairo, load_starknet},
     };
     use cairo_lang_sierra::program::Program;
     use rstest::*;

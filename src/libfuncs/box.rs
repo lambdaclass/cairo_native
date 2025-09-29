@@ -151,10 +151,7 @@ pub fn build_unbox<'ctx, 'this>(
 
 #[cfg(test)]
 mod test {
-    use crate::{
-        utils::testing::{load_cairo, run_program_assert_output},
-        values::Value,
-    };
+    use crate::{load_cairo, utils::testing::run_program_assert_output, values::Value};
 
     #[test]
     fn run_box_unbox() {

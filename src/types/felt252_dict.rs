@@ -137,10 +137,7 @@ fn build_drop<'ctx>(
 
 #[cfg(test)]
 mod test {
-    use crate::{
-        utils::testing::{jit_dict, load_cairo, run_program},
-        values::Value,
-    };
+    use crate::{jit_dict, load_cairo, utils::testing::run_program, values::Value};
     use pretty_assertions_sorted::assert_eq;
     use starknet_types_core::felt::Felt;
     use std::collections::HashMap;

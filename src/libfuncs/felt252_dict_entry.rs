@@ -193,7 +193,10 @@ pub fn build_finalize<'ctx, 'this>(
 
 #[cfg(test)]
 mod test {
-    use crate::utils::testing::{jit_dict, load_cairo, run_program, run_program_assert_output};
+    use crate::{
+        jit_dict, load_cairo,
+        utils::testing::{run_program, run_program_assert_output},
+    };
 
     #[test]
     fn run_dict_insert() {

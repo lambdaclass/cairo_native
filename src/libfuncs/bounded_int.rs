@@ -855,7 +855,7 @@ mod test {
 
     use crate::{
         context::NativeContext, execution_result::ExecutionResult, executor::JitNativeExecutor,
-        utils::testing::load_cairo, OptLevel, Value,
+        load_cairo, OptLevel, Value,
     };
 
     #[test]

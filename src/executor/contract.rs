@@ -814,7 +814,7 @@ impl Drop for LockFile {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::{starknet_stub::StubSyscallHandler, utils::testing::load_starknet_contract};
+    use crate::{load_starknet_contract, starknet_stub::StubSyscallHandler};
     use cairo_lang_starknet_classes::contract_class::{
         version_id_from_serialized_sierra_program, ContractClass,
     };

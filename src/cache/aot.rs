@@ -87,7 +87,7 @@ where
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::{utils::testing::load_cairo, values::Value};
+    use crate::{load_cairo, values::Value};
     use starknet_types_core::felt::Felt;
 
     #[test]

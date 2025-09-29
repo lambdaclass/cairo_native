@@ -283,7 +283,7 @@ pub fn build_calculate_gas_cost<'c, 'b>(
 
 #[cfg(test)]
 mod test {
-    use crate::utils::testing::{load_cairo, run_program};
+    use crate::{load_cairo, utils::testing::run_program};
 
     #[test]
     fn run_withdraw_gas() {

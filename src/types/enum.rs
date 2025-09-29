@@ -795,7 +795,7 @@ pub fn get_type_for_variants<'ctx>(
 
 #[cfg(test)]
 mod test {
-    use crate::{metadata::MetadataStorage, types::TypeBuilder, utils::testing::load_cairo};
+    use crate::{load_cairo, metadata::MetadataStorage, types::TypeBuilder};
     use cairo_lang_sierra::{
         extensions::core::{CoreLibfunc, CoreType},
         program_registry::ProgramRegistry,

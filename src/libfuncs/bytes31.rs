@@ -161,8 +161,8 @@ pub fn build_from_felt252<'ctx, 'this>(
 
 #[cfg(test)]
 mod test {
-    use crate::utils::testing::{
-        jit_enum, jit_panic, jit_struct, load_cairo, run_program_assert_output,
+    use crate::{
+        jit_enum, jit_panic, jit_struct, load_cairo, utils::testing::run_program_assert_output,
     };
     use cairo_lang_sierra::program::Program;
     use lazy_static::lazy_static;

@@ -1303,10 +1303,8 @@ fn is_shared<'ctx, 'this>(
 #[cfg(test)]
 mod test {
     use crate::{
-        utils::{
-            felt252_str,
-            testing::{jit_enum, jit_panic, jit_struct, load_cairo, run_program},
-        },
+        jit_enum, jit_panic, jit_struct, load_cairo,
+        utils::{felt252_str, testing::run_program},
         values::Value,
     };
     use pretty_assertions_sorted::assert_eq;

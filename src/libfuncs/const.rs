@@ -306,10 +306,7 @@ pub fn build_const_type_value<'ctx, 'this>(
 
 #[cfg(test)]
 pub mod test {
-    use crate::{
-        utils::testing::{jit_struct, load_cairo, run_program},
-        values::Value,
-    };
+    use crate::{jit_struct, load_cairo, utils::testing::run_program, values::Value};
 
     #[test]
     fn run_const_as_box() {

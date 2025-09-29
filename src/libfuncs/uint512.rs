@@ -159,10 +159,7 @@ pub fn build_divmod_u256<'ctx, 'this>(
 
 #[cfg(test)]
 mod test {
-    use crate::{
-        utils::testing::{jit_struct, load_cairo, run_program_assert_output},
-        values::Value,
-    };
+    use crate::{jit_struct, load_cairo, utils::testing::run_program_assert_output, values::Value};
     use cairo_lang_sierra::program::Program;
     use lazy_static::lazy_static;
     use num_bigint::BigUint;

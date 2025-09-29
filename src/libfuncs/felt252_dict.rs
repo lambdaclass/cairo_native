@@ -183,9 +183,8 @@ pub fn build_squash<'ctx, 'this>(
 #[cfg(test)]
 mod test {
     use crate::{
-        utils::testing::{
-            jit_dict, jit_enum, jit_struct, load_cairo, run_program, run_program_assert_output,
-        },
+        jit_dict, jit_enum, jit_struct, load_cairo,
+        utils::testing::{run_program, run_program_assert_output},
         values::Value,
     };
 

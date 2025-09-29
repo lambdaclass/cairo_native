@@ -70,7 +70,7 @@ where
 #[cfg(test)]
 mod test {
     use super::*;
-    use crate::utils::testing::load_cairo;
+    use crate::load_cairo;
     use std::time::Instant;
 
     #[test]
