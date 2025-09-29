@@ -1,13 +1,19 @@
 //! # Various utilities
 
 pub(crate) use self::{program_registry_ext::ProgramRegistryExt, range_ext::RangeExt};
-use crate::{error::Result as NativeResult, metadata::MetadataStorage, native_panic, OptLevel};
-use cairo_lang_compiler::CompilerConfig;
+use crate::{
+    error::Result as NativeResult, metadata::MetadataStorage, native_panic, types::TypeBuilder,
+    OptLevel,
+};
 use cairo_lang_runner::token_gas_cost;
 use cairo_lang_sierra::{
-    extensions::gas::CostTokenType,
-    ids::FunctionId,
+    extensions::{
+        core::{CoreLibfunc, CoreType},
+        gas::CostTokenType,
+    },
+    ids::{ConcreteTypeId, FunctionId},
     program::{GenFunction, Program, StatementIdx},
+    program_registry::ProgramRegistry,
 };
 use melior::{
     ir::Module,
@@ -17,12 +23,11 @@ use melior::{
 use num_bigint::{BigInt, BigUint, Sign};
 use serde::{Deserialize, Serialize};
 use starknet_types_core::felt::Felt;
-use std::sync::{Arc, LazyLock};
+use std::sync::LazyLock;
 use std::{
     alloc::Layout,
     borrow::Cow,
     fmt::{self, Display},
-    path::Path,
 };
 use thiserror::Error;
 
@@ -32,6 +37,8 @@ mod range_ext;
 #[cfg(feature = "with-segfault-catcher")]
 pub mod safe_runner;
 pub mod sierra_gen;
+#[cfg(any(feature = "testing", test))]
+pub mod testing;
 pub mod trace_dump;
 pub mod walk_ir;
 
@@ -136,9 +143,9 @@ pub(crate) use libc::{free as libc_free, malloc as libc_malloc, realloc as libc_
 /// If the program includes function identifiers, return those. Otherwise return `f` followed by the
 /// identifier number.
 pub fn generate_function_name(
-    function_id: &FunctionId,
+    function_id: &'_ FunctionId,
     is_for_contract_executor: bool,
-) -> Cow<str> {
+) -> Cow<'_, str> {
     // Generic functions can omit their type in the debug_name, leading to multiple functions
     // having the same name, we solve this by adding the id number even if the function has a debug_name
 
@@ -193,34 +200,6 @@ pub fn get_integer_layout(width: u32) -> Layout {
         Layout::from_size_align((width as usize).next_multiple_of(8) >> 3, 16)
             .expect("layout size rounded up to the next multiple of 16 should never be greater than ISIZE::MAX")
     }
-}
-
-/// Compile a cairo program found at the given path to sierra.
-pub fn cairo_to_sierra(program: &Path) -> crate::error::Result<Arc<Program>> {
-    if program
-        .extension()
-        .map(|x| {
-            x.to_ascii_lowercase()
-                .to_string_lossy()
-                .eq_ignore_ascii_case("cairo")
-        })
-        .unwrap_or(false)
-    {
-        cairo_lang_compiler::compile_cairo_project_at_path(
-            program,
-            CompilerConfig {
-                replace_ids: true,
-                ..Default::default()
-            },
-        )
-        .map_err(|err| crate::error::Error::ProgramParser(err.to_string()))
-    } else {
-        let source = std::fs::read_to_string(program)?;
-        cairo_lang_sierra::ProgramParser::new()
-            .parse(&source)
-            .map_err(|err| crate::error::Error::ProgramParser(err.to_string()))
-    }
-    .map(Arc::new)
 }
 
 /// Returns the given entry point if present.
@@ -416,11 +395,29 @@ pub fn layout_repeat(layout: &Layout, n: usize) -> Result<(Layout, usize), Layou
     Ok((layout, padded_size))
 }
 
+/// Returns the total layout size for the given types.
+pub fn get_types_total_size(
+    types_ids: &[ConcreteTypeId],
+    registry: &ProgramRegistry<CoreType, CoreLibfunc>,
+) -> crate::error::Result<usize> {
+    let mut total_size = 0;
+    for type_id in types_ids {
+        let type_concrete = registry.get_type(type_id)?;
+        let layout = type_concrete.layout(registry)?;
+        total_size += layout.size();
+    }
+    Ok(total_size)
+}
+
 #[cfg(test)]
 pub mod test {
     use crate::{
-        context::NativeContext, execution_result::ExecutionResult, executor::JitNativeExecutor,
-        starknet_stub::StubSyscallHandler, utils::*, values::Value,
+        context::NativeContext,
+        execution_result::ExecutionResult,
+        executor::JitNativeExecutor,
+        starknet_stub::StubSyscallHandler,
+        utils::{testing::cairo_to_sierra, *},
+        values::Value,
     };
     use cairo_lang_compiler::{
         compile_prepared_db, db::RootDatabase, diagnostics::DiagnosticsReporter,

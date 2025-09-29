@@ -47,11 +47,11 @@ use crate::{
     module::NativeModule,
     native_assert, native_panic,
     starknet::{handler::StarknetSyscallHandlerCallbacks, StarknetSyscallHandler},
-    statistics::Statistics,
+    statistics::{SierraDeclaredTypeStats, SierraFuncStats, Statistics},
     types::TypeBuilder,
     utils::{
-        decode_error_message, generate_function_name, get_integer_layout, libc_free, libc_malloc,
-        BuiltinCosts,
+        decode_error_message, generate_function_name, get_integer_layout, get_types_total_size,
+        libc_free, libc_malloc, BuiltinCosts,
     },
     OptLevel,
 };
@@ -59,9 +59,10 @@ use bumpalo::Bump;
 use cairo_lang_sierra::{
     extensions::{
         circuit::CircuitTypeConcrete,
-        core::{CoreLibfunc, CoreType, CoreTypeConcrete},
+        core::{CoreConcreteLibfunc, CoreLibfunc, CoreType, CoreTypeConcrete},
         gas::CostTokenType,
         starknet::StarknetTypeConcrete,
+        ConcreteLibfunc,
     },
     ids::FunctionId,
     program::{GenFunction, GenStatement, Program, StatementIdx},
@@ -240,11 +241,78 @@ impl AotContractExecutor {
         )?;
 
         if let Some(&mut ref mut stats) = stats {
+            for type_declaration in &program.type_declarations {
+                if let Ok(type_concrete) = registry.get_type(&type_declaration.id) {
+                    let type_id = type_declaration.id.id;
+                    let type_size = type_concrete.layout(&registry)?.size();
+                    stats.sierra_declared_types_stats.insert(
+                        type_id,
+                        SierraDeclaredTypeStats {
+                            size: type_size,
+                            as_param_count: 0,
+                        },
+                    );
+
+                    if let CoreTypeConcrete::Circuit(CircuitTypeConcrete::Circuit(info)) =
+                        type_concrete
+                    {
+                        stats.add_circuit_gates(&info.circuit_info)?;
+                    }
+                }
+            }
+
             for statement in &program.statements {
                 if let GenStatement::Invocation(invocation) = statement {
                     let libfunc = registry.get_libfunc(&invocation.libfunc_id)?;
                     let name = libfunc_to_name(libfunc).to_string();
                     *stats.sierra_libfunc_frequency.entry(name).or_insert(0) += 1;
+
+                    for param in libfunc.param_signatures() {
+                        let param_type_id = param.ty.id;
+                        if let Some(type_stats) =
+                            stats.sierra_declared_types_stats.get_mut(&param_type_id)
+                        {
+                            type_stats.as_param_count += 1;
+                        }
+                    }
+                }
+            }
+
+            for func in &program.funcs {
+                let func_id = func.id.id;
+                // Params
+                let params_total_size =
+                    get_types_total_size(&func.signature.param_types, &registry)?;
+                // Return types
+                let return_types_total_size =
+                    get_types_total_size(&func.signature.ret_types, &registry)?;
+
+                stats.sierra_func_stats.insert(
+                    func_id,
+                    SierraFuncStats {
+                        params_total_size,
+                        return_types_total_size,
+                        times_called: 0,
+                    },
+                );
+            }
+
+            for statement in &program.statements {
+                match statement {
+                    GenStatement::Invocation(gen_invocation) => {
+                        let libfunc = registry.get_libfunc(&gen_invocation.libfunc_id)?;
+                        if let CoreConcreteLibfunc::FunctionCall(function_call_libfunc) = libfunc {
+                            let func_id = function_call_libfunc.function.id.id;
+                            let func_entry = stats
+                                .sierra_func_stats
+                                .get_mut(&func_id)
+                                .to_native_assert_error(&format!(
+                                    "Function ID {func_id}, should be present in the stats"
+                                ))?;
+                            func_entry.times_called += 1;
+                        }
+                    }
+                    GenStatement::Return(_) => continue,
                 }
             }
         }
@@ -953,7 +1021,7 @@ mod tests {
             )
             .unwrap();
         assert_eq!(result.return_values, vec![Felt::from(3628800)]);
-        assert_eq!(result.remaining_gas, 18446744073709545475);
+        assert_eq!(result.remaining_gas, 18446744073709546675);
     }
 
     #[rstest]

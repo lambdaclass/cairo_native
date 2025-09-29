@@ -2,13 +2,14 @@ use anyhow::Context;
 use cairo_lang_compiler::project::check_compiler_path;
 use cairo_native::{
     clone_option_mut, context::NativeContext, module_to_object, object_to_shared_lib,
-    statistics::Statistics, utils::cairo_to_sierra,
+    statistics::Statistics, utils::testing::cairo_to_sierra,
 };
 use clap::Parser;
 use std::{
     fs::{self, File},
     path::PathBuf,
     sync::Arc,
+    time::Instant,
 };
 use tracing_subscriber::{EnvFilter, FmtSubscriber};
 
@@ -79,6 +80,8 @@ fn main() -> anyhow::Result<()> {
     let mut stats_with_path = args.stats_path.map(|path| (Statistics::default(), path));
     let stats = stats_with_path.as_mut().map(|v| &mut v.0);
 
+    let pre_compilation_instant = Instant::now();
+
     // Compile the sierra program into a MLIR module.
     let native_context = NativeContext::new();
     let native_module = native_context
@@ -101,8 +104,13 @@ fn main() -> anyhow::Result<()> {
         clone_option_mut!(stats),
     )
     .context("Failed to convert MLIR to object.")?;
-    object_to_shared_lib(&object_data, &args.output_library, stats)
+    object_to_shared_lib(&object_data, &args.output_library, clone_option_mut!(stats))
         .context("Failed to write shared library.")?;
+
+    let compilation_time = pre_compilation_instant.elapsed().as_millis();
+    if let Some(&mut ref mut stats) = stats {
+        stats.compilation_total_time_ms = Some(compilation_time);
+    }
 
     if let Some((stats, stats_path)) = stats_with_path {
         fs::write(stats_path, serde_json::to_string_pretty(&stats)?)?;
