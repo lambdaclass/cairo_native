@@ -78,7 +78,6 @@ pub fn get_BLS12_381_modulus() -> CircuitModulus {
 // Taken from:
 // https://github.com/keep-starknet-strange/garaga/blob/5c5859e6dc5515f542c310cb38a149602e774112/src/src/circuits/ec.cairo#L425
 // Clear cofactor of a point in the BLS12-381 elliptic curve
-#[inline(always)]
 pub fn main() {
     let P = G1Point {
         x: u384 {
