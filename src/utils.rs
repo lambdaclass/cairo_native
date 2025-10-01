@@ -418,7 +418,8 @@ mod tests {
 
     use super::Felt;
     use crate::utils::{
-        debug_with, felt252_short_str, felt252_str, find_entry_point, find_entry_point_by_idx, find_function_id, generate_function_name, get_integer_layout, testing::cairo_to_sierra
+        debug_with, felt252_short_str, felt252_str, find_entry_point, find_entry_point_by_idx,
+        find_function_id, generate_function_name, get_integer_layout, testing::cairo_to_sierra,
     };
     use cairo_lang_sierra::{
         ids::FunctionId,
