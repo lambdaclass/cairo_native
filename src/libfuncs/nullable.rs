@@ -118,8 +118,7 @@ fn build_match_nullable<'ctx, 'this>(
 #[cfg(test)]
 mod test {
     use crate::{
-        utils::test::{jit_enum, jit_struct, load_cairo, run_program_assert_output},
-        values::Value,
+        jit_enum, jit_struct, load_cairo, utils::testing::run_program_assert_output, values::Value,
     };
 
     #[test]

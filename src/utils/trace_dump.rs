@@ -138,11 +138,11 @@ mod tests {
     use crate::{
         context::NativeContext,
         executor::AotNativeExecutor,
+        load_cairo,
         metadata::trace_dump::{
             trace_dump_runtime::{TraceDump, TRACE_DUMP},
             TraceBinding,
         },
-        utils::test::load_cairo,
         OptLevel,
     };
 
