@@ -22,6 +22,8 @@ pub struct Statistics {
     pub sierra_func_stats: BTreeMap<u64, SierraFuncStats>,
     /// Number of statements for each distinct libfunc.
     pub sierra_libfunc_frequency: BTreeMap<String, u128>,
+    /// Number of times a Sierra declared type was built
+    pub sierra_declared_types_freq: BTreeMap<u64, u64>,
     /// Number of times each circuit gate is used.
     pub sierra_circuit_gates_count: CircuitGatesStats,
     /// Number of MLIR operations generated.
