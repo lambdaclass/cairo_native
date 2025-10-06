@@ -53,7 +53,6 @@ impl From<&Felt252Abi> for Felt {
 }
 
 /// Binary representation of a `u256` (in MLIR).
-// TODO: This shouldn't need to be public. See: https://github.com/lambdaclass/cairo_native/issues/1221
 #[derive(
     Debug,
     Clone,
