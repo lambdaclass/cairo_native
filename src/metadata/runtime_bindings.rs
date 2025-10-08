@@ -136,7 +136,8 @@ impl RuntimeBinding {
 
 // This enum is used when performing circuit arith operations.
 // Inversion is not included because it is handled separately.
-pub enum CircuitOpType {
+#[repr(u8)]
+pub enum CircuitArithOperationType {
     Add,
     Sub,
     Mul,
@@ -236,7 +237,18 @@ impl RuntimeBindingsMeta {
             .into())
     }
 
-    /// Build if necessary the circuit operation function, use to perform circuit operations.
+    /// Builds, if necessary, the circuit operation function, used to perform
+    /// circuit arith operations.
+    ///
+    /// Operands:
+    /// - `op`: an enum telling which arith operation to perform.
+    /// - `lhs_value`: lhs operand.
+    /// - `rhs_value`: rhs operand.
+    /// - `circuit_modulus`: circuit modulus used for the operation.
+    ///
+    /// This function only handles addition, substraction and multiplication
+    /// operations. The inversion operation was left as it is already handled
+    /// by the [`extended_euclidean_algorithm`]
     #[allow(clippy::too_many_arguments)]
     pub fn circuit_arith_operation<'c, 'a>(
         &mut self,
@@ -244,7 +256,7 @@ impl RuntimeBindingsMeta {
         module: &Module,
         block: &'a Block<'c>,
         location: Location<'c>,
-        op: CircuitOpType,
+        op_type: CircuitArithOperationType,
         lhs_value: Value<'c, '_>,
         rhs_value: Value<'c, '_>,
         circuit_modulus: Value<'c, '_>,
@@ -260,7 +272,7 @@ impl RuntimeBindingsMeta {
             build_circuit_arith_operation(context, module, location, func_symbol)?;
         }
 
-        let op_tag = block.const_int(context, location, op as u8, 2)?;
+        let op_tag = block.const_int(context, location, op_type as u8, 2)?;
         let return_type = IntegerType::new(context, 384).into();
 
         Ok(block.append_op_result(
@@ -915,24 +927,29 @@ fn build_egcd_function<'ctx>(
         )],
         location,
     ));
+
     Ok(())
 }
 
-/// Build function for circuit arithmetic operations.
+/// Builds function for circuit arithmetic operations.
 ///
 /// It builds an mlir function to perform most circuit's arithmetic operations
 /// with the exception of the inversion since it is handled separately. This
 /// allows us to reduce the amount of inlined operations in the mlir generated,
 /// significantly reducing the compilation time of circuits.
-fn build_circuit_arith_operation<'ctx, 'this>(
+///
+/// Declaimer: This function could've been split in three functions, each being
+/// responsible of one circuit operation, improving maintainability. It would
+/// also avoid having to use a `match` in runtime to select the operation to
+/// perform, since its known at compile time. However, it was decided not to go
+/// with this approached since it would make compilation time about a 10
+/// percent slower in circuit-heavy contracts.
+fn build_circuit_arith_operation<'ctx>(
     context: &'ctx Context,
     module: &Module,
     location: Location<'ctx>,
     func_symbol: &str,
-) -> Result<()>
-where
-    'this: 'ctx,
-{
+) -> Result<()> {
     let func_name = StringAttribute::new(context, func_symbol);
     let u2_ty = IntegerType::new(context, 2).into();
     let u384_ty: Type = IntegerType::new(context, 384).into();
