@@ -137,6 +137,7 @@ impl RuntimeBinding {
 // This enum is used when performing circuit arith operations.
 // Inversion is not included because it is handled separately.
 #[repr(u8)]
+#[derive(Clone, Copy)]
 pub enum CircuitArithOperationType {
     Add,
     Sub,
@@ -970,7 +971,6 @@ fn build_circuit_arith_operation<'ctx>(
     let modulus = entry_block.arg(3)?;
 
     let default_block = region.append_block(Block::new(&[]));
-    let cases_values = (0..3).collect::<Vec<_>>();
     let op_blocks = vec![
         CircuitArithOperationType::Add,
         CircuitArithOperationType::Sub,
@@ -979,6 +979,10 @@ fn build_circuit_arith_operation<'ctx>(
     .into_iter()
     .map(|op_ty| (op_ty, Block::new(&[])))
     .collect::<Vec<_>>();
+    let cases_values = op_blocks
+        .iter()
+        .map(|(op, _)| (*op) as i64)
+        .collect::<Vec<_>>();
 
     // Default block. This should be unreachable as the op_tag is not defined by the user.
     {
