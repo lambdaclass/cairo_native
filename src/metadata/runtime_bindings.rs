@@ -967,7 +967,7 @@ fn build_circuit_arith_operation<'ctx>(
     let op_tag = entry_block.arg(0)?;
     let lhs = entry_block.arg(1)?;
     let rhs = entry_block.arg(2)?;
-    let mut modulus = entry_block.arg(3)?;
+    let modulus = entry_block.arg(3)?;
 
     let default_block = region.append_block(Block::new(&[]));
     let cases_values = (0..3).collect::<Vec<_>>();
@@ -988,7 +988,7 @@ fn build_circuit_arith_operation<'ctx>(
 
     // Switch cases' operation blocks.
     for (tag, block) in op_blocks.iter() {
-        let result = match tag {
+        let (result, modulus) = match tag {
             // result = lhs_value + rhs_value
             CircuitArithOperationType::Add => {
                 // We need to extend the operands to avoid overflows while
@@ -996,9 +996,9 @@ fn build_circuit_arith_operation<'ctx>(
                 // at leat a bit width of 385 + 1.
                 let lhs = entry_block.extui(lhs, u385_ty, location)?;
                 let rhs = entry_block.extui(rhs, u385_ty, location)?;
-                modulus = entry_block.extui(modulus, u385_ty, location)?;
+                let modulus = entry_block.extui(modulus, u385_ty, location)?;
 
-                block.addi(lhs, rhs, location)?
+                (block.addi(lhs, rhs, location)?, modulus)
             }
             // result = output_value + circuit_modulus - rhs_value
             CircuitArithOperationType::Sub => {
@@ -1007,10 +1007,10 @@ fn build_circuit_arith_operation<'ctx>(
                 // need at leat a bit width of 384 + 1.
                 let lhs = entry_block.extui(lhs, u385_ty, location)?;
                 let rhs = entry_block.extui(rhs, u385_ty, location)?;
-                modulus = entry_block.extui(modulus, u385_ty, location)?;
+                let modulus = entry_block.extui(modulus, u385_ty, location)?;
 
                 let partial_result = block.addi(lhs, modulus, location)?;
-                block.subi(partial_result, rhs, location)?
+                (block.subi(partial_result, rhs, location)?, modulus)
             }
             // result = lhs_value * rhs_value
             CircuitArithOperationType::Mul => {
@@ -1019,9 +1019,9 @@ fn build_circuit_arith_operation<'ctx>(
                 // of 284 * 2.
                 let lhs = entry_block.extui(lhs, u768_ty, location)?;
                 let rhs = entry_block.extui(rhs, u768_ty, location)?;
-                modulus = entry_block.extui(modulus, u768_ty, location)?;
+                let modulus = entry_block.extui(modulus, u768_ty, location)?;
 
-                block.muli(lhs, rhs, location)?
+                (block.muli(lhs, rhs, location)?, modulus)
             }
         };
 
@@ -1060,22 +1060,10 @@ fn build_circuit_arith_operation<'ctx>(
             false,
         )),
         region,
-        &[
-            (
-                Identifier::new(context, "no_inline"),
-                Attribute::unit(context),
-            ),
-            // Guarantees to LLVM the function never raises an exception.
-            (
-                Identifier::new(context, "nounwind"),
-                Attribute::unit(context),
-            ),
-            // Guarantee to LLVM the function won't access memory at all.
-            (
-                Identifier::new(context, "readnone"),
-                Attribute::unit(context),
-            ),
-        ],
+        &[(
+            Identifier::new(context, "no_inline"),
+            Attribute::unit(context),
+        )],
         location,
     ));
 
