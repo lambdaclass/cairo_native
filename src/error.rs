@@ -128,8 +128,6 @@ pub enum CompilerError {
         value: Box<BigInt>,
         range: Box<(BigInt, BigInt)>,
     },
-    #[error("Invalid tag for circuit operation, got {} but it can only take values from 0 to 2", .0)]
-    InvalidTagForCircuitArithOp(usize),
 }
 
 /// In Cairo Native we want to avoid the use of panic, even in situation where

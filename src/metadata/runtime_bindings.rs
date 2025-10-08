@@ -4,7 +4,7 @@
 //! compilation context.
 
 use crate::{
-    error::{CompilerError, Error, Result},
+    error::{Error, Result},
     libfuncs::LibfuncHelper,
 };
 use melior::{
@@ -969,23 +969,28 @@ fn build_circuit_arith_operation<'ctx>(
     let rhs = entry_block.arg(2)?;
     let mut modulus = entry_block.arg(3)?;
 
-    let cases_values = (0..3).collect::<Vec<_>>();
     let default_block = region.append_block(Block::new(&[]));
-    let op_blocks = (0..3).map(|_| Block::new(&[])).collect::<Vec<_>>();
+    let cases_values = (0..3).collect::<Vec<_>>();
+    let op_blocks = vec![
+        CircuitArithOperationType::Add,
+        CircuitArithOperationType::Sub,
+        CircuitArithOperationType::Mul,
+    ]
+    .into_iter()
+    .map(|op_ty| (op_ty, Block::new(&[])))
+    .collect::<Vec<_>>();
 
     // Default block. This should be unreachable as the op_tag is not defined by the user.
     {
-        let k0 = default_block.const_int(context, location, 0, 1)?;
-
         // Arthmetic operations' tag go from 0 to 2 (add, sub, mul)
         default_block.append_operation(llvm::unreachable(location));
     }
 
     // Switch cases' operation blocks.
-    for (tag, block) in op_blocks.iter().enumerate() {
+    for (tag, block) in op_blocks.iter() {
         let result = match tag {
             // result = lhs_value + rhs_value
-            0 => {
+            CircuitArithOperationType::Add => {
                 // We need to extend the operands to avoid overflows while
                 // operating. Since we are perfoming an addition, we need
                 // at leat a bit width of 385 + 1.
@@ -996,7 +1001,7 @@ fn build_circuit_arith_operation<'ctx>(
                 block.addi(lhs, rhs, location)?
             }
             // result = output_value + circuit_modulus - rhs_value
-            1 => {
+            CircuitArithOperationType::Sub => {
                 // We need to extend the operands to avoid overflows while
                 // operating. Since we are perfoming a substraction, we
                 // need at leat a bit width of 384 + 1.
@@ -1008,7 +1013,7 @@ fn build_circuit_arith_operation<'ctx>(
                 block.subi(partial_result, rhs, location)?
             }
             // result = lhs_value * rhs_value
-            2 => {
+            CircuitArithOperationType::Mul => {
                 // We need to extend the operands to avoid overflows while
                 // operating. Since we are perfoming a multiplication, we need at leat a bit width
                 // of 284 * 2.
@@ -1018,7 +1023,6 @@ fn build_circuit_arith_operation<'ctx>(
 
                 block.muli(lhs, rhs, location)?
             }
-            t => return Err(Error::from(CompilerError::InvalidTagForCircuitArithOp(t))),
         };
 
         // result % circuit_modulus
@@ -1037,13 +1041,13 @@ fn build_circuit_arith_operation<'ctx>(
         (&default_block, &[]),
         &op_blocks
             .iter()
-            .map(|block| (block, [].as_slice()))
+            .map(|(_, block)| (block, [].as_slice()))
             .collect::<Vec<_>>(),
         location,
     )?);
 
     // We need to append the cases to the region.
-    for block in op_blocks.into_iter() {
+    for (_, block) in op_blocks.into_iter() {
         region.append_block(block);
     }
 
