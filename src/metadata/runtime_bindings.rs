@@ -988,45 +988,52 @@ fn build_circuit_arith_operation<'ctx>(
 
     // Switch cases' operation blocks.
     for (tag, block) in op_blocks.iter() {
-        let (result, modulus) = match tag {
+        let result = match tag {
             // result = lhs_value + rhs_value
             CircuitArithOperationType::Add => {
                 // We need to extend the operands to avoid overflows while
                 // operating. Since we are perfoming an addition, we need
                 // at leat a bit width of 385 + 1.
-                let lhs = entry_block.extui(lhs, u385_ty, location)?;
-                let rhs = entry_block.extui(rhs, u385_ty, location)?;
-                let modulus = entry_block.extui(modulus, u385_ty, location)?;
+                let lhs = block.extui(lhs, u385_ty, location)?;
+                let rhs = block.extui(rhs, u385_ty, location)?;
+                let modulus = block.extui(modulus, u385_ty, location)?;
 
-                (block.addi(lhs, rhs, location)?, modulus)
+                let result = block.addi(lhs, rhs, location)?;
+
+                // result % circuit_modulus
+                block.append_op_result(arith::remui(result, modulus, location))?
             }
             // result = output_value + circuit_modulus - rhs_value
             CircuitArithOperationType::Sub => {
                 // We need to extend the operands to avoid overflows while
                 // operating. Since we are perfoming a substraction, we
                 // need at leat a bit width of 384 + 1.
-                let lhs = entry_block.extui(lhs, u385_ty, location)?;
-                let rhs = entry_block.extui(rhs, u385_ty, location)?;
-                let modulus = entry_block.extui(modulus, u385_ty, location)?;
+                let lhs = block.extui(lhs, u385_ty, location)?;
+                let rhs = block.extui(rhs, u385_ty, location)?;
+                let modulus = block.extui(modulus, u385_ty, location)?;
 
                 let partial_result = block.addi(lhs, modulus, location)?;
-                (block.subi(partial_result, rhs, location)?, modulus)
+                let result = block.subi(partial_result, rhs, location)?;
+
+                // result % circuit_modulus
+                block.append_op_result(arith::remui(result, modulus, location))?
             }
             // result = lhs_value * rhs_value
             CircuitArithOperationType::Mul => {
                 // We need to extend the operands to avoid overflows while
                 // operating. Since we are perfoming a multiplication, we need at leat a bit width
                 // of 284 * 2.
-                let lhs = entry_block.extui(lhs, u768_ty, location)?;
-                let rhs = entry_block.extui(rhs, u768_ty, location)?;
-                let modulus = entry_block.extui(modulus, u768_ty, location)?;
+                let lhs = block.extui(lhs, u768_ty, location)?;
+                let rhs = block.extui(rhs, u768_ty, location)?;
+                let modulus = block.extui(modulus, u768_ty, location)?;
 
-                (block.muli(lhs, rhs, location)?, modulus)
+                let result = block.muli(lhs, rhs, location)?;
+
+                // result % circuit_modulus
+                block.append_op_result(arith::remui(result, modulus, location))?
             }
         };
 
-        // result % circuit_modulus
-        let result = block.append_op_result(arith::remui(result, modulus, location))?;
         // Truncate back
         let result = block.trunci(result, u384_ty, location)?;
 
