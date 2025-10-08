@@ -956,106 +956,96 @@ fn build_circuit_arith_operation<'ctx>(
     let u385_ty: Type = IntegerType::new(context, 385).into();
     let u768_ty = IntegerType::new(context, 768).into();
 
-    let region = {
-        let region = Region::new();
-        let entry_block = region.append_block(Block::new(&[
-            (u2_ty, location),
-            (u384_ty, location),
-            (u384_ty, location),
-            (u384_ty, location),
-        ]));
+    let region = Region::new();
+    let entry_block = region.append_block(Block::new(&[
+        (u2_ty, location),
+        (u384_ty, location),
+        (u384_ty, location),
+        (u384_ty, location),
+    ]));
 
-        let op_tag = entry_block.arg(0)?;
-        let lhs = entry_block.arg(1)?;
-        let rhs = entry_block.arg(2)?;
-        let mut modulus = entry_block.arg(3)?;
+    let op_tag = entry_block.arg(0)?;
+    let lhs = entry_block.arg(1)?;
+    let rhs = entry_block.arg(2)?;
+    let mut modulus = entry_block.arg(3)?;
 
-        let cases_values = (0..3).collect::<Vec<_>>();
-        let default_block = region.append_block(Block::new(&[]));
-        let op_blocks = (0..3).map(|_| Block::new(&[])).collect::<Vec<_>>();
+    let cases_values = (0..3).collect::<Vec<_>>();
+    let default_block = region.append_block(Block::new(&[]));
+    let op_blocks = (0..3).map(|_| Block::new(&[])).collect::<Vec<_>>();
 
-        // Default block. This should be unreachable as the op_tag is not defined by the user.
-        {
-            let k0 = default_block.const_int(context, location, 0, 1)?;
+    // Default block. This should be unreachable as the op_tag is not defined by the user.
+    {
+        let k0 = default_block.const_int(context, location, 0, 1)?;
 
-            // Arthmetic operations' tag go from 0 to 2 (add, sub, mul)
-            default_block.append_operation(cf::assert(
-                context,
-                k0,
-                "Invalid tag for circuit arith operation",
-                location,
-            ));
-            default_block.append_operation(llvm::unreachable(location));
-        }
+        // Arthmetic operations' tag go from 0 to 2 (add, sub, mul)
+        default_block.append_operation(llvm::unreachable(location));
+    }
 
-        // Switch cases' operation blocks.
-        for (tag, block) in op_blocks.iter().enumerate() {
-            let result = match tag {
-                // result = lhs_value + rhs_value
-                0 => {
-                    // We need to extend the operands to avoid overflows while
-                    // operating. Since we are perfoming an addition, we need
-                    // at leat a bit width of 385 + 1.
-                    let lhs = entry_block.extui(lhs, u385_ty, location)?;
-                    let rhs = entry_block.extui(rhs, u385_ty, location)?;
-                    modulus = entry_block.extui(modulus, u385_ty, location)?;
+    // Switch cases' operation blocks.
+    for (tag, block) in op_blocks.iter().enumerate() {
+        let result = match tag {
+            // result = lhs_value + rhs_value
+            0 => {
+                // We need to extend the operands to avoid overflows while
+                // operating. Since we are perfoming an addition, we need
+                // at leat a bit width of 385 + 1.
+                let lhs = entry_block.extui(lhs, u385_ty, location)?;
+                let rhs = entry_block.extui(rhs, u385_ty, location)?;
+                modulus = entry_block.extui(modulus, u385_ty, location)?;
 
-                    block.addi(lhs, rhs, location)?
-                }
-                // result = output_value + circuit_modulus - rhs_value
-                1 => {
-                    // We need to extend the operands to avoid overflows while
-                    // operating. Since we are perfoming a substraction, we
-                    // need at leat a bit width of 384 + 1.
-                    let lhs = entry_block.extui(lhs, u385_ty, location)?;
-                    let rhs = entry_block.extui(rhs, u385_ty, location)?;
-                    modulus = entry_block.extui(modulus, u385_ty, location)?;
+                block.addi(lhs, rhs, location)?
+            }
+            // result = output_value + circuit_modulus - rhs_value
+            1 => {
+                // We need to extend the operands to avoid overflows while
+                // operating. Since we are perfoming a substraction, we
+                // need at leat a bit width of 384 + 1.
+                let lhs = entry_block.extui(lhs, u385_ty, location)?;
+                let rhs = entry_block.extui(rhs, u385_ty, location)?;
+                modulus = entry_block.extui(modulus, u385_ty, location)?;
 
-                    let partial_result = block.addi(lhs, modulus, location)?;
-                    block.subi(partial_result, rhs, location)?
-                }
-                // result = lhs_value * rhs_value
-                2 => {
-                    // We need to extend the operands to avoid overflows while
-                    // operating. Since we are perfoming a multiplication, we need at leat a bit width
-                    // of 284 * 2.
-                    let lhs = entry_block.extui(lhs, u768_ty, location)?;
-                    let rhs = entry_block.extui(rhs, u768_ty, location)?;
-                    modulus = entry_block.extui(modulus, u768_ty, location)?;
+                let partial_result = block.addi(lhs, modulus, location)?;
+                block.subi(partial_result, rhs, location)?
+            }
+            // result = lhs_value * rhs_value
+            2 => {
+                // We need to extend the operands to avoid overflows while
+                // operating. Since we are perfoming a multiplication, we need at leat a bit width
+                // of 284 * 2.
+                let lhs = entry_block.extui(lhs, u768_ty, location)?;
+                let rhs = entry_block.extui(rhs, u768_ty, location)?;
+                modulus = entry_block.extui(modulus, u768_ty, location)?;
 
-                    block.muli(lhs, rhs, location)?
-                }
-                t => return Err(Error::from(CompilerError::InvalidTagForCircuitArithOp(t))),
-            };
+                block.muli(lhs, rhs, location)?
+            }
+            t => return Err(Error::from(CompilerError::InvalidTagForCircuitArithOp(t))),
+        };
 
-            // result % circuit_modulus
-            let result = block.append_op_result(arith::remui(result, modulus, location))?;
-            // Truncate back
-            let result = block.trunci(result, u384_ty, location)?;
+        // result % circuit_modulus
+        let result = block.append_op_result(arith::remui(result, modulus, location))?;
+        // Truncate back
+        let result = block.trunci(result, u384_ty, location)?;
 
-            block.append_operation(llvm::r#return(Some(result), location));
-        }
+        block.append_operation(llvm::r#return(Some(result), location));
+    }
 
-        entry_block.append_operation(cf::switch(
-            context,
-            &cases_values,
-            op_tag,
-            u2_ty,
-            (&default_block, &[]),
-            &op_blocks
-                .iter()
-                .map(|block| (block, [].as_slice()))
-                .collect::<Vec<_>>(),
-            location,
-        )?);
+    entry_block.append_operation(cf::switch(
+        context,
+        &cases_values,
+        op_tag,
+        u2_ty,
+        (&default_block, &[]),
+        &op_blocks
+            .iter()
+            .map(|block| (block, [].as_slice()))
+            .collect::<Vec<_>>(),
+        location,
+    )?);
 
-        // We need to append the cases to the region.
-        for block in op_blocks.into_iter() {
-            region.append_block(block);
-        }
-
-        region
-    };
+    // We need to append the cases to the region.
+    for block in op_blocks.into_iter() {
+        region.append_block(block);
+    }
 
     module.body().append_operation(llvm::func(
         context,
@@ -1071,7 +1061,7 @@ fn build_circuit_arith_operation<'ctx>(
                 Identifier::new(context, "no_inline"),
                 Attribute::unit(context),
             ),
-            // Remove unwind metadata setup.
+            // Guarantees to LLVM the function never raises an exception.
             (
                 Identifier::new(context, "nounwind"),
                 Attribute::unit(context),
