@@ -238,13 +238,13 @@ impl RuntimeBindingsMeta {
     }
 
     /// Builds, if necessary, the circuit operation function, used to perform
-    /// circuit arith operations.
+    /// circuit arithmetic operations.
     ///
-    /// Operands:
-    /// - `op`: an enum telling which arith operation to perform.
-    /// - `lhs_value`: lhs operand.
-    /// - `rhs_value`: rhs operand.
-    /// - `circuit_modulus`: circuit modulus used for the operation.
+    /// ## Operands
+    /// - `op`: an enum telling which arithmetic operation to perform.
+    /// - `lhs_value`: u384 operand.
+    /// - `rhs_value`: u384 operand.
+    /// - `circuit_modulus`: u384 circuit modulus.
     ///
     /// This function only handles addition, substraction and multiplication
     /// operations. The inversion operation was left as it is already handled
