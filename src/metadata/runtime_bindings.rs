@@ -135,7 +135,7 @@ impl RuntimeBinding {
     }
 }
 
-// This enum is used when performing circuit arith operations.
+// This enum is used when performing circuit arithmetic operations.
 // Inversion is not included because it is handled separately.
 #[repr(u8)]
 #[derive(Clone, Copy)]
@@ -940,7 +940,7 @@ fn build_egcd_function<'ctx>(
 /// allows us to reduce the amount of inlined operations in the mlir generated,
 /// significantly reducing the compilation time of circuits.
 ///
-/// Declaimer: This function could've been split in three functions, each being
+/// Disclaimer: This function could've been split in three functions, each being
 /// responsible of one circuit operation, improving maintainability. It would
 /// also avoid having to use a `match` in runtime to select the operation to
 /// perform, since its known at compile time. However, it was decided not to go
@@ -985,7 +985,7 @@ fn build_circuit_arith_operation<'ctx>(
 
     // Default block. This should be unreachable as the op_tag is not defined by the user.
     {
-        // Arthmetic operations' tag go from 0 to 2 (add, sub, mul)
+        // Arithmetic operations' tag go from 0 to 2 (add, sub, mul)
         default_block.append_operation(llvm::unreachable(location));
     }
 
@@ -995,8 +995,8 @@ fn build_circuit_arith_operation<'ctx>(
             // result = lhs_value + rhs_value
             CircuitArithOperationType::Add => {
                 // We need to extend the operands to avoid overflows while
-                // operating. Since we are perfoming an addition, we need
-                // at least a bit width of 385 + 1.
+                // operating. Since we are performing an addition, we need
+                // at least a bit width of 384 + 1.
                 let lhs = block.extui(lhs, u385_ty, location)?;
                 let rhs = block.extui(rhs, u385_ty, location)?;
                 let modulus = block.extui(modulus, u385_ty, location)?;
@@ -1009,7 +1009,7 @@ fn build_circuit_arith_operation<'ctx>(
             // result = output_value + circuit_modulus - rhs_value
             CircuitArithOperationType::Sub => {
                 // We need to extend the operands to avoid overflows while
-                // operating. Since we are perfoming a substraction, we
+                // operating. Since we are performing a subtraction, we
                 // need at least a bit width of 384 + 1.
                 let lhs = block.extui(lhs, u385_ty, location)?;
                 let rhs = block.extui(rhs, u385_ty, location)?;
@@ -1024,7 +1024,7 @@ fn build_circuit_arith_operation<'ctx>(
             // result = lhs_value * rhs_value
             CircuitArithOperationType::Mul => {
                 // We need to extend the operands to avoid overflows while
-                // operating. Since we are perfoming a multiplication, we need at least a bit width
+                // operating. Since we are performing a multiplication, we need at least a bit width
                 // of 284 * 2.
                 let lhs = block.extui(lhs, u768_ty, location)?;
                 let rhs = block.extui(rhs, u768_ty, location)?;
