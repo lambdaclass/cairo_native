@@ -35,7 +35,7 @@ use melior::{
         cf, llvm,
     },
     helpers::{ArithBlockExt, BuiltinBlockExt, GepIndex, LlvmBlockExt},
-    ir::{r#type::IntegerType, Block, BlockLike, Location, Type, Value, ValueLike},
+    ir::{r#type::IntegerType, Block, BlockLike, Location, Type, Value},
     Context,
 };
 use num_traits::Signed;
@@ -504,9 +504,6 @@ fn build_gate_evaluation<'ctx, 'this>(
     gates[0] = Some(block.const_int(context, location, 1, 384)?);
 
     let u384_type = IntegerType::new(context, 384).into();
-    let u768_type = IntegerType::new(context, 768).into();
-
-    let circuit_modulus_u768 = block.extui(circuit_modulus, u768_type, location)?;
 
     // The input gates are also known at the start. We take them from the `circuit_data` array.
     for i in 0..circuit_info.n_inputs {
@@ -599,8 +596,9 @@ fn build_gate_evaluation<'ctx, 'this>(
                 // INV: lhs = 1 / rhs
                 (None, Some(rhs_value), Some(_)) => {
                     // Extend to avoid overflow
+                    let u768_type = IntegerType::new(context, 768).into();
                     let rhs_value = block.extui(rhs_value, u768_type, location)?;
-                    let integer_type = rhs_value.r#type();
+                    let circuit_modulus_u768 = block.extui(circuit_modulus, u768_type, location)?;
 
                     // Apply egcd to find gcd and inverse
                     let euclidean_result = runtime_bindings_meta.extended_euclidean_algorithm(
@@ -612,23 +610,13 @@ fn build_gate_evaluation<'ctx, 'this>(
                         circuit_modulus_u768,
                     )?;
                     // Extract the values from the result struct
-                    let gcd = block.extract_value(
-                        context,
-                        location,
-                        euclidean_result,
-                        integer_type,
-                        0,
-                    )?;
-                    let inverse = block.extract_value(
-                        context,
-                        location,
-                        euclidean_result,
-                        integer_type,
-                        1,
-                    )?;
+                    let gcd =
+                        block.extract_value(context, location, euclidean_result, u768_type, 0)?;
+                    let inverse =
+                        block.extract_value(context, location, euclidean_result, u768_type, 1)?;
 
                     // if the gcd is not 1, then fail (a and b are not coprimes)
-                    let one = block.const_int_from_type(context, location, 1, integer_type)?;
+                    let one = block.const_int_from_type(context, location, 1, u768_type)?;
                     let gate_offset_idx_value = block.const_int_from_type(
                         context,
                         location,
@@ -649,7 +637,7 @@ fn build_gate_evaluation<'ctx, 'this>(
                     block = has_inverse_block;
 
                     // if the inverse is negative, then add modulus
-                    let zero = block.const_int_from_type(context, location, 0, integer_type)?;
+                    let zero = block.const_int_from_type(context, location, 0, u768_type)?;
                     let is_negative = block
                         .append_operation(arith::cmpi(
                             context,
