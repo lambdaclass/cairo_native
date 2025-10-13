@@ -7,6 +7,7 @@ use crate::{
     error::{Error, Result},
     libfuncs::LibfuncHelper,
 };
+use itertools::Itertools;
 use melior::{
     dialect::{
         arith::{self, CmpiPredicate},
@@ -248,7 +249,7 @@ impl RuntimeBindingsMeta {
     /// - `circuit_modulus`: u384 circuit modulus.
     ///
     /// This function only handles addition, substraction and multiplication
-    /// operations. The inversion operation was left as it is already handled
+    /// operations. The inversion operation was excluded as it is already handled
     /// by the [`extended_euclidean_algorithm`]
     #[allow(clippy::too_many_arguments)]
     pub fn circuit_arith_operation<'c, 'a>(
@@ -943,7 +944,7 @@ fn build_egcd_function<'ctx>(
 /// responsible of one circuit operation, improving maintainability. It would
 /// also avoid having to use a `match` in runtime to select the operation to
 /// perform, since its known at compile time. However, it was decided not to go
-/// with this approached since it would make compilation time about a 10
+/// with this approach since it would make compilation time about a 10
 /// percent slower in circuit-heavy contracts.
 fn build_circuit_arith_operation<'ctx>(
     context: &'ctx Context,
@@ -970,19 +971,17 @@ fn build_circuit_arith_operation<'ctx>(
     let rhs = entry_block.arg(2)?;
     let modulus = entry_block.arg(3)?;
 
-    let default_block = region.append_block(Block::new(&[]));
-    let op_blocks = vec![
+    let ops = [
         CircuitArithOperationType::Add,
         CircuitArithOperationType::Sub,
         CircuitArithOperationType::Mul,
-    ]
-    .into_iter()
-    .map(|op_ty| (op_ty, Block::new(&[])))
-    .collect::<Vec<_>>();
-    let cases_values = op_blocks
-        .iter()
-        .map(|(op, _)| (*op) as i64)
-        .collect::<Vec<_>>();
+    ];
+    let op_blocks = ops
+        .into_iter()
+        .map(|op| (op, Block::new(&[])))
+        .collect_vec();
+    let default_block = region.append_block(Block::new(&[]));
+    let cases_values = ops.iter().map(|&op| op as i64).collect_vec();
 
     // Default block. This should be unreachable as the op_tag is not defined by the user.
     {
@@ -997,7 +996,7 @@ fn build_circuit_arith_operation<'ctx>(
             CircuitArithOperationType::Add => {
                 // We need to extend the operands to avoid overflows while
                 // operating. Since we are perfoming an addition, we need
-                // at leat a bit width of 385 + 1.
+                // at least a bit width of 385 + 1.
                 let lhs = block.extui(lhs, u385_ty, location)?;
                 let rhs = block.extui(rhs, u385_ty, location)?;
                 let modulus = block.extui(modulus, u385_ty, location)?;
@@ -1011,7 +1010,7 @@ fn build_circuit_arith_operation<'ctx>(
             CircuitArithOperationType::Sub => {
                 // We need to extend the operands to avoid overflows while
                 // operating. Since we are perfoming a substraction, we
-                // need at leat a bit width of 384 + 1.
+                // need at least a bit width of 384 + 1.
                 let lhs = block.extui(lhs, u385_ty, location)?;
                 let rhs = block.extui(rhs, u385_ty, location)?;
                 let modulus = block.extui(modulus, u385_ty, location)?;
@@ -1025,7 +1024,7 @@ fn build_circuit_arith_operation<'ctx>(
             // result = lhs_value * rhs_value
             CircuitArithOperationType::Mul => {
                 // We need to extend the operands to avoid overflows while
-                // operating. Since we are perfoming a multiplication, we need at leat a bit width
+                // operating. Since we are perfoming a multiplication, we need at least a bit width
                 // of 284 * 2.
                 let lhs = block.extui(lhs, u768_ty, location)?;
                 let rhs = block.extui(rhs, u768_ty, location)?;
