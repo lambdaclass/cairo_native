@@ -40,8 +40,8 @@ pub fn build<'ctx, 'this>(
 
 /// Performs a blake2s compression.
 ///
-/// `bytes_count` is the total amount of bytes hashed after hashing the message.
-/// `finalize` is wether the libfunc call is a finalize or not.
+/// `bytes_count`: total amount of bytes hashed after hashing the message.
+/// `finalize`: wether the libfunc call is a finalize or not.
 /// ```cairo
 /// pub extern fn blake2s_compress(
 ///     state: Blake2sState, byte_count: u32, msg: Blake2sInput,
@@ -97,19 +97,22 @@ mod tests {
         Value,
     };
 
+    // This test is taken from the Blake2s-256 implementeation RFC-7693, Appendix B.
+    // https://www.rfc-editor.org/rfc/rfc7693#appendix-B.
     #[test]
-    fn test_blake() {
+    fn test_blake_3_bytes_compress() {
         let program = load_cairo!(
             use core::blake::{blake2s_compress, blake2s_finalize};
 
             fn run_test() -> [u32; 8] nopanic {
-                let state = BoxTrait::new([0_u32; 8]);
-                let msg = BoxTrait::new([0_u32; 16]);
-                let byte_count = 64_u32;
+                let initial_state: Box<[u32; 8]> = BoxTrait::new([
+                    0x6B08E647, 0xBB67AE85, 0x3C6EF372, 0xA54FF53A, 0x510E527F, 0x9B05688C, 0x1F83D9AB, 0x5BE0CD19,
+                ]);
+                // This number represents the bytes for "abc" string.
+                let abc_bytes = 0x00636261;
+                let msg: Box<[u32; 16]>  = BoxTrait::new([abc_bytes, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0]);
 
-                let _res = blake2s_compress(state, byte_count, msg).unbox();
-
-                blake2s_finalize(state, byte_count, msg).unbox()
+                blake2s_finalize(initial_state, 3, msg).unbox()
             }
         );
 
@@ -118,14 +121,14 @@ mod tests {
         assert_eq!(
             result,
             jit_struct!(
-                Value::Uint32(128291589),
-                Value::Uint32(1454945417),
-                Value::Uint32(3191583614),
-                Value::Uint32(1491889056),
-                Value::Uint32(794023379),
-                Value::Uint32(651000200),
-                Value::Uint32(3725903680),
-                Value::Uint32(1044330286),
+                Value::Uint32(0x8C5E8C50),
+                Value::Uint32(0xE2147C32),
+                Value::Uint32(0xA32BA7E1),
+                Value::Uint32(0x2F45EB4E),
+                Value::Uint32(0x208B4537),
+                Value::Uint32(0x293AD69E),
+                Value::Uint32(0x4C9B994D),
+                Value::Uint32(0x82596786),
             )
         );
     }
