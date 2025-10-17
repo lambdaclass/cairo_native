@@ -68,7 +68,7 @@ fn build_blake_operation<'ctx, 'this>(
     let state_ptr = entry.arg(0)?;
     let bytes_count = entry.arg(1)?;
     let message = entry.arg(2)?;
-    let k_finalize = entry.const_int(context, location, finalize, 1)?;
+    let k_finalize = entry.const_int(context, location, finalize as u8, 1)?;
 
     let runtime_bindings = metadata
         .get_mut::<RuntimeBindingsMeta>()
@@ -85,7 +85,7 @@ fn build_blake_operation<'ctx, 'this>(
         location,
     )?;
 
-    helper.br(entry, 0, &[state_ptr], location);
+    helper.br(entry, 0, &[state_ptr], location)?;
 
     Ok(())
 }
