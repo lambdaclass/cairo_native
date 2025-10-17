@@ -408,7 +408,7 @@ use crate::{
         drop_overrides::DropOverridesMeta, dup_overrides::DupOverridesMeta, MetadataStorage,
     },
     native_panic,
-    utils::{get_integer_layout, BlockExt, ProgramRegistryExt},
+    utils::{get_integer_layout, ProgramRegistryExt},
 };
 use cairo_lang_sierra::{
     extensions::{
@@ -420,6 +420,7 @@ use cairo_lang_sierra::{
 };
 use melior::{
     dialect::{cf, func, llvm},
+    helpers::{BuiltinBlockExt, LlvmBlockExt},
     ir::{r#type::IntegerType, Block, BlockLike, Location, Module, Region, Type, Value},
     Context,
 };
@@ -761,7 +762,8 @@ pub fn get_layout_for_variants(
 /// Extract the type and layout for the default enum representation, its discriminant and all its
 /// payloads.
 // TODO: Change this function to accept a slice of slices (for variants). Not all uses have a slice
-//   with one `ConcreteTypeId` per variant (deploy_syscalls has two types for the Ok() variant).
+// with one `ConcreteTypeId` per variant (deploy_syscalls has two types for the Ok() variant).
+// See: https://github.com/lambdaclass/cairo_native/issues/1187/
 pub fn get_type_for_variants<'ctx>(
     context: &'ctx Context,
     module: &Module<'ctx>,

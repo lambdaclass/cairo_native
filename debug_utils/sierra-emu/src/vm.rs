@@ -38,6 +38,7 @@ mod bytes31;
 mod cast;
 mod circuit;
 mod r#const;
+mod coupon;
 mod drop;
 mod dup;
 mod ec;
@@ -47,21 +48,18 @@ mod felt252_dict;
 mod felt252_dict_entry;
 mod function_call;
 mod gas;
-mod int128;
+mod int;
+mod int_range;
 mod jump;
 mod mem;
+mod nullable;
 mod pedersen;
 mod poseidon;
 mod snapshot_take;
 mod starknet;
 mod r#struct;
-mod uint128;
-mod uint16;
-mod uint252;
-mod uint32;
+mod uint256;
 mod uint512;
-mod uint64;
-mod uint8;
 
 #[derive(Clone)]
 pub struct VirtualMachine {
@@ -232,6 +230,9 @@ impl VirtualMachine {
         I: IntoIterator<Item = Value>,
         I::IntoIter: ExactSizeIterator,
     {
+        let required_gas = self.gas.initial_required_gas(&function.id).unwrap();
+        let initial_gas = initial_gas.checked_sub(required_gas).unwrap();
+
         let mut iter = args.into_iter();
         self.push_frame(
             function.id.clone(),
@@ -469,8 +470,7 @@ fn eval<'a>(
         CoreConcreteLibfunc::Cast(selector) => self::cast::eval(registry, selector, args),
         CoreConcreteLibfunc::Circuit(selector) => self::circuit::eval(registry, selector, args),
         CoreConcreteLibfunc::Const(selector) => self::r#const::eval(registry, selector, args),
-        CoreConcreteLibfunc::Coupon(_) => todo!(),
-        CoreConcreteLibfunc::CouponCall(_) => todo!(),
+        CoreConcreteLibfunc::Coupon(selector) => self::coupon::eval(registry, selector, args),
         CoreConcreteLibfunc::Debug(_) => todo!(),
         CoreConcreteLibfunc::Drop(info) => self::drop::eval(registry, info, args),
         CoreConcreteLibfunc::Dup(info) => self::dup::eval(registry, info, args),
@@ -483,42 +483,49 @@ fn eval<'a>(
         CoreConcreteLibfunc::Felt252DictEntry(selector) => {
             self::felt252_dict_entry::eval(registry, selector, args)
         }
-        CoreConcreteLibfunc::FunctionCall(info) => self::function_call::eval(registry, info, args),
+        CoreConcreteLibfunc::FunctionCall(info) => {
+            self::function_call::eval_function_call(registry, info, args)
+        }
+        CoreConcreteLibfunc::CouponCall(info) => {
+            self::function_call::eval_coupon_call(registry, info, args)
+        }
         CoreConcreteLibfunc::Gas(selector) => {
             self::gas::eval(registry, selector, args, gas, *statement_idx, builtin_costs)
         }
         CoreConcreteLibfunc::Mem(selector) => self::mem::eval(registry, selector, args),
-        CoreConcreteLibfunc::Nullable(_) => todo!(),
+        CoreConcreteLibfunc::Nullable(selector) => self::nullable::eval(registry, selector, args),
         CoreConcreteLibfunc::Pedersen(selector) => self::pedersen::eval(registry, selector, args),
         CoreConcreteLibfunc::Poseidon(selector) => self::poseidon::eval(registry, selector, args),
-        CoreConcreteLibfunc::Sint128(selector) => self::int128::eval(registry, selector, args),
-        CoreConcreteLibfunc::Sint16(_) => todo!(),
-        CoreConcreteLibfunc::Sint32(_) => todo!(),
-        CoreConcreteLibfunc::Sint64(_) => todo!(),
-        CoreConcreteLibfunc::Sint8(_) => todo!(),
+        CoreConcreteLibfunc::Sint8(selector) => self::int::eval_signed(registry, selector, args),
+        CoreConcreteLibfunc::Sint16(selector) => self::int::eval_signed(registry, selector, args),
+        CoreConcreteLibfunc::Sint32(selector) => self::int::eval_signed(registry, selector, args),
+        CoreConcreteLibfunc::Sint64(selector) => self::int::eval_signed(registry, selector, args),
+        CoreConcreteLibfunc::Sint128(selector) => self::int::eval_i128(registry, selector, args),
+        CoreConcreteLibfunc::Uint8(selector) => self::int::eval_unsigned(registry, selector, args),
+        CoreConcreteLibfunc::Uint16(selector) => self::int::eval_unsigned(registry, selector, args),
+        CoreConcreteLibfunc::Uint32(selector) => self::int::eval_unsigned(registry, selector, args),
+        CoreConcreteLibfunc::Uint64(selector) => self::int::eval_unsigned(registry, selector, args),
+        CoreConcreteLibfunc::Uint128(selector) => self::int::eval_uint128(registry, selector, args),
+        CoreConcreteLibfunc::Uint256(selector) => self::uint256::eval(registry, selector, args),
+        CoreConcreteLibfunc::Uint512(selector) => self::uint512::eval(registry, selector, args),
+        CoreConcreteLibfunc::Struct(selector) => self::r#struct::eval(registry, selector, args),
         CoreConcreteLibfunc::SnapshotTake(info) => self::snapshot_take::eval(registry, info, args),
         CoreConcreteLibfunc::Starknet(selector) => {
             self::starknet::eval(registry, selector, args, syscall_handler)
         }
-        CoreConcreteLibfunc::Struct(selector) => self::r#struct::eval(registry, selector, args),
-        CoreConcreteLibfunc::Uint128(selector) => self::uint128::eval(registry, selector, args),
-        CoreConcreteLibfunc::Uint16(selector) => self::uint16::eval(registry, selector, args),
-        CoreConcreteLibfunc::Uint256(selector) => self::uint252::eval(registry, selector, args),
-        CoreConcreteLibfunc::Uint32(selector) => self::uint32::eval(registry, selector, args),
-        CoreConcreteLibfunc::Uint512(selector) => self::uint512::eval(registry, selector, args),
-        CoreConcreteLibfunc::Uint64(selector) => self::uint64::eval(registry, selector, args),
-        CoreConcreteLibfunc::Uint8(selector) => self::uint8::eval(registry, selector, args),
         CoreConcreteLibfunc::UnconditionalJump(info) => self::jump::eval(registry, info, args),
         CoreConcreteLibfunc::UnwrapNonZero(_info) => {
             let [value] = args.try_into().unwrap();
 
             EvalAction::NormalBranch(0, smallvec![value])
         }
-        CoreConcreteLibfunc::IntRange(_) => todo!(),
+        CoreConcreteLibfunc::IntRange(selector) => self::int_range::eval(registry, selector, args),
         CoreConcreteLibfunc::Blake(_) => todo!(),
         CoreConcreteLibfunc::QM31(_) => todo!(),
         CoreConcreteLibfunc::Felt252SquashedDict(_) => todo!(),
         CoreConcreteLibfunc::Trace(_) => todo!(),
         CoreConcreteLibfunc::UnsafePanic(_) => todo!(),
+        CoreConcreteLibfunc::DummyFunctionCall(_) => todo!(),
+        CoreConcreteLibfunc::GasReserve(_) => todo!(),
     }
 }

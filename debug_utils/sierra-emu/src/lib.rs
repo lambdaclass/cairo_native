@@ -10,6 +10,7 @@ use cairo_lang_sierra::{
     program::{GenFunction, Program, StatementIdx},
     program_registry::ProgramRegistry,
 };
+use debug::type_to_name;
 use starknet::StubSyscallHandler;
 
 pub use self::{dump::*, gas::BuiltinCosts, value::*, vm::VirtualMachine};
@@ -19,6 +20,7 @@ mod dump;
 mod gas;
 pub mod starknet;
 mod test_utils;
+mod utils;
 mod value;
 mod vm;
 
@@ -123,9 +125,16 @@ pub fn run_program(
                     ) => Value::Unit,
                     CoreTypeConcrete::Starknet(inner) => match inner {
                         StarknetTypeConcrete::System(_) => Value::Unit,
+                        StarknetTypeConcrete::ClassHash(_)
+                        | StarknetTypeConcrete::ContractAddress(_)
+                        | StarknetTypeConcrete::StorageBaseAddress(_)
+                        | StarknetTypeConcrete::StorageAddress(_) => {
+                            Value::parse_felt(&iter.next().unwrap())
+                        }
                         _ => todo!(),
                     },
-                    _ => todo!(),
+                    CoreTypeConcrete::EcOp(_) => Value::Unit,
+                    _ => todo!("{}", type_to_name(type_id, vm.registry())),
                 }
             })
             .collect::<Vec<_>>(),

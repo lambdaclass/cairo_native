@@ -15,7 +15,7 @@ use crate::{
     metadata::{
         drop_overrides::DropOverridesMeta, runtime_bindings::RuntimeBindingsMeta, MetadataStorage,
     },
-    utils::{BlockExt, ProgramRegistryExt},
+    utils::ProgramRegistryExt,
 };
 use cairo_lang_sierra::{
     extensions::{
@@ -27,16 +27,17 @@ use cairo_lang_sierra::{
 };
 use melior::{
     dialect::{arith, cf, llvm},
-    ir::{r#type::IntegerType, Block, BlockLike, Location},
+    helpers::{ArithBlockExt, BuiltinBlockExt, LlvmBlockExt},
+    ir::{r#type::IntegerType, Block, Location},
     Context,
 };
 
-pub fn build<'ctx>(
+pub fn build<'ctx, 'this>(
     context: &'ctx Context,
     registry: &ProgramRegistry<CoreType, CoreLibfunc>,
-    entry: &Block<'ctx>,
+    entry: &'this Block<'ctx>,
     location: Location<'ctx>,
-    helper: &LibfuncHelper<'ctx, '_>,
+    helper: &LibfuncHelper<'ctx, 'this>,
     metadata: &mut MetadataStorage,
     selector: &DebugConcreteLibfunc,
 ) -> Result<()> {
@@ -47,12 +48,12 @@ pub fn build<'ctx>(
     }
 }
 
-pub fn build_print<'ctx>(
+pub fn build_print<'ctx, 'this>(
     context: &'ctx Context,
     registry: &ProgramRegistry<CoreType, CoreLibfunc>,
-    entry: &Block<'ctx>,
+    entry: &'this Block<'ctx>,
     location: Location<'ctx>,
-    helper: &LibfuncHelper<'ctx, '_>,
+    helper: &LibfuncHelper<'ctx, 'this>,
     metadata: &mut MetadataStorage,
     info: &SignatureOnlyConcreteLibfunc,
 ) -> Result<()> {
@@ -121,7 +122,5 @@ pub fn build_print<'ctx>(
         location,
     );
 
-    entry.append_operation(helper.br(0, &[], location));
-
-    Ok(())
+    helper.br(entry, 0, &[], location)
 }

@@ -4,7 +4,7 @@ use super::LibfuncHelper;
 use crate::{
     error::Result,
     metadata::MetadataStorage,
-    utils::{BlockExt, ProgramRegistryExt, PRIME},
+    utils::{ProgramRegistryExt, PRIME},
 };
 use cairo_lang_sierra::{
     extensions::{
@@ -23,6 +23,7 @@ use melior::{
         arith::{self, CmpiPredicate},
         cf,
     },
+    helpers::{ArithBlockExt, BuiltinBlockExt},
     ir::{r#type::IntegerType, Block, BlockLike, Location, Value, ValueLike},
     Context,
 };
@@ -80,7 +81,7 @@ pub fn build_binary_operation<'ctx, 'this>(
         }
         Felt252BinaryOperationConcrete::WithConst(operation) => {
             let value = match operation.c.sign() {
-                Sign::Minus => (&operation.c + BigInt::from_biguint(Sign::Minus, PRIME.clone()))
+                Sign::Minus => (BigInt::from_biguint(Sign::Plus, PRIME.clone()) + &operation.c)
                     .magnitude()
                     .clone(),
                 _ => operation.c.magnitude().clone(),
@@ -271,14 +272,11 @@ pub fn build_binary_operation<'ctx, 'this>(
             ))?;
             let result = inverse_result_block.trunci(result, felt252_ty, location)?;
 
-            inverse_result_block.append_operation(helper.br(0, &[result], location));
-            return Ok(());
+            return helper.br(inverse_result_block, 0, &[result], location);
         }
     };
 
-    entry.append_operation(helper.br(0, &[result], location));
-
-    Ok(())
+    helper.br(entry, 0, &[result], location)
 }
 
 /// Generate MLIR operations for the `felt252_const` libfunc.
@@ -306,8 +304,8 @@ pub fn build_const<'ctx, 'this>(
     )?;
 
     let value = entry.const_int_from_type(context, location, value, felt252_ty)?;
-    entry.append_operation(helper.br(0, &[value], location));
-    Ok(())
+
+    helper.br(entry, 0, &[value], location)
 }
 
 /// Generate MLIR operations for the `felt252_is_zero` libfunc.
@@ -325,14 +323,13 @@ pub fn build_is_zero<'ctx, 'this>(
     let k0 = entry.const_int_from_type(context, location, 0, arg0.r#type())?;
     let condition = entry.cmpi(context, CmpiPredicate::Eq, arg0, k0, location)?;
 
-    entry.append_operation(helper.cond_br(context, condition, [0, 1], [&[], &[arg0]], location));
-    Ok(())
+    helper.cond_br(context, entry, condition, [0, 1], [&[], &[arg0]], location)
 }
 
 #[cfg(test)]
 pub mod test {
     use crate::{
-        utils::test::{load_cairo, run_program},
+        utils::test::{jit_struct, load_cairo, run_program},
         values::Value,
     };
     use cairo_lang_sierra::program::Program;
@@ -345,30 +342,21 @@ pub mod test {
                 lhs + rhs
             }
         };
-
         static ref FELT252_SUB: (String, Program) = load_cairo! {
             fn run_test(lhs: felt252, rhs: felt252) -> felt252 {
                 lhs - rhs
             }
         };
-
         static ref FELT252_MUL: (String, Program) = load_cairo! {
             fn run_test(lhs: felt252, rhs: felt252) -> felt252 {
                 lhs * rhs
             }
         };
-
         static ref FELT252_DIV: (String, Program) = load_cairo! {
             fn run_test(lhs: felt252, rhs: felt252) -> felt252 {
                 felt252_div(lhs, rhs.try_into().unwrap())
             }
         };
-
-        // TODO: Add test program for `felt252_add_const`.
-        // TODO: Add test program for `felt252_sub_const`.
-        // TODO: Add test program for `felt252_mul_const`.
-        // TODO: Add test program for `felt252_div_const`.
-
         static ref FELT252_CONST: (String, Program) = load_cairo! {
             extern fn felt252_const<const value: felt252>() -> felt252 nopanic;
 
@@ -381,7 +369,98 @@ pub mod test {
                 )
             }
         };
+        static ref FELT252_ADD_CONST: (String, Program) = load_cairo! {
+            extern fn felt252_add_const<const rhs: felt252>(lhs: felt252) -> felt252 nopanic;
 
+            fn run_test() -> (felt252, felt252, felt252, felt252, felt252, felt252, felt252, felt252, felt252) {
+                (
+                    felt252_add_const::<0>(0),
+                    felt252_add_const::<0>(1),
+                    felt252_add_const::<1>(0),
+                    felt252_add_const::<1>(1),
+                    felt252_add_const::<0>(-1),
+                    felt252_add_const::<-1>(0),
+                    felt252_add_const::<-1>(-1),
+                    felt252_add_const::<-1>(1),
+                    felt252_add_const::<1>(-1),
+                )
+            }
+        };
+        static ref FELT252_SUB_CONST: (String, Program) = load_cairo! {
+            extern fn felt252_sub_const<const rhs: felt252>(lhs: felt252) -> felt252 nopanic;
+
+            fn run_test() -> (felt252, felt252, felt252, felt252, felt252, felt252, felt252, felt252, felt252) {
+                (
+                    felt252_sub_const::<0>(0),
+                    felt252_sub_const::<0>(1),
+                    felt252_sub_const::<1>(0),
+                    felt252_sub_const::<1>(1),
+                    felt252_sub_const::<0>(-1),
+                    felt252_sub_const::<-1>(0),
+                    felt252_sub_const::<-1>(-1),
+                    felt252_sub_const::<-1>(1),
+                    felt252_sub_const::<1>(-1),
+                )
+            }
+        };
+        static ref FELT252_MUL_CONST: (String, Program) = load_cairo! {
+            extern fn felt252_mul_const<const rhs: felt252>(lhs: felt252) -> felt252 nopanic;
+
+            fn run_test() -> (felt252, felt252, felt252, felt252, felt252, felt252, felt252, felt252, felt252) {
+                (
+                    felt252_mul_const::<0>(0),
+                    felt252_mul_const::<0>(1),
+                    felt252_mul_const::<1>(0),
+                    felt252_mul_const::<1>(1),
+                    felt252_mul_const::<2>(-1),
+                    felt252_mul_const::<-2>(2),
+                    felt252_mul_const::<-1>(-1),
+                    felt252_mul_const::<-1>(1),
+                    felt252_mul_const::<1>(-1),
+                )
+            }
+        };
+        static ref FELT252_DIV_CONST: (String, Program) = load_cairo! {
+            extern fn felt252_div_const<const rhs: felt252>(lhs: felt252) -> felt252 nopanic;
+
+            fn run_test() -> (
+                felt252,
+                felt252,
+                felt252,
+                felt252,
+                felt252,
+                felt252,
+                felt252,
+                felt252,
+                felt252,
+                felt252,
+                felt252,
+                felt252,
+                felt252,
+                felt252,
+                felt252,
+                felt252
+            ) {
+                (
+                    felt252_div_const::<1>(0),
+                    felt252_div_const::<1>(1),
+                    felt252_div_const::<2>(-1),
+                    felt252_div_const::<-2>(2),
+                    felt252_div_const::<-1>(-1),
+                    felt252_div_const::<-1>(1),
+                    felt252_div_const::<1>(-1),
+                    felt252_div_const::<500>(1000),
+                    felt252_div_const::<256>(1024),
+                    felt252_div_const::<-256>(1024),
+                    felt252_div_const::<256>(-1024),
+                    felt252_div_const::<-256>(-1024),
+                    felt252_div_const::<8>(64),
+                    felt252_div_const::<8>(-64),
+                    felt252_div_const::<-8>(64),
+                    felt252_div_const::<-8>(-64),
+                )
+            }
+        };
         static ref FELT252_IS_ZERO: (String, Program) = load_cairo! {
             fn run_test(x: felt252) -> bool {
                 match x {
@@ -578,6 +657,86 @@ pub mod test {
                     .to_vec(),
                 debug_name: None
             }
+        );
+    }
+
+    #[test]
+    fn felt252_add_const() {
+        assert_eq!(
+            run_program(&FELT252_ADD_CONST, "run_test", &[]).return_value,
+            jit_struct!(
+                f("0").into(),
+                f("1").into(),
+                f("1").into(),
+                f("2").into(),
+                f("-1").into(),
+                f("-1").into(),
+                f("-2").into(),
+                f("0").into(),
+                f("0").into(),
+            )
+        );
+    }
+
+    #[test]
+    fn felt252_sub_const() {
+        assert_eq!(
+            run_program(&FELT252_SUB_CONST, "run_test", &[]).return_value,
+            jit_struct!(
+                f("0").into(),
+                f("1").into(),
+                f("-1").into(),
+                f("0").into(),
+                f("-1").into(),
+                f("1").into(),
+                f("0").into(),
+                f("2").into(),
+                f("-2").into(),
+            )
+        );
+    }
+
+    #[test]
+    fn felt252_mul_const() {
+        assert_eq!(
+            run_program(&FELT252_MUL_CONST, "run_test", &[]).return_value,
+            jit_struct!(
+                f("0").into(),
+                f("0").into(),
+                f("0").into(),
+                f("1").into(),
+                f("-2").into(),
+                f("-4").into(),
+                f("1").into(),
+                f("-1").into(),
+                f("-1").into(),
+            )
+        );
+    }
+
+    #[test]
+    fn felt252_div_const() {
+        assert_eq!(
+            run_program(&FELT252_DIV_CONST, "run_test", &[]).return_value,
+            jit_struct!(
+                f("0").into(),
+                f("1").into(),
+                f("1809251394333065606848661391547535052811553607665798349986546028067936010240")
+                    .into(),
+                f("-1").into(),
+                f("1").into(),
+                f("-1").into(),
+                f("-1").into(),
+                f("2").into(),
+                f("4").into(),
+                f("-4").into(),
+                f("-4").into(),
+                f("4").into(),
+                f("8").into(),
+                f("-8").into(),
+                f("-8").into(),
+                f("8").into(),
+            )
         );
     }
 

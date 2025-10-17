@@ -15,6 +15,7 @@ use std::{collections::HashMap, ops::Range};
 
 use crate::{debug::type_to_name, gas::BuiltinCosts};
 
+/// TODO: Can we reuse `cairo_native::Value::from_ptr`?
 #[derive(Clone, Debug, Eq, PartialEq, Serialize)]
 pub enum Value {
     Array {
@@ -26,8 +27,11 @@ pub enum Value {
         value: BigInt,
     },
     Circuit(Vec<BigUint>),
+    CircuitOutputs {
+        circuits: Vec<BigUint>,
+        modulus: BigUint,
+    },
     CircuitModulus(BigUint),
-    CircuitOutputs(Vec<BigUint>),
     Enum {
         self_ty: ConcreteTypeId,
         index: usize,
@@ -68,10 +72,15 @@ pub enum Value {
     U32(u32),
     U64(u64),
     U8(u8),
+    IntRange {
+        x: Box<Value>,
+        y: Box<Value>,
+    },
     Uninitialized {
         ty: ConcreteTypeId,
     },
     BuiltinCosts(BuiltinCosts),
+    Null,
     Unit,
 }
 
@@ -92,12 +101,17 @@ impl Value {
                 index: 0,
                 payload: Box::new(Value::default_for_type(registry, &info.variants[0])),
             },
+            CoreTypeConcrete::Array(info) => Value::Array {
+                ty: info.ty.clone(),
+                data: vec![],
+            },
             CoreTypeConcrete::Struct(info) => Value::Struct(
                 info.members
                     .iter()
                     .map(|member| Value::default_for_type(registry, member))
                     .collect(),
             ),
+            CoreTypeConcrete::Nullable(_) => Value::Null,
             x => panic!("type {:?} has no default value implementation", x.info()),
         }
     }
@@ -144,6 +158,7 @@ impl Value {
                             .all(|(value, ty)| value.is(registry, ty))
                 )
             }
+            CoreTypeConcrete::Span(info) => self.is(registry, &info.ty),
             CoreTypeConcrete::Uint8(_) => matches!(self, Self::U8(_)),
             CoreTypeConcrete::Uint32(_) => matches!(self, Self::U32(_)),
             CoreTypeConcrete::Uint128(_) => {
@@ -159,33 +174,39 @@ impl Value {
             }
 
             // To do:
-            CoreTypeConcrete::Coupon(_) => todo!(),
+            CoreTypeConcrete::Coupon(_) => matches!(self, Self::Unit),
             CoreTypeConcrete::Bitwise(_) => matches!(self, Self::Unit),
             CoreTypeConcrete::Box(info) => self.is(registry, &info.ty),
 
             // Circuit related types
             CoreTypeConcrete::Circuit(selector) => match selector {
-                CircuitTypeConcrete::Circuit(_) => matches!(self, Self::Circuit(_)),
-                CircuitTypeConcrete::CircuitData(_) => matches!(self, Self::Circuit(_)),
-                CircuitTypeConcrete::CircuitOutputs(_) => matches!(self, Self::CircuitOutputs(_)),
-                CircuitTypeConcrete::CircuitInput(_) => matches!(self, Self::Unit),
-                CircuitTypeConcrete::CircuitInputAccumulator(_) => matches!(self, Self::Circuit(_)),
+                CircuitTypeConcrete::Circuit(_)
+                | CircuitTypeConcrete::CircuitData(_)
+                | CircuitTypeConcrete::CircuitInputAccumulator(_) => {
+                    matches!(self, Self::Circuit(_))
+                }
+                CircuitTypeConcrete::CircuitOutputs(_) => {
+                    matches!(self, Self::CircuitOutputs { .. })
+                }
                 CircuitTypeConcrete::CircuitModulus(_) => matches!(self, Self::CircuitModulus(_)),
                 CircuitTypeConcrete::U96Guarantee(_) => matches!(self, Self::U128(_)),
-                CircuitTypeConcrete::CircuitDescriptor(_)
-                | CircuitTypeConcrete::CircuitFailureGuarantee(_)
-                | CircuitTypeConcrete::AddMod(_)
+                CircuitTypeConcrete::CircuitInput(_) => {
+                    matches!(self, Self::Struct(_))
+                }
+                CircuitTypeConcrete::U96LimbsLessThanGuarantee(_) => {
+                    matches!(self, Self::Struct(_))
+                }
+                CircuitTypeConcrete::AddMod(_)
                 | CircuitTypeConcrete::MulMod(_)
+                | CircuitTypeConcrete::CircuitDescriptor(_)
+                | CircuitTypeConcrete::CircuitFailureGuarantee(_)
                 | CircuitTypeConcrete::AddModGate(_)
                 | CircuitTypeConcrete::CircuitPartialOutputs(_)
                 | CircuitTypeConcrete::InverseGate(_)
                 | CircuitTypeConcrete::MulModGate(_)
-                | CircuitTypeConcrete::SubModGate(_)
-                | CircuitTypeConcrete::U96LimbsLessThanGuarantee(_) => {
-                    matches!(self, Self::Unit)
-                }
+                | CircuitTypeConcrete::SubModGate(_) => matches!(self, Self::Unit),
             },
-            CoreTypeConcrete::Const(_) => todo!(),
+            CoreTypeConcrete::Const(info) => self.is(registry, &info.inner_ty),
             CoreTypeConcrete::EcOp(_) => matches!(self, Self::Unit),
             CoreTypeConcrete::EcPoint(_) => matches!(self, Self::EcPoint { .. }),
             CoreTypeConcrete::EcState(_) => matches!(self, Self::EcState { .. }),
@@ -195,7 +216,9 @@ impl Value {
             CoreTypeConcrete::Uint128MulGuarantee(_) => matches!(self, Self::Unit),
             CoreTypeConcrete::Sint16(_) => matches!(self, Self::I16(_)),
             CoreTypeConcrete::Sint64(_) => matches!(self, Self::I64(_)),
-            CoreTypeConcrete::Nullable(info) => self.is(registry, &info.ty),
+            CoreTypeConcrete::Nullable(info) => {
+                matches!(self, Value::Null) || self.is(registry, &info.ty)
+            }
             CoreTypeConcrete::Uninitialized(_) => matches!(self, Self::Uninitialized { .. }),
             CoreTypeConcrete::Felt252DictEntry(info) => {
                 matches!(self, Self::FeltDictEntry { ty, .. } if *ty == info.ty)
@@ -205,7 +228,6 @@ impl Value {
             }
             CoreTypeConcrete::Pedersen(_) => matches!(self, Self::Unit),
             CoreTypeConcrete::Poseidon(_) => matches!(self, Self::Unit),
-            CoreTypeConcrete::Span(_) => todo!(),
             CoreTypeConcrete::Starknet(inner) => match inner {
                 StarknetTypeConcrete::ClassHash(_)
                 | StarknetTypeConcrete::ContractAddress(_)
@@ -215,9 +237,10 @@ impl Value {
                 StarknetTypeConcrete::Secp256Point(_) => matches!(self, Self::Struct(_)),
                 StarknetTypeConcrete::Sha256StateHandle(_) => matches!(self, Self::Struct { .. }),
             },
-            CoreTypeConcrete::IntRange(_) => todo!(),
+            CoreTypeConcrete::IntRange(_) => matches!(self, Self::IntRange { .. }),
             CoreTypeConcrete::Blake(_) => todo!(),
             CoreTypeConcrete::QM31(_) => todo!(),
+            CoreTypeConcrete::GasReserve(_) => todo!(),
         };
 
         if !res {
@@ -240,4 +263,39 @@ impl Value {
             Felt::from_dec_str(value).unwrap()
         })
     }
+}
+
+macro_rules! impl_conversions {
+    ( $( $t:ty as $i:ident ; )+ ) => { $(
+        impl From<$t> for Value {
+            fn from(value: $t) -> Self {
+                Self::$i(value)
+            }
+        }
+
+        impl TryFrom<Value> for $t {
+            type Error = Value;
+
+            fn try_from(value: Value) -> Result<Self, Self::Error> {
+                match value {
+                    Value::$i(value) => Ok(value),
+                    _ => Err(value),
+                }
+            }
+        }
+    )+ };
+}
+
+impl_conversions! {
+    Felt as Felt;
+    u8   as U8;
+    u16  as U16;
+    u32  as U32;
+    u64  as U64;
+    u128 as U128;
+    i8   as I8;
+    i16  as I16;
+    i32  as I32;
+    i64  as I64;
+    i128 as I128;
 }

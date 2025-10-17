@@ -34,11 +34,11 @@ pub fn eval(
         EcConcreteLibfunc::StateAddMul(info) => eval_state_add_mul(registry, info, args),
         EcConcreteLibfunc::PointFromX(info) => eval_point_from_x(registry, info, args),
         EcConcreteLibfunc::UnwrapPoint(info) => eval_unwrap_point(registry, info, args),
-        EcConcreteLibfunc::Zero(_) => todo!(),
+        EcConcreteLibfunc::Zero(info) => eval_zero(registry, info, args),
     }
 }
 
-pub fn eval_is_zero(
+fn eval_is_zero(
     _registry: &ProgramRegistry<CoreType, CoreLibfunc>,
     _info: &SignatureOnlyConcreteLibfunc,
     args: Vec<Value>,
@@ -55,7 +55,7 @@ pub fn eval_is_zero(
     }
 }
 
-pub fn eval_unwrap_point(
+fn eval_unwrap_point(
     _registry: &ProgramRegistry<CoreType, CoreLibfunc>,
     _info: &SignatureOnlyConcreteLibfunc,
     args: Vec<Value>,
@@ -66,7 +66,7 @@ pub fn eval_unwrap_point(
     EvalAction::NormalBranch(0, smallvec![Value::Felt(x), Value::Felt(y)])
 }
 
-pub fn eval_neg(
+fn eval_neg(
     _registry: &ProgramRegistry<CoreType, CoreLibfunc>,
     _info: &SignatureOnlyConcreteLibfunc,
     args: Vec<Value>,
@@ -86,7 +86,7 @@ pub fn eval_neg(
     )
 }
 
-pub fn eval_new(
+fn eval_new(
     _registry: &ProgramRegistry<CoreType, CoreLibfunc>,
     _info: &SignatureOnlyConcreteLibfunc,
     args: Vec<Value>,
@@ -107,7 +107,7 @@ pub fn eval_new(
     }
 }
 
-pub fn eval_state_init(
+fn eval_state_init(
     _registry: &ProgramRegistry<CoreType, CoreLibfunc>,
     _info: &SignatureOnlyConcreteLibfunc,
     _args: Vec<Value>,
@@ -125,7 +125,7 @@ pub fn eval_state_init(
     )
 }
 
-pub fn eval_state_add(
+fn eval_state_add(
     _registry: &ProgramRegistry<CoreType, CoreLibfunc>,
     _info: &SignatureOnlyConcreteLibfunc,
     args: Vec<Value>,
@@ -153,7 +153,7 @@ pub fn eval_state_add(
     )
 }
 
-pub fn eval_state_add_mul(
+fn eval_state_add_mul(
     _registry: &ProgramRegistry<CoreType, CoreLibfunc>,
     _info: &SignatureOnlyConcreteLibfunc,
     args: Vec<Value>,
@@ -184,7 +184,7 @@ pub fn eval_state_add_mul(
     )
 }
 
-pub fn eval_state_finalize(
+fn eval_state_finalize(
     _registry: &ProgramRegistry<CoreType, CoreLibfunc>,
     _info: &SignatureOnlyConcreteLibfunc,
     args: Vec<Value>,
@@ -211,7 +211,7 @@ pub fn eval_state_finalize(
     }
 }
 
-pub fn eval_point_from_x(
+fn eval_point_from_x(
     _registry: &ProgramRegistry<CoreType, CoreLibfunc>,
     _info: &SignatureOnlyConcreteLibfunc,
     args: Vec<Value>,
@@ -245,10 +245,10 @@ pub fn eval_point_from_x(
 
 fn random_ec_point() -> AffinePoint {
     // https://github.com/starkware-libs/cairo/blob/aaad921bba52e729dc24ece07fab2edf09ccfa15/crates/cairo-lang-runner/src/casm_run/mod.rs#L1802
-    let mut rng = rand::thread_rng();
+    let mut rng = rand::rng();
     let (random_x, random_y) = loop {
         // Randominzing 31 bytes to make sure is in range.
-        let x_bytes: [u8; 31] = rng.gen();
+        let x_bytes: [u8; 31] = rng.random();
         let random_x = Felt::from_bytes_be_slice(&x_bytes);
         let random_y_squared = random_x * random_x * random_x + random_x + BETA;
         if let Some(random_y) = random_y_squared.sqrt() {
@@ -257,4 +257,18 @@ fn random_ec_point() -> AffinePoint {
     };
 
     AffinePoint::new(random_x, random_y).unwrap()
+}
+
+fn eval_zero(
+    _registry: &ProgramRegistry<CoreType, CoreLibfunc>,
+    _info: &SignatureOnlyConcreteLibfunc,
+    _args: Vec<Value>,
+) -> EvalAction {
+    EvalAction::NormalBranch(
+        0,
+        smallvec![Value::EcPoint {
+            x: 0.into(),
+            y: 0.into()
+        }],
+    )
 }

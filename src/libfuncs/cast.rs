@@ -6,7 +6,7 @@ use crate::{
     metadata::MetadataStorage,
     native_assert, native_panic,
     types::TypeBuilder,
-    utils::{BlockExt, RangeExt, HALF_PRIME, PRIME},
+    utils::{RangeExt, HALF_PRIME, PRIME},
 };
 use cairo_lang_sierra::{
     extensions::{
@@ -19,7 +19,8 @@ use cairo_lang_sierra::{
 };
 use melior::{
     dialect::arith::{self, CmpiPredicate},
-    ir::{r#type::IntegerType, Block, BlockLike, Location, Value, ValueLike},
+    helpers::{ArithBlockExt, BuiltinBlockExt},
+    ir::{r#type::IntegerType, Block, Location, Value, ValueLike},
     Context,
 };
 use num_bigint::{BigInt, Sign};
@@ -55,19 +56,19 @@ pub fn build_downcast<'ctx, 'this>(
     _metadata: &mut MetadataStorage,
     info: &DowncastConcreteLibfunc,
 ) -> Result<()> {
-    let range_check = super::increment_builtin_counter(context, entry, location, entry.arg(0)?)?;
+    let range_check = entry.arg(0)?;
     let src_value: Value = entry.arg(1)?;
 
     if info.signature.param_signatures[1].ty == info.signature.branch_signatures[0].vars[1].ty {
         let k0 = entry.const_int(context, location, 0, 1)?;
-        entry.append_operation(helper.cond_br(
+        return helper.cond_br(
             context,
+            entry,
             k0,
             [0, 1],
             [&[range_check, src_value], &[range_check]],
             location,
-        ));
-        return Ok(());
+        );
     }
 
     let src_ty = registry.get_type(&info.signature.param_signatures[1].ty)?;
@@ -183,13 +184,14 @@ pub fn build_downcast<'ctx, 'this>(
 
         let is_in_bounds = entry.const_int(context, location, 1, 1)?;
 
-        entry.append_operation(helper.cond_br(
+        helper.cond_br(
             context,
+            entry,
             is_in_bounds,
             [0, 1],
             [&[range_check, dst_value], &[range_check]],
             location,
-        ));
+        )?;
     } else {
         let lower_check = if dst_range.lower > src_range.lower {
             let dst_lower = entry.const_int_from_type(
@@ -246,6 +248,52 @@ pub fn build_downcast<'ctx, 'this>(
             }
         };
 
+        // Incrementing the range check depends on whether the source range can hold a felt252 or not
+        let range_check = if info.from_range.is_full_felt252_range() {
+            let rc_size = BigInt::from(1) << 128;
+            // If the range can contain a felt252, how the range check is increased depends on whether the value is in bounds or not:
+            // * If it is in bounds, we check whether the destination range size is less than range check size. If it is, increment
+            //   the range check builtin by 2. Otherwise, increment it by 1.
+            //   https://github.com/starkware-libs/cairo/blob/v2.12.0-dev.1/crates/cairo-lang-sierra-to-casm/src/invocations/range_reduction.rs#L87
+            // * If it is not in bounds, increment the range check builtin by 3.
+            //   https://github.com/starkware-libs/cairo/blob/v2.12.0-dev.1/crates/cairo-lang-sierra-to-casm/src/invocations/range_reduction.rs#L79
+            super::increment_builtin_counter_conditionally_by(
+                context,
+                entry,
+                location,
+                range_check,
+                if dst_range.size() < rc_size { 2 } else { 1 },
+                3,
+                is_in_bounds,
+            )?
+        } else {
+            match (lower_check, upper_check) {
+                (Some(_), None) | (None, Some(_)) => {
+                    // If either the lower or the upper bound was checked, increment the range check builtin by 1.
+                    // * In case the lower bound was checked: https://github.com/starkware-libs/cairo/blob/v2.12.0-dev.1/crates/cairo-lang-sierra-to-casm/src/invocations/casts.rs#L135
+                    // * In case the upper bound was checked: https://github.com/starkware-libs/cairo/blob/v2.12.0-dev.1/crates/cairo-lang-sierra-to-casm/src/invocations/casts.rs#L111
+                    super::increment_builtin_counter_by(context, entry, location, range_check, 1)?
+                }
+                (Some(lower_check), Some(upper_check)) => {
+                    let is_in_range =
+                        entry.append_op_result(arith::andi(lower_check, upper_check, location))?;
+
+                    // If the result is in range, increment the range check builtin by 2. Otherwise, increment it by 1.
+                    // https://github.com/starkware-libs/cairo/blob/v2.12.0-dev.1/crates/cairo-lang-sierra-to-casm/src/invocations/casts.rs#L160
+                    super::increment_builtin_counter_conditionally_by(
+                        context,
+                        entry,
+                        location,
+                        range_check,
+                        2,
+                        1,
+                        is_in_range,
+                    )?
+                }
+                (None, None) => range_check,
+            }
+        };
+
         let dst_value = if dst_ty.is_bounded_int(registry)? && dst_range.lower != BigInt::ZERO {
             let dst_offset = entry.const_int_from_type(
                 context,
@@ -267,13 +315,15 @@ pub fn build_downcast<'ctx, 'this>(
         } else {
             dst_value
         };
-        entry.append_operation(helper.cond_br(
+
+        helper.cond_br(
             context,
+            entry,
             is_in_bounds,
             [0, 1],
             [&[range_check, dst_value], &[range_check]],
             location,
-        ));
+        )?;
     }
 
     Ok(())
@@ -292,8 +342,7 @@ pub fn build_upcast<'ctx, 'this>(
     let src_value = entry.arg(0)?;
 
     if info.signature.param_signatures[0].ty == info.signature.branch_signatures[0].vars[0].ty {
-        entry.append_operation(helper.br(0, &[src_value], location));
-        return Ok(());
+        return helper.br(entry, 0, &[src_value], location);
     }
 
     let src_ty = registry.get_type(&info.signature.param_signatures[0].ty)?;
@@ -384,8 +433,7 @@ pub fn build_upcast<'ctx, 'this>(
         dst_value
     };
 
-    entry.append_operation(helper.br(0, &[dst_value], location));
-    Ok(())
+    helper.br(entry, 0, &[dst_value], location)
 }
 
 #[cfg(test)]

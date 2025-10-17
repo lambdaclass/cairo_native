@@ -3,7 +3,7 @@ use crate::{
     libfuncs::LibfuncHelper,
     metadata::MetadataStorage,
     starknet::handler::StarknetSyscallHandlerCallbacks,
-    utils::{get_integer_layout, BlockExt, GepIndex, ProgramRegistryExt},
+    utils::{get_integer_layout, ProgramRegistryExt},
 };
 use cairo_lang_sierra::{
     extensions::{
@@ -16,6 +16,7 @@ use cairo_lang_sierra::{
 };
 use melior::{
     dialect::llvm::{self, LoadStoreOptions},
+    helpers::{GepIndex, LlvmBlockExt},
     ir::{
         attribute::DenseI32ArrayAttribute, operation::OperationBuilder, r#type::IntegerType, Block,
         BlockLike, Location,
@@ -268,8 +269,9 @@ pub fn build_k1_new<'ctx, 'this>(
 
     let remaining_gas = entry.load(context, location, gas_builtin_ptr, gas_ty)?;
 
-    entry.append_operation(helper.cond_br(
+    helper.cond_br(
         context,
+        entry,
         result_tag,
         [1, 0],
         [
@@ -277,8 +279,7 @@ pub fn build_k1_new<'ctx, 'this>(
             &[remaining_gas, entry.argument(1)?.into(), payload_ok],
         ],
         location,
-    ));
-    Ok(())
+    )
 }
 
 pub fn build_k1_add<'ctx, 'this>(
@@ -478,8 +479,9 @@ pub fn build_k1_add<'ctx, 'this>(
 
     let remaining_gas = entry.load(context, location, gas_builtin_ptr, gas_ty)?;
 
-    entry.append_operation(helper.cond_br(
+    helper.cond_br(
         context,
+        entry,
         result_tag,
         [1, 0],
         [
@@ -487,8 +489,7 @@ pub fn build_k1_add<'ctx, 'this>(
             &[remaining_gas, entry.argument(1)?.into(), payload_ok],
         ],
         location,
-    ));
-    Ok(())
+    )
 }
 
 pub fn build_k1_mul<'ctx, 'this>(
@@ -688,8 +689,9 @@ pub fn build_k1_mul<'ctx, 'this>(
 
     let remaining_gas = entry.load(context, location, gas_builtin_ptr, gas_ty)?;
 
-    entry.append_operation(helper.cond_br(
+    helper.cond_br(
         context,
+        entry,
         result_tag,
         [1, 0],
         [
@@ -697,8 +699,7 @@ pub fn build_k1_mul<'ctx, 'this>(
             &[remaining_gas, entry.argument(1)?.into(), payload_ok],
         ],
         location,
-    ));
-    Ok(())
+    )
 }
 
 pub fn build_k1_get_point_from_x<'ctx, 'this>(
@@ -792,7 +793,10 @@ pub fn build_k1_get_point_from_x<'ctx, 'this>(
     ));
 
     // Allocate `y_parity` argument and write the value.
-    let y_parity_arg_ptr = helper.init_block().alloca_int(context, location, 1)?;
+    let y_parity_arg_ptr =
+        helper
+            .init_block()
+            .alloca_int(context, location, 1, get_integer_layout(1).align())?;
     entry.append_operation(llvm::store(
         context,
         entry.argument(3)?.into(),
@@ -891,8 +895,9 @@ pub fn build_k1_get_point_from_x<'ctx, 'this>(
 
     let remaining_gas = entry.load(context, location, gas_builtin_ptr, gas_ty)?;
 
-    entry.append_operation(helper.cond_br(
+    helper.cond_br(
         context,
+        entry,
         result_tag,
         [1, 0],
         [
@@ -900,8 +905,7 @@ pub fn build_k1_get_point_from_x<'ctx, 'this>(
             &[remaining_gas, entry.argument(1)?.into(), payload_ok],
         ],
         location,
-    ));
-    Ok(())
+    )
 }
 
 pub fn build_k1_get_xy<'ctx, 'this>(
@@ -1135,8 +1139,9 @@ pub fn build_k1_get_xy<'ctx, 'this>(
 
     let remaining_gas = entry.load(context, location, gas_builtin_ptr, gas_ty)?;
 
-    entry.append_operation(helper.cond_br(
+    helper.cond_br(
         context,
+        entry,
         result_tag,
         [1, 0],
         [
@@ -1149,8 +1154,7 @@ pub fn build_k1_get_xy<'ctx, 'this>(
             ],
         ],
         location,
-    ));
-    Ok(())
+    )
 }
 
 pub fn build_r1_new<'ctx, 'this>(
@@ -1350,8 +1354,9 @@ pub fn build_r1_new<'ctx, 'this>(
 
     let remaining_gas = entry.load(context, location, gas_builtin_ptr, gas_ty)?;
 
-    entry.append_operation(helper.cond_br(
+    helper.cond_br(
         context,
+        entry,
         result_tag,
         [1, 0],
         [
@@ -1359,8 +1364,7 @@ pub fn build_r1_new<'ctx, 'this>(
             &[remaining_gas, entry.argument(1)?.into(), payload_ok],
         ],
         location,
-    ));
-    Ok(())
+    )
 }
 
 pub fn build_r1_add<'ctx, 'this>(
@@ -1560,8 +1564,9 @@ pub fn build_r1_add<'ctx, 'this>(
 
     let remaining_gas = entry.load(context, location, gas_builtin_ptr, gas_ty)?;
 
-    entry.append_operation(helper.cond_br(
+    helper.cond_br(
         context,
+        entry,
         result_tag,
         [1, 0],
         [
@@ -1569,8 +1574,7 @@ pub fn build_r1_add<'ctx, 'this>(
             &[remaining_gas, entry.argument(1)?.into(), payload_ok],
         ],
         location,
-    ));
-    Ok(())
+    )
 }
 
 pub fn build_r1_mul<'ctx, 'this>(
@@ -1773,8 +1777,9 @@ pub fn build_r1_mul<'ctx, 'this>(
 
     let remaining_gas = entry.load(context, location, gas_builtin_ptr, gas_ty)?;
 
-    entry.append_operation(helper.cond_br(
+    helper.cond_br(
         context,
+        entry,
         result_tag,
         [1, 0],
         [
@@ -1782,8 +1787,7 @@ pub fn build_r1_mul<'ctx, 'this>(
             &[remaining_gas, entry.argument(1)?.into(), payload_ok],
         ],
         location,
-    ));
-    Ok(())
+    )
 }
 
 pub fn build_r1_get_point_from_x<'ctx, 'this>(
@@ -1879,7 +1883,10 @@ pub fn build_r1_get_point_from_x<'ctx, 'this>(
     ));
 
     // Allocate `y_parity` argument and write the value.
-    let y_parity_arg_ptr = helper.init_block().alloca_int(context, location, 1)?;
+    let y_parity_arg_ptr =
+        helper
+            .init_block()
+            .alloca_int(context, location, 1, get_integer_layout(1).align())?;
     entry.append_operation(llvm::store(
         context,
         entry.argument(3)?.into(),
@@ -1978,8 +1985,9 @@ pub fn build_r1_get_point_from_x<'ctx, 'this>(
 
     let remaining_gas = entry.load(context, location, gas_builtin_ptr, gas_ty)?;
 
-    entry.append_operation(helper.cond_br(
+    helper.cond_br(
         context,
+        entry,
         result_tag,
         [1, 0],
         [
@@ -1987,8 +1995,7 @@ pub fn build_r1_get_point_from_x<'ctx, 'this>(
             &[remaining_gas, entry.argument(1)?.into(), payload_ok],
         ],
         location,
-    ));
-    Ok(())
+    )
 }
 
 pub fn build_r1_get_xy<'ctx, 'this>(
@@ -2224,8 +2231,9 @@ pub fn build_r1_get_xy<'ctx, 'this>(
 
     let remaining_gas = entry.load(context, location, gas_builtin_ptr, gas_ty)?;
 
-    entry.append_operation(helper.cond_br(
+    helper.cond_br(
         context,
+        entry,
         result_tag,
         [1, 0],
         [
@@ -2238,6 +2246,5 @@ pub fn build_r1_get_xy<'ctx, 'this>(
             ],
         ],
         location,
-    ));
-    Ok(())
+    )
 }

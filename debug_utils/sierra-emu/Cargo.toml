@@ -1,46 +1,47 @@
 [package]
 name = "sierra-emu"
-version = "0.1.0"
-edition = "2021"
-license = "Apache-2.0"
 description = "A Cairo (Sierra) Virtual Machine."
-repository = "https://github.com/lambdaclass/sierra-emu"
 readme = "README.md"
-keywords = ["starknet", "cairo", "compiler", "mlir"]
+keywords = ["starknet", "cairo", "vm", "sierra"]
+version.workspace = true
+edition.workspace = true
+license.workspace = true
+repository.workspace = true
 
 [dependencies]
-cairo-lang-compiler = "=2.12.0-dev.1"
-cairo-lang-filesystem = "=2.12.0-dev.1"
-cairo-lang-runner = "=2.12.0-dev.1"
-cairo-lang-sierra = "=2.12.0-dev.1"
-cairo-lang-sierra-generator = "=2.12.0-dev.1"
-cairo-lang-sierra-to-casm = "=2.12.0-dev.1"
-cairo-lang-sierra-ap-change = "=2.12.0-dev.1"
-cairo-lang-sierra-gas = "=2.12.0-dev.1"
-cairo-lang-starknet-classes = "=2.12.0-dev.1"
-cairo-lang-utils = "=2.12.0-dev.1"
-cairo-lang-test-plugin = "=2.12.0-dev.1"
-clap = { version = "4.5.26", features = ["derive"] }
-k256 = "0.13.4"
-keccak = "0.1.5"
-num-bigint = "0.4.6"
-num-traits = "0.2.19"
-p256 = "0.13.2"
-rand = "0.8.5"
-sec1 = { version = "0.7.3", features = ["std"] }
-serde = { version = "1.0.215", features = ["derive"] }
-serde_json = "1.0.133"
-sha2 = { version = "0.10.8", features = ["compress"] }
-smallvec = "1.13.2"
-starknet-crypto = "0.7.3"
-starknet-curve = "0.5.1"
-starknet-types-core = "0.1.7"
-tempfile = "3.14.0"
-thiserror = "2.0.3"
-tracing = "0.1.41"
-tracing-subscriber = { version = "0.3.18", features = ["env-filter"] }
-rayon = "1.10.0"
+cairo-lang-compiler.workspace = true
+cairo-lang-filesystem.workspace = true
+cairo-lang-runner.workspace = true
+cairo-lang-sierra-ap-change.workspace = true
+cairo-lang-sierra-gas.workspace = true
+cairo-lang-sierra-generator.workspace = true
+cairo-lang-sierra-to-casm.workspace = true
+cairo-lang-sierra.workspace = true
+cairo-lang-starknet-classes.workspace = true
+cairo-lang-test-plugin.workspace = true
+cairo-lang-utils.workspace = true
+clap = { workspace = true, features = ["derive"] }
+k256.workspace = true
+keccak.workspace = true
+num-integer.workspace = true
+num-bigint.workspace = true
+num-traits.workspace = true
+p256.workspace = true
+rand.workspace = true
+sec1 = { workspace = true, features = ["std"] }
+serde = { workspace = true, features = ["derive"] }
+serde_json.workspace = true
+sha2 = { workspace = true, features = ["compress"] }
+smallvec.workspace = true
+starknet-crypto.workspace = true
+starknet-curve.workspace = true
+starknet-types-core.workspace = true
+tempfile.workspace = true
+thiserror.workspace = true
+tracing.workspace = true
+tracing-subscriber = { workspace = true, features = ["env-filter"] }
+rayon.workspace = true
 
 [dev-dependencies]
-cairo-lang-compiler = "=2.12.0-dev.1"
-cairo-lang-starknet = "=2.12.0-dev.1"
+cairo-lang-compiler.workspace = true
+cairo-lang-starknet.workspace = true

@@ -3,6 +3,7 @@
 
 #![allow(dead_code)]
 
+use ark_ff::One;
 use cairo_lang_compiler::{
     compile_prepared_db, db::RootDatabase, project::setup_project, CompilerConfig,
 };
@@ -15,6 +16,7 @@ use cairo_lang_sierra::{
         circuit::CircuitTypeConcrete,
         core::{CoreLibfunc, CoreType, CoreTypeConcrete},
         starknet::StarknetTypeConcrete,
+        utils::Range,
         ConcreteType,
     },
     ids::{ConcreteTypeId, FunctionId},
@@ -53,6 +55,7 @@ use lambdaworks_math::{
     unsigned_integer::element::UnsignedInteger,
 };
 use num_bigint::{BigInt, BigUint, Sign};
+use pretty_assertions_sorted::assert_eq_sorted;
 use proptest::{strategy::Strategy, test_runner::TestCaseError};
 use starknet_types_core::felt::Felt;
 use std::{collections::HashMap, env::var, fs, ops::Neg, path::Path};
@@ -233,7 +236,7 @@ pub fn run_native_program(
     let context = NativeContext::new();
 
     let module = context
-        .compile(program, false, Some(Default::default()))
+        .compile(program, false, Some(Default::default()), None)
         .expect("Could not compile test program to MLIR.");
 
     assert!(
@@ -430,7 +433,7 @@ pub fn run_native_starknet_contract(
     let native_context = NativeContext::new();
 
     let native_program = native_context
-        .compile(sierra_program, false, Some(Default::default()))
+        .compile(sierra_program, false, Some(Default::default()), None)
         .unwrap();
 
     let entry_point_fn = find_entry_point_by_idx(sierra_program, entry_point_function_idx).unwrap();
@@ -456,6 +459,7 @@ pub fn run_native_starknet_aot_contract(
         &contract.entry_points_by_type,
         sierra_version,
         Default::default(),
+        None,
     )
     .unwrap();
     native_executor
@@ -505,6 +509,8 @@ pub fn compare_outputs(
                     | CoreTypeConcrete::Sint16(_)
                     | CoreTypeConcrete::Sint8(_)
                     | CoreTypeConcrete::Box(_)
+                    | CoreTypeConcrete::BoundedInt(_)
+                    | CoreTypeConcrete::Circuit(CircuitTypeConcrete::U96Guarantee(_))
                     | CoreTypeConcrete::Nullable(_) => 1,
                     CoreTypeConcrete::Enum(info) => {
                         1 + info
@@ -600,6 +606,17 @@ pub fn compare_outputs(
             } else {
                 values[0].to_biguint().to_i8().unwrap()
             }),
+            CoreTypeConcrete::BoundedInt(info) => Value::BoundedInt {
+                value: values[0],
+                range: info.range.clone(),
+            },
+            CoreTypeConcrete::Circuit(CircuitTypeConcrete::U96Guarantee(_)) => Value::BoundedInt {
+                value: values[0],
+                range: Range {
+                    lower: BigInt::ZERO,
+                    upper: BigInt::one() << 96,
+                },
+            },
             CoreTypeConcrete::Enum(info) => {
                 let enum_size = map_vm_sizes(size_cache, registry, ty);
                 assert_eq!(values.len(), enum_size);
@@ -745,7 +762,6 @@ pub fn compare_outputs(
             CoreTypeConcrete::Pedersen(_) => unreachable!(),
             CoreTypeConcrete::Poseidon(_) => unreachable!(),
             CoreTypeConcrete::SegmentArena(_) => unreachable!(),
-            CoreTypeConcrete::BoundedInt(_) => unreachable!(),
             x => {
                 todo!("vm value not yet implemented: {:?}", x.info())
             }
@@ -786,6 +802,32 @@ pub fn compare_outputs(
         Felt::from(native_result.remaining_gas.unwrap_or(0)).to_bigint(),
         "gas mismatch"
     );
+
+    let native_builtins = {
+        let mut native_builtins = HashMap::new();
+        native_builtins.insert("range_check", native_result.builtin_stats.range_check);
+        native_builtins.insert("pedersen", native_result.builtin_stats.pedersen);
+        native_builtins.insert("bitwise", native_result.builtin_stats.bitwise);
+        native_builtins.insert("ec_op", native_result.builtin_stats.ec_op);
+        native_builtins.insert("poseidon", native_result.builtin_stats.poseidon);
+        // don't include the segment arena builtin, as its not included in the VM output either.
+        native_builtins.insert("range_check96", native_result.builtin_stats.range_check96);
+        native_builtins.insert("add_mod", native_result.builtin_stats.add_mod);
+        native_builtins.insert("mul_mod", native_result.builtin_stats.mul_mod);
+        native_builtins.retain(|_, &mut v| v != 0);
+        native_builtins
+    };
+
+    let vm_builtins: HashMap<&str, usize> = vm_result
+        .used_resources
+        .basic_resources
+        .filter_unused_builtins()
+        .builtin_instance_counter
+        .iter()
+        .map(|(k, v)| (k.to_str(), *v))
+        .collect();
+
+    assert_eq_sorted!(vm_builtins, native_builtins, "builtin mismatch",);
 
     let vm_result = match &vm_result.value {
         RunResultValue::Success(values) if !values.is_empty() | returns_panic => {

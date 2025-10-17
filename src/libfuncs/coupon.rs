@@ -4,11 +4,7 @@
 //! Because of this, this libfunc is a no-op.
 
 use super::LibfuncHelper;
-use crate::{
-    error::Result,
-    metadata::MetadataStorage,
-    utils::{BlockExt, ProgramRegistryExt},
-};
+use crate::{error::Result, metadata::MetadataStorage, utils::ProgramRegistryExt};
 use cairo_lang_sierra::{
     extensions::{
         core::{CoreLibfunc, CoreType},
@@ -20,7 +16,8 @@ use cairo_lang_sierra::{
 };
 use melior::{
     dialect::llvm,
-    ir::{Block, BlockLike, Location},
+    helpers::BuiltinBlockExt,
+    ir::{Block, Location},
     Context,
 };
 
@@ -72,9 +69,7 @@ pub fn build_buy<'ctx, 'this>(
     )?;
     let coupon = entry.append_op_result(llvm::undef(ty, location))?;
 
-    entry.append_operation(helper.br(0, &[coupon], location));
-
-    Ok(())
+    helper.br(entry, 0, &[coupon], location)
 }
 
 /// Generate MLIR operations for the `coupon` libfunc.
@@ -91,7 +86,5 @@ pub fn build_refund<'ctx, 'this>(
     // let gas = metadata.get::<GasMetadata>().ok_or(Error::MissingMetadata)?;
     // let gas_cost = gas.initial_required_gas(&info.function.id);
 
-    entry.append_operation(helper.br(0, &[], location));
-
-    Ok(())
+    helper.br(entry, 0, &[], location)
 }

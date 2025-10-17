@@ -3,7 +3,7 @@
 //! Like a Box but it can be null.
 
 use super::LibfuncHelper;
-use crate::{error::Result, metadata::MetadataStorage, utils::BlockExt};
+use crate::{error::Result, metadata::MetadataStorage};
 use cairo_lang_sierra::{
     extensions::{
         core::{CoreLibfunc, CoreType},
@@ -14,6 +14,7 @@ use cairo_lang_sierra::{
 };
 use melior::{
     dialect::{cf, llvm::r#type::pointer, ods},
+    helpers::BuiltinBlockExt,
     ir::{
         attribute::IntegerAttribute, operation::OperationBuilder, r#type::IntegerType, Block,
         BlockLike, Identifier, Location,
@@ -33,7 +34,7 @@ pub fn build<'ctx, 'this>(
 ) -> Result<()> {
     match selector {
         NullableConcreteLibfunc::ForwardSnapshot(info)
-        | NullableConcreteLibfunc::NullableFromBox(info) => super::build_noop::<1, true>(
+        | NullableConcreteLibfunc::NullableFromBox(info) => super::build_noop::<1, false>(
             context,
             registry,
             entry,
@@ -65,8 +66,7 @@ fn build_null<'ctx, 'this>(
     let value = entry
         .append_op_result(ods::llvm::mlir_zero(context, pointer(context, 0), location).into())?;
 
-    entry.append_operation(helper.br(0, &[value], location));
-    Ok(())
+    helper.br(entry, 0, &[value], location)
 }
 
 /// Generate MLIR operations for the `match_nullable` libfunc.
@@ -109,8 +109,8 @@ fn build_match_nullable<'ctx, 'this>(
         location,
     ));
 
-    block_is_null.append_operation(helper.br(0, &[], location));
-    block_is_not_null.append_operation(helper.br(1, &[arg], location));
+    helper.br(block_is_null, 0, &[], location)?;
+    helper.br(block_is_not_null, 1, &[arg], location)?;
 
     Ok(())
 }

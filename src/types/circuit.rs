@@ -5,8 +5,11 @@ use std::alloc::Layout;
 use super::WithSelf;
 use crate::{
     error::{Result, SierraAssertError},
-    metadata::MetadataStorage,
-    utils::{get_integer_layout, layout_repeat},
+    metadata::{
+        drop_overrides::DropOverridesMeta, dup_overrides::DupOverridesMeta,
+        realloc_bindings::ReallocBindingsMeta, MetadataStorage,
+    },
+    utils::{get_integer_layout, layout_repeat, ProgramRegistryExt},
 };
 use cairo_lang_sierra::{
     extensions::{
@@ -18,8 +21,9 @@ use cairo_lang_sierra::{
     program_registry::ProgramRegistry,
 };
 use melior::{
-    dialect::llvm,
-    ir::{r#type::IntegerType, Module, Type},
+    dialect::{func, llvm},
+    helpers::{ArithBlockExt, BuiltinBlockExt, LlvmBlockExt},
+    ir::{r#type::IntegerType, Block, BlockLike, Location, Module, Region, Type, Value},
     Context,
 };
 
@@ -88,11 +92,23 @@ pub fn build<'ctx>(
     }
 }
 
+/// Builds the circuit accumulator type.
+///
+/// ## Layout:
+///
+/// Holds up to N_INPUTS elements. Where each element is an u384 integer.
+///
+/// ```txt
+/// type = struct {
+///     size: u64,
+///     data: *u384,
+/// }
+/// ```
 pub fn build_circuit_accumulator<'ctx>(
     context: &'ctx Context,
-    _module: &Module<'ctx>,
+    module: &Module<'ctx>,
     registry: &ProgramRegistry<CoreType, CoreLibfunc>,
-    _metadata: &mut MetadataStorage,
+    metadata: &mut MetadataStorage,
     info: WithSelf<InfoOnlyConcreteType>,
 ) -> Result<Type<'ctx>> {
     let Some(GenericArg::Type(circuit_type_id)) = info.info.long_id.generic_args.first() else {
@@ -104,21 +120,95 @@ pub fn build_circuit_accumulator<'ctx>(
         return Err(SierraAssertError::BadTypeInfo.into());
     };
 
-    let n_inputs = circuit.circuit_info.n_inputs;
+    DupOverridesMeta::register_with(
+        context,
+        module,
+        registry,
+        metadata,
+        info.self_ty(),
+        |metadata| {
+            let location = Location::unknown(context);
+            let region = Region::new();
+            let value_ty = registry.build_type(context, module, metadata, info.self_ty())?;
+            let entry = region.append_block(Block::new(&[(value_ty, location)]));
+
+            let accumulator = entry.arg(0)?;
+            let inputs_ptr = entry.extract_value(
+                context,
+                location,
+                accumulator,
+                llvm::r#type::pointer(context, 0),
+                1,
+            )?;
+
+            let u384_layout = get_integer_layout(384);
+
+            let new_inputs_ptr = build_array_dup(
+                context,
+                &entry,
+                location,
+                inputs_ptr,
+                circuit.circuit_info.n_inputs,
+                u384_layout,
+            )?;
+
+            let new_accumulator =
+                entry.insert_value(context, location, accumulator, new_inputs_ptr, 1)?;
+            entry.append_operation(func::r#return(&[accumulator, new_accumulator], location));
+
+            Ok(Some(region))
+        },
+    )?;
+    DropOverridesMeta::register_with(
+        context,
+        module,
+        registry,
+        metadata,
+        info.self_ty(),
+        |metadata| {
+            let location = Location::unknown(context);
+            let region = Region::new();
+            let value_ty = registry.build_type(context, module, metadata, info.self_ty())?;
+            let entry = region.append_block(Block::new(&[(value_ty, location)]));
+
+            let accumulator = entry.arg(0)?;
+            let inputs_ptr = entry.extract_value(
+                context,
+                location,
+                accumulator,
+                llvm::r#type::pointer(context, 0),
+                1,
+            )?;
+
+            entry.append_operation(ReallocBindingsMeta::free(context, inputs_ptr, location)?);
+            entry.append_operation(func::r#return(&[], location));
+
+            Ok(Some(region))
+        },
+    )?;
 
     let fields = vec![
         IntegerType::new(context, 64).into(),
-        llvm::r#type::array(IntegerType::new(context, 384).into(), n_inputs as u32 - 1),
+        llvm::r#type::pointer(context, 0),
     ];
 
     Ok(llvm::r#type::r#struct(context, &fields, false))
 }
 
+/// Builds the circuit data type.
+///
+/// ## Layout:
+///
+/// Holds N_INPUTS elements. Where each element is an u384.
+///
+/// ```txt
+/// type = *u384
+/// ```
 pub fn build_circuit_data<'ctx>(
     context: &'ctx Context,
-    _module: &Module<'ctx>,
+    module: &Module<'ctx>,
     registry: &ProgramRegistry<CoreType, CoreLibfunc>,
-    _metadata: &mut MetadataStorage,
+    metadata: &mut MetadataStorage,
     info: WithSelf<InfoOnlyConcreteType>,
 ) -> Result<Type<'ctx>> {
     let Some(GenericArg::Type(circuit_type_id)) = info.info.long_id.generic_args.first() else {
@@ -130,19 +220,86 @@ pub fn build_circuit_data<'ctx>(
         return Err(SierraAssertError::BadTypeInfo.into());
     };
 
-    let n_inputs = circuit.circuit_info.n_inputs;
+    DupOverridesMeta::register_with(
+        context,
+        module,
+        registry,
+        metadata,
+        info.self_ty(),
+        |metadata| {
+            let location = Location::unknown(context);
+            let region = Region::new();
+            let value_ty = registry.build_type(context, module, metadata, info.self_ty())?;
+            let entry = region.append_block(Block::new(&[(value_ty, location)]));
 
-    Ok(llvm::r#type::array(
-        IntegerType::new(context, 384).into(),
-        n_inputs as u32,
-    ))
+            let data_ptr = entry.arg(0)?;
+
+            let u384_layout = get_integer_layout(384);
+
+            let new_data_ptr = build_array_dup(
+                context,
+                &entry,
+                location,
+                data_ptr,
+                circuit.circuit_info.n_inputs,
+                u384_layout,
+            )?;
+
+            entry.append_operation(func::r#return(&[data_ptr, new_data_ptr], location));
+
+            Ok(Some(region))
+        },
+    )?;
+    DropOverridesMeta::register_with(
+        context,
+        module,
+        registry,
+        metadata,
+        info.self_ty(),
+        |metadata| {
+            let location = Location::unknown(context);
+            let region = Region::new();
+            let value_ty = registry.build_type(context, module, metadata, info.self_ty())?;
+            let entry = region.append_block(Block::new(&[(value_ty, location)]));
+
+            let data_ptr = entry.arg(0)?;
+
+            entry.append_operation(ReallocBindingsMeta::free(context, data_ptr, location)?);
+            entry.append_operation(func::r#return(&[], location));
+
+            Ok(Some(region))
+        },
+    )?;
+
+    Ok(llvm::r#type::pointer(context, 0))
 }
 
+/// Builds the circuit outputs type.
+///
+/// ## Layout:
+///
+/// Holds the evaluated circuit output gates and the circuit modulus.
+/// - The data is stored as a dynamic array of u384 integers.
+/// - The modulus is stored as a u384 in struct form (multi-limb).
+///
+/// ```txt
+/// type = struct {
+///     data: *u384,
+///     modulus: u384struct,
+/// };
+///
+/// u384struct = struct {
+///     limb1: u96,
+///     limb2: u96,
+///     limb3: u96,
+///     limb4: u96,
+/// }
+/// ```
 pub fn build_circuit_outputs<'ctx>(
     context: &'ctx Context,
-    _module: &Module<'ctx>,
+    module: &Module<'ctx>,
     registry: &ProgramRegistry<CoreType, CoreLibfunc>,
-    _metadata: &mut MetadataStorage,
+    metadata: &mut MetadataStorage,
     info: WithSelf<InfoOnlyConcreteType>,
 ) -> Result<Type<'ctx>> {
     let Some(GenericArg::Type(circuit_type_id)) = info.info.long_id.generic_args.first() else {
@@ -154,12 +311,76 @@ pub fn build_circuit_outputs<'ctx>(
         return Err(SierraAssertError::BadTypeInfo.into());
     };
 
-    let n_gates = circuit.circuit_info.values.len();
+    DupOverridesMeta::register_with(
+        context,
+        module,
+        registry,
+        metadata,
+        info.self_ty(),
+        |metadata| {
+            let location = Location::unknown(context);
+            let region = Region::new();
+            let value_ty = registry.build_type(context, module, metadata, info.self_ty())?;
+            let entry = region.append_block(Block::new(&[(value_ty, location)]));
+
+            let outputs = entry.arg(0)?;
+            let gates_ptr = entry.extract_value(
+                context,
+                location,
+                outputs,
+                llvm::r#type::pointer(context, 0),
+                0,
+            )?;
+
+            let u384_integer_layout = get_integer_layout(384);
+
+            let new_gates_ptr = build_array_dup(
+                context,
+                &entry,
+                location,
+                gates_ptr,
+                circuit.circuit_info.values.len(),
+                u384_integer_layout,
+            )?;
+
+            let new_outputs = entry.insert_value(context, location, outputs, new_gates_ptr, 0)?;
+            entry.append_operation(func::r#return(&[outputs, new_outputs], location));
+
+            Ok(Some(region))
+        },
+    )?;
+    DropOverridesMeta::register_with(
+        context,
+        module,
+        registry,
+        metadata,
+        info.self_ty(),
+        |metadata| {
+            let location = Location::unknown(context);
+            let region = Region::new();
+            let value_ty = registry.build_type(context, module, metadata, info.self_ty())?;
+            let entry = region.append_block(Block::new(&[(value_ty, location)]));
+
+            let outputs = entry.arg(0)?;
+            let gates_ptr = entry.extract_value(
+                context,
+                location,
+                outputs,
+                llvm::r#type::pointer(context, 0),
+                0,
+            )?;
+
+            entry.append_operation(ReallocBindingsMeta::free(context, gates_ptr, location)?);
+            entry.append_operation(func::r#return(&[], location));
+
+            Ok(Some(region))
+        },
+    )?;
 
     Ok(llvm::r#type::r#struct(
         context,
         &[
-            llvm::r#type::array(build_u384_struct_type(context), n_gates as u32),
+            llvm::r#type::pointer(context, 0),
             build_u384_struct_type(context),
         ],
         false,
@@ -183,6 +404,33 @@ pub fn build_u96_limbs_less_than_guarantee<'ctx>(
         &[limb_struct_type, limb_struct_type],
         false,
     ))
+}
+
+pub fn build_array_dup<'ctx, 'this>(
+    context: &'ctx Context,
+    block: &'this Block<'ctx>,
+    location: Location<'ctx>,
+    ptr: Value<'ctx, 'this>,
+    capacity: usize,
+    layout: Layout,
+) -> Result<Value<'ctx, 'this>> {
+    let capacity_bytes = layout_repeat(&layout, capacity)?.0.pad_to_align().size();
+    let capacity_bytes_value = block.const_int(context, location, capacity_bytes, 64)?;
+
+    let new_inputs_ptr = {
+        let ptr_ty = llvm::r#type::pointer(context, 0);
+        let new_inputs_ptr = block.append_op_result(llvm::zero(ptr_ty, location))?;
+        block.append_op_result(ReallocBindingsMeta::realloc(
+            context,
+            new_inputs_ptr,
+            capacity_bytes_value,
+            location,
+        )?)?
+    };
+
+    block.memcpy(context, location, ptr, new_inputs_ptr, capacity_bytes_value);
+
+    Ok(new_inputs_ptr)
 }
 
 pub const fn is_complex(info: &CircuitTypeConcrete) -> bool {
@@ -232,7 +480,7 @@ pub const fn is_zst(info: &CircuitTypeConcrete) -> bool {
 }
 
 pub fn layout(
-    registry: &ProgramRegistry<CoreType, CoreLibfunc>,
+    _registry: &ProgramRegistry<CoreType, CoreLibfunc>,
     info: &CircuitTypeConcrete,
 ) -> Result<Layout> {
     match info {
@@ -252,64 +500,18 @@ pub fn layout(
         | CircuitTypeConcrete::CircuitDescriptor(_)
         | CircuitTypeConcrete::CircuitFailureGuarantee(_) => Ok(Layout::new::<()>()),
 
-        CircuitTypeConcrete::CircuitData(info) => {
-            let Some(GenericArg::Type(circuit_type_id)) = info.info.long_id.generic_args.first()
-            else {
-                return Err(SierraAssertError::BadTypeInfo.into());
-            };
-            let CoreTypeConcrete::Circuit(CircuitTypeConcrete::Circuit(circuit)) =
-                registry.get_type(circuit_type_id)?
-            else {
-                return Err(SierraAssertError::BadTypeInfo.into());
-            };
+        CircuitTypeConcrete::CircuitData(_) => Ok(Layout::new::<*mut ()>()),
+        CircuitTypeConcrete::CircuitOutputs(_) => {
+            let u384_struct_layout = layout_repeat(&get_integer_layout(96), 4)?.0;
+            let pointer_layout = Layout::new::<*mut ()>();
 
-            let n_inputs = circuit.circuit_info.n_inputs;
-
-            let u384_layout = get_integer_layout(384);
-
-            let layout = layout_repeat(&u384_layout, n_inputs)?.0;
-
-            Ok(layout)
+            Ok(pointer_layout.extend(u384_struct_layout)?.0)
         }
-        CircuitTypeConcrete::CircuitOutputs(info) => {
-            let Some(GenericArg::Type(circuit_type_id)) = info.info.long_id.generic_args.first()
-            else {
-                return Err(SierraAssertError::BadTypeInfo.into());
-            };
-            let CoreTypeConcrete::Circuit(CircuitTypeConcrete::Circuit(circuit)) =
-                registry.get_type(circuit_type_id)?
-            else {
-                return Err(SierraAssertError::BadTypeInfo.into());
-            };
+        CircuitTypeConcrete::CircuitInputAccumulator(_) => {
+            let integer_layout = get_integer_layout(64);
+            let pointer_layout = Layout::new::<*mut ()>();
 
-            let n_gates = circuit.circuit_info.values.len();
-
-            let u384_layout = get_integer_layout(384);
-
-            let layout = layout_repeat(&u384_layout, n_gates)?.0;
-
-            Ok(layout)
-        }
-        CircuitTypeConcrete::CircuitInputAccumulator(info) => {
-            let Some(GenericArg::Type(circuit_type_id)) = info.info.long_id.generic_args.first()
-            else {
-                return Err(SierraAssertError::BadTypeInfo.into());
-            };
-            let CoreTypeConcrete::Circuit(CircuitTypeConcrete::Circuit(circuit)) =
-                registry.get_type(circuit_type_id)?
-            else {
-                return Err(SierraAssertError::BadTypeInfo.into());
-            };
-
-            let n_inputs = circuit.circuit_info.n_inputs;
-
-            let length_layout = get_integer_layout(64);
-
-            let u384_layout = get_integer_layout(384);
-            let inputs_layout = layout_repeat(&u384_layout, n_inputs - 1)?.0;
-            let layout = length_layout.extend(inputs_layout)?.0;
-
-            Ok(layout)
+            Ok(integer_layout.extend(pointer_layout)?.0)
         }
         CircuitTypeConcrete::CircuitPartialOutputs(_) => Ok(Layout::new::<()>()),
     }

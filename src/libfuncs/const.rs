@@ -7,7 +7,7 @@ use crate::{
     metadata::{realloc_bindings::ReallocBindingsMeta, MetadataStorage},
     native_panic,
     types::TypeBuilder,
-    utils::{BlockExt, ProgramRegistryExt, RangeExt, PRIME},
+    utils::{ProgramRegistryExt, RangeExt, PRIME},
 };
 use cairo_lang_sierra::{
     extensions::{
@@ -24,7 +24,8 @@ use cairo_lang_sierra::{
 };
 use melior::{
     dialect::llvm::{self, r#type::pointer},
-    ir::{Block, BlockLike, Location, Value},
+    helpers::{ArithBlockExt, BuiltinBlockExt, LlvmBlockExt},
+    ir::{Block, Location, Value},
     Context,
 };
 use num_bigint::Sign;
@@ -89,8 +90,7 @@ pub fn build_const_as_box<'ctx, 'this>(
     // Store constant in box
     entry.store(context, location, ptr, value)?;
 
-    entry.append_operation(helper.br(0, &[ptr], location));
-    Ok(())
+    helper.br(entry, 0, &[ptr], location)
 }
 
 /// Generate MLIR operations for the `const_as_immediate` libfunc.
@@ -114,8 +114,7 @@ pub fn build_const_as_immediate<'ctx, 'this>(
         context, registry, entry, location, helper, metadata, const_type,
     )?;
 
-    entry.append_operation(helper.br(0, &[value], location));
-    Ok(())
+    helper.br(entry, 0, &[value], location)
 }
 
 pub fn build_const_type_value<'ctx, 'this>(
@@ -248,12 +247,12 @@ pub fn build_const_type_value<'ctx, 'this>(
             // Offset the value so that 0 matches with lower.
             let value = &value - &range.lower;
 
-            entry.const_int(
+            Ok(entry.const_int(
                 context,
                 location,
                 value,
                 inner_type.integer_range(registry)?.offset_bit_width(),
-            )
+            )?)
         }
         CoreTypeConcrete::Felt252(_) => {
             let value = match &info.inner_data.as_slice() {
@@ -267,7 +266,7 @@ pub fn build_const_type_value<'ctx, 'this>(
                 _ => value,
             };
 
-            entry.const_int_from_type(context, location, value, inner_ty)
+            Ok(entry.const_int_from_type(context, location, value, inner_ty)?)
         }
         CoreTypeConcrete::Starknet(
             StarknetTypeConcrete::ClassHash(_) | StarknetTypeConcrete::ContractAddress(_),
@@ -283,7 +282,7 @@ pub fn build_const_type_value<'ctx, 'this>(
                 _ => value,
             };
 
-            entry.const_int_from_type(context, location, value, inner_ty)
+            Ok(entry.const_int_from_type(context, location, value, inner_ty)?)
         }
         CoreTypeConcrete::Uint8(_)
         | CoreTypeConcrete::Uint16(_)
@@ -297,7 +296,7 @@ pub fn build_const_type_value<'ctx, 'this>(
         | CoreTypeConcrete::Sint128(_)
         | CoreTypeConcrete::Bytes31(_) => match &info.inner_data.as_slice() {
             [GenericArg::Value(value)] => {
-                entry.const_int_from_type(context, location, value.clone(), inner_ty)
+                Ok(entry.const_int_from_type(context, location, value.clone(), inner_ty)?)
             }
             _ => Err(Error::ConstDataMismatch),
         },

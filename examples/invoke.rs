@@ -16,12 +16,12 @@ fn main() {
     let program_path = Path::new("programs/echo.cairo");
 
     // Compile the cairo program to sierra.
-    let sierra_program = cairo_native::utils::cairo_to_sierra(program_path).unwrap();
+    let sierra_program = cairo_native::utils::testing::cairo_to_sierra(program_path).unwrap();
 
     let native_context = NativeContext::new();
 
     let native_program = native_context
-        .compile(&sierra_program, false, Some(Default::default()))
+        .compile(&sierra_program, false, Some(Default::default()), None)
         .unwrap();
 
     // Call the echo function from the contract using the generated wrapper.

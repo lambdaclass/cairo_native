@@ -33,18 +33,25 @@
 
 use crate::{
     arch::AbiArgument,
+    clone_option_mut,
     context::NativeContext,
+    debug::libfunc_to_name,
     error::{panic::ToNativeAssertError, Error, Result},
-    execution_result::{BuiltinStats, ContractExecutionResult},
+    execution_result::{
+        BuiltinStats, ContractExecutionResult, ADD_MOD_BUILTIN_SIZE, BITWISE_BUILTIN_SIZE,
+        EC_OP_BUILTIN_SIZE, MUL_MOD_BUILTIN_SIZE, PEDERSEN_BUILTIN_SIZE, POSEIDON_BUILTIN_SIZE,
+        RANGE_CHECK96_BUILTIN_SIZE, RANGE_CHECK_BUILTIN_SIZE, SEGMENT_ARENA_BUILTIN_SIZE,
+    },
     executor::{invoke_trampoline, BuiltinCostsGuard},
     metadata::runtime_bindings::setup_runtime,
     module::NativeModule,
     native_assert, native_panic,
     starknet::{handler::StarknetSyscallHandlerCallbacks, StarknetSyscallHandler},
+    statistics::{SierraDeclaredTypeStats, SierraFuncStats, Statistics},
     types::TypeBuilder,
     utils::{
-        decode_error_message, generate_function_name, get_integer_layout, libc_free, libc_malloc,
-        BuiltinCosts,
+        decode_error_message, generate_function_name, get_integer_layout, get_types_total_size,
+        libc_free, libc_malloc, BuiltinCosts,
     },
     OptLevel,
 };
@@ -52,12 +59,13 @@ use bumpalo::Bump;
 use cairo_lang_sierra::{
     extensions::{
         circuit::CircuitTypeConcrete,
-        core::{CoreLibfunc, CoreType, CoreTypeConcrete},
+        core::{CoreConcreteLibfunc, CoreLibfunc, CoreType, CoreTypeConcrete},
         gas::CostTokenType,
         starknet::StarknetTypeConcrete,
+        ConcreteLibfunc,
     },
     ids::FunctionId,
-    program::{GenFunction, Program, StatementIdx},
+    program::{GenFunction, GenStatement, Program, StatementIdx},
     program_registry::ProgramRegistry,
 };
 use cairo_lang_sierra_to_casm::metadata::MetadataComputationConfig;
@@ -80,6 +88,7 @@ use std::{
     path::{Path, PathBuf},
     ptr::{self, NonNull},
     sync::Arc,
+    time::Instant,
 };
 use tempfile::NamedTempFile;
 
@@ -134,11 +143,15 @@ impl BuiltinType {
 
 impl AotContractExecutor {
     /// Compile and load a program using a temporary shared library.
+    ///
+    /// When enabled, compilation stats will be saved to the `stats`. The
+    /// initial statistics can be build using the default builder.
     pub fn new(
         program: &Program,
         entry_points: &ContractEntryPoints,
         sierra_version: VersionId,
         opt_level: OptLevel,
+        stats: Option<&mut Statistics>,
     ) -> Result<Self> {
         let output_path = NamedTempFile::new()?
             .into_temp_path()
@@ -151,6 +164,7 @@ impl AotContractExecutor {
             sierra_version,
             output_path,
             opt_level,
+            stats,
         )?
         .to_native_assert_error("temporary contract path collision")?;
 
@@ -165,18 +179,24 @@ impl AotContractExecutor {
     /// attempt to compile a program while the `output_path` is already locked will result in
     /// `Ok(None)` being returned. When this happens, the user should wait until the lock is
     /// released, at which point they can use `AotContractExecutor::from_path` to load it.
+    ///
+    /// When enabled, compilation stats will be saved to the `stats`. The
+    /// initial statistics can be build using the default builder.
     pub fn new_into(
         program: &Program,
         entry_points: &ContractEntryPoints,
         sierra_version: VersionId,
         output_path: impl Into<PathBuf>,
         opt_level: OptLevel,
+        stats: Option<&mut Statistics>,
     ) -> Result<Option<Self>> {
         let output_path = output_path.into();
         let lock_file = match LockFile::new(&output_path)? {
             Some(x) => x,
             None => return Ok(None),
         };
+
+        let pre_compilation_instant = Instant::now();
 
         let context = NativeContext::new();
 
@@ -185,6 +205,13 @@ impl AotContractExecutor {
             Ordering::Equal => sierra_version.minor >= 4,
             Ordering::Greater => true,
         };
+
+        if let Some(&mut ref mut stats) = stats {
+            stats.sierra_type_count = Some(program.type_declarations.len());
+            stats.sierra_libfunc_count = Some(program.libfunc_declarations.len());
+            stats.sierra_statement_count = Some(program.statements.len());
+            stats.sierra_func_count = Some(program.funcs.len());
+        }
 
         // Compile the Sierra program.
         let NativeModule {
@@ -210,7 +237,85 @@ impl AotContractExecutor {
                 skip_non_linear_solver_comparisons: false,
                 compute_runtime_costs: false,
             }),
+            clone_option_mut!(stats),
         )?;
+
+        if let Some(&mut ref mut stats) = stats {
+            for type_declaration in &program.type_declarations {
+                if let Ok(type_concrete) = registry.get_type(&type_declaration.id) {
+                    let type_id = type_declaration.id.id;
+                    let type_size = type_concrete.layout(&registry)?.size();
+                    stats.sierra_declared_types_stats.insert(
+                        type_id,
+                        SierraDeclaredTypeStats {
+                            size: type_size,
+                            as_param_count: 0,
+                        },
+                    );
+
+                    if let CoreTypeConcrete::Circuit(CircuitTypeConcrete::Circuit(info)) =
+                        type_concrete
+                    {
+                        stats.add_circuit_gates(&info.circuit_info)?;
+                    }
+                }
+            }
+
+            for statement in &program.statements {
+                if let GenStatement::Invocation(invocation) = statement {
+                    let libfunc = registry.get_libfunc(&invocation.libfunc_id)?;
+                    let name = libfunc_to_name(libfunc).to_string();
+                    *stats.sierra_libfunc_frequency.entry(name).or_insert(0) += 1;
+
+                    for param in libfunc.param_signatures() {
+                        let param_type_id = param.ty.id;
+                        if let Some(type_stats) =
+                            stats.sierra_declared_types_stats.get_mut(&param_type_id)
+                        {
+                            type_stats.as_param_count += 1;
+                        }
+                    }
+                }
+            }
+
+            for func in &program.funcs {
+                let func_id = func.id.id;
+                // Params
+                let params_total_size =
+                    get_types_total_size(&func.signature.param_types, &registry)?;
+                // Return types
+                let return_types_total_size =
+                    get_types_total_size(&func.signature.ret_types, &registry)?;
+
+                stats.sierra_func_stats.insert(
+                    func_id,
+                    SierraFuncStats {
+                        params_total_size,
+                        return_types_total_size,
+                        times_called: 0,
+                    },
+                );
+            }
+
+            for statement in &program.statements {
+                match statement {
+                    GenStatement::Invocation(gen_invocation) => {
+                        let libfunc = registry.get_libfunc(&gen_invocation.libfunc_id)?;
+                        if let CoreConcreteLibfunc::FunctionCall(function_call_libfunc) = libfunc {
+                            let func_id = function_call_libfunc.function.id.id;
+                            let func_entry = stats
+                                .sierra_func_stats
+                                .get_mut(&func_id)
+                                .to_native_assert_error(&format!(
+                                    "Function ID {func_id}, should be present in the stats"
+                                ))?;
+                            func_entry.times_called += 1;
+                        }
+                    }
+                    GenStatement::Return(_) => continue,
+                }
+            }
+        }
 
         // Generate mappings between the entry point's selectors and their function indexes.
         let entry_point_mappings = chain!(
@@ -236,10 +341,18 @@ impl AotContractExecutor {
         })
         .collect::<Result<BTreeMap<_, _>>>()?;
 
-        let object_data = crate::module_to_object(&module, opt_level)?;
+        let object_data = crate::module_to_object(&module, opt_level, clone_option_mut!(stats))?;
+        if let Some(&mut ref mut stats) = stats {
+            stats.object_size_bytes = Some(object_data.len());
+        }
 
         // Build the shared library into the lockfile, to avoid using a tmp file.
-        crate::object_to_shared_lib(&object_data, &lock_file.0)?;
+        crate::object_to_shared_lib(&object_data, &lock_file.0, clone_option_mut!(stats))?;
+
+        let compilation_time = pre_compilation_instant.elapsed().as_millis();
+        if let Some(&mut ref mut stats) = stats {
+            stats.compilation_total_time_ms = Some(compilation_time);
+        }
 
         // Write the contract info.
         fs::write(
@@ -249,6 +362,10 @@ impl AotContractExecutor {
                 entry_points: entry_point_mappings,
             })?,
         )?;
+
+        if let Some(&mut ref mut stats) = stats {
+            native_assert!(stats.validate(), "some statistics are missing");
+        }
 
         // Atomically move the built shared library to the correct path. This will avoid data races
         // when loading contracts.
@@ -281,6 +398,12 @@ impl AotContractExecutor {
 
         #[cfg(feature = "with-debug-utils")]
         crate::metadata::debug_utils::setup_runtime(|name| executor.find_symbol_ptr(name));
+
+        #[cfg(feature = "with-trace-dump")]
+        crate::metadata::trace_dump::setup_runtime(|name| executor.find_symbol_ptr(name));
+
+        #[cfg(feature = "with-libfunc-profiling")]
+        crate::metadata::profiler::setup_runtime(|name| executor.find_symbol_ptr(name));
 
         Ok(Some(executor))
     }
@@ -476,15 +599,31 @@ impl AotContractExecutor {
                     let value = unsafe { *read_value::<u64>(return_ptr) } as usize;
 
                     match x {
-                        BuiltinType::Bitwise => builtin_stats.bitwise = value,
-                        BuiltinType::EcOp => builtin_stats.ec_op = value,
-                        BuiltinType::RangeCheck => builtin_stats.range_check = value,
-                        BuiltinType::SegmentArena => builtin_stats.segment_arena = value,
-                        BuiltinType::Poseidon => builtin_stats.poseidon = value,
-                        BuiltinType::Pedersen => builtin_stats.pedersen = value,
-                        BuiltinType::RangeCheck96 => builtin_stats.range_check_96 = value,
-                        BuiltinType::CircuitAdd => builtin_stats.circuit_add = value,
-                        BuiltinType::CircuitMul => builtin_stats.circuit_mul = value,
+                        BuiltinType::RangeCheck => {
+                            builtin_stats.range_check = value / RANGE_CHECK_BUILTIN_SIZE
+                        }
+                        BuiltinType::Pedersen => {
+                            builtin_stats.pedersen = value / PEDERSEN_BUILTIN_SIZE
+                        }
+                        BuiltinType::Bitwise => {
+                            builtin_stats.bitwise = value / BITWISE_BUILTIN_SIZE
+                        }
+                        BuiltinType::EcOp => builtin_stats.ec_op = value / EC_OP_BUILTIN_SIZE,
+                        BuiltinType::Poseidon => {
+                            builtin_stats.poseidon = value / POSEIDON_BUILTIN_SIZE
+                        }
+                        BuiltinType::SegmentArena => {
+                            builtin_stats.segment_arena = value / SEGMENT_ARENA_BUILTIN_SIZE
+                        }
+                        BuiltinType::RangeCheck96 => {
+                            builtin_stats.range_check96 = value / RANGE_CHECK96_BUILTIN_SIZE
+                        }
+                        BuiltinType::CircuitAdd => {
+                            builtin_stats.add_mod = value / ADD_MOD_BUILTIN_SIZE
+                        }
+                        BuiltinType::CircuitMul => {
+                            builtin_stats.mul_mod = value / MUL_MOD_BUILTIN_SIZE
+                        }
                         BuiltinType::Gas => {}
                         BuiltinType::System => {}
                         BuiltinType::BuiltinCosts => {}
@@ -568,6 +707,7 @@ impl AotContractExecutor {
             failure_flag: tag != 0,
             return_values: array_value,
             error_msg,
+            builtin_stats,
         })
     }
 
@@ -681,7 +821,7 @@ mod tests {
     use rayon::iter::ParallelBridge;
     use rstest::*;
 
-    // todo add recursive contract test
+    // todo add recursive contract test See: https://github.com/lambdaclass/cairo_native/issues/1220
 
     #[fixture]
     fn starknet_program() -> ContractClass {
@@ -778,6 +918,7 @@ mod tests {
                 &starknet_program.entry_points_by_type,
                 sierra_version,
                 optlevel,
+                None,
             )
             .unwrap(),
         );
@@ -817,6 +958,7 @@ mod tests {
             &starknet_program.entry_points_by_type,
             sierra_version,
             optlevel,
+            None,
         )
         .unwrap();
 
@@ -856,6 +998,7 @@ mod tests {
             &starknet_program_factorial.entry_points_by_type,
             sierra_version,
             optlevel,
+            None,
         )
         .unwrap();
 
@@ -878,7 +1021,7 @@ mod tests {
             )
             .unwrap();
         assert_eq!(result.return_values, vec![Felt::from(3628800)]);
-        assert_eq!(result.remaining_gas, 18446744073709545475);
+        assert_eq!(result.remaining_gas, 18446744073709546675);
     }
 
     #[rstest]
@@ -896,6 +1039,7 @@ mod tests {
             &starknet_program_empty.entry_points_by_type,
             sierra_version,
             optlevel,
+            None,
         )
         .unwrap();
 

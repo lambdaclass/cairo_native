@@ -2,14 +2,11 @@
 
 use super::LibfuncHelper;
 use crate::{
-    error::Result,
-    metadata::MetadataStorage,
-    types::TypeBuilder,
-    utils::{BlockExt, ProgramRegistryExt},
+    error::Result, metadata::MetadataStorage, types::TypeBuilder, utils::ProgramRegistryExt,
 };
 use cairo_lang_sierra::{
     extensions::{
-        core::{CoreLibfunc, CoreType},
+        core::{CoreLibfunc, CoreType, CoreTypeConcrete},
         lib_func::SignatureOnlyConcreteLibfunc,
         structure::StructConcreteLibfunc,
         ConcreteLibfunc,
@@ -17,8 +14,10 @@ use cairo_lang_sierra::{
     ids::ConcreteTypeId,
     program_registry::ProgramRegistry,
 };
+use itertools::Itertools;
 use melior::{
     dialect::llvm,
+    helpers::{BuiltinBlockExt, LlvmBlockExt},
     ir::{Block, BlockLike, Location, Value},
     Context,
 };
@@ -71,9 +70,7 @@ pub fn build_construct<'ctx, 'this>(
         &fields,
     )?;
 
-    entry.append_operation(helper.br(0, &[value], location));
-
-    Ok(())
+    helper.br(entry, 0, &[value], location)
 }
 
 /// Generate MLIR operations for the `struct_construct` libfunc.
@@ -90,9 +87,38 @@ pub fn build_struct_value<'ctx, 'this>(
 ) -> Result<Value<'ctx, 'this>> {
     let struct_ty = registry.build_type(context, helper, metadata, struct_type)?;
 
-    let acc = entry.append_operation(llvm::undef(struct_ty, location));
+    let struct_type = registry.get_type(struct_type)?;
 
-    entry.insert_values(context, location, acc.result(0)?.into(), fields)
+    // LLVM fails when inserting zero-sized types into a struct.
+    // See: https://github.com/llvm/llvm-project/issues/107198.
+    // We will manually skip ZST fields, as inserting a ZST is a noop, and there
+    // is no point on building that operation.
+    let zst_fields = match struct_type {
+        CoreTypeConcrete::Struct(info) => {
+            // If the type is a struct, we check for each member if its a ZST.
+            info.members
+                .iter()
+                .map(|member| registry.get_type(member)?.is_zst(registry))
+                .try_collect()?
+        }
+        _ => {
+            // There are many Sierra types represented as an LLVM struct, but
+            // are not of Sierra struct type. In these cases we assume that
+            // their members are not ZST.
+            vec![false; fields.len()]
+        }
+    };
+
+    let mut accumulator = entry.append_op_result(llvm::undef(struct_ty, location))?;
+    for (idx, field) in fields.iter().enumerate() {
+        if zst_fields[idx] {
+            continue;
+        }
+
+        accumulator = entry.insert_value(context, location, accumulator, *field, idx)?
+    }
+
+    Ok(accumulator)
 }
 
 /// Generate MLIR operations for the `struct_deconstruct` libfunc.
@@ -117,7 +143,5 @@ pub fn build_deconstruct<'ctx, 'this>(
         fields.push(value);
     }
 
-    entry.append_operation(helper.br(0, &fields, location));
-
-    Ok(())
+    helper.br(entry, 0, &fields, location)
 }

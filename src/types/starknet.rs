@@ -19,7 +19,7 @@
 //! ## Secp256Point
 //! TODO
 
-// TODO: Maybe the types used here can be i251 instead of i252.
+// TODO: Maybe the types used here can be i251 instead of i252. See https://github.com/lambdaclass/cairo_native/issues/1226
 
 use super::WithSelf;
 use crate::{
@@ -28,7 +28,6 @@ use crate::{
         drop_overrides::DropOverridesMeta, dup_overrides::DupOverridesMeta,
         realloc_bindings::ReallocBindingsMeta, MetadataStorage,
     },
-    utils::BlockExt,
 };
 use cairo_lang_sierra::{
     extensions::{
@@ -40,6 +39,7 @@ use cairo_lang_sierra::{
 };
 use melior::{
     dialect::{func, llvm, ods},
+    helpers::{ArithBlockExt, BuiltinBlockExt},
     ir::{
         attribute::IntegerAttribute, r#type::IntegerType, Block, BlockLike, Location, Module,
         Region, Type,

@@ -6,6 +6,7 @@ use cairo_lang_sierra_gas::core_libfunc_cost::{
 };
 use itertools::Itertools;
 use lazy_static::lazy_static;
+use num_bigint::BigInt;
 use num_traits::{ToPrimitive, Zero};
 use rand::Rng;
 use starknet_curve::curve_params::BETA;
@@ -22,6 +23,7 @@ use std::{
     fs::File,
     io::Write,
     mem::{forget, ManuallyDrop},
+    ops::Shl,
     os::fd::FromRawFd,
     ptr,
     rc::Rc,
@@ -312,19 +314,73 @@ pub unsafe extern "C" fn cairo_native__dict_get(
     is_present as c_int
 }
 
-/// Compute the total gas refund for the dictionary at squash time.
+/// Simulates the felt252_dict_squash libfunc.
 ///
 /// # Safety
 ///
 /// This function is intended to be called from MLIR, deals with pointers, and is therefore
 /// definitely unsafe to use manually.
-pub unsafe extern "C" fn cairo_native__dict_gas_refund(ptr: *const FeltDict) -> u64 {
-    let dict = Rc::from_raw(ptr);
-    let amount =
+pub unsafe extern "C" fn cairo_native__dict_squash(
+    dict_ptr: *const FeltDict,
+    range_check_ptr: &mut u64,
+    gas_ptr: &mut u64,
+) {
+    let dict = Rc::from_raw(dict_ptr);
+
+    *gas_ptr +=
         (dict.count.saturating_sub(dict.mappings.len() as u64)) * *DICT_GAS_REFUND_PER_ACCESS;
 
+    // Squashing a dictionary always uses the range check builtin at least twice.
+    // https://github.com/starkware-libs/cairo/blob/v2.12.0-dev.1/crates/cairo-lang-sierra-to-casm/src/invocations/felt252_dict.rs?plain=1#L131-L136
+    *range_check_ptr += 2;
+
+    let no_big_keys = dict
+        .mappings
+        .keys()
+        .map(Felt::from_bytes_le)
+        .all(|key| key < Felt::from(BigInt::from(1).shl(128)));
+    let number_of_keys = dict.mappings.len() as u64;
+
+    // How we update the range check depends on whether we have any big key or not.
+    // - If there are no big keys, every unique key increases the range check by 3.
+    // - If there are big keys:
+    //   - the first unique key increases the range check by 2.
+    //   - the remaining unique keys increase the range check by 6.
+
+    // The sierra-to-casm implementation calls the `SquashDict` after some initial validation.
+    // https://github.com/starkware-libs/cairo/blob/v2.12.0-dev.1/crates/cairo-lang-sierra-to-casm/src/invocations/felt252_dict.rs?plain=1#L159
+    //
+    // For each unique key, the `SquashDictInner` function is called, which
+    // loops over all accesses to that key. At the end, the function calls
+    // itself recursively until all keys have been iterated.
+
+    // If there are no big keys, the first range check usage is done by the
+    // caller of the inner function, which implies that it appears in two places:
+    // 1a. Once in `SquashDict`, right before calling the inner function for the first time.
+    //     https://github.com/starkware-libs/cairo/blob/v2.12.0-dev.1/crates/cairo-lang-sierra-to-casm/src/invocations/felt252_dict.rs?plain=1#L326
+    // 1b. Once at the end of `SquashDictInner`, right before recursing.
+    //     https://github.com/starkware-libs/cairo/blob/v2.12.0-dev.1/crates/cairo-lang-sierra-to-casm/src/invocations/felt252_dict.rs?plain=1#L507
+    if no_big_keys {
+        *range_check_ptr += number_of_keys;
+    }
+
+    // The next two range check usages are done always inside of the inner
+    // function (regardless of whether we have big keys or not).
+    // 2.  https://github.com/starkware-libs/cairo/blob/v2.12.0-dev.1/crates/cairo-lang-sierra-to-casm/src/invocations/felt252_dict.rs?plain=1#L416
+    // 3.  https://github.com/starkware-libs/cairo/blob/v2.12.0-dev.1/crates/cairo-lang-sierra-to-casm/src/invocations/felt252_dict.rs?plain=1#L480
+    *range_check_ptr += 2 * number_of_keys;
+
+    // If there are big keys, then we use the range check 4 additional times per key, except for the first key.
+    // https://github.com/starkware-libs/cairo/blob/v2.12.0-dev.1/crates/cairo-lang-sierra-to-casm/src/invocations/felt252_dict.rs#L669-L674
+    if !no_big_keys && number_of_keys > 1 {
+        *range_check_ptr += 4 * (number_of_keys - 1);
+    }
+
+    // For each non unique accessed key, we increase the range check an additional time.
+    // https://github.com/starkware-libs/cairo/blob/v2.12.0-dev.1/crates/cairo-lang-sierra-to-casm/src/invocations/felt252_dict.rs?plain=1#L602
+    *range_check_ptr += dict.count.saturating_sub(dict.mappings.len() as u64);
+
     forget(dict);
-    amount
 }
 
 /// Compute `ec_point_from_x_nz(x)` and store it.
@@ -855,8 +911,11 @@ mod tests {
         assert_eq!(unsafe { *ptr }, 24);
         unsafe { *ptr = 42 };
 
-        let refund = unsafe { cairo_native__dict_gas_refund(dict) };
-        assert_eq!(refund, 4050);
+        let mut range_check = 0;
+        let mut gas = 0;
+
+        unsafe { cairo_native__dict_squash(dict, &mut range_check, &mut gas) };
+        assert_eq!(gas, 4050);
 
         let cloned_dict = unsafe { cairo_native__dict_dup(dict) };
         unsafe { cairo_native__dict_drop(dict) };

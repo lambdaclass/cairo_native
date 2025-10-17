@@ -11,6 +11,7 @@ to machine code via MLIR and LLVM.
 [![rust](https://github.com/lambdaclass/cairo_native/actions/workflows/ci.yml/badge.svg)](https://github.com/lambdaclass/cairo_native/actions/workflows/ci.yml)
 [![codecov](https://img.shields.io/codecov/c/github/lambdaclass/cairo_native)](https://codecov.io/gh/lambdaclass/cairo_native)
 [![license](https://img.shields.io/github/license/lambdaclass/cairo_native)](/LICENSE)
+[![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](/LICENSE-MIT)
 [![pr-welcome]](#-contributing)
 [![Crates.io Version](https://img.shields.io/crates/v/cairo_native)](https://crates.io/crates/cairo-native)
 
@@ -41,7 +42,7 @@ often so use it at your own risk. 🚧
 
 For versions under `1.0` `cargo` doesn't comply with
 [semver](https://semver.org/), so we advise to pin the version you
-use. This can be done by adding `cairo-native = "0.5.0-rc.4"` to your Cargo.toml
+use. This can be done by adding `cairo-native = "0.6.1"` to your Cargo.toml
 
 ## Getting Started
 
@@ -133,6 +134,21 @@ the needed environment variables.
 source env.sh
 ```
 
+#### Configure rust-analyzer for Vscode
+If you are using vscode as your code editor, you'll need to add this to you settings.json:
+```json
+"rust-analyzer.cargo.extraEnv": {
+  "MLIR_SYS_190_PREFIX": "<path-to-llvm-19>",
+  "LLVM_SYS_191_PREFIX": "<path-to-llvm-19>",
+  "TABLEGEN_190_PREFIX": "<path-to-llvm-19>",
+}
+```
+if you are on MacOs, you'll need to add this extra line:
+```json
+"LIBRARY_PATH": "/opt/homebrew/lib",
+```
+Without this additional config, rust-analyzer won't be able to work properly
+
 ### Make targets:
 Running `make` by itself will check whether the required LLVM installation and
 corelib is found, and then list available targets.
@@ -140,7 +156,7 @@ corelib is found, and then list available targets.
 ```bash
 % make
 LLVM is correctly set at /opt/homebrew/opt/llvm.
-./scripts/check-corelib-version.sh 2.12.0-dev.0
+./scripts/check-corelib-version.sh 2.12.3
 Usage:
     deps:         Installs the necesary dependencies.
     build:        Builds the cairo-native library and binaries in release mode.
@@ -177,23 +193,23 @@ These are:
 
 ### `cairo-native-compile`
 ```bash
-Compiles a Cairo project outputting the generated MLIR and the shared library.
-Exits with 1 if the compilation or run fails, otherwise 0.
+Compiles Cairo/Sierra to Native machine code.
+Outputs the generated MLIR, and the final shared library.
 
 Usage: cairo-native-compile [OPTIONS] <PATH> [OUTPUT_MLIR] [OUTPUT_LIBRARY]
 
 Arguments:
-  <PATH>            The Cairo project path to compile and run its tests
-  [OUTPUT_MLIR]     The output path for the mlir, if none is passed, out.mlir will be the default
-  [OUTPUT_LIBRARY]  If a path is passed, a dynamic library will be compiled and saved at that path
+  <PATH>            The input path to compile. By default, it is intrepreted as a Cairo project
+  [OUTPUT_MLIR]     The output path for the generated MLIR [default: out.mlir]
+  [OUTPUT_LIBRARY]  The output path for the shared library [default: out.dylib]
 
 Options:
-  -s, --single-file            Whether path is a single file
-      --allow-warnings         Allows the compilation to succeed with warnings
-  -r, --replace-ids            Replaces sierra ids with human-readable ones
-  -O, --opt-level <OPT_LEVEL>  Optimization level, Valid: 0, 1, 2, 3. Values higher than 3 are considered as 3 [default: 0]
-  -h, --help                   Print help
-  -V, --version                Print version
+  -s, --single-file              Whether path is a single Cairo file
+      --sierra-json              Whether path is a single Sierra JSON file
+  -O, --opt-level <OPT_LEVEL>    Optimization level (Valid: 0, 1, 2, 3). Values higher than 3 are considered as 3 [default: 0]
+      --stats-path <STATS_PATH>  The compilation statistics path
+  -h, --help                     Print help (see more with '--help')
+  -V, --version                  Print version
 ```
 
 ###  `cairo-native-dump`
@@ -349,7 +365,7 @@ Options:
 
 ### Requirements
 - [hyperfine](https://github.com/sharkdp/hyperfine): `cargo install hyperfine`
-- [cairo 2.12.0-dev.0](https://github.com/starkware-libs/cairo)
+- [cairo 2.12.3](https://github.com/starkware-libs/cairo)
 - Cairo Corelibs
 - LLVM 19 with MLIR
 
@@ -374,3 +390,9 @@ The `cairo-run` command should be available in the `$PATH` and ideally compiled 
 If you want the benchmarks to run using a specific build, or the `cairo-run` commands conflicts with something (e.g. the cairo-svg package binaries in macos) then the command to run `cairo-run` with a full path can be specified with the `$CAIRO_RUN` environment variable.
 
 [developer documentation]: https://lambdaclass.github.io/cairo_native/cairo_native/docs/index.html
+
+## License
+
+This project is dual-licensed under Apache 2.0 and MIT. You may choose either license.
+
+See [Apache 2.0 License](/LICENSE) or [MIT License](/LICENSE-MIT) for more information.

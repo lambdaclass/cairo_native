@@ -7,7 +7,7 @@ use crate::{
     libfuncs::LibfuncHelper,
     metadata::MetadataStorage,
     native_panic,
-    utils::{get_integer_layout, layout_repeat, BlockExt, RangeExt, PRIME},
+    utils::{get_integer_layout, layout_repeat, RangeExt, PRIME},
 };
 use cairo_lang_sierra::{
     extensions::{
@@ -22,6 +22,7 @@ use cairo_lang_sierra::{
 };
 use melior::{
     dialect::llvm,
+    helpers::{ArithBlockExt, BuiltinBlockExt, LlvmBlockExt},
     ir::{r#type::IntegerType, Block, Location, Module, Type, Value},
     Context,
 };
@@ -438,6 +439,7 @@ impl TypeBuilder for CoreTypeConcrete {
             ),
             Self::Blake(_) => native_panic!("Build Blake type"),
             CoreTypeConcrete::QM31(_) => native_panic!("Build QM31 type"),
+            CoreTypeConcrete::GasReserve(_) => native_panic!("Build GasReserve type"),
         }
     }
 
@@ -547,6 +549,7 @@ impl TypeBuilder for CoreTypeConcrete {
 
             CoreTypeConcrete::Blake(_) => native_panic!("Implement is_complex for Blake type"),
             CoreTypeConcrete::QM31(_info) => native_panic!("Implement is_complex for QM31 type"),
+            CoreTypeConcrete::GasReserve(_info) => native_panic!("Implement is_complex for GasReserve type"),
         })
     }
 
@@ -633,6 +636,9 @@ impl TypeBuilder for CoreTypeConcrete {
             }
             CoreTypeConcrete::Blake(_) => native_panic!("Implement is_zst for Blake type"),
             CoreTypeConcrete::QM31(_info) => native_panic!("Implement is_zst for QM31 type"),
+            CoreTypeConcrete::GasReserve(_info) => {
+                native_panic!("Implement is_zst for GasReserve type")
+            }
         })
     }
 
@@ -745,6 +751,9 @@ impl TypeBuilder for CoreTypeConcrete {
             }
             CoreTypeConcrete::Blake(_info) => native_panic!("Implement layout for Blake type"),
             CoreTypeConcrete::QM31(_info) => native_panic!("Implement layout for QM31 type"),
+            CoreTypeConcrete::GasReserve(_info) => {
+                native_panic!("Implement layout for GasReserve type")
+            }
         }
         .pad_to_align())
     }
@@ -836,6 +845,9 @@ impl TypeBuilder for CoreTypeConcrete {
                 native_panic!("Implement is_memory_allocated for Blake type")
             }
             CoreTypeConcrete::QM31(_) => native_panic!("Implement is_memory_allocated for QM31"),
+            CoreTypeConcrete::GasReserve(_) => {
+                native_panic!("Implement is_memory_allocated for GasReserve")
+            }
         })
     }
 
