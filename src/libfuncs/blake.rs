@@ -7,14 +7,14 @@ use cairo_lang_sierra::{
     program_registry::ProgramRegistry,
 };
 use melior::{
-    ir::{Block, BlockLike, Location},
+    helpers::{ArithBlockExt, BuiltinBlockExt},
+    ir::{Block, Location},
     Context,
 };
 
 use crate::{
     error::{panic::ToNativeAssertError, Result},
     metadata::{runtime_bindings::RuntimeBindingsMeta, MetadataStorage},
-    utils::BlockExt,
 };
 
 use super::LibfuncHelper;
@@ -85,7 +85,7 @@ fn build_blake_operation<'ctx, 'this>(
         location,
     )?;
 
-    entry.append_operation(helper.br(0, &[state_ptr], location));
+    helper.br(entry, 0, &[state_ptr], location);
 
     Ok(())
 }
