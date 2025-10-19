@@ -116,15 +116,31 @@ pub fn build_pack<'ctx, 'this>(
 }
 
 pub fn build_unpack<'ctx, 'this>(
-    _context: &'ctx Context,
+    context: &'ctx Context,
     _registry: &ProgramRegistry<CoreType, CoreLibfunc>,
-    _entry: &'this Block<'ctx>,
-    _location: Location<'ctx>,
-    _helper: &LibfuncHelper<'ctx, 'this>,
+    entry: &'this Block<'ctx>,
+    location: Location<'ctx>,
+    helper: &LibfuncHelper<'ctx, 'this>,
     _metadata: &mut MetadataStorage,
     _info: &SignatureOnlyConcreteLibfunc,
 ) -> Result<()> {
-    todo!()
+    let range_check =
+        super::increment_builtin_counter_by(context, entry, location, entry.arg(0)?.into(), 5)?;
+
+    let m31_ty = IntegerType::new(context, 31);
+    let qm31 = entry.arg(1)?;
+
+    let m31_0 = entry.extract_value(context, location, qm31, m31_ty.into(), 0)?;
+    let m31_1 = entry.extract_value(context, location, qm31, m31_ty.into(), 1)?;
+    let m31_2 = entry.extract_value(context, location, qm31, m31_ty.into(), 2)?;
+    let m31_3 = entry.extract_value(context, location, qm31, m31_ty.into(), 3)?;
+
+    helper.br(
+        entry,
+        0,
+        &[range_check, m31_0, m31_1, m31_2, m31_3],
+        location,
+    )
 }
 
 pub fn build_from_m31<'ctx, 'this>(
