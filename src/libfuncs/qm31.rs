@@ -48,15 +48,37 @@ pub fn build<'ctx, 'this>(
 }
 
 pub fn build_const<'ctx, 'this>(
-    _context: &'ctx Context,
+    context: &'ctx Context,
     _registry: &ProgramRegistry<CoreType, CoreLibfunc>,
-    _entry: &'this Block<'ctx>,
-    _location: Location<'ctx>,
-    _helper: &LibfuncHelper<'ctx, 'this>,
+    entry: &'this Block<'ctx>,
+    location: Location<'ctx>,
+    helper: &LibfuncHelper<'ctx, 'this>,
     _metadata: &mut MetadataStorage,
     _info: &QM31ConstConcreteLibfunc,
 ) -> Result<()> {
-    todo!()
+    // TODO: This is the same implementation as pack. Should it be diferent since
+    // we have CONST arguments here?
+    let m31_0 = entry.arg(0)?;
+    let m31_1 = entry.arg(1)?;
+    let m31_2 = entry.arg(2)?;
+    let m31_3 = entry.arg(3)?;
+
+    // TODO: Check if there is a nicer way to get the type. I think
+    // something can be done with the branch signatures or something like that
+    let m31_ty = IntegerType::new(context, 31).into();
+    let qm31_ty = llvm::r#type::r#struct(
+        context,
+        &[m31_ty, m31_ty, m31_ty, m31_ty],
+        false, // TODO: Confirm this
+    );
+
+    let qm31 = entry.append_op_result(llvm::undef(qm31_ty, location))?;
+    let qm31 = entry.insert_value(context, location, qm31, m31_0, 0)?;
+    let qm31 = entry.insert_value(context, location, qm31, m31_1, 1)?;
+    let qm31 = entry.insert_value(context, location, qm31, m31_2, 2)?;
+    let qm31 = entry.insert_value(context, location, qm31, m31_3, 3)?;
+
+    helper.br(entry, 0, &[qm31], location)
 }
 
 pub fn build_is_zero<'ctx, 'this>(
