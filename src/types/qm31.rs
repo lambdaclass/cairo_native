@@ -19,8 +19,7 @@ pub fn build<'ctx>(
     _metadata: &mut MetadataStorage,
     _info: &InfoOnlyConcreteType,
 ) -> Result<Type<'ctx>> {
-    let n_bits = 31;
-    let m31 = IntegerType::new(context, n_bits).into();
+    let m31 = IntegerType::new(context, 31).into();
     Ok(llvm::r#type::r#struct(
         context,
         &[m31, m31, m31, m31],

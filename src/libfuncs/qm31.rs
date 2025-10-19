@@ -8,9 +8,9 @@ use cairo_lang_sierra::{
     program_registry::ProgramRegistry,
 };
 use melior::{
-    dialect::arith::CmpiPredicate,
-    helpers::{ArithBlockExt, BuiltinBlockExt},
-    ir::{Block, Location, Value, ValueLike},
+    dialect::llvm,
+    helpers::{BuiltinBlockExt, LlvmBlockExt},
+    ir::{r#type::IntegerType, Block, Location},
     Context,
 };
 
@@ -48,11 +48,11 @@ pub fn build<'ctx, 'this>(
 }
 
 pub fn build_const<'ctx, 'this>(
-    context: &'ctx Context,
+    _context: &'ctx Context,
     _registry: &ProgramRegistry<CoreType, CoreLibfunc>,
-    entry: &'this Block<'ctx>,
-    location: Location<'ctx>,
-    helper: &LibfuncHelper<'ctx, 'this>,
+    _entry: &'this Block<'ctx>,
+    _location: Location<'ctx>,
+    _helper: &LibfuncHelper<'ctx, 'this>,
     _metadata: &mut MetadataStorage,
     _info: &QM31ConstConcreteLibfunc,
 ) -> Result<()> {
@@ -60,28 +60,23 @@ pub fn build_const<'ctx, 'this>(
 }
 
 pub fn build_is_zero<'ctx, 'this>(
-    context: &'ctx Context,
+    _context: &'ctx Context,
     _registry: &ProgramRegistry<CoreType, CoreLibfunc>,
-    entry: &'this Block<'ctx>,
-    location: Location<'ctx>,
-    helper: &LibfuncHelper<'ctx, 'this>,
+    _entry: &'this Block<'ctx>,
+    _location: Location<'ctx>,
+    _helper: &LibfuncHelper<'ctx, 'this>,
     _metadata: &mut MetadataStorage,
     _info: &SignatureOnlyConcreteLibfunc,
 ) -> Result<()> {
-    let qm31: Value = entry.arg(0)?;
-
-    let k0 = entry.const_int_from_type(context, location, 0, qm31.r#type())?;
-    let is_zero = entry.cmpi(context, CmpiPredicate::Eq, qm31, k0, location)?;
-
-    helper.cond_br(context, entry, is_zero, [0, 1], [&[], &[qm31]], location)
+    todo!()
 }
 
 pub fn build_binary_op<'ctx, 'this>(
-    context: &'ctx Context,
+    _context: &'ctx Context,
     _registry: &ProgramRegistry<CoreType, CoreLibfunc>,
-    entry: &'this Block<'ctx>,
-    location: Location<'ctx>,
-    helper: &LibfuncHelper<'ctx, 'this>,
+    _entry: &'this Block<'ctx>,
+    _location: Location<'ctx>,
+    _helper: &LibfuncHelper<'ctx, 'this>,
     _metadata: &mut MetadataStorage,
     _info: &QM31BinaryOpConcreteLibfunc,
 ) -> Result<()> {
@@ -97,15 +92,35 @@ pub fn build_pack<'ctx, 'this>(
     _metadata: &mut MetadataStorage,
     _info: &SignatureOnlyConcreteLibfunc,
 ) -> Result<()> {
-    todo!()
+    let m31_0 = entry.arg(0)?;
+    let m31_1 = entry.arg(1)?;
+    let m31_2 = entry.arg(2)?;
+    let m31_3 = entry.arg(3)?;
+
+    // TODO: Check if there is a nicer way to get the type. I think
+    // something can be done with the branch signatures or something like that
+    let m31_ty = IntegerType::new(context, 31).into();
+    let qm31_ty = llvm::r#type::r#struct(
+        context,
+        &[m31_ty, m31_ty, m31_ty, m31_ty],
+        false, // TODO: Confirm this
+    );
+
+    let qm31 = entry.append_op_result(llvm::undef(qm31_ty, location))?;
+    let qm31 = entry.insert_value(context, location, qm31, m31_0, 0)?;
+    let qm31 = entry.insert_value(context, location, qm31, m31_1, 1)?;
+    let qm31 = entry.insert_value(context, location, qm31, m31_2, 2)?;
+    let qm31 = entry.insert_value(context, location, qm31, m31_3, 3)?;
+
+    helper.br(entry, 0, &[qm31], location)
 }
 
 pub fn build_unpack<'ctx, 'this>(
-    context: &'ctx Context,
+    _context: &'ctx Context,
     _registry: &ProgramRegistry<CoreType, CoreLibfunc>,
-    entry: &'this Block<'ctx>,
-    location: Location<'ctx>,
-    helper: &LibfuncHelper<'ctx, 'this>,
+    _entry: &'this Block<'ctx>,
+    _location: Location<'ctx>,
+    _helper: &LibfuncHelper<'ctx, 'this>,
     _metadata: &mut MetadataStorage,
     _info: &SignatureOnlyConcreteLibfunc,
 ) -> Result<()> {
@@ -113,11 +128,11 @@ pub fn build_unpack<'ctx, 'this>(
 }
 
 pub fn build_from_m31<'ctx, 'this>(
-    context: &'ctx Context,
+    _context: &'ctx Context,
     _registry: &ProgramRegistry<CoreType, CoreLibfunc>,
-    entry: &'this Block<'ctx>,
-    location: Location<'ctx>,
-    helper: &LibfuncHelper<'ctx, 'this>,
+    _entry: &'this Block<'ctx>,
+    _location: Location<'ctx>,
+    _helper: &LibfuncHelper<'ctx, 'this>,
     _metadata: &mut MetadataStorage,
     _info: &SignatureOnlyConcreteLibfunc,
 ) -> Result<()> {
