@@ -224,10 +224,7 @@ mod test {
     use cairo_vm::Felt252;
     use num_bigint::BigInt;
 
-    use crate::{
-        utils::test::{jit_enum, jit_struct, load_cairo, run_program},
-        Value,
-    };
+    use crate::{jit_enum, jit_struct, load_cairo, utils::testing::run_program, Value};
 
     #[test]
     fn run_unpack() {
