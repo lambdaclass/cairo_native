@@ -98,8 +98,7 @@ impl AotNativeExecutor {
     ) -> Result<ExecutionResult, Error> {
         let available_gas = self
             .gas_metadata
-            .get_initial_available_gas(function_id, gas)
-            .map_err(crate::error::Error::GasMetadataError)?;
+            .get_initial_available_gas(function_id, gas)?;
 
         super::invoke_dynamic(
             &self.registry,
@@ -121,8 +120,7 @@ impl AotNativeExecutor {
     ) -> Result<ExecutionResult, Error> {
         let available_gas = self
             .gas_metadata
-            .get_initial_available_gas(function_id, gas)
-            .map_err(crate::error::Error::GasMetadataError)?;
+            .get_initial_available_gas(function_id, gas)?;
 
         super::invoke_dynamic(
             &self.registry,
@@ -144,8 +142,7 @@ impl AotNativeExecutor {
     ) -> Result<ContractExecutionResult, Error> {
         let available_gas = self
             .gas_metadata
-            .get_initial_available_gas(function_id, gas)
-            .map_err(crate::error::Error::GasMetadataError)?;
+            .get_initial_available_gas(function_id, gas)?;
 
         ContractExecutionResult::from_execution_result(super::invoke_dynamic(
             &self.registry,
@@ -208,7 +205,7 @@ mod tests {
     use crate::{
         context::NativeContext,
         starknet_stub::StubSyscallHandler,
-        utils::test::{load_cairo, load_starknet},
+        {load_cairo, load_starknet},
     };
     use cairo_lang_sierra::program::Program;
     use rstest::*;

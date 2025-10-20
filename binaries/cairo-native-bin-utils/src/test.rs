@@ -261,6 +261,7 @@ pub fn run_tests(
                     .or_else(|| {
                         gas_metadata
                             .initial_required_gas(&func.id)
+                            .unwrap()
                             .map(|gas| gas.try_into().unwrap())
                     });
 
