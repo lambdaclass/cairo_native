@@ -23,7 +23,10 @@ use cairo_lang_sierra_to_casm::metadata::{
     MetadataComputationConfig, MetadataError as CairoGasMetadataError,
 };
 
-use crate::{error::Result as NativeResult, native_panic};
+use crate::{
+    error::{Error, Result as NativeResult},
+    native_panic,
+};
 
 use std::{collections::BTreeMap, fmt, ops::Deref};
 
@@ -69,7 +72,7 @@ impl GasMetadata {
         &self,
         func: &FunctionId,
         available_gas: Option<u64>,
-    ) -> Result<u64, GasMetadataError> {
+    ) -> Result<u64, Error> {
         let Some(available_gas) = available_gas else {
             return Ok(0);
         };
@@ -77,31 +80,35 @@ impl GasMetadata {
         // In case we don't have any costs - it means no gas equations were solved (and we are in
         // the case of no gas checking enabled) - so the gas builtin is irrelevant, and we
         // can return any value.
-        let Some(required_gas) = self.initial_required_gas(func) else {
+        let Some(required_gas) = self.initial_required_gas(func)? else {
             return Ok(0);
         };
 
         available_gas
             .checked_sub(required_gas)
-            .ok_or(GasMetadataError::NotEnoughGas {
+            .ok_or(Error::GasMetadataError(GasMetadataError::NotEnoughGas {
                 gas: Box::new((required_gas, available_gas)),
-            })
+            }))
     }
 
-    pub fn initial_required_gas(&self, func: &FunctionId) -> Option<u64> {
+    pub fn initial_required_gas(&self, func: &FunctionId) -> Result<Option<u64>, Error> {
         if self.gas_info.function_costs.is_empty() {
-            return None;
+            return Ok(None);
         }
-        Some(
+        Ok(Some(
             self.gas_info.function_costs[func]
                 .iter()
                 .map(|(token_type, val)| {
-                    TryInto::<usize>::try_into(*val)
-                        .expect("could not cast gas cost from i64 to usize")
-                        * token_gas_cost(*token_type)
+                    let Ok(val) = TryInto::<usize>::try_into(*val) else {
+                        native_panic!("could not cast gas cost from i64 to usize");
+                    };
+
+                    Ok(val * token_gas_cost(*token_type))
                 })
+                .collect::<Result<Vec<_>, _>>()?
+                .iter()
                 .sum::<usize>() as u64,
-        )
+        ))
     }
 
     pub fn initial_required_gas_for_entry_points(
