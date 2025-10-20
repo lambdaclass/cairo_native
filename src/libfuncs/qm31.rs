@@ -9,7 +9,7 @@ use cairo_lang_sierra::{
 };
 use melior::{
     dialect::llvm,
-    helpers::{BuiltinBlockExt, LlvmBlockExt},
+    helpers::{ArithBlockExt, BuiltinBlockExt, LlvmBlockExt},
     ir::{r#type::IntegerType, Block, Location},
     Context,
 };
@@ -54,23 +54,19 @@ pub fn build_const<'ctx, 'this>(
     location: Location<'ctx>,
     helper: &LibfuncHelper<'ctx, 'this>,
     _metadata: &mut MetadataStorage,
-    _info: &QM31ConstConcreteLibfunc,
+    info: &QM31ConstConcreteLibfunc,
 ) -> Result<()> {
-    // TODO: This is the same implementation as pack. Should it be diferent since
-    // we have CONST arguments here?
-    let m31_0 = entry.arg(0)?;
-    let m31_1 = entry.arg(1)?;
-    let m31_2 = entry.arg(2)?;
-    let m31_3 = entry.arg(3)?;
-
-    // TODO: Check if there is a nicer way to get the type. I think
-    // something can be done with the branch signatures or something like that
     let m31_ty = IntegerType::new(context, 31).into();
     let qm31_ty = llvm::r#type::r#struct(
         context,
         &[m31_ty, m31_ty, m31_ty, m31_ty],
         false, // TODO: Confirm this
     );
+
+    let m31_0 = entry.const_int_from_type(context, location, info.w0, m31_ty)?;
+    let m31_1 = entry.const_int_from_type(context, location, info.w1, m31_ty)?;
+    let m31_2 = entry.const_int_from_type(context, location, info.w2, m31_ty)?;
+    let m31_3 = entry.const_int_from_type(context, location, info.w3, m31_ty)?;
 
     let qm31 = entry.append_op_result(llvm::undef(qm31_ty, location))?;
     let qm31 = entry.insert_value(context, location, qm31, m31_0, 0)?;
@@ -247,7 +243,22 @@ mod test {
         };
 
         let result = run_program(&program, "run_test", &[]).return_value;
+        assert_eq!(result, Value::QM31(1, 2, 3, 4));
+    }
 
+    #[test]
+    fn run_const() {
+        let program = load_cairo! {
+            use core::qm31::{QM31Trait, qm31_const, qm31};
+
+            fn run_test() -> qm31 {
+                let qm31 = qm31_const::<1, 2, 3, 4>();
+
+                qm31
+            }
+        };
+
+        let result = run_program(&program, "run_test", &[]).return_value;
         assert_eq!(result, Value::QM31(1, 2, 3, 4));
     }
 }
