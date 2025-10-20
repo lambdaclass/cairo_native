@@ -497,6 +497,7 @@ impl TypeBuilder for CoreTypeConcrete {
             | CoreTypeConcrete::Nullable(_)
             | CoreTypeConcrete::Felt252Dict(_)
             | CoreTypeConcrete::SquashedFelt252Dict(_) => false,
+            CoreTypeConcrete::QM31(_info) => true, // TODO: Check this
 
             CoreTypeConcrete::Array(_) => true,
             CoreTypeConcrete::EcPoint(_) => true,
@@ -550,7 +551,6 @@ impl TypeBuilder for CoreTypeConcrete {
 
             CoreTypeConcrete::IntRange(_info) => false,
             CoreTypeConcrete::Blake(_info) => native_panic!("Implement is_complex for Blake type"),
-            CoreTypeConcrete::QM31(_info) => native_panic!("Implement is_complex for QM31 type"),
             CoreTypeConcrete::GasReserve(_info) => native_panic!("Implement is_complex for GasReserve type"),
         })
     }
@@ -597,6 +597,7 @@ impl TypeBuilder for CoreTypeConcrete {
             | CoreTypeConcrete::Felt252DictEntry(_)
             | CoreTypeConcrete::SquashedFelt252Dict(_)
             | CoreTypeConcrete::Starknet(_)
+            | CoreTypeConcrete::QM31(_)
             | CoreTypeConcrete::Nullable(_) => false,
 
             // Containers:
@@ -637,7 +638,6 @@ impl TypeBuilder for CoreTypeConcrete {
                 type_info.is_zst(registry)?
             }
             CoreTypeConcrete::Blake(_info) => native_panic!("Implement is_zst for Blake type"),
-            CoreTypeConcrete::QM31(_info) => native_panic!("Implement is_zst for QM31 type"),
             CoreTypeConcrete::GasReserve(_info) => {
                 native_panic!("Implement is_zst for GasReserve type")
             }
@@ -739,6 +739,7 @@ impl TypeBuilder for CoreTypeConcrete {
             CoreTypeConcrete::Sint128(_) => get_integer_layout(128),
             CoreTypeConcrete::Bytes31(_) => get_integer_layout(248),
             CoreTypeConcrete::BoundedInt(info) => get_integer_layout(info.range.offset_bit_width()),
+            CoreTypeConcrete::QM31(_info) => layout_repeat(&get_integer_layout(31), 4)?.0,
 
             CoreTypeConcrete::Const(const_type) => {
                 registry.get_type(&const_type.inner_ty)?.layout(registry)?
@@ -752,7 +753,6 @@ impl TypeBuilder for CoreTypeConcrete {
                 inner.extend(inner)?.0
             }
             CoreTypeConcrete::Blake(_info) => native_panic!("Implement layout for Blake type"),
-            CoreTypeConcrete::QM31(_info) => native_panic!("Implement layout for QM31 type"),
             CoreTypeConcrete::GasReserve(_info) => {
                 native_panic!("Implement layout for GasReserve type")
             }
@@ -846,7 +846,7 @@ impl TypeBuilder for CoreTypeConcrete {
                 .is_memory_allocated(registry)?,
             CoreTypeConcrete::Coupon(_) => false,
             CoreTypeConcrete::Circuit(_) => false,
-            CoreTypeConcrete::QM31(_) => native_panic!("Implement is_memory_allocated for QM31"),
+            CoreTypeConcrete::QM31(_) => false,
             CoreTypeConcrete::GasReserve(_) => {
                 native_panic!("Implement is_memory_allocated for GasReserve")
             }
