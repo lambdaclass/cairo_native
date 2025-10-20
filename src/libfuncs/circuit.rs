@@ -1110,12 +1110,9 @@ fn build_u96_guarantee_verify<'ctx, 'this>(
 
 #[cfg(test)]
 mod test {
-
     use crate::{
-        utils::{
-            felt252_str,
-            test::{jit_enum, jit_panic, jit_struct, load_cairo, run_program_assert_output},
-        },
+        jit_enum, jit_panic, jit_struct, load_cairo,
+        utils::{felt252_str, testing::run_program_assert_output},
         values::Value,
     };
     use cairo_lang_sierra::extensions::utils::Range;
