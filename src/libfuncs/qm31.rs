@@ -8,7 +8,7 @@ use cairo_lang_sierra::{
     program_registry::ProgramRegistry,
 };
 use melior::{
-    dialect::llvm,
+    dialect::{arith::CmpiPredicate, llvm},
     helpers::{ArithBlockExt, BuiltinBlockExt, LlvmBlockExt},
     ir::{r#type::IntegerType, Block, Location},
     Context,
@@ -78,15 +78,60 @@ pub fn build_const<'ctx, 'this>(
 }
 
 pub fn build_is_zero<'ctx, 'this>(
-    _context: &'ctx Context,
+    context: &'ctx Context,
     _registry: &ProgramRegistry<CoreType, CoreLibfunc>,
-    _entry: &'this Block<'ctx>,
-    _location: Location<'ctx>,
-    _helper: &LibfuncHelper<'ctx, 'this>,
+    entry: &'this Block<'ctx>,
+    location: Location<'ctx>,
+    helper: &LibfuncHelper<'ctx, 'this>,
     _metadata: &mut MetadataStorage,
     _info: &SignatureOnlyConcreteLibfunc,
 ) -> Result<()> {
-    todo!()
+    let m31_ty = IntegerType::new(context, 31);
+    let qm31 = entry.arg(0)?;
+
+    let m31_0 = entry.extract_value(context, location, qm31, m31_ty.into(), 0)?;
+    let m31_1 = entry.extract_value(context, location, qm31, m31_ty.into(), 1)?;
+    let m31_2 = entry.extract_value(context, location, qm31, m31_ty.into(), 2)?;
+    let m31_3 = entry.extract_value(context, location, qm31, m31_ty.into(), 3)?;
+
+    let k0 = entry.const_int(context, location, 0, 31)?;
+
+    let condition_0 = entry.cmpi(context, CmpiPredicate::Eq, m31_0, k0, location)?;
+    let condition_1 = entry.cmpi(context, CmpiPredicate::Eq, m31_1, k0, location)?;
+    let condition_2 = entry.cmpi(context, CmpiPredicate::Eq, m31_2, k0, location)?;
+    let condition_3 = entry.cmpi(context, CmpiPredicate::Eq, m31_3, k0, location)?;
+
+    let condition_01 = entry.cmpi(
+        context,
+        CmpiPredicate::Eq,
+        condition_0,
+        condition_1,
+        location,
+    )?;
+    let condition_23 = entry.cmpi(
+        context,
+        CmpiPredicate::Eq,
+        condition_2,
+        condition_3,
+        location,
+    )?;
+
+    let condition_0123 = entry.cmpi(
+        context,
+        CmpiPredicate::Eq,
+        condition_01,
+        condition_23,
+        location,
+    )?;
+
+    helper.cond_br(
+        context,
+        entry,
+        condition_0123,
+        [0, 1],
+        [&[], &[entry.arg(0)?]],
+        location,
+    )
 }
 
 pub fn build_binary_op<'ctx, 'this>(
@@ -180,7 +225,7 @@ mod test {
     use num_bigint::BigInt;
 
     use crate::{
-        utils::test::{load_cairo, run_program},
+        utils::test::{jit_enum, jit_struct, load_cairo, run_program},
         Value,
     };
 
@@ -249,7 +294,7 @@ mod test {
     #[test]
     fn run_const() {
         let program = load_cairo! {
-            use core::qm31::{QM31Trait, qm31_const, qm31};
+            use core::qm31::{qm31_const, qm31};
 
             fn run_test() -> qm31 {
                 let qm31 = qm31_const::<1, 2, 3, 4>();
@@ -260,5 +305,29 @@ mod test {
 
         let result = run_program(&program, "run_test", &[]).return_value;
         assert_eq!(result, Value::QM31(1, 2, 3, 4));
+    }
+
+    #[test]
+    fn run_is_zero() {
+        let program = load_cairo! { // TODO: To remove spme code, the entrypoint could receive arguments from outside
+            use core::qm31::{QM31Trait, qm31, qm31_is_zero};
+            use core::internal::OptionRev;
+
+            fn run_test_with_zero() -> OptionRev<NonZero<qm31>> {
+                let qm31 = QM31Trait::new(0, 0, 0, 0);
+                qm31_is_zero(qm31)
+            }
+
+            fn run_test_without_zero() -> OptionRev<NonZero<qm31>> {
+                let qm31 = QM31Trait::new(0, 0, 1, 0);
+                qm31_is_zero(qm31)
+            }
+        };
+
+        let result_with_zero = run_program(&program, "run_test_with_zero", &[]).return_value;
+        assert_eq!(result_with_zero, jit_enum!(0, jit_struct!()));
+
+        let result_without_zero = run_program(&program, "run_test_without_zero", &[]).return_value;
+        assert_eq!(result_without_zero, jit_enum!(1, Value::QM31(0, 0, 1, 0)))
     }
 }
