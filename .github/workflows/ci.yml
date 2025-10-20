@@ -80,7 +80,7 @@ jobs:
           edit-mode: replace
 
   # Check for unnecessary dependencies.
-  udeps:
+  unused-deps:
     runs-on: ubuntu-24.04
     env:
       MLIR_SYS_190_PREFIX: /usr/lib/llvm-19/
