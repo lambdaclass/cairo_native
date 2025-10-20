@@ -497,7 +497,7 @@ impl TypeBuilder for CoreTypeConcrete {
             | CoreTypeConcrete::Nullable(_)
             | CoreTypeConcrete::Felt252Dict(_)
             | CoreTypeConcrete::SquashedFelt252Dict(_) => false,
-            CoreTypeConcrete::QM31(_info) => true, // TODO: Check this
+            CoreTypeConcrete::QM31(_) => true, // TODO: If I use false it throws a SIGBUS error. Why?
 
             CoreTypeConcrete::Array(_) => true,
             CoreTypeConcrete::EcPoint(_) => true,

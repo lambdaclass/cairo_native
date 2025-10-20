@@ -228,7 +228,7 @@ mod test {
                 },
                 Value::BoundedInt {
                     value: Felt252::from(4),
-                    range: m31_range.clone()
+                    range: m31_range
                 },
             ]
         );
@@ -239,15 +239,15 @@ mod test {
         let program = load_cairo! {
             use core::qm31::{QM31Trait, qm31};
 
-            fn run_test() -> [m31;4] {
+            fn run_test() -> qm31 {
                 let qm31 = QM31Trait::new(1, 2, 3, 4);
 
                 qm31
             }
         };
 
-        let _result = run_program(&program, "run_test", &[]).return_value;
+        let result = run_program(&program, "run_test", &[]).return_value;
 
-        assert!(false);
+        assert_eq!(result, Value::QM31(1, 2, 3, 4));
     }
 }

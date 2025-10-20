@@ -433,6 +433,12 @@ fn parse_result(
             registry,
             true,
         )?),
+        CoreTypeConcrete::QM31(_) => Ok(Value::from_ptr(
+            return_ptr.to_native_assert_error("return pointer should be valid")?,
+            type_id,
+            registry,
+            true,
+        )?),
         CoreTypeConcrete::Felt252(_)
         | CoreTypeConcrete::Starknet(
             StarknetTypeConcrete::ClassHash(_)
@@ -675,7 +681,6 @@ fn parse_result(
         // 2.11.1
         CoreTypeConcrete::Blake(_) => native_panic!("blake not yet implemented as results"),
         // 2.12.0
-        CoreTypeConcrete::QM31(_) => native_panic!("qm31 not yet implemented as results"),
         CoreTypeConcrete::GasReserve(_) => {
             native_panic!("gas reserve not yet implemented as results")
         }

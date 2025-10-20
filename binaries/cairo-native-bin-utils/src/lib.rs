@@ -166,6 +166,12 @@ fn jitvalue_to_felt(value: &Value) -> Vec<Felt> {
         Value::EcState(a, b, c, d) => {
             vec![*a, *b, *c, *d]
         }
+        Value::QM31(a, b, c, d) => vec![
+            Felt::from(*a),
+            Felt::from(*b),
+            Felt::from(*c),
+            Felt::from(*d),
+        ],
         Value::Secp256K1Point(Secp256k1Point {
             x,
             y,
