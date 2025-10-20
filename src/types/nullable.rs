@@ -241,10 +241,7 @@ fn build_drop<'ctx>(
 
 #[cfg(test)]
 mod test {
-    use crate::{
-        utils::test::{jit_enum, jit_struct, load_cairo, run_program},
-        values::Value,
-    };
+    use crate::{jit_enum, jit_struct, load_cairo, utils::testing::run_program, values::Value};
     use pretty_assertions_sorted::assert_eq;
 
     #[test]
