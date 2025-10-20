@@ -328,10 +328,7 @@ pub fn build_is_zero<'ctx, 'this>(
 
 #[cfg(test)]
 pub mod test {
-    use crate::{
-        utils::test::{jit_struct, load_cairo, run_program},
-        values::Value,
-    };
+    use crate::{jit_struct, load_cairo, utils::testing::run_program, values::Value};
     use cairo_lang_sierra::program::Program;
     use lazy_static::lazy_static;
     use starknet_types_core::felt::Felt;

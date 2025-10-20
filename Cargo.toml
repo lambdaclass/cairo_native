@@ -116,12 +116,14 @@ with-mem-tracing = []
 with-libfunc-profiling = []
 with-segfault-catcher = []
 with-trace-dump = ["dep:sierra-emu"]
-testing = ["dep:cairo-lang-compiler"]
+testing = ["dep:cairo-lang-compiler", "dep:cairo-lang-starknet", "dep:cairo-lang-filesystem"]
 
 [dependencies]
 aquamarine.workspace = true
 bumpalo.workspace = true
 cairo-lang-compiler = { workspace = true, optional = true }
+cairo-lang-filesystem = { workspace = true, optional = true }
+cairo-lang-starknet = { workspace = true, optional = true }
 cairo-lang-runner.workspace = true
 cairo-lang-sierra.workspace = true
 cairo-lang-utils.workspace = true
