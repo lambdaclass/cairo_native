@@ -3494,6 +3494,7 @@ dependencies = [
  "cairo-lang-test-plugin",
  "cairo-lang-utils",
  "clap",
+ "generic-array",
  "k256",
  "keccak",
  "num-bigint",
