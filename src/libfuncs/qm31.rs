@@ -176,3 +176,78 @@ pub fn build_from_m31<'ctx, 'this>(
 ) -> Result<()> {
     todo!()
 }
+
+#[cfg(test)]
+mod test {
+    use cairo_lang_sierra::extensions::utils::Range;
+    use cairo_vm::Felt252;
+    use num_bigint::BigInt;
+
+    use crate::{
+        utils::test::{load_cairo, run_program},
+        Value,
+    };
+
+    #[test]
+    fn run_unpack() {
+        let program = load_cairo! {
+            use core::qm31::{QM31Trait, m31, qm31};
+
+            fn run_test() -> [m31;4] {
+                let qm31 = QM31Trait::new(1, 2, 3, 4);
+
+                let unpacked_qm31 = qm31.unpack();
+
+                unpacked_qm31
+            }
+        };
+        let result = run_program(&program, "run_test", &[]).return_value;
+
+        let m31_range = Range::closed(0, BigInt::from(2147483646));
+        let Value::Struct {
+            fields,
+            debug_name: _,
+        } = result
+        else {
+            panic!("Expected a Value::Struct()");
+        };
+        assert_eq!(
+            fields,
+            vec![
+                Value::BoundedInt {
+                    value: Felt252::from(1),
+                    range: m31_range.clone()
+                },
+                Value::BoundedInt {
+                    value: Felt252::from(2),
+                    range: m31_range.clone()
+                },
+                Value::BoundedInt {
+                    value: Felt252::from(3),
+                    range: m31_range.clone()
+                },
+                Value::BoundedInt {
+                    value: Felt252::from(4),
+                    range: m31_range.clone()
+                },
+            ]
+        );
+    }
+
+    #[test]
+    fn run_pack() {
+        let program = load_cairo! {
+            use core::qm31::{QM31Trait, qm31};
+
+            fn run_test() -> [m31;4] {
+                let qm31 = QM31Trait::new(1, 2, 3, 4);
+
+                qm31
+            }
+        };
+
+        let _result = run_program(&program, "run_test", &[]).return_value;
+
+        assert!(false);
+    }
+}
