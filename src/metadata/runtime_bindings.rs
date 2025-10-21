@@ -565,13 +565,8 @@ impl RuntimeBindingsMeta {
     where
         'c: 'a,
     {
-        let function = self.build_function(
-            context,
-            module,
-            block,
-            location,
-            RuntimeBinding::EcStateTryFinalizeNz,
-        )?;
+        let function =
+            self.build_function(context, module, block, location, RuntimeBinding::QM31Add)?;
 
         Ok(block.append_operation(
             OperationBuilder::new("llvm.call", location)

@@ -374,4 +374,21 @@ mod test {
             run_program(&program, "run_test", &[Value::QM31(0, 0, 1, 0)]).return_value;
         assert_eq!(result_without_zero, jit_enum!(1, Value::QM31(0, 0, 1, 0)))
     }
+
+    #[test]
+    fn run_add() {
+        let program = load_cairo! {
+            use core::qm31::{QM31Trait, qm31};
+
+            fn run_test() -> qm31 {
+                let lhs = QM31Trait::new(1,2,3,4);
+                let rhs = QM31Trait::new(1,2,3,4);
+
+                lhs + rhs
+            }
+        };
+
+        let result = run_program(&program, "run_test", &[]).return_value;
+        assert_eq!(result, Value::QM31(2, 4, 6, 8));
+    }
 }

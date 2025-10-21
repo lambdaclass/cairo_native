@@ -586,25 +586,41 @@ pub unsafe extern "C" fn cairo_native__libfunc__ec__ec_state_try_finalize_nz(
 pub unsafe extern "C" fn cairo_native__libfunc__qm31__qm31_add(
     lhs: &[[u8; 4]; 4],
     rhs: &[[u8; 4]; 4],
-    res: &[[u8; 4]; 4],
+    res: &mut [[u8; 4]; 4],
 ) {
     fn m31_to_u32(mut m31_bytes: [u8; 4]) -> u32 {
         m31_bytes[3] &= 0x01;
         u32::from_le_bytes(m31_bytes)
     }
     // lhs
-    let mut lhs = *lhs;
+    let lhs = *lhs;
     let lhs_0 = m31_to_u32(lhs[0]);
     let lhs_1 = m31_to_u32(lhs[1]);
     let lhs_2 = m31_to_u32(lhs[2]);
     let lhs_3 = m31_to_u32(lhs[3]);
+    println!("lhs_0: {:?}", lhs_0);
+    println!("lhs_1: {:?}", lhs_1);
+    println!("lhs_2: {:?}", lhs_2);
+    println!("lhs_3: {:?}", lhs_3);
+
+    let lhs = starknet_types_core::qm31::QM31::from_coefficients(lhs_0, lhs_1, lhs_2, lhs_3);
 
     // rhs
-    let mut rhs = *rhs;
+    let rhs = *rhs;
     let rhs_0 = m31_to_u32(rhs[0]);
     let rhs_1 = m31_to_u32(rhs[1]);
     let rhs_2 = m31_to_u32(rhs[2]);
     let rhs_3 = m31_to_u32(rhs[3]);
+    let rhs = starknet_types_core::qm31::QM31::from_coefficients(rhs_0, rhs_1, rhs_2, rhs_3);
+
+    println!("lhs: {:?}\nrhs: {:?}", lhs, rhs);
+
+    let addition = (lhs + rhs).to_coefficients();
+
+    res[0] = addition.0.to_le_bytes();
+    res[1] = addition.1.to_le_bytes();
+    res[2] = addition.2.to_le_bytes();
+    res[3] = addition.3.to_le_bytes();
 }
 
 thread_local! {
