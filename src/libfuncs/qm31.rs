@@ -188,7 +188,7 @@ pub fn build_unpack<'ctx, 'this>(
     _info: &SignatureOnlyConcreteLibfunc,
 ) -> Result<()> {
     let range_check =
-        super::increment_builtin_counter_by(context, entry, location, entry.arg(0)?.into(), 5)?;
+        super::increment_builtin_counter_by(context, entry, location, entry.arg(0)?, 5)?;
 
     let m31_ty = IntegerType::new(context, 31);
     let qm31 = entry.arg(1)?;
@@ -306,25 +306,21 @@ mod test {
 
     #[test]
     fn run_is_zero() {
-        let program = load_cairo! { // TODO: To remove spme code, the entrypoint could receive arguments from outside
+        let program = load_cairo! {
             use core::qm31::{QM31Trait, qm31, qm31_is_zero};
             use core::internal::OptionRev;
 
-            fn run_test_with_zero() -> OptionRev<NonZero<qm31>> {
-                let qm31 = QM31Trait::new(0, 0, 0, 0);
-                qm31_is_zero(qm31)
-            }
-
-            fn run_test_without_zero() -> OptionRev<NonZero<qm31>> {
-                let qm31 = QM31Trait::new(0, 0, 1, 0);
-                qm31_is_zero(qm31)
+            fn run_test(input: qm31) -> OptionRev<NonZero<qm31>> {
+                qm31_is_zero(input)
             }
         };
 
-        let result_with_zero = run_program(&program, "run_test_with_zero", &[]).return_value;
+        let result_with_zero =
+            run_program(&program, "run_test", &[Value::QM31(0, 0, 0, 0)]).return_value;
         assert_eq!(result_with_zero, jit_enum!(0, jit_struct!()));
 
-        let result_without_zero = run_program(&program, "run_test_without_zero", &[]).return_value;
+        let result_without_zero =
+            run_program(&program, "run_test", &[Value::QM31(0, 0, 1, 0)]).return_value;
         assert_eq!(result_without_zero, jit_enum!(1, Value::QM31(0, 0, 1, 0)))
     }
 }
