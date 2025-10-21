@@ -237,16 +237,9 @@ pub fn build_pack<'ctx, 'this>(
     entry: &'this Block<'ctx>,
     location: Location<'ctx>,
     helper: &LibfuncHelper<'ctx, 'this>,
-    _metadata: &mut MetadataStorage,
+    metadata: &mut MetadataStorage,
     _info: &SignatureOnlyConcreteLibfunc,
 ) -> Result<()> {
-    let m31_0 = entry.arg(0)?;
-    let m31_1 = entry.arg(1)?;
-    let m31_2 = entry.arg(2)?;
-    let m31_3 = entry.arg(3)?;
-
-    // TODO: Check if there is a nicer way to get the type. I think
-    // something can be done with the branch signatures or something like that
     let m31_ty = IntegerType::new(context, 31).into();
     let qm31_ty = llvm::r#type::r#struct(
         context,
@@ -254,11 +247,47 @@ pub fn build_pack<'ctx, 'this>(
         false, // TODO: Confirm this
     );
 
-    let qm31 = entry.append_op_result(llvm::undef(qm31_ty, location))?;
-    let qm31 = entry.insert_value(context, location, qm31, m31_0, 0)?;
-    let qm31 = entry.insert_value(context, location, qm31, m31_1, 1)?;
-    let qm31 = entry.insert_value(context, location, qm31, m31_2, 2)?;
-    let qm31 = entry.insert_value(context, location, qm31, m31_3, 3)?;
+    let m31_0 = entry.arg(0)?;
+    let m31_1 = entry.arg(1)?;
+    let m31_2 = entry.arg(2)?;
+    let m31_3 = entry.arg(3)?;
+
+    let m31_0_ptr =
+        helper
+            .init_block
+            .alloca1(context, location, m31_ty, get_integer_layout(31).align())?;
+    let m31_1_ptr =
+        helper
+            .init_block
+            .alloca1(context, location, m31_ty, get_integer_layout(31).align())?;
+    let m31_2_ptr =
+        helper
+            .init_block
+            .alloca1(context, location, m31_ty, get_integer_layout(31).align())?;
+    let m31_3_ptr =
+        helper
+            .init_block
+            .alloca1(context, location, m31_ty, get_integer_layout(31).align())?;
+    let qm31_ptr =
+        helper
+            .init_block
+            .alloca1(context, location, qm31_ty, get_integer_layout(31).align())?;
+
+    entry.store(context, location, m31_0_ptr, m31_0)?;
+    entry.store(context, location, m31_1_ptr, m31_1)?;
+    entry.store(context, location, m31_2_ptr, m31_2)?;
+    entry.store(context, location, m31_3_ptr, m31_3)?;
+
+    println!("########################");
+
+    metadata
+        .get_mut::<RuntimeBindingsMeta>()
+        .ok_or(Error::MissingMetadata)?
+        .libfunc_qm31_pack(
+            context, helper, entry, m31_0_ptr, m31_1_ptr, m31_2_ptr, m31_3_ptr, qm31_ptr, location,
+        )?;
+
+    let qm31 = entry.load(context, location, qm31_ptr, qm31_ty)?;
 
     helper.br(entry, 0, &[qm31], location)
 }
@@ -447,15 +476,41 @@ mod test {
         };
 
         let result_c_minus_a = run_program(&program, "run_test_c_minus_a", &[]).return_value;
+
+        let a = starknet_types_core::qm31::QM31::from_coefficients(
+            0x544b2fba, 0x673cff77, 0x60713d44, 0x499602d2,
+        );
+        let b = starknet_types_core::qm31::QM31::from_coefficients(
+            0x499602d2, 0x544b2fba, 0x673cff77, 0x60713d44,
+        );
+        let c = starknet_types_core::qm31::QM31::from_coefficients(
+            0x1de1328d, 0x3b882f32, 0x47ae3cbc, 0x2a074017,
+        );
+        let c_minus_a_coefficients = (c.clone() - a).to_coefficients();
+
+        // println!("{:?}", c - a == b);
+        // println!("b: {:?}", b.to_coefficients());
+        // println!("result: {:?}", result_c_minus_a);
         assert_eq!(
             result_c_minus_a,
-            Value::QM31(0x1de1328d, 0x1de1328d, 0x1de1328d, 0x1de1328d)
+            Value::QM31(
+                c_minus_a_coefficients.0,
+                c_minus_a_coefficients.1,
+                c_minus_a_coefficients.2,
+                c_minus_a_coefficients.3
+            )
         );
 
         let result_c_minus_b = run_program(&program, "run_test_c_minus_b", &[]).return_value;
+        let c_minus_b_coefficients = (c - b).to_coefficients();
         assert_eq!(
             result_c_minus_b,
-            Value::QM31(0x544b2fba, 0x673cff77, 0x60713d44, 0x499602d2)
+            Value::QM31(
+                c_minus_b_coefficients.0,
+                c_minus_b_coefficients.1,
+                c_minus_b_coefficients.2,
+                c_minus_b_coefficients.3
+            )
         );
     }
 }

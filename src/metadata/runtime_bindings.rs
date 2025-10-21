@@ -50,6 +50,7 @@ enum RuntimeBinding {
     CircuitArithOperation,
     QM31Add,
     QM31Sub,
+    QM31Pack,
     #[cfg(feature = "with-cheatcode")]
     VtableCheatcode,
 }
@@ -78,6 +79,7 @@ impl RuntimeBinding {
                 "cairo_native__extended_euclidean_algorithm"
             }
             RuntimeBinding::CircuitArithOperation => "cairo_native__circuit_arith_operation",
+            RuntimeBinding::QM31Pack => "cairo_native__libfunc__qm31__qm31_pack",
             RuntimeBinding::QM31Add => "cairo_native__libfunc__qm31__qm31_add",
             RuntimeBinding::QM31Sub => "cairo_native__libfunc__qm31__qm31_sub",
             #[cfg(feature = "with-cheatcode")]
@@ -127,6 +129,9 @@ impl RuntimeBinding {
             RuntimeBinding::DictDup => crate::runtime::cairo_native__dict_dup as *const (),
             RuntimeBinding::GetCostsBuiltin => {
                 crate::runtime::cairo_native__get_costs_builtin as *const ()
+            }
+            RuntimeBinding::QM31Pack => {
+                crate::runtime::cairo_native__libfunc__qm31__qm31_pack as *const ()
             }
             RuntimeBinding::QM31Add => {
                 crate::runtime::cairo_native__libfunc__qm31__qm31_add as *const ()
@@ -557,6 +562,32 @@ impl RuntimeBindingsMeta {
         ))
     }
 
+    pub fn libfunc_qm31_pack<'c, 'a>(
+        &mut self,
+        context: &'c Context,
+        module: &Module,
+        block: &'a Block<'c>,
+        m31_0_ptr: Value<'c, '_>,
+        m31_1_ptr: Value<'c, '_>,
+        m31_2_ptr: Value<'c, '_>,
+        m31_3_ptr: Value<'c, '_>,
+        qm31_ptr: Value<'c, '_>,
+        location: Location<'c>,
+    ) -> Result<OperationRef<'c, 'a>>
+    where
+        'c: 'a,
+    {
+        let function =
+            self.build_function(context, module, block, location, RuntimeBinding::QM31Pack)?;
+
+        Ok(block.append_operation(
+            OperationBuilder::new("llvm.call", location)
+                .add_operands(&[function])
+                .add_operands(&[m31_0_ptr, m31_1_ptr, m31_2_ptr, m31_3_ptr, qm31_ptr])
+                .build()?,
+        ))
+    }
+
     pub fn libfunc_qm31_add<'c, 'a>(
         &mut self,
         context: &'c Context,
@@ -859,6 +890,7 @@ pub fn setup_runtime(find_symbol_ptr: impl Fn(&str) -> Option<*mut c_void>) {
         RuntimeBinding::DebugPrint,
         RuntimeBinding::QM31Add,
         RuntimeBinding::QM31Sub,
+        RuntimeBinding::QM31Pack,
         #[cfg(feature = "with-cheatcode")]
         RuntimeBinding::VtableCheatcode,
     ] {

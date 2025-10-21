@@ -583,15 +583,37 @@ pub unsafe extern "C" fn cairo_native__libfunc__ec__ec_state_try_finalize_nz(
     }
 }
 
+pub unsafe extern "C" fn cairo_native__libfunc__qm31__qm31_pack(
+    m31_0: &[u8; 4],
+    m31_1: &[u8; 4],
+    m31_2: &[u8; 4],
+    m31_3: &[u8; 4],
+    qm31_res: &mut [[u8; 4]; 4],
+) {
+    let coefficient_0 = m31_to_u32(*m31_0);
+    let coefficient_1 = m31_to_u32(*m31_1);
+    let coefficient_2 = m31_to_u32(*m31_2);
+    let coefficient_3 = m31_to_u32(*m31_3);
+
+    let qm31 = starknet_types_core::qm31::QM31::from_coefficients(
+        coefficient_0,
+        coefficient_1,
+        coefficient_2,
+        coefficient_3,
+    );
+    let qm31_coefficients = qm31.to_coefficients();
+
+    qm31_res[0] = qm31_coefficients.0.to_le_bytes();
+    qm31_res[1] = qm31_coefficients.1.to_le_bytes();
+    qm31_res[2] = qm31_coefficients.2.to_le_bytes();
+    qm31_res[3] = qm31_coefficients.3.to_le_bytes();
+}
+
 pub unsafe extern "C" fn cairo_native__libfunc__qm31__qm31_add(
     lhs: &[[u8; 4]; 4],
     rhs: &[[u8; 4]; 4],
     res: &mut [[u8; 4]; 4],
 ) {
-    fn m31_to_u32(mut m31_bytes: [u8; 4]) -> u32 {
-        m31_bytes[3] &= 0x01;
-        u32::from_le_bytes(m31_bytes)
-    }
     // lhs
     let lhs = *lhs;
     let lhs_0 = m31_to_u32(lhs[0]);
@@ -623,11 +645,6 @@ pub unsafe extern "C" fn cairo_native__libfunc__qm31__qm31_sub(
     res: &mut [[u8; 4]; 4],
 ) {
     // TODO: Almost the same implementations as the add case. Check if they can be unified
-    fn m31_to_u32(mut m31_bytes: [u8; 4]) -> u32 {
-        // TODO: If sub and add are not unified, then take this as an aux func
-        m31_bytes[3] &= 0x01;
-        u32::from_le_bytes(m31_bytes)
-    }
     // lhs
     let lhs = *lhs;
     let lhs_0 = m31_to_u32(lhs[0]);
@@ -645,12 +662,12 @@ pub unsafe extern "C" fn cairo_native__libfunc__qm31__qm31_sub(
     let rhs_3 = m31_to_u32(rhs[3]);
     let rhs = starknet_types_core::qm31::QM31::from_coefficients(rhs_0, rhs_1, rhs_2, rhs_3);
 
-    let addition = (lhs - rhs).to_coefficients();
+    let substraction = (lhs - rhs).to_coefficients();
 
-    res[0] = addition.0.to_le_bytes();
-    res[1] = addition.1.to_le_bytes();
-    res[2] = addition.2.to_le_bytes();
-    res[3] = addition.3.to_le_bytes();
+    res[0] = substraction.0.to_le_bytes();
+    res[1] = substraction.1.to_le_bytes();
+    res[2] = substraction.2.to_le_bytes();
+    res[3] = substraction.3.to_le_bytes();
 }
 
 thread_local! {
@@ -672,6 +689,11 @@ thread_local! {
 /// Get the costs builtin from the internal thread local.
 pub extern "C" fn cairo_native__get_costs_builtin() -> *const [u64; 7] {
     BUILTIN_COSTS.with(|x| x.as_ptr()) as *const [u64; 7]
+}
+
+fn m31_to_u32(mut m31_bytes: [u8; 4]) -> u32 {
+    m31_bytes[3] &= 0x01;
+    u32::from_le_bytes(m31_bytes)
 }
 
 // Utility methods for the print runtime function
