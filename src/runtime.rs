@@ -691,8 +691,8 @@ pub extern "C" fn cairo_native__get_costs_builtin() -> *const [u64; 7] {
     BUILTIN_COSTS.with(|x| x.as_ptr()) as *const [u64; 7]
 }
 
-fn m31_to_u32(mut m31_bytes: [u8; 4]) -> u32 {
-    m31_bytes[3] &= 0x01;
+fn m31_to_u32(m31_bytes: [u8; 4]) -> u32 {
+    // m31_bytes[3] &= 0x01;
     u32::from_le_bytes(m31_bytes)
 }
 
