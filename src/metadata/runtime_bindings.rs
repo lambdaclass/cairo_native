@@ -52,6 +52,7 @@ enum RuntimeBinding {
     QM31Add,
     QM31Sub,
     QM31Mul,
+    QM31Div,
     #[cfg(feature = "with-cheatcode")]
     VtableCheatcode,
 }
@@ -84,6 +85,7 @@ impl RuntimeBinding {
             RuntimeBinding::QM31Add => "cairo_native__libfunc__qm31__qm31_add",
             RuntimeBinding::QM31Sub => "cairo_native__libfunc__qm31__qm31_sub",
             RuntimeBinding::QM31Mul => "cairo_native__libfunc__qm31__qm31_mul",
+            RuntimeBinding::QM31Div => "cairo_native__libfunc__qm31__qm31_div",
             #[cfg(feature = "with-cheatcode")]
             RuntimeBinding::VtableCheatcode => "cairo_native__vtable_cheatcode",
         }
@@ -143,6 +145,9 @@ impl RuntimeBinding {
             }
             RuntimeBinding::QM31Mul => {
                 crate::runtime::cairo_native__libfunc__qm31__qm31_mul as *const ()
+            }
+            RuntimeBinding::QM31Div => {
+                crate::runtime::cairo_native__libfunc__qm31__qm31_div as *const ()
             }
             RuntimeBinding::ExtendedEuclideanAlgorithm => return None,
             RuntimeBinding::CircuitArithOperation => return None,
@@ -665,6 +670,31 @@ impl RuntimeBindingsMeta {
         ))
     }
 
+    pub fn libfunc_qm31_div<'c, 'a>(
+        &mut self,
+        context: &'c Context,
+        module: &Module,
+        block: &'a Block<'c>,
+        lhs_ptr: Value<'c, '_>,
+        rhs_ptr: Value<'c, '_>,
+        res_ptr: Value<'c, '_>,
+        location: Location<'c>,
+    ) -> Result<OperationRef<'c, 'a>>
+    where
+        'c: 'a,
+    {
+        println!("Reached libfunc_qm31_div");
+        let function =
+            self.build_function(context, module, block, location, RuntimeBinding::QM31Div)?;
+
+        Ok(block.append_operation(
+            OperationBuilder::new("llvm.call", location)
+                .add_operands(&[function])
+                .add_operands(&[lhs_ptr, rhs_ptr, res_ptr])
+                .build()?,
+        ))
+    }
+
     /// Register if necessary, then invoke the `dict_alloc_new()` function.
     ///
     /// Returns a opaque pointer as the result.
@@ -917,10 +947,11 @@ pub fn setup_runtime(find_symbol_ptr: impl Fn(&str) -> Option<*mut c_void>) {
         RuntimeBinding::DictDup,
         RuntimeBinding::GetCostsBuiltin,
         RuntimeBinding::DebugPrint,
+        RuntimeBinding::QM31Pack,
         RuntimeBinding::QM31Add,
         RuntimeBinding::QM31Sub,
         RuntimeBinding::QM31Mul,
-        RuntimeBinding::QM31Pack,
+        RuntimeBinding::QM31Div,
         #[cfg(feature = "with-cheatcode")]
         RuntimeBinding::VtableCheatcode,
     ] {

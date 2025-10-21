@@ -701,6 +701,38 @@ pub unsafe extern "C" fn cairo_native__libfunc__qm31__qm31_mul(
     res[3] = multiplication.3.to_le_bytes();
 }
 
+pub unsafe extern "C" fn cairo_native__libfunc__qm31__qm31_div(
+    lhs: &[[u8; 4]; 4],
+    rhs: &[[u8; 4]; 4],
+    res: &mut [[u8; 4]; 4],
+) {
+    // TODO: Almost the same implementations as the add and sub cases. Check if they can be unified
+    // lhs
+    let lhs = *lhs;
+    let lhs_0 = m31_to_u32(lhs[0]);
+    let lhs_1 = m31_to_u32(lhs[1]);
+    let lhs_2 = m31_to_u32(lhs[2]);
+    let lhs_3 = m31_to_u32(lhs[3]);
+
+    let lhs = starknet_types_core::qm31::QM31::from_coefficients(lhs_0, lhs_1, lhs_2, lhs_3);
+
+    // rhs
+    let rhs = *rhs;
+    let rhs_0 = m31_to_u32(rhs[0]);
+    let rhs_1 = m31_to_u32(rhs[1]);
+    let rhs_2 = m31_to_u32(rhs[2]);
+    let rhs_3 = m31_to_u32(rhs[3]);
+    let rhs = starknet_types_core::qm31::QM31::from_coefficients(rhs_0, rhs_1, rhs_2, rhs_3);
+
+    println!("Antes del unwrap");
+    let division = (lhs / rhs).unwrap().to_coefficients(); // TODO: Remove unwrap. rhs is a NonZero in cairo, investigate if that means that the compiler wont let the user use a zero in that argument or if its something that i have to check
+
+    res[0] = division.0.to_le_bytes();
+    res[1] = division.1.to_le_bytes();
+    res[2] = division.2.to_le_bytes();
+    res[3] = division.3.to_le_bytes();
+}
+
 thread_local! {
     pub(crate) static BUILTIN_COSTS: Cell<BuiltinCosts> = const {
         // These default values shouldn't be accessible, they will be overriden before entering

@@ -128,6 +128,8 @@ pub fn build_is_zero<'ctx, 'this>(
         location,
     )?;
 
+    println!("run build_is_zero");
+
     helper.cond_br(
         context,
         entry,
@@ -261,7 +263,41 @@ pub fn build_binary_op<'ctx, 'this>(
 
             helper.br(entry, 0, &[result], location)
         }
-        cairo_lang_sierra::extensions::qm31::QM31BinaryOperator::Div => todo!(),
+        cairo_lang_sierra::extensions::qm31::QM31BinaryOperator::Div => {
+            // TODO: Almost the same implementation as add and sub. See how to unify them
+            let lhs = entry.arg(0)?;
+            let rhs = entry.arg(1)?;
+
+            let lhs_ptr = helper.init_block.alloca1(
+                context,
+                location,
+                qm31_ty,
+                get_integer_layout(31).align(),
+            )?;
+            let rhs_ptr = helper.init_block.alloca1(
+                context,
+                location,
+                qm31_ty,
+                get_integer_layout(31).align(),
+            )?;
+            let res_ptr = helper.init_block.alloca1(
+                // TODO: This may not be necessary
+                context,
+                location,
+                qm31_ty,
+                get_integer_layout(31).align(),
+            )?;
+
+            entry.store(context, location, lhs_ptr, lhs)?;
+            entry.store(context, location, rhs_ptr, rhs)?;
+
+            runtime_bindings_meta
+                .libfunc_qm31_div(context, helper, entry, lhs_ptr, rhs_ptr, res_ptr, location)?;
+
+            let result = entry.load(context, location, res_ptr, qm31_ty)?;
+
+            helper.br(entry, 0, &[result], location)
+        }
     }
 }
 
@@ -612,6 +648,60 @@ mod test {
                 c_times_a_coefficients.1,
                 c_times_a_coefficients.2,
                 c_times_a_coefficients.3
+            )
+        );
+    }
+
+    #[test]
+    fn run_div() {
+        let program = load_cairo! { // TODO: Check if we can pass arguments so we reduce repeated code
+            use core::qm31::{QM31Trait, qm31};
+
+            fn run_test_c_divided_by_a() -> qm31 {
+                let a = QM31Trait::new(0x544b2fba, 0x673cff77, 0x60713d44, 0x499602d2);
+                let c = QM31Trait::new(0x1de1328d, 0x3b882f32, 0x47ae3cbc, 0x2a074017);
+                c / a
+            }
+
+            fn run_test_a_divided_by_c() -> qm31 {
+                let c = QM31Trait::new(0x1de1328d, 0x3b882f32, 0x47ae3cbc, 0x2a074017);
+                let a = QM31Trait::new(0x544b2fba, 0x673cff77, 0x60713d44, 0x499602d2);
+
+                a / c
+            }
+        };
+        // TODO: Check if these can be const so we dont repeat them on each test
+        let a = starknet_types_core::qm31::QM31::from_coefficients(
+            0x544b2fba, 0x673cff77, 0x60713d44, 0x499602d2,
+        );
+        let b = starknet_types_core::qm31::QM31::from_coefficients(
+            0x499602d2, 0x544b2fba, 0x673cff77, 0x60713d44,
+        );
+        let c = starknet_types_core::qm31::QM31::from_coefficients(
+            0x1de1328d, 0x3b882f32, 0x47ae3cbc, 0x2a074017,
+        );
+
+        let result_c_div_by_a = run_program(&program, "run_test_c_divided_by_a", &[]).return_value;
+        let c_div_by_a_coefficients = (c.clone() / a.clone()).unwrap().to_coefficients();
+        assert_eq!(
+            result_c_div_by_a,
+            Value::QM31(
+                c_div_by_a_coefficients.0,
+                c_div_by_a_coefficients.1,
+                c_div_by_a_coefficients.2,
+                c_div_by_a_coefficients.3
+            )
+        );
+
+        let result_a_div_by_c = run_program(&program, "run_test_a_divided_by_c", &[]).return_value;
+        let a_div_by_c_coefficients = (a / c).unwrap().to_coefficients();
+        assert_eq!(
+            result_a_div_by_c,
+            Value::QM31(
+                a_div_by_c_coefficients.0,
+                a_div_by_c_coefficients.1,
+                a_div_by_c_coefficients.2,
+                a_div_by_c_coefficients.3
             )
         );
     }
