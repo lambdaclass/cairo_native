@@ -49,7 +49,6 @@ cairo-native.path = "."
 clap = "4.5.23"
 colored = "2.1.0"
 criterion = "0.5.1"
-generic-array = "<=0.14.7"
 itertools = "0.14.0"
 k256 = "0.13.4"
 keccak = "0.1.5"
@@ -93,6 +92,8 @@ walkdir = "2.5.0"
 educe = "0.5.11"
 # Can't use crates.io dep because of a cycle in the dependency chain.
 cairo-vm = { git = "https://github.com/lambdaclass/cairo-vm", rev = "742e9ae3de8b55f4a5dc44831f06068712f2f0c5" }
+# Can't use verion > 0.14.7 due to deprecation, as stated in issue https://github.com/fizyk20/generic-array/issues/158
+generic-array = "<=0.14.7"
 
 [package]
 name = "cairo-native"
