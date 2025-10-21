@@ -393,13 +393,33 @@ mod test {
 
             fn run_test() -> qm31 {
                 let qm31 = QM31Trait::new(1, 2, 3, 4);
+                qm31
+            }
 
+            fn run_test_large_coefficients() -> qm31 {
+                let qm31 = QM31Trait::new(0x544b2fba, 0x673cff77, 0x60713d44, 0x499602d2);
                 qm31
             }
         };
-
+        // With small coefficients
         let result = run_program(&program, "run_test", &[]).return_value;
         assert_eq!(result, Value::QM31(1, 2, 3, 4));
+
+        // With big coefficients
+        let result = run_program(&program, "run_test_large_coefficients", &[]).return_value;
+        let qm31_expected = starknet_types_core::qm31::QM31::from_coefficients(
+            0x544b2fba, 0x673cff77, 0x60713d44, 0x499602d2,
+        );
+        let expected_coefficients = qm31_expected.to_coefficients();
+        assert_eq!(
+            result,
+            Value::QM31(
+                expected_coefficients.0,
+                expected_coefficients.1,
+                expected_coefficients.2,
+                expected_coefficients.3
+            )
+        );
     }
 
     #[test]
@@ -486,11 +506,14 @@ mod test {
         let c = starknet_types_core::qm31::QM31::from_coefficients(
             0x1de1328d, 0x3b882f32, 0x47ae3cbc, 0x2a074017,
         );
-        let c_minus_a_coefficients = (c.clone() - a).to_coefficients();
 
-        // println!("{:?}", c - a == b);
-        // println!("b: {:?}", b.to_coefficients());
-        // println!("result: {:?}", result_c_minus_a);
+        let c_minus_a_coefficients = (c.clone() - a.clone()).to_coefficients();
+
+        println!("## IN TEST ##");
+        println!("lhs: {:?}", c);
+        println!("rhs: {:?}", a);
+        println!("sub: {:?}", c.clone() - a);
+
         assert_eq!(
             result_c_minus_a,
             Value::QM31(
