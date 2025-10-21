@@ -21,6 +21,7 @@ cairo-lang-starknet-classes.workspace = true
 cairo-lang-test-plugin.workspace = true
 cairo-lang-utils.workspace = true
 clap = { workspace = true, features = ["derive"] }
+generic-array.workspace = true
 k256.workspace = true
 keccak.workspace = true
 num-integer.workspace = true
