@@ -226,7 +226,41 @@ pub fn build_binary_op<'ctx, 'this>(
 
             helper.br(entry, 0, &[result], location)
         }
-        cairo_lang_sierra::extensions::qm31::QM31BinaryOperator::Mul => todo!(),
+        cairo_lang_sierra::extensions::qm31::QM31BinaryOperator::Mul => {
+            // TODO: Almost the same implementation as add and sub. See how to unify them
+            let lhs = entry.arg(0)?;
+            let rhs = entry.arg(1)?;
+
+            let lhs_ptr = helper.init_block.alloca1(
+                context,
+                location,
+                qm31_ty,
+                get_integer_layout(31).align(),
+            )?;
+            let rhs_ptr = helper.init_block.alloca1(
+                context,
+                location,
+                qm31_ty,
+                get_integer_layout(31).align(),
+            )?;
+            let res_ptr = helper.init_block.alloca1(
+                // TODO: This may not be necessary
+                context,
+                location,
+                qm31_ty,
+                get_integer_layout(31).align(),
+            )?;
+
+            entry.store(context, location, lhs_ptr, lhs)?;
+            entry.store(context, location, rhs_ptr, rhs)?;
+
+            runtime_bindings_meta
+                .libfunc_qm31_mul(context, helper, entry, lhs_ptr, rhs_ptr, res_ptr, location)?;
+
+            let result = entry.load(context, location, res_ptr, qm31_ty)?;
+
+            helper.br(entry, 0, &[result], location)
+        }
         cairo_lang_sierra::extensions::qm31::QM31BinaryOperator::Div => todo!(),
     }
 }
@@ -277,8 +311,6 @@ pub fn build_pack<'ctx, 'this>(
     entry.store(context, location, m31_1_ptr, m31_1)?;
     entry.store(context, location, m31_2_ptr, m31_2)?;
     entry.store(context, location, m31_3_ptr, m31_3)?;
-
-    println!("########################");
 
     metadata
         .get_mut::<RuntimeBindingsMeta>()
@@ -495,8 +527,6 @@ mod test {
             }
         };
 
-        let result_c_minus_a = run_program(&program, "run_test_c_minus_a", &[]).return_value;
-
         let a = starknet_types_core::qm31::QM31::from_coefficients(
             0x544b2fba, 0x673cff77, 0x60713d44, 0x499602d2,
         );
@@ -507,13 +537,8 @@ mod test {
             0x1de1328d, 0x3b882f32, 0x47ae3cbc, 0x2a074017,
         );
 
+        let result_c_minus_a = run_program(&program, "run_test_c_minus_a", &[]).return_value;
         let c_minus_a_coefficients = (c.clone() - a.clone()).to_coefficients();
-
-        println!("## IN TEST ##");
-        println!("lhs: {:?}", c);
-        println!("rhs: {:?}", a);
-        println!("sub: {:?}", c.clone() - a);
-
         assert_eq!(
             result_c_minus_a,
             Value::QM31(
@@ -533,6 +558,60 @@ mod test {
                 c_minus_b_coefficients.1,
                 c_minus_b_coefficients.2,
                 c_minus_b_coefficients.3
+            )
+        );
+    }
+
+    #[test]
+    fn run_mul() {
+        let program = load_cairo! {
+            use core::qm31::{QM31Trait, qm31, m31};
+
+            fn run_test_a_times_b() -> qm31 {
+                let a = QM31Trait::new(0x544b2fba, 0x673cff77, 0x60713d44, 0x499602d2);
+                let b = QM31Trait::new(0x499602d2, 0x544b2fba, 0x673cff77, 0x60713d44);
+                a * b
+            }
+
+            fn run_test_c_times_a() -> qm31 {
+                let c = QM31Trait::new(0x1de1328d, 0x3b882f32, 0x47ae3cbc, 0x2a074017);
+                let a = QM31Trait::new(0x544b2fba, 0x673cff77, 0x60713d44, 0x499602d2);
+
+                c * a
+            }
+        };
+
+        let a = starknet_types_core::qm31::QM31::from_coefficients(
+            0x544b2fba, 0x673cff77, 0x60713d44, 0x499602d2,
+        );
+        let b = starknet_types_core::qm31::QM31::from_coefficients(
+            0x499602d2, 0x544b2fba, 0x673cff77, 0x60713d44,
+        );
+        let c = starknet_types_core::qm31::QM31::from_coefficients(
+            0x1de1328d, 0x3b882f32, 0x47ae3cbc, 0x2a074017,
+        );
+
+        let result_a_times_b = run_program(&program, "run_test_a_times_b", &[]).return_value;
+        let a_times_b_coefficients = (a.clone() * b).to_coefficients();
+        assert_eq!(
+            result_a_times_b,
+            Value::QM31(
+                a_times_b_coefficients.0,
+                a_times_b_coefficients.1,
+                a_times_b_coefficients.2,
+                a_times_b_coefficients.3
+            )
+        );
+
+        let result_c_times_a = run_program(&program, "run_test_c_times_a", &[]).return_value;
+        let c_times_a_coefficients = (c * a).to_coefficients();
+        assert_eq!(
+            result_c_times_a,
+            Value::QM31(
+                c_times_a_coefficients.0,
+                c_times_a_coefficients.1,
+                c_times_a_coefficients.2,
+                c_times_a_coefficients.3
             )
         );
     }
