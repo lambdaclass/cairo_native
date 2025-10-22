@@ -437,18 +437,17 @@ mod test {
         let program = load_cairo! {
             use core::qm31::{QM31Trait, m31, qm31};
 
-            fn run_test() -> [m31;4] {
-                let qm31 = QM31Trait::new(1, 2, 3, 4);
-
-                let unpacked_qm31 = qm31.unpack();
+            fn run_test(input: qm31) -> [m31;4] {
+                let unpacked_qm31 = input.unpack();
 
                 unpacked_qm31
             }
         };
-        let result = run_program(&program, "run_test", &[]).return_value;
 
+        let result = run_program(&program, "run_test", &[Value::QM31(1, 2, 3, 4)]).return_value;
         let m31_range = Range::closed(0, BigInt::from(2147483646));
         let Value::Struct {
+            // TODO: Find a way to make this asserts nicer
             fields,
             debug_name: _,
         } = result
@@ -472,7 +471,42 @@ mod test {
                 },
                 Value::BoundedInt {
                     value: Felt252::from(4),
-                    range: m31_range
+                    range: m31_range.clone()
+                },
+            ]
+        );
+
+        let result = run_program(
+            &program,
+            "run_test",
+            &[Value::QM31(0x544b2fba, 0x673cff77, 0x60713d44, 0x499602d2)],
+        )
+        .return_value;
+        let Value::Struct {
+            fields,
+            debug_name: _,
+        } = result
+        else {
+            panic!("Expected a Value::Struct()");
+        };
+        assert_eq!(
+            fields,
+            vec![
+                Value::BoundedInt {
+                    value: Felt252::from(0x544b2fba),
+                    range: m31_range.clone()
+                },
+                Value::BoundedInt {
+                    value: Felt252::from(0x673cff77),
+                    range: m31_range.clone()
+                },
+                Value::BoundedInt {
+                    value: Felt252::from(0x60713d44),
+                    range: m31_range.clone()
+                },
+                Value::BoundedInt {
+                    value: Felt252::from(0x499602d2),
+                    range: m31_range.clone()
                 },
             ]
         );
@@ -516,18 +550,28 @@ mod test {
 
     #[test]
     fn run_const() {
-        let program = load_cairo! {
+        let program = load_cairo! { // TODO: Check if we can pass the m31 as arguments so we reduce repeated code
             use core::qm31::{qm31_const, qm31};
 
             fn run_test() -> qm31 {
                 let qm31 = qm31_const::<1, 2, 3, 4>();
+                qm31
+            }
 
+            fn run_test_large_coefficients() -> qm31 {
+                let qm31 = qm31_const::<0x544b2fba, 0x673cff77, 0x60713d44, 0x499602d2>();
                 qm31
             }
         };
 
         let result = run_program(&program, "run_test", &[]).return_value;
         assert_eq!(result, Value::QM31(1, 2, 3, 4));
+
+        let result = run_program(&program, "run_test_large_coefficients", &[]).return_value;
+        assert_eq!(
+            result,
+            Value::QM31(0x544b2fba, 0x673cff77, 0x60713d44, 0x499602d2)
+        );
     }
 
     #[test]
