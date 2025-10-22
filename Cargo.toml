@@ -45,7 +45,7 @@ cairo-lang-starknet-classes = "~2.12.3"
 cairo-lang-test-plugin = "~2.12.3"
 cairo-lang-utils = "~2.12.3"
 cairo-native-bin-utils.path = "binaries/cairo-native-bin-utils"
-cairo-native.path = "."
+cairo-native = { path = ".", version = "0.7.1" }
 clap = "4.5.23"
 colored = "2.1.0"
 criterion = "0.5.1"
