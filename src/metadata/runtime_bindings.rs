@@ -46,7 +46,8 @@ enum RuntimeBinding {
     DictDup,
     GetCostsBuiltin,
     DebugPrint,
-    ExtendedEuclideanAlgorithm,
+    Felt252ExtendedEuclideanAlgorithm,
+    CircuitExtendedEuclideanAlgorithm,
     CircuitArithOperation,
     #[cfg(feature = "with-cheatcode")]
     VtableCheatcode,
@@ -72,8 +73,11 @@ impl RuntimeBinding {
             RuntimeBinding::DictDrop => "cairo_native__dict_drop",
             RuntimeBinding::DictDup => "cairo_native__dict_dup",
             RuntimeBinding::GetCostsBuiltin => "cairo_native__get_costs_builtin",
-            RuntimeBinding::ExtendedEuclideanAlgorithm => {
-                "cairo_native__extended_euclidean_algorithm"
+            RuntimeBinding::Felt252ExtendedEuclideanAlgorithm => {
+                "cairo_native__felt252_extended_euclidean_algorithm"
+            }
+            RuntimeBinding::CircuitExtendedEuclideanAlgorithm => {
+                "cairo_native__circuit_extended_euclidean_algorithm"
             }
             RuntimeBinding::CircuitArithOperation => "cairo_native__circuit_arith_operation",
             #[cfg(feature = "with-cheatcode")]
@@ -124,7 +128,8 @@ impl RuntimeBinding {
             RuntimeBinding::GetCostsBuiltin => {
                 crate::runtime::cairo_native__get_costs_builtin as *const ()
             }
-            RuntimeBinding::ExtendedEuclideanAlgorithm => return None,
+            RuntimeBinding::Felt252ExtendedEuclideanAlgorithm
+            | RuntimeBinding::CircuitExtendedEuclideanAlgorithm => return None,
             RuntimeBinding::CircuitArithOperation => return None,
             #[cfg(feature = "with-cheatcode")]
             RuntimeBinding::VtableCheatcode => {
@@ -202,7 +207,9 @@ impl RuntimeBindingsMeta {
     /// After checking, calls the MLIR function with arguments `a` and `b` which are the initial remainders
     /// used in the algorithm and returns a `Value` containing a struct where the first element is the
     /// greatest common divisor of `a` and `b` and the second element is the bezout coefficient x.
-    pub fn extended_euclidean_algorithm<'c, 'a>(
+    ///
+    /// This implementation is only for felt252, which uses u252 integers.
+    pub fn felt252_extended_euclidean_algorithm<'c, 'a>(
         &mut self,
         context: &'c Context,
         module: &Module,
@@ -210,15 +217,56 @@ impl RuntimeBindingsMeta {
         location: Location<'c>,
         a: Value<'c, '_>,
         b: Value<'c, '_>,
-        integer_type: Type<'c>
     ) -> Result<Value<'c, 'a>>
     where
         'c: 'a,
     {
-        let func_symbol = RuntimeBinding::ExtendedEuclideanAlgorithm.symbol();
+        let integer_type = IntegerType::new(context, 512).into();
+        let func_symbol = RuntimeBinding::Felt252ExtendedEuclideanAlgorithm.symbol();
         if self
             .active_map
-            .insert(RuntimeBinding::ExtendedEuclideanAlgorithm)
+            .insert(RuntimeBinding::Felt252ExtendedEuclideanAlgorithm)
+        {
+            build_egcd_function(module, context, location, func_symbol, integer_type)?;
+        }
+        // The struct returned by the function that contains both of the results
+        let return_type = llvm::r#type::r#struct(context, &[integer_type, integer_type], false);
+        Ok(block
+            .append_operation(
+                OperationBuilder::new("llvm.call", location)
+                    .add_attributes(&[(
+                        Identifier::new(context, "callee"),
+                        FlatSymbolRefAttribute::new(context, func_symbol).into(),
+                    )])
+                    .add_operands(&[a, b])
+                    .add_results(&[return_type])
+                    .build()?,
+            )
+            .result(0)?
+            .into())
+    }
+
+    /// Similar to [felt252_extended_euclidean_algorithm](Self::felt252_extended_euclidean_algorithm).
+    /// 
+    /// The difference with the other is that this function is meant to be used
+    /// with circuits, which use u384 integers.
+    pub fn circuit_extended_euclidean_algorithm<'c, 'a>(
+        &mut self,
+        context: &'c Context,
+        module: &Module,
+        block: &'a Block<'c>,
+        location: Location<'c>,
+        a: Value<'c, '_>,
+        b: Value<'c, '_>,
+    ) -> Result<Value<'c, 'a>>
+    where
+        'c: 'a,
+    {
+        let integer_type = IntegerType::new(context, 512).into();
+        let func_symbol = RuntimeBinding::CircuitExtendedEuclideanAlgorithm.symbol();
+        if self
+            .active_map
+            .insert(RuntimeBinding::CircuitExtendedEuclideanAlgorithm)
         {
             build_egcd_function(module, context, location, func_symbol, integer_type)?;
         }

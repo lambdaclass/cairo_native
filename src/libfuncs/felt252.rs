@@ -157,14 +157,13 @@ pub fn build_binary_operation<'ctx, 'this>(
             let rhs = entry.extui(rhs, i512, location)?;
 
             // Find 1 / rhs.
-            let euclidean_result = runtime_bindings_meta.extended_euclidean_algorithm(
+            let euclidean_result = runtime_bindings_meta.felt252_extended_euclidean_algorithm(
                 context,
                 helper.module,
                 entry,
                 location,
                 rhs,
                 prime,
-                i512
             )?;
 
             let inverse = entry.extract_value(context, location, euclidean_result, i512, 1)?;

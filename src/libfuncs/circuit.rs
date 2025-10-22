@@ -601,15 +601,15 @@ fn build_gate_evaluation<'ctx, 'this>(
                     let circuit_modulus_u768 = block.extui(circuit_modulus, u768_type, location)?;
 
                     // Apply egcd to find gcd and inverse
-                    let euclidean_result = runtime_bindings_meta.extended_euclidean_algorithm(
-                        context,
-                        helper.module,
-                        block,
-                        location,
-                        rhs_value,
-                        circuit_modulus_u768,
-                        u768_type
-                    )?;
+                    let euclidean_result = runtime_bindings_meta
+                        .circuit_extended_euclidean_algorithm(
+                            context,
+                            helper.module,
+                            block,
+                            location,
+                            rhs_value,
+                            circuit_modulus_u768,
+                        )?;
                     // Extract the values from the result struct
                     let gcd =
                         block.extract_value(context, location, euclidean_result, u768_type, 0)?;
