@@ -247,7 +247,7 @@ impl RuntimeBindingsMeta {
     }
 
     /// Similar to [felt252_extended_euclidean_algorithm](Self::felt252_extended_euclidean_algorithm).
-    /// 
+    ///
     /// The difference with the other is that this function is meant to be used
     /// with circuits, which use u384 integers.
     pub fn circuit_extended_euclidean_algorithm<'c, 'a>(
