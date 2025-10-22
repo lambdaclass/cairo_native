@@ -210,6 +210,7 @@ impl RuntimeBindingsMeta {
         location: Location<'c>,
         a: Value<'c, '_>,
         b: Value<'c, '_>,
+        integer_type: Type<'c>
     ) -> Result<Value<'c, 'a>>
     where
         'c: 'a,
@@ -219,9 +220,8 @@ impl RuntimeBindingsMeta {
             .active_map
             .insert(RuntimeBinding::ExtendedEuclideanAlgorithm)
         {
-            build_egcd_function(module, context, location, func_symbol)?;
+            build_egcd_function(module, context, location, func_symbol, integer_type)?;
         }
-        let integer_type: Type = IntegerType::new(context, 384 * 2).into();
         // The struct returned by the function that contains both of the results
         let return_type = llvm::r#type::r#struct(context, &[integer_type, integer_type], false);
         Ok(block
@@ -825,11 +825,21 @@ fn build_egcd_function<'ctx>(
     context: &'ctx Context,
     location: Location<'ctx>,
     func_symbol: &str,
+    integer_type: Type,
 ) -> Result<()> {
-    let integer_type: Type = IntegerType::new(context, 384 * 2).into();
     let region = Region::new();
 
     let entry_block = region.append_block(Block::new(&[
+        (integer_type, location),
+        (integer_type, location),
+    ]));
+    let loop_block = region.append_block(Block::new(&[
+        (integer_type, location),
+        (integer_type, location),
+        (integer_type, location),
+        (integer_type, location),
+    ]));
+    let end_block = region.append_block(Block::new(&[
         (integer_type, location),
         (integer_type, location),
     ]));
@@ -846,17 +856,6 @@ fn build_egcd_function<'ctx>(
     // will retrieve the modular inverse of a
     let prev_inverse = entry_block.const_int_from_type(context, location, 0, integer_type)?;
     let inverse = entry_block.const_int_from_type(context, location, 1, integer_type)?;
-
-    let loop_block = region.append_block(Block::new(&[
-        (integer_type, location),
-        (integer_type, location),
-        (integer_type, location),
-        (integer_type, location),
-    ]));
-    let end_block = region.append_block(Block::new(&[
-        (integer_type, location),
-        (integer_type, location),
-    ]));
 
     entry_block.append_operation(cf::br(
         &loop_block,

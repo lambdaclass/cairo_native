@@ -608,6 +608,7 @@ fn build_gate_evaluation<'ctx, 'this>(
                         location,
                         rhs_value,
                         circuit_modulus_u768,
+                        u768_type
                     )?;
                     // Extract the values from the result struct
                     let gcd =
