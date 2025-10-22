@@ -711,7 +711,6 @@ impl RuntimeBindingsMeta {
     where
         'c: 'a,
     {
-        println!("Reached libfunc_qm31_div");
         let function =
             self.build_function(context, module, block, location, RuntimeBinding::QM31Div)?;
 

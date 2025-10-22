@@ -742,7 +742,6 @@ pub unsafe extern "C" fn cairo_native__libfunc__qm31__qm31_div(
     let rhs_3 = m31_to_u32(rhs[3]);
     let rhs = starknet_types_core::qm31::QM31::from_coefficients(rhs_0, rhs_1, rhs_2, rhs_3);
 
-    println!("Antes del unwrap");
     let division = (lhs / rhs).unwrap().to_coefficients(); // TODO: Remove unwrap. rhs is a NonZero in cairo, investigate if that means that the compiler wont let the user use a zero in that argument or if its something that i have to check
 
     res[0] = division.0.to_le_bytes();

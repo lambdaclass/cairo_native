@@ -677,11 +677,10 @@ mod test {
                 c / a
             }
 
-            fn run_test_a_divided_by_c() -> qm31 {
-                let c = QM31Trait::new(0x1de1328d, 0x3b882f32, 0x47ae3cbc, 0x2a074017);
+            fn run_test_a_divided_by_b() -> qm31 {
                 let a = QM31Trait::new(0x544b2fba, 0x673cff77, 0x60713d44, 0x499602d2);
-
-                a / c
+                let b = QM31Trait::new(0x499602d2, 0x544b2fba, 0x673cff77, 0x60713d44);
+                a / b
             }
         };
         // TODO: Check if these can be const so we dont repeat them on each test
@@ -696,26 +695,32 @@ mod test {
         );
 
         let result_c_div_by_a = run_program(&program, "run_test_c_divided_by_a", &[]).return_value;
-        let c_div_by_a_coefficients = (c.clone() / a.clone()).unwrap().to_coefficients();
+        let c_div_by_a_coefficients = (c / a.clone()).unwrap().to_coefficients();
         assert_eq!(
             result_c_div_by_a,
-            Value::QM31(
-                c_div_by_a_coefficients.0,
-                c_div_by_a_coefficients.1,
-                c_div_by_a_coefficients.2,
-                c_div_by_a_coefficients.3
+            jit_enum!(
+                0,
+                jit_struct!(Value::QM31(
+                    c_div_by_a_coefficients.0,
+                    c_div_by_a_coefficients.1,
+                    c_div_by_a_coefficients.2,
+                    c_div_by_a_coefficients.3
+                ))
             )
         );
 
-        let result_a_div_by_c = run_program(&program, "run_test_a_divided_by_c", &[]).return_value;
-        let a_div_by_c_coefficients = (a / c).unwrap().to_coefficients();
+        let result_a_div_by_b = run_program(&program, "run_test_a_divided_by_b", &[]).return_value;
+        let a_div_by_b_coefficients = (a / b).unwrap().to_coefficients();
         assert_eq!(
-            result_a_div_by_c,
-            Value::QM31(
-                a_div_by_c_coefficients.0,
-                a_div_by_c_coefficients.1,
-                a_div_by_c_coefficients.2,
-                a_div_by_c_coefficients.3
+            result_a_div_by_b,
+            jit_enum!(
+                0,
+                jit_struct!(Value::QM31(
+                    a_div_by_b_coefficients.0,
+                    a_div_by_b_coefficients.1,
+                    a_div_by_b_coefficients.2,
+                    a_div_by_b_coefficients.3
+                ))
             )
         );
     }
