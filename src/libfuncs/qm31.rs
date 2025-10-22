@@ -166,6 +166,12 @@ pub fn build_binary_op<'ctx, 'this>(
         helper
             .init_block
             .alloca1(context, location, qm31_ty, get_integer_layout(31).align())?;
+    let op_ptr = helper.init_block.alloca1(
+        context,
+        location,
+        IntegerType::new(context, 8).into(),
+        get_integer_layout(8).align(),
+    )?; // TODO: We could use 4 bits
     let res_ptr = helper.init_block.alloca1(
         // TODO: This may not be necessary
         context,
@@ -178,14 +184,54 @@ pub fn build_binary_op<'ctx, 'this>(
     entry.store(context, location, rhs_ptr, rhs)?;
 
     match info.operator {
-        cairo_lang_sierra::extensions::qm31::QM31BinaryOperator::Add => runtime_bindings_meta
-            .libfunc_qm31_add(context, helper, entry, lhs_ptr, rhs_ptr, res_ptr, location)?,
-        cairo_lang_sierra::extensions::qm31::QM31BinaryOperator::Sub => runtime_bindings_meta
-            .libfunc_qm31_sub(context, helper, entry, lhs_ptr, rhs_ptr, res_ptr, location)?,
-        cairo_lang_sierra::extensions::qm31::QM31BinaryOperator::Mul => runtime_bindings_meta
-            .libfunc_qm31_mul(context, helper, entry, lhs_ptr, rhs_ptr, res_ptr, location)?,
-        cairo_lang_sierra::extensions::qm31::QM31BinaryOperator::Div => runtime_bindings_meta
-            .libfunc_qm31_div(context, helper, entry, lhs_ptr, rhs_ptr, res_ptr, location)?,
+        cairo_lang_sierra::extensions::qm31::QM31BinaryOperator::Add => {
+            let op = entry.const_int_from_type(
+                context,
+                location,
+                0,
+                IntegerType::new(context, 8).into(),
+            )?;
+            entry.store(context, location, op_ptr, op)?;
+            runtime_bindings_meta.libfunc_qm31_bin_op(
+                context, helper, entry, lhs_ptr, rhs_ptr, op_ptr, res_ptr, location,
+            )?;
+        }
+        cairo_lang_sierra::extensions::qm31::QM31BinaryOperator::Sub => {
+            let op = entry.const_int_from_type(
+                context,
+                location,
+                1,
+                IntegerType::new(context, 8).into(),
+            )?;
+            entry.store(context, location, op_ptr, op)?;
+            runtime_bindings_meta.libfunc_qm31_bin_op(
+                context, helper, entry, lhs_ptr, rhs_ptr, op_ptr, res_ptr, location,
+            )?;
+        }
+        cairo_lang_sierra::extensions::qm31::QM31BinaryOperator::Mul => {
+            let op = entry.const_int_from_type(
+                context,
+                location,
+                2,
+                IntegerType::new(context, 8).into(),
+            )?;
+            entry.store(context, location, op_ptr, op)?;
+            runtime_bindings_meta.libfunc_qm31_bin_op(
+                context, helper, entry, lhs_ptr, rhs_ptr, op_ptr, res_ptr, location,
+            )?;
+        }
+        cairo_lang_sierra::extensions::qm31::QM31BinaryOperator::Div => {
+            let op = entry.const_int_from_type(
+                context,
+                location,
+                3,
+                IntegerType::new(context, 8).into(),
+            )?;
+            entry.store(context, location, op_ptr, op)?;
+            runtime_bindings_meta.libfunc_qm31_bin_op(
+                context, helper, entry, lhs_ptr, rhs_ptr, op_ptr, res_ptr, location,
+            )?;
+        }
     };
 
     let result = entry.load(context, location, res_ptr, qm31_ty)?;

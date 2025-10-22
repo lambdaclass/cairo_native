@@ -641,9 +641,10 @@ pub unsafe extern "C" fn cairo_native__libfunc__qm31__qm31_from_m31(
     qm31_res[3] = coefficients.3.to_le_bytes();
 }
 
-pub unsafe extern "C" fn cairo_native__libfunc__qm31__qm31_add(
+pub unsafe extern "C" fn cairo_native__libfunc__qm31__qm31_binary_op(
     lhs: &[[u8; 4]; 4],
     rhs: &[[u8; 4]; 4],
+    op: &[u8; 1],
     res: &mut [[u8; 4]; 4],
 ) {
     // lhs
@@ -663,107 +664,22 @@ pub unsafe extern "C" fn cairo_native__libfunc__qm31__qm31_add(
     let rhs_3 = m31_to_u32(rhs[3]);
     let rhs = starknet_types_core::qm31::QM31::from_coefficients(rhs_0, rhs_1, rhs_2, rhs_3);
 
-    let addition = (lhs + rhs).to_coefficients();
+    let op = u8::from_le_bytes(*op);
+    let coefficients = match op {
+        0 => lhs + rhs,
+        1 => lhs - rhs,
+        2 => lhs * rhs,
+        // SAFETY: The only possible error is if rhs is zero. However, in the QM31 division libfunc, the divisor
+        // is of type NonZero<qm31> which ensures that we are not falling into the error case.
+        3 => (lhs / rhs).unwrap(),
+        _ => unreachable!("Undefined binary operator"),
+    }
+    .to_coefficients();
 
-    res[0] = addition.0.to_le_bytes();
-    res[1] = addition.1.to_le_bytes();
-    res[2] = addition.2.to_le_bytes();
-    res[3] = addition.3.to_le_bytes();
-}
-
-pub unsafe extern "C" fn cairo_native__libfunc__qm31__qm31_sub(
-    lhs: &[[u8; 4]; 4],
-    rhs: &[[u8; 4]; 4],
-    res: &mut [[u8; 4]; 4],
-) {
-    // TODO: Almost the same implementations as the add case. Check if they can be unified
-    // lhs
-    let lhs = *lhs;
-    let lhs_0 = m31_to_u32(lhs[0]);
-    let lhs_1 = m31_to_u32(lhs[1]);
-    let lhs_2 = m31_to_u32(lhs[2]);
-    let lhs_3 = m31_to_u32(lhs[3]);
-
-    let lhs = starknet_types_core::qm31::QM31::from_coefficients(lhs_0, lhs_1, lhs_2, lhs_3);
-
-    // rhs
-    let rhs = *rhs;
-    let rhs_0 = m31_to_u32(rhs[0]);
-    let rhs_1 = m31_to_u32(rhs[1]);
-    let rhs_2 = m31_to_u32(rhs[2]);
-    let rhs_3 = m31_to_u32(rhs[3]);
-    let rhs = starknet_types_core::qm31::QM31::from_coefficients(rhs_0, rhs_1, rhs_2, rhs_3);
-
-    let substraction = (lhs - rhs).to_coefficients();
-
-    res[0] = substraction.0.to_le_bytes();
-    res[1] = substraction.1.to_le_bytes();
-    res[2] = substraction.2.to_le_bytes();
-    res[3] = substraction.3.to_le_bytes();
-}
-
-pub unsafe extern "C" fn cairo_native__libfunc__qm31__qm31_mul(
-    lhs: &[[u8; 4]; 4],
-    rhs: &[[u8; 4]; 4],
-    res: &mut [[u8; 4]; 4],
-) {
-    // TODO: Almost the same implementations as the add and sub cases. Check if they can be unified
-    // lhs
-    let lhs = *lhs;
-    let lhs_0 = m31_to_u32(lhs[0]);
-    let lhs_1 = m31_to_u32(lhs[1]);
-    let lhs_2 = m31_to_u32(lhs[2]);
-    let lhs_3 = m31_to_u32(lhs[3]);
-
-    let lhs = starknet_types_core::qm31::QM31::from_coefficients(lhs_0, lhs_1, lhs_2, lhs_3);
-
-    // rhs
-    let rhs = *rhs;
-    let rhs_0 = m31_to_u32(rhs[0]);
-    let rhs_1 = m31_to_u32(rhs[1]);
-    let rhs_2 = m31_to_u32(rhs[2]);
-    let rhs_3 = m31_to_u32(rhs[3]);
-    let rhs = starknet_types_core::qm31::QM31::from_coefficients(rhs_0, rhs_1, rhs_2, rhs_3);
-
-    let multiplication = (lhs * rhs).to_coefficients();
-
-    res[0] = multiplication.0.to_le_bytes();
-    res[1] = multiplication.1.to_le_bytes();
-    res[2] = multiplication.2.to_le_bytes();
-    res[3] = multiplication.3.to_le_bytes();
-}
-
-pub unsafe extern "C" fn cairo_native__libfunc__qm31__qm31_div(
-    lhs: &[[u8; 4]; 4],
-    rhs: &[[u8; 4]; 4],
-    res: &mut [[u8; 4]; 4],
-) {
-    // TODO: Almost the same implementations as the add and sub cases. Check if they can be unified
-    // lhs
-    let lhs = *lhs;
-    let lhs_0 = m31_to_u32(lhs[0]);
-    let lhs_1 = m31_to_u32(lhs[1]);
-    let lhs_2 = m31_to_u32(lhs[2]);
-    let lhs_3 = m31_to_u32(lhs[3]);
-
-    let lhs = starknet_types_core::qm31::QM31::from_coefficients(lhs_0, lhs_1, lhs_2, lhs_3);
-
-    // rhs
-    let rhs = *rhs;
-    let rhs_0 = m31_to_u32(rhs[0]);
-    let rhs_1 = m31_to_u32(rhs[1]);
-    let rhs_2 = m31_to_u32(rhs[2]);
-    let rhs_3 = m31_to_u32(rhs[3]);
-    let rhs = starknet_types_core::qm31::QM31::from_coefficients(rhs_0, rhs_1, rhs_2, rhs_3);
-
-    // SAFETY: The only possible error is if rhs is zero. However, in the QM31 division libfunc, the divisor
-    // is of type NonZero<qm31> which ensures that we are not falling into the error case.
-    let division = (lhs / rhs).unwrap().to_coefficients();
-
-    res[0] = division.0.to_le_bytes();
-    res[1] = division.1.to_le_bytes();
-    res[2] = division.2.to_le_bytes();
-    res[3] = division.3.to_le_bytes();
+    res[0] = coefficients.0.to_le_bytes();
+    res[1] = coefficients.1.to_le_bytes();
+    res[2] = coefficients.2.to_le_bytes();
+    res[3] = coefficients.3.to_le_bytes();
 }
 
 thread_local! {
