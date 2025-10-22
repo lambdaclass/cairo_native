@@ -262,7 +262,7 @@ impl RuntimeBindingsMeta {
     where
         'c: 'a,
     {
-        let integer_type = IntegerType::new(context, 512).into();
+        let integer_type = IntegerType::new(context, 768).into();
         let func_symbol = RuntimeBinding::CircuitExtendedEuclideanAlgorithm.symbol();
         if self
             .active_map
