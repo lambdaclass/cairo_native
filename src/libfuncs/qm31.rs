@@ -154,147 +154,43 @@ pub fn build_binary_op<'ctx, 'this>(
     let runtime_bindings_meta = metadata
         .get_mut::<RuntimeBindingsMeta>()
         .ok_or(Error::MissingMetadata)?;
+
+    let lhs = entry.arg(0)?;
+    let rhs = entry.arg(1)?;
+
+    let lhs_ptr =
+        helper
+            .init_block
+            .alloca1(context, location, qm31_ty, get_integer_layout(31).align())?;
+    let rhs_ptr =
+        helper
+            .init_block
+            .alloca1(context, location, qm31_ty, get_integer_layout(31).align())?;
+    let res_ptr = helper.init_block.alloca1(
+        // TODO: This may not be necessary
+        context,
+        location,
+        qm31_ty,
+        get_integer_layout(31).align(),
+    )?;
+
+    entry.store(context, location, lhs_ptr, lhs)?;
+    entry.store(context, location, rhs_ptr, rhs)?;
+
     match info.operator {
-        cairo_lang_sierra::extensions::qm31::QM31BinaryOperator::Add => {
-            let lhs = entry.arg(0)?;
-            let rhs = entry.arg(1)?;
+        cairo_lang_sierra::extensions::qm31::QM31BinaryOperator::Add => runtime_bindings_meta
+            .libfunc_qm31_add(context, helper, entry, lhs_ptr, rhs_ptr, res_ptr, location)?,
+        cairo_lang_sierra::extensions::qm31::QM31BinaryOperator::Sub => runtime_bindings_meta
+            .libfunc_qm31_sub(context, helper, entry, lhs_ptr, rhs_ptr, res_ptr, location)?,
+        cairo_lang_sierra::extensions::qm31::QM31BinaryOperator::Mul => runtime_bindings_meta
+            .libfunc_qm31_mul(context, helper, entry, lhs_ptr, rhs_ptr, res_ptr, location)?,
+        cairo_lang_sierra::extensions::qm31::QM31BinaryOperator::Div => runtime_bindings_meta
+            .libfunc_qm31_div(context, helper, entry, lhs_ptr, rhs_ptr, res_ptr, location)?,
+    };
 
-            let lhs_ptr = helper.init_block.alloca1(
-                context,
-                location,
-                qm31_ty,
-                get_integer_layout(31).align(),
-            )?;
-            let rhs_ptr = helper.init_block.alloca1(
-                context,
-                location,
-                qm31_ty,
-                get_integer_layout(31).align(),
-            )?;
-            let res_ptr = helper.init_block.alloca1(
-                // TODO: This may not be necessary
-                context,
-                location,
-                qm31_ty,
-                get_integer_layout(31).align(),
-            )?;
+    let result = entry.load(context, location, res_ptr, qm31_ty)?;
 
-            entry.store(context, location, lhs_ptr, lhs)?;
-            entry.store(context, location, rhs_ptr, rhs)?;
-
-            runtime_bindings_meta
-                .libfunc_qm31_add(context, helper, entry, lhs_ptr, rhs_ptr, res_ptr, location)?;
-
-            let result = entry.load(context, location, res_ptr, qm31_ty)?;
-
-            helper.br(entry, 0, &[result], location)
-        }
-        cairo_lang_sierra::extensions::qm31::QM31BinaryOperator::Sub => {
-            // TODO: Almost the same implementation as add. See how to unify both
-            let lhs = entry.arg(0)?;
-            let rhs = entry.arg(1)?;
-
-            let lhs_ptr = helper.init_block.alloca1(
-                context,
-                location,
-                qm31_ty,
-                get_integer_layout(31).align(),
-            )?;
-            let rhs_ptr = helper.init_block.alloca1(
-                context,
-                location,
-                qm31_ty,
-                get_integer_layout(31).align(),
-            )?;
-            let res_ptr = helper.init_block.alloca1(
-                // TODO: This may not be necessary
-                context,
-                location,
-                qm31_ty,
-                get_integer_layout(31).align(),
-            )?;
-
-            entry.store(context, location, lhs_ptr, lhs)?;
-            entry.store(context, location, rhs_ptr, rhs)?;
-
-            runtime_bindings_meta
-                .libfunc_qm31_sub(context, helper, entry, lhs_ptr, rhs_ptr, res_ptr, location)?;
-
-            let result = entry.load(context, location, res_ptr, qm31_ty)?;
-
-            helper.br(entry, 0, &[result], location)
-        }
-        cairo_lang_sierra::extensions::qm31::QM31BinaryOperator::Mul => {
-            // TODO: Almost the same implementation as add and sub. See how to unify them
-            let lhs = entry.arg(0)?;
-            let rhs = entry.arg(1)?;
-
-            let lhs_ptr = helper.init_block.alloca1(
-                context,
-                location,
-                qm31_ty,
-                get_integer_layout(31).align(),
-            )?;
-            let rhs_ptr = helper.init_block.alloca1(
-                context,
-                location,
-                qm31_ty,
-                get_integer_layout(31).align(),
-            )?;
-            let res_ptr = helper.init_block.alloca1(
-                // TODO: This may not be necessary
-                context,
-                location,
-                qm31_ty,
-                get_integer_layout(31).align(),
-            )?;
-
-            entry.store(context, location, lhs_ptr, lhs)?;
-            entry.store(context, location, rhs_ptr, rhs)?;
-
-            runtime_bindings_meta
-                .libfunc_qm31_mul(context, helper, entry, lhs_ptr, rhs_ptr, res_ptr, location)?;
-
-            let result = entry.load(context, location, res_ptr, qm31_ty)?;
-
-            helper.br(entry, 0, &[result], location)
-        }
-        cairo_lang_sierra::extensions::qm31::QM31BinaryOperator::Div => {
-            // TODO: Almost the same implementation as add and sub. See how to unify them
-            let lhs = entry.arg(0)?;
-            let rhs = entry.arg(1)?;
-
-            let lhs_ptr = helper.init_block.alloca1(
-                context,
-                location,
-                qm31_ty,
-                get_integer_layout(31).align(),
-            )?;
-            let rhs_ptr = helper.init_block.alloca1(
-                context,
-                location,
-                qm31_ty,
-                get_integer_layout(31).align(),
-            )?;
-            let res_ptr = helper.init_block.alloca1(
-                // TODO: This may not be necessary
-                context,
-                location,
-                qm31_ty,
-                get_integer_layout(31).align(),
-            )?;
-
-            entry.store(context, location, lhs_ptr, lhs)?;
-            entry.store(context, location, rhs_ptr, rhs)?;
-
-            runtime_bindings_meta
-                .libfunc_qm31_div(context, helper, entry, lhs_ptr, rhs_ptr, res_ptr, location)?;
-
-            let result = entry.load(context, location, res_ptr, qm31_ty)?;
-
-            helper.br(entry, 0, &[result], location)
-        }
-    }
+    helper.br(entry, 0, &[result], location)
 }
 
 pub fn build_pack<'ctx, 'this>(
