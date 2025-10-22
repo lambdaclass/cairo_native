@@ -609,6 +609,24 @@ pub unsafe extern "C" fn cairo_native__libfunc__qm31__qm31_pack(
     qm31_res[3] = qm31_coefficients.3.to_le_bytes();
 }
 
+pub unsafe extern "C" fn cairo_native__libfunc__qm31__qm31_is_zero(
+    qm31: &[[u8; 4]; 4],
+    cond_ptr: &mut [u8; 1],
+) {
+    let qm31 = *qm31;
+    let qm31_0 = m31_to_u32(qm31[0]);
+    let qm31_1 = m31_to_u32(qm31[1]);
+    let qm31_2 = m31_to_u32(qm31[2]);
+    let qm31_3 = m31_to_u32(qm31[3]);
+
+    let qm31 = starknet_types_core::qm31::QM31::from_coefficients(qm31_0, qm31_1, qm31_2, qm31_3);
+    if qm31.is_zero() {
+        cond_ptr[0] = 0x1;
+    } else {
+        cond_ptr[0] = 0x0;
+    }
+}
+
 pub unsafe extern "C" fn cairo_native__libfunc__qm31__qm31_add(
     lhs: &[[u8; 4]; 4],
     rhs: &[[u8; 4]; 4],

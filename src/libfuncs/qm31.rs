@@ -87,53 +87,49 @@ pub fn build_is_zero<'ctx, 'this>(
     entry: &'this Block<'ctx>,
     location: Location<'ctx>,
     helper: &LibfuncHelper<'ctx, 'this>,
-    _metadata: &mut MetadataStorage,
+    metadata: &mut MetadataStorage,
     _info: &SignatureOnlyConcreteLibfunc,
 ) -> Result<()> {
-    let m31_ty = IntegerType::new(context, 31);
     let qm31 = entry.arg(0)?;
-
-    let m31_0 = entry.extract_value(context, location, qm31, m31_ty.into(), 0)?;
-    let m31_1 = entry.extract_value(context, location, qm31, m31_ty.into(), 1)?;
-    let m31_2 = entry.extract_value(context, location, qm31, m31_ty.into(), 2)?;
-    let m31_3 = entry.extract_value(context, location, qm31, m31_ty.into(), 3)?;
-
-    let k0 = entry.const_int(context, location, 0, 31)?;
-
-    let condition_0 = entry.cmpi(context, CmpiPredicate::Eq, m31_0, k0, location)?;
-    let condition_1 = entry.cmpi(context, CmpiPredicate::Eq, m31_1, k0, location)?;
-    let condition_2 = entry.cmpi(context, CmpiPredicate::Eq, m31_2, k0, location)?;
-    let condition_3 = entry.cmpi(context, CmpiPredicate::Eq, m31_3, k0, location)?;
-
-    let condition_01 = entry.cmpi(
+    let m31_ty = IntegerType::new(context, 31).into();
+    let qm31_ty = llvm::r#type::r#struct(
         context,
-        CmpiPredicate::Eq,
-        condition_0,
-        condition_1,
-        location,
-    )?;
-    let condition_23 = entry.cmpi(
+        &[m31_ty, m31_ty, m31_ty, m31_ty],
+        false, // TODO: Confirm this
+    );
+    let qm31_ptr =
+        helper
+            .init_block
+            .alloca1(context, location, qm31_ty, get_integer_layout(31).align())?;
+    let cond_ptr = helper.init_block.alloca1(
+        // TODO: Check if we need this ptr really
         context,
-        CmpiPredicate::Eq,
-        condition_2,
-        condition_3,
         location,
+        IntegerType::new(context, 1).into(),
+        get_integer_layout(1).align(),
     )?;
 
-    let condition_0123 = entry.cmpi(
+    entry.store(context, location, qm31_ptr, qm31)?;
+
+    metadata
+        .get_mut::<RuntimeBindingsMeta>()
+        .ok_or(Error::MissingMetadata)?
+        .libfunc_qm31_is_zero(context, helper, entry, qm31_ptr, cond_ptr, location)?;
+
+    let cond = entry.load(
         context,
-        CmpiPredicate::Eq,
-        condition_01,
-        condition_23,
         location,
+        cond_ptr,
+        IntegerType::new(context, 1).into(),
     )?;
 
-    println!("run build_is_zero");
+    let k1 = entry.const_int(context, location, 1, 1)?;
+    let cond2 = entry.cmpi(context, CmpiPredicate::Eq, cond, k1, location)?;
 
     helper.cond_br(
         context,
         entry,
-        condition_0123,
+        cond2,
         [0, 1],
         [&[], &[entry.arg(0)?]],
         location,
@@ -523,7 +519,25 @@ mod test {
 
         let result_without_zero =
             run_program(&program, "run_test", &[Value::QM31(0, 0, 1, 0)]).return_value;
-        assert_eq!(result_without_zero, jit_enum!(1, Value::QM31(0, 0, 1, 0)))
+        assert_eq!(result_without_zero, jit_enum!(1, Value::QM31(0, 0, 1, 0)));
+
+        let result_without_zero =
+            run_program(&program, "run_test", &[Value::QM31(0, 0, 1, 0)]).return_value;
+        assert_eq!(result_without_zero, jit_enum!(1, Value::QM31(0, 0, 1, 0)));
+
+        let result_big = run_program(
+            &program,
+            "run_test",
+            &[Value::QM31(0x544b2fba, 0x673cff77, 0x60713d44, 0x499602d2)],
+        )
+        .return_value;
+        assert_eq!(
+            result_big,
+            jit_enum!(
+                1,
+                Value::QM31(0x544b2fba, 0x673cff77, 0x60713d44, 0x499602d2)
+            )
+        )
     }
 
     #[test]
