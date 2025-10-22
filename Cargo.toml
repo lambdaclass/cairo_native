@@ -15,7 +15,7 @@ members = [
 ]
 
 [workspace.package]
-version = "0.6.1"
+version = "0.7.1"
 edition = "2021"
 license = "Apache-2.0"
 repository = "https://github.com/lambdaclass/cairo_native"
@@ -45,7 +45,7 @@ cairo-lang-starknet-classes = "~2.12.3"
 cairo-lang-test-plugin = "~2.12.3"
 cairo-lang-utils = "~2.12.3"
 cairo-native-bin-utils.path = "binaries/cairo-native-bin-utils"
-cairo-native.path = "."
+cairo-native = { path = ".", version = "0.7.1" }
 clap = "4.5.23"
 colored = "2.1.0"
 criterion = "0.5.1"
@@ -74,7 +74,7 @@ sec1 = "0.7.3"
 serde = "1.0.0"
 serde_json = "1.0.128"
 sha2 = "0.10.8"
-sierra-emu = { path = "debug_utils/sierra-emu", version = "0.6.1" }
+sierra-emu = { path = "debug_utils/sierra-emu", version = "0.7.1" }
 smallvec = "1.13.2"
 starknet-crypto = "0.8.1"
 starknet-curve = "0.6.0"
@@ -92,6 +92,8 @@ walkdir = "2.5.0"
 educe = "0.5.11"
 # Can't use crates.io dep because of a cycle in the dependency chain.
 cairo-vm = { git = "https://github.com/lambdaclass/cairo-vm", rev = "742e9ae3de8b55f4a5dc44831f06068712f2f0c5" }
+# Can't use verion > 0.14.7 due to deprecation, as stated in issue https://github.com/fizyk20/generic-array/issues/158
+generic-array = "<=0.14.7"
 
 [package]
 name = "cairo-native"
