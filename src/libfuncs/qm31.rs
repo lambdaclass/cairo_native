@@ -385,19 +385,47 @@ pub fn build_unpack<'ctx, 'this>(
 }
 
 pub fn build_from_m31<'ctx, 'this>(
-    _context: &'ctx Context,
+    context: &'ctx Context,
     _registry: &ProgramRegistry<CoreType, CoreLibfunc>,
-    _entry: &'this Block<'ctx>,
-    _location: Location<'ctx>,
-    _helper: &LibfuncHelper<'ctx, 'this>,
-    _metadata: &mut MetadataStorage,
+    entry: &'this Block<'ctx>,
+    location: Location<'ctx>,
+    helper: &LibfuncHelper<'ctx, 'this>,
+    metadata: &mut MetadataStorage,
     _info: &SignatureOnlyConcreteLibfunc,
 ) -> Result<()> {
-    todo!()
+    let m31 = entry.arg(0)?;
+
+    let m31_ty = IntegerType::new(context, 31).into();
+    let qm31_ty = llvm::r#type::r#struct(
+        context,
+        &[m31_ty, m31_ty, m31_ty, m31_ty],
+        false, // TODO: Confirm this
+    );
+
+    let m31_ptr =
+        helper
+            .init_block
+            .alloca1(context, location, m31_ty, get_integer_layout(31).align())?;
+    let qm31_ptr =
+        helper
+            .init_block
+            .alloca1(context, location, qm31_ty, get_integer_layout(31).align())?;
+
+    entry.store(context, location, m31_ptr, m31)?;
+
+    metadata
+        .get_mut::<RuntimeBindingsMeta>()
+        .ok_or(Error::MissingMetadata)?
+        .libfunc_qm31_from_m31(context, helper, entry, m31_ptr, qm31_ptr, location)?;
+
+    let qm31 = entry.load(context, location, qm31_ptr, qm31_ty)?;
+
+    helper.br(entry, 0, &[qm31], location)
 }
 
 #[cfg(test)]
 mod test {
+    use ark_ff::{One, Zero};
     use cairo_lang_sierra::extensions::utils::Range;
     use cairo_vm::Felt252;
     use num_bigint::BigInt;
@@ -723,5 +751,58 @@ mod test {
                 ))
             )
         );
+    }
+
+    #[test]
+    fn run_from_m31() {
+        let program = load_cairo! {
+            use core::qm31::{QM31Trait, qm31, m31, qm31_from_m31};
+
+            fn run_test_with_0() -> qm31 {
+                qm31_from_m31(0)
+            }
+
+            fn run_test_with_1() -> qm31 {
+                qm31_from_m31(1)
+            }
+
+            fn run_test_with_big_number() -> qm31 {
+                qm31_from_m31(0x60713d44)
+            }
+        };
+
+        let m31_range = Range::closed(0, 2147483646);
+        let result = run_program(
+            &program,
+            "run_test_with_0",
+            &[Value::BoundedInt {
+                value: Felt252::zero(),
+                range: m31_range.clone(),
+            }],
+        )
+        .return_value;
+        assert_eq!(result, Value::QM31(0, 0, 0, 0));
+
+        let result = run_program(
+            &program,
+            "run_test_with_1",
+            &[Value::BoundedInt {
+                value: Felt252::one(),
+                range: m31_range.clone(),
+            }],
+        )
+        .return_value;
+        assert_eq!(result, Value::QM31(1, 0, 0, 0));
+
+        let result = run_program(
+            &program,
+            "run_test_with_big_number",
+            &[Value::BoundedInt {
+                value: Felt252::one(),
+                range: m31_range,
+            }],
+        )
+        .return_value;
+        assert_eq!(result, Value::QM31(0x60713d44, 0, 0, 0));
     }
 }
