@@ -69,6 +69,7 @@ mod mem;
 mod nullable;
 mod pedersen;
 mod poseidon;
+mod qm31;
 mod starknet;
 mod r#struct;
 mod uint256;
@@ -255,7 +256,9 @@ impl LibfuncBuilder for CoreConcreteLibfunc {
                 metadata,
                 &info.signature.param_signatures,
             ),
-            Self::QM31(_) => native_panic!("Implement QM31 libfunc"),
+            Self::QM31(selector) => self::qm31::build(
+                context, registry, entry, location, helper, metadata, selector,
+            ),
             Self::UnsafePanic(_) => native_panic!("Implement unsafe_panic libfunc"),
             Self::GasReserve(_) => native_panic!("Implement gas_reserve libfunc"),
             Self::DummyFunctionCall(_) => native_panic!("Implement dummy_function_call libfunc"),

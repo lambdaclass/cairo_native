@@ -48,6 +48,9 @@ enum RuntimeBinding {
     DebugPrint,
     ExtendedEuclideanAlgorithm,
     CircuitArithOperation,
+    QM31IsZero,
+    QM31FromM31,
+    QM31BinOp,
     #[cfg(feature = "with-cheatcode")]
     VtableCheatcode,
 }
@@ -76,6 +79,9 @@ impl RuntimeBinding {
                 "cairo_native__extended_euclidean_algorithm"
             }
             RuntimeBinding::CircuitArithOperation => "cairo_native__circuit_arith_operation",
+            RuntimeBinding::QM31IsZero => "cairo_native__libfunc__qm31__qm31_is_zero",
+            RuntimeBinding::QM31FromM31 => "cairo_native__libfunc__qm31__qm31_from_m31",
+            RuntimeBinding::QM31BinOp => "cairo_native__libfunc__qm31__qm31_binary_op",
             #[cfg(feature = "with-cheatcode")]
             RuntimeBinding::VtableCheatcode => "cairo_native__vtable_cheatcode",
         }
@@ -123,6 +129,15 @@ impl RuntimeBinding {
             RuntimeBinding::DictDup => crate::runtime::cairo_native__dict_dup as *const (),
             RuntimeBinding::GetCostsBuiltin => {
                 crate::runtime::cairo_native__get_costs_builtin as *const ()
+            }
+            RuntimeBinding::QM31IsZero => {
+                crate::runtime::cairo_native__libfunc__qm31__qm31_is_zero as *const ()
+            }
+            RuntimeBinding::QM31FromM31 => {
+                crate::runtime::cairo_native__libfunc__qm31__qm31_from_m31 as *const ()
+            }
+            RuntimeBinding::QM31BinOp => {
+                crate::runtime::cairo_native__libfunc__qm31__qm31_binary_op as *const ()
             }
             RuntimeBinding::ExtendedEuclideanAlgorithm => return None,
             RuntimeBinding::CircuitArithOperation => return None,
@@ -547,6 +562,83 @@ impl RuntimeBindingsMeta {
         ))
     }
 
+    pub fn libfunc_qm31_is_zero<'c, 'a>(
+        &mut self,
+        context: &'c Context,
+        module: &Module,
+        block: &'a Block<'c>,
+        qm31_ptr: Value<'c, '_>,
+        cond_ptr: Value<'c, '_>,
+        location: Location<'c>,
+    ) -> Result<OperationRef<'c, 'a>>
+    where
+        'c: 'a,
+    {
+        let function =
+            self.build_function(context, module, block, location, RuntimeBinding::QM31IsZero)?;
+
+        Ok(block.append_operation(
+            OperationBuilder::new("llvm.call", location)
+                .add_operands(&[function])
+                .add_operands(&[qm31_ptr, cond_ptr])
+                .build()?,
+        ))
+    }
+
+    pub fn libfunc_qm31_from_m31<'c, 'a>(
+        &mut self,
+        context: &'c Context,
+        module: &Module,
+        block: &'a Block<'c>,
+        m31_ptr: Value<'c, '_>,
+        qm31_ptr: Value<'c, '_>,
+        location: Location<'c>,
+    ) -> Result<OperationRef<'c, 'a>>
+    where
+        'c: 'a,
+    {
+        let function = self.build_function(
+            context,
+            module,
+            block,
+            location,
+            RuntimeBinding::QM31FromM31,
+        )?;
+
+        Ok(block.append_operation(
+            OperationBuilder::new("llvm.call", location)
+                .add_operands(&[function])
+                .add_operands(&[m31_ptr, qm31_ptr])
+                .build()?,
+        ))
+    }
+
+    #[allow(clippy::too_many_arguments)]
+    pub fn libfunc_qm31_bin_op<'c, 'a>(
+        &mut self,
+        context: &'c Context,
+        module: &Module,
+        block: &'a Block<'c>,
+        lhs_ptr: Value<'c, '_>,
+        rhs_ptr: Value<'c, '_>,
+        op: Value<'c, '_>,
+        res_ptr: Value<'c, '_>,
+        location: Location<'c>,
+    ) -> Result<OperationRef<'c, 'a>>
+    where
+        'c: 'a,
+    {
+        let function =
+            self.build_function(context, module, block, location, RuntimeBinding::QM31BinOp)?;
+
+        Ok(block.append_operation(
+            OperationBuilder::new("llvm.call", location)
+                .add_operands(&[function])
+                .add_operands(&[lhs_ptr, rhs_ptr, op, res_ptr])
+                .build()?,
+        ))
+    }
+
     /// Register if necessary, then invoke the `dict_alloc_new()` function.
     ///
     /// Returns a opaque pointer as the result.
@@ -799,6 +891,9 @@ pub fn setup_runtime(find_symbol_ptr: impl Fn(&str) -> Option<*mut c_void>) {
         RuntimeBinding::DictDup,
         RuntimeBinding::GetCostsBuiltin,
         RuntimeBinding::DebugPrint,
+        RuntimeBinding::QM31IsZero,
+        RuntimeBinding::QM31FromM31,
+        RuntimeBinding::QM31BinOp,
         #[cfg(feature = "with-cheatcode")]
         RuntimeBinding::VtableCheatcode,
     ] {
