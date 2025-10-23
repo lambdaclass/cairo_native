@@ -21,7 +21,7 @@ use cairo_lang_sierra::{
 use melior::{
     dialect::arith::{self, CmpiPredicate},
     helpers::{ArithBlockExt, BuiltinBlockExt, LlvmBlockExt},
-    ir::{r#type::IntegerType, Block, BlockLike, Location, Value, ValueLike},
+    ir::{r#type::IntegerType, Block, Location, Value, ValueLike},
     Context,
 };
 use num_bigint::{BigInt, Sign};
@@ -167,30 +167,6 @@ pub fn build_binary_operation<'ctx, 'this>(
             )?;
 
             let inverse = entry.extract_value(context, location, euclidean_result, i512, 1)?;
-
-            // egcd sometimes returns a negative number for the inverse,
-            // in such cases we must simply wrap it around back into [0, PRIME)
-            // this suffices because |inv_i| <= divfloor(PRIME,2)
-            let zero = entry.const_int_from_type(context, location, 0, i512)?;
-
-            let is_negative = entry
-                .append_operation(arith::cmpi(
-                    context,
-                    CmpiPredicate::Slt,
-                    inverse,
-                    zero,
-                    location,
-                ))
-                .result(0)?
-                .into();
-            // if the inverse is < 0, add PRIME
-            let wrapped_inverse = entry.addi(inverse, prime, location)?;
-            let inverse = entry.append_op_result(arith::select(
-                is_negative,
-                wrapped_inverse,
-                inverse,
-                location,
-            ))?;
 
             // Peform lhs * (1 / rhs)
             let result = entry.muli(lhs, inverse, location)?;

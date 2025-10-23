@@ -947,17 +947,37 @@ fn build_egcd_function<'ctx>(
         location,
     ));
 
+    let gcd = end_block.arg(0)?;
+    let inverse = end_block.arg(1)?;
+
+    // EGDC sometimes returns a negative number for the inverse,
+    // in such cases we must simply wrap it around back into [0, MODULUS)
+    // this suffices because |inv_i| <= divfloor(MODULUS,2)
+    let zero = end_block.const_int_from_type(context, location, 0, integer_type)?;
+    let is_negative = end_block
+        .append_operation(arith::cmpi(
+            context,
+            CmpiPredicate::Slt,
+            inverse,
+            zero,
+            location,
+        ))
+        .result(0)?
+        .into();
+    let wrapped_inverse = end_block.addi(inverse, b, location)?;
+    let inverse = end_block.append_op_result(arith::select(
+        is_negative,
+        wrapped_inverse,
+        inverse,
+        location,
+    ))?;
+
     // Create the struct that will contain the results
     let results = end_block.append_op_result(llvm::undef(
         llvm::r#type::r#struct(context, &[integer_type, integer_type], false),
         location,
     ))?;
-    let results = end_block.insert_values(
-        context,
-        location,
-        results,
-        &[end_block.arg(0)?, end_block.arg(1)?],
-    )?;
+    let results = end_block.insert_values(context, location, results, &[gcd, inverse])?;
     end_block.append_operation(llvm::r#return(Some(results), location));
 
     let func_name = StringAttribute::new(context, func_symbol);

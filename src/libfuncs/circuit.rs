@@ -637,26 +637,6 @@ fn build_gate_evaluation<'ctx, 'this>(
                     ));
                     block = has_inverse_block;
 
-                    // if the inverse is negative, then add modulus
-                    let zero = block.const_int_from_type(context, location, 0, u768_type)?;
-                    let is_negative = block
-                        .append_operation(arith::cmpi(
-                            context,
-                            CmpiPredicate::Slt,
-                            inverse,
-                            zero,
-                            location,
-                        ))
-                        .result(0)?
-                        .into();
-                    let wrapped_inverse = block.addi(inverse, circuit_modulus_u768, location)?;
-                    let inverse = block.append_op_result(arith::select(
-                        is_negative,
-                        wrapped_inverse,
-                        inverse,
-                        location,
-                    ))?;
-
                     // Truncate back
                     let inverse = block.trunci(inverse, u384_type, location)?;
 
