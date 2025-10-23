@@ -613,6 +613,7 @@ impl RuntimeBindingsMeta {
         ))
     }
 
+    #[allow(clippy::too_many_arguments)]
     pub fn libfunc_qm31_bin_op<'c, 'a>(
         &mut self,
         context: &'c Context,
