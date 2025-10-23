@@ -583,15 +583,21 @@ pub unsafe extern "C" fn cairo_native__libfunc__ec__ec_state_try_finalize_nz(
     }
 }
 
+/// Compute `qm31_is_zero(qm31)` and store the result.
+///
+/// # Safety
+///
+/// This function is intended to be called from MLIR, deals with pointers, and is therefore
+/// definitely unsafe to use manually.
 pub unsafe extern "C" fn cairo_native__libfunc__qm31__qm31_is_zero(
     qm31: &[[u8; 4]; 4],
     cond_ptr: &mut [u8; 1],
 ) {
     let qm31 = *qm31;
-    let qm31_0 = m31_to_u32(qm31[0]);
-    let qm31_1 = m31_to_u32(qm31[1]);
-    let qm31_2 = m31_to_u32(qm31[2]);
-    let qm31_3 = m31_to_u32(qm31[3]);
+    let qm31_0 = u32::from_le_bytes(qm31[0]);
+    let qm31_1 = u32::from_le_bytes(qm31[1]);
+    let qm31_2 = u32::from_le_bytes(qm31[2]);
+    let qm31_3 = u32::from_le_bytes(qm31[3]);
 
     let qm31 = starknet_types_core::qm31::QM31::from_coefficients(qm31_0, qm31_1, qm31_2, qm31_3);
     if qm31.is_zero() {
@@ -601,11 +607,17 @@ pub unsafe extern "C" fn cairo_native__libfunc__qm31__qm31_is_zero(
     }
 }
 
+/// Compute `qm31_from_m31(qm31)` and store the result.
+///
+/// # Safety
+///
+/// This function is intended to be called from MLIR, deals with pointers, and is therefore
+/// definitely unsafe to use manually.
 pub unsafe extern "C" fn cairo_native__libfunc__qm31__qm31_from_m31(
     m31: &[u8; 4],
     qm31_res: &mut [[u8; 4]; 4],
 ) {
-    let m31 = m31_to_u32(*m31);
+    let m31 = u32::from_le_bytes(*m31);
     let qm31 = starknet_types_core::qm31::QM31::from_coefficients(m31, 0, 0, 0);
     let coefficients = qm31.to_coefficients();
 
@@ -615,6 +627,16 @@ pub unsafe extern "C" fn cairo_native__libfunc__qm31__qm31_from_m31(
     qm31_res[3] = coefficients.3.to_le_bytes();
 }
 
+/// Compute the following QM31 libfuncs depending on the value of op:
+/// - `qm31_add`
+/// - `qm31_sub`
+/// - `qm31_mul`
+/// - `qm31_div`
+///
+/// # Safety
+///
+/// This function is intended to be called from MLIR, deals with pointers, and is therefore
+/// definitely unsafe to use manually.
 pub unsafe extern "C" fn cairo_native__libfunc__qm31__qm31_binary_op(
     lhs: &[[u8; 4]; 4],
     rhs: &[[u8; 4]; 4],
@@ -623,19 +645,18 @@ pub unsafe extern "C" fn cairo_native__libfunc__qm31__qm31_binary_op(
 ) {
     // lhs
     let lhs = *lhs;
-    let lhs_0 = m31_to_u32(lhs[0]);
-    let lhs_1 = m31_to_u32(lhs[1]);
-    let lhs_2 = m31_to_u32(lhs[2]);
-    let lhs_3 = m31_to_u32(lhs[3]);
-
+    let lhs_0 = u32::from_le_bytes(lhs[0]);
+    let lhs_1 = u32::from_le_bytes(lhs[1]);
+    let lhs_2 = u32::from_le_bytes(lhs[2]);
+    let lhs_3 = u32::from_le_bytes(lhs[3]);
     let lhs = starknet_types_core::qm31::QM31::from_coefficients(lhs_0, lhs_1, lhs_2, lhs_3);
 
     // rhs
     let rhs = *rhs;
-    let rhs_0 = m31_to_u32(rhs[0]);
-    let rhs_1 = m31_to_u32(rhs[1]);
-    let rhs_2 = m31_to_u32(rhs[2]);
-    let rhs_3 = m31_to_u32(rhs[3]);
+    let rhs_0 = u32::from_le_bytes(rhs[0]);
+    let rhs_1 = u32::from_le_bytes(rhs[1]);
+    let rhs_2 = u32::from_le_bytes(rhs[2]);
+    let rhs_3 = u32::from_le_bytes(rhs[3]);
     let rhs = starknet_types_core::qm31::QM31::from_coefficients(rhs_0, rhs_1, rhs_2, rhs_3);
 
     op[0] &= 0x3; // We want to keep only the first 2 bits
@@ -676,11 +697,6 @@ thread_local! {
 /// Get the costs builtin from the internal thread local.
 pub extern "C" fn cairo_native__get_costs_builtin() -> *const [u64; 7] {
     BUILTIN_COSTS.with(|x| x.as_ptr()) as *const [u64; 7]
-}
-
-fn m31_to_u32(m31_bytes: [u8; 4]) -> u32 {
-    // m31_bytes[3] &= 0x01;
-    u32::from_le_bytes(m31_bytes)
 }
 
 // Utility methods for the print runtime function

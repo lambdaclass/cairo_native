@@ -12,6 +12,9 @@ use melior::{
     Context,
 };
 
+/// Build the MLIR type.
+///
+/// Check out [the module](self) for more info.
 pub fn build<'ctx>(
     context: &'ctx Context,
     _module: &Module<'ctx>,

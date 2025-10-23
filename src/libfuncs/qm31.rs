@@ -51,6 +51,7 @@ pub fn build<'ctx, 'this>(
     }
 }
 
+/// Generate MLIR operations for the `qm31_const` libfunc.
 pub fn build_const<'ctx, 'this>(
     context: &'ctx Context,
     _registry: &ProgramRegistry<CoreType, CoreLibfunc>,
@@ -77,6 +78,7 @@ pub fn build_const<'ctx, 'this>(
     helper.br(entry, 0, &[qm31], location)
 }
 
+/// Generate MLIR operations for the `qm31_is_zero` libfunc.
 pub fn build_is_zero<'ctx, 'this>(
     context: &'ctx Context,
     _registry: &ProgramRegistry<CoreType, CoreLibfunc>,
@@ -127,6 +129,7 @@ pub fn build_is_zero<'ctx, 'this>(
     )
 }
 
+/// Generate MLIR operations for the QM31 binary operations libfuncs.
 pub fn build_binary_op<'ctx, 'this>(
     context: &'ctx Context,
     _registry: &ProgramRegistry<CoreType, CoreLibfunc>,
@@ -202,6 +205,7 @@ pub fn build_binary_op<'ctx, 'this>(
     helper.br(entry, 0, &[result], location)
 }
 
+/// Generate MLIR operations for the `qm31_pack` libfunc.
 pub fn build_pack<'ctx, 'this>(
     context: &'ctx Context,
     _registry: &ProgramRegistry<CoreType, CoreLibfunc>,
@@ -228,6 +232,7 @@ pub fn build_pack<'ctx, 'this>(
     helper.br(entry, 0, &[qm31], location)
 }
 
+/// Generate MLIR operations for the `qm31_unpack` libfunc.
 pub fn build_unpack<'ctx, 'this>(
     context: &'ctx Context,
     _registry: &ProgramRegistry<CoreType, CoreLibfunc>,
@@ -256,6 +261,7 @@ pub fn build_unpack<'ctx, 'this>(
     )
 }
 
+/// Generate MLIR operations for the `qm31_from_m31` libfunc.
 pub fn build_from_m31<'ctx, 'this>(
     context: &'ctx Context,
     _registry: &ProgramRegistry<CoreType, CoreLibfunc>,
