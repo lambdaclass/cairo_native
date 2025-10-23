@@ -497,7 +497,6 @@ impl TypeBuilder for CoreTypeConcrete {
             | CoreTypeConcrete::Nullable(_)
             | CoreTypeConcrete::Felt252Dict(_)
             | CoreTypeConcrete::SquashedFelt252Dict(_) => false,
-            
             CoreTypeConcrete::Array(_) => true,
             CoreTypeConcrete::EcPoint(_) => true,
             CoreTypeConcrete::EcState(_) => true,
