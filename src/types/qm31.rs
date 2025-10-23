@@ -23,6 +23,6 @@ pub fn build<'ctx>(
     Ok(llvm::r#type::r#struct(
         context,
         &[m31, m31, m31, m31],
-        false, // TODO: Confirm this
+        false,
     ))
 }

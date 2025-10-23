@@ -741,11 +741,6 @@ impl Value {
                 CoreTypeConcrete::QM31(_) => {
                     let data = ptr.cast::<[[u8; 4]; 4]>().as_mut();
 
-                    // data[0][3] &= 0x01; // Filter out first bit (it is outside the 31 bits range)
-                    // data[1][3] &= 0x01; // Filter out first bit (it is outside the 31 bits range)
-                    // data[2][3] &= 0x01; // Filter out first bit (it is outside the 31 bits range)
-                    // data[3][3] &= 0x01; // Filter out first bit (it is outside the 31 bits range)
-
                     Self::QM31(
                         u32::from_le_bytes(data[0]),
                         u32::from_le_bytes(data[1]),

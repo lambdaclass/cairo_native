@@ -61,11 +61,7 @@ pub fn build_const<'ctx, 'this>(
     info: &QM31ConstConcreteLibfunc,
 ) -> Result<()> {
     let m31_ty = IntegerType::new(context, 31).into();
-    let qm31_ty = llvm::r#type::r#struct(
-        context,
-        &[m31_ty, m31_ty, m31_ty, m31_ty],
-        false, // TODO: Confirm this
-    );
+    let qm31_ty = llvm::r#type::r#struct(context, &[m31_ty, m31_ty, m31_ty, m31_ty], false);
 
     let m31_0 = entry.const_int_from_type(context, location, info.w0, m31_ty)?;
     let m31_1 = entry.const_int_from_type(context, location, info.w1, m31_ty)?;
@@ -92,17 +88,12 @@ pub fn build_is_zero<'ctx, 'this>(
 ) -> Result<()> {
     let qm31 = entry.arg(0)?;
     let m31_ty = IntegerType::new(context, 31).into();
-    let qm31_ty = llvm::r#type::r#struct(
-        context,
-        &[m31_ty, m31_ty, m31_ty, m31_ty],
-        false, // TODO: Confirm this
-    );
+    let qm31_ty = llvm::r#type::r#struct(context, &[m31_ty, m31_ty, m31_ty, m31_ty], false);
     let qm31_ptr =
         helper
             .init_block
             .alloca1(context, location, qm31_ty, get_integer_layout(31).align())?;
     let cond_ptr = helper.init_block.alloca1(
-        // TODO: Check if we need this ptr really
         context,
         location,
         IntegerType::new(context, 1).into(),
@@ -145,12 +136,9 @@ pub fn build_binary_op<'ctx, 'this>(
     metadata: &mut MetadataStorage,
     info: &QM31BinaryOpConcreteLibfunc,
 ) -> Result<()> {
+    let op_ty = IntegerType::new(context, 2).into();
     let m31_ty = IntegerType::new(context, 31).into();
-    let qm31_ty = llvm::r#type::r#struct(
-        context,
-        &[m31_ty, m31_ty, m31_ty, m31_ty],
-        false, // TODO: Confirm this
-    );
+    let qm31_ty = llvm::r#type::r#struct(context, &[m31_ty, m31_ty, m31_ty, m31_ty], false);
     let runtime_bindings_meta = metadata
         .get_mut::<RuntimeBindingsMeta>()
         .ok_or(Error::MissingMetadata)?;
@@ -166,67 +154,42 @@ pub fn build_binary_op<'ctx, 'this>(
         helper
             .init_block
             .alloca1(context, location, qm31_ty, get_integer_layout(31).align())?;
-    let op_ptr = helper.init_block.alloca1(
-        context,
-        location,
-        IntegerType::new(context, 8).into(),
-        get_integer_layout(8).align(),
-    )?; // TODO: We could use 4 bits
-    let res_ptr = helper.init_block.alloca1(
-        // TODO: This may not be necessary
-        context,
-        location,
-        qm31_ty,
-        get_integer_layout(31).align(),
-    )?;
+    let op_ptr =
+        helper
+            .init_block
+            .alloca1(context, location, op_ty, get_integer_layout(2).align())?;
+    let res_ptr =
+        helper
+            .init_block
+            .alloca1(context, location, qm31_ty, get_integer_layout(31).align())?;
 
     entry.store(context, location, lhs_ptr, lhs)?;
     entry.store(context, location, rhs_ptr, rhs)?;
 
     match info.operator {
         cairo_lang_sierra::extensions::qm31::QM31BinaryOperator::Add => {
-            let op = entry.const_int_from_type(
-                context,
-                location,
-                0,
-                IntegerType::new(context, 8).into(),
-            )?;
+            let op = entry.const_int_from_type(context, location, 0, op_ty)?;
             entry.store(context, location, op_ptr, op)?;
             runtime_bindings_meta.libfunc_qm31_bin_op(
                 context, helper, entry, lhs_ptr, rhs_ptr, op_ptr, res_ptr, location,
             )?;
         }
         cairo_lang_sierra::extensions::qm31::QM31BinaryOperator::Sub => {
-            let op = entry.const_int_from_type(
-                context,
-                location,
-                1,
-                IntegerType::new(context, 8).into(),
-            )?;
+            let op = entry.const_int_from_type(context, location, 1, op_ty)?;
             entry.store(context, location, op_ptr, op)?;
             runtime_bindings_meta.libfunc_qm31_bin_op(
                 context, helper, entry, lhs_ptr, rhs_ptr, op_ptr, res_ptr, location,
             )?;
         }
         cairo_lang_sierra::extensions::qm31::QM31BinaryOperator::Mul => {
-            let op = entry.const_int_from_type(
-                context,
-                location,
-                2,
-                IntegerType::new(context, 8).into(),
-            )?;
+            let op = entry.const_int_from_type(context, location, 2, op_ty)?;
             entry.store(context, location, op_ptr, op)?;
             runtime_bindings_meta.libfunc_qm31_bin_op(
                 context, helper, entry, lhs_ptr, rhs_ptr, op_ptr, res_ptr, location,
             )?;
         }
         cairo_lang_sierra::extensions::qm31::QM31BinaryOperator::Div => {
-            let op = entry.const_int_from_type(
-                context,
-                location,
-                3,
-                IntegerType::new(context, 8).into(),
-            )?;
+            let op = entry.const_int_from_type(context, location, 3, op_ty)?;
             entry.store(context, location, op_ptr, op)?;
             runtime_bindings_meta.libfunc_qm31_bin_op(
                 context, helper, entry, lhs_ptr, rhs_ptr, op_ptr, res_ptr, location,
@@ -254,11 +217,7 @@ pub fn build_pack<'ctx, 'this>(
     let m31_3 = entry.arg(3)?;
 
     let m31_ty = IntegerType::new(context, 31).into();
-    let qm31_ty = llvm::r#type::r#struct(
-        context,
-        &[m31_ty, m31_ty, m31_ty, m31_ty],
-        false, // TODO: Confirm this
-    );
+    let qm31_ty = llvm::r#type::r#struct(context, &[m31_ty, m31_ty, m31_ty, m31_ty], false);
 
     let qm31 = entry.append_op_result(llvm::undef(qm31_ty, location))?;
     let qm31 = entry.insert_value(context, location, qm31, m31_0, 0)?;
@@ -309,11 +268,7 @@ pub fn build_from_m31<'ctx, 'this>(
     let m31 = entry.arg(0)?;
 
     let m31_ty = IntegerType::new(context, 31).into();
-    let qm31_ty = llvm::r#type::r#struct(
-        context,
-        &[m31_ty, m31_ty, m31_ty, m31_ty],
-        false, // TODO: Confirm this
-    );
+    let qm31_ty = llvm::r#type::r#struct(context, &[m31_ty, m31_ty, m31_ty, m31_ty], false);
 
     let m31_ptr =
         helper
