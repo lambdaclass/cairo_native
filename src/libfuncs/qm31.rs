@@ -253,8 +253,6 @@ pub fn build_pack<'ctx, 'this>(
     let m31_2 = entry.arg(2)?;
     let m31_3 = entry.arg(3)?;
 
-    // TODO: Check if there is a nicer way to get the type. I think
-    // something can be done with the branch signatures or something like that
     let m31_ty = IntegerType::new(context, 31).into();
     let qm31_ty = llvm::r#type::r#struct(
         context,
@@ -347,6 +345,18 @@ mod test {
 
     use crate::{jit_enum, jit_struct, load_cairo, utils::testing::run_program, Value};
 
+    impl From<&starknet_types_core::qm31::QM31> for Value {
+        fn from(qm31: &starknet_types_core::qm31::QM31) -> Self {
+            let coefficients = qm31.to_coefficients();
+            Value::QM31(
+                coefficients.0,
+                coefficients.1,
+                coefficients.2,
+                coefficients.3,
+            )
+        }
+    }
+
     #[test]
     fn run_unpack() {
         let program = load_cairo! {
@@ -361,12 +371,7 @@ mod test {
 
         let result = run_program(&program, "run_test", &[Value::QM31(1, 2, 3, 4)]).return_value;
         let m31_range = Range::closed(0, BigInt::from(2147483646));
-        let Value::Struct {
-            // TODO: Find a way to make this asserts nicer
-            fields,
-            debug_name: _,
-        } = result
-        else {
+        let Value::Struct { fields, .. } = result else {
             panic!("Expected a Value::Struct()");
         };
         assert_eq!(
@@ -397,11 +402,7 @@ mod test {
             &[Value::QM31(0x544b2fba, 0x673cff77, 0x60713d44, 0x499602d2)],
         )
         .return_value;
-        let Value::Struct {
-            fields,
-            debug_name: _,
-        } = result
-        else {
+        let Value::Struct { fields, .. } = result else {
             panic!("Expected a Value::Struct()");
         };
         assert_eq!(
@@ -465,7 +466,7 @@ mod test {
 
     #[test]
     fn run_const() {
-        let program = load_cairo! { // TODO: Check if we can pass the m31 as arguments so we reduce repeated code
+        let program = load_cairo! {
             use core::qm31::{qm31_const, qm31};
 
             fn run_test() -> qm31 {
@@ -532,16 +533,35 @@ mod test {
         let program = load_cairo! {
             use core::qm31::{QM31Trait, qm31};
 
-            fn run_test() -> qm31 {
-                let lhs = QM31Trait::new(1,2,3,4);
-                let rhs = QM31Trait::new(1,2,3,4);
-
+            fn run_test(lhs: qm31, rhs: qm31) -> qm31 {
                 lhs + rhs
             }
         };
 
-        let result = run_program(&program, "run_test", &[]).return_value;
-        assert_eq!(result, Value::QM31(2, 4, 6, 8));
+        let a = starknet_types_core::qm31::QM31::from_coefficients(
+            0x544b2fba, 0x673cff77, 0x60713d44, 0x499602d2,
+        );
+        let b = starknet_types_core::qm31::QM31::from_coefficients(
+            0x499602d2, 0x544b2fba, 0x673cff77, 0x60713d44,
+        );
+        let c = starknet_types_core::qm31::QM31::from_coefficients(
+            0x1de1328d, 0x3b882f32, 0x47ae3cbc, 0x2a074017,
+        );
+
+        let result =
+            run_program(&program, "run_test", &[Value::from(&a), Value::from(&b)]).return_value;
+        let expected_qm31 = a.clone() + b.clone();
+        assert_eq!(result, Value::from(&expected_qm31));
+
+        let result =
+            run_program(&program, "run_test", &[Value::from(&b), Value::from(&c)]).return_value;
+        let expected_qm31 = b + c.clone();
+        assert_eq!(result, Value::from(&expected_qm31));
+
+        let result =
+            run_program(&program, "run_test", &[Value::from(&a), Value::from(&c)]).return_value;
+        let expected_qm31 = a + c;
+        assert_eq!(result, Value::from(&expected_qm31));
     }
 
     #[test]
@@ -549,18 +569,8 @@ mod test {
         let program = load_cairo! {
             use core::qm31::{QM31Trait, qm31, m31};
 
-            fn run_test_c_minus_a() -> qm31 {
-                let a = QM31Trait::new(0x544b2fba, 0x673cff77, 0x60713d44, 0x499602d2);
-                let c = QM31Trait::new(0x1de1328d, 0x3b882f32, 0x47ae3cbc, 0x2a074017);
-
-                c - a
-            }
-
-            fn run_test_c_minus_b() -> qm31 {
-                let c = QM31Trait::new(0x1de1328d, 0x3b882f32, 0x47ae3cbc, 0x2a074017);
-                let b = QM31Trait::new(0x499602d2, 0x544b2fba, 0x673cff77, 0x60713d44);
-
-                c - b
+            fn run_test(lhs: qm31, rhs: qm31) -> qm31 {
+                lhs - rhs
             }
         };
 
@@ -574,18 +584,20 @@ mod test {
             0x1de1328d, 0x3b882f32, 0x47ae3cbc, 0x2a074017,
         );
 
-        let result_c_minus_a = run_program(&program, "run_test_c_minus_a", &[]).return_value;
-        let c_minus_a_coefficients = (c.clone() - a.clone()).to_coefficients();
-        assert_eq!(
-            result_c_minus_a,
-            Value::QM31(0x1de1328d, 0x1de1328d, 0x1de1328d, 0x1de1328d)
-        );
+        let result =
+            run_program(&program, "run_test", &[Value::from(&c), Value::from(&a)]).return_value;
+        let expected_qm31 = c.clone() - a.clone();
+        assert_eq!(result, Value::from(&expected_qm31));
 
-        let result_c_minus_b = run_program(&program, "run_test_c_minus_b", &[]).return_value;
-        assert_eq!(
-            result_c_minus_b,
-            Value::QM31(0x544b2fba, 0x673cff77, 0x60713d44, 0x499602d2)
-        );
+        let result =
+            run_program(&program, "run_test", &[Value::from(&a), Value::from(&b)]).return_value;
+        let expected_qm31 = a - b.clone();
+        assert_eq!(result, Value::from(&expected_qm31));
+
+        let result =
+            run_program(&program, "run_test", &[Value::from(&b), Value::from(&c)]).return_value;
+        let expected_qm31 = b - c;
+        assert_eq!(result, Value::from(&expected_qm31));
     }
 
     #[test]
@@ -593,17 +605,8 @@ mod test {
         let program = load_cairo! {
             use core::qm31::{QM31Trait, qm31, m31};
 
-            fn run_test_a_times_b() -> qm31 {
-                let a = QM31Trait::new(0x544b2fba, 0x673cff77, 0x60713d44, 0x499602d2);
-                let b = QM31Trait::new(0x499602d2, 0x544b2fba, 0x673cff77, 0x60713d44);
-                a * b
-            }
-
-            fn run_test_c_times_a() -> qm31 {
-                let c = QM31Trait::new(0x1de1328d, 0x3b882f32, 0x47ae3cbc, 0x2a074017);
-                let a = QM31Trait::new(0x544b2fba, 0x673cff77, 0x60713d44, 0x499602d2);
-
-                c * a
+            fn run_test(lhs: qm31, rhs: qm31) -> qm31 {
+                lhs * rhs
             }
         };
 
@@ -616,50 +619,39 @@ mod test {
         let c = starknet_types_core::qm31::QM31::from_coefficients(
             0x1de1328d, 0x3b882f32, 0x47ae3cbc, 0x2a074017,
         );
+        let d = starknet_types_core::qm31::QM31::zero();
 
-        let result_a_times_b = run_program(&program, "run_test_a_times_b", &[]).return_value;
-        let a_times_b_coefficients = (a.clone() * b).to_coefficients();
-        assert_eq!(
-            result_a_times_b,
-            Value::QM31(
-                a_times_b_coefficients.0,
-                a_times_b_coefficients.1,
-                a_times_b_coefficients.2,
-                a_times_b_coefficients.3
-            )
-        );
+        let result =
+            run_program(&program, "run_test", &[Value::from(&a), Value::from(&b)]).return_value;
+        let expected_qm31 = a.clone() * b.clone();
+        assert_eq!(result, Value::from(&expected_qm31));
 
-        let result_c_times_a = run_program(&program, "run_test_c_times_a", &[]).return_value;
-        let c_times_a_coefficients = (c * a).to_coefficients();
-        assert_eq!(
-            result_c_times_a,
-            Value::QM31(
-                c_times_a_coefficients.0,
-                c_times_a_coefficients.1,
-                c_times_a_coefficients.2,
-                c_times_a_coefficients.3
-            )
-        );
+        let result =
+            run_program(&program, "run_test", &[Value::from(&a), Value::from(&c)]).return_value;
+        let expected_qm31 = a.clone() * c.clone();
+        assert_eq!(result, Value::from(&expected_qm31));
+
+        let result =
+            run_program(&program, "run_test", &[Value::from(&b), Value::from(&c)]).return_value;
+        let expected_qm31 = b.clone() * c;
+        assert_eq!(result, Value::from(&expected_qm31));
+
+        let result =
+            run_program(&program, "run_test", &[Value::from(&d), Value::from(&b)]).return_value;
+        let expected_qm31 = d * b;
+        assert_eq!(result, Value::from(&expected_qm31));
     }
 
     #[test]
     fn run_div() {
-        let program = load_cairo! { // TODO: Check if we can pass arguments so we reduce repeated code
+        let program = load_cairo! {
             use core::qm31::{QM31Trait, qm31};
 
-            fn run_test_c_divided_by_a() -> qm31 {
-                let a = QM31Trait::new(0x544b2fba, 0x673cff77, 0x60713d44, 0x499602d2);
-                let c = QM31Trait::new(0x1de1328d, 0x3b882f32, 0x47ae3cbc, 0x2a074017);
-                c / a
-            }
-
-            fn run_test_a_divided_by_b() -> qm31 {
-                let a = QM31Trait::new(0x544b2fba, 0x673cff77, 0x60713d44, 0x499602d2);
-                let b = QM31Trait::new(0x499602d2, 0x544b2fba, 0x673cff77, 0x60713d44);
-                a / b
+            fn run_test(lhs: qm31, rhs: qm31) -> qm31 {
+                lhs / rhs
             }
         };
-        // TODO: Check if these can be const so we dont repeat them on each test
+
         let a = starknet_types_core::qm31::QM31::from_coefficients(
             0x544b2fba, 0x673cff77, 0x60713d44, 0x499602d2,
         );
@@ -669,36 +661,39 @@ mod test {
         let c = starknet_types_core::qm31::QM31::from_coefficients(
             0x1de1328d, 0x3b882f32, 0x47ae3cbc, 0x2a074017,
         );
+        let d = starknet_types_core::qm31::QM31::zero();
 
-        let result_c_div_by_a = run_program(&program, "run_test_c_divided_by_a", &[]).return_value;
-        let c_div_by_a_coefficients = (c / a.clone()).unwrap().to_coefficients();
+        let result =
+            run_program(&program, "run_test", &[Value::from(&c), Value::from(&a)]).return_value;
+        let expected_qm31 = (c.clone() / a.clone()).unwrap();
         assert_eq!(
-            result_c_div_by_a,
-            jit_enum!(
-                0,
-                jit_struct!(Value::QM31(
-                    c_div_by_a_coefficients.0,
-                    c_div_by_a_coefficients.1,
-                    c_div_by_a_coefficients.2,
-                    c_div_by_a_coefficients.3
-                ))
-            )
+            result,
+            jit_enum!(0, jit_struct!(Value::from(&expected_qm31)))
         );
 
-        let result_a_div_by_b = run_program(&program, "run_test_a_divided_by_b", &[]).return_value;
-        let a_div_by_b_coefficients = (a / b).unwrap().to_coefficients();
+        let result =
+            run_program(&program, "run_test", &[Value::from(&a), Value::from(&b)]).return_value;
+        let expected_qm31 = (a.clone() / b.clone()).unwrap();
         assert_eq!(
-            result_a_div_by_b,
-            jit_enum!(
-                0,
-                jit_struct!(Value::QM31(
-                    a_div_by_b_coefficients.0,
-                    a_div_by_b_coefficients.1,
-                    a_div_by_b_coefficients.2,
-                    a_div_by_b_coefficients.3
-                ))
-            )
+            result,
+            jit_enum!(0, jit_struct!(Value::from(&expected_qm31)))
         );
+
+        let result =
+            run_program(&program, "run_test", &[Value::from(&b), Value::from(&c)]).return_value;
+        let expected_qm31 = (b / c).unwrap();
+        assert_eq!(
+            result,
+            jit_enum!(0, jit_struct!(Value::from(&expected_qm31)))
+        );
+
+        let result =
+            run_program(&program, "run_test", &[Value::from(&a), Value::from(&d)]).return_value;
+        if let Value::Enum { tag, .. } = result {
+            assert_eq!(tag, 1);
+        } else {
+            panic!("Expected a Value::Enum()");
+        }
     }
 
     #[test]
@@ -714,7 +709,7 @@ mod test {
                 qm31_from_m31(1)
             }
 
-            fn run_test_with_big_number() -> qm31 {
+            fn run_test_with_big_coefficient() -> qm31 {
                 qm31_from_m31(0x60713d44)
             }
         };
@@ -744,7 +739,7 @@ mod test {
 
         let result = run_program(
             &program,
-            "run_test_with_big_number",
+            "run_test_with_big_coefficient",
             &[Value::BoundedInt {
                 value: Felt252::one(),
                 range: m31_range,
