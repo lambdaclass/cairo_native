@@ -546,7 +546,8 @@ impl TypeBuilder for CoreTypeConcrete {
             CoreTypeConcrete::Circuit(info) => circuit::is_complex(info),
 
             CoreTypeConcrete::IntRange(_info) => false,
-            CoreTypeConcrete::Blake(_info) => native_panic!("Implement is_complex for Blake type"),
+
+            CoreTypeConcrete::Blake(_) => native_panic!("Implement is_complex for Blake type"),
             CoreTypeConcrete::QM31(_info) => native_panic!("Implement is_complex for QM31 type"),
             CoreTypeConcrete::GasReserve(_info) => native_panic!("Implement is_complex for GasReserve type"),
         })
@@ -633,7 +634,7 @@ impl TypeBuilder for CoreTypeConcrete {
                 let type_info = registry.get_type(&info.ty)?;
                 type_info.is_zst(registry)?
             }
-            CoreTypeConcrete::Blake(_info) => native_panic!("Implement is_zst for Blake type"),
+            CoreTypeConcrete::Blake(_) => native_panic!("Implement is_zst for Blake type"),
             CoreTypeConcrete::QM31(_info) => native_panic!("Implement is_zst for QM31 type"),
             CoreTypeConcrete::GasReserve(_info) => {
                 native_panic!("Implement is_zst for GasReserve type")
@@ -765,9 +766,6 @@ impl TypeBuilder for CoreTypeConcrete {
         // arguments.
         Ok(match self {
             CoreTypeConcrete::IntRange(_) => false,
-            CoreTypeConcrete::Blake(_info) => {
-                native_panic!("Implement is_memory_allocated for Blake type")
-            }
             CoreTypeConcrete::Array(_) => false,
             CoreTypeConcrete::Bitwise(_) => false,
             CoreTypeConcrete::Box(_) => false,
@@ -843,6 +841,9 @@ impl TypeBuilder for CoreTypeConcrete {
                 .is_memory_allocated(registry)?,
             CoreTypeConcrete::Coupon(_) => false,
             CoreTypeConcrete::Circuit(_) => false,
+            CoreTypeConcrete::Blake(_) => {
+                native_panic!("Implement is_memory_allocated for Blake type")
+            }
             CoreTypeConcrete::QM31(_) => native_panic!("Implement is_memory_allocated for QM31"),
             CoreTypeConcrete::GasReserve(_) => {
                 native_panic!("Implement is_memory_allocated for GasReserve")
