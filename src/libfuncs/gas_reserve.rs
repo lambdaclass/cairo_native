@@ -77,15 +77,25 @@ fn build_gas_reserve_create<'ctx, 'this>(
 }
 
 fn build_gas_reserve_utilize<'ctx, 'this>(
-    _context: &'ctx Context,
+    context: &'ctx Context,
     _registry: &ProgramRegistry<CoreType, CoreLibfunc>,
-    _entry: &'this Block<'ctx>,
-    _location: Location<'ctx>,
-    _helper: &LibfuncHelper<'ctx, 'this>,
+    entry: &'this Block<'ctx>,
+    location: Location<'ctx>,
+    helper: &LibfuncHelper<'ctx, 'this>,
     _metadata: &mut MetadataStorage,
     _info: &SignatureOnlyConcreteLibfunc,
 ) -> Result<()> {
-    todo!()
+    let current_gas = entry.arg(0)?;
+    let gas_reserve = entry.arg(1)?;
+
+    let trunc_reserve = entry.append_op_result(arith::trunci(
+        gas_reserve,
+        IntegerType::new(context, 64).into(),
+        location,
+    ))?;
+    let updated_gas = entry.append_op_result(arith::addi(current_gas, trunc_reserve, location))?;
+
+    helper.br(entry, 0, &[updated_gas], location)
 }
 
 #[cfg(test)]
@@ -106,6 +116,38 @@ mod test {
         if let Value::Enum { tag, value, .. } = result {
             assert_eq!(tag, 0);
             assert_eq!(value, Box::new(Value::Sint128(100))) // TODO: Should it return a Sint128 or a Uint128?
+        }
+    }
+
+    #[test]
+    fn run_gas_reserve_utilize() {
+        let program = load_cairo!(
+            use core::gas::{GasReserve, gas_reserve_create, gas_reserve_utilize};
+
+            fn run_test(gas_quant: u128) -> (u128, u128) {
+                let initial_gas = core::testing::get_available_gas();
+                let reserve = gas_reserve_create(gas_quant).unwrap();
+                gas_reserve_utilize(reserve);
+                let final_gas = core::testing::get_available_gas();
+
+                (initial_gas, final_gas)
+            }
+        );
+
+        let gas_quant = 10;
+        let result = run_program(&program, "run_test", &[Value::Uint128(gas_quant)]).return_value;
+        assert_eq!(result, Value::Null);
+        if let Value::Enum { value, .. } = result {
+            // TODO: Do this nicer
+            if let Value::Struct { fields, .. } = *value {
+                let initial_gas = &fields[0];
+                let final_gas = &fields[1];
+                if let (Value::Uint128(initial_gas), Value::Uint128(final_gas)) =
+                    (initial_gas, final_gas)
+                {
+                    assert_eq!(initial_gas - gas_quant, *final_gas)
+                }
+            }
         }
     }
 }
