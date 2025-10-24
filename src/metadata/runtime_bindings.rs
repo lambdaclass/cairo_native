@@ -46,8 +46,8 @@ enum RuntimeBinding {
     DictDup,
     GetCostsBuiltin,
     DebugPrint,
-    Felt252ExtendedEuclideanAlgorithm,
-    CircuitExtendedEuclideanAlgorithm,
+    U252ExtendedEuclideanAlgorithm,
+    U384ExtendedEuclideanAlgorithm,
     CircuitArithOperation,
     #[cfg(feature = "with-cheatcode")]
     VtableCheatcode,
@@ -73,11 +73,11 @@ impl RuntimeBinding {
             RuntimeBinding::DictDrop => "cairo_native__dict_drop",
             RuntimeBinding::DictDup => "cairo_native__dict_dup",
             RuntimeBinding::GetCostsBuiltin => "cairo_native__get_costs_builtin",
-            RuntimeBinding::Felt252ExtendedEuclideanAlgorithm => {
-                "cairo_native__felt252_extended_euclidean_algorithm"
+            RuntimeBinding::U252ExtendedEuclideanAlgorithm => {
+                "cairo_native__u252_extended_euclidean_algorithm"
             }
-            RuntimeBinding::CircuitExtendedEuclideanAlgorithm => {
-                "cairo_native__circuit_extended_euclidean_algorithm"
+            RuntimeBinding::U384ExtendedEuclideanAlgorithm => {
+                "cairo_native__u384_extended_euclidean_algorithm"
             }
             RuntimeBinding::CircuitArithOperation => "cairo_native__circuit_arith_operation",
             #[cfg(feature = "with-cheatcode")]
@@ -128,8 +128,8 @@ impl RuntimeBinding {
             RuntimeBinding::GetCostsBuiltin => {
                 crate::runtime::cairo_native__get_costs_builtin as *const ()
             }
-            RuntimeBinding::Felt252ExtendedEuclideanAlgorithm
-            | RuntimeBinding::CircuitExtendedEuclideanAlgorithm => return None,
+            RuntimeBinding::U252ExtendedEuclideanAlgorithm
+            | RuntimeBinding::U384ExtendedEuclideanAlgorithm => return None,
             RuntimeBinding::CircuitArithOperation => return None,
             #[cfg(feature = "with-cheatcode")]
             RuntimeBinding::VtableCheatcode => {
@@ -222,10 +222,10 @@ impl RuntimeBindingsMeta {
         'c: 'a,
     {
         let integer_type = IntegerType::new(context, 512).into();
-        let func_symbol = RuntimeBinding::Felt252ExtendedEuclideanAlgorithm.symbol();
+        let func_symbol = RuntimeBinding::U252ExtendedEuclideanAlgorithm.symbol();
         if self
             .active_map
-            .insert(RuntimeBinding::Felt252ExtendedEuclideanAlgorithm)
+            .insert(RuntimeBinding::U252ExtendedEuclideanAlgorithm)
         {
             build_egcd_function(module, context, location, func_symbol, integer_type)?;
         }
@@ -263,10 +263,10 @@ impl RuntimeBindingsMeta {
         'c: 'a,
     {
         let integer_type = IntegerType::new(context, 768).into();
-        let func_symbol = RuntimeBinding::CircuitExtendedEuclideanAlgorithm.symbol();
+        let func_symbol = RuntimeBinding::U384ExtendedEuclideanAlgorithm.symbol();
         if self
             .active_map
-            .insert(RuntimeBinding::CircuitExtendedEuclideanAlgorithm)
+            .insert(RuntimeBinding::U384ExtendedEuclideanAlgorithm)
         {
             build_egcd_function(module, context, location, func_symbol, integer_type)?;
         }
