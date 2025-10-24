@@ -209,7 +209,7 @@ impl RuntimeBindingsMeta {
     /// greatest common divisor of `a` and `b` and the second element is the bezout coefficient x.
     ///
     /// This implementation is only for felt252, which uses u252 integers.
-    pub fn felt252_extended_euclidean_algorithm<'c, 'a>(
+    pub fn u252_extended_euclidean_algorithm<'c, 'a>(
         &mut self,
         context: &'c Context,
         module: &Module,
@@ -250,7 +250,7 @@ impl RuntimeBindingsMeta {
     ///
     /// The difference with the other is that this function is meant to be used
     /// with circuits, which use u384 integers.
-    pub fn circuit_extended_euclidean_algorithm<'c, 'a>(
+    pub fn u384_extended_euclidean_algorithm<'c, 'a>(
         &mut self,
         context: &'c Context,
         module: &Module,

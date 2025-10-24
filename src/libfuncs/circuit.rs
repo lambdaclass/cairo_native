@@ -602,7 +602,7 @@ fn build_gate_evaluation<'ctx, 'this>(
 
                     // Apply egcd to find gcd and inverse
                     let euclidean_result = runtime_bindings_meta
-                        .circuit_extended_euclidean_algorithm(
+                        .u384_extended_euclidean_algorithm(
                             context,
                             helper.module,
                             block,
