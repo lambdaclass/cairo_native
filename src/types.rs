@@ -1008,7 +1008,7 @@ impl<T> Deref for WithSelf<'_, T> {
 #[cfg(test)]
 mod test {
     use super::TypeBuilder;
-    use crate::utils::test::load_cairo;
+    use crate::load_cairo;
     use cairo_lang_sierra::{
         extensions::core::{CoreLibfunc, CoreType},
         program_registry::ProgramRegistry,
