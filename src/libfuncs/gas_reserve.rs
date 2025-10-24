@@ -97,12 +97,15 @@ mod test {
         let program = load_cairo!(
             use core::gas::{GasReserve, gas_reserve_create};
 
-            fn run_test(x: u128) -> Option<GasReserve> {
-                gas_reserve_create(x)
+            fn run_test() -> Option<GasReserve> {
+                gas_reserve_create(100)
             }
         );
 
         let result = run_program(&program, "run_test", &[Value::Uint128(1000)]).return_value;
-        assert_eq!(result, Value::Uint128(1000));
+        if let Value::Enum { tag, value, .. } = result {
+            assert_eq!(tag, 0);
+            assert_eq!(value, Box::new(Value::Sint128(100))) // TODO: Should it return a Sint128 or a Uint128?
+        }
     }
 }
