@@ -10,6 +10,7 @@ use cairo_lang_sierra::{
 };
 use melior::dialect::arith::{self, CmpiPredicate};
 use melior::helpers::{ArithBlockExt, BuiltinBlockExt};
+use melior::ir::r#type::IntegerType;
 use melior::{
     ir::{Block, Location},
     Context,
@@ -43,12 +44,24 @@ fn build_gas_reserve_create<'ctx, 'this>(
     _metadata: &mut MetadataStorage,
     _info: &SignatureOnlyConcreteLibfunc,
 ) -> Result<()> {
-    let range_check = entry.arg(0)?;
-    let current_gas = entry.arg(1)?;
-    let amount = entry.arg(2)?;
+    let range_check = super::increment_builtin_counter(context, entry, location, entry.arg(0)?)?;
+    let current_gas = entry.arg(1)?; // u64
+    let amount = entry.arg(2)?; // u128
 
-    let enough_gas = entry.cmpi(context, CmpiPredicate::Uge, current_gas, amount, location)?;
-    let spare_gas = entry.append_op_result(arith::subi(current_gas, amount, location))?;
+    let amount_ty = IntegerType::new(context, 128).into();
+    let current_gas_128 = entry.append_op_result(arith::extui(current_gas, amount_ty, location))?;
+    let enough_gas = entry.cmpi(
+        context,
+        CmpiPredicate::Uge,
+        current_gas_128,
+        amount,
+        location,
+    )?;
+
+    // TODO: Check if this trunci is affecting results
+    let gas_builtin_ty = IntegerType::new(context, 64).into();
+    let spare_gas = entry.append_op_result(arith::subi(current_gas_128, amount, location))?;
+    let spare_gas = entry.append_op_result(arith::trunci(spare_gas, gas_builtin_ty, location))?;
 
     helper.cond_br(
         context,
