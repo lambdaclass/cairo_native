@@ -1033,7 +1033,7 @@ dependencies = [
 
 [[package]]
 name = "cairo-native"
-version = "0.6.1"
+version = "0.7.1"
 dependencies = [
  "aquamarine",
  "ark-ec",
@@ -1272,7 +1272,7 @@ dependencies = [
 
 [[package]]
 name = "casm-data-flow"
-version = "0.6.1"
+version = "0.7.1"
 dependencies = [
  "bincode",
  "cairo-lang-casm",
@@ -1634,7 +1634,7 @@ dependencies = [
 
 [[package]]
 name = "debug_utils"
-version = "0.6.1"
+version = "0.7.1"
 dependencies = [
  "cairo-lang-starknet-classes",
  "clap",
@@ -3480,7 +3480,7 @@ checksum = "0fda2ff0d084019ba4d7c6f371c95d8fd75ce3524c3cb8fb653a3023f6323e64"
 
 [[package]]
 name = "sierra-emu"
-version = "0.6.1"
+version = "0.7.1"
 dependencies = [
  "cairo-lang-compiler",
  "cairo-lang-filesystem",
@@ -3495,6 +3495,7 @@ dependencies = [
  "cairo-lang-test-plugin",
  "cairo-lang-utils",
  "clap",
+ "generic-array",
  "k256",
  "keccak",
  "num-bigint",
@@ -3629,7 +3630,7 @@ dependencies = [
 
 [[package]]
 name = "starknet-native-compile"
-version = "0.0.0"
+version = "0.7.1"
 dependencies = [
  "anyhow",
  "cairo-lang-sierra",
