@@ -868,6 +868,9 @@ pub fn setup_runtime(find_symbol_ptr: impl Fn(&str) -> Option<*mut c_void>) {
 ///
 /// This function declares a MLIR function that given two numbers a and b, returns a MLIR struct with gcd(a, b)
 /// and the bezout coefficient x. The declaration is done in the body of the module.
+///
+/// The primary use of this function is to find the modular multiplicative inverse of a value. To so, it is expected
+/// the a represents the value to be inverted and b the modulus of the field field.
 fn build_egcd_function<'ctx>(
     module: &Module,
     context: &'ctx Context,
@@ -892,13 +895,13 @@ fn build_egcd_function<'ctx>(
         (integer_type, location),
     ]));
 
-    let a = entry_block.arg(0)?;
-    let b = entry_block.arg(1)?;
+    let rhs = entry_block.arg(0)?;
+    let prime_modulus = entry_block.arg(1)?;
     // The egcd algorithm works by calculating a series of remainders `rem`, being each `rem_i` the remainder of dividing `rem_{i-1}` with `rem_{i-2}`
     // For the initial setup, rem_0 = b, rem_1 = a.
     // This order is chosen because if we reverse them, then the first iteration will just swap them
-    let remainder = a;
-    let prev_remainder = b;
+    let remainder = rhs;
+    let prev_remainder = prime_modulus;
 
     // Similarly we'll calculate another series which starts 0,1,... and from which we
     // will retrieve the modular inverse of a
@@ -964,7 +967,7 @@ fn build_egcd_function<'ctx>(
         ))
         .result(0)?
         .into();
-    let wrapped_inverse = end_block.addi(inverse, b, location)?;
+    let wrapped_inverse = end_block.addi(inverse, prime_modulus, location)?;
     let inverse = end_block.append_op_result(arith::select(
         is_negative,
         wrapped_inverse,
