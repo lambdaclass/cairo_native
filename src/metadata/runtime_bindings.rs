@@ -46,7 +46,8 @@ enum RuntimeBinding {
     DictDup,
     GetCostsBuiltin,
     DebugPrint,
-    ExtendedEuclideanAlgorithm,
+    U252ExtendedEuclideanAlgorithm,
+    U384ExtendedEuclideanAlgorithm,
     CircuitArithOperation,
     #[cfg(feature = "with-cheatcode")]
     VtableCheatcode,
@@ -72,8 +73,11 @@ impl RuntimeBinding {
             RuntimeBinding::DictDrop => "cairo_native__dict_drop",
             RuntimeBinding::DictDup => "cairo_native__dict_dup",
             RuntimeBinding::GetCostsBuiltin => "cairo_native__get_costs_builtin",
-            RuntimeBinding::ExtendedEuclideanAlgorithm => {
-                "cairo_native__extended_euclidean_algorithm"
+            RuntimeBinding::U252ExtendedEuclideanAlgorithm => {
+                "cairo_native__u252_extended_euclidean_algorithm"
+            }
+            RuntimeBinding::U384ExtendedEuclideanAlgorithm => {
+                "cairo_native__u384_extended_euclidean_algorithm"
             }
             RuntimeBinding::CircuitArithOperation => "cairo_native__circuit_arith_operation",
             #[cfg(feature = "with-cheatcode")]
@@ -124,7 +128,8 @@ impl RuntimeBinding {
             RuntimeBinding::GetCostsBuiltin => {
                 crate::runtime::cairo_native__get_costs_builtin as *const ()
             }
-            RuntimeBinding::ExtendedEuclideanAlgorithm => return None,
+            RuntimeBinding::U252ExtendedEuclideanAlgorithm
+            | RuntimeBinding::U384ExtendedEuclideanAlgorithm => return None,
             RuntimeBinding::CircuitArithOperation => return None,
             #[cfg(feature = "with-cheatcode")]
             RuntimeBinding::VtableCheatcode => {
@@ -202,7 +207,9 @@ impl RuntimeBindingsMeta {
     /// After checking, calls the MLIR function with arguments `a` and `b` which are the initial remainders
     /// used in the algorithm and returns a `Value` containing a struct where the first element is the
     /// greatest common divisor of `a` and `b` and the second element is the bezout coefficient x.
-    pub fn extended_euclidean_algorithm<'c, 'a>(
+    ///
+    /// This implementation is only for felt252, which uses u252 integers.
+    pub fn u252_extended_euclidean_algorithm<'c, 'a>(
         &mut self,
         context: &'c Context,
         module: &Module,
@@ -214,14 +221,55 @@ impl RuntimeBindingsMeta {
     where
         'c: 'a,
     {
-        let func_symbol = RuntimeBinding::ExtendedEuclideanAlgorithm.symbol();
+        let integer_type = IntegerType::new(context, 512).into();
+        let func_symbol = RuntimeBinding::U252ExtendedEuclideanAlgorithm.symbol();
         if self
             .active_map
-            .insert(RuntimeBinding::ExtendedEuclideanAlgorithm)
+            .insert(RuntimeBinding::U252ExtendedEuclideanAlgorithm)
         {
-            build_egcd_function(module, context, location, func_symbol)?;
+            build_egcd_function(module, context, location, func_symbol, integer_type)?;
         }
-        let integer_type: Type = IntegerType::new(context, 384 * 2).into();
+        // The struct returned by the function that contains both of the results
+        let return_type = llvm::r#type::r#struct(context, &[integer_type, integer_type], false);
+        Ok(block
+            .append_operation(
+                OperationBuilder::new("llvm.call", location)
+                    .add_attributes(&[(
+                        Identifier::new(context, "callee"),
+                        FlatSymbolRefAttribute::new(context, func_symbol).into(),
+                    )])
+                    .add_operands(&[a, b])
+                    .add_results(&[return_type])
+                    .build()?,
+            )
+            .result(0)?
+            .into())
+    }
+
+    /// Similar to [felt252_extended_euclidean_algorithm](Self::felt252_extended_euclidean_algorithm).
+    ///
+    /// The difference with the other is that this function is meant to be used
+    /// with circuits, which use u384 integers.
+    pub fn u384_extended_euclidean_algorithm<'c, 'a>(
+        &mut self,
+        context: &'c Context,
+        module: &Module,
+        block: &'a Block<'c>,
+        location: Location<'c>,
+        a: Value<'c, '_>,
+        b: Value<'c, '_>,
+    ) -> Result<Value<'c, 'a>>
+    where
+        'c: 'a,
+    {
+        let integer_type = IntegerType::new(context, 768).into();
+        let func_symbol = RuntimeBinding::U384ExtendedEuclideanAlgorithm.symbol();
+        if self
+            .active_map
+            .insert(RuntimeBinding::U384ExtendedEuclideanAlgorithm)
+        {
+            build_egcd_function(module, context, location, func_symbol, integer_type)?;
+        }
         // The struct returned by the function that contains both of the results
         let return_type = llvm::r#type::r#struct(context, &[integer_type, integer_type], false);
         Ok(block
@@ -820,33 +868,22 @@ pub fn setup_runtime(find_symbol_ptr: impl Fn(&str) -> Option<*mut c_void>) {
 ///
 /// This function declares a MLIR function that given two numbers a and b, returns a MLIR struct with gcd(a, b)
 /// and the bezout coefficient x. The declaration is done in the body of the module.
+///
+/// The primary use of this function is to find the modular multiplicative inverse of a value. To so, it is expected
+/// the a represents the value to be inverted and b the modulus of the field field.
 fn build_egcd_function<'ctx>(
     module: &Module,
     context: &'ctx Context,
     location: Location<'ctx>,
     func_symbol: &str,
+    integer_type: Type,
 ) -> Result<()> {
-    let integer_type: Type = IntegerType::new(context, 384 * 2).into();
     let region = Region::new();
 
     let entry_block = region.append_block(Block::new(&[
         (integer_type, location),
         (integer_type, location),
     ]));
-
-    let a = entry_block.arg(0)?;
-    let b = entry_block.arg(1)?;
-    // The egcd algorithm works by calculating a series of remainders `rem`, being each `rem_i` the remainder of dividing `rem_{i-1}` with `rem_{i-2}`
-    // For the initial setup, rem_0 = b, rem_1 = a.
-    // This order is chosen because if we reverse them, then the first iteration will just swap them
-    let remainder = a;
-    let prev_remainder = b;
-
-    // Similarly we'll calculate another series which starts 0,1,... and from which we
-    // will retrieve the modular inverse of a
-    let prev_inverse = entry_block.const_int_from_type(context, location, 0, integer_type)?;
-    let inverse = entry_block.const_int_from_type(context, location, 1, integer_type)?;
-
     let loop_block = region.append_block(Block::new(&[
         (integer_type, location),
         (integer_type, location),
@@ -857,6 +894,19 @@ fn build_egcd_function<'ctx>(
         (integer_type, location),
         (integer_type, location),
     ]));
+
+    let rhs = entry_block.arg(0)?;
+    let prime_modulus = entry_block.arg(1)?;
+    // The egcd algorithm works by calculating a series of remainders `rem`, being each `rem_i` the remainder of dividing `rem_{i-1}` with `rem_{i-2}`
+    // For the initial setup, rem_0 = b, rem_1 = a.
+    // This order is chosen because if we reverse them, then the first iteration will just swap them
+    let remainder = rhs;
+    let prev_remainder = prime_modulus;
+
+    // Similarly we'll calculate another series which starts 0,1,... and from which we
+    // will retrieve the modular inverse of a
+    let prev_inverse = entry_block.const_int_from_type(context, location, 0, integer_type)?;
+    let inverse = entry_block.const_int_from_type(context, location, 1, integer_type)?;
 
     entry_block.append_operation(cf::br(
         &loop_block,
@@ -900,17 +950,37 @@ fn build_egcd_function<'ctx>(
         location,
     ));
 
+    let gcd = end_block.arg(0)?;
+    let inverse = end_block.arg(1)?;
+
+    // EGDC sometimes returns a negative number for the inverse,
+    // in such cases we must simply wrap it around back into [0, MODULUS)
+    // this suffices because |inv_i| <= divfloor(MODULUS,2)
+    let zero = end_block.const_int_from_type(context, location, 0, integer_type)?;
+    let is_negative = end_block
+        .append_operation(arith::cmpi(
+            context,
+            CmpiPredicate::Slt,
+            inverse,
+            zero,
+            location,
+        ))
+        .result(0)?
+        .into();
+    let wrapped_inverse = end_block.addi(inverse, prime_modulus, location)?;
+    let inverse = end_block.append_op_result(arith::select(
+        is_negative,
+        wrapped_inverse,
+        inverse,
+        location,
+    ))?;
+
     // Create the struct that will contain the results
     let results = end_block.append_op_result(llvm::undef(
         llvm::r#type::r#struct(context, &[integer_type, integer_type], false),
         location,
     ))?;
-    let results = end_block.insert_values(
-        context,
-        location,
-        results,
-        &[end_block.arg(0)?, end_block.arg(1)?],
-    )?;
+    let results = end_block.insert_values(context, location, results, &[gcd, inverse])?;
     end_block.append_operation(llvm::r#return(Some(results), location));
 
     let func_name = StringAttribute::new(context, func_symbol);
