@@ -91,11 +91,8 @@ pub fn build_is_zero<'ctx, 'this>(
     let qm31 = entry.arg(0)?;
     let m31_ty = IntegerType::new(context, 31).into();
     let qm31_ty = llvm::r#type::r#struct(context, &[m31_ty, m31_ty, m31_ty, m31_ty], false);
-    let qm31_ptr =
-        helper
-            .init_block
-            .alloca1(context, location, qm31_ty, get_integer_layout(31).align())?;
-    let cond_ptr = helper.init_block.alloca1(
+    let qm31_ptr = entry.alloca1(context, location, qm31_ty, get_integer_layout(31).align())?;
+    let cond_ptr = entry.alloca1(
         context,
         location,
         IntegerType::new(context, 1).into(),
@@ -145,18 +142,9 @@ pub fn build_binary_op<'ctx, 'this>(
     let lhs = entry.arg(0)?;
     let rhs = entry.arg(1)?;
 
-    let lhs_ptr =
-        helper
-            .init_block
-            .alloca1(context, location, qm31_ty, get_integer_layout(31).align())?;
-    let rhs_ptr =
-        helper
-            .init_block
-            .alloca1(context, location, qm31_ty, get_integer_layout(31).align())?;
-    let res_ptr =
-        helper
-            .init_block
-            .alloca1(context, location, qm31_ty, get_integer_layout(31).align())?;
+    let lhs_ptr = entry.alloca1(context, location, qm31_ty, get_integer_layout(31).align())?;
+    let rhs_ptr = entry.alloca1(context, location, qm31_ty, get_integer_layout(31).align())?;
+    let res_ptr = entry.alloca1(context, location, qm31_ty, get_integer_layout(31).align())?;
 
     entry.store(context, location, lhs_ptr, lhs)?;
     entry.store(context, location, rhs_ptr, rhs)?;
@@ -250,14 +238,8 @@ pub fn build_from_m31<'ctx, 'this>(
     let m31_ty = IntegerType::new(context, 31).into();
     let qm31_ty = llvm::r#type::r#struct(context, &[m31_ty, m31_ty, m31_ty, m31_ty], false);
 
-    let m31_ptr =
-        helper
-            .init_block
-            .alloca1(context, location, m31_ty, get_integer_layout(31).align())?;
-    let qm31_ptr =
-        helper
-            .init_block
-            .alloca1(context, location, qm31_ty, get_integer_layout(31).align())?;
+    let m31_ptr = entry.alloca1(context, location, m31_ty, get_integer_layout(31).align())?;
+    let qm31_ptr = entry.alloca1(context, location, qm31_ty, get_integer_layout(31).align())?;
 
     entry.store(context, location, m31_ptr, m31)?;
 
