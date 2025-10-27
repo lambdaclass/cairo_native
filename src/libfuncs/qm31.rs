@@ -52,6 +52,20 @@ pub fn build<'ctx, 'this>(
 }
 
 /// Generate MLIR operations for the `qm31_const` libfunc.
+///
+/// Receives 4 const m31 and returns a qm31.
+///
+/// # Constraints
+///
+/// m31 are always between 0 and 2**31 - 2
+///
+/// # Cairo Signature
+///
+/// ```cairo
+/// fn qm31_const<
+///     const W0: m31, const W1: m31, const W2: m31, const W3: m31,
+/// >() -> qm31 nopanic;
+/// ```
 pub fn build_const<'ctx, 'this>(
     context: &'ctx Context,
     _registry: &ProgramRegistry<CoreType, CoreLibfunc>,
@@ -79,6 +93,15 @@ pub fn build_const<'ctx, 'this>(
 }
 
 /// Generate MLIR operations for the `qm31_is_zero` libfunc.
+///
+/// Receives a qm31 and returns a Some(qm31) if the argument is not 0,
+/// otherwise a None.
+///
+/// # Cairo Signature
+///
+/// ```cairo
+/// fn qm31_is_zero(a: qm31) -> core::internal::OptionRev<NonZero<qm31>> nopanic;
+/// ```
 pub fn build_is_zero<'ctx, 'this>(
     context: &'ctx Context,
     _registry: &ProgramRegistry<CoreType, CoreLibfunc>,
@@ -127,6 +150,17 @@ pub fn build_is_zero<'ctx, 'this>(
 }
 
 /// Generate MLIR operations for the QM31 binary operations libfuncs.
+///
+/// Receives two qm31 and performs an operation (add, sub, mul or div) with both.
+/// Returns the result of the operation.
+///
+/// # Cairo Signature
+/// ```cairo
+/// fn qm31_add(a: qm31, b: qm31) -> qm31 nopanic;
+/// fn qm31_sub(a: qm31, b: qm31) -> qm31 nopanic;
+/// fn qm31_mul(a: qm31, b: qm31) -> qm31 nopanic;
+/// fn qm31_mul(a: qm31, b: qm31) -> qm31 nopanic;
+/// ```
 pub fn build_binary_op<'ctx, 'this>(
     context: &'ctx Context,
     _registry: &ProgramRegistry<CoreType, CoreLibfunc>,
@@ -168,6 +202,18 @@ pub fn build_binary_op<'ctx, 'this>(
 }
 
 /// Generate MLIR operations for the `qm31_pack` libfunc.
+///
+/// Receives four m31 and packs them into a qm31.
+///
+/// # Constraints
+///
+/// m31 are always between 0 and 2**31 - 2
+///
+/// # Cairo Signature
+///
+/// ```cairo
+/// fn qm31_pack(w0: m31, w1: m31, w2: m31, w3: m31) -> qm31 nopanic;
+/// ```
 pub fn build_pack<'ctx, 'this>(
     context: &'ctx Context,
     _registry: &ProgramRegistry<CoreType, CoreLibfunc>,
@@ -195,6 +241,19 @@ pub fn build_pack<'ctx, 'this>(
 }
 
 /// Generate MLIR operations for the `qm31_unpack` libfunc.
+///
+/// Receives a qm31 and unpacks it, returning an array with the
+/// four m31.
+///
+/// # Constraints
+///
+/// m31 are always between 0 and 2**31 - 2
+///
+/// # Cairo Signature
+///
+/// ```cairo
+/// fn qm31_unpack(a: qm31) -> (m31, m31, m31, m31) implicits(crate::RangeCheck) nopanic;
+/// ```
 pub fn build_unpack<'ctx, 'this>(
     context: &'ctx Context,
     _registry: &ProgramRegistry<CoreType, CoreLibfunc>,
@@ -224,6 +283,19 @@ pub fn build_unpack<'ctx, 'this>(
 }
 
 /// Generate MLIR operations for the `qm31_from_m31` libfunc.
+///
+/// Receives a m31 and returns a qm31 in which its first coeffiecient
+/// has the value of the input and the other ones are 0.
+///
+/// # Constraints
+///
+/// m31 are always between 0 and 2**31 - 2
+///
+/// # Cairo Signature
+///
+/// ```cairo
+/// fn qm31_unpack(a: qm31) -> (m31, m31, m31, m31) implicits(crate::RangeCheck) nopanic;
+/// ```
 pub fn build_from_m31<'ctx, 'this>(
     context: &'ctx Context,
     _registry: &ProgramRegistry<CoreType, CoreLibfunc>,
