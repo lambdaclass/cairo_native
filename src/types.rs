@@ -738,7 +738,7 @@ impl TypeBuilder for CoreTypeConcrete {
             CoreTypeConcrete::Sint128(_) => get_integer_layout(128),
             CoreTypeConcrete::Bytes31(_) => get_integer_layout(248),
             CoreTypeConcrete::BoundedInt(info) => get_integer_layout(info.range.offset_bit_width()),
-            CoreTypeConcrete::QM31(_info) => layout_repeat(&get_integer_layout(31), 4)?.0,
+            CoreTypeConcrete::QM31(_info) => layout_repeat(&get_integer_layout(32), 4)?.0,
 
             CoreTypeConcrete::Const(const_type) => {
                 registry.get_type(&const_type.inner_ty)?.layout(registry)?
