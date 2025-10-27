@@ -638,28 +638,14 @@ pub unsafe extern "C" fn cairo_native__libfunc__qm31__qm31_from_m31(
 /// This function is intended to be called from MLIR, deals with pointers, and is therefore
 /// definitely unsafe to use manually.
 pub unsafe extern "C" fn cairo_native__libfunc__qm31__qm31_binary_op(
-    mut op: u8,
-    lhs: &[[u8; 4]; 4],
-    rhs: &[[u8; 4]; 4],
-    res: &mut [[u8; 4]; 4],
+    op: u8,
+    lhs: &[u32; 4],
+    rhs: &[u32; 4],
+    res: &mut [u32; 4],
 ) {
-    // lhs
-    let lhs = *lhs;
-    let lhs_0 = u32::from_le_bytes(lhs[0]);
-    let lhs_1 = u32::from_le_bytes(lhs[1]);
-    let lhs_2 = u32::from_le_bytes(lhs[2]);
-    let lhs_3 = u32::from_le_bytes(lhs[3]);
-    let lhs = starknet_types_core::qm31::QM31::from_coefficients(lhs_0, lhs_1, lhs_2, lhs_3);
+    let lhs = starknet_types_core::qm31::QM31::from_coefficients(lhs[0], lhs[1], lhs[2], lhs[3]);
+    let rhs = starknet_types_core::qm31::QM31::from_coefficients(rhs[0], rhs[1], rhs[2], rhs[3]);
 
-    // rhs
-    let rhs = *rhs;
-    let rhs_0 = u32::from_le_bytes(rhs[0]);
-    let rhs_1 = u32::from_le_bytes(rhs[1]);
-    let rhs_2 = u32::from_le_bytes(rhs[2]);
-    let rhs_3 = u32::from_le_bytes(rhs[3]);
-    let rhs = starknet_types_core::qm31::QM31::from_coefficients(rhs_0, rhs_1, rhs_2, rhs_3);
-
-    op &= 0x3; // We want to keep only the first 2 bits
     let coefficients = match op {
         0 => lhs + rhs,
         1 => lhs - rhs,
@@ -671,10 +657,10 @@ pub unsafe extern "C" fn cairo_native__libfunc__qm31__qm31_binary_op(
     }
     .to_coefficients();
 
-    res[0] = coefficients.0.to_le_bytes();
-    res[1] = coefficients.1.to_le_bytes();
-    res[2] = coefficients.2.to_le_bytes();
-    res[3] = coefficients.3.to_le_bytes();
+    res[0] = coefficients.0;
+    res[1] = coefficients.1;
+    res[2] = coefficients.2;
+    res[3] = coefficients.3;
 }
 
 thread_local! {

@@ -165,7 +165,7 @@ pub fn build_binary_op<'ctx, 'this>(
         context,
         location,
         info.operator as u8,
-        IntegerType::new(context, 2).into(),
+        IntegerType::new(context, 8).into(),
     )?;
     metadata
         .get_mut::<RuntimeBindingsMeta>()
