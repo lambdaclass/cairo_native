@@ -638,9 +638,9 @@ pub unsafe extern "C" fn cairo_native__libfunc__qm31__qm31_from_m31(
 /// This function is intended to be called from MLIR, deals with pointers, and is therefore
 /// definitely unsafe to use manually.
 pub unsafe extern "C" fn cairo_native__libfunc__qm31__qm31_binary_op(
+    mut op: u8,
     lhs: &[[u8; 4]; 4],
     rhs: &[[u8; 4]; 4],
-    op: &mut [u8; 1],
     res: &mut [[u8; 4]; 4],
 ) {
     // lhs
@@ -659,8 +659,7 @@ pub unsafe extern "C" fn cairo_native__libfunc__qm31__qm31_binary_op(
     let rhs_3 = u32::from_le_bytes(rhs[3]);
     let rhs = starknet_types_core::qm31::QM31::from_coefficients(rhs_0, rhs_1, rhs_2, rhs_3);
 
-    op[0] &= 0x3; // We want to keep only the first 2 bits
-    let op = u8::from_le_bytes(*op);
+    op &= 0x3; // We want to keep only the first 2 bits
     let coefficients = match op {
         0 => lhs + rhs,
         1 => lhs - rhs,

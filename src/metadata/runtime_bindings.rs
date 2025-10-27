@@ -634,7 +634,7 @@ impl RuntimeBindingsMeta {
         Ok(block.append_operation(
             OperationBuilder::new("llvm.call", location)
                 .add_operands(&[function])
-                .add_operands(&[lhs_ptr, rhs_ptr, op, res_ptr])
+                .add_operands(&[op, lhs_ptr, rhs_ptr, res_ptr])
                 .build()?,
         ))
     }
