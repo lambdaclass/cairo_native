@@ -739,14 +739,9 @@ impl Value {
                     )
                 }
                 CoreTypeConcrete::QM31(_) => {
-                    let data = ptr.cast::<[[u8; 4]; 4]>().as_mut();
+                    let data = ptr.cast::<[u32; 4]>().as_mut();
 
-                    Self::QM31(
-                        u32::from_le_bytes(data[0]),
-                        u32::from_le_bytes(data[1]),
-                        u32::from_le_bytes(data[2]),
-                        u32::from_le_bytes(data[3]),
-                    )
+                    Self::QM31(data[0], data[1], data[2], data[3])
                 }
                 CoreTypeConcrete::Felt252(_) => {
                     let data = ptr.cast::<[u8; 32]>().as_mut();
