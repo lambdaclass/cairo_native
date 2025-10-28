@@ -596,8 +596,8 @@ impl TypeBuilder for CoreTypeConcrete {
             | CoreTypeConcrete::Felt252DictEntry(_)
             | CoreTypeConcrete::SquashedFelt252Dict(_)
             | CoreTypeConcrete::Starknet(_)
-            | CoreTypeConcrete::QM31(_)
             | CoreTypeConcrete::Nullable(_) => false,
+            CoreTypeConcrete::QM31(_) => false,
 
             // Containers:
             CoreTypeConcrete::NonZero(info)
@@ -845,7 +845,7 @@ impl TypeBuilder for CoreTypeConcrete {
                 .is_memory_allocated(registry)?,
             CoreTypeConcrete::Coupon(_) => false,
             CoreTypeConcrete::Circuit(_) => false,
-            CoreTypeConcrete::QM31(_) => false,
+            CoreTypeConcrete::QM31(_) => true,
             CoreTypeConcrete::GasReserve(_) => {
                 native_panic!("Implement is_memory_allocated for GasReserve")
             }

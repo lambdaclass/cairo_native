@@ -23,9 +23,5 @@ pub fn build<'ctx>(
     _info: &InfoOnlyConcreteType,
 ) -> Result<Type<'ctx>> {
     let m31 = IntegerType::new(context, 31).into();
-    Ok(llvm::r#type::r#struct(
-        context,
-        &[m31, m31, m31, m31],
-        false,
-    ))
+    Ok(llvm::r#type::array(m31, 4))
 }
