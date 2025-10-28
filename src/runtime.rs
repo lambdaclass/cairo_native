@@ -5,6 +5,7 @@ use cairo_lang_sierra_gas::core_libfunc_cost::{
     DICT_SQUASH_REPEATED_ACCESS_COST, DICT_SQUASH_UNIQUE_KEY_COST,
 };
 use itertools::Itertools;
+use lambdaworks_math::field::fields::mersenne31::extensions::Degree4ExtensionField;
 use lazy_static::lazy_static;
 use num_bigint::BigInt;
 use num_traits::{ToPrimitive, Zero};
@@ -618,8 +619,14 @@ pub unsafe extern "C" fn cairo_native__libfunc__qm31__qm31_add(
     rhs: &[u32; 4],
     res: &mut [u32; 4],
 ) {
-    let lhs = starknet_types_core::qm31::QM31::from_coefficients(lhs[0], lhs[1], lhs[2], lhs[3]);
-    let rhs = starknet_types_core::qm31::QM31::from_coefficients(rhs[0], rhs[1], rhs[2], rhs[3]);
+    // We can use this way of creating the QM31 since we already know from cairo that the
+    // coefficients will never be more than 31 bits wide
+    let lhs = starknet_types_core::qm31::QM31(Degree4ExtensionField::const_from_coefficients(
+        lhs[0], lhs[1], lhs[2], lhs[3],
+    ));
+    let rhs = starknet_types_core::qm31::QM31(Degree4ExtensionField::const_from_coefficients(
+        rhs[0], rhs[1], rhs[2], rhs[3],
+    ));
 
     let coefficients = (lhs + rhs).to_coefficients();
 
@@ -640,8 +647,14 @@ pub unsafe extern "C" fn cairo_native__libfunc__qm31__qm31_sub(
     rhs: &[u32; 4],
     res: &mut [u32; 4],
 ) {
-    let lhs = starknet_types_core::qm31::QM31::from_coefficients(lhs[0], lhs[1], lhs[2], lhs[3]);
-    let rhs = starknet_types_core::qm31::QM31::from_coefficients(rhs[0], rhs[1], rhs[2], rhs[3]);
+    // We can use this way of creating the QM31 since we already know from cairo that the
+    // coefficients will never be more than 31 bits wide
+    let lhs = starknet_types_core::qm31::QM31(Degree4ExtensionField::const_from_coefficients(
+        lhs[0], lhs[1], lhs[2], lhs[3],
+    ));
+    let rhs = starknet_types_core::qm31::QM31(Degree4ExtensionField::const_from_coefficients(
+        rhs[0], rhs[1], rhs[2], rhs[3],
+    ));
 
     let coefficients = (lhs - rhs).to_coefficients();
 
@@ -662,8 +675,14 @@ pub unsafe extern "C" fn cairo_native__libfunc__qm31__qm31_mul(
     rhs: &[u32; 4],
     res: &mut [u32; 4],
 ) {
-    let lhs = starknet_types_core::qm31::QM31::from_coefficients(lhs[0], lhs[1], lhs[2], lhs[3]);
-    let rhs = starknet_types_core::qm31::QM31::from_coefficients(rhs[0], rhs[1], rhs[2], rhs[3]);
+    // We can use this way of creating the QM31 since we already know from cairo that the
+    // coefficients will never be more than 31 bits wide
+    let lhs = starknet_types_core::qm31::QM31(Degree4ExtensionField::const_from_coefficients(
+        lhs[0], lhs[1], lhs[2], lhs[3],
+    ));
+    let rhs = starknet_types_core::qm31::QM31(Degree4ExtensionField::const_from_coefficients(
+        rhs[0], rhs[1], rhs[2], rhs[3],
+    ));
 
     let coefficients = (lhs * rhs).to_coefficients();
 
@@ -684,8 +703,14 @@ pub unsafe extern "C" fn cairo_native__libfunc__qm31__qm31_div(
     rhs: &[u32; 4],
     res: &mut [u32; 4],
 ) {
-    let lhs = starknet_types_core::qm31::QM31::from_coefficients(lhs[0], lhs[1], lhs[2], lhs[3]);
-    let rhs = starknet_types_core::qm31::QM31::from_coefficients(rhs[0], rhs[1], rhs[2], rhs[3]);
+    // We can use this way of creating the QM31 since we already know from cairo that the
+    // coefficients will never be more than 31 bits wide
+    let lhs = starknet_types_core::qm31::QM31(Degree4ExtensionField::const_from_coefficients(
+        lhs[0], lhs[1], lhs[2], lhs[3],
+    ));
+    let rhs = starknet_types_core::qm31::QM31(Degree4ExtensionField::const_from_coefficients(
+        rhs[0], rhs[1], rhs[2], rhs[3],
+    ));
 
     // SAFETY: The only possible error is if rhs is zero. However, in the QM31 division libfunc, the divisor
     // is of type NonZero<qm31> which ensures that we are not falling into the error case.
