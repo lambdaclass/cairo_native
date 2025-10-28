@@ -183,19 +183,19 @@ pub fn build_binary_op<'ctx, 'this>(
     entry.store(context, location, lhs_ptr, lhs)?;
     entry.store(context, location, rhs_ptr, rhs)?;
 
-    let runtimes_binding = metadata
+    metadata
         .get_mut::<RuntimeBindingsMeta>()
-        .ok_or(Error::MissingMetadata)?;
-    match info.operator {
-        cairo_lang_sierra::extensions::qm31::QM31BinaryOperator::Add => runtimes_binding
-            .libfunc_qm31_add(context, helper, entry, lhs_ptr, rhs_ptr, res_ptr, location)?,
-        cairo_lang_sierra::extensions::qm31::QM31BinaryOperator::Sub => runtimes_binding
-            .libfunc_qm31_sub(context, helper, entry, lhs_ptr, rhs_ptr, res_ptr, location)?,
-        cairo_lang_sierra::extensions::qm31::QM31BinaryOperator::Mul => runtimes_binding
-            .libfunc_qm31_mul(context, helper, entry, lhs_ptr, rhs_ptr, res_ptr, location)?,
-        cairo_lang_sierra::extensions::qm31::QM31BinaryOperator::Div => runtimes_binding
-            .libfunc_qm31_div(context, helper, entry, lhs_ptr, rhs_ptr, res_ptr, location)?,
-    };
+        .ok_or(Error::MissingMetadata)?
+        .libfunc_qm31_bin_op(
+            context,
+            helper,
+            entry,
+            lhs_ptr,
+            rhs_ptr,
+            res_ptr,
+            info.operator,
+            location,
+        )?;
 
     let result = entry.load(context, location, res_ptr, qm31_ty)?;
 

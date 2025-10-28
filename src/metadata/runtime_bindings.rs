@@ -7,6 +7,7 @@ use crate::{
     error::{Error, Result},
     libfuncs::LibfuncHelper,
 };
+use cairo_lang_sierra::extensions::qm31::QM31BinaryOperator;
 use itertools::Itertools;
 use melior::{
     dialect::{
@@ -628,7 +629,7 @@ impl RuntimeBindingsMeta {
         ))
     }
 
-    pub fn libfunc_qm31_add<'c, 'a>(
+    pub fn libfunc_qm31_bin_op<'c, 'a>(
         &mut self,
         context: &'c Context,
         module: &Module,
@@ -636,85 +637,26 @@ impl RuntimeBindingsMeta {
         lhs_ptr: Value<'c, '_>,
         rhs_ptr: Value<'c, '_>,
         res_ptr: Value<'c, '_>,
+        op: QM31BinaryOperator,
         location: Location<'c>,
     ) -> Result<OperationRef<'c, 'a>>
     where
         'c: 'a,
     {
-        let function =
-            self.build_function(context, module, block, location, RuntimeBinding::QM31Add)?;
-
-        Ok(block.append_operation(
-            OperationBuilder::new("llvm.call", location)
-                .add_operands(&[function])
-                .add_operands(&[lhs_ptr, rhs_ptr, res_ptr])
-                .build()?,
-        ))
-    }
-
-    pub fn libfunc_qm31_sub<'c, 'a>(
-        &mut self,
-        context: &'c Context,
-        module: &Module,
-        block: &'a Block<'c>,
-        lhs_ptr: Value<'c, '_>,
-        rhs_ptr: Value<'c, '_>,
-        res_ptr: Value<'c, '_>,
-        location: Location<'c>,
-    ) -> Result<OperationRef<'c, 'a>>
-    where
-        'c: 'a,
-    {
-        let function =
-            self.build_function(context, module, block, location, RuntimeBinding::QM31Sub)?;
-
-        Ok(block.append_operation(
-            OperationBuilder::new("llvm.call", location)
-                .add_operands(&[function])
-                .add_operands(&[lhs_ptr, rhs_ptr, res_ptr])
-                .build()?,
-        ))
-    }
-
-    pub fn libfunc_qm31_mul<'c, 'a>(
-        &mut self,
-        context: &'c Context,
-        module: &Module,
-        block: &'a Block<'c>,
-        lhs_ptr: Value<'c, '_>,
-        rhs_ptr: Value<'c, '_>,
-        res_ptr: Value<'c, '_>,
-        location: Location<'c>,
-    ) -> Result<OperationRef<'c, 'a>>
-    where
-        'c: 'a,
-    {
-        let function =
-            self.build_function(context, module, block, location, RuntimeBinding::QM31Mul)?;
-
-        Ok(block.append_operation(
-            OperationBuilder::new("llvm.call", location)
-                .add_operands(&[function])
-                .add_operands(&[lhs_ptr, rhs_ptr, res_ptr])
-                .build()?,
-        ))
-    }
-
-    pub fn libfunc_qm31_div<'c, 'a>(
-        &mut self,
-        context: &'c Context,
-        module: &Module,
-        block: &'a Block<'c>,
-        lhs_ptr: Value<'c, '_>,
-        rhs_ptr: Value<'c, '_>,
-        res_ptr: Value<'c, '_>,
-        location: Location<'c>,
-    ) -> Result<OperationRef<'c, 'a>>
-    where
-        'c: 'a,
-    {
-        let function =
-            self.build_function(context, module, block, location, RuntimeBinding::QM31Div)?;
+        let function = match op {
+            QM31BinaryOperator::Add => {
+                self.build_function(context, module, block, location, RuntimeBinding::QM31Add)?
+            }
+            QM31BinaryOperator::Sub => {
+                self.build_function(context, module, block, location, RuntimeBinding::QM31Sub)?
+            }
+            QM31BinaryOperator::Mul => {
+                self.build_function(context, module, block, location, RuntimeBinding::QM31Mul)?
+            }
+            QM31BinaryOperator::Div => {
+                self.build_function(context, module, block, location, RuntimeBinding::QM31Div)?
+            }
+        };
 
         Ok(block.append_operation(
             OperationBuilder::new("llvm.call", location)
