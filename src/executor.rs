@@ -433,15 +433,12 @@ fn parse_result(
             registry,
             true,
         )?),
-        CoreTypeConcrete::QM31(_) => {
-            println!("executor");
-            Ok(Value::from_ptr(
-                return_ptr.to_native_assert_error("return pointer should be valid")?,
-                type_id,
-                registry,
-                true,
-            )?)
-        }
+        CoreTypeConcrete::QM31(_) => Ok(Value::from_ptr(
+            return_ptr.to_native_assert_error("return pointer should be valid")?,
+            type_id,
+            registry,
+            true,
+        )?),
         CoreTypeConcrete::Felt252(_)
         | CoreTypeConcrete::Starknet(
             StarknetTypeConcrete::ClassHash(_)
