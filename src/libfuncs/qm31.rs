@@ -12,7 +12,10 @@ use cairo_lang_sierra::{
     program_registry::ProgramRegistry,
 };
 use melior::{
-    dialect::{arith::CmpiPredicate, llvm},
+    dialect::{
+        arith::{self, CmpiPredicate},
+        llvm,
+    },
     helpers::{ArithBlockExt, BuiltinBlockExt, LlvmBlockExt},
     ir::{r#type::IntegerType, Block, Location},
     Context,
@@ -108,41 +111,29 @@ pub fn build_is_zero<'ctx, 'this>(
     entry: &'this Block<'ctx>,
     location: Location<'ctx>,
     helper: &LibfuncHelper<'ctx, 'this>,
-    metadata: &mut MetadataStorage,
+    _metadata: &mut MetadataStorage,
     _info: &SignatureOnlyConcreteLibfunc,
 ) -> Result<()> {
     let qm31 = entry.arg(0)?;
     let m31_ty = IntegerType::new(context, 31).into();
-    let qm31_ty = llvm::r#type::array(m31_ty, 4);
-    let qm31_ptr = entry.alloca1(context, location, qm31_ty, get_integer_layout(31).align())?;
-    let cond_ptr = entry.alloca1(
-        context,
-        location,
-        IntegerType::new(context, 1).into(),
-        get_integer_layout(1).align(),
-    )?;
 
-    entry.store(context, location, qm31_ptr, qm31)?;
+    let m31_0 = entry.extract_value(context, location, qm31, m31_ty, 0)?;
+    let m31_1 = entry.extract_value(context, location, qm31, m31_ty, 1)?;
+    let m31_2 = entry.extract_value(context, location, qm31, m31_ty, 2)?;
+    let m31_3 = entry.extract_value(context, location, qm31, m31_ty, 3)?;
 
-    metadata
-        .get_mut::<RuntimeBindingsMeta>()
-        .ok_or(Error::MissingMetadata)?
-        .libfunc_qm31_is_zero(context, helper, entry, qm31_ptr, cond_ptr, location)?;
+    let cond = entry.append_op_result(arith::ori(m31_0, m31_1, location))?;
+    let cond = entry.append_op_result(arith::ori(cond, m31_2, location))?;
+    let cond = entry.append_op_result(arith::ori(cond, m31_3, location))?;
 
-    let cond = entry.load(
-        context,
-        location,
-        cond_ptr,
-        IntegerType::new(context, 1).into(),
-    )?;
-
-    let k1 = entry.const_int(context, location, 1, 1)?;
-    let cond2 = entry.cmpi(context, CmpiPredicate::Eq, cond, k1, location)?;
+    let k0 = entry.const_int_from_type(context, location, 0, m31_ty)?;
+    let cond =
+        entry.append_op_result(arith::cmpi(context, CmpiPredicate::Eq, k0, cond, location))?;
 
     helper.cond_br(
         context,
         entry,
-        cond2,
+        cond,
         [0, 1],
         [&[], &[entry.arg(0)?]],
         location,
