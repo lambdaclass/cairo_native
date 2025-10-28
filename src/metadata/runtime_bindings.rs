@@ -50,7 +50,6 @@ enum RuntimeBinding {
     ExtendedEuclideanAlgorithm,
     CircuitArithOperation,
     QM31IsZero,
-    QM31FromM31,
     QM31Add,
     QM31Sub,
     QM31Mul,
@@ -84,7 +83,6 @@ impl RuntimeBinding {
             }
             RuntimeBinding::CircuitArithOperation => "cairo_native__circuit_arith_operation",
             RuntimeBinding::QM31IsZero => "cairo_native__libfunc__qm31__qm31_is_zero",
-            RuntimeBinding::QM31FromM31 => "cairo_native__libfunc__qm31__qm31_from_m31",
             RuntimeBinding::QM31Add => "cairo_native__libfunc__qm31__qm31_add",
             RuntimeBinding::QM31Sub => "cairo_native__libfunc__qm31__qm31_sub",
             RuntimeBinding::QM31Mul => "cairo_native__libfunc__qm31__qm31_mul",
@@ -139,9 +137,6 @@ impl RuntimeBinding {
             }
             RuntimeBinding::QM31IsZero => {
                 crate::runtime::cairo_native__libfunc__qm31__qm31_is_zero as *const ()
-            }
-            RuntimeBinding::QM31FromM31 => {
-                crate::runtime::cairo_native__libfunc__qm31__qm31_from_m31 as *const ()
             }
             RuntimeBinding::QM31Add => {
                 crate::runtime::cairo_native__libfunc__qm31__qm31_add as *const ()
@@ -601,34 +596,6 @@ impl RuntimeBindingsMeta {
         ))
     }
 
-    pub fn libfunc_qm31_from_m31<'c, 'a>(
-        &mut self,
-        context: &'c Context,
-        module: &Module,
-        block: &'a Block<'c>,
-        m31_ptr: Value<'c, '_>,
-        qm31_ptr: Value<'c, '_>,
-        location: Location<'c>,
-    ) -> Result<OperationRef<'c, 'a>>
-    where
-        'c: 'a,
-    {
-        let function = self.build_function(
-            context,
-            module,
-            block,
-            location,
-            RuntimeBinding::QM31FromM31,
-        )?;
-
-        Ok(block.append_operation(
-            OperationBuilder::new("llvm.call", location)
-                .add_operands(&[function])
-                .add_operands(&[m31_ptr, qm31_ptr])
-                .build()?,
-        ))
-    }
-
     pub fn libfunc_qm31_bin_op<'c, 'a>(
         &mut self,
         context: &'c Context,
@@ -919,7 +886,6 @@ pub fn setup_runtime(find_symbol_ptr: impl Fn(&str) -> Option<*mut c_void>) {
         RuntimeBinding::GetCostsBuiltin,
         RuntimeBinding::DebugPrint,
         RuntimeBinding::QM31IsZero,
-        RuntimeBinding::QM31FromM31,
         RuntimeBinding::QM31Add,
         RuntimeBinding::QM31Sub,
         RuntimeBinding::QM31Mul,

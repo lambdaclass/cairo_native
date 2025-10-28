@@ -302,7 +302,7 @@ pub fn build_from_m31<'ctx, 'this>(
     entry: &'this Block<'ctx>,
     location: Location<'ctx>,
     helper: &LibfuncHelper<'ctx, 'this>,
-    metadata: &mut MetadataStorage,
+    _metadata: &mut MetadataStorage,
     _info: &SignatureOnlyConcreteLibfunc,
 ) -> Result<()> {
     let m31 = entry.arg(0)?;
@@ -310,17 +310,8 @@ pub fn build_from_m31<'ctx, 'this>(
     let m31_ty = IntegerType::new(context, 31).into();
     let qm31_ty = llvm::r#type::array(m31_ty, 4);
 
-    let m31_ptr = entry.alloca1(context, location, m31_ty, get_integer_layout(31).align())?;
-    let qm31_ptr = entry.alloca1(context, location, qm31_ty, get_integer_layout(31).align())?;
-
-    entry.store(context, location, m31_ptr, m31)?;
-
-    metadata
-        .get_mut::<RuntimeBindingsMeta>()
-        .ok_or(Error::MissingMetadata)?
-        .libfunc_qm31_from_m31(context, helper, entry, m31_ptr, qm31_ptr, location)?;
-
-    let qm31 = entry.load(context, location, qm31_ptr, qm31_ty)?;
+    let qm31 = entry.append_op_result(llvm::undef(qm31_ty, location))?;
+    let qm31 = entry.insert_value(context, location, qm31, m31, 0)?;
 
     helper.br(entry, 0, &[qm31], location)
 }

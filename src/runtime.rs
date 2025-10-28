@@ -607,26 +607,6 @@ pub unsafe extern "C" fn cairo_native__libfunc__qm31__qm31_is_zero(
     }
 }
 
-/// Compute `qm31_from_m31(qm31)` and store the result.
-///
-/// # Safety
-///
-/// This function is intended to be called from MLIR, deals with pointers, and is therefore
-/// definitely unsafe to use manually.
-pub unsafe extern "C" fn cairo_native__libfunc__qm31__qm31_from_m31(
-    m31: &[u8; 4],
-    qm31_res: &mut [[u8; 4]; 4],
-) {
-    let m31 = u32::from_le_bytes(*m31);
-    let qm31 = starknet_types_core::qm31::QM31::from_coefficients(m31, 0, 0, 0);
-    let coefficients = qm31.to_coefficients();
-
-    qm31_res[0] = coefficients.0.to_le_bytes();
-    qm31_res[1] = coefficients.1.to_le_bytes();
-    qm31_res[2] = coefficients.2.to_le_bytes();
-    qm31_res[3] = coefficients.3.to_le_bytes();
-}
-
 /// Compute `qm31_add(qm31, qm31)` and store the result.
 ///
 /// # Safety
