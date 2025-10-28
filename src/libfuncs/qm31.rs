@@ -75,7 +75,7 @@ pub fn build_const<'ctx, 'this>(
     _metadata: &mut MetadataStorage,
     info: &QM31ConstConcreteLibfunc,
 ) -> Result<()> {
-    let m31_ty = IntegerType::new(context, 32).into();
+    let m31_ty = IntegerType::new(context, 31).into();
     let qm31_ty = llvm::r#type::r#struct(context, &[m31_ty, m31_ty, m31_ty, m31_ty], false);
 
     let m31_0 = entry.const_int_from_type(context, location, info.w0, m31_ty)?;
@@ -112,9 +112,9 @@ pub fn build_is_zero<'ctx, 'this>(
     _info: &SignatureOnlyConcreteLibfunc,
 ) -> Result<()> {
     let qm31 = entry.arg(0)?;
-    let m31_ty = IntegerType::new(context, 32).into();
+    let m31_ty = IntegerType::new(context, 31).into();
     let qm31_ty = llvm::r#type::r#struct(context, &[m31_ty, m31_ty, m31_ty, m31_ty], false);
-    let qm31_ptr = entry.alloca1(context, location, qm31_ty, get_integer_layout(32).align())?;
+    let qm31_ptr = entry.alloca1(context, location, qm31_ty, get_integer_layout(31).align())?;
     let cond_ptr = entry.alloca1(
         context,
         location,
@@ -170,15 +170,15 @@ pub fn build_binary_op<'ctx, 'this>(
     metadata: &mut MetadataStorage,
     info: &QM31BinaryOpConcreteLibfunc,
 ) -> Result<()> {
-    let m31_ty = IntegerType::new(context, 32).into();
+    let m31_ty = IntegerType::new(context, 31).into();
     let qm31_ty = llvm::r#type::r#struct(context, &[m31_ty, m31_ty, m31_ty, m31_ty], false);
 
     let lhs = entry.arg(0)?;
     let rhs = entry.arg(1)?;
 
-    let lhs_ptr = entry.alloca1(context, location, qm31_ty, get_integer_layout(32).align())?;
-    let rhs_ptr = entry.alloca1(context, location, qm31_ty, get_integer_layout(32).align())?;
-    let res_ptr = entry.alloca1(context, location, qm31_ty, get_integer_layout(32).align())?;
+    let lhs_ptr = entry.alloca1(context, location, qm31_ty, get_integer_layout(31).align())?;
+    let rhs_ptr = entry.alloca1(context, location, qm31_ty, get_integer_layout(31).align())?;
+    let res_ptr = entry.alloca1(context, location, qm31_ty, get_integer_layout(31).align())?;
 
     entry.store(context, location, lhs_ptr, lhs)?;
     entry.store(context, location, rhs_ptr, rhs)?;
@@ -229,7 +229,7 @@ pub fn build_pack<'ctx, 'this>(
     let m31_2 = entry.arg(2)?;
     let m31_3 = entry.arg(3)?;
 
-    let m31_ty = IntegerType::new(context, 32).into();
+    let m31_ty = IntegerType::new(context, 31).into();
     let qm31_ty = llvm::r#type::r#struct(context, &[m31_ty, m31_ty, m31_ty, m31_ty], false);
 
     let qm31 = entry.append_op_result(llvm::undef(qm31_ty, location))?;
@@ -267,7 +267,7 @@ pub fn build_unpack<'ctx, 'this>(
     let range_check =
         super::increment_builtin_counter_by(context, entry, location, entry.arg(0)?, 5)?;
 
-    let m31_ty = IntegerType::new(context, 32);
+    let m31_ty = IntegerType::new(context, 31);
     let qm31 = entry.arg(1)?;
 
     let m31_0 = entry.extract_value(context, location, qm31, m31_ty.into(), 0)?;
@@ -308,11 +308,11 @@ pub fn build_from_m31<'ctx, 'this>(
 ) -> Result<()> {
     let m31 = entry.arg(0)?;
 
-    let m31_ty = IntegerType::new(context, 32).into();
+    let m31_ty = IntegerType::new(context, 31).into();
     let qm31_ty = llvm::r#type::r#struct(context, &[m31_ty, m31_ty, m31_ty, m31_ty], false);
 
-    let m31_ptr = entry.alloca1(context, location, m31_ty, get_integer_layout(32).align())?;
-    let qm31_ptr = entry.alloca1(context, location, qm31_ty, get_integer_layout(32).align())?;
+    let m31_ptr = entry.alloca1(context, location, m31_ty, get_integer_layout(31).align())?;
+    let qm31_ptr = entry.alloca1(context, location, qm31_ty, get_integer_layout(31).align())?;
 
     entry.store(context, location, m31_ptr, m31)?;
 
