@@ -627,18 +627,13 @@ pub unsafe extern "C" fn cairo_native__libfunc__qm31__qm31_from_m31(
     qm31_res[3] = coefficients.3.to_le_bytes();
 }
 
-/// Compute the following QM31 libfuncs depending on the value of op:
-/// - `qm31_add`
-/// - `qm31_sub`
-/// - `qm31_mul`
-/// - `qm31_div`
+/// Compute `qm31_add(qm31, qm31)` and store the result.
 ///
 /// # Safety
 ///
 /// This function is intended to be called from MLIR, deals with pointers, and is therefore
 /// definitely unsafe to use manually.
-pub unsafe extern "C" fn cairo_native__libfunc__qm31__qm31_binary_op(
-    op: u8,
+pub unsafe extern "C" fn cairo_native__libfunc__qm31__qm31_add(
     lhs: &[u32; 4],
     rhs: &[u32; 4],
     res: &mut [u32; 4],
@@ -646,16 +641,75 @@ pub unsafe extern "C" fn cairo_native__libfunc__qm31__qm31_binary_op(
     let lhs = starknet_types_core::qm31::QM31::from_coefficients(lhs[0], lhs[1], lhs[2], lhs[3]);
     let rhs = starknet_types_core::qm31::QM31::from_coefficients(rhs[0], rhs[1], rhs[2], rhs[3]);
 
-    let coefficients = match op {
-        0 => lhs + rhs,
-        1 => lhs - rhs,
-        2 => lhs * rhs,
-        // SAFETY: The only possible error is if rhs is zero. However, in the QM31 division libfunc, the divisor
-        // is of type NonZero<qm31> which ensures that we are not falling into the error case.
-        3 => (lhs / rhs).unwrap(),
-        _ => unreachable!("Undefined binary operator"),
-    }
-    .to_coefficients();
+    let coefficients = (lhs + rhs).to_coefficients();
+
+    res[0] = coefficients.0;
+    res[1] = coefficients.1;
+    res[2] = coefficients.2;
+    res[3] = coefficients.3;
+}
+
+/// Compute `qm31_sub(qm31, qm31)` and store the result.
+///
+/// # Safety
+///
+/// This function is intended to be called from MLIR, deals with pointers, and is therefore
+/// definitely unsafe to use manually.
+pub unsafe extern "C" fn cairo_native__libfunc__qm31__qm31_sub(
+    lhs: &[u32; 4],
+    rhs: &[u32; 4],
+    res: &mut [u32; 4],
+) {
+    let lhs = starknet_types_core::qm31::QM31::from_coefficients(lhs[0], lhs[1], lhs[2], lhs[3]);
+    let rhs = starknet_types_core::qm31::QM31::from_coefficients(rhs[0], rhs[1], rhs[2], rhs[3]);
+
+    let coefficients = (lhs - rhs).to_coefficients();
+
+    res[0] = coefficients.0;
+    res[1] = coefficients.1;
+    res[2] = coefficients.2;
+    res[3] = coefficients.3;
+}
+
+/// Compute `qm31_mul(qm31, qm31)` and store the result.
+///
+/// # Safety
+///
+/// This function is intended to be called from MLIR, deals with pointers, and is therefore
+/// definitely unsafe to use manually.
+pub unsafe extern "C" fn cairo_native__libfunc__qm31__qm31_mul(
+    lhs: &[u32; 4],
+    rhs: &[u32; 4],
+    res: &mut [u32; 4],
+) {
+    let lhs = starknet_types_core::qm31::QM31::from_coefficients(lhs[0], lhs[1], lhs[2], lhs[3]);
+    let rhs = starknet_types_core::qm31::QM31::from_coefficients(rhs[0], rhs[1], rhs[2], rhs[3]);
+
+    let coefficients = (lhs * rhs).to_coefficients();
+
+    res[0] = coefficients.0;
+    res[1] = coefficients.1;
+    res[2] = coefficients.2;
+    res[3] = coefficients.3;
+}
+
+/// Compute `qm31_div(qm31, qm31)` and store the result.
+///
+/// # Safety
+///
+/// This function is intended to be called from MLIR, deals with pointers, and is therefore
+/// definitely unsafe to use manually.
+pub unsafe extern "C" fn cairo_native__libfunc__qm31__qm31_div(
+    lhs: &[u32; 4],
+    rhs: &[u32; 4],
+    res: &mut [u32; 4],
+) {
+    let lhs = starknet_types_core::qm31::QM31::from_coefficients(lhs[0], lhs[1], lhs[2], lhs[3]);
+    let rhs = starknet_types_core::qm31::QM31::from_coefficients(rhs[0], rhs[1], rhs[2], rhs[3]);
+
+    // SAFETY: The only possible error is if rhs is zero. However, in the QM31 division libfunc, the divisor
+    // is of type NonZero<qm31> which ensures that we are not falling into the error case.
+    let coefficients = (lhs / rhs).unwrap().to_coefficients();
 
     res[0] = coefficients.0;
     res[1] = coefficients.1;
