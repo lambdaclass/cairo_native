@@ -15,6 +15,7 @@ use starknet_types_core::{
     curve::{AffinePoint, ProjectivePoint},
     felt::Felt,
     hash::StarkHash,
+    qm31::QM31,
 };
 use std::{
     alloc::{dealloc, realloc, Layout},
@@ -597,14 +598,14 @@ pub unsafe extern "C" fn cairo_native__libfunc__qm31__qm31_add(
 ) {
     // We can use this way of creating the QM31 since we already know from cairo that the
     // coefficients will never be more than 31 bits wide
-    let lhs = starknet_types_core::qm31::QM31(Degree4ExtensionField::const_from_coefficients(
+    let lhs = QM31(Degree4ExtensionField::const_from_coefficients(
         lhs[0], lhs[1], lhs[2], lhs[3],
     ));
-    let rhs = starknet_types_core::qm31::QM31(Degree4ExtensionField::const_from_coefficients(
+    let rhs = QM31(Degree4ExtensionField::const_from_coefficients(
         rhs[0], rhs[1], rhs[2], rhs[3],
     ));
 
-    let coefficients = (lhs + rhs).to_coefficients();
+    let coefficients = to_representative_coefficients(lhs + rhs);
 
     res[0] = coefficients.0;
     res[1] = coefficients.1;
@@ -625,14 +626,14 @@ pub unsafe extern "C" fn cairo_native__libfunc__qm31__qm31_sub(
 ) {
     // We can use this way of creating the QM31 since we already know from cairo that the
     // coefficients will never be more than 31 bits wide
-    let lhs = starknet_types_core::qm31::QM31(Degree4ExtensionField::const_from_coefficients(
+    let lhs = QM31(Degree4ExtensionField::const_from_coefficients(
         lhs[0], lhs[1], lhs[2], lhs[3],
     ));
-    let rhs = starknet_types_core::qm31::QM31(Degree4ExtensionField::const_from_coefficients(
+    let rhs = QM31(Degree4ExtensionField::const_from_coefficients(
         rhs[0], rhs[1], rhs[2], rhs[3],
     ));
 
-    let coefficients = (lhs - rhs).to_coefficients();
+    let coefficients = to_representative_coefficients(lhs - rhs);
 
     res[0] = coefficients.0;
     res[1] = coefficients.1;
@@ -653,14 +654,14 @@ pub unsafe extern "C" fn cairo_native__libfunc__qm31__qm31_mul(
 ) {
     // We can use this way of creating the QM31 since we already know from cairo that the
     // coefficients will never be more than 31 bits wide
-    let lhs = starknet_types_core::qm31::QM31(Degree4ExtensionField::const_from_coefficients(
+    let lhs = QM31(Degree4ExtensionField::const_from_coefficients(
         lhs[0], lhs[1], lhs[2], lhs[3],
     ));
-    let rhs = starknet_types_core::qm31::QM31(Degree4ExtensionField::const_from_coefficients(
+    let rhs = QM31(Degree4ExtensionField::const_from_coefficients(
         rhs[0], rhs[1], rhs[2], rhs[3],
     ));
 
-    let coefficients = (lhs * rhs).to_coefficients();
+    let coefficients = to_representative_coefficients(lhs * rhs);
 
     res[0] = coefficients.0;
     res[1] = coefficients.1;
@@ -681,16 +682,16 @@ pub unsafe extern "C" fn cairo_native__libfunc__qm31__qm31_div(
 ) {
     // We can use this way of creating the QM31 since we already know from cairo that the
     // coefficients will never be more than 31 bits wide
-    let lhs = starknet_types_core::qm31::QM31(Degree4ExtensionField::const_from_coefficients(
+    let lhs = QM31(Degree4ExtensionField::const_from_coefficients(
         lhs[0], lhs[1], lhs[2], lhs[3],
     ));
-    let rhs = starknet_types_core::qm31::QM31(Degree4ExtensionField::const_from_coefficients(
+    let rhs = QM31(Degree4ExtensionField::const_from_coefficients(
         rhs[0], rhs[1], rhs[2], rhs[3],
     ));
 
     // SAFETY: The only possible error is if rhs is zero. However, in the QM31 division libfunc, the divisor
     // is of type NonZero<qm31> which ensures that we are not falling into the error case.
-    let coefficients = (lhs / rhs).unwrap().to_coefficients();
+    let coefficients = to_representative_coefficients((lhs / rhs).unwrap());
 
     res[0] = coefficients.0;
     res[1] = coefficients.1;
@@ -712,6 +713,25 @@ thread_local! {
             mul_mod: 0,
         })
     };
+}
+
+// TODO: This is already implemented on types-rs but there is no release
+// that contains it. It should be deleted when bumping to a new version
+// and use the .to_coefficients() method from QM31 instead.
+pub fn to_representative_coefficients(qm31: QM31) -> (u32, u32, u32, u32) {
+    // Take CM31 coordinates from QM31.
+    let [a, b] = qm31.0.value();
+
+    // Take M31 coordinates from both CM31.
+    let [c1, c2] = a.value();
+    let [c3, c4] = b.value();
+
+    (
+        c1.representative(),
+        c2.representative(),
+        c3.representative(),
+        c4.representative(),
+    )
 }
 
 /// Get the costs builtin from the internal thread local.
