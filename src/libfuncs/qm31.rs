@@ -327,10 +327,10 @@ mod test {
         fn from(qm31: &starknet_types_core::qm31::QM31) -> Self {
             let coefficients = to_representative_coefficients(qm31.clone());
             Value::QM31(
-                coefficients.0,
-                coefficients.1,
-                coefficients.2,
-                coefficients.3,
+                coefficients[0],
+                coefficients[1],
+                coefficients[2],
+                coefficients[3],
             )
         }
     }
