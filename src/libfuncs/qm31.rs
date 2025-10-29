@@ -482,22 +482,32 @@ mod test {
                 let qm31 = QM31Trait::new(0x544b2fba, 0x673cff77, 0x60713d44, 0x499602d2);
                 qm31_is_zero(qm31)
             }
+
+            fn run_test_4() -> OptionRev<NonZero<qm31>> {
+                let lhs = QM31Trait::new(0x7ffffffe, 0x7ffffffe, 0x7ffffffe, 0x7ffffffe);
+                let rhs = QM31Trait::new(1, 1, 1, 1);
+                let qm31 = lhs + rhs;
+                qm31_is_zero(qm31)
+            }
         };
 
-        let result_with_zero = run_program(&program, "run_test_1", &[]).return_value;
-        assert_eq!(result_with_zero, jit_enum!(0, jit_struct!()));
+        let result = run_program(&program, "run_test_1", &[]).return_value;
+        assert_eq!(result, jit_enum!(0, jit_struct!()));
 
-        let result_without_zero = run_program(&program, "run_test_2", &[]).return_value;
-        assert_eq!(result_without_zero, jit_enum!(1, Value::QM31(0, 0, 1, 0)));
+        let result = run_program(&program, "run_test_2", &[]).return_value;
+        assert_eq!(result, jit_enum!(1, Value::QM31(0, 0, 1, 0)));
 
-        let result_big = run_program(&program, "run_test_3", &[]).return_value;
+        let result = run_program(&program, "run_test_3", &[]).return_value;
         assert_eq!(
-            result_big,
+            result,
             jit_enum!(
                 1,
                 Value::QM31(0x544b2fba, 0x673cff77, 0x60713d44, 0x499602d2)
             )
-        )
+        );
+
+        let result = run_program(&program, "run_test_4", &[]).return_value;
+        assert_eq!(result, jit_enum!(0, jit_struct!()));
     }
 
     #[test]
@@ -522,6 +532,13 @@ mod test {
                 let c = QM31Trait::new(0x1de1328d, 0x3b882f32, 0x47ae3cbc, 0x2a074017);
                 a + c
             }
+
+            fn run_d_plus_e() -> qm31 {
+                let d = QM31Trait::new(0x7ffffffe, 0x7ffffffe, 0x7ffffffe, 0x7ffffffe);
+                let e = QM31Trait::new(1, 1, 1, 1);
+
+                d + e
+            }
         };
 
         let a = starknet_types_core::qm31::QM31::from_coefficients(
@@ -545,6 +562,9 @@ mod test {
         let result = run_program(&program, "run_a_plus_c", &[]).return_value;
         let expected_qm31 = a + c;
         assert_eq!(result, Value::from(&expected_qm31));
+
+        let result = run_program(&program, "run_d_plus_e", &[]).return_value;
+        assert_eq!(result, Value::QM31(0, 0, 0, 0));
     }
 
     #[test]
