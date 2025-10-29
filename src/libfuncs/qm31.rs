@@ -87,10 +87,7 @@ pub fn build_const<'ctx, 'this>(
     let m31_3 = entry.const_int_from_type(context, location, info.w3, m31_ty)?;
 
     let qm31 = entry.append_op_result(llvm::undef(qm31_ty, location))?;
-    let qm31 = entry.insert_value(context, location, qm31, m31_0, 0)?;
-    let qm31 = entry.insert_value(context, location, qm31, m31_1, 1)?;
-    let qm31 = entry.insert_value(context, location, qm31, m31_2, 2)?;
-    let qm31 = entry.insert_value(context, location, qm31, m31_3, 3)?;
+    let qm31 = entry.insert_values(context, location, qm31, &[m31_0, m31_1, m31_2, m31_3])?;
 
     helper.br(entry, 0, &[qm31], location)
 }
@@ -224,10 +221,7 @@ pub fn build_pack<'ctx, 'this>(
     let qm31_ty = llvm::r#type::array(m31_ty, 4);
 
     let qm31 = entry.append_op_result(llvm::undef(qm31_ty, location))?;
-    let qm31 = entry.insert_value(context, location, qm31, m31_0, 0)?;
-    let qm31 = entry.insert_value(context, location, qm31, m31_1, 1)?;
-    let qm31 = entry.insert_value(context, location, qm31, m31_2, 2)?;
-    let qm31 = entry.insert_value(context, location, qm31, m31_3, 3)?;
+    let qm31 = entry.insert_values(context, location, qm31, &[m31_0, m31_1, m31_2, m31_3])?;
 
     helper.br(entry, 0, &[qm31], location)
 }
@@ -303,10 +297,7 @@ pub fn build_from_m31<'ctx, 'this>(
     let k0 = entry.const_int_from_type(context, location, 0, m31_ty)?;
 
     let qm31 = entry.append_op_result(llvm::undef(qm31_ty, location))?;
-    let qm31 = entry.insert_value(context, location, qm31, m31, 0)?;
-    let qm31 = entry.insert_value(context, location, qm31, k0, 1)?;
-    let qm31 = entry.insert_value(context, location, qm31, k0, 2)?;
-    let qm31 = entry.insert_value(context, location, qm31, k0, 3)?;
+    let qm31 = entry.insert_values(context, location, qm31, &[m31, k0, k0, k0])?;
 
     helper.br(entry, 0, &[qm31], location)
 }
