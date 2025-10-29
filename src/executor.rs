@@ -436,6 +436,9 @@ fn parse_result(
         CoreTypeConcrete::QM31(_) => {
             println!("{:?}", ret_registers);
 
+            #[cfg(target_arch = "x86_64")]
+            return Err(Error::ParseAttributeError);
+
             #[cfg(target_arch = "aarch64")]
             Ok(Value::QM31(
                 ret_registers[0] as u32,
