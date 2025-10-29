@@ -501,7 +501,7 @@ impl TypeBuilder for CoreTypeConcrete {
             CoreTypeConcrete::EcPoint(_) => true,
             CoreTypeConcrete::EcState(_) => true,
             CoreTypeConcrete::Felt252DictEntry(_) => true,
-            CoreTypeConcrete::QM31(_) => true,
+            CoreTypeConcrete::QM31(_) => false,
 
             CoreTypeConcrete::Felt252(_)
             | CoreTypeConcrete::Bytes31(_)
@@ -845,7 +845,7 @@ impl TypeBuilder for CoreTypeConcrete {
                 .is_memory_allocated(registry)?,
             CoreTypeConcrete::Coupon(_) => false,
             CoreTypeConcrete::Circuit(_) => false,
-            CoreTypeConcrete::QM31(_) => true,
+            CoreTypeConcrete::QM31(_) => false,
             CoreTypeConcrete::GasReserve(_) => {
                 native_panic!("Implement is_memory_allocated for GasReserve")
             }

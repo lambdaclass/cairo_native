@@ -433,12 +433,17 @@ fn parse_result(
             registry,
             true,
         )?),
-        CoreTypeConcrete::QM31(_) => Ok(Value::from_ptr(
-            return_ptr.to_native_assert_error("return pointer should be valid")?,
-            type_id,
-            registry,
-            true,
-        )?),
+        CoreTypeConcrete::QM31(_) => {
+            println!("{:?}", ret_registers);
+
+            #[cfg(target_arch = "aarch64")]
+            Ok(Value::QM31(
+                ret_registers[0] as u32,
+                ret_registers[1] as u32,
+                ret_registers[2] as u32,
+                ret_registers[3] as u32,
+            ))
+        }
         CoreTypeConcrete::Felt252(_)
         | CoreTypeConcrete::Starknet(
             StarknetTypeConcrete::ClassHash(_)
