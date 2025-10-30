@@ -6,7 +6,9 @@
 use crate::{
     error::{Error, Result},
     libfuncs::LibfuncHelper,
+    utils::get_integer_layout,
 };
+use cairo_lang_sierra::extensions::felt252::Felt252BinaryOperator;
 use itertools::Itertools;
 use melior::{
     dialect::{
@@ -19,7 +21,7 @@ use melior::{
         operation::OperationBuilder,
         r#type::IntegerType,
         Attribute, Block, BlockLike, Identifier, Location, Module, OperationRef, Region, Type,
-        Value,
+        Value, ValueLike,
     },
     Context,
 };
@@ -39,6 +41,10 @@ enum RuntimeBinding {
     EcStateAdd,
     EcPointTryNewNz,
     EcPointFromXNz,
+    Felt252Add,
+    Felt252Sub,
+    Felt252Mul,
+    Felt252Div,
     DictNew,
     DictGet,
     DictSquash,
@@ -66,6 +72,10 @@ impl RuntimeBinding {
             RuntimeBinding::EcStateAdd => "cairo_native__libfunc__ec__ec_state_add",
             RuntimeBinding::EcPointTryNewNz => "cairo_native__libfunc__ec__ec_point_try_new_nz",
             RuntimeBinding::EcPointFromXNz => "cairo_native__libfunc__ec__ec_point_from_x_nz",
+            RuntimeBinding::Felt252Add => "cairo_native__libfunc__felt252_add",
+            RuntimeBinding::Felt252Sub => "cairo_native__libfunc__felt252_sub",
+            RuntimeBinding::Felt252Mul => "cairo_native__libfunc__felt252_mul",
+            RuntimeBinding::Felt252Div => "cairo_native__libfunc__felt252_div",
             RuntimeBinding::DictNew => "cairo_native__dict_new",
             RuntimeBinding::DictGet => "cairo_native__dict_get",
             RuntimeBinding::DictSquash => "cairo_native__dict_squash",
@@ -115,6 +125,18 @@ impl RuntimeBinding {
             }
             RuntimeBinding::EcPointFromXNz => {
                 crate::runtime::cairo_native__libfunc__ec__ec_point_from_x_nz as *const ()
+            }
+            RuntimeBinding::Felt252Add => {
+                crate::runtime::cairo_native__libfunc__felt252_add as *const ()
+            }
+            RuntimeBinding::Felt252Sub => {
+                crate::runtime::cairo_native__libfunc__felt252_sub as *const ()
+            }
+            RuntimeBinding::Felt252Mul => {
+                crate::runtime::cairo_native__libfunc__felt252_mul as *const ()
+            }
+            RuntimeBinding::Felt252Div => {
+                crate::runtime::cairo_native__libfunc__felt252_div as *const ()
             }
             RuntimeBinding::DictNew => crate::runtime::cairo_native__dict_new as *const (),
             RuntimeBinding::DictGet => crate::runtime::cairo_native__dict_get as *const (),
@@ -287,6 +309,69 @@ impl RuntimeBindingsMeta {
                 .add_results(&[return_type])
                 .build()?,
         )?)
+    }
+
+    pub fn libfunc_felt252_binary_op<'c, 'a>(
+        &mut self,
+        context: &'c Context,
+        module: &Module,
+        helper: &LibfuncHelper<'c, 'a>,
+        block: &'a Block<'c>,
+        lhs: Value<'c, '_>,
+        rhs: Value<'c, '_>,
+        op: Felt252BinaryOperator,
+        location: Location<'c>,
+    ) -> Result<Value<'c, 'a>>
+    where
+        'c: 'a,
+    {
+        let felt252_ty = lhs.r#type();
+
+        let lhs_ptr = helper.init_block.alloca1(
+            context,
+            location,
+            felt252_ty,
+            get_integer_layout(252).align(),
+        )?;
+        let rhs_ptr = helper.init_block.alloca1(
+            context,
+            location,
+            felt252_ty,
+            get_integer_layout(252).align(),
+        )?;
+        let res_ptr = helper.init_block.alloca1(
+            context,
+            location,
+            felt252_ty,
+            get_integer_layout(252).align(),
+        )?;
+
+        block.store(context, location, lhs_ptr, lhs)?;
+        block.store(context, location, rhs_ptr, rhs)?;
+
+        let function = match op {
+            Felt252BinaryOperator::Add => {
+                self.build_function(context, module, block, location, RuntimeBinding::Felt252Add)?
+            }
+            Felt252BinaryOperator::Sub => {
+                self.build_function(context, module, block, location, RuntimeBinding::Felt252Sub)?
+            }
+            Felt252BinaryOperator::Mul => {
+                self.build_function(context, module, block, location, RuntimeBinding::Felt252Mul)?
+            }
+            Felt252BinaryOperator::Div => {
+                self.build_function(context, module, block, location, RuntimeBinding::Felt252Div)?
+            }
+        };
+
+        block.append_operation(
+            OperationBuilder::new("llvm.call", location)
+                .add_operands(&[function])
+                .add_operands(&[lhs_ptr, rhs_ptr, res_ptr])
+                .build()?,
+        );
+
+        Ok(block.load(context, location, res_ptr, felt252_ty)?)
     }
 
     /// Register if necessary, then invoke the `debug::print()` function.
@@ -792,6 +877,10 @@ pub fn setup_runtime(find_symbol_ptr: impl Fn(&str) -> Option<*mut c_void>) {
         RuntimeBinding::EcStateAdd,
         RuntimeBinding::EcPointTryNewNz,
         RuntimeBinding::EcPointFromXNz,
+        RuntimeBinding::Felt252Add,
+        RuntimeBinding::Felt252Sub,
+        RuntimeBinding::Felt252Mul,
+        RuntimeBinding::Felt252Div,
         RuntimeBinding::DictNew,
         RuntimeBinding::DictGet,
         RuntimeBinding::DictSquash,
