@@ -568,6 +568,17 @@ impl RuntimeBindingsMeta {
         ))
     }
 
+    /// Register binary operation function if necessary and invoke it.
+    /// The operation depends on the `op` argument which could indicate:
+    /// - Add operation
+    /// - Sub operation
+    /// - Mul operation
+    /// - Div operation
+    ///
+    /// Operation is done between `lhs_ptr` and `rhs_ptr` while the result is stored
+    /// in `res_ptr`.
+    ///
+    /// Returns a opaque pointer as the result.
     #[allow(clippy::too_many_arguments)]
     pub fn libfunc_qm31_bin_op<'c, 'a>(
         &mut self,

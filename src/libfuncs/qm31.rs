@@ -119,10 +119,11 @@ pub fn build_is_zero<'ctx, 'this>(
     let m31_2 = entry.extract_value(context, location, qm31, m31_ty, 2)?;
     let m31_3 = entry.extract_value(context, location, qm31, m31_ty, 3)?;
 
+    // Check that every limb is equal to 0:
+    //      (m31_0 | m31_1 | m31_2 | m31_3) == 0
     let cond = entry.append_op_result(arith::ori(m31_0, m31_1, location))?;
     let cond = entry.append_op_result(arith::ori(cond, m31_2, location))?;
     let cond = entry.append_op_result(arith::ori(cond, m31_3, location))?;
-
     let k0 = entry.const_int_from_type(context, location, 0, m31_ty)?;
     let cond =
         entry.append_op_result(arith::cmpi(context, CmpiPredicate::Eq, k0, cond, location))?;
