@@ -34,6 +34,7 @@ use cairo_lang_sierra::{
 use libc::c_void;
 use num_bigint::BigInt;
 use num_traits::One;
+use starknet_types_core::felt::Felt;
 use std::{alloc::Layout, arch::global_asm, ptr::NonNull};
 
 mod aot;
@@ -450,11 +451,16 @@ fn parse_result(
 
                 #[cfg(target_arch = "aarch64")]
                 Ok(Value::Felt252({
+                    use lambdaworks_math::{
+                        traits::ByteConversion, unsigned_integer::element::UnsignedInteger,
+                    };
+
                     let data = unsafe {
                         std::mem::transmute::<&mut [u64; 4], &mut [u8; 32]>(&mut ret_registers)
                     };
-                    data[31] &= 0x0F; // Filter out first 4 bits (they're outside an i252).
-                    starknet_types_core::felt::Felt::from_bytes_le(data)
+                    // data[31] &= 0x0F; // Filter out first 4 bits (they're outside an i252).
+                    let data = UnsignedInteger::from_bytes_le(data).unwrap();
+                    Felt::from_raw(data.limbs)
                 }))
             }
         },

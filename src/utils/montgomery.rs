@@ -1,12 +1,12 @@
-use num_traits::{One, Zero, ToPrimitive};
-use num_bigint::{BigUint};
+use num_bigint::BigUint;
+use num_traits::{One, ToPrimitive, Zero};
 use starknet_types_core::felt::Felt;
 
-pub trait MontBytes {
+pub trait MontyBytes {
     fn to_bytes_le_raw(&self) -> [u8; 32];
 }
 
-impl MontBytes for Felt {
+impl MontyBytes for Felt {
     fn to_bytes_le_raw(&self) -> [u8; 32] {
         let limbs = self.to_raw();
         let mut buffer = [0; 32];
@@ -22,11 +22,11 @@ impl MontBytes for Felt {
 }
 
 /// Computes mudulus^{-1} mod 2^{64}.
-/// 
-/// This algorithm is mostly inspired from Lambaworks's u32 Montgomery 
-/// implementation: 
+///
+/// This algorithm is mostly inspired from Lambaworks's u32 Montgomery
+/// implementation:
 /// https://github.com/lambdaclass/lambdaworks/blob/main/crates/math/src/field/fields/u32_montgomery_backend_prime_field.rs#L36
-pub fn compute_mu_parameter<>(modulus: &BigUint) -> u64 {
+pub fn compute_mu_parameter(modulus: &BigUint) -> u64 {
     let mut y = BigUint::one();
     let word_size = 64;
     let mut i: usize = 2;
@@ -34,7 +34,7 @@ pub fn compute_mu_parameter<>(modulus: &BigUint) -> u64 {
         let mul_result = modulus * &y;
         if (mul_result << (word_size - i)) >> (word_size - i) != BigUint::one() {
             let shifted = BigUint::one() << (i - 1);
-            
+
             y += shifted;
         }
         i += 1;
@@ -43,9 +43,9 @@ pub fn compute_mu_parameter<>(modulus: &BigUint) -> u64 {
 }
 
 /// Computes 2^{2 * 384} mod modulus.
-/// 
-/// This algorithm is mostly inspired from Lambaworks's u32 Montgomery 
-/// implementation: 
+///
+/// This algorithm is mostly inspired from Lambaworks's u32 Montgomery
+/// implementation:
 /// https://github.com/lambdaclass/lambdaworks/blob/main/crates/math/src/field/fields/u32_montgomery_backend_prime_field.rs#L57
 pub fn compute_r2_parameter(modulus: &BigUint) -> BigUint {
     let word_size = 384;
@@ -62,7 +62,7 @@ pub fn compute_r2_parameter(modulus: &BigUint) -> BigUint {
     let mut i: usize = 1;
     while i <= 2 * word_size - l {
         let double_c: BigUint = c << 1;
-        
+
         c = if &double_c >= modulus {
             double_c - modulus
         } else {

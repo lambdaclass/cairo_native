@@ -10,7 +10,7 @@
 #![cfg(target_arch = "x86_64")]
 
 use super::AbiArgument;
-use crate::{error::Error, starknet::U256, utils::get_integer_layout};
+use crate::{error::Error, starknet::U256, utils::{get_integer_layout, montgomery::MontyBytes}};
 use cairo_lang_sierra::ids::ConcreteTypeId;
 use num_traits::ToBytes;
 use starknet_types_core::felt::Felt;

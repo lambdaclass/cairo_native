@@ -3,13 +3,13 @@
 //! A Rusty interface to provide parameters to cairo-native entry point calls.
 
 use crate::{
-    error::{panic::ToNativeAssertError, CompilerError, Error},
+    error::{CompilerError, Error, panic::ToNativeAssertError},
     native_assert, native_panic,
     runtime::FeltDict,
     starknet::{Secp256k1Point, Secp256r1Point},
     types::TypeBuilder,
     utils::{
-        felt252_bigint, get_integer_layout, layout_repeat, libc_free, libc_malloc, RangeExt, PRIME,
+        PRIME, RangeExt, felt252_bigint, get_integer_layout, layout_repeat, libc_free, libc_malloc, montgomery::MontyBytes
     },
 };
 use bumpalo::Bump;
@@ -24,6 +24,7 @@ use cairo_lang_sierra::{
     program_registry::ProgramRegistry,
 };
 use educe::Educe;
+use lambdaworks_math::{traits::ByteConversion, unsigned_integer::element::UnsignedInteger};
 use num_bigint::{BigInt, BigUint, Sign};
 use num_traits::{Euclid, One};
 use starknet_types_core::felt::Felt;
@@ -175,7 +176,7 @@ impl Value {
                 Self::Felt252(value) => {
                     let ptr = arena.alloc_layout(get_integer_layout(252)).cast();
 
-                    let data = felt252_bigint(value.to_bigint()).to_bytes_le();
+                    let data = felt252_bigint(value.to_bigint()).to_bytes_le_raw();
                     ptr.cast::<[u8; 32]>().as_mut().copy_from_slice(&data);
                     ptr
                 }
@@ -738,9 +739,9 @@ impl Value {
                 }
                 CoreTypeConcrete::Felt252(_) => {
                     let data = ptr.cast::<[u8; 32]>().as_mut();
-                    data[31] &= 0x0F; // Filter out first 4 bits (they're outside an i252).
-                    let data = Felt::from_bytes_le_slice(data);
-                    Self::Felt252(data)
+                    // data[31] &= 0x0F; // Filter out first 4 bits (they're outside an i252).
+                    let data = UnsignedInteger::from_bytes_le(data).unwrap();
+                    Self::Felt252(Felt::from_raw(data.limbs))
                 }
                 CoreTypeConcrete::Uint8(_) => Self::Uint8(*ptr.cast::<u8>().as_ref()),
                 CoreTypeConcrete::Uint16(_) => Self::Uint16(*ptr.cast::<u16>().as_ref()),
@@ -919,9 +920,9 @@ impl Value {
                     | StarknetTypeConcrete::StorageAddress(_) => {
                         // felt values
                         let data = ptr.cast::<[u8; 32]>().as_mut();
-                        data[31] &= 0x0F; // Filter out first 4 bits (they're outside an i252).
-                        let data = Felt::from_bytes_le(data);
-                        Self::Felt252(data)
+                        // data[31] &= 0x0F; // Filter out first 4 bits (they're outside an i252).
+                        let data = UnsignedInteger::from_bytes_le(data).unwrap();
+                        Self::Felt252(Felt::from_raw(data.limbs))
                     }
                     StarknetTypeConcrete::System(_) => {
                         native_panic!("should be handled before")

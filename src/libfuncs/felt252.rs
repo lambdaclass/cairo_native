@@ -4,7 +4,10 @@ use super::LibfuncHelper;
 use crate::{
     error::Result,
     metadata::MetadataStorage,
-    utils::{PRIME, ProgramRegistryExt, montgomery::{compute_mu_parameter, compute_r2_parameter}},
+    utils::{
+        montgomery::{compute_mu_parameter, compute_r2_parameter},
+        ProgramRegistryExt, PRIME,
+    },
 };
 use cairo_lang_sierra::{
     extensions::{
@@ -95,9 +98,9 @@ pub fn build_binary_operation<'ctx, 'this>(
 
             // TODO: Ensure that the constant is on the correct side of the operation.
             let rhs = entry.const_int_from_type(context, location, value, felt252_ty)?;
-            
+
             // TODO: Transform rhs into Montgomery space.
-            
+
             (operation.operator, entry.arg(0)?, rhs)
         }
     };
