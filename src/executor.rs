@@ -434,17 +434,15 @@ fn parse_result(
             true,
         )?),
         CoreTypeConcrete::QM31(_) => {
-            println!("{:?}", ret_registers);
-
             #[cfg(target_arch = "x86_64")]
             return Err(Error::ParseAttributeError);
 
             #[cfg(target_arch = "aarch64")]
             Ok(Value::QM31(
-                ret_registers[0] as u32,
-                ret_registers[1] as u32,
-                ret_registers[2] as u32,
-                ret_registers[3] as u32,
+                u32::try_from(ret_registers[0])?,
+                u32::try_from(ret_registers[1])?,
+                u32::try_from(ret_registers[2])?,
+                u32::try_from(ret_registers[3])?,
             ))
         }
         CoreTypeConcrete::Felt252(_)

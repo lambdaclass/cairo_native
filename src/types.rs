@@ -501,9 +501,9 @@ impl TypeBuilder for CoreTypeConcrete {
             CoreTypeConcrete::EcPoint(_) => true,
             CoreTypeConcrete::EcState(_) => true,
             CoreTypeConcrete::Felt252DictEntry(_) => true,
-            CoreTypeConcrete::QM31(_) => false,
 
             CoreTypeConcrete::Felt252(_)
+            | CoreTypeConcrete::QM31(_)
             | CoreTypeConcrete::Bytes31(_)
             | CoreTypeConcrete::Starknet(
                 StarknetTypeConcrete::ClassHash(_)
