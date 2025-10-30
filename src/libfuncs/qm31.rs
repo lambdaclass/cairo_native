@@ -60,7 +60,7 @@ pub fn build<'ctx, 'this>(
 ///
 /// # Constraints
 ///
-/// m31 are always between 0 and 2**31 - 2
+/// m31 are always between 0 and 2**31 - 2 (inclusive)
 ///
 /// # Cairo Signature
 ///
