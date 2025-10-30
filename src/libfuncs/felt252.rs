@@ -4,10 +4,7 @@ use super::LibfuncHelper;
 use crate::{
     error::Result,
     metadata::MetadataStorage,
-    utils::{
-        montgomery::{compute_mu_parameter, compute_r2_parameter},
-        ProgramRegistryExt, PRIME,
-    },
+    utils::{montgomery::monty_transform, ProgramRegistryExt, FELT_MU, FELT_R2, PRIME},
 };
 use cairo_lang_sierra::{
     extensions::{
@@ -21,7 +18,6 @@ use cairo_lang_sierra::{
     },
     program_registry::ProgramRegistry,
 };
-use lazy_static::lazy_static;
 use melior::{
     dialect::{
         arith::{self, CmpiPredicate},
@@ -31,12 +27,7 @@ use melior::{
     ir::{r#type::IntegerType, Block, BlockLike, Location, Value, ValueLike},
     Context,
 };
-use num_bigint::{BigInt, BigUint, Sign};
-
-lazy_static! {
-    static ref R2: BigUint = compute_r2_parameter(&PRIME.clone());
-    static ref MU: BigUint = compute_mu_parameter(&PRIME.clone());
-}
+use num_bigint::{BigInt, Sign};
 
 /// Select and call the correct libfunc builder function from the selector.
 pub fn build<'ctx, 'this>(
@@ -95,11 +86,10 @@ pub fn build_binary_operation<'ctx, 'this>(
                     .clone(),
                 _ => operation.c.magnitude().clone(),
             };
+            let monty_value = monty_transform(&value, &FELT_R2, &FELT_MU, &PRIME);
 
             // TODO: Ensure that the constant is on the correct side of the operation.
-            let rhs = entry.const_int_from_type(context, location, value, felt252_ty)?;
-
-            // TODO: Transform rhs into Montgomery space.
+            let rhs = entry.const_int_from_type(context, location, monty_value, felt252_ty)?;
 
             (operation.operator, entry.arg(0)?, rhs)
         }
@@ -306,6 +296,7 @@ pub fn build_const<'ctx, 'this>(
             .clone(),
         _ => info.c.magnitude().clone(),
     };
+    let monty_value = monty_transform(&value, &FELT_R2, &FELT_MU, &PRIME);
 
     let felt252_ty = registry.build_type(
         context,
@@ -314,9 +305,7 @@ pub fn build_const<'ctx, 'this>(
         &info.branch_signatures()[0].vars[0].ty,
     )?;
 
-    let value = entry.const_int_from_type(context, location, value, felt252_ty)?;
-
-    // TODO: Transform rhs into Montgomery space.
+    let value = entry.const_int_from_type(context, location, monty_value, felt252_ty)?;
 
     helper.br(entry, 0, &[value], location)
 }

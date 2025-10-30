@@ -2,7 +2,11 @@
 
 pub(crate) use self::{program_registry_ext::ProgramRegistryExt, range_ext::RangeExt};
 use crate::{
-    error::Result as NativeResult, metadata::MetadataStorage, native_panic, types::TypeBuilder,
+    error::Result as NativeResult,
+    metadata::MetadataStorage,
+    native_panic,
+    types::TypeBuilder,
+    utils::montgomery::{compute_mu_parameter, compute_r2_parameter},
     OptLevel,
 };
 use cairo_lang_runner::token_gas_cost;
@@ -58,6 +62,8 @@ pub static HALF_PRIME: LazyLock<BigUint> = LazyLock::new(|| {
         .parse()
         .expect("hardcoded half prime constant should be valid")
 });
+pub static FELT_R2: LazyLock<BigUint> = LazyLock::new(|| compute_r2_parameter(&PRIME.clone()));
+pub static FELT_MU: LazyLock<BigUint> = LazyLock::new(|| compute_mu_parameter(&PRIME.clone()));
 
 /// Represents the gas cost of each cost token type
 ///

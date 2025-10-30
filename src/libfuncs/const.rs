@@ -7,7 +7,7 @@ use crate::{
     metadata::{realloc_bindings::ReallocBindingsMeta, MetadataStorage},
     native_panic,
     types::TypeBuilder,
-    utils::{ProgramRegistryExt, RangeExt, PRIME},
+    utils::{montgomery::monty_transform, ProgramRegistryExt, RangeExt, FELT_MU, FELT_R2, PRIME},
 };
 use cairo_lang_sierra::{
     extensions::{
@@ -265,8 +265,8 @@ pub fn build_const_type_value<'ctx, 'this>(
                 Sign::Minus => PRIME.clone() - value,
                 _ => value,
             };
-
-            Ok(entry.const_int_from_type(context, location, value, inner_ty)?)
+            let monty_value = monty_transform(&value, &FELT_R2, &FELT_MU, &PRIME);
+            Ok(entry.const_int_from_type(context, location, monty_value, inner_ty)?)
         }
         CoreTypeConcrete::Starknet(
             StarknetTypeConcrete::ClassHash(_) | StarknetTypeConcrete::ContractAddress(_),

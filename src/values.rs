@@ -3,13 +3,14 @@
 //! A Rusty interface to provide parameters to cairo-native entry point calls.
 
 use crate::{
-    error::{CompilerError, Error, panic::ToNativeAssertError},
+    error::{panic::ToNativeAssertError, CompilerError, Error},
     native_assert, native_panic,
     runtime::FeltDict,
     starknet::{Secp256k1Point, Secp256r1Point},
     types::TypeBuilder,
     utils::{
-        PRIME, RangeExt, felt252_bigint, get_integer_layout, layout_repeat, libc_free, libc_malloc, montgomery::MontyBytes
+        felt252_bigint, get_integer_layout, layout_repeat, libc_free, libc_malloc,
+        montgomery::MontyBytes, RangeExt, PRIME,
     },
 };
 use bumpalo::Bump;
