@@ -1,0 +1,74 @@
+use num_traits::{One, Zero, ToPrimitive};
+use num_bigint::{BigUint};
+use starknet_types_core::felt::Felt;
+
+pub trait MontBytes {
+    fn to_bytes_le_raw(&self) -> [u8; 32];
+}
+
+impl MontBytes for Felt {
+    fn to_bytes_le_raw(&self) -> [u8; 32] {
+        let limbs = self.to_raw();
+        let mut buffer = [0; 32];
+
+        for i in (0..4).rev() {
+            let bytes = limbs[i].to_le_bytes();
+            let init = (3 - i) * 8;
+            buffer[init..init + 8].copy_from_slice(&bytes);
+        }
+
+        buffer
+    }
+}
+
+/// Computes mudulus^{-1} mod 2^{64}.
+/// 
+/// This algorithm is mostly inspired from Lambaworks's u32 Montgomery 
+/// implementation: 
+/// https://github.com/lambdaclass/lambdaworks/blob/main/crates/math/src/field/fields/u32_montgomery_backend_prime_field.rs#L36
+pub fn compute_mu_parameter<>(modulus: &BigUint) -> u64 {
+    let mut y = BigUint::one();
+    let word_size = 64;
+    let mut i: usize = 2;
+    while i <= word_size {
+        let mul_result = modulus * &y;
+        if (mul_result << (word_size - i)) >> (word_size - i) != BigUint::one() {
+            let shifted = BigUint::one() << (i - 1);
+            
+            y += shifted;
+        }
+        i += 1;
+    }
+    y.to_u64().unwrap()
+}
+
+/// Computes 2^{2 * 384} mod modulus.
+/// 
+/// This algorithm is mostly inspired from Lambaworks's u32 Montgomery 
+/// implementation: 
+/// https://github.com/lambdaclass/lambdaworks/blob/main/crates/math/src/field/fields/u32_montgomery_backend_prime_field.rs#L57
+pub fn compute_r2_parameter(modulus: &BigUint) -> BigUint {
+    let word_size = 384;
+    let mut l: usize = 0;
+
+    // Find the largest power of 2 smaller than modulus
+    while l < word_size && (modulus >> l) == BigUint::zero() {
+        l += 1;
+    }
+
+    let mut c = BigUint::one() << l;
+    // Double c and reduce modulo `MODULUS` until getting
+    // `2^{2 * word_size}` mod `MODULUS`.
+    let mut i: usize = 1;
+    while i <= 2 * word_size - l {
+        let double_c: BigUint = c << 1;
+        
+        c = if &double_c >= modulus {
+            double_c - modulus
+        } else {
+            double_c
+        };
+        i += 1;
+    }
+    c
+}

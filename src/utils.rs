@@ -32,6 +32,7 @@ use std::{
 use thiserror::Error;
 
 pub mod mem_tracing;
+pub mod montgomery;
 mod program_registry_ext;
 mod range_ext;
 #[cfg(feature = "with-segfault-catcher")]

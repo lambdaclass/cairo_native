@@ -159,7 +159,7 @@ impl AbiArgument for Felt {
             align_to(buffer, get_integer_layout(252).align());
         }
 
-        buffer.extend_from_slice(&self.to_bytes_le());
+        buffer.extend_from_slice(&self.to_bytes_le_raw());
         Ok(())
     }
 }

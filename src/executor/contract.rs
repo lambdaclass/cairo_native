@@ -51,7 +51,7 @@ use crate::{
     types::TypeBuilder,
     utils::{
         decode_error_message, generate_function_name, get_integer_layout, get_types_total_size,
-        libc_free, libc_malloc, BuiltinCosts,
+        libc_free, libc_malloc, montgomery::MontBytes, BuiltinCosts,
     },
     OptLevel,
 };
@@ -500,7 +500,8 @@ impl AotContractExecutor {
         };
 
         for (idx, elem) in args.iter().enumerate() {
-            let f = elem.to_bytes_le();
+            let f = elem.to_bytes_le_raw();
+
             unsafe {
                 std::ptr::copy_nonoverlapping(
                     f.as_ptr().cast::<u8>(),
