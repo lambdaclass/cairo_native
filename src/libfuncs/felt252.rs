@@ -35,7 +35,7 @@ use num_bigint::{BigInt, BigUint, Sign};
 
 lazy_static! {
     static ref R2: BigUint = compute_r2_parameter(&PRIME.clone());
-    static ref MU: u64 = compute_mu_parameter(&PRIME.clone());
+    static ref MU: BigUint = compute_mu_parameter(&PRIME.clone());
 }
 
 /// Select and call the correct libfunc builder function from the selector.
@@ -315,6 +315,8 @@ pub fn build_const<'ctx, 'this>(
     )?;
 
     let value = entry.const_int_from_type(context, location, value, felt252_ty)?;
+
+    // TODO: Transform rhs into Montgomery space.
 
     helper.br(entry, 0, &[value], location)
 }

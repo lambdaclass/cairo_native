@@ -1,5 +1,5 @@
 use num_bigint::BigUint;
-use num_traits::{One, ToPrimitive, Zero};
+use num_traits::{One, Zero};
 use starknet_types_core::felt::Felt;
 
 pub trait MontyBytes {
@@ -21,12 +21,12 @@ impl MontyBytes for Felt {
     }
 }
 
-/// Computes mudulus^{-1} mod 2^{64}.
+/// Computes mudulus^{-1} mod 2^{256}.
 ///
 /// This algorithm is mostly inspired from Lambaworks's u32 Montgomery
 /// implementation:
 /// https://github.com/lambdaclass/lambdaworks/blob/main/crates/math/src/field/fields/u32_montgomery_backend_prime_field.rs#L36
-pub fn compute_mu_parameter(modulus: &BigUint) -> u64 {
+pub fn compute_mu_parameter(modulus: &BigUint) -> BigUint {
     let mut y = BigUint::one();
     let word_size = 64;
     let mut i: usize = 2;
@@ -39,26 +39,24 @@ pub fn compute_mu_parameter(modulus: &BigUint) -> u64 {
         }
         i += 1;
     }
-    y.to_u64().unwrap()
+    y 
 }
 
-/// Computes 2^{2 * 384} mod modulus.
+/// Computes 2^{2 * 256} mod modulus.
 ///
 /// This algorithm is mostly inspired from Lambaworks's u32 Montgomery
 /// implementation:
 /// https://github.com/lambdaclass/lambdaworks/blob/main/crates/math/src/field/fields/u32_montgomery_backend_prime_field.rs#L57
 pub fn compute_r2_parameter(modulus: &BigUint) -> BigUint {
-    let word_size = 384;
+    let word_size = 256;
     let mut l: usize = 0;
 
-    // Find the largest power of 2 smaller than modulus
     while l < word_size && (modulus >> l) == BigUint::zero() {
         l += 1;
     }
 
     let mut c = BigUint::one() << l;
-    // Double c and reduce modulo `MODULUS` until getting
-    // `2^{2 * word_size}` mod `MODULUS`.
+    
     let mut i: usize = 1;
     while i <= 2 * word_size - l {
         let double_c: BigUint = c << 1;
@@ -71,4 +69,23 @@ pub fn compute_r2_parameter(modulus: &BigUint) -> BigUint {
         i += 1;
     }
     c
+}
+
+/// Montgomery reduction.
+/// TODO: add docs
+/// Inspired in Lambdaworks's `montgomery_reduction`:
+/// https://github.com/lambdaclass/lambdaworks/blob/main/crates/math/src/field/fields/u32_montgomery_backend_prime_field.rs#L285
+pub fn monty_reduction(x: &BigUint, mu: &BigUint, modulus: &BigUint) -> BigUint {
+    // q = (x * mu) mod r.
+    let q = (x * mu) % (BigUint::one() << 256);
+    // m = q * modulus
+    let m = q * modulus;
+    // y = (x - m) / r
+    let y = (x - m) >> 256;
+
+    if y < BigUint::zero() {
+        y + modulus
+    } else {
+        y
+    }
 }
