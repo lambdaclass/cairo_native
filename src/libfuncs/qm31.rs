@@ -60,7 +60,7 @@ pub fn build<'ctx, 'this>(
 ///
 /// # Constraints
 ///
-/// m31 are always between 0 and 2**31 - 2
+/// m31 are always between 0 and 2**31 - 2 (inclusive)
 ///
 /// # Cairo Signature
 ///
@@ -196,7 +196,7 @@ pub fn build_binary_op<'ctx, 'this>(
 ///
 /// # Constraints
 ///
-/// m31 are always between 0 and 2**31 - 2
+/// m31 are always between 0 and 2**31 - 2 (inclusive)
 ///
 /// # Cairo Signature
 ///
@@ -233,7 +233,7 @@ pub fn build_pack<'ctx, 'this>(
 ///
 /// # Constraints
 ///
-/// m31 are always between 0 and 2**31 - 2
+/// m31 are always between 0 and 2**31 - 2 (inclusive)
 ///
 /// # Cairo Signature
 ///
@@ -274,7 +274,7 @@ pub fn build_unpack<'ctx, 'this>(
 ///
 /// # Constraints
 ///
-/// m31 are always between 0 and 2**31 - 2
+/// m31 are always between 0 and 2**31 - 2 (inclusive)
 ///
 /// # Cairo Signature
 ///
