@@ -6,6 +6,7 @@
 use crate::{
     error::{Error, Result},
     libfuncs::LibfuncHelper,
+    utils::get_integer_layout,
 };
 use cairo_lang_sierra::extensions::qm31::QM31BinaryOperator;
 use itertools::Itertools;
@@ -579,7 +580,6 @@ impl RuntimeBindingsMeta {
     /// in `res_ptr`.
     ///
     /// Returns a opaque pointer as the result.
-    #[allow(clippy::too_many_arguments)]
     pub fn libfunc_qm31_bin_op<'c, 'a>(
         &mut self,
         context: &'c Context,
@@ -587,13 +587,15 @@ impl RuntimeBindingsMeta {
         block: &'a Block<'c>,
         lhs_ptr: Value<'c, '_>,
         rhs_ptr: Value<'c, '_>,
-        res_ptr: Value<'c, '_>,
         op: QM31BinaryOperator,
         location: Location<'c>,
-    ) -> Result<OperationRef<'c, 'a>>
+    ) -> Result<Value<'c, 'a>>
     where
         'c: 'a,
     {
+        let qm31_ty = llvm::r#type::array(IntegerType::new(context, 31).into(), 4);
+        let res_ptr = block.alloca1(context, location, qm31_ty, get_integer_layout(31).align())?;
+
         let function = match op {
             QM31BinaryOperator::Add => {
                 self.build_function(context, module, block, location, RuntimeBinding::QM31Add)?
@@ -609,12 +611,14 @@ impl RuntimeBindingsMeta {
             }
         };
 
-        Ok(block.append_operation(
+        block.append_operation(
             OperationBuilder::new("llvm.call", location)
                 .add_operands(&[function])
                 .add_operands(&[lhs_ptr, rhs_ptr, res_ptr])
                 .build()?,
-        ))
+        );
+
+        Ok(block.load(context, location, res_ptr, qm31_ty)?)
     }
 
     /// Register if necessary, then invoke the `dict_alloc_new()` function.

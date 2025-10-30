@@ -167,12 +167,11 @@ pub fn build_binary_op<'ctx, 'this>(
 
     let lhs_ptr = entry.alloca1(context, location, qm31_ty, get_integer_layout(31).align())?;
     let rhs_ptr = entry.alloca1(context, location, qm31_ty, get_integer_layout(31).align())?;
-    let res_ptr = entry.alloca1(context, location, qm31_ty, get_integer_layout(31).align())?;
 
     entry.store(context, location, lhs_ptr, lhs)?;
     entry.store(context, location, rhs_ptr, rhs)?;
 
-    metadata
+    let result = metadata
         .get_mut::<RuntimeBindingsMeta>()
         .ok_or(Error::MissingMetadata)?
         .libfunc_qm31_bin_op(
@@ -181,12 +180,9 @@ pub fn build_binary_op<'ctx, 'this>(
             entry,
             lhs_ptr,
             rhs_ptr,
-            res_ptr,
             info.operator,
             location,
         )?;
-
-    let result = entry.load(context, location, res_ptr, qm31_ty)?;
 
     helper.br(entry, 0, &[result], location)
 }
