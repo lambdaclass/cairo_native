@@ -1,11 +1,11 @@
 #![allow(non_snake_case)]
 
-use crate::utils::BuiltinCosts;
+use crate::utils::{montgomery::MontyBytes, BuiltinCosts};
 use cairo_lang_sierra_gas::core_libfunc_cost::{
     DICT_SQUASH_REPEATED_ACCESS_COST, DICT_SQUASH_UNIQUE_KEY_COST,
 };
 use itertools::Itertools;
-use lambdaworks_math::{traits::ByteConversion, unsigned_integer::element::UnsignedInteger};
+use lambdaworks_math::{traits::ByteConversion, unsigned_integer::element::U256};
 use lazy_static::lazy_static;
 use num_bigint::BigInt;
 use num_traits::{ToPrimitive, Zero};
@@ -81,15 +81,15 @@ pub unsafe extern "C" fn cairo_native__libfunc__felt252_add(
     dst: &mut [u8; 32],
 ) {
     let lhs = {
-        let val = UnsignedInteger::from_bytes_le(lhs).expect("could't create integer from bytes");
+        let val = U256::from_bytes_le(lhs).expect("could't create integer from bytes");
         Felt::from_raw(val.limbs)
     };
     let rhs = {
-        let val = UnsignedInteger::from_bytes_le(rhs).expect("could't create integer from bytes");
+        let val = U256::from_bytes_le(rhs).expect("could't create integer from bytes");
         Felt::from_raw(val.limbs)
     };
 
-    *dst = (lhs + rhs).to_bytes_le();
+    *dst = (lhs + rhs).to_bytes_le_raw();
 }
 
 pub unsafe extern "C" fn cairo_native__libfunc__felt252_sub(
@@ -98,15 +98,15 @@ pub unsafe extern "C" fn cairo_native__libfunc__felt252_sub(
     dst: &mut [u8; 32],
 ) {
     let lhs = {
-        let val = UnsignedInteger::from_bytes_le(lhs).expect("could't create integer from bytes");
+        let val = U256::from_bytes_le(lhs).expect("could't create integer from bytes");
         Felt::from_raw(val.limbs)
     };
     let rhs = {
-        let val = UnsignedInteger::from_bytes_le(rhs).expect("could't create integer from bytes");
+        let val = U256::from_bytes_le(rhs).expect("could't create integer from bytes");
         Felt::from_raw(val.limbs)
     };
 
-    *dst = (lhs - rhs).to_bytes_le();
+    *dst = (lhs - rhs).to_bytes_le_raw();
 }
 
 pub unsafe extern "C" fn cairo_native__libfunc__felt252_mul(
@@ -115,15 +115,15 @@ pub unsafe extern "C" fn cairo_native__libfunc__felt252_mul(
     dst: &mut [u8; 32],
 ) {
     let lhs = {
-        let val = UnsignedInteger::from_bytes_le(lhs).expect("could't create integer from bytes");
+        let val = U256::from_bytes_le(lhs).expect("could't create integer from bytes");
         Felt::from_raw(val.limbs)
     };
     let rhs = {
-        let val = UnsignedInteger::from_bytes_le(rhs).expect("could't create integer from bytes");
+        let val = U256::from_bytes_le(rhs).expect("could't create integer from bytes");
         Felt::from_raw(val.limbs)
     };
 
-    *dst = (lhs * rhs).to_bytes_le();
+    *dst = (lhs * rhs).to_bytes_le_raw();
 }
 
 pub unsafe extern "C" fn cairo_native__libfunc__felt252_div(
@@ -132,15 +132,15 @@ pub unsafe extern "C" fn cairo_native__libfunc__felt252_div(
     dst: &mut [u8; 32],
 ) {
     let lhs = {
-        let val = UnsignedInteger::from_bytes_le(lhs).expect("could't create integer from bytes");
+        let val = U256::from_bytes_le(lhs).expect("could't create integer from bytes");
         Felt::from_raw(val.limbs)
     };
     let rhs = {
-        let val = UnsignedInteger::from_bytes_le(rhs).expect("could't create integer from bytes");
+        let val = U256::from_bytes_le(rhs).expect("could't create integer from bytes");
         Felt::from_raw(val.limbs)
     };
 
-    *dst = (lhs.field_div(&NonZeroFelt::from_felt_unchecked(rhs))).to_bytes_le();
+    *dst = (lhs.field_div(&NonZeroFelt::from_felt_unchecked(rhs))).to_bytes_le_raw();
 }
 
 /// Compute `pedersen(lhs, rhs)` and store it into `dst`.

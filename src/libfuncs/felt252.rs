@@ -4,7 +4,7 @@ use super::LibfuncHelper;
 use crate::{
     error::{panic::ToNativeAssertError, Result},
     metadata::{runtime_bindings::RuntimeBindingsMeta, MetadataStorage},
-    utils::{montgomery::monty_transform, ProgramRegistryExt, FELT_MU, FELT_R2, PRIME},
+    utils::{montgomery::monty_transform, ProgramRegistryExt, PRIME},
 };
 use cairo_lang_sierra::{
     extensions::{
@@ -81,7 +81,9 @@ pub fn build_binary_operation<'ctx, 'this>(
                     .clone(),
                 _ => operation.c.magnitude().clone(),
             };
-            let monty_value = monty_transform(&value, &FELT_R2, &FELT_MU, &PRIME);
+            let monty_value = monty_transform(&value, &PRIME).to_native_assert_error(&format!(
+                "could not transform felt252: {value} to Montgomery form"
+            ))?;
 
             // TODO: Ensure that the constant is on the correct side of the operation.
             let rhs = entry.const_int_from_type(context, location, monty_value, felt252_ty)?;
@@ -120,7 +122,6 @@ pub fn build_const<'ctx, 'this>(
             .clone(),
         _ => info.c.magnitude().clone(),
     };
-    let monty_value = monty_transform(&value, &FELT_R2, &FELT_MU, &PRIME);
 
     let felt252_ty = registry.build_type(
         context,
@@ -129,6 +130,9 @@ pub fn build_const<'ctx, 'this>(
         &info.branch_signatures()[0].vars[0].ty,
     )?;
 
+    let monty_value = monty_transform(&value, &PRIME).to_native_assert_error(&format!(
+        "could not transform felt252: {value} to Montgomery form"
+    ))?;
     let value = entry.const_int_from_type(context, location, monty_value, felt252_ty)?;
 
     helper.br(entry, 0, &[value], location)

@@ -25,7 +25,7 @@ use cairo_lang_sierra::{
     program_registry::ProgramRegistry,
 };
 use educe::Educe;
-use lambdaworks_math::{traits::ByteConversion, unsigned_integer::element::UnsignedInteger};
+use lambdaworks_math::{traits::ByteConversion, unsigned_integer::element::U256};
 use num_bigint::{BigInt, BigUint, Sign};
 use num_traits::{Euclid, One};
 use starknet_types_core::felt::Felt;
@@ -741,7 +741,7 @@ impl Value {
                 CoreTypeConcrete::Felt252(_) => {
                     let data = ptr.cast::<[u8; 32]>().as_mut();
                     // data[31] &= 0x0F; // Filter out first 4 bits (they're outside an i252).
-                    let data = UnsignedInteger::from_bytes_le(data).unwrap();
+                    let data = U256::from_bytes_le(data).unwrap();
                     Self::Felt252(Felt::from_raw(data.limbs))
                 }
                 CoreTypeConcrete::Uint8(_) => Self::Uint8(*ptr.cast::<u8>().as_ref()),
@@ -922,7 +922,7 @@ impl Value {
                         // felt values
                         let data = ptr.cast::<[u8; 32]>().as_mut();
                         // data[31] &= 0x0F; // Filter out first 4 bits (they're outside an i252).
-                        let data = UnsignedInteger::from_bytes_le(data).unwrap();
+                        let data = U256::from_bytes_le(data).unwrap();
                         Self::Felt252(Felt::from_raw(data.limbs))
                     }
                     StarknetTypeConcrete::System(_) => {

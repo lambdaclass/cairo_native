@@ -1,6 +1,26 @@
-use num_bigint::{BigInt, BigUint, ToBigInt};
-use num_traits::{One, Zero};
+use std::sync::LazyLock;
+
+use lambdaworks_math::{
+    errors::CreationError,
+    traits::ByteConversion,
+    unsigned_integer::{
+        element::{UnsignedInteger, U256},
+        montgomery::MontgomeryAlgorithms,
+    },
+};
+use num_bigint::BigUint;
 use starknet_types_core::felt::Felt;
+
+pub static MONTY_R2: LazyLock<U256> = LazyLock::new(|| {
+    UnsignedInteger::from_hex_unchecked(
+        "7FFD4AB5E008810FFFFFFFFFF6F800000000001330FFFFFFFFFFD737E000401",
+    )
+});
+pub static MONTY_MU: LazyLock<u64> = LazyLock::new(|| {
+    "18446744073709551615"
+        .parse()
+        .expect("hardcoded Montgomery mu constant should be valid")
+});
 
 pub trait MontyBytes {
     fn to_bytes_le_raw(&self) -> [u8; 32];
@@ -21,82 +41,87 @@ impl MontyBytes for Felt {
     }
 }
 
-/// Computes mudulus^{-1} mod 2^{64}.
-///
-/// This algorithm is mostly inspired from Lambaworks's u32 Montgomery
-/// implementation:
-/// https://github.com/lambdaclass/lambdaworks/blob/main/crates/math/src/field/fields/u32_montgomery_backend_prime_field.rs#L36
-pub fn compute_mu_parameter(modulus: &BigUint) -> BigUint {
-    let mut y = BigUint::one();
-    let word_size = 64;
-    let mut i: usize = 2;
-    while i <= word_size {
-        let mul_result = modulus * &y;
-        if (mul_result << (word_size - i)) >> (word_size - i) != BigUint::one() {
-            let shifted = BigUint::one() << (i - 1);
-
-            y += shifted;
-        }
-        i += 1;
-    }
-    y
-}
-
-/// Computes 2^{2 * 384} mod modulus.
-///
-/// This algorithm is mostly inspired from Lambaworks's u32 Montgomery
-/// implementation:
-/// https://github.com/lambdaclass/lambdaworks/blob/main/crates/math/src/field/fields/u32_montgomery_backend_prime_field.rs#L57
-pub fn compute_r2_parameter(modulus: &BigUint) -> BigUint {
-    let word_size = 384;
-    let mut l: usize = 0;
-
-    while l < word_size && (modulus >> l) == BigUint::zero() {
-        l += 1;
-    }
-
-    let mut c = BigUint::one() << l;
-
-    let mut i: usize = 1;
-    while i <= 2 * word_size - l {
-        let double_c: BigUint = c << 1;
-
-        c = if &double_c >= modulus {
-            double_c - modulus
-        } else {
-            double_c
-        };
-        i += 1;
-    }
-    c
-}
-
 /// Computes the Montgomery reduction.
 /// TODO: add docs.
 /// Inspired in Lambdaworks's `montgomery_reduction`:
 /// https://github.com/lambdaclass/lambdaworks/blob/main/crates/math/src/field/fields/u32_montgomery_backend_prime_field.rs#L285
-pub fn monty_reduction(x: &BigUint, mu: &BigUint, modulus: &BigUint) -> BigUint {
-    let x = &x.to_bigint().unwrap();
-    let mu = &mu.to_bigint().unwrap();
-    let modulus = &modulus.to_bigint().unwrap();
+pub fn monty_reduction(x: &BigUint, modulus: &BigUint) -> Result<BigUint, CreationError> {
+    let x = U256::from_hex(&x.to_str_radix(16))?;
+    let modulus = U256::from_hex(&modulus.to_str_radix(16))?;
 
-    // q = (x * mu) mod r.
-    let q = (x * mu) % (BigInt::one() << 256);
-    // m = q * modulus
-    let m: BigInt = q * modulus;
-    // y = (x - m) / r
-    let y: BigInt = (x - m) >> 256i16;
+    let reduced = MontgomeryAlgorithms::cios(&x, &U256::from_u64(1), &modulus, &MONTY_MU);
 
-    if y < BigInt::zero() {
-        (y + modulus).to_biguint().unwrap()
-    } else {
-        y.to_biguint().unwrap()
-    }
+    Ok(BigUint::from_bytes_le(&reduced.to_bytes_le()))
 }
 
 /// Computes the Montgomery transform operation.
 /// TODO: add docs.
-pub fn monty_transform(x: &BigUint, r2: &BigUint, mu: &BigUint, modulus: &BigUint) -> BigUint {
-    let y = x * r2;
-    monty_reduction(&y, mu, modulus)
+pub fn monty_transform(x: &BigUint, modulus: &BigUint) -> Result<BigUint, CreationError> {
+    let x = U256::from_hex(&x.to_str_radix(16))?;
+    let modulus = U256::from_hex(&modulus.to_str_radix(16))?;
+
+    let reduced = MontgomeryAlgorithms::cios(&x, &MONTY_R2, &modulus, &MONTY_MU);
+
+    Ok(BigUint::from_bytes_le(&reduced.to_bytes_le()))
+}
+
+#[cfg(test)]
+mod tests {
+    use crate::utils::{
+        montgomery::{monty_reduction, monty_transform, MontyBytes},
+        PRIME,
+    };
+    use lambdaworks_math::{traits::ByteConversion, unsigned_integer::element::U256};
+    use starknet_types_core::felt::Felt;
+
+    #[test]
+    fn felt_to_bytes_raw() {
+        let felt = Felt::from(10);
+        let bytes = felt.to_bytes_le_raw();
+        let felt_from_raw = {
+            let value = U256::from_bytes_le(&bytes).unwrap();
+            Felt::from_raw(value.limbs)
+        };
+
+        assert_eq!(felt_from_raw, felt);
+
+        let felt = Felt::from(-10);
+        let bytes = felt.to_bytes_le_raw();
+        let felt_from_raw = {
+            let value = U256::from_bytes_le(&bytes).unwrap();
+            Felt::from_raw(value.limbs)
+        };
+
+        assert_eq!(felt_from_raw, felt);
+
+        let felt = Felt::from(&*PRIME);
+        let bytes = felt.to_bytes_le_raw();
+        let felt_from_raw = {
+            let value = U256::from_bytes_le(&bytes).unwrap();
+            Felt::from_raw(value.limbs)
+        };
+
+        assert_eq!(felt_from_raw, felt);
+    }
+
+    #[test]
+    fn felt_to_monty_to_felt() {
+        let felt = Felt::from(10).to_biguint();
+        let monty_felt = monty_transform(&felt, &PRIME).unwrap();
+        let reduced_monty_felt = monty_reduction(&monty_felt, &PRIME).unwrap();
+
+        assert_eq!(reduced_monty_felt, felt);
+
+        let felt = Felt::from(-10).to_biguint();
+        let monty_felt = monty_transform(&felt, &PRIME).unwrap();
+        let reduced_monty_felt = monty_reduction(&monty_felt, &PRIME).unwrap();
+
+        assert_eq!(reduced_monty_felt, felt);
+
+        let felt = Felt::from(&*PRIME).to_biguint();
+        let monty_felt = monty_transform(&felt, &PRIME).unwrap();
+        let reduced_monty_felt = monty_reduction(&monty_felt, &PRIME).unwrap();
+
+        assert_eq!(reduced_monty_felt, felt);
+    }
 }
