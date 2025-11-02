@@ -576,8 +576,8 @@ impl RuntimeBindingsMeta {
     /// - Mul operation
     /// - Div operation
     ///
-    /// Operation is done between `lhs_ptr` and `rhs_ptr` while the result is stored
-    /// in `res_ptr`.
+    /// Executes the operation on the `QM31` values referenced by `lhs_ptr` and `rhs_ptr`,
+    /// and stores the resulting `QM31` in `res_ptr`.
     ///
     /// Returns a opaque pointer as the result.
     #[allow(clippy::too_many_arguments)]
