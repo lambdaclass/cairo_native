@@ -146,6 +146,12 @@ impl AbiArgument for ValueWithInfoWrapper<'_> {
                 x0.to_bytes(buffer, find_dict_drop_override)?;
                 y0.to_bytes(buffer, find_dict_drop_override)?;
             }
+            (Value::QM31(a, b, c, d), CoreTypeConcrete::QM31(_)) => {
+                a.to_bytes(buffer, find_dict_drop_override)?;
+                b.to_bytes(buffer, find_dict_drop_override)?;
+                c.to_bytes(buffer, find_dict_drop_override)?;
+                d.to_bytes(buffer, find_dict_drop_override)?;
+            }
             (Value::Enum { tag, value, .. }, CoreTypeConcrete::Enum(info)) => {
                 if self.info.is_memory_allocated(self.registry)? {
                     let abi_ptr = self.value.to_ptr(

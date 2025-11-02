@@ -465,22 +465,11 @@ mod test {
             use core::qm31::{QM31Trait, qm31, qm31_is_zero};
             use core::internal::OptionRev;
 
-            fn run_test_1() -> OptionRev<NonZero<qm31>> {
-                let qm31 = QM31Trait::new(0, 0, 0, 0);
-                qm31_is_zero(qm31)
+            fn run_test(input: qm31) -> OptionRev<NonZero<qm31>> {
+                qm31_is_zero(input)
             }
 
-            fn run_test_2() -> OptionRev<NonZero<qm31>> {
-                let qm31 = QM31Trait::new(0, 0, 1, 0);
-                qm31_is_zero(qm31)
-            }
-
-            fn run_test_3() -> OptionRev<NonZero<qm31>> {
-                let qm31 = QM31Trait::new(0x544b2fba, 0x673cff77, 0x60713d44, 0x499602d2);
-                qm31_is_zero(qm31)
-            }
-
-            fn run_test_4() -> OptionRev<NonZero<qm31>> {
+            fn run_test_edge_case() -> OptionRev<NonZero<qm31>> {
                 let lhs = QM31Trait::new(0x7ffffffe, 0x7ffffffe, 0x7ffffffe, 0x7ffffffe);
                 let rhs = QM31Trait::new(1, 1, 1, 1);
                 let qm31 = lhs + rhs;
@@ -488,13 +477,18 @@ mod test {
             }
         };
 
-        let result = run_program(&program, "run_test_1", &[]).return_value;
+        let result = run_program(&program, "run_test", &[Value::QM31(0, 0, 0, 0)]).return_value;
         assert_eq!(result, jit_enum!(0, jit_struct!()));
 
-        let result = run_program(&program, "run_test_2", &[]).return_value;
+        let result = run_program(&program, "run_test", &[Value::QM31(0, 0, 1, 0)]).return_value;
         assert_eq!(result, jit_enum!(1, Value::QM31(0, 0, 1, 0)));
 
-        let result = run_program(&program, "run_test_3", &[]).return_value;
+        let result = run_program(
+            &program,
+            "run_test",
+            &[Value::QM31(0x544b2fba, 0x673cff77, 0x60713d44, 0x499602d2)],
+        )
+        .return_value;
         assert_eq!(
             result,
             jit_enum!(
@@ -503,7 +497,7 @@ mod test {
             )
         );
 
-        let result = run_program(&program, "run_test_4", &[]).return_value;
+        let result = run_program(&program, "run_test_edge_case", &[]).return_value;
         assert_eq!(result, jit_enum!(0, jit_struct!()));
     }
 
