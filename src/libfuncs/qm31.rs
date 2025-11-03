@@ -3,25 +3,25 @@ use crate::{
     metadata::runtime_bindings::RuntimeBindingsMeta,
     utils::get_integer_layout,
 };
+use crate::{libfuncs::LibfuncHelper, metadata::MetadataStorage};
 use cairo_lang_sierra::{
     extensions::{
-        core::{CoreLibfunc, CoreType},
+        core::{CoreLibfunc, CoreType, CoreTypeConcrete},
         lib_func::SignatureOnlyConcreteLibfunc,
         qm31::{QM31BinaryOpConcreteLibfunc, QM31Concrete, QM31ConstConcreteLibfunc},
+        ConcreteLibfunc,
     },
     program_registry::ProgramRegistry,
 };
 use melior::{
     dialect::{
         arith::{self, CmpiPredicate},
-        llvm,
+        cf, llvm,
     },
     helpers::{ArithBlockExt, BuiltinBlockExt, LlvmBlockExt},
-    ir::{r#type::IntegerType, Block, Location},
+    ir::{r#type::IntegerType, Block, BlockLike, Location},
     Context,
 };
-
-use crate::{libfuncs::LibfuncHelper, metadata::MetadataStorage};
 
 pub fn build<'ctx, 'this>(
     context: &'ctx Context,
@@ -138,6 +138,193 @@ pub fn build_is_zero<'ctx, 'this>(
     )
 }
 
+fn m31_add<'ctx, 'this>(
+    context: &'ctx Context,
+    entry: &'this Block<'ctx>,
+    location: Location<'ctx>,
+    helper: &LibfuncHelper<'ctx, 'this>,
+) -> Result<()> {
+    let lhs_value = entry.arg(0)?;
+    let rhs_value = entry.arg(1)?;
+
+    let lhs_value = entry.extui(lhs_value, IntegerType::new(context, 32).into(), location)?;
+    let rhs_value = entry.extui(rhs_value, IntegerType::new(context, 32).into(), location)?;
+
+    let prime = entry.const_int(context, location, 0x7fffffff, 32)?;
+
+    let res = entry.append_op_result(arith::addi(lhs_value, rhs_value, location))?;
+    let res = entry.append_op_result(arith::subi(res, prime, location))?;
+    let res = entry.trunci(res, IntegerType::new(context, 31).into(), location)?;
+
+    helper.br(entry, 0, &[res], location)
+}
+
+fn m31_sub<'ctx, 'this>(
+    context: &'ctx Context,
+    entry: &'this Block<'ctx>,
+    location: Location<'ctx>,
+    helper: &LibfuncHelper<'ctx, 'this>,
+) -> Result<()> {
+    let lhs_value = entry.arg(0)?;
+    let rhs_value = entry.arg(1)?;
+
+    let lhs_value = entry.extui(lhs_value, IntegerType::new(context, 32).into(), location)?;
+    let rhs_value = entry.extui(rhs_value, IntegerType::new(context, 32).into(), location)?;
+    let res = entry.append_op_result(arith::subi(lhs_value, rhs_value, location))?;
+
+    let prime = entry.const_int(context, location, 0x7fffffff, 32)?;
+    let res_mod = entry.append_op_result(arith::addi(res, prime, location))?;
+    let is_out_of_range =
+        entry.cmpi(context, CmpiPredicate::Ult, lhs_value, rhs_value, location)?;
+
+    let res = entry.append_op_result(arith::select(is_out_of_range, res_mod, res, location))?;
+    let res = entry.trunci(res, IntegerType::new(context, 31).into(), location)?;
+
+    helper.br(entry, 0, &[res], location)
+}
+
+fn m31_mul<'ctx, 'this>(
+    context: &'ctx Context,
+    entry: &'this Block<'ctx>,
+    location: Location<'ctx>,
+    helper: &LibfuncHelper<'ctx, 'this>,
+) -> Result<()> {
+    let lhs_value = entry.arg(0)?;
+    let rhs_value = entry.arg(1)?;
+
+    let lhs_value = entry.extui(lhs_value, IntegerType::new(context, 64).into(), location)?;
+    let rhs_value = entry.extui(rhs_value, IntegerType::new(context, 64).into(), location)?;
+    let res = entry.muli(lhs_value, rhs_value, location)?;
+
+    let prime = entry.const_int(context, location, 0x7fffffff, 64)?;
+    let res_mod = entry.append_op_result(arith::remui(res, prime, location))?;
+    let is_out_of_range = entry.cmpi(context, CmpiPredicate::Uge, res, prime, location)?;
+
+    let res = entry.append_op_result(arith::select(is_out_of_range, res_mod, res, location))?;
+    let res = entry.trunci(res, IntegerType::new(context, 31).into(), location)?;
+
+    helper.br(entry, 0, &[res], location)
+}
+
+fn m31_div<'ctx, 'this>(
+    context: &'ctx Context,
+    entry: &'this Block<'ctx>,
+    location: Location<'ctx>,
+    helper: &LibfuncHelper<'ctx, 'this>,
+) -> Result<()> {
+    let lhs_value = entry.arg(0)?;
+    let rhs_value = entry.arg(1)?;
+    let i64 = IntegerType::new(context, 64).into();
+    let start_block = helper.append_block(Block::new(&[(i64, location)]));
+    let loop_block = helper.append_block(Block::new(&[
+        (i64, location),
+        (i64, location),
+        (i64, location),
+        (i64, location),
+    ]));
+    let negative_check_block = helper.append_block(Block::new(&[]));
+    // Block containing final result
+    let inverse_result_block = helper.append_block(Block::new(&[(i64, location)]));
+    // Egcd works by calculating a series of remainders, each the remainder of dividing the previous two
+    // For the initial setup, r0 = PRIME, r1 = a
+    // This order is chosen because if we reverse them, then the first iteration will just swap them
+    let prev_remainder = start_block.const_int_from_type(context, location, 0x7fffffff, i64)?;
+    let remainder = start_block.arg(0)?;
+    // Similarly we'll calculate another series which starts 0,1,... and from which we will retrieve the modular inverse of a
+    let prev_inverse = start_block.const_int_from_type(context, location, 0, i64)?;
+    let inverse = start_block.const_int_from_type(context, location, 1, i64)?;
+    start_block.append_operation(cf::br(
+        loop_block,
+        &[prev_remainder, remainder, prev_inverse, inverse],
+        location,
+    ));
+
+    //---Loop body---
+    // Arguments are rem_(i-1), rem, inv_(i-1), inv
+    let prev_remainder = loop_block.arg(0)?;
+    let remainder = loop_block.arg(1)?;
+    let prev_inverse = loop_block.arg(2)?;
+    let inverse = loop_block.arg(3)?;
+
+    // First calculate q = rem_(i-1)/rem_i, rounded down
+    let quotient =
+        loop_block.append_op_result(arith::divui(prev_remainder, remainder, location))?;
+    // Then r_(i+1) = r_(i-1) - q * r_i, and inv_(i+1) = inv_(i-1) - q * inv_i
+    let rem_times_quo = loop_block.muli(remainder, quotient, location)?;
+    let inv_times_quo = loop_block.muli(inverse, quotient, location)?;
+    let next_remainder =
+        loop_block.append_op_result(arith::subi(prev_remainder, rem_times_quo, location))?;
+    let next_inverse =
+        loop_block.append_op_result(arith::subi(prev_inverse, inv_times_quo, location))?;
+
+    // If r_(i+1) is 0, then inv_i is the inverse
+    let zero = loop_block.const_int_from_type(context, location, 0, i64)?;
+    let next_remainder_eq_zero =
+        loop_block.cmpi(context, CmpiPredicate::Eq, next_remainder, zero, location)?;
+    loop_block.append_operation(cf::cond_br(
+        context,
+        next_remainder_eq_zero,
+        negative_check_block,
+        loop_block,
+        &[],
+        &[remainder, next_remainder, inverse, next_inverse],
+        location,
+    ));
+
+    // egcd sometimes returns a negative number for the inverse,
+    // in such cases we must simply wrap it around back into [0, PRIME)
+    // this suffices because |inv_i| <= divfloor(PRIME,2)
+    let zero = negative_check_block.const_int_from_type(context, location, 0, i64)?;
+
+    let is_negative = negative_check_block
+        .append_operation(arith::cmpi(
+            context,
+            CmpiPredicate::Slt,
+            inverse,
+            zero,
+            location,
+        ))
+        .result(0)?
+        .into();
+    // if the inverse is < 0, add PRIME
+    let prime = negative_check_block.const_int_from_type(context, location, 0x7fffffff, i64)?;
+    let wrapped_inverse = negative_check_block.addi(inverse, prime, location)?;
+    let inverse = negative_check_block.append_op_result(arith::select(
+        is_negative,
+        wrapped_inverse,
+        inverse,
+        location,
+    ))?;
+    negative_check_block.append_operation(cf::br(inverse_result_block, &[inverse], location));
+
+    // Div Logic Start
+    // Fetch operands
+    let lhs = entry.extui(lhs_value, i64, location)?;
+    let rhs = entry.extui(rhs_value, i64, location)?;
+    // Calculate inverse of rhs, callling the inverse implementation's starting block
+    entry.append_operation(cf::br(start_block, &[rhs], location));
+    // Fetch the inverse result from the result block
+    let inverse = inverse_result_block.arg(0)?;
+    // Peform lhs * (1/ rhs)
+    let result = inverse_result_block.muli(lhs, inverse, location)?;
+    // Apply modulo and convert result to felt252
+    let result_mod =
+        inverse_result_block.append_op_result(arith::remui(result, prime, location))?;
+    let is_out_of_range =
+        inverse_result_block.cmpi(context, CmpiPredicate::Uge, result, prime, location)?;
+
+    let result = inverse_result_block.append_op_result(arith::select(
+        is_out_of_range,
+        result_mod,
+        result,
+        location,
+    ))?;
+    let result =
+        inverse_result_block.trunci(result, IntegerType::new(context, 31).into(), location)?;
+
+    helper.br(inverse_result_block, 0, &[result], location)
+}
+
 /// Generate MLIR operations for the QM31 binary operations libfuncs.
 ///
 /// Receives two qm31 and performs an operation (add, sub, mul or div) with both.
@@ -152,13 +339,30 @@ pub fn build_is_zero<'ctx, 'this>(
 /// ```
 pub fn build_binary_op<'ctx, 'this>(
     context: &'ctx Context,
-    _registry: &ProgramRegistry<CoreType, CoreLibfunc>,
+    registry: &ProgramRegistry<CoreType, CoreLibfunc>,
     entry: &'this Block<'ctx>,
     location: Location<'ctx>,
     helper: &LibfuncHelper<'ctx, 'this>,
     metadata: &mut MetadataStorage,
     info: &QM31BinaryOpConcreteLibfunc,
 ) -> Result<()> {
+    let type_concrete = registry.get_type(&info.param_signatures()[0].ty)?;
+    if let CoreTypeConcrete::BoundedInt(_) = type_concrete {
+        match info.operator {
+            cairo_lang_sierra::extensions::qm31::QM31BinaryOperator::Add => {
+                return m31_add(context, entry, location, helper);
+            }
+            cairo_lang_sierra::extensions::qm31::QM31BinaryOperator::Sub => {
+                return m31_sub(context, entry, location, helper);
+            }
+            cairo_lang_sierra::extensions::qm31::QM31BinaryOperator::Mul => {
+                return m31_mul(context, entry, location, helper);
+            }
+            cairo_lang_sierra::extensions::qm31::QM31BinaryOperator::Div => {
+                return m31_div(context, entry, location, helper);
+            }
+        }
+    }
     let m31_ty = IntegerType::new(context, 31).into();
     let qm31_ty = llvm::r#type::array(m31_ty, 4);
 
