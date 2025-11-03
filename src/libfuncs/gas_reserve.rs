@@ -103,34 +103,61 @@ mod test {
     use crate::{load_cairo, utils::testing::run_program, Value};
 
     #[test]
-    fn run_gas_reserve_create() {
+    fn run_create() {
         let program = load_cairo!(
-            use core::gas::{GasReserve, gas_reserve_create};
+            use core::gas::{GasReserve, gas_reserve_create, gas_reserve_utilize};
 
-            fn run_test() -> Option<GasReserve> {
+            fn run_test_1() -> Option<GasReserve> {
                 gas_reserve_create(100)
+            }
+
+            fn run_test_2(amount: u128) -> u128 {
+                let initial_gas = core::testing::get_available_gas();
+                let reserve = gas_reserve_create(amount).unwrap();
+                let final_gas = core::testing::get_available_gas();
+                gas_reserve_utilize(reserve);
+
+                initial_gas - final_gas
             }
         );
 
-        let result = run_program(&program, "run_test", &[Value::Uint128(1000)]).return_value;
+        let result = run_program(&program, "run_test_1", &[]).return_value;
         if let Value::Enum { tag, value, .. } = result {
             assert_eq!(tag, 0);
             assert_eq!(value, Box::new(Value::Sint128(100))) // TODO: Should it return a Sint128 or a Uint128?
         }
+
+        let amount = 100;
+        let result = run_program(&program, "run_test_2", &[Value::Uint128(amount)]).return_value;
+        if let Value::Enum { tag, value, .. } = result {
+            if let Value::Struct { fields, .. } = *value {
+                assert_eq!(tag, 0);
+                assert_eq!(fields[0], Value::Uint128(amount));
+            }
+        }
+
+        let amount = 700;
+        let result = run_program(&program, "run_test_2", &[Value::Uint128(amount)]).return_value;
+        if let Value::Enum { tag, value, .. } = result {
+            if let Value::Struct { fields, .. } = *value {
+                assert_eq!(tag, 0);
+                assert_eq!(fields[0], Value::Uint128(amount));
+            }
+        }
     }
 
     #[test]
-    fn run_gas_reserve_utilize() {
+    fn run_utilize() {
         let program = load_cairo!(
             use core::gas::{GasReserve, gas_reserve_create, gas_reserve_utilize};
 
-            fn run_test(gas_quant: u128) -> (u128, u128) {
+            fn run_test() -> u128 {
                 let initial_gas = core::testing::get_available_gas();
-                let reserve = gas_reserve_create(gas_quant).unwrap();
-                gas_reserve_utilize(reserve);
+                let reserve = gas_reserve_create(100).unwrap();
                 let final_gas = core::testing::get_available_gas();
+                gas_reserve_utilize(reserve);
 
-                (initial_gas, final_gas)
+                initial_gas - final_gas
             }
         );
 
