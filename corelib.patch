@@ -1044,20 +1044,3 @@ diff --color=auto -crN cairo2/corelib/src/test.cairo cairo2/corelib_1/src/test.c
   mod hash_test;
   mod integer_test;
   mod iter_test;
-***************
-*** 24,30 ****
-  mod option_test;
-  mod plugins_test;
-  mod print_test;
-! mod qm31_test;
-  mod range_test;
-  mod result_test;
-  mod secp256k1_test;
---- 24,30 ----
-  mod option_test;
-  mod plugins_test;
-  mod print_test;
-! // mod qm31_test;
-  mod range_test;
-  mod result_test;
-  mod secp256k1_test;
