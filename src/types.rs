@@ -85,7 +85,21 @@ pub trait TypeBuilder {
 
     /// Return whether the type is a builtin.
     fn is_builtin(&self) -> bool;
-    /// Return whether the type requires a return pointer when returning.
+    /// Return whether the type requires a return pointer when returning,
+    /// instead of using the CPU registers.
+    ///
+    /// This attribute does not modify the compilation, and it only reflects
+    /// what the ABI of the target architecture already specifies.
+    /// - For x86-64: https://gitlab.com/x86-psABIs/x86-64-ABI.
+    /// - For AArch64: https://github.com/ARM-software/abi-aa.
+    ///
+    /// We can validate this empirically, by building a Cairo program that
+    /// returns a particular type, and seeing how it is lowered to machine code.
+    ///
+    /// ```bash
+    /// llc a.llvmir -o - --mtriple "aarch64"
+    /// llc a.llvmir -o - --mtriple "x86_64"
+    /// ```
     fn is_complex(
         &self,
         registry: &ProgramRegistry<CoreType, CoreLibfunc>,
