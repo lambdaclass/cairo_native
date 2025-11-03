@@ -104,6 +104,7 @@ pub trait TypeBuilder {
         &self,
         registry: &ProgramRegistry<CoreType, CoreLibfunc>,
     ) -> Result<bool, Self::Error>;
+
     /// Return whether the Sierra type resolves to a zero-sized type.
     fn is_zst(
         &self,
@@ -118,8 +119,17 @@ pub trait TypeBuilder {
         registry: &ProgramRegistry<CoreType, CoreLibfunc>,
     ) -> Result<Layout, Self::Error>;
 
-    /// Whether the layout should be allocated in memory (either the stack or the heap) when used as
-    /// a function invocation argument or return value.
+    /// Whether the layout should be allocated in memory (either the stack or
+    /// the heap) when used as a function invocation argument or return value.
+    ///
+    /// Unlike `is_complex`, this attribute alters the compilation:
+    ///
+    /// - When passing a memory allocated value to a function, we allocate that
+    ///   value on the stack, and pass a pointer to it.
+    ///
+    /// - If a function returns a memory allocated value, we receive a return
+    ///   pointer as its first argument, and write the return value there
+    ///   instead.
     fn is_memory_allocated(
         &self,
         registry: &ProgramRegistry<CoreType, CoreLibfunc>,
