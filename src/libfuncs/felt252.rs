@@ -4,21 +4,27 @@ use super::LibfuncHelper;
 use crate::{
     error::{panic::ToNativeAssertError, Result},
     metadata::{runtime_bindings::RuntimeBindingsMeta, MetadataStorage},
-    utils::{montgomery::monty_transform, ProgramRegistryExt, PRIME},
+    utils::{
+        montgomery::{mlir, monty_transform},
+        ProgramRegistryExt, PRIME,
+    },
 };
 use cairo_lang_sierra::{
     extensions::{
         core::{CoreLibfunc, CoreType},
-        felt252::{Felt252BinaryOperationConcrete, Felt252Concrete, Felt252ConstConcreteLibfunc},
+        felt252::{
+            Felt252BinaryOperationConcrete, Felt252BinaryOperator, Felt252Concrete,
+            Felt252ConstConcreteLibfunc,
+        },
         lib_func::SignatureOnlyConcreteLibfunc,
         ConcreteLibfunc,
     },
     program_registry::ProgramRegistry,
 };
 use melior::{
-    dialect::arith::CmpiPredicate,
+    dialect::arith::{self, CmpiPredicate},
     helpers::{ArithBlockExt, BuiltinBlockExt},
-    ir::{Block, Location, Value, ValueLike},
+    ir::{r#type::IntegerType, Block, Location, Value, ValueLike},
     Context,
 };
 use num_bigint::{BigInt, Sign};
@@ -66,6 +72,9 @@ pub fn build_binary_operation<'ctx, 'this>(
         metadata,
         &info.branch_signatures()[0].vars[0].ty,
     )?;
+    let i256 = IntegerType::new(context, 256).into();
+    let i512 = IntegerType::new(context, 512).into();
+
     let runtime_bindings = metadata
         .get_mut::<RuntimeBindingsMeta>()
         .to_native_assert_error("Unable to get the RuntimeBindingsMeta from MetadataStorage")?;
@@ -92,16 +101,60 @@ pub fn build_binary_operation<'ctx, 'this>(
         }
     };
 
-    let result = runtime_bindings.libfunc_felt252_binary_op(
-        context,
-        helper.module,
-        helper,
-        entry,
-        lhs,
-        rhs,
-        op,
-        location,
-    )?;
+    let result = match op {
+        Felt252BinaryOperator::Add => {
+            let lhs = entry.extui(lhs, i256, location)?;
+            let rhs = entry.extui(rhs, i256, location)?;
+            let result = entry.addi(lhs, rhs, location)?;
+
+            let prime = entry.const_int_from_type(context, location, PRIME.clone(), i256)?;
+            let result_mod = entry.subi(result, prime, location)?;
+            let is_out_of_range =
+                entry.cmpi(context, CmpiPredicate::Uge, result, prime, location)?;
+
+            let result = entry.append_op_result(arith::select(
+                is_out_of_range,
+                result_mod,
+                result,
+                location,
+            ))?;
+            entry.trunci(result, felt252_ty, location)?
+        }
+        Felt252BinaryOperator::Sub => {
+            let lhs = entry.extui(lhs, i256, location)?;
+            let rhs = entry.extui(rhs, i256, location)?;
+            let result = entry.subi(lhs, rhs, location)?;
+
+            let prime = entry.const_int_from_type(context, location, PRIME.clone(), i256)?;
+            let result_mod = entry.addi(result, prime, location)?;
+            let is_out_of_range = entry.cmpi(context, CmpiPredicate::Ult, lhs, rhs, location)?;
+
+            let result = entry.append_op_result(arith::select(
+                is_out_of_range,
+                result_mod,
+                result,
+                location,
+            ))?;
+            entry.trunci(result, felt252_ty, location)?
+        }
+        Felt252BinaryOperator::Mul => {
+            let lhs = entry.extui(lhs, i512, location)?;
+            let rhs = entry.extui(rhs, i512, location)?;
+            let result = mlir::monty_mul(context, entry, lhs, rhs, location)?;
+
+            entry.trunci(result, felt252_ty, location)?
+        }
+        _ => runtime_bindings.libfunc_felt252_binary_op(
+            context,
+            helper.module,
+            helper,
+            entry,
+            lhs,
+            rhs,
+            op,
+            location,
+        )?,
+    };
 
     helper.br(entry, 0, &[result], location)
 }

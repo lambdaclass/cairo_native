@@ -9,17 +9,22 @@ use lambdaworks_math::{
     },
 };
 use num_bigint::BigUint;
+use num_traits::Num;
 use starknet_types_core::felt::Felt;
 
+pub const MONTY_R: LazyLock<BigUint> = LazyLock::new(|| BigUint::from(1u64) << 256);
 pub static MONTY_R2: LazyLock<U256> = LazyLock::new(|| {
     UnsignedInteger::from_hex_unchecked(
         "7FFD4AB5E008810FFFFFFFFFF6F800000000001330FFFFFFFFFFD737E000401",
     )
 });
-pub static MONTY_MU: LazyLock<u64> = LazyLock::new(|| {
-    "18446744073709551615"
-        .parse()
-        .expect("hardcoded Montgomery mu constant should be valid")
+pub const MONTY_MU_U64: u64 = 18446744073709551615;
+pub const MONTY_MU_U256: LazyLock<BigUint> = LazyLock::new(|| {
+    BigUint::from_str_radix(
+        "f7ffffffffffffef000000000000000000000000000000000000000000000001",
+        16,
+    )
+    .expect("hardcoded mu constant should be valid")
 });
 
 pub trait MontyBytes {
@@ -43,13 +48,11 @@ impl MontyBytes for Felt {
 
 /// Computes the Montgomery reduction.
 /// TODO: add docs.
-/// Inspired in Lambdaworks's `montgomery_reduction`:
-/// https://github.com/lambdaclass/lambdaworks/blob/main/crates/math/src/field/fields/u32_montgomery_backend_prime_field.rs#L285
 pub fn monty_reduction(x: &BigUint, modulus: &BigUint) -> Result<BigUint, CreationError> {
     let x = U256::from_hex(&x.to_str_radix(16))?;
     let modulus = U256::from_hex(&modulus.to_str_radix(16))?;
 
-    let reduced = MontgomeryAlgorithms::cios(&x, &U256::from_u64(1), &modulus, &MONTY_MU);
+    let reduced = MontgomeryAlgorithms::cios(&x, &U256::from_u64(1), &modulus, &MONTY_MU_U64);
 
     Ok(BigUint::from_bytes_le(&reduced.to_bytes_le()))
 }
@@ -60,9 +63,62 @@ pub fn monty_transform(x: &BigUint, modulus: &BigUint) -> Result<BigUint, Creati
     let x = U256::from_hex(&x.to_str_radix(16))?;
     let modulus = U256::from_hex(&modulus.to_str_radix(16))?;
 
-    let reduced = MontgomeryAlgorithms::cios(&x, &MONTY_R2, &modulus, &MONTY_MU);
+    let reduced = MontgomeryAlgorithms::cios(&x, &MONTY_R2, &modulus, &MONTY_MU_U64);
 
     Ok(BigUint::from_bytes_le(&reduced.to_bytes_le()))
+}
+
+pub mod mlir {
+    use melior::{
+        dialect::arith,
+        helpers::{ArithBlockExt, BuiltinBlockExt},
+        ir::{Block, Location, Value},
+        Context,
+    };
+    use num_bigint::BigUint;
+
+    use crate::{
+        error::Result,
+        utils::{
+            montgomery::{MONTY_MU_U256, MONTY_R},
+            PRIME,
+        },
+    };
+
+    pub fn monty_mul<'c, 'a>(
+        context: &'c Context,
+        block: &'a Block<'c>,
+        lhs: Value<'c, '_>,
+        rhs: Value<'c, '_>,
+        location: Location<'c>,
+    ) -> Result<Value<'c, 'a>> {
+        let unreduced_result = block.muli(lhs, rhs, location)?;
+        monty_reduce(context, block, unreduced_result, &*PRIME, location)
+    }
+
+    pub fn monty_reduce<'c, 'a>(
+        context: &'c Context,
+        block: &'a Block<'c>,
+        value: Value<'c, '_>,
+        modulus: &BigUint,
+        location: Location<'c>,
+    ) -> Result<Value<'c, 'a>> {
+        let mu = block.const_int(context, location, &*MONTY_MU_U256, 512)?;
+        let modulus = block.const_int(context, location, modulus, 512)?;
+        let r_minus_1 = block.const_int(context, location, &*MONTY_R - 1u8, 512)?;
+        let k256 = block.const_int(context, location, 256, 512)?;
+
+        let q = block.muli(value, mu, location)?;
+        let q = block.andi(q, r_minus_1, location)?;
+        let m = block.muli(q, modulus, location)?;
+        let y = block.subi(value, m, location)?;
+        let y = block.shrui(y, k256, location)?;
+        let y_plus_mod = block.addi(y, modulus, location)?;
+
+        let is_negative = block.cmpi(context, arith::CmpiPredicate::Ugt, m, y, location)?;
+
+        Ok(block.append_op_result(arith::select(is_negative, y_plus_mod, y, location))?)
+    }
 }
 
 #[cfg(test)]
