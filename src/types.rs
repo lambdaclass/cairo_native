@@ -130,6 +130,10 @@ pub trait TypeBuilder {
     /// - If a function returns a memory allocated value, we receive a return
     ///   pointer as its first argument, and write the return value there
     ///   instead.
+    ///
+    /// The rationale behind allocating a value in memory, rather than
+    /// registers, is to avoid putting too much pressure on the register
+    /// allocation pass for really complex types, like enums.
     fn is_memory_allocated(
         &self,
         registry: &ProgramRegistry<CoreType, CoreLibfunc>,
