@@ -151,11 +151,11 @@ mod test {
         let program = load_cairo!(
             use core::gas::{GasReserve, gas_reserve_create, gas_reserve_utilize};
 
-            fn run_test() -> u128 {
+            fn run_test(amount: u128) -> u128 {
                 let initial_gas = core::testing::get_available_gas();
-                let reserve = gas_reserve_create(100).unwrap();
-                let final_gas = core::testing::get_available_gas();
+                let reserve = gas_reserve_create(amount).unwrap();
                 gas_reserve_utilize(reserve);
+                let final_gas = core::testing::get_available_gas();
 
                 initial_gas - final_gas
             }
@@ -163,17 +163,19 @@ mod test {
 
         let gas_quant = 10;
         let result = run_program(&program, "run_test", &[Value::Uint128(gas_quant)]).return_value;
-        assert_eq!(result, Value::Null);
-        if let Value::Enum { value, .. } = result {
-            // TODO: Do this nicer
+        if let Value::Enum { tag, value, .. } = result {
             if let Value::Struct { fields, .. } = *value {
-                let initial_gas = &fields[0];
-                let final_gas = &fields[1];
-                if let (Value::Uint128(initial_gas), Value::Uint128(final_gas)) =
-                    (initial_gas, final_gas)
-                {
-                    assert_eq!(initial_gas - gas_quant, *final_gas)
-                }
+                assert_eq!(tag, 0);
+                assert_eq!(fields[0], Value::Uint128(0));
+            }
+        }
+
+        let gas_quant = 1000;
+        let result = run_program(&program, "run_test", &[Value::Uint128(gas_quant)]).return_value;
+        if let Value::Enum { tag, value, .. } = result {
+            if let Value::Struct { fields, .. } = *value {
+                assert_eq!(tag, 0);
+                assert_eq!(fields[0], Value::Uint128(0));
             }
         }
     }
