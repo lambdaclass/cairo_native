@@ -878,21 +878,10 @@ fn build_egcd_function<'ctx>(
     // See Dr. Katherine Stange's Youtube video for a better explanation on how
     // this works: https://www.youtube.com/watch?v=Jwf6ncRmhPg.
     //
-    // The extended algorithm also obtains the Bézout coefficients by
-    // calculating a series of coefficients `s` which starts with 0,1,... that
-    // satisfy the linear Diophantine equation `a*s[i] + b*t[i] = r[i]`. At each
-    // step, `s[i]` can be calculated as:
-    //
-    // s[i] = s[i-2] - s[i-1] * quotient
-    //
-    // The Bézout coefficient `x` will be the value of `s` at the second to
-    // last step.
-    //
-    // [0, 1, -2, 3, -5, 18]
-    //                ^
-    //
-    // See Dr. Katherine Stange's Youtube video for a better explanation on how
-    // this works: https://www.youtube.com/watch?v=IwRtISxAHY4.
+    // The extended algorithm also obtains the Bézout coefficients
+    // by calculating a series of coefficients `s`. See Dr. Katherine
+    // Stange's Youtube video for a better explanation on how this works:
+    // https://www.youtube.com/watch?v=IwRtISxAHY4.
 
     // Define entry block for function. Receives arguments `a` and `b`.
     let region = Region::new();
