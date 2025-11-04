@@ -138,6 +138,118 @@ pub fn build_is_zero<'ctx, 'this>(
     )
 }
 
+/// Generate MLIR operations for the `qm31_pack` libfunc.
+///
+/// Receives four m31 and packs them into a qm31.
+///
+/// # Constraints
+///
+/// m31 are always between 0 and 2**31 - 2 (inclusive)
+///
+/// # Cairo Signature
+///
+/// ```cairo
+/// fn qm31_pack(w0: m31, w1: m31, w2: m31, w3: m31) -> qm31 nopanic;
+/// ```
+pub fn build_pack<'ctx, 'this>(
+    context: &'ctx Context,
+    _registry: &ProgramRegistry<CoreType, CoreLibfunc>,
+    entry: &'this Block<'ctx>,
+    location: Location<'ctx>,
+    helper: &LibfuncHelper<'ctx, 'this>,
+    _metadata: &mut MetadataStorage,
+    _info: &SignatureOnlyConcreteLibfunc,
+) -> Result<()> {
+    let m31_0 = entry.arg(0)?;
+    let m31_1 = entry.arg(1)?;
+    let m31_2 = entry.arg(2)?;
+    let m31_3 = entry.arg(3)?;
+
+    let m31_ty = IntegerType::new(context, 31).into();
+    let qm31_ty = llvm::r#type::array(m31_ty, 4);
+
+    let qm31 = entry.append_op_result(llvm::undef(qm31_ty, location))?;
+    let qm31 = entry.insert_values(context, location, qm31, &[m31_0, m31_1, m31_2, m31_3])?;
+
+    helper.br(entry, 0, &[qm31], location)
+}
+
+/// Generate MLIR operations for the `qm31_unpack` libfunc.
+///
+/// Receives a qm31 and unpacks it, returning an array with the
+/// four m31.
+///
+/// # Constraints
+///
+/// m31 are always between 0 and 2**31 - 2 (inclusive)
+///
+/// # Cairo Signature
+///
+/// ```cairo
+/// fn qm31_unpack(a: qm31) -> (m31, m31, m31, m31) implicits(crate::RangeCheck) nopanic;
+/// ```
+pub fn build_unpack<'ctx, 'this>(
+    context: &'ctx Context,
+    _registry: &ProgramRegistry<CoreType, CoreLibfunc>,
+    entry: &'this Block<'ctx>,
+    location: Location<'ctx>,
+    helper: &LibfuncHelper<'ctx, 'this>,
+    _metadata: &mut MetadataStorage,
+    _info: &SignatureOnlyConcreteLibfunc,
+) -> Result<()> {
+    let range_check =
+        super::increment_builtin_counter_by(context, entry, location, entry.arg(0)?, 5)?;
+    let m31_ty = IntegerType::new(context, 31);
+    let qm31 = entry.arg(1)?;
+
+    let m31_0 = entry.extract_value(context, location, qm31, m31_ty.into(), 0)?;
+    let m31_1 = entry.extract_value(context, location, qm31, m31_ty.into(), 1)?;
+    let m31_2 = entry.extract_value(context, location, qm31, m31_ty.into(), 2)?;
+    let m31_3 = entry.extract_value(context, location, qm31, m31_ty.into(), 3)?;
+
+    helper.br(
+        entry,
+        0,
+        &[range_check, m31_0, m31_1, m31_2, m31_3],
+        location,
+    )
+}
+
+/// Generate MLIR operations for the `qm31_from_m31` libfunc.
+///
+/// Receives a m31 and returns a qm31 in which its first coeffiecient
+/// has the value of the input and the other ones are 0.
+///
+/// # Constraints
+///
+/// m31 are always between 0 and 2**31 - 2 (inclusive)
+///
+/// # Cairo Signature
+///
+/// ```cairo
+/// fn qm31_unpack(a: qm31) -> (m31, m31, m31, m31) implicits(crate::RangeCheck) nopanic;
+/// ```
+pub fn build_from_m31<'ctx, 'this>(
+    context: &'ctx Context,
+    _registry: &ProgramRegistry<CoreType, CoreLibfunc>,
+    entry: &'this Block<'ctx>,
+    location: Location<'ctx>,
+    helper: &LibfuncHelper<'ctx, 'this>,
+    _metadata: &mut MetadataStorage,
+    _info: &SignatureOnlyConcreteLibfunc,
+) -> Result<()> {
+    let m31 = entry.arg(0)?;
+
+    let m31_ty = IntegerType::new(context, 31).into();
+    let qm31_ty = llvm::r#type::array(m31_ty, 4);
+    let k0 = entry.const_int_from_type(context, location, 0, m31_ty)?;
+
+    let qm31 = entry.append_op_result(llvm::undef(qm31_ty, location))?;
+    let qm31 = entry.insert_values(context, location, qm31, &[m31, k0, k0, k0])?;
+
+    helper.br(entry, 0, &[qm31], location)
+}
+
 fn m31_add<'ctx, 'this>(
     context: &'ctx Context,
     entry: &'this Block<'ctx>,
@@ -150,10 +262,13 @@ fn m31_add<'ctx, 'this>(
     let lhs_value = entry.extui(lhs_value, IntegerType::new(context, 32).into(), location)?;
     let rhs_value = entry.extui(rhs_value, IntegerType::new(context, 32).into(), location)?;
 
-    let prime = entry.const_int(context, location, 0x7fffffff, 32)?;
-
     let res = entry.append_op_result(arith::addi(lhs_value, rhs_value, location))?;
-    let res = entry.append_op_result(arith::subi(res, prime, location))?;
+    let prime = entry.const_int(context, location, 0x7fffffff, 32)?;
+    let res_mod = entry.append_op_result(arith::subi(res, prime, location))?;
+    let is_out_of_range = entry.cmpi(context, CmpiPredicate::Uge, res, prime, location)?;
+
+    let res = entry.append_op_result(arith::select(is_out_of_range, res_mod, res, location))?;
+
     let res = entry.trunci(res, IntegerType::new(context, 31).into(), location)?;
 
     helper.br(entry, 0, &[res], location)
@@ -391,121 +506,9 @@ pub fn build_binary_op<'ctx, 'this>(
     helper.br(entry, 0, &[result], location)
 }
 
-/// Generate MLIR operations for the `qm31_pack` libfunc.
-///
-/// Receives four m31 and packs them into a qm31.
-///
-/// # Constraints
-///
-/// m31 are always between 0 and 2**31 - 2 (inclusive)
-///
-/// # Cairo Signature
-///
-/// ```cairo
-/// fn qm31_pack(w0: m31, w1: m31, w2: m31, w3: m31) -> qm31 nopanic;
-/// ```
-pub fn build_pack<'ctx, 'this>(
-    context: &'ctx Context,
-    _registry: &ProgramRegistry<CoreType, CoreLibfunc>,
-    entry: &'this Block<'ctx>,
-    location: Location<'ctx>,
-    helper: &LibfuncHelper<'ctx, 'this>,
-    _metadata: &mut MetadataStorage,
-    _info: &SignatureOnlyConcreteLibfunc,
-) -> Result<()> {
-    let m31_0 = entry.arg(0)?;
-    let m31_1 = entry.arg(1)?;
-    let m31_2 = entry.arg(2)?;
-    let m31_3 = entry.arg(3)?;
-
-    let m31_ty = IntegerType::new(context, 31).into();
-    let qm31_ty = llvm::r#type::array(m31_ty, 4);
-
-    let qm31 = entry.append_op_result(llvm::undef(qm31_ty, location))?;
-    let qm31 = entry.insert_values(context, location, qm31, &[m31_0, m31_1, m31_2, m31_3])?;
-
-    helper.br(entry, 0, &[qm31], location)
-}
-
-/// Generate MLIR operations for the `qm31_unpack` libfunc.
-///
-/// Receives a qm31 and unpacks it, returning an array with the
-/// four m31.
-///
-/// # Constraints
-///
-/// m31 are always between 0 and 2**31 - 2 (inclusive)
-///
-/// # Cairo Signature
-///
-/// ```cairo
-/// fn qm31_unpack(a: qm31) -> (m31, m31, m31, m31) implicits(crate::RangeCheck) nopanic;
-/// ```
-pub fn build_unpack<'ctx, 'this>(
-    context: &'ctx Context,
-    _registry: &ProgramRegistry<CoreType, CoreLibfunc>,
-    entry: &'this Block<'ctx>,
-    location: Location<'ctx>,
-    helper: &LibfuncHelper<'ctx, 'this>,
-    _metadata: &mut MetadataStorage,
-    _info: &SignatureOnlyConcreteLibfunc,
-) -> Result<()> {
-    let range_check =
-        super::increment_builtin_counter_by(context, entry, location, entry.arg(0)?, 5)?;
-    let m31_ty = IntegerType::new(context, 31);
-    let qm31 = entry.arg(1)?;
-
-    let m31_0 = entry.extract_value(context, location, qm31, m31_ty.into(), 0)?;
-    let m31_1 = entry.extract_value(context, location, qm31, m31_ty.into(), 1)?;
-    let m31_2 = entry.extract_value(context, location, qm31, m31_ty.into(), 2)?;
-    let m31_3 = entry.extract_value(context, location, qm31, m31_ty.into(), 3)?;
-
-    helper.br(
-        entry,
-        0,
-        &[range_check, m31_0, m31_1, m31_2, m31_3],
-        location,
-    )
-}
-
-/// Generate MLIR operations for the `qm31_from_m31` libfunc.
-///
-/// Receives a m31 and returns a qm31 in which its first coeffiecient
-/// has the value of the input and the other ones are 0.
-///
-/// # Constraints
-///
-/// m31 are always between 0 and 2**31 - 2 (inclusive)
-///
-/// # Cairo Signature
-///
-/// ```cairo
-/// fn qm31_unpack(a: qm31) -> (m31, m31, m31, m31) implicits(crate::RangeCheck) nopanic;
-/// ```
-pub fn build_from_m31<'ctx, 'this>(
-    context: &'ctx Context,
-    _registry: &ProgramRegistry<CoreType, CoreLibfunc>,
-    entry: &'this Block<'ctx>,
-    location: Location<'ctx>,
-    helper: &LibfuncHelper<'ctx, 'this>,
-    _metadata: &mut MetadataStorage,
-    _info: &SignatureOnlyConcreteLibfunc,
-) -> Result<()> {
-    let m31 = entry.arg(0)?;
-
-    let m31_ty = IntegerType::new(context, 31).into();
-    let qm31_ty = llvm::r#type::array(m31_ty, 4);
-    let k0 = entry.const_int_from_type(context, location, 0, m31_ty)?;
-
-    let qm31 = entry.append_op_result(llvm::undef(qm31_ty, location))?;
-    let qm31 = entry.insert_values(context, location, qm31, &[m31, k0, k0, k0])?;
-
-    helper.br(entry, 0, &[qm31], location)
-}
-
 #[cfg(test)]
 mod test {
-    use ark_ff::{One, Zero};
+    use ark_ff::Zero;
     use cairo_lang_sierra::extensions::utils::Range;
     use cairo_vm::Felt252;
     use num_bigint::BigInt;
@@ -706,7 +709,7 @@ mod test {
     }
 
     #[test]
-    fn run_add() {
+    fn run_qm31_add() {
         let program = load_cairo! {
             use core::qm31::{QM31Trait, qm31};
 
@@ -750,7 +753,7 @@ mod test {
     }
 
     #[test]
-    fn run_sub() {
+    fn run_qm31_sub() {
         let program = load_cairo! {
             use core::qm31::{QM31Trait, qm31};
 
@@ -786,7 +789,7 @@ mod test {
     }
 
     #[test]
-    fn run_mul() {
+    fn run_qm31_mul() {
         let program = load_cairo! {
             use core::qm31::{QM31Trait, qm31, m31};
 
@@ -828,7 +831,7 @@ mod test {
     }
 
     #[test]
-    fn run_div() {
+    fn run_qm31_div() {
         let program = load_cairo! {
             use core::qm31::{QM31Trait, qm31, m31};
 
@@ -899,38 +902,208 @@ mod test {
             }
         };
 
-        let m31_range = Range::closed(0, 2147483646);
-        let result = run_program(
-            &program,
-            "run_test_with_0",
-            &[Value::BoundedInt {
-                value: Felt252::zero(),
-                range: m31_range.clone(),
-            }],
-        )
-        .return_value;
+        let result = run_program(&program, "run_test_with_0", &[]).return_value;
         assert_eq!(result, Value::QM31(0, 0, 0, 0));
 
-        let result = run_program(
-            &program,
-            "run_test_with_1",
-            &[Value::BoundedInt {
-                value: Felt252::one(),
-                range: m31_range.clone(),
-            }],
-        )
-        .return_value;
+        let result = run_program(&program, "run_test_with_1", &[]).return_value;
         assert_eq!(result, Value::QM31(1, 0, 0, 0));
 
-        let result = run_program(
-            &program,
-            "run_test_with_big_coefficient",
-            &[Value::BoundedInt {
-                value: Felt252::one(),
-                range: m31_range,
-            }],
-        )
-        .return_value;
+        let result = run_program(&program, "run_test_with_big_coefficient", &[]).return_value;
         assert_eq!(result, Value::QM31(0x60713d44, 0, 0, 0));
+    }
+
+    #[test]
+    fn run_m31_add() {
+        // TODO: Refactor cairo functions to receive m31 as parameters so we don't need different ones
+        // to test different cases and we can unify them into one. This can be done when issue #1217 gets closed.
+        let program = load_cairo! {
+            use core::qm31::m31_ops;
+            use core::qm31::m31;
+
+            fn run_test_1() -> m31 {
+                m31_ops::add(1, 1)
+            }
+
+            fn run_test_2() -> m31 {
+                m31_ops::add(0x567effa3, 0x5ffeb970)
+            }
+
+            fn run_test_3() -> m31 {
+                m31_ops::add(0x7ffffffe, 1)
+            }
+        };
+        let expected_range = Range {
+            lower: 0.into(),
+            upper: 2147483647.into(),
+        };
+        let result = run_program(&program, "run_test_1", &[]).return_value;
+        assert_eq!(
+            result,
+            Value::BoundedInt {
+                value: Felt252::from(2),
+                range: expected_range.clone()
+            }
+        );
+
+        let result = run_program(&program, "run_test_2", &[]).return_value;
+        assert_eq!(
+            result,
+            Value::BoundedInt {
+                value: Felt252::from(0x367db914),
+                range: expected_range.clone()
+            }
+        );
+
+        let result = run_program(&program, "run_test_3", &[]).return_value;
+        assert_eq!(
+            result,
+            Value::BoundedInt {
+                value: Felt252::from(0),
+                range: expected_range.clone()
+            }
+        );
+    }
+
+    #[test]
+    fn run_m31_sub() {
+        // TODO: Refactor cairo functions to receive m31 as parameters so we don't need different ones
+        // to test different cases and we can unify them into one. This can be done when issue #1217 gets closed.
+        let program = load_cairo! {
+            use core::qm31::m31_ops;
+            use core::qm31::m31;
+
+            fn run_test_1() -> m31 {
+                m31_ops::sub(2, 1)
+            }
+
+            fn run_test_2() -> m31 {
+                m31_ops::sub(0x567effa3, 0x567effa9)
+            }
+
+            fn run_test_3() -> m31 {
+                m31_ops::sub(0, 1)
+            }
+        };
+        let expected_range = Range {
+            lower: 0.into(),
+            upper: 2147483647.into(),
+        };
+        let result = run_program(&program, "run_test_1", &[]).return_value;
+        assert_eq!(
+            result,
+            Value::BoundedInt {
+                value: Felt252::from(1),
+                range: expected_range.clone()
+            }
+        );
+
+        let result = run_program(&program, "run_test_2", &[]).return_value;
+        assert_eq!(
+            result,
+            Value::BoundedInt {
+                value: Felt252::from(0x7ffffff9),
+                range: expected_range.clone()
+            }
+        );
+
+        let result = run_program(&program, "run_test_3", &[]).return_value;
+        assert_eq!(
+            result,
+            Value::BoundedInt {
+                value: Felt252::from(0x7ffffffe),
+                range: expected_range.clone()
+            }
+        );
+    }
+
+    #[test]
+    fn run_m31_mul() {
+        // TODO: Refactor cairo functions to receive m31 as parameters so we don't need different ones
+        // to test different cases and we can unify them into one. This can be done when issue #1217 gets closed.
+        let program = load_cairo! {
+            use core::qm31::m31_ops;
+            use core::qm31::m31;
+
+            fn run_test_1() -> m31 {
+                m31_ops::mul(5, 5)
+            }
+
+            fn run_test_2() -> m31 {
+                m31_ops::mul(0x567effa3, 0x567effa9)
+            }
+
+            fn run_test_3() -> m31 {
+                m31_ops::mul(0x7ffffffe, 2)
+            }
+        };
+        let expected_range = Range {
+            lower: 0.into(),
+            upper: 2147483647.into(),
+        };
+        let result = run_program(&program, "run_test_1", &[]).return_value;
+        assert_eq!(
+            result,
+            Value::BoundedInt {
+                value: Felt252::from(25),
+                range: expected_range.clone()
+            }
+        );
+
+        let result = run_program(&program, "run_test_2", &[]).return_value;
+        assert_eq!(
+            result,
+            Value::BoundedInt {
+                value: Felt252::from(0x69274523),
+                range: expected_range.clone()
+            }
+        );
+
+        let result = run_program(&program, "run_test_3", &[]).return_value;
+        assert_eq!(
+            result,
+            Value::BoundedInt {
+                value: Felt252::from(0x7ffffffd),
+                range: expected_range.clone()
+            }
+        );
+    }
+
+    #[test]
+    fn run_m31_div() {
+        // TODO: Refactor cairo functions to receive m31 as parameters so we don't need different ones
+        // to test different cases and we can unify them into one. This can be done when issue #1217 gets closed.
+        let program = load_cairo! {
+            use core::qm31::m31_ops;
+            use core::qm31::m31;
+
+            fn run_test_1() -> m31 {
+                m31_ops::div(25, 5)
+            }
+
+            fn run_test_2() -> m31 {
+                m31_ops::div(0x567effa3, 0x567effa9)
+            }
+        };
+        let expected_range = Range {
+            lower: 0.into(),
+            upper: 2147483647.into(),
+        };
+        let result = run_program(&program, "run_test_1", &[]).return_value;
+        assert_eq!(
+            result,
+            Value::BoundedInt {
+                value: Felt252::from(5),
+                range: expected_range.clone()
+            }
+        );
+
+        let result = run_program(&program, "run_test_2", &[]).return_value;
+        assert_eq!(
+            result,
+            Value::BoundedInt {
+                value: Felt252::from(0x5138acb),
+                range: expected_range.clone()
+            }
+        );
     }
 }
