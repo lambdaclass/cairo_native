@@ -6,7 +6,10 @@ use crate::{
     metadata::MetadataStorage,
     native_panic,
     types::TypeBuilder,
-    utils::{ProgramRegistryExt, PRIME},
+    utils::{
+        montgomery::{self, MONTY_R2},
+        ProgramRegistryExt, PRIME,
+    },
 };
 use cairo_lang_sierra::{
     extensions::{
@@ -396,7 +399,8 @@ fn build_from_felt252<'ctx, 'this>(
         &info.signature.branch_signatures[0].vars[1].ty,
     )?;
 
-    let input = entry.arg(1)?;
+    // We casting from a felt, so we need to reduce it.
+    let input = montgomery::mlir::monty_reduce(context, entry, entry.arg(1)?, location)?;
 
     // Handle signedness separately.
     let (is_in_range, value) = if threshold.lower.is_zero() {
@@ -894,7 +898,14 @@ fn build_to_felt252<'ctx, 'this>(
 
         entry.append_op_result(arith::select(is_negative, neg_value, value, location))?
     } else {
-        entry.extui(entry.arg(0)?, felt252_ty, location)?
+        entry.arg(0)?
+    };
+
+    // We are casting to a felt, so we need convert it into Montgomery space.
+    let r2 = entry.const_int(context, location, &*MONTY_R2, 257)?;
+    let value = {
+        let value = montgomery::mlir::monty_mul(context, entry, value, r2, location)?;
+        entry.trunci(value, felt252_ty, location)?
     };
 
     helper.br(entry, 0, &[value], location)
@@ -911,6 +922,7 @@ fn build_u128s_from_felt252<'ctx, 'this>(
 ) -> Result<()> {
     let target_ty = IntegerType::new(context, 128).into();
 
+    // TODO: Reduce felt here.
     let lo = entry.trunci(entry.arg(1)?, target_ty, location)?;
 
     let k128 = entry.const_int_from_type(context, location, 128, entry.arg(1)?.r#type())?;

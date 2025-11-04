@@ -458,9 +458,10 @@ fn parse_result(
                     let data = unsafe {
                         std::mem::transmute::<&mut [u64; 4], &mut [u8; 32]>(&mut ret_registers)
                     };
-                    // data[31] &= 0x0F; // Filter out first 4 bits (they're outside an i252).
-                    let data = U256::from_bytes_le(data).unwrap();
-                    Felt::from_raw(data.limbs)
+                    data[31] &= 0x0F; // Filter out first 4 bits (they're outside an i252).
+                    let value = U256::from_bytes_le(data).unwrap();
+
+                    Felt::from_raw(value.limbs)
                 }))
             }
         },

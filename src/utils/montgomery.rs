@@ -69,20 +69,18 @@ pub fn monty_transform(x: &BigUint, modulus: &BigUint) -> Result<BigUint, Creati
 }
 
 pub mod mlir {
-    use melior::{
-        dialect::arith,
-        helpers::{ArithBlockExt, BuiltinBlockExt},
-        ir::{Block, Location, Value},
-        Context,
-    };
-    use num_bigint::BigUint;
-
     use crate::{
         error::Result,
         utils::{
             montgomery::{MONTY_MU_U256, MONTY_R},
             PRIME,
         },
+    };
+    use melior::{
+        dialect::arith,
+        helpers::{ArithBlockExt, BuiltinBlockExt},
+        ir::{r#type::IntegerType, Block, Location, Value},
+        Context,
     };
 
     pub fn monty_mul<'c, 'a>(
@@ -92,30 +90,42 @@ pub mod mlir {
         rhs: Value<'c, '_>,
         location: Location<'c>,
     ) -> Result<Value<'c, 'a>> {
-        let unreduced_result = block.muli(lhs, rhs, location)?;
-        monty_reduce(context, block, unreduced_result, &*PRIME, location)
+        let i512 = IntegerType::new(context, 512).into();
+
+        let lhs = block.extui(lhs, i512, location)?;
+        let rhs = block.extui(rhs, i512, location)?;
+
+        let t = block.muli(lhs, rhs, location)?;
+
+        monty_reduce(context, block, t, location)
     }
 
     pub fn monty_reduce<'c, 'a>(
         context: &'c Context,
         block: &'a Block<'c>,
-        value: Value<'c, '_>,
-        modulus: &BigUint,
+        x: Value<'c, '_>,
         location: Location<'c>,
     ) -> Result<Value<'c, 'a>> {
+        let i512 = IntegerType::new(context, 512).into();
         let mu = block.const_int(context, location, &*MONTY_MU_U256, 512)?;
-        let modulus = block.const_int(context, location, modulus, 512)?;
         let r_minus_1 = block.const_int(context, location, &*MONTY_R - 1u8, 512)?;
         let k256 = block.const_int(context, location, 256, 512)?;
+        let modulus = block.const_int(context, location, &*PRIME, 512)?;
 
-        let q = block.muli(value, mu, location)?;
+        let x = block.extui(x, i512, location)?;
+        // q = (value * mu) mod r.
+        let q = block.muli(x, mu, location)?;
         let q = block.andi(q, r_minus_1, location)?;
+        // m = q * modulus.
         let m = block.muli(q, modulus, location)?;
-        let y = block.subi(value, m, location)?;
+        // y = (value - m) / r.
+        let y = block.subi(x, m, location)?;
         let y = block.shrui(y, k256, location)?;
+        // if (m > x):
+        //     y = y + modulus
         let y_plus_mod = block.addi(y, modulus, location)?;
 
-        let is_negative = block.cmpi(context, arith::CmpiPredicate::Ugt, m, y, location)?;
+        let is_negative = block.cmpi(context, arith::CmpiPredicate::Ugt, m, x, location)?;
 
         Ok(block.append_op_result(arith::select(is_negative, y_plus_mod, y, location))?)
     }

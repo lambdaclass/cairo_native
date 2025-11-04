@@ -667,12 +667,14 @@ impl AotContractExecutor {
             for i in array_start..array_end {
                 let cur_elem_ptr = unsafe { array_ptr.byte_add(elem_stride * i as usize) };
 
-                let data = unsafe { cur_elem_ptr.cast::<[u8; 32]>().read() };
+                let mut data = unsafe { cur_elem_ptr.cast::<[u8; 32]>().read() };
+
+                data[31] &= 0x0F; // Filter out first 4 bits (they're outside an i252).
+
                 let felt = {
                     let data = UnsignedInteger::from_bytes_le(&data).unwrap();
                     Felt::from_raw(data.limbs)
                 };
-                // data[31] &= 0x0F; // Filter out first 4 bits (they're outside an i252).
 
                 array_value.push(felt);
             }

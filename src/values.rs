@@ -740,7 +740,7 @@ impl Value {
                 }
                 CoreTypeConcrete::Felt252(_) => {
                     let data = ptr.cast::<[u8; 32]>().as_mut();
-                    // data[31] &= 0x0F; // Filter out first 4 bits (they're outside an i252).
+                    data[31] &= 0x0F; // Filter out first 4 bits (they're outside an i252).
                     let data = U256::from_bytes_le(data).unwrap();
                     Self::Felt252(Felt::from_raw(data.limbs))
                 }
@@ -921,7 +921,7 @@ impl Value {
                     | StarknetTypeConcrete::StorageAddress(_) => {
                         // felt values
                         let data = ptr.cast::<[u8; 32]>().as_mut();
-                        // data[31] &= 0x0F; // Filter out first 4 bits (they're outside an i252).
+                        data[31] &= 0x0F; // Filter out first 4 bits (they're outside an i252).
                         let data = U256::from_bytes_le(data).unwrap();
                         Self::Felt252(Felt::from_raw(data.limbs))
                     }

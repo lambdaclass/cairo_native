@@ -73,7 +73,6 @@ pub fn build_binary_operation<'ctx, 'this>(
         &info.branch_signatures()[0].vars[0].ty,
     )?;
     let i256 = IntegerType::new(context, 256).into();
-    let i512 = IntegerType::new(context, 512).into();
 
     let runtime_bindings = metadata
         .get_mut::<RuntimeBindingsMeta>()
@@ -118,6 +117,7 @@ pub fn build_binary_operation<'ctx, 'this>(
                 result,
                 location,
             ))?;
+
             entry.trunci(result, felt252_ty, location)?
         }
         Felt252BinaryOperator::Sub => {
@@ -138,8 +138,6 @@ pub fn build_binary_operation<'ctx, 'this>(
             entry.trunci(result, felt252_ty, location)?
         }
         Felt252BinaryOperator::Mul => {
-            let lhs = entry.extui(lhs, i512, location)?;
-            let rhs = entry.extui(rhs, i512, location)?;
             let result = mlir::monty_mul(context, entry, lhs, rhs, location)?;
 
             entry.trunci(result, felt252_ty, location)?
