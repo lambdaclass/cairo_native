@@ -35,6 +35,15 @@ pub fn build<'ctx, 'this>(
     }
 }
 
+/// Generate MLIR operations for the `gas_reserve_create` libfunc.
+///
+/// # Cairo Signature
+///
+/// ```cairo
+/// pub extern fn gas_reserve_create(
+///     amount: u128,
+/// ) -> Option<GasReserve> implicits(RangeCheck, GasBuiltin) nopanic;
+/// ```
 fn build_gas_reserve_create<'ctx, 'this>(
     context: &'ctx Context,
     _registry: &ProgramRegistry<CoreType, CoreLibfunc>,
@@ -58,7 +67,6 @@ fn build_gas_reserve_create<'ctx, 'this>(
         location,
     )?;
 
-    // TODO: Check if this trunci is affecting results
     let gas_builtin_ty = IntegerType::new(context, 64).into();
     let spare_gas = entry.append_op_result(arith::subi(current_gas_128, amount, location))?;
     let spare_gas = entry.append_op_result(arith::trunci(spare_gas, gas_builtin_ty, location))?;
@@ -76,6 +84,13 @@ fn build_gas_reserve_create<'ctx, 'this>(
     )
 }
 
+/// Generate MLIR operations for the `gas_reserve_utilize` libfunc.
+///
+/// # Cairo Signature
+///
+/// ```cairo
+/// pub extern fn gas_reserve_utilize(reserve: GasReserve) implicits(GasBuiltin) nopanic;
+/// ```
 fn build_gas_reserve_utilize<'ctx, 'this>(
     context: &'ctx Context,
     _registry: &ProgramRegistry<CoreType, CoreLibfunc>,
@@ -85,8 +100,8 @@ fn build_gas_reserve_utilize<'ctx, 'this>(
     _metadata: &mut MetadataStorage,
     _info: &SignatureOnlyConcreteLibfunc,
 ) -> Result<()> {
-    let current_gas = entry.arg(0)?;
-    let gas_reserve = entry.arg(1)?;
+    let current_gas = entry.arg(0)?; // u64
+    let gas_reserve = entry.arg(1)?; // u128
 
     let trunc_reserve = entry.append_op_result(arith::trunci(
         gas_reserve,
@@ -124,7 +139,7 @@ mod test {
         let result = run_program(&program, "run_test_1", &[]).return_value;
         if let Value::Enum { tag, value, .. } = result {
             assert_eq!(tag, 0);
-            assert_eq!(value, Box::new(Value::Sint128(100))) // TODO: Should it return a Sint128 or a Uint128?
+            assert_eq!(value, Box::new(Value::Uint128(100)))
         }
 
         let amount = 100;

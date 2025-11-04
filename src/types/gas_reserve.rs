@@ -22,7 +22,5 @@ pub fn build<'ctx>(
     _metadata: &mut MetadataStorage,
     _info: WithSelf<InfoOnlyConcreteType>,
 ) -> Result<Type<'ctx>> {
-    // TODO: Check if we need anything else thatn the amout of gas
-    // and check how many bits we need
     Ok(IntegerType::new(context, 128).into())
 }
