@@ -411,14 +411,14 @@ fn m31_div<'ctx, 'this>(
 
     // Div Logic Start
     // Fetch operands
-    let lhs = entry.extui(lhs_value, i64, location)?;
-    let rhs = entry.extui(rhs_value, i64, location)?;
+    let lhs_value = entry.extui(lhs_value, i64, location)?;
+    let rhs_value = entry.extui(rhs_value, i64, location)?;
     // Calculate inverse of rhs, callling the inverse implementation's starting block
-    entry.append_operation(cf::br(start_block, &[rhs], location));
+    entry.append_operation(cf::br(start_block, &[rhs_value], location));
     // Fetch the inverse result from the result block
     let inverse = inverse_result_block.arg(0)?;
     // Peform lhs * (1/ rhs)
-    let result = inverse_result_block.muli(lhs, inverse, location)?;
+    let result = inverse_result_block.muli(lhs_value, inverse, location)?;
     // Apply modulo and convert result to m31
     let result_mod =
         inverse_result_block.append_op_result(arith::remui(result, prime, location))?;
@@ -521,8 +521,8 @@ mod test {
     use num_bigint::BigInt;
 
     use crate::{
-        jit_enum, jit_struct, load_cairo, runtime::to_representative_coefficients,
-        utils::testing::run_program, Value,
+        jit_enum, jit_struct, libfuncs::qm31::M31_PRIME, load_cairo,
+        runtime::to_representative_coefficients, utils::testing::run_program, Value,
     };
 
     impl From<&starknet_types_core::qm31::QM31> for Value {
@@ -941,7 +941,7 @@ mod test {
         };
         let expected_range = Range {
             lower: 0.into(),
-            upper: 2147483647.into(),
+            upper: M31_PRIME.into(),
         };
         let result = run_program(&program, "run_test_1", &[]).return_value;
         assert_eq!(
@@ -993,7 +993,7 @@ mod test {
         };
         let expected_range = Range {
             lower: 0.into(),
-            upper: 2147483647.into(),
+            upper: M31_PRIME.into(),
         };
         let result = run_program(&program, "run_test_1", &[]).return_value;
         assert_eq!(
@@ -1045,7 +1045,7 @@ mod test {
         };
         let expected_range = Range {
             lower: 0.into(),
-            upper: 2147483647.into(),
+            upper: M31_PRIME.into(),
         };
         let result = run_program(&program, "run_test_1", &[]).return_value;
         assert_eq!(
@@ -1093,7 +1093,7 @@ mod test {
         };
         let expected_range = Range {
             lower: 0.into(),
-            upper: 2147483647.into(),
+            upper: M31_PRIME.into(),
         };
         let result = run_program(&program, "run_test_1", &[]).return_value;
         assert_eq!(
