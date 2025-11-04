@@ -440,17 +440,25 @@ fn m31_div<'ctx, 'this>(
     helper.br(inverse_result_block, 0, &[result], location)
 }
 
-/// Generate MLIR operations for the QM31 binary operations libfuncs.
+/// Generate MLIR operations for the QM31 and M31 binary operations libfuncs.
 ///
-/// Receives two qm31 and performs an operation (add, sub, mul or div) with both.
-/// Returns the result of the operation.
+/// Depending on the type of the parameters, it chooses which type of representation
+/// it will manage (QM31 or M31). It either receives 2 qm31 or 2 m31 (which are represented
+/// as bounded ints)
 ///
 /// # Cairo Signature
 /// ```cairo
+/// // qm31
 /// fn qm31_add(a: qm31, b: qm31) -> qm31 nopanic;
 /// fn qm31_sub(a: qm31, b: qm31) -> qm31 nopanic;
 /// fn qm31_mul(a: qm31, b: qm31) -> qm31 nopanic;
 /// fn qm31_mul(a: qm31, b: qm31) -> qm31 nopanic;
+///
+/// // m31
+/// extern fn m31_add(a: m31, b: m31) -> m31 nopanic;
+/// extern fn m31_sub(a: m31, b: m31) -> m31 nopanic;
+/// extern fn m31_mul(a: m31, b: m31) -> m31 nopanic;
+/// extern fn m31_div(a: m31, b: NonZero<m31>) -> m31 nopanic;
 /// ```
 pub fn build_binary_op<'ctx, 'this>(
     context: &'ctx Context,
@@ -461,6 +469,8 @@ pub fn build_binary_op<'ctx, 'this>(
     metadata: &mut MetadataStorage,
     info: &QM31BinaryOpConcreteLibfunc,
 ) -> Result<()> {
+    // If the parameter is a bounded int, then we need to generate the operations
+    // for the m31
     let type_concrete = registry.get_type(&info.param_signatures()[0].ty)?;
     if let CoreTypeConcrete::BoundedInt(_) = type_concrete {
         match info.operator {
