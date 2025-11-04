@@ -23,6 +23,8 @@ use melior::{
     Context,
 };
 
+const M31_PRIME: u32 = 0x7fffffff;
+
 pub fn build<'ctx, 'this>(
     context: &'ctx Context,
     registry: &ProgramRegistry<CoreType, CoreLibfunc>,
@@ -263,7 +265,7 @@ fn m31_add<'ctx, 'this>(
     let rhs_value = entry.extui(rhs_value, IntegerType::new(context, 32).into(), location)?;
 
     let res = entry.append_op_result(arith::addi(lhs_value, rhs_value, location))?;
-    let prime = entry.const_int(context, location, 0x7fffffff, 32)?;
+    let prime = entry.const_int(context, location, M31_PRIME, 32)?;
     let res_mod = entry.append_op_result(arith::subi(res, prime, location))?;
     let is_out_of_range = entry.cmpi(context, CmpiPredicate::Uge, res, prime, location)?;
 
@@ -287,7 +289,7 @@ fn m31_sub<'ctx, 'this>(
     let rhs_value = entry.extui(rhs_value, IntegerType::new(context, 32).into(), location)?;
     let res = entry.append_op_result(arith::subi(lhs_value, rhs_value, location))?;
 
-    let prime = entry.const_int(context, location, 0x7fffffff, 32)?;
+    let prime = entry.const_int(context, location, M31_PRIME, 32)?;
     let res_mod = entry.append_op_result(arith::addi(res, prime, location))?;
     let is_out_of_range =
         entry.cmpi(context, CmpiPredicate::Ult, lhs_value, rhs_value, location)?;
@@ -311,7 +313,7 @@ fn m31_mul<'ctx, 'this>(
     let rhs_value = entry.extui(rhs_value, IntegerType::new(context, 64).into(), location)?;
     let res = entry.muli(lhs_value, rhs_value, location)?;
 
-    let prime = entry.const_int(context, location, 0x7fffffff, 64)?;
+    let prime = entry.const_int(context, location, M31_PRIME, 64)?;
     let res_mod = entry.append_op_result(arith::remui(res, prime, location))?;
     let is_out_of_range = entry.cmpi(context, CmpiPredicate::Uge, res, prime, location)?;
 
@@ -343,7 +345,7 @@ fn m31_div<'ctx, 'this>(
     // Egcd works by calculating a series of remainders, each the remainder of dividing the previous two
     // For the initial setup, r0 = PRIME, r1 = a
     // This order is chosen because if we reverse them, then the first iteration will just swap them
-    let prev_remainder = start_block.const_int_from_type(context, location, 0x7fffffff, i64)?;
+    let prev_remainder = start_block.const_int_from_type(context, location, M31_PRIME, i64)?;
     let remainder = start_block.arg(0)?;
     // Similarly we'll calculate another series which starts 0,1,... and from which we will retrieve the modular inverse of a
     let prev_inverse = start_block.const_int_from_type(context, location, 0, i64)?;
@@ -402,7 +404,7 @@ fn m31_div<'ctx, 'this>(
         .result(0)?
         .into();
     // if the inverse is < 0, add PRIME
-    let prime = negative_check_block.const_int_from_type(context, location, 0x7fffffff, i64)?;
+    let prime = negative_check_block.const_int_from_type(context, location, M31_PRIME, i64)?;
     let wrapped_inverse = negative_check_block.addi(inverse, prime, location)?;
     let inverse = negative_check_block.append_op_result(arith::select(
         is_negative,
@@ -422,7 +424,7 @@ fn m31_div<'ctx, 'this>(
     let inverse = inverse_result_block.arg(0)?;
     // Peform lhs * (1/ rhs)
     let result = inverse_result_block.muli(lhs, inverse, location)?;
-    // Apply modulo and convert result to felt252
+    // Apply modulo and convert result to m31
     let result_mod =
         inverse_result_block.append_op_result(arith::remui(result, prime, location))?;
     let is_out_of_range =
