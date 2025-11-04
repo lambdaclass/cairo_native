@@ -285,18 +285,13 @@ fn m31_sub<'ctx, 'this>(
     let lhs_value = entry.arg(0)?;
     let rhs_value = entry.arg(1)?;
 
-    let lhs_value = entry.extui(lhs_value, IntegerType::new(context, 32).into(), location)?;
-    let rhs_value = entry.extui(rhs_value, IntegerType::new(context, 32).into(), location)?;
     let res = entry.append_op_result(arith::subi(lhs_value, rhs_value, location))?;
-
-    let prime = entry.const_int(context, location, M31_PRIME, 32)?;
+    let prime = entry.const_int(context, location, M31_PRIME, 31)?;
     let res_mod = entry.append_op_result(arith::addi(res, prime, location))?;
     let is_out_of_range =
         entry.cmpi(context, CmpiPredicate::Ult, lhs_value, rhs_value, location)?;
 
     let res = entry.append_op_result(arith::select(is_out_of_range, res_mod, res, location))?;
-    let res = entry.trunci(res, IntegerType::new(context, 31).into(), location)?;
-
     helper.br(entry, 0, &[res], location)
 }
 
