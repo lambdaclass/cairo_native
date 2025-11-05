@@ -79,7 +79,7 @@ pub mod mlir {
     use melior::{
         dialect::arith,
         helpers::{ArithBlockExt, BuiltinBlockExt},
-        ir::{r#type::IntegerType, Block, Location, Value},
+        ir::{r#type::IntegerType, Block, Location, Type, Value},
         Context,
     };
 
@@ -88,6 +88,7 @@ pub mod mlir {
         block: &'a Block<'c>,
         lhs: Value<'c, '_>,
         rhs: Value<'c, '_>,
+        res_ty: Type<'c>,
         location: Location<'c>,
     ) -> Result<Value<'c, 'a>> {
         let i512 = IntegerType::new(context, 512).into();
@@ -97,22 +98,22 @@ pub mod mlir {
 
         let t = block.muli(lhs, rhs, location)?;
 
-        monty_reduce(context, block, t, location)
+        let result = monty_reduce(context, block, t, location)?;
+
+        Ok(block.trunci(result, res_ty, location)?)
     }
 
-    pub fn monty_reduce<'c, 'a>(
+    fn monty_reduce<'c, 'a>(
         context: &'c Context,
         block: &'a Block<'c>,
         x: Value<'c, '_>,
         location: Location<'c>,
     ) -> Result<Value<'c, 'a>> {
-        let i512 = IntegerType::new(context, 512).into();
         let mu = block.const_int(context, location, &*MONTY_MU_U256, 512)?;
         let r_minus_1 = block.const_int(context, location, &*MONTY_R - 1u8, 512)?;
         let k256 = block.const_int(context, location, 256, 512)?;
         let modulus = block.const_int(context, location, &*PRIME, 512)?;
 
-        let x = block.extui(x, i512, location)?;
         // q = (value * mu) mod r.
         let q = block.muli(x, mu, location)?;
         let q = block.andi(q, r_minus_1, location)?;

@@ -204,12 +204,10 @@ pub fn build_bool_to_felt252<'ctx, 'this>(
     let tag_value = entry.extract_value(context, location, value, tag_ty, 0)?;
 
     // Convert into Montgomery representation.
-    let r2 = entry.const_int(context, location, &*MONTY_R2, 512)?;
-    let monty_felt = montgomery::mlir::monty_mul(context, entry, tag_value, r2, location)?;
+    let r2 = entry.const_int(context, location, &*MONTY_R2, 257)?;
+    let felt = montgomery::mlir::monty_mul(context, entry, tag_value, r2, felt252_ty, location)?;
 
-    let result = entry.trunci(monty_felt, felt252_ty, location)?;
-
-    helper.br(entry, 0, &[result], location)
+    helper.br(entry, 0, &[felt], location)
 }
 
 #[cfg(test)]

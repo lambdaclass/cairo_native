@@ -138,9 +138,7 @@ pub fn build_binary_operation<'ctx, 'this>(
             entry.trunci(result, felt252_ty, location)?
         }
         Felt252BinaryOperator::Mul => {
-            let result = mlir::monty_mul(context, entry, lhs, rhs, location)?;
-
-            entry.trunci(result, felt252_ty, location)?
+            mlir::monty_mul(context, entry, lhs, rhs, felt252_ty, location)?
         }
         _ => runtime_bindings.libfunc_felt252_binary_op(
             context,

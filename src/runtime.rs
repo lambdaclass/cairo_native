@@ -388,7 +388,8 @@ pub unsafe extern "C" fn cairo_native__dict_squash(
     let no_big_keys = dict
         .mappings
         .keys()
-        .map(Felt::from_bytes_le)
+        .map(|b| U256::from_bytes_le(b).expect("felt bytes should be valid"))
+        .map(|v| Felt::from_raw(v.limbs))
         .all(|key| key < Felt::from(BigInt::from(1).shl(128)));
     let number_of_keys = dict.mappings.len() as u64;
 
