@@ -326,25 +326,28 @@ fn m31_div<'ctx, 'this>(
 ) -> Result<()> {
     let lhs_value = entry.arg(0)?;
     let rhs_value = entry.arg(1)?;
+
+    let i31 = IntegerType::new(context, 31).into();
     let i64 = IntegerType::new(context, 64).into();
-    let start_block = helper.append_block(Block::new(&[(i64, location)]));
+
+    let start_block = helper.append_block(Block::new(&[(i31, location)]));
     let loop_block = helper.append_block(Block::new(&[
-        (i64, location),
-        (i64, location),
-        (i64, location),
-        (i64, location),
+        (i31, location),
+        (i31, location),
+        (i31, location),
+        (i31, location),
     ]));
     let negative_check_block = helper.append_block(Block::new(&[]));
     // Block containing final result
-    let inverse_result_block = helper.append_block(Block::new(&[(i64, location)]));
+    let inverse_result_block = helper.append_block(Block::new(&[(i31, location)]));
     // Egcd works by calculating a series of remainders, each the remainder of dividing the previous two
     // For the initial setup, r0 = PRIME, r1 = a
     // This order is chosen because if we reverse them, then the first iteration will just swap them
-    let prev_remainder = start_block.const_int_from_type(context, location, M31_PRIME, i64)?;
+    let prev_remainder = start_block.const_int_from_type(context, location, M31_PRIME, i31)?;
     let remainder = start_block.arg(0)?;
     // Similarly we'll calculate another series which starts 0,1,... and from which we will retrieve the modular inverse of a
-    let prev_inverse = start_block.const_int_from_type(context, location, 0, i64)?;
-    let inverse = start_block.const_int_from_type(context, location, 1, i64)?;
+    let prev_inverse = start_block.const_int_from_type(context, location, 0, i31)?;
+    let inverse = start_block.const_int_from_type(context, location, 1, i31)?;
     start_block.append_operation(cf::br(
         loop_block,
         &[prev_remainder, remainder, prev_inverse, inverse],
@@ -370,7 +373,7 @@ fn m31_div<'ctx, 'this>(
         loop_block.append_op_result(arith::subi(prev_inverse, inv_times_quo, location))?;
 
     // If r_(i+1) is 0, then inv_i is the inverse
-    let zero = loop_block.const_int_from_type(context, location, 0, i64)?;
+    let zero = loop_block.const_int_from_type(context, location, 0, i31)?;
     let next_remainder_eq_zero =
         loop_block.cmpi(context, CmpiPredicate::Eq, next_remainder, zero, location)?;
     loop_block.append_operation(cf::cond_br(
@@ -386,8 +389,7 @@ fn m31_div<'ctx, 'this>(
     // egcd sometimes returns a negative number for the inverse,
     // in such cases we must simply wrap it around back into [0, PRIME)
     // this suffices because |inv_i| <= divfloor(PRIME,2)
-    let zero = negative_check_block.const_int_from_type(context, location, 0, i64)?;
-
+    let zero = negative_check_block.const_int_from_type(context, location, 0, i31)?;
     let is_negative = negative_check_block
         .append_operation(arith::cmpi(
             context,
@@ -399,7 +401,7 @@ fn m31_div<'ctx, 'this>(
         .result(0)?
         .into();
     // if the inverse is < 0, add PRIME
-    let prime = negative_check_block.const_int_from_type(context, location, M31_PRIME, i64)?;
+    let prime = negative_check_block.const_int_from_type(context, location, M31_PRIME, i31)?;
     let wrapped_inverse = negative_check_block.addi(inverse, prime, location)?;
     let inverse = negative_check_block.append_op_result(arith::select(
         is_negative,
@@ -412,14 +414,15 @@ fn m31_div<'ctx, 'this>(
     // Div Logic Start
     // Fetch operands
     let lhs_value = entry.extui(lhs_value, i64, location)?;
-    let rhs_value = entry.extui(rhs_value, i64, location)?;
     // Calculate inverse of rhs, callling the inverse implementation's starting block
     entry.append_operation(cf::br(start_block, &[rhs_value], location));
     // Fetch the inverse result from the result block
     let inverse = inverse_result_block.arg(0)?;
+    let inverse = inverse_result_block.extui(inverse, i64, location)?;
     // Peform lhs * (1/ rhs)
     let result = inverse_result_block.muli(lhs_value, inverse, location)?;
     // Apply modulo and convert result to m31
+    let prime = inverse_result_block.extui(prime, i64, location)?;
     let result_mod =
         inverse_result_block.append_op_result(arith::remui(result, prime, location))?;
     let is_out_of_range =
@@ -431,8 +434,7 @@ fn m31_div<'ctx, 'this>(
         result,
         location,
     ))?;
-    let result =
-        inverse_result_block.trunci(result, IntegerType::new(context, 31).into(), location)?;
+    let result = inverse_result_block.trunci(result, i31, location)?;
 
     helper.br(inverse_result_block, 0, &[result], location)
 }
