@@ -177,7 +177,7 @@ impl Value {
                 Self::Felt252(value) => {
                     let ptr = arena.alloc_layout(get_integer_layout(252)).cast();
 
-                    let data = felt252_bigint(value.to_bigint()).to_bytes_le_raw();
+                    let data = value.to_bytes_le_raw();
                     ptr.cast::<[u8; 32]>().as_mut().copy_from_slice(&data);
                     ptr
                 }
@@ -1201,6 +1201,7 @@ mod test {
 
         let registry = ProgramRegistry::<CoreType, CoreLibfunc>::new(&program).unwrap();
 
+        // Assert bytes of Montgomery form of 42_felt252.
         assert_eq!(
             unsafe {
                 *Value::Felt252(Felt::from(42))
@@ -1214,9 +1215,13 @@ mod test {
                     .cast::<[u32; 8]>()
                     .as_ptr()
             },
-            [42, 0, 0, 0, 0, 0, 0, 0]
+            [
+                4294965953, 4294967295, 4294967295, 4294967295, 4294967295, 4294967295, 4294944464,
+                134217727
+            ]
         );
 
+        // Assert bytes of Montgomery form of Felt::MAX.
         assert_eq!(
             unsafe {
                 *Value::Felt252(Felt::MAX)
@@ -1230,8 +1235,8 @@ mod test {
                     .cast::<[u32; 8]>()
                     .as_ptr()
             },
-            // 0x800000000000011000000000000000000000000000000000000000000000001 - 1
-            [0, 0, 0, 0, 0, 0, 17, 134217728]
+            // Montgomery(0x800000000000011000000000000000000000000000000000000000000000001 - 1)
+            [32, 0, 0, 0, 0, 0, 544, 0]
         );
 
         assert_eq!(
