@@ -15,7 +15,7 @@ use cairo_lang_sierra::{
 };
 use melior::{
     dialect::{llvm, scf},
-    helpers::{ArithBlockExt, BuiltinBlockExt, LlvmBlockExt},
+    helpers::{ArithBlockExt, BuiltinBlockExt, GepIndex, LlvmBlockExt},
     ir::{r#type::IntegerType, Block, BlockLike, Location, Region},
     Context,
 };
@@ -53,6 +53,13 @@ pub fn build_into_entries<'ctx, 'this>(
 
     let k0 = entry.const_int(context, location, 0, 64)?; // TODO: Check if we can use less bits
     let k1 = entry.const_int(context, location, 1, 64)?; // TODO: Check if we can use less bits
+
+    // Get the pointers
+    let initial_value_ptr = metadata
+        .get_mut::<RuntimeBindingsMeta>()
+        .ok_or(Error::MissingMetadata)?
+        .dict_get_all(context, helper, entry, entry.arg(0)?, location)?; // TODO: Should I use the entry or the block
+
     entry.append_operation(scf::r#for(
         k0,
         dict_len,
@@ -63,27 +70,33 @@ pub fn build_into_entries<'ctx, 'this>(
                 IntegerType::new(context, 64).into(), // TODO: Is this the i from the for loop???
                 location,
             )]));
-            // Get the pointers
-            let initial_value_ptr = metadata
-                .get_mut::<RuntimeBindingsMeta>()
-                .ok_or(Error::MissingMetadata)?
-                .dict_get_all(context, helper, entry, entry.arg(0)?, location)?; // TODO: Should I use the entry or the block
 
-            // TODO: The type must not be hardcoded like it it now. It can be take from the info i guess
-            let initial_value = block.load(
+            // Get the offset which is calculated as offset * layout_size
+            let offset = block.arg(0)?;
+            // TODO: This layout should not be hardcoded. It should be taken from a runtime function
+            let layout_size = block.const_int(context, location, 4, 64)?;
+            let value_offset = block.muli(layout_size, offset, location)?;
+
+            let value_ptr = entry.gep(
                 context,
                 location,
                 initial_value_ptr,
+                &[GepIndex::Value(value_offset)],
+                IntegerType::new(context, 8).into(),
+            )?;
+
+            // TODO: The type must not be hardcoded like it it now. It can be take from the info I guess
+            let value = block.load(
+                context,
+                location,
+                value_ptr,
                 IntegerType::new(context, 32).into(),
             )?; // TODO: Should I use the entry or the block
 
-            metadata.get_mut::<DebugUtils>().unwrap().print_i32(
-                context,
-                helper,
-                entry,
-                initial_value,
-                location,
-            )?; // TODO: Should I use the entry or the block
+            metadata
+                .get_mut::<DebugUtils>()
+                .unwrap()
+                .print_i32(context, helper, entry, value, location)?; // TODO: Should I use the entry or the block
 
             region
         },
