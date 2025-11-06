@@ -674,7 +674,7 @@ pub unsafe extern "C" fn cairo_native__libfunc__qm31__qm31_div(
         rhs[0], rhs[1], rhs[2], rhs[3],
     ));
 
-    // SAFETY: The only possible error is if rhs is zero. However, in the QM31 division libfunc, the divisor
+    // SAFETY: An error would be triggered here only if rhs is zero. However, in the QM31 division libfunc, the divisor
     // is of type NonZero<qm31> which ensures that we are not falling into the error case.
     *res = to_representative_coefficients((lhs / rhs).expect("rhs should not be a QM31 0"));
 }

@@ -569,7 +569,7 @@ impl RuntimeBindingsMeta {
         ))
     }
 
-    /// Register binary operation function if necessary and invoke it.
+    /// Register QM31 binary operation function if necessary and invoke it.
     /// The operation depends on the `op` argument which could indicate:
     /// - Add operation
     /// - Sub operation

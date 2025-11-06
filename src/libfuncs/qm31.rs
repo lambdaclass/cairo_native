@@ -449,7 +449,7 @@ fn m31_div<'ctx, 'this>(
 /// fn qm31_add(a: qm31, b: qm31) -> qm31 nopanic;
 /// fn qm31_sub(a: qm31, b: qm31) -> qm31 nopanic;
 /// fn qm31_mul(a: qm31, b: qm31) -> qm31 nopanic;
-/// fn qm31_mul(a: qm31, b: qm31) -> qm31 nopanic;
+/// fn qm31_div(a: qm31, b: NonZero<qm31>) -> qm31 nopanic;
 ///
 /// // m31
 /// extern fn m31_add(a: m31, b: m31) -> m31 nopanic;
