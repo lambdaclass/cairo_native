@@ -1,7 +1,7 @@
 use crate::{
     error::{Error, Result},
     metadata::runtime_bindings::RuntimeBindingsMeta,
-    utils::get_integer_layout,
+    utils::{get_integer_layout, ProgramRegistryExt},
 };
 use crate::{libfuncs::LibfuncHelper, metadata::MetadataStorage};
 use cairo_lang_sierra::{
@@ -73,15 +73,20 @@ pub fn build<'ctx, 'this>(
 /// ```
 pub fn build_const<'ctx, 'this>(
     context: &'ctx Context,
-    _registry: &ProgramRegistry<CoreType, CoreLibfunc>,
+    registry: &ProgramRegistry<CoreType, CoreLibfunc>,
     entry: &'this Block<'ctx>,
     location: Location<'ctx>,
     helper: &LibfuncHelper<'ctx, 'this>,
-    _metadata: &mut MetadataStorage,
+    metadata: &mut MetadataStorage,
     info: &QM31ConstConcreteLibfunc,
 ) -> Result<()> {
     let m31_ty = IntegerType::new(context, 31).into();
-    let qm31_ty = llvm::r#type::array(m31_ty, 4);
+    let qm31_ty = registry.build_type(
+        context,
+        helper,
+        metadata,
+        &info.branch_signatures()[0].vars[0].ty,
+    )?;
 
     let m31_0 = entry.const_int_from_type(context, location, info.w0, m31_ty)?;
     let m31_1 = entry.const_int_from_type(context, location, info.w1, m31_ty)?;
@@ -155,20 +160,24 @@ pub fn build_is_zero<'ctx, 'this>(
 /// ```
 pub fn build_pack<'ctx, 'this>(
     context: &'ctx Context,
-    _registry: &ProgramRegistry<CoreType, CoreLibfunc>,
+    registry: &ProgramRegistry<CoreType, CoreLibfunc>,
     entry: &'this Block<'ctx>,
     location: Location<'ctx>,
     helper: &LibfuncHelper<'ctx, 'this>,
-    _metadata: &mut MetadataStorage,
-    _info: &SignatureOnlyConcreteLibfunc,
+    metadata: &mut MetadataStorage,
+    info: &SignatureOnlyConcreteLibfunc,
 ) -> Result<()> {
     let m31_0 = entry.arg(0)?;
     let m31_1 = entry.arg(1)?;
     let m31_2 = entry.arg(2)?;
     let m31_3 = entry.arg(3)?;
 
-    let m31_ty = IntegerType::new(context, 31).into();
-    let qm31_ty = llvm::r#type::array(m31_ty, 4);
+    let qm31_ty = registry.build_type(
+        context,
+        helper,
+        metadata,
+        &info.branch_signatures()[0].vars[0].ty,
+    )?;
 
     let qm31 = entry.append_op_result(llvm::undef(qm31_ty, location))?;
     let qm31 = entry.insert_values(context, location, qm31, &[m31_0, m31_1, m31_2, m31_3])?;
@@ -229,21 +238,26 @@ pub fn build_unpack<'ctx, 'this>(
 /// # Cairo Signature
 ///
 /// ```cairo
-/// fn qm31_unpack(a: qm31) -> (m31, m31, m31, m31) implicits(crate::RangeCheck) nopanic;
+/// fn qm31_from_m31(a: m31) -> qm31 nopanic;
 /// ```
 pub fn build_from_m31<'ctx, 'this>(
     context: &'ctx Context,
-    _registry: &ProgramRegistry<CoreType, CoreLibfunc>,
+    registry: &ProgramRegistry<CoreType, CoreLibfunc>,
     entry: &'this Block<'ctx>,
     location: Location<'ctx>,
     helper: &LibfuncHelper<'ctx, 'this>,
-    _metadata: &mut MetadataStorage,
-    _info: &SignatureOnlyConcreteLibfunc,
+    metadata: &mut MetadataStorage,
+    info: &SignatureOnlyConcreteLibfunc,
 ) -> Result<()> {
     let m31 = entry.arg(0)?;
 
     let m31_ty = IntegerType::new(context, 31).into();
-    let qm31_ty = llvm::r#type::array(m31_ty, 4);
+    let qm31_ty = registry.build_type(
+        context,
+        helper,
+        metadata,
+        &info.branch_signatures()[0].vars[0].ty,
+    )?;
     let k0 = entry.const_int_from_type(context, location, 0, m31_ty)?;
 
     let qm31 = entry.append_op_result(llvm::undef(qm31_ty, location))?;
@@ -487,8 +501,7 @@ pub fn build_binary_op<'ctx, 'this>(
             }
         }
     }
-    let m31_ty = IntegerType::new(context, 31).into();
-    let qm31_ty = llvm::r#type::array(m31_ty, 4);
+    let qm31_ty = registry.build_type(context, helper, metadata, &info.param_signatures()[0].ty)?;
 
     let lhs = entry.arg(0)?;
     let rhs = entry.arg(1)?;
