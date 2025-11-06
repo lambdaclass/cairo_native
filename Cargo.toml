@@ -78,7 +78,7 @@ sierra-emu = { path = "debug_utils/sierra-emu", version = "0.7.1" }
 smallvec = "1.13.2"
 starknet-crypto = "0.8.1"
 starknet-curve = "0.6.0"
-starknet-types-core = { version = "0.2.4", features = ["hash"]}
+starknet-types-core = { version = "0.2.3", features = ["hash"]}
 stats_alloc = "0.1.10"
 tempfile = "3.15.0"
 test-case = "3.3"
