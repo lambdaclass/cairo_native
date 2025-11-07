@@ -1,3 +1,20 @@
+//! # Montgomery implementation for Felt252.
+//! 
+//! This module holds utility functions for performing arithmetic operations
+//! inside the Montgomery space.
+//! 
+//! Representing felts in the Montgomery space allows for optimizations when 
+//! performing multiplication and division operations. This is because it 
+//! avoids having to perform modulo operations and even divisions. Montgomery 
+//! reduces these operations to shifts and simple arithmetic operation such as 
+//! additions and subtractions.
+//! 
+//! The way this works is by representing a values as x' = x * r mod n. This 
+//! introduces a new constant `r` which, for performance reasons, it is defined
+//! as r = 2^{k} where k should be big enough to satisfy r > n.
+//! 
+//! For more information on check: https://en.wikipedia.org/wiki/Montgomery_modular_multiplication.
+
 use std::sync::LazyLock;
 
 use lambdaworks_math::{
@@ -12,13 +29,19 @@ use num_bigint::BigUint;
 use num_traits::Num;
 use starknet_types_core::felt::Felt;
 
+// R parameter for felts. R = 2^{256} which is the smallets power of 2 greater than prime.
 pub static MONTY_R: LazyLock<BigUint> = LazyLock::new(|| BigUint::from(1u64) << 256);
+// R2 parameter for felts. R2 = 2^{256 * 2} mod prime. 
 pub static MONTY_R2: LazyLock<U256> = LazyLock::new(|| {
     UnsignedInteger::from_hex_unchecked(
         "7FFD4AB5E008810FFFFFFFFFF6F800000000001330FFFFFFFFFFD737E000401",
     )
 });
+// MU parameter for felts. MU = -prime^{-1} mod 2^{64}. The variant is used to
+// allow a better integration with lambdaworks. 
+// Check: https://github.com/lambdaclass/lambdaworks/blob/main/crates/math/src/field/fields/montgomery_backed_prime_fields.rs#L60
 pub const MONTY_MU_U64: u64 = 18446744073709551615;
+// MU parameter for felts. MU = prime^{-1} mod R.
 pub static MONTY_MU_U256: LazyLock<BigUint> = LazyLock::new(|| {
     BigUint::from_str_radix(
         "f7ffffffffffffef000000000000000000000000000000000000000000000001",
