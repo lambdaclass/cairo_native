@@ -442,7 +442,6 @@ pub mod mlir {
             location,
         ));
 
-        // END BLOCK.
         let (almost_inv, k) = {
             // if r >= p:
             //     r = r − p
