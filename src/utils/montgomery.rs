@@ -12,14 +12,14 @@ use num_bigint::BigUint;
 use num_traits::Num;
 use starknet_types_core::felt::Felt;
 
-pub const MONTY_R: LazyLock<BigUint> = LazyLock::new(|| BigUint::from(1u64) << 256);
+pub static MONTY_R: LazyLock<BigUint> = LazyLock::new(|| BigUint::from(1u64) << 256);
 pub static MONTY_R2: LazyLock<U256> = LazyLock::new(|| {
     UnsignedInteger::from_hex_unchecked(
         "7FFD4AB5E008810FFFFFFFFFF6F800000000001330FFFFFFFFFFD737E000401",
     )
 });
 pub const MONTY_MU_U64: u64 = 18446744073709551615;
-pub const MONTY_MU_U256: LazyLock<BigUint> = LazyLock::new(|| {
+pub static MONTY_MU_U256: LazyLock<BigUint> = LazyLock::new(|| {
     BigUint::from_str_radix(
         "f7ffffffffffffef000000000000000000000000000000000000000000000001",
         16,
@@ -68,18 +68,24 @@ pub fn monty_transform(x: &BigUint, modulus: &BigUint) -> Result<BigUint, Creati
     Ok(BigUint::from_bytes_le(&reduced.to_bytes_le()))
 }
 
+pub fn monty_inverse() {
+    let felt = Felt::from(1).inverse().unwrap();
+    let felt = U256::from_bytes_le(&felt.to_bytes_le_raw()).unwrap();
+    dbg!(felt.to_hex());
+}
+
 pub mod mlir {
     use crate::{
         error::Result,
         utils::{
-            montgomery::{MONTY_MU_U256, MONTY_R},
+            montgomery::{MONTY_MU_U256, MONTY_R, MONTY_R2},
             PRIME,
         },
     };
     use melior::{
-        dialect::arith,
+        dialect::{arith, ods, scf},
         helpers::{ArithBlockExt, BuiltinBlockExt},
-        ir::{r#type::IntegerType, Block, Location, Type, Value},
+        ir::{r#type::IntegerType, Block, BlockLike, Location, Region, Type, Value, ValueLike},
         Context,
     };
 
@@ -103,16 +109,374 @@ pub mod mlir {
         Ok(block.trunci(result, res_ty, location)?)
     }
 
+    pub fn monty_div<'c, 'a>(
+        context: &'c Context,
+        block: &'a Block<'c>,
+        lhs: Value<'c, '_>,
+        rhs: Value<'c, '_>,
+        res_ty: Type<'c>,
+        location: Location<'c>,
+    ) -> Result<Value<'c, 'a>> {
+        let inv_rhs = monty_inverse(context, block, rhs, location)?;
+        monty_mul(context, block, lhs, inv_rhs, res_ty, location)
+    }
+
+    /// Compute Montgomery modular inverse.
+    ///
+    /// The algorithm is given by B. S. Kaliski Jr. in "The Montgomery Inverse
+    /// and Its Applications". The algorithm consists of two phases:
+    ///     1. Compute x = a^{-1}2^{k} mod p, where n < k < 2n (denoted as
+    ///        almost inverse).
+    ///     2. Corrects the result from phase 1 so that x = a^{-1}2^{n} mod p.
+    /// The algorithm can be check
+    /// [here](https://www.researchgate.net/publication/225962646_Efficient_Software-Implementation_of_Finite_Fields_with_Applications_to_Cryptography)
+    /// (Algorithm 17).
+    fn monty_inverse<'c, 'a>(
+        context: &'c Context,
+        block: &'a Block<'c>,
+        value: Value<'c, '_>,
+        location: Location<'c>,
+    ) -> Result<Value<'c, 'a>> {
+        let value = block.extui(value, IntegerType::new(context, 256).into(), location)?;
+        let (r, k) = almost_inverse(context, block, value, location)?;
+        let inverse = inverse_correction(context, block, r, k, location)?;
+
+        let r2 = block.const_int_from_type(context, location, *MONTY_R2, inverse.r#type())?;
+        monty_mul(context, block, inverse, r2, inverse.r#type(), location)
+    }
+
+    fn inverse_correction<'c, 'a>(
+        context: &'c Context,
+        block: &'a Block<'c>,
+        r: Value<'c, '_>,
+        k: Value<'c, '_>,
+        location: Location<'c>,
+    ) -> Result<Value<'c, 'a>> {
+        let i16 = IntegerType::new(context, 16).into();
+        let i256 = IntegerType::new(context, 256).into();
+
+        let k0 = block.const_int(context, location, 0, 256)?;
+        let k0_i16 = block.const_int(context, location, 0, 16)?;
+        let k1_i16 = block.const_int(context, location, 1, 16)?;
+        let k1 = block.const_int(context, location, 1, 256)?;
+        let k256 = block.const_int(context, location, 256, 16)?;
+
+        let loop_limit = block.subi(k, k256, location)?;
+
+        let result = block.append_operation(
+            ods::scf::r#for(
+                context,
+                &[i256],
+                k0_i16,
+                loop_limit,
+                k1_i16,
+                &[r],
+                {
+                    let region = Region::new();
+                    let loop_block =
+                        region.append_block(Block::new(&[(i16, location), (i256, location)]));
+
+                    let r = loop_block.arg(1)?;
+
+                    let r_and_one = loop_block.andi(r, k1, location)?;
+                    let is_r_even = loop_block.cmpi(
+                        context,
+                        arith::CmpiPredicate::Eq,
+                        r_and_one,
+                        k0,
+                        location,
+                    )?;
+
+                    let next_r = loop_block.append_op_result(scf::r#if(
+                        is_r_even,
+                        &[i256],
+                        {
+                            let region = Region::new();
+                            let block_then = region.append_block(Block::new(&[]));
+
+                            let result = block_then.shrui(r, k1, location)?;
+
+                            block_then.append_operation(scf::r#yield(&[result], location));
+
+                            region
+                        },
+                        {
+                            let region = Region::new();
+                            let block_else = region.append_block(Block::new(&[]));
+
+                            let prime =
+                                block_else.const_int(context, location, PRIME.clone(), 256)?;
+
+                            let result = block_else.addi(r, prime, location)?;
+                            let result = block_else.shrui(result, k1, location)?;
+
+                            block_else.append_operation(scf::r#yield(&[result], location));
+
+                            region
+                        },
+                        location,
+                    ))?;
+
+                    loop_block.append_operation(scf::r#yield(&[next_r], location));
+
+                    region
+                },
+                location,
+            )
+            .into(),
+        );
+
+        Ok(result.result(0)?.into())
+    }
+
+    fn almost_inverse<'c, 'a>(
+        context: &'c Context,
+        block: &'a Block<'c>,
+        value: Value<'c, '_>,
+        location: Location<'c>,
+    ) -> Result<(Value<'c, 'a>, Value<'c, 'a>)> {
+        let i16 = IntegerType::new(context, 16).into();
+        let value_ty = value.r#type();
+
+        let k0 = block.const_int_from_type(context, location, 0, value_ty)?;
+        let k0_i16 = block.const_int(context, location, 0, 16)?;
+        let prime = block.const_int_from_type(context, location, PRIME.clone(), value_ty)?;
+        let k1 = block.const_int_from_type(context, location, 1, value_ty)?;
+        let k1_i16 = block.const_int(context, location, 1, 16)?;
+
+        let result = block.append_operation(scf::r#while(
+            &[prime, value, k0, k1, k0_i16],
+            &[value_ty, value_ty, value_ty, value_ty, i16],
+            {
+                let region = Region::new();
+                let cond_block = region.append_block(Block::new(&[
+                    (value_ty, location),
+                    (value_ty, location),
+                    (value_ty, location),
+                    (value_ty, location),
+                    (i16, location),
+                ]));
+                let u = cond_block.arg(0)?;
+                let v = cond_block.arg(1)?;
+                let r = cond_block.arg(2)?;
+                let s = cond_block.arg(3)?;
+
+                let u_is_even = {
+                    let u_and_one = cond_block.andi(u, k1, location)?;
+                    cond_block.cmpi(context, arith::CmpiPredicate::Eq, u_and_one, k0, location)?
+                };
+
+                // if u is even then
+                //    u = u / 2
+                //    s = 2 * s
+                // else if v is even then
+                //    v = v / 2
+                //    s = 2 * s
+                // else if u > v then
+                //    u = (u − v) / 2
+                //    r = r + s
+                //    s = 2 * s
+                // else if u <= v then
+                //     v = (v − u) / 2
+                //     s = r + s
+                //     r = 2 * r
+                let result = cond_block.append_operation(scf::r#if(
+                    u_is_even,
+                    &[value_ty, value_ty, value_ty, value_ty],
+                    {
+                        let region = Region::new();
+                        let u_even_block = region.append_block(Block::new(&[]));
+
+                        let u = u_even_block.shrui(u, k1, location)?;
+                        let s = u_even_block.shli(s, k1, location)?;
+
+                        u_even_block.append_operation(scf::r#yield(&[u, v, r, s], location));
+
+                        region
+                    },
+                    {
+                        let region = Region::new();
+                        let u_not_even_block = region.append_block(Block::new(&[]));
+
+                        let v_is_even = {
+                            let v_and_one = u_not_even_block.andi(v, k1, location)?;
+                            u_not_even_block.cmpi(
+                                context,
+                                arith::CmpiPredicate::Eq,
+                                v_and_one,
+                                k0,
+                                location,
+                            )?
+                        };
+
+                        let result = u_not_even_block.append_operation(scf::r#if(
+                            v_is_even,
+                            &[value_ty, value_ty, value_ty, value_ty],
+                            {
+                                let region = Region::new();
+                                let v_even_block = region.append_block(Block::new(&[]));
+
+                                let v = v_even_block.shrui(v, k1, location)?;
+                                let r = v_even_block.shli(r, k1, location)?;
+
+                                v_even_block
+                                    .append_operation(scf::r#yield(&[u, v, r, s], location));
+
+                                region
+                            },
+                            {
+                                let region = Region::new();
+                                let v_not_even_block = region.append_block(Block::new(&[]));
+
+                                let is_u_gt_v = v_not_even_block.cmpi(
+                                    context,
+                                    arith::CmpiPredicate::Ugt,
+                                    u,
+                                    v,
+                                    location,
+                                )?;
+
+                                let result = v_not_even_block.append_operation(scf::r#if(
+                                    is_u_gt_v,
+                                    &[value_ty, value_ty, value_ty, value_ty],
+                                    {
+                                        let region = Region::new();
+                                        let u_gt_v_block = region.append_block(Block::new(&[]));
+
+                                        let u = {
+                                            let u_min_v = u_gt_v_block.subi(u, v, location)?;
+                                            u_gt_v_block.shrui(u_min_v, k1, location)?
+                                        };
+                                        let r = u_gt_v_block.addi(r, s, location)?;
+                                        let s = u_gt_v_block.shli(s, k1, location)?;
+
+                                        u_gt_v_block.append_operation(scf::r#yield(
+                                            &[u, v, r, s],
+                                            location,
+                                        ));
+
+                                        region
+                                    },
+                                    {
+                                        let region = Region::new();
+                                        let v_ge_u_block = region.append_block(Block::new(&[]));
+
+                                        let v = {
+                                            let v_min_u = v_ge_u_block.subi(v, u, location)?;
+                                            v_ge_u_block.shrui(v_min_u, k1, location)?
+                                        };
+                                        let s = v_ge_u_block.addi(r, s, location)?;
+                                        let r = v_ge_u_block.shli(r, k1, location)?;
+
+                                        v_ge_u_block.append_operation(scf::r#yield(
+                                            &[u, v, r, s],
+                                            location,
+                                        ));
+
+                                        region
+                                    },
+                                    location,
+                                ));
+
+                                let u = result.result(0)?.into();
+                                let v = result.result(1)?.into();
+                                let r = result.result(2)?.into();
+                                let s = result.result(3)?.into();
+
+                                v_not_even_block
+                                    .append_operation(scf::r#yield(&[u, v, r, s], location));
+
+                                region
+                            },
+                            location,
+                        ));
+
+                        let u = result.result(0)?.into();
+                        let v = result.result(1)?.into();
+                        let r = result.result(2)?.into();
+                        let s = result.result(3)?.into();
+
+                        u_not_even_block.append_operation(scf::r#yield(&[u, v, r, s], location));
+                        region
+                    },
+                    location,
+                ));
+
+                let u = result.result(0)?.into();
+                let v = result.result(1)?.into();
+                let r = result.result(2)?.into();
+                let s = result.result(3)?.into();
+                let k = cond_block.addi(cond_block.arg(4)?, k1_i16, location)?;
+
+                let is_v_gt_zero =
+                    cond_block.cmpi(context, arith::CmpiPredicate::Ugt, v, k0, location)?;
+
+                cond_block.append_operation(scf::condition(
+                    is_v_gt_zero,
+                    &[u, v, r, s, k],
+                    location,
+                ));
+
+                region
+            },
+            {
+                let region = Region::new();
+                let loop_block = region.append_block(Block::new(&[
+                    (value_ty, location),
+                    (value_ty, location),
+                    (value_ty, location),
+                    (value_ty, location),
+                    (i16, location),
+                ]));
+
+                let u = loop_block.arg(0)?;
+                let v = loop_block.arg(1)?;
+                let r = loop_block.arg(2)?;
+                let s = loop_block.arg(3)?;
+                let k = loop_block.arg(4)?;
+
+                loop_block.append_operation(scf::r#yield(&[u, v, r, s, k], location));
+
+                region
+            },
+            location,
+        ));
+
+        // END BLOCK.
+        let (almost_inv, k) = {
+            // if r >= p:
+            //     r = r − p
+            // else:
+            //     r
+            // return (p - r), k
+            let k = result.result(4)?.into();
+            let r = {
+                let r = result.result(2)?.into();
+                let r_wrapped = block.subi(r, prime, location)?;
+                let r_ge_prime =
+                    block.cmpi(context, arith::CmpiPredicate::Uge, r, prime, location)?;
+                let r =
+                    block.append_op_result(arith::select(r_ge_prime, r_wrapped, r, location))?;
+
+                block.subi(prime, r, location)?
+            };
+
+            (r, k)
+        };
+
+        Ok((almost_inv, k))
+    }
+
     fn monty_reduce<'c, 'a>(
         context: &'c Context,
         block: &'a Block<'c>,
         x: Value<'c, '_>,
         location: Location<'c>,
     ) -> Result<Value<'c, 'a>> {
-        let mu = block.const_int(context, location, &*MONTY_MU_U256, 512)?;
-        let r_minus_1 = block.const_int(context, location, &*MONTY_R - 1u8, 512)?;
+        let mu = block.const_int(context, location, MONTY_MU_U256.clone(), 512)?;
+        let r_minus_1 = block.const_int(context, location, MONTY_R.clone() - 1u8, 512)?;
         let k256 = block.const_int(context, location, 256, 512)?;
-        let modulus = block.const_int(context, location, &*PRIME, 512)?;
+        let modulus = block.const_int(context, location, PRIME.clone(), 512)?;
 
         // q = (value * mu) mod r.
         let q = block.muli(x, mu, location)?;
@@ -161,7 +525,7 @@ mod tests {
 
         assert_eq!(felt_from_raw, felt);
 
-        let felt = Felt::from(&*PRIME);
+        let felt = Felt::from(PRIME.clone());
         let bytes = felt.to_bytes_le_raw();
         let felt_from_raw = {
             let value = U256::from_bytes_le(&bytes).unwrap();
@@ -185,7 +549,7 @@ mod tests {
 
         assert_eq!(reduced_monty_felt, felt);
 
-        let felt = Felt::from(&*PRIME).to_biguint();
+        let felt = Felt::from(PRIME.clone()).to_biguint();
         let monty_felt = monty_transform(&felt, &PRIME).unwrap();
         let reduced_monty_felt = monty_reduction(&monty_felt, &PRIME).unwrap();
 

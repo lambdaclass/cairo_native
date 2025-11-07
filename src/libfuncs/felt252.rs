@@ -3,11 +3,8 @@
 use super::LibfuncHelper;
 use crate::{
     error::{panic::ToNativeAssertError, Result},
-    metadata::{runtime_bindings::RuntimeBindingsMeta, MetadataStorage},
-    utils::{
-        montgomery::{mlir, monty_transform},
-        ProgramRegistryExt, PRIME,
-    },
+    metadata::MetadataStorage,
+    utils::{montgomery, ProgramRegistryExt, PRIME},
 };
 use cairo_lang_sierra::{
     extensions::{
@@ -74,10 +71,6 @@ pub fn build_binary_operation<'ctx, 'this>(
     )?;
     let i256 = IntegerType::new(context, 256).into();
 
-    let runtime_bindings = metadata
-        .get_mut::<RuntimeBindingsMeta>()
-        .to_native_assert_error("Unable to get the RuntimeBindingsMeta from MetadataStorage")?;
-
     let (op, lhs, rhs) = match info {
         Felt252BinaryOperationConcrete::WithVar(operation) => {
             (operation.operator, entry.arg(0)?, entry.arg(1)?)
@@ -89,9 +82,9 @@ pub fn build_binary_operation<'ctx, 'this>(
                     .clone(),
                 _ => operation.c.magnitude().clone(),
             };
-            let monty_value = monty_transform(&value, &PRIME).to_native_assert_error(&format!(
-                "could not transform felt252: {value} to Montgomery form"
-            ))?;
+            let monty_value = montgomery::monty_transform(&value, &PRIME).to_native_assert_error(
+                &format!("could not transform felt252: {value} to Montgomery form"),
+            )?;
 
             // TODO: Ensure that the constant is on the correct side of the operation.
             let rhs = entry.const_int_from_type(context, location, monty_value, felt252_ty)?;
@@ -138,18 +131,11 @@ pub fn build_binary_operation<'ctx, 'this>(
             entry.trunci(result, felt252_ty, location)?
         }
         Felt252BinaryOperator::Mul => {
-            mlir::monty_mul(context, entry, lhs, rhs, felt252_ty, location)?
+            montgomery::mlir::monty_mul(context, entry, lhs, rhs, felt252_ty, location)?
         }
-        _ => runtime_bindings.libfunc_felt252_binary_op(
-            context,
-            helper.module,
-            helper,
-            entry,
-            lhs,
-            rhs,
-            op,
-            location,
-        )?,
+        Felt252BinaryOperator::Div => {
+            montgomery::mlir::monty_div(context, entry, lhs, rhs, felt252_ty, location)?
+        }
     };
 
     helper.br(entry, 0, &[result], location)
@@ -179,9 +165,9 @@ pub fn build_const<'ctx, 'this>(
         &info.branch_signatures()[0].vars[0].ty,
     )?;
 
-    let monty_value = monty_transform(&value, &PRIME).to_native_assert_error(&format!(
-        "could not transform felt252: {value} to Montgomery form"
-    ))?;
+    let monty_value = montgomery::monty_transform(&value, &PRIME).to_native_assert_error(
+        &format!("could not transform felt252: {value} to Montgomery form"),
+    )?;
     let value = entry.const_int_from_type(context, location, monty_value, felt252_ty)?;
 
     helper.br(entry, 0, &[value], location)

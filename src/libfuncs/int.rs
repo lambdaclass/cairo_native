@@ -903,7 +903,7 @@ fn build_to_felt252<'ctx, 'this>(
     };
 
     // We are casting to a felt, so we need convert it into Montgomery space.
-    let r2 = entry.const_int(context, location, &*MONTY_R2, 257)?;
+    let r2 = entry.const_int(context, location, *MONTY_R2, 257)?;
     let value = montgomery::mlir::monty_mul(context, entry, value, r2, felt252_ty, location)?;
 
     helper.br(entry, 0, &[value], location)
