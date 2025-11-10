@@ -68,8 +68,8 @@ fn build_gas_reserve_create<'ctx, 'this>(
     )?;
 
     let gas_builtin_ty = IntegerType::new(context, 64).into();
-    let spare_gas = entry.append_op_result(arith::subi(current_gas_128, amount, location))?;
-    let spare_gas = entry.append_op_result(arith::trunci(spare_gas, gas_builtin_ty, location))?;
+    let spare_gas_128 = entry.append_op_result(arith::subi(current_gas_128, amount, location))?;
+    let spare_gas = entry.append_op_result(arith::trunci(spare_gas_128, gas_builtin_ty, location))?;
 
     helper.cond_br(
         context,
@@ -101,14 +101,14 @@ fn build_gas_reserve_utilize<'ctx, 'this>(
     _info: &SignatureOnlyConcreteLibfunc,
 ) -> Result<()> {
     let current_gas = entry.arg(0)?; // u64
-    let gas_reserve = entry.arg(1)?; // u128
+    let gas_reserve_128 = entry.arg(1)?; // u128
 
-    let trunc_reserve = entry.append_op_result(arith::trunci(
-        gas_reserve,
+    let gas_reserve = entry.append_op_result(arith::trunci(
+        gas_reserve_128,
         IntegerType::new(context, 64).into(),
         location,
     ))?;
-    let updated_gas = entry.append_op_result(arith::addi(current_gas, trunc_reserve, location))?;
+    let updated_gas = entry.append_op_result(arith::addi(current_gas, gas_reserve, location))?;
 
     helper.br(entry, 0, &[updated_gas], location)
 }
