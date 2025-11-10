@@ -577,9 +577,7 @@ impl RuntimeBindingsMeta {
     /// - Div operation
     ///
     /// Executes the operation on the `QM31` values referenced by `lhs_ptr` and `rhs_ptr`,
-    /// and stores the resulting `QM31` in `res_ptr`.
-    ///
-    /// Returns a opaque pointer as the result.
+    /// and returns the resulting `QM31`.
     #[allow(clippy::too_many_arguments)]
     pub fn libfunc_qm31_bin_op<'c, 'a>(
         &mut self,

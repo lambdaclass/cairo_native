@@ -437,9 +437,6 @@ fn parse_result(
             Some(ptr) => Ok(Value::from_ptr(ptr, type_id, registry, true)?),
             None => {
                 #[cfg(target_arch = "x86_64")]
-                // Since x86_64's return values hold at most two different 64bit registers,
-                // everything bigger than u128 will be returned by memory, therefore making
-                // this branch is unreachable on that architecture.
                 return Err(Error::ParseAttributeError);
 
                 #[cfg(target_arch = "aarch64")]
