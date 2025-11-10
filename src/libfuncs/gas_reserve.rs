@@ -69,7 +69,8 @@ fn build_gas_reserve_create<'ctx, 'this>(
 
     let gas_builtin_ty = IntegerType::new(context, 64).into();
     let spare_gas_128 = entry.append_op_result(arith::subi(current_gas_128, amount, location))?;
-    let spare_gas = entry.append_op_result(arith::trunci(spare_gas_128, gas_builtin_ty, location))?;
+    let spare_gas =
+        entry.append_op_result(arith::trunci(spare_gas_128, gas_builtin_ty, location))?;
 
     helper.cond_br(
         context,
@@ -116,81 +117,89 @@ fn build_gas_reserve_utilize<'ctx, 'this>(
 #[cfg(test)]
 mod test {
     use crate::{load_cairo, utils::testing::run_program, Value};
+    use proptest::proptest;
+    const GAS_OVERFLOW: u128 = u64::MAX as u128 + 1;
 
-    #[test]
-    fn run_create() {
-        let program = load_cairo!(
-            use core::gas::{GasReserve, gas_reserve_create, gas_reserve_utilize};
+    proptest! {
+        #[test]
+        fn run_utilize(gas_quant: u64) { // The quantity cant be bigger than an u64. Otherwise it would panic
+            let program = load_cairo!(
+                use core::gas::{GasReserve, gas_reserve_create, gas_reserve_utilize};
 
-            fn run_test_1() -> Option<GasReserve> {
-                gas_reserve_create(100)
-            }
+                fn run_test(amount: u128) -> u128 {
+                    let initial_gas = core::testing::get_available_gas();
+                    let reserve = gas_reserve_create(amount).unwrap();
+                    gas_reserve_utilize(reserve);
+                    let final_gas = core::testing::get_available_gas();
 
-            fn run_test_2(amount: u128) -> u128 {
-                let initial_gas = core::testing::get_available_gas();
-                let reserve = gas_reserve_create(amount).unwrap();
-                let final_gas = core::testing::get_available_gas();
-                gas_reserve_utilize(reserve);
+                    initial_gas - final_gas
+                }
+            );
 
-                initial_gas - final_gas
-            }
-        );
-
-        let result = run_program(&program, "run_test_1", &[]).return_value;
-        if let Value::Enum { tag, value, .. } = result {
-            assert_eq!(tag, 0);
-            assert_eq!(value, Box::new(Value::Uint128(100)))
-        }
-
-        let amount = 100;
-        let result = run_program(&program, "run_test_2", &[Value::Uint128(amount)]).return_value;
-        if let Value::Enum { tag, value, .. } = result {
-            if let Value::Struct { fields, .. } = *value {
-                assert_eq!(tag, 0);
-                assert_eq!(fields[0], Value::Uint128(amount));
+            let result = run_program(&program, "run_test", &[Value::Uint128(gas_quant as u128)]).return_value;
+            if let Value::Enum { tag, value, .. } = result {
+                if let Value::Struct { fields, .. } = *value {
+                    assert_eq!(tag, 0);
+                    assert_eq!(fields[0], Value::Uint128(0));
+                }
             }
         }
 
-        let amount = 700;
-        let result = run_program(&program, "run_test_2", &[Value::Uint128(amount)]).return_value;
-        if let Value::Enum { tag, value, .. } = result {
-            if let Value::Struct { fields, .. } = *value {
+        #[test]
+        fn run_create_success(gas_quant: u64) {
+            let program = load_cairo!(
+                use core::gas::{GasReserve, gas_reserve_create, gas_reserve_utilize};
+
+                fn run_test_1(amount: u128) -> Option<GasReserve> {
+                    gas_reserve_create(amount)
+                }
+
+                fn run_test_2(amount: u128) -> u128 {
+                    let initial_gas = core::testing::get_available_gas();
+                    let reserve = gas_reserve_create(amount).unwrap();
+                    let final_gas = core::testing::get_available_gas();
+                    gas_reserve_utilize(reserve);
+
+                    initial_gas - final_gas
+                }
+            );
+
+            let result = run_program(&program, "run_test_1", &[Value::Uint128(gas_quant as u128)]).return_value;
+            if let Value::Enum { tag, value, .. } = result {
                 assert_eq!(tag, 0);
-                assert_eq!(fields[0], Value::Uint128(amount));
+                assert_eq!(value, Box::new(Value::Uint128(gas_quant as u128)))
+            }
+
+            let result = run_program(&program, "run_test_2", &[Value::Uint128(gas_quant as u128)]).return_value;
+            if let Value::Enum { tag, value, .. } = result {
+                if let Value::Struct { fields, .. } = *value {
+                    assert_eq!(tag, 0);
+                    assert_eq!(fields[0], Value::Uint128(gas_quant as u128));
+                }
             }
         }
-    }
 
-    #[test]
-    fn run_utilize() {
-        let program = load_cairo!(
-            use core::gas::{GasReserve, gas_reserve_create, gas_reserve_utilize};
+        /// Checks that the reserve creation fails when using amounts above u64.
+        /// Gas is represented as a u64, but reserve amounts can be u128, so when
+        /// trying to create a reserve that exceeds the max gas amount it should fail.
+        #[test]
+        fn run_create_fail(gas_quant in GAS_OVERFLOW..u128::MAX ) {
+            let program = load_cairo!(
+                use core::gas::{GasReserve, gas_reserve_create, gas_reserve_utilize};
 
-            fn run_test(amount: u128) -> u128 {
-                let initial_gas = core::testing::get_available_gas();
-                let reserve = gas_reserve_create(amount).unwrap();
-                gas_reserve_utilize(reserve);
-                let final_gas = core::testing::get_available_gas();
+                fn run_test(amount: u128) -> u128 {
+                    let initial_gas = core::testing::get_available_gas();
+                    let reserve = gas_reserve_create(amount).unwrap(); // It should panic here
+                    gas_reserve_utilize(reserve);
+                    let final_gas = core::testing::get_available_gas();
 
-                initial_gas - final_gas
-            }
-        );
+                    initial_gas - final_gas
+                }
+            );
 
-        let gas_quant = 10;
-        let result = run_program(&program, "run_test", &[Value::Uint128(gas_quant)]).return_value;
-        if let Value::Enum { tag, value, .. } = result {
-            if let Value::Struct { fields, .. } = *value {
-                assert_eq!(tag, 0);
-                assert_eq!(fields[0], Value::Uint128(0));
-            }
-        }
-
-        let gas_quant = 1000;
-        let result = run_program(&program, "run_test", &[Value::Uint128(gas_quant)]).return_value;
-        if let Value::Enum { tag, value, .. } = result {
-            if let Value::Struct { fields, .. } = *value {
-                assert_eq!(tag, 0);
-                assert_eq!(fields[0], Value::Uint128(0));
+            let result = run_program(&program, "run_test", &[Value::Uint128(gas_quant as u128)]).return_value;
+            if let Value::Enum { tag, .. } = result {
+                assert_eq!(tag, 1);
             }
         }
     }
