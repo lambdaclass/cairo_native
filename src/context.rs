@@ -33,7 +33,7 @@ use mlir_sys::{
     mlirLLVMDIModuleAttrGet, MlirLLVMDIEmissionKind_MlirLLVMDIEmissionKindFull,
     MlirLLVMDINameTableKind_MlirLLVMDINameTableKindDefault,
 };
-use std::{sync::OnceLock, time::Instant};
+use std::{path::Path, sync::OnceLock, time::Instant};
 
 /// Context of IRs, dialects and passes for Cairo programs compilation.
 #[derive(Debug, Eq, PartialEq)]
@@ -179,6 +179,7 @@ impl NativeContext {
             unsafe { Attribute::from_raw(di_unit_id) },
             ignore_debug_names,
             clone_option_mut!(stats),
+            Path::new("program.sierra"),
         )?;
         let sierra_to_mlir_time = pre_sierra_to_mlir_instant.elapsed().as_millis();
         if let Some(&mut ref mut stats) = stats {
@@ -243,6 +244,7 @@ impl NativeContext {
         ignore_debug_names: bool,
         gas_metadata_config: Option<MetadataComputationConfig>,
         stats: Option<&mut Statistics>,
+        source_path: impl AsRef<Path>,
     ) -> Result<NativeModule<'_>, Error> {
         static INITIALIZED: OnceLock<()> = OnceLock::new();
         INITIALIZED.get_or_init(|| unsafe {
@@ -264,17 +266,20 @@ impl NativeContext {
             mlirDisctinctAttrCreate(id)
         };
 
+        let source_filename = source_path.as_ref().file_name().unwrap().to_str().unwrap();
+        let source_directory = source_path.as_ref().parent().unwrap().to_str().unwrap();
+
         let op = OperationBuilder::new(
             "builtin.module",
             Location::fused(
                 &self.context,
-                &[Location::new(&self.context, "program.sierra", 0, 0)],
+                &[Location::new(&self.context, source_filename, 0, 0)],
                 {
                     let file_attr = unsafe {
                         Attribute::from_raw(mlirLLVMDIFileAttrGet(
                             self.context.to_raw(),
-                            StringAttribute::new(&self.context, "program.sierra").to_raw(),
-                            StringAttribute::new(&self.context, "").to_raw(),
+                            StringAttribute::new(&self.context, source_filename).to_raw(),
+                            StringAttribute::new(&self.context, source_directory).to_raw(),
                         ))
                     };
                     unsafe {
@@ -351,6 +356,7 @@ impl NativeContext {
             unsafe { Attribute::from_raw(di_unit_id) },
             ignore_debug_names,
             clone_option_mut!(stats),
+            source_path,
         )?;
         let sierra_to_mlir_time = pre_sierra_to_mlir_instant.elapsed().as_millis();
         if let Some(&mut ref mut stats) = stats {

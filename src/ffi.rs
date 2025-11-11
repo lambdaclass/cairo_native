@@ -12,7 +12,7 @@ use llvm_sys::{
     core::{
         LLVMContextCreate, LLVMContextDispose, LLVMDisposeMemoryBuffer, LLVMDisposeMessage,
         LLVMDisposeModule, LLVMGetBufferSize, LLVMGetBufferStart, LLVMGetFirstUse,
-        LLVMGetInstructionOpcode,
+        LLVMGetInstructionOpcode, LLVMPrintModuleToFile,
     },
     error::LLVMGetErrorMessage,
     prelude::LLVMMemoryBufferRef,
@@ -23,7 +23,7 @@ use llvm_sys::{
     target_machine::{
         LLVMCodeGenFileType, LLVMCodeGenOptLevel, LLVMCodeModel, LLVMCreateTargetMachine,
         LLVMDisposeTargetMachine, LLVMGetDefaultTargetTriple, LLVMGetHostCPUFeatures,
-        LLVMGetHostCPUName, LLVMGetTargetFromTriple, LLVMRelocMode,
+        LLVMGetHostCPUName, LLVMGetTargetFromTriple, LLVMRelocMode, LLVMTargetMachineEmitToFile,
         LLVMTargetMachineEmitToMemoryBuffer, LLVMTargetRef,
     },
     transforms::pass_builder::{
@@ -37,6 +37,7 @@ use std::{
     ffi::{CStr, CString},
     io::Write,
     mem::MaybeUninit,
+    os::unix::ffi::OsStrExt,
     path::Path,
     ptr::{addr_of_mut, null_mut},
     sync::OnceLock,
@@ -267,8 +268,9 @@ pub fn module_to_object(
 pub fn module_to_object_2(
     module: &Module<'_>,
     opt_level: OptLevel,
+    object_path: impl AsRef<Path>,
     stats: Option<&mut Statistics>,
-) -> Result<Vec<u8>> {
+) -> Result<()> {
     static INITIALIZED: OnceLock<()> = OnceLock::new();
 
     INITIALIZED.get_or_init(|| unsafe {
@@ -289,6 +291,26 @@ pub fn module_to_object_2(
         let mlir_to_llvm_time = pre_mlir_to_llvm_instant.elapsed().as_millis();
         if let Some(&mut ref mut stats) = stats {
             stats.compilation_mlir_to_llvm_time_ms = Some(mlir_to_llvm_time);
+        }
+
+        let mut null = null_mut();
+        let error_buffer = addr_of_mut!(null);
+        let llvmir_path_cstr = CString::new(
+            object_path
+                .as_ref()
+                .with_extension("ll")
+                .as_os_str()
+                .as_bytes(),
+        )
+        .unwrap();
+        let ok = LLVMPrintModuleToFile(llvm_module, llvmir_path_cstr.as_ptr(), error_buffer);
+        if ok != 0 {
+            let error = CStr::from_ptr(*error_buffer);
+            let err = error.to_string_lossy().to_string();
+            LLVMDisposeMessage(*error_buffer);
+            Err(Error::LLVMCompileError(err))?;
+        } else if !(*error_buffer).is_null() {
+            LLVMDisposeMessage(*error_buffer);
         }
 
         if let Some(&mut ref mut stats) = stats {
@@ -386,16 +408,15 @@ pub fn module_to_object_2(
 
         LLVMDisposePassBuilderOptions(opts);
 
-        let mut out_buf: MaybeUninit<LLVMMemoryBufferRef> = MaybeUninit::uninit();
-
         trace!("starting llvm to object compilation");
         let pre_llvm_to_object_instant = Instant::now();
-        let ok = LLVMTargetMachineEmitToMemoryBuffer(
+        let object_path_cstr = CString::new(object_path.as_ref().as_os_str().as_bytes()).unwrap();
+        let ok = LLVMTargetMachineEmitToFile(
             machine,
             llvm_module,
+            object_path_cstr.as_ptr(),
             LLVMCodeGenFileType::LLVMObjectFile,
             error_buffer,
-            out_buf.as_mut_ptr(),
         );
         let llvm_to_object_time = pre_llvm_to_object_instant.elapsed().as_millis();
         if let Some(&mut ref mut stats) = stats {
@@ -411,20 +432,11 @@ pub fn module_to_object_2(
             LLVMDisposeMessage(*error_buffer);
         }
 
-        let out_buf = out_buf.assume_init();
-
-        let out_buf_start: *const u8 = LLVMGetBufferStart(out_buf).cast();
-        let out_buf_size = LLVMGetBufferSize(out_buf);
-
-        // keep it in rust side
-        let data = std::slice::from_raw_parts(out_buf_start, out_buf_size).to_vec();
-
-        LLVMDisposeMemoryBuffer(out_buf);
         LLVMDisposeTargetMachine(machine);
         LLVMDisposeModule(llvm_module);
         LLVMContextDispose(llvm_context);
 
-        Ok(data)
+        Ok(())
     }
 }
 
@@ -513,25 +525,12 @@ pub fn object_to_shared_lib(
 }
 
 pub fn object_to_shared_lib_2(
-    object: &[u8],
-    output_filename: &Path,
+    object_path: &Path,
+    output_path: &Path,
     stats: Option<&mut Statistics>,
 ) -> Result<()> {
-    // linker seems to need a file and doesn't accept stdin
-    let mut file = NamedTempFile::new()?;
-    file.write_all(object)?;
-    let file = file.into_temp_path();
-
-    let file_path = file.display().to_string();
-    let output_path = output_filename.display().to_string();
-    if let Ok(x) = std::env::var("NATIVE_DEBUG_DUMP") {
-        if x == "1" || x == "true" {
-            // forget so the temp file is not deleted and the debugger can load it.
-            // its still in a temp file directory so eventually the OS will delete it, but just not instantly.
-            // todo: maybe remove it when exiting, for example using atexit.
-            std::mem::forget(file);
-        }
-    }
+    let object_path = object_path.to_str().unwrap().to_string();
+    let output_path = output_path.to_str().unwrap().to_string();
 
     let args: Vec<Cow<'static, str>> = {
         #[cfg(target_os = "macos")]
@@ -546,7 +545,7 @@ pub fn object_to_shared_lib_2(
             ];
 
             args.extend([
-                Cow::from(file_path),
+                Cow::from(object_path),
                 "-o".into(),
                 Cow::from(output_path),
                 "-lSystem".into(),
@@ -567,7 +566,7 @@ pub fn object_to_shared_lib_2(
                 "-o".into(),
                 Cow::from(output_path),
                 "-lc".into(),
-                Cow::from(file_path),
+                Cow::from(object_path),
             ]);
 
             args

@@ -102,6 +102,7 @@ use std::{
     cell::Cell,
     collections::{hash_map::Entry, BTreeMap, HashMap, HashSet},
     ops::Deref,
+    path::Path,
 };
 
 /// The [BlockStorage] type is used to map each statement into its own entry block (on the right),
@@ -134,6 +135,7 @@ pub fn compile(
     di_compile_unit_id: Attribute,
     ignore_debug_names: bool,
     stats: Option<&mut Statistics>,
+    source_path: impl AsRef<Path>,
 ) -> Result<(), Error> {
     if let Ok(x) = std::env::var("NATIVE_DEBUG_DUMP") {
         if x == "1" || x == "true" {
@@ -164,6 +166,7 @@ pub fn compile(
             sierra_stmt_start_offset,
             ignore_debug_names,
             clone_option_mut!(stats),
+            &source_path,
         )?;
     }
 
@@ -191,10 +194,14 @@ fn compile_func(
     sierra_stmt_start_offset: usize,
     ignore_debug_names: bool,
     stats: Option<&mut Statistics>,
+    source_path: impl AsRef<Path>,
 ) -> Result<(), Error> {
+    let source_filename = source_path.as_ref().file_name().unwrap().to_str().unwrap();
+    let source_directory = source_path.as_ref().parent().unwrap().to_str().unwrap();
+
     let fn_location = Location::new(
         context,
-        "program.sierra",
+        source_filename,
         sierra_stmt_start_offset + function.entry_point.0,
         0,
     );
@@ -305,8 +312,8 @@ fn compile_func(
         // we are using our own bindings to the C++ API.
         let file_attr = Attribute::from_raw(mlirLLVMDIFileAttrGet(
             context.to_raw(),
-            StringAttribute::new(context, "program.sierra").to_raw(),
-            StringAttribute::new(context, ".").to_raw(),
+            StringAttribute::new(context, source_filename).to_raw(),
+            StringAttribute::new(context, source_directory).to_raw(),
         ));
         let compile_unit = {
             Attribute::from_raw(mlirLLVMDICompileUnitAttrGet(
@@ -374,6 +381,7 @@ fn compile_func(
         statements,
         metadata,
         sierra_stmt_start_offset,
+        source_filename,
     )?;
 
     tracing::debug!("Generating the function implementation.");
@@ -385,7 +393,7 @@ fn compile_func(
                 *ty,
                 Location::new(
                     context,
-                    "program.sierra",
+                    source_filename,
                     sierra_stmt_start_offset + function.entry_point.0,
                     0,
                 ),
@@ -403,7 +411,7 @@ fn compile_func(
             let type_info = registry.get_type(&param.ty)?;
             let location = Location::new(
                 context,
-                "program.sierra",
+                source_filename,
                 sierra_stmt_start_offset + function.entry_point.0,
                 0,
             );
@@ -446,7 +454,7 @@ fn compile_func(
         {
             Location::new(
                 context,
-                "program.sierra",
+                source_filename,
                 sierra_stmt_start_offset + function.entry_point.0,
                 0,
             )
@@ -509,7 +517,7 @@ fn compile_func(
 
                     let location = Location::new(
                         context,
-                        "program.sierra",
+                        source_filename,
                         sierra_stmt_start_offset + statement_idx.0,
                         0,
                     );
@@ -714,7 +722,7 @@ fn compile_func(
                         &format!("return(stmt_idx={})", statement_idx),
                         Location::new(
                             context,
-                            "program.sierra",
+                            source_filename,
                             sierra_stmt_start_offset + statement_idx.0,
                             0,
                         ),
@@ -753,7 +761,7 @@ fn compile_func(
                                     &format!("return(stmt_idx={}, tail_recursion)", statement_idx),
                                     Location::new(
                                         context,
-                                        "program.sierra",
+                                        source_filename,
                                         sierra_stmt_start_offset + statement_idx.0,
                                         0,
                                     ),
@@ -1006,7 +1014,7 @@ fn compile_func(
             context,
             &[Location::new(
                 context,
-                "program.sierra",
+                source_filename,
                 sierra_stmt_start_offset + function.entry_point.0,
                 0,
             )],
@@ -1023,7 +1031,7 @@ fn compile_func(
         &return_types,
         Location::new(
             context,
-            "program.sierra",
+            source_filename,
             sierra_stmt_start_offset + function.entry_point.0,
             0,
         ),
@@ -1043,6 +1051,7 @@ fn generate_function_structure<'c, 'a>(
     statements: &[Statement],
     metadata_storage: &mut MetadataStorage,
     sierra_stmt_start_offset: usize,
+    source_filename: &str,
 ) -> Result<(BlockRef<'c, 'a>, BlockStorage<'c, 'a>, bool), Error> {
     let initial_state = edit_state::put_results::<Type>(
         OrderedHashMap::default(),
@@ -1094,7 +1103,7 @@ fn generate_function_structure<'c, 'a>(
 
                     let location = Location::new(
                         context,
-                        "program.sierra",
+                        source_filename,
                         sierra_stmt_start_offset + statement_idx.0,
                         0,
                     );
@@ -1164,7 +1173,7 @@ fn generate_function_structure<'c, 'a>(
 
                     let location = Location::new(
                         context,
-                        "program.sierra",
+                        source_filename,
                         sierra_stmt_start_offset + statement_idx.0,
                         0,
                     );
@@ -1193,7 +1202,7 @@ fn generate_function_structure<'c, 'a>(
                 ty?,
                 Location::new(
                     context,
-                    "program.sierra",
+                    source_filename,
                     sierra_stmt_start_offset + function.entry_point.0,
                     0,
                 ),
@@ -1229,7 +1238,7 @@ fn generate_function_structure<'c, 'a>(
                                         ty,
                                         Location::new(
                                             context,
-                                            "program.sierra",
+                                            source_filename,
                                             sierra_stmt_start_offset + statement_idx.0,
                                             0,
                                         ),

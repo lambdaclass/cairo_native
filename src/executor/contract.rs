@@ -43,6 +43,7 @@ use crate::{
         RANGE_CHECK96_BUILTIN_SIZE, RANGE_CHECK_BUILTIN_SIZE, SEGMENT_ARENA_BUILTIN_SIZE,
     },
     executor::{invoke_trampoline, BuiltinCostsGuard},
+    ffi::{module_to_object_2, object_to_shared_lib_2},
     metadata::runtime_bindings::setup_runtime,
     module::NativeModule,
     native_assert, native_panic,
@@ -76,6 +77,7 @@ use cairo_lang_starknet_classes::{
 use educe::Educe;
 use itertools::{chain, Itertools};
 use libloading::Library;
+use melior::ir::operation::OperationPrintingFlags;
 use serde::{Deserialize, Serialize};
 use starknet_types_core::felt::Felt;
 use std::{
@@ -85,6 +87,7 @@ use std::{
     ffi::c_void,
     fs::{self, File},
     io,
+    os::unix::fs::MetadataExt,
     path::{Path, PathBuf},
     ptr::{self, NonNull},
     sync::Arc,
@@ -190,11 +193,14 @@ impl AotContractExecutor {
         opt_level: OptLevel,
         stats: Option<&mut Statistics>,
     ) -> Result<Option<Self>> {
-        let output_path = output_path.into();
+        let output_path: PathBuf = output_path.into();
         let lock_file = match LockFile::new(&output_path)? {
             Some(x) => x,
             None => return Ok(None),
         };
+
+        let source_path = output_path.with_extension("sierra");
+        fs::write(&source_path, program.to_string())?;
 
         let pre_compilation_instant = Instant::now();
 
@@ -216,7 +222,7 @@ impl AotContractExecutor {
         // Compile the Sierra program.
         let NativeModule {
             module, registry, ..
-        } = context.compile(
+        } = context.compile2(
             program,
             true,
             Some(MetadataComputationConfig {
@@ -238,6 +244,7 @@ impl AotContractExecutor {
                 compute_runtime_costs: false,
             }),
             clone_option_mut!(stats),
+            source_path,
         )?;
 
         if let Some(&mut ref mut stats) = stats {
@@ -341,13 +348,25 @@ impl AotContractExecutor {
         })
         .collect::<Result<BTreeMap<_, _>>>()?;
 
-        let object_data = crate::module_to_object(&module, opt_level, clone_option_mut!(stats))?;
+        let source_path = output_path.with_extension("mlir");
+        fs::write(
+            &source_path,
+            module
+                .as_operation()
+                .to_string_with_flags(OperationPrintingFlags::new().enable_debug_info(true, false))
+                .unwrap(),
+        )?;
+
+        let object_path = output_path.with_extension("object");
+
+        module_to_object_2(&module, opt_level, &object_path, clone_option_mut!(stats))?;
+
         if let Some(&mut ref mut stats) = stats {
-            stats.object_size_bytes = Some(object_data.len());
+            stats.object_size_bytes = Some(fs::metadata(&object_path)?.size() as usize);
         }
 
         // Build the shared library into the lockfile, to avoid using a tmp file.
-        crate::object_to_shared_lib(&object_data, &lock_file.0, clone_option_mut!(stats))?;
+        object_to_shared_lib_2(&object_path, &lock_file.0, clone_option_mut!(stats))?;
 
         let compilation_time = pre_compilation_instant.elapsed().as_millis();
         if let Some(&mut ref mut stats) = stats {
