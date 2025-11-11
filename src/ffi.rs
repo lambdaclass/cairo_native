@@ -512,6 +512,89 @@ pub fn object_to_shared_lib(
     }
 }
 
+pub fn object_to_shared_lib_2(
+    object: &[u8],
+    output_filename: &Path,
+    stats: Option<&mut Statistics>,
+) -> Result<()> {
+    // linker seems to need a file and doesn't accept stdin
+    let mut file = NamedTempFile::new()?;
+    file.write_all(object)?;
+    let file = file.into_temp_path();
+
+    let file_path = file.display().to_string();
+    let output_path = output_filename.display().to_string();
+    if let Ok(x) = std::env::var("NATIVE_DEBUG_DUMP") {
+        if x == "1" || x == "true" {
+            // forget so the temp file is not deleted and the debugger can load it.
+            // its still in a temp file directory so eventually the OS will delete it, but just not instantly.
+            // todo: maybe remove it when exiting, for example using atexit.
+            std::mem::forget(file);
+        }
+    }
+
+    let args: Vec<Cow<'static, str>> = {
+        #[cfg(target_os = "macos")]
+        {
+            let mut args: Vec<Cow<'static, str>> = vec![
+                "-demangle".into(),
+                "-no_deduplicate".into(),
+                "-dynamic".into(),
+                "-dylib".into(),
+                "-L/usr/local/lib".into(),
+                "-L/Library/Developer/CommandLineTools/SDKs/MacOSX.sdk/usr/lib".into(),
+            ];
+
+            args.extend([
+                Cow::from(file_path),
+                "-o".into(),
+                Cow::from(output_path),
+                "-lSystem".into(),
+            ]);
+
+            args
+        }
+        #[cfg(target_os = "linux")]
+        {
+            let mut args: Vec<Cow<'static, str>> = vec![
+                "--hash-style=gnu".into(),
+                "-shared".into(),
+                "-L/lib/../lib64".into(),
+                "-L/usr/lib/../lib64".into(),
+            ];
+
+            args.extend([
+                "-o".into(),
+                Cow::from(output_path),
+                "-lc".into(),
+                Cow::from(file_path),
+            ]);
+
+            args
+        }
+        #[cfg(target_os = "windows")]
+        {
+            unimplemented!()
+        }
+    };
+
+    let mut linker = std::process::Command::new("ld");
+
+    let pre_linking_instant = Instant::now();
+    let proc = linker.args(args.iter().map(|x| x.as_ref())).output()?;
+    let linking_time = pre_linking_instant.elapsed().as_millis();
+    if let Some(&mut ref mut stats) = stats {
+        stats.compilation_linking_time_ms = Some(linking_time);
+    }
+
+    if proc.status.success() {
+        Ok(())
+    } else {
+        let msg = String::from_utf8_lossy(&proc.stderr);
+        Err(Error::LinkError(msg.to_string()))
+    }
+}
+
 /// Gets the target triple, which identifies the platform and ABI.
 pub fn get_target_triple() -> String {
     let target_triple = unsafe {
