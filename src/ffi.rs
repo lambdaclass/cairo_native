@@ -264,6 +264,170 @@ pub fn module_to_object(
     }
 }
 
+pub fn module_to_object_2(
+    module: &Module<'_>,
+    opt_level: OptLevel,
+    stats: Option<&mut Statistics>,
+) -> Result<Vec<u8>> {
+    static INITIALIZED: OnceLock<()> = OnceLock::new();
+
+    INITIALIZED.get_or_init(|| unsafe {
+        LLVM_InitializeAllTargets();
+        LLVM_InitializeAllTargetInfos();
+        LLVM_InitializeAllTargetMCs();
+        LLVM_InitializeAllAsmPrinters();
+        LLVM_InitializeAllAsmParsers();
+    });
+
+    unsafe {
+        let llvm_context = LLVMContextCreate();
+
+        let op = module.as_operation().to_raw();
+
+        let pre_mlir_to_llvm_instant = Instant::now();
+        let llvm_module = mlirTranslateModuleToLLVMIR(op, llvm_context as *mut _) as *mut _;
+        let mlir_to_llvm_time = pre_mlir_to_llvm_instant.elapsed().as_millis();
+        if let Some(&mut ref mut stats) = stats {
+            stats.compilation_mlir_to_llvm_time_ms = Some(mlir_to_llvm_time);
+        }
+
+        if let Some(&mut ref mut stats) = stats {
+            let mut llvmir_instruction_count = 0;
+            let mut llvmir_virtual_register_count = 0;
+
+            walk_llvm_instructions(llvm_module, |instruction| {
+                // Increase total instruction count.
+                llvmir_instruction_count += 1;
+
+                // Debug string looks like "LLVM{OP}".
+                let full_opcode = format!("{:?}", LLVMGetInstructionOpcode(instruction));
+                // Strip leading "LLVM".
+                let opcode = full_opcode
+                    .strip_prefix("LLVM")
+                    .map(str::to_string)
+                    .unwrap_or(full_opcode);
+                // Update opcode frequency map.
+                *stats.llvmir_opcode_frequency.entry(opcode).or_insert(0) += 1;
+
+                // Increase virtual register count, only if the
+                // instruction value is used somewhere.
+                let first_use = LLVMGetFirstUse(instruction);
+                if !first_use.is_null() {
+                    llvmir_virtual_register_count += 1;
+                }
+            });
+
+            stats.llvmir_instruction_count = Some(llvmir_instruction_count);
+            stats.llvmir_virtual_register_count = Some(llvmir_virtual_register_count)
+        }
+
+        let mut null = null_mut();
+        let mut error_buffer = addr_of_mut!(null);
+
+        let target_triple = LLVMGetDefaultTargetTriple();
+        let target_cpu = LLVMGetHostCPUName();
+        let target_cpu_features = LLVMGetHostCPUFeatures();
+
+        let mut target: MaybeUninit<LLVMTargetRef> = MaybeUninit::uninit();
+
+        if LLVMGetTargetFromTriple(target_triple, target.as_mut_ptr(), error_buffer) != 0 {
+            let error = CStr::from_ptr(*error_buffer);
+            let err = error.to_string_lossy().to_string();
+            LLVMDisposeMessage(*error_buffer);
+            Err(Error::LLVMCompileError(err))?;
+        } else if !(*error_buffer).is_null() {
+            LLVMDisposeMessage(*error_buffer);
+            error_buffer = addr_of_mut!(null);
+        }
+
+        let target = target.assume_init();
+
+        let machine = LLVMCreateTargetMachine(
+            target,
+            target_triple.cast(),
+            target_cpu.cast(),
+            target_cpu_features.cast(),
+            match opt_level {
+                OptLevel::None => LLVMCodeGenOptLevel::LLVMCodeGenLevelNone,
+                OptLevel::Less => LLVMCodeGenOptLevel::LLVMCodeGenLevelLess,
+                OptLevel::Default => LLVMCodeGenOptLevel::LLVMCodeGenLevelDefault,
+                OptLevel::Aggressive => LLVMCodeGenOptLevel::LLVMCodeGenLevelAggressive,
+            },
+            LLVMRelocMode::LLVMRelocPIC,
+            LLVMCodeModel::LLVMCodeModelDefault,
+        );
+
+        let opts = LLVMCreatePassBuilderOptions();
+
+        let opt = match opt_level {
+            OptLevel::None => 0,
+            OptLevel::Less => 1,
+            // slp-vectorizer pass did cause some issues, but after the change
+            // on function attributes it seems to not trigger them anymore.
+            // https://github.com/llvm/llvm-project/issues/107198
+            OptLevel::Default => 2,
+            OptLevel::Aggressive => 3,
+        };
+        let passes = CString::new(format!("default<O{opt}>"))
+            .to_native_assert_error("only fails if the hardcoded string contains a null byte")?;
+
+        let pre_llvm_passes_instant = Instant::now();
+        let error = LLVMRunPasses(llvm_module, passes.as_ptr(), machine, opts);
+        let llvm_passes_time = pre_llvm_passes_instant.elapsed().as_millis();
+        if let Some(&mut ref mut stats) = stats {
+            stats.compilation_llvm_passes_time_ms = Some(llvm_passes_time);
+        }
+
+        if !error.is_null() {
+            let msg = LLVMGetErrorMessage(error);
+            let msg = CStr::from_ptr(msg);
+            Err(Error::LLVMCompileError(msg.to_string_lossy().into_owned()))?;
+        }
+
+        LLVMDisposePassBuilderOptions(opts);
+
+        let mut out_buf: MaybeUninit<LLVMMemoryBufferRef> = MaybeUninit::uninit();
+
+        trace!("starting llvm to object compilation");
+        let pre_llvm_to_object_instant = Instant::now();
+        let ok = LLVMTargetMachineEmitToMemoryBuffer(
+            machine,
+            llvm_module,
+            LLVMCodeGenFileType::LLVMObjectFile,
+            error_buffer,
+            out_buf.as_mut_ptr(),
+        );
+        let llvm_to_object_time = pre_llvm_to_object_instant.elapsed().as_millis();
+        if let Some(&mut ref mut stats) = stats {
+            stats.compilation_llvm_to_object_time_ms = Some(llvm_to_object_time);
+        }
+
+        if ok != 0 {
+            let error = CStr::from_ptr(*error_buffer);
+            let err = error.to_string_lossy().to_string();
+            LLVMDisposeMessage(*error_buffer);
+            Err(Error::LLVMCompileError(err))?;
+        } else if !(*error_buffer).is_null() {
+            LLVMDisposeMessage(*error_buffer);
+        }
+
+        let out_buf = out_buf.assume_init();
+
+        let out_buf_start: *const u8 = LLVMGetBufferStart(out_buf).cast();
+        let out_buf_size = LLVMGetBufferSize(out_buf);
+
+        // keep it in rust side
+        let data = std::slice::from_raw_parts(out_buf_start, out_buf_size).to_vec();
+
+        LLVMDisposeMemoryBuffer(out_buf);
+        LLVMDisposeTargetMachine(machine);
+        LLVMDisposeModule(llvm_module);
+        LLVMContextDispose(llvm_context);
+
+        Ok(data)
+    }
+}
+
 /// Links the passed object into a shared library, stored on the given path.
 pub fn object_to_shared_lib(
     object: &[u8],
