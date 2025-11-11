@@ -408,7 +408,7 @@ pub fn build_drop<'ctx>(
 
 /// Returns the size of the prefix in an array. This prefix contains 2
 /// integers The integers are:
-/// - Reference counter: literally the number of references to the allocation.
+/// - Reference counter: the number of references to the allocation.
 /// - Max length: The number of elements present in the allocation (not necessarily the length
 /// array/span being accessed, but the whole allocation). It is used to know how many elements
 /// to drop when freeing the allocation.

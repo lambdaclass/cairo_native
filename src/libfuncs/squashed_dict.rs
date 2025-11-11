@@ -47,7 +47,7 @@ pub fn build<'ctx, 'this>(
     }
 }
 
-/// Get the layout of the tuple
+/// Get the layout of the tuple (felt252, T, T)
 fn get_inner_type_layout<'ctx, 'this>(
     context: &'ctx Context,
     registry: &ProgramRegistry<CoreType, CoreLibfunc>,
@@ -113,8 +113,7 @@ fn build_entries_array<'ctx, 'this>(
     )?;
 
     // Alloc space for elements of the array
-    // let nullptr = entry.append_op_result(llvm::zero(ptr_ty, location))?; // TODO: Maybe I should use the one from above
-
+    let nullptr = entry.append_op_result(llvm::zero(ptr_ty, location))?; // TODO: Maybe I should use the one from above
     let data_prefix_size_value = entry.const_int(context, location, data_prefix_size, 64)?;
     let realloc_len = entry.muli(elem_stride, dict_len, location)?;
     let realloc_len = entry.addi(realloc_len, data_prefix_size_value, location)?;
@@ -124,6 +123,28 @@ fn build_entries_array<'ctx, 'this>(
         realloc_len,
         location,
     )?)?;
+    // Store the reference counter
+    let k1 = entry.const_int_from_type(context, location, 1, len_ty)?;
+    entry.store(context, location, array_ptr, k1)?;
+    // Store the max length
+    let max_len_ptr = entry.gep(
+        context,
+        location,
+        array_ptr,
+        &[GepIndex::Const(size_of::<u32>() as i32)],
+        IntegerType::new(context, 8).into(),
+    )?;
+    let max_length = entry.trunci(dict_len, IntegerType::new(context, 32).into(), location)?;
+    entry.store(context, location, max_len_ptr, max_length)?; // TODO: Check if this is the correct value to store here
+
+    // Move to get the pointer in the position of the data
+    let array_ptr = entry.gep(
+        context,
+        location,
+        array_ptr,
+        &[GepIndex::Const(data_prefix_size as i32)],
+        IntegerType::new(context, 8).into(),
+    )?;
     // Alloc space in the null_ptr so it can store the ptr to the array
     let k8 = entry.const_int(context, location, 8, 64)?;
     let array_ptr_ptr = entry.append_op_result(ReallocBindingsMeta::realloc(
@@ -135,27 +156,27 @@ fn build_entries_array<'ctx, 'this>(
     let arr = entry.insert_value(context, location, arr, array_ptr_ptr, 0)?;
 
     // Set max length
-    let max_len_ptr = entry.gep(
-        context,
-        location,
-        array_ptr,
-        &[GepIndex::Const(
-            -((data_prefix_size - size_of::<u32>()) as i32),
-        )],
-        IntegerType::new(context, 8).into(),
-    )?;
-    let max_length = entry.trunci(dict_len, IntegerType::new(context, 32).into(), location)?;
-    entry.store(context, location, max_len_ptr, max_length)?;
+    // let max_len_ptr = entry.gep(
+    //     context,
+    //     location,
+    //     array_ptr,
+    //     &[GepIndex::Const(
+    //         -((data_prefix_size - size_of::<u32>()) as i32),
+    //     )],
+    //     IntegerType::new(context, 8).into(),
+    // )?;
+    // let max_length = entry.trunci(dict_len, IntegerType::new(context, 32).into(), location)?;
+    // entry.store(context, location, max_len_ptr, max_length)?;
     // Set reference counter to 1
-    let refcount_ptr = entry.gep(
-        context,
-        location,
-        array_ptr,
-        &[GepIndex::Const(-(data_prefix_size as i32))],
-        IntegerType::new(context, 8).into(),
-    )?;
-    let k1 = entry.const_int(context, location, 1, 32)?;
-    entry.store(context, location, refcount_ptr, k1)?;
+    // let refcount_ptr = entry.gep(
+    //     context,
+    //     location,
+    //     array_ptr,
+    //     &[GepIndex::Const(-(data_prefix_size as i32))],
+    //     IntegerType::new(context, 8).into(),
+    // )?;
+    // let k1 = entry.const_int(context, location, 1, 32)?;
+    // entry.store(context, location, refcount_ptr, k1)?;
 
     Ok(arr)
 }
