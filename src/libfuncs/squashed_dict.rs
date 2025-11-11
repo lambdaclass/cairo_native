@@ -1,14 +1,10 @@
-//! # `Felt` dictionary libfuncs
-
-use std::{alloc::Layout, any::Any};
-
 use super::LibfuncHelper;
 use crate::{
-    debug::type_to_name,
     error::{Error, Result},
     metadata::{
-        debug_utils::DebugUtils, realloc_bindings::ReallocBindingsMeta,
-        runtime_bindings::RuntimeBindingsMeta, MetadataStorage,
+        debug_utils::DebugUtils, dup_overrides::DupOverridesMeta,
+        realloc_bindings::ReallocBindingsMeta, runtime_bindings::RuntimeBindingsMeta,
+        MetadataStorage,
     },
     native_panic,
     types::array::calc_data_prefix_offset,
@@ -19,16 +15,16 @@ use cairo_lang_sierra::{
         core::{CoreLibfunc, CoreType, CoreTypeConcrete},
         lib_func::SignatureAndTypeConcreteLibfunc,
         squashed_felt252_dict::SquashedFelt252DictConcreteLibfunc,
-        ConcreteLibfunc,
     },
     program_registry::ProgramRegistry,
 };
 use melior::{
-    dialect::{llvm, scf},
+    dialect::llvm,
     helpers::{ArithBlockExt, BuiltinBlockExt, GepIndex, LlvmBlockExt},
-    ir::{r#type::IntegerType, Block, BlockLike, Location, Region, Value},
+    ir::{r#type::IntegerType, Block, Location, Value},
     Context,
 };
+use std::alloc::Layout;
 
 /// Select and call the correct libfunc builder function from the selector.
 pub fn build<'ctx, 'this>(
@@ -74,6 +70,8 @@ fn build_entries_array<'ctx, 'this>(
     info: &SignatureAndTypeConcreteLibfunc,
 ) -> Result<Value<'ctx, 'this>> {
     metadata.get_or_insert_with(|| ReallocBindingsMeta::new(context, helper));
+    // Register dup and drop implentations
+    // register_dup_and_drop(context, registry, helper, metadata, info); // TODO: Investigate this
     let inner_type_layout = get_inner_type_layout(context, registry, helper, metadata, info)?;
     let data_prefix_size = calc_data_prefix_offset(inner_type_layout);
     let elem_stride = entry.const_int(
@@ -190,32 +188,35 @@ pub fn build_into_entries<'ctx, 'this>(
     metadata: &mut MetadataStorage,
     info: &SignatureAndTypeConcreteLibfunc,
 ) -> Result<()> {
+    // Build the tuples array
     let entries_array =
         build_entries_array(context, registry, entry, location, helper, metadata, info)?;
 
-    let len_ty = IntegerType::new(context, 32).into();
+    // Get the ptr to the data and pass it to the runtime function
     let ptr_ty = llvm::r#type::pointer(context, 0);
+    let data_ptr_ptr = entry.extract_value(context, location, entries_array, ptr_ty, 0)?;
+    let data_ptr = entry.load(context, location, data_ptr_ptr, ptr_ty)?;
 
-    let start_off = entry.extract_value(context, location, entries_array, len_ty, 1)?;
-    let end_off = entry.extract_value(context, location, entries_array, len_ty, 2)?;
-    let capacity = entry.extract_value(context, location, entries_array, len_ty, 3)?;
-    let ptr = entry.extract_value(context, location, entries_array, ptr_ty, 0)?;
+    // let len_ty = IntegerType::new(context, 32).into();
+    // let start_off = entry.extract_value(context, location, entries_array, len_ty, 1)?;
+    // let end_off = entry.extract_value(context, location, entries_array, len_ty, 2)?;
+    // let capacity = entry.extract_value(context, location, entries_array, len_ty, 3)?;
     // metadata
     //     .get_mut::<DebugUtils>()
     //     .unwrap()
     //     .print_pointer(context, helper, entry, ptr, location)?;
-    metadata
-        .get_mut::<DebugUtils>()
-        .unwrap()
-        .print_i32(context, helper, entry, start_off, location)?;
-    metadata
-        .get_mut::<DebugUtils>()
-        .unwrap()
-        .print_i32(context, helper, entry, end_off, location)?;
-    metadata
-        .get_mut::<DebugUtils>()
-        .unwrap()
-        .print_i32(context, helper, entry, capacity, location)?;
+    // metadata
+    //     .get_mut::<DebugUtils>()
+    //     .unwrap()
+    //     .print_i32(context, helper, entry, start_off, location)?;
+    // metadata
+    //     .get_mut::<DebugUtils>()
+    //     .unwrap()
+    //     .print_i32(context, helper, entry, end_off, location)?;
+    // metadata
+    //     .get_mut::<DebugUtils>()
+    //     .unwrap()
+    //     .print_i32(context, helper, entry, capacity, location)?;
 
     // let ptr_ty = llvm::r#type::pointer(context, 0);
     // let len_ty = IntegerType::new(context, 32).into();

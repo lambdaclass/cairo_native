@@ -105,7 +105,7 @@ pub fn build<'ctx>(
 /// This function clones the array shallowly. That is, it'll increment the reference counter but not
 /// actually clone anything. The deep clone implementation is provided in `src/libfuncs/array.rs` as
 /// part of some libfuncs's implementations.
-fn build_dup<'ctx>(
+pub fn build_dup<'ctx>(
     context: &'ctx Context,
     module: &Module<'ctx>,
     registry: &ProgramRegistry<CoreType, CoreLibfunc>,
