@@ -48,6 +48,7 @@ mod felt252_dict;
 mod felt252_dict_entry;
 mod function_call;
 mod gas;
+mod gas_reserve;
 mod int;
 mod int_range;
 mod jump;
@@ -520,12 +521,12 @@ fn eval<'a>(
             EvalAction::NormalBranch(0, smallvec![value])
         }
         CoreConcreteLibfunc::IntRange(selector) => self::int_range::eval(registry, selector, args),
+        CoreConcreteLibfunc::GasReserve(selector) => self::gas_reserve::eval(selector, args),
         CoreConcreteLibfunc::Blake(_) => todo!(),
         CoreConcreteLibfunc::QM31(_) => todo!(),
         CoreConcreteLibfunc::Felt252SquashedDict(_) => todo!(),
         CoreConcreteLibfunc::Trace(_) => todo!(),
         CoreConcreteLibfunc::UnsafePanic(_) => todo!(),
         CoreConcreteLibfunc::DummyFunctionCall(_) => todo!(),
-        CoreConcreteLibfunc::GasReserve(_) => todo!(),
     }
 }

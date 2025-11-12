@@ -238,9 +238,9 @@ impl Value {
                 StarknetTypeConcrete::Sha256StateHandle(_) => matches!(self, Self::Struct { .. }),
             },
             CoreTypeConcrete::IntRange(_) => matches!(self, Self::IntRange { .. }),
+            CoreTypeConcrete::GasReserve(_) => matches!(self, Self::U128(_)),
             CoreTypeConcrete::Blake(_) => todo!(),
             CoreTypeConcrete::QM31(_) => todo!(),
-            CoreTypeConcrete::GasReserve(_) => todo!(),
         };
 
         if !res {
