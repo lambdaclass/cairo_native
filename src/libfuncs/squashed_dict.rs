@@ -2,7 +2,6 @@ use super::LibfuncHelper;
 use crate::{
     error::{Error, Result},
     metadata::{
-        debug_utils::DebugUtils, dup_overrides::DupOverridesMeta,
         realloc_bindings::ReallocBindingsMeta, runtime_bindings::RuntimeBindingsMeta,
         MetadataStorage,
     },
@@ -196,6 +195,13 @@ pub fn build_into_entries<'ctx, 'this>(
     let ptr_ty = llvm::r#type::pointer(context, 0);
     let data_ptr_ptr = entry.extract_value(context, location, entries_array, ptr_ty, 0)?;
     let data_ptr = entry.load(context, location, data_ptr_ptr, ptr_ty)?;
+    let dict_ptr = entry.arg(0)?;
+
+    // Call runtime function that pushes the tuples into the array
+    metadata
+        .get_mut::<RuntimeBindingsMeta>()
+        .ok_or(Error::MissingMetadata)?
+        .dict_into_entries(context, helper, entry, dict_ptr, data_ptr, location)?;
 
     // let len_ty = IntegerType::new(context, 32).into();
     // let start_off = entry.extract_value(context, location, entries_array, len_ty, 1)?;
