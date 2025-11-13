@@ -648,8 +648,17 @@ fn build_constrain<'ctx, 'this>(
         .get_type(&info.branch_signatures()[1].vars[1].ty)?
         .integer_range(registry)?;
 
-    let boundary =
-        entry.const_int_from_type(context, location, info.boundary.clone(), src_value.r#type())?;
+    let boundary = if src_ty.is_bounded_int(registry)? {
+        entry.const_int_from_type(
+            context,
+            location,
+            info.boundary.clone() - &src_range.lower,
+            src_value.r#type(),
+        )?
+    } else {
+        entry.const_int_from_type(context, location, info.boundary.clone(), src_value.r#type())?
+    };
+
     let is_lower = entry.cmpi(
         context,
         if src_range.lower.sign() == Sign::Minus {
