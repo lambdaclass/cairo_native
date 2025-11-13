@@ -51,7 +51,7 @@ use crate::{
     types::TypeBuilder,
     utils::{
         decode_error_message, generate_function_name, get_integer_layout, get_types_total_size,
-        libc_free, libc_malloc, BuiltinCosts,
+        libc_free, libc_malloc, montgomery::MontyBytes, BuiltinCosts,
     },
     OptLevel,
 };
@@ -75,6 +75,7 @@ use cairo_lang_starknet_classes::{
 };
 use educe::Educe;
 use itertools::{chain, Itertools};
+use lambdaworks_math::{traits::ByteConversion, unsigned_integer::element::UnsignedInteger};
 use libloading::Library;
 use serde::{Deserialize, Serialize};
 use starknet_types_core::felt::Felt;
@@ -500,7 +501,8 @@ impl AotContractExecutor {
         };
 
         for (idx, elem) in args.iter().enumerate() {
-            let f = elem.to_bytes_le();
+            let f = elem.to_bytes_le_raw();
+
             unsafe {
                 std::ptr::copy_nonoverlapping(
                     f.as_ptr().cast::<u8>(),
@@ -666,9 +668,15 @@ impl AotContractExecutor {
                 let cur_elem_ptr = unsafe { array_ptr.byte_add(elem_stride * i as usize) };
 
                 let mut data = unsafe { cur_elem_ptr.cast::<[u8; 32]>().read() };
+
                 data[31] &= 0x0F; // Filter out first 4 bits (they're outside an i252).
 
-                array_value.push(Felt::from_bytes_le(&data));
+                let felt = {
+                    let data = UnsignedInteger::from_bytes_le(&data).unwrap();
+                    Felt::from_raw(data.limbs)
+                };
+
+                array_value.push(felt);
             }
 
             unsafe {

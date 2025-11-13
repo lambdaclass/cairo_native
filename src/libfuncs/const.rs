@@ -2,12 +2,12 @@
 
 use super::LibfuncHelper;
 use crate::{
-    error::{Error, Result},
+    error::{panic::ToNativeAssertError, Error, Result},
     libfuncs::{r#enum::build_enum_value, r#struct::build_struct_value},
     metadata::{realloc_bindings::ReallocBindingsMeta, MetadataStorage},
     native_panic,
     types::TypeBuilder,
-    utils::{ProgramRegistryExt, RangeExt, PRIME},
+    utils::{montgomery::monty_transform, ProgramRegistryExt, RangeExt, PRIME},
 };
 use cairo_lang_sierra::{
     extensions::{
@@ -265,8 +265,10 @@ pub fn build_const_type_value<'ctx, 'this>(
                 Sign::Minus => PRIME.clone() - value,
                 _ => value,
             };
-
-            Ok(entry.const_int_from_type(context, location, value, inner_ty)?)
+            let monty_value = monty_transform(&value, &PRIME).to_native_assert_error(&format!(
+                "could not transform felt252: {value} to Montgomery form"
+            ))?;
+            Ok(entry.const_int_from_type(context, location, monty_value, inner_ty)?)
         }
         CoreTypeConcrete::Starknet(
             StarknetTypeConcrete::ClassHash(_) | StarknetTypeConcrete::ContractAddress(_),
@@ -281,8 +283,10 @@ pub fn build_const_type_value<'ctx, 'this>(
                 Sign::Minus => PRIME.clone() - value,
                 _ => value,
             };
-
-            Ok(entry.const_int_from_type(context, location, value, inner_ty)?)
+            let monty_value = monty_transform(&value, &PRIME).to_native_assert_error(&format!(
+                "could not transform felt252: {value} to Montgomery form"
+            ))?;
+            Ok(entry.const_int_from_type(context, location, monty_value, inner_ty)?)
         }
         CoreTypeConcrete::Uint8(_)
         | CoreTypeConcrete::Uint16(_)

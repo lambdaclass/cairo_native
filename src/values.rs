@@ -9,7 +9,8 @@ use crate::{
     starknet::{Secp256k1Point, Secp256r1Point},
     types::TypeBuilder,
     utils::{
-        felt252_bigint, get_integer_layout, layout_repeat, libc_free, libc_malloc, RangeExt, PRIME,
+        felt252_bigint, get_integer_layout, layout_repeat, libc_free, libc_malloc,
+        montgomery::MontyBytes, RangeExt, PRIME,
     },
 };
 use bumpalo::Bump;
@@ -24,6 +25,7 @@ use cairo_lang_sierra::{
     program_registry::ProgramRegistry,
 };
 use educe::Educe;
+use lambdaworks_math::{traits::ByteConversion, unsigned_integer::element::U256};
 use num_bigint::{BigInt, BigUint, Sign};
 use num_traits::{Euclid, One};
 use starknet_types_core::felt::Felt;
@@ -175,7 +177,7 @@ impl Value {
                 Self::Felt252(value) => {
                     let ptr = arena.alloc_layout(get_integer_layout(252)).cast();
 
-                    let data = felt252_bigint(value.to_bigint()).to_bytes_le();
+                    let data = value.to_bytes_le_raw();
                     ptr.cast::<[u8; 32]>().as_mut().copy_from_slice(&data);
                     ptr
                 }
@@ -431,7 +433,7 @@ impl Value {
                         // next key must be called before next_value
 
                         for (key, value) in map.iter() {
-                            let key = key.to_bytes_le();
+                            let key = key.to_bytes_le_raw();
                             let value =
                                 value.to_ptr(arena, registry, &info.ty, find_dict_drop_override)?;
 
@@ -739,8 +741,8 @@ impl Value {
                 CoreTypeConcrete::Felt252(_) => {
                     let data = ptr.cast::<[u8; 32]>().as_mut();
                     data[31] &= 0x0F; // Filter out first 4 bits (they're outside an i252).
-                    let data = Felt::from_bytes_le_slice(data);
-                    Self::Felt252(data)
+                    let data = U256::from_bytes_le(data).unwrap();
+                    Self::Felt252(Felt::from_raw(data.limbs))
                 }
                 CoreTypeConcrete::Uint8(_) => Self::Uint8(*ptr.cast::<u8>().as_ref()),
                 CoreTypeConcrete::Uint16(_) => Self::Uint16(*ptr.cast::<u16>().as_ref()),
@@ -866,7 +868,11 @@ impl Value {
                         let mut key = key;
                         key[31] &= 0x0F; // Filter out first 4 bits (they're outside an i252).
 
-                        let key = Felt::from_bytes_le(&key);
+                        // TODO: add comment here.
+                        let key = {
+                            let key = U256::from_bytes_le(&key).unwrap();
+                            Felt::from_raw(key.limbs)
+                        };
                         // The dictionary items are not being dropped here. They'll be dropped along
                         // with the dictionary (if requested using `should_drop`).
                         output_map.insert(
@@ -920,8 +926,8 @@ impl Value {
                         // felt values
                         let data = ptr.cast::<[u8; 32]>().as_mut();
                         data[31] &= 0x0F; // Filter out first 4 bits (they're outside an i252).
-                        let data = Felt::from_bytes_le(data);
-                        Self::Felt252(data)
+                        let data = U256::from_bytes_le(data).unwrap();
+                        Self::Felt252(Felt::from_raw(data.limbs))
                     }
                     StarknetTypeConcrete::System(_) => {
                         native_panic!("should be handled before")
@@ -1195,6 +1201,7 @@ mod test {
 
         let registry = ProgramRegistry::<CoreType, CoreLibfunc>::new(&program).unwrap();
 
+        // Assert bytes of Montgomery form of 42_felt252.
         assert_eq!(
             unsafe {
                 *Value::Felt252(Felt::from(42))
@@ -1208,9 +1215,13 @@ mod test {
                     .cast::<[u32; 8]>()
                     .as_ptr()
             },
-            [42, 0, 0, 0, 0, 0, 0, 0]
+            [
+                4294965953, 4294967295, 4294967295, 4294967295, 4294967295, 4294967295, 4294944464,
+                134217727
+            ]
         );
 
+        // Assert bytes of Montgomery form of Felt::MAX.
         assert_eq!(
             unsafe {
                 *Value::Felt252(Felt::MAX)
@@ -1224,8 +1235,8 @@ mod test {
                     .cast::<[u32; 8]>()
                     .as_ptr()
             },
-            // 0x800000000000011000000000000000000000000000000000000000000000001 - 1
-            [0, 0, 0, 0, 0, 0, 17, 134217728]
+            // Montgomery(0x800000000000011000000000000000000000000000000000000000000000001 - 1)
+            [32, 0, 0, 0, 0, 0, 544, 0]
         );
 
         assert_eq!(
