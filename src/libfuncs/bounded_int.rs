@@ -851,14 +851,19 @@ fn build_wrap_non_zero<'ctx, 'this>(
 
 #[cfg(test)]
 mod test {
+    use std::result;
+
     use cairo_lang_sierra::extensions::utils::Range;
     use cairo_vm::Felt252;
     use num_bigint::BigInt;
 
     use crate::{
-        context::NativeContext, execution_result::ExecutionResult, executor::JitNativeExecutor,
-        jit_enum, jit_struct, load_cairo, utils::testing::run_program_assert_output, OptLevel,
-        Value,
+        context::NativeContext,
+        execution_result::ExecutionResult,
+        executor::JitNativeExecutor,
+        jit_enum, jit_struct, load_cairo,
+        utils::testing::{run_program, run_program_assert_output},
+        OptLevel, Value,
     };
 
     #[test]
@@ -1346,5 +1351,57 @@ mod test {
                 })
             ),
         );
+    }
+
+    fn assert_bool_output(result: Value, expected_tag: usize) {
+        if let Value::Enum { tag, value, .. } = result {
+            assert_eq!(tag, 0);
+            if let Value::Struct { fields, .. } = *value {
+                if let Value::Enum { tag, .. } = fields[0] {
+                    assert_eq!(tag, expected_tag)
+                }
+            }
+        }
+    }
+
+    #[test]
+    fn test_is_zero() {
+        let program = load_cairo! {
+            #[feature("bounded-int-utils")]
+            use core::internal::bounded_int::{self, BoundedInt, is_zero};
+            use core::zeroable::IsZeroResult;
+
+            fn run_test_1(a: felt252) -> bool {
+                let bi: BoundedInt<0, 5> = a.try_into().unwrap();
+                match is_zero(bi) {
+                    IsZeroResult::Zero => true,
+                    IsZeroResult::NonZero(_) => false,
+                }
+            }
+
+            fn run_test_2(a: felt252) -> bool {
+                let bi: BoundedInt<-5, 5> = a.try_into().unwrap();
+                match is_zero(bi) {
+                    IsZeroResult::Zero => true,
+                    IsZeroResult::NonZero(_) => false,
+                }
+            }
+        };
+
+        let result =
+            run_program(&program, "run_test_1", &[Value::Felt252(Felt252::from(0))]).return_value;
+        assert_bool_output(result, 1);
+
+        let result =
+            run_program(&program, "run_test_1", &[Value::Felt252(Felt252::from(5))]).return_value;
+        assert_bool_output(result, 0);
+
+        let result =
+            run_program(&program, "run_test_2", &[Value::Felt252(Felt252::from(0))]).return_value;
+        assert_bool_output(result, 1);
+
+        let result =
+            run_program(&program, "run_test_2", &[Value::Felt252(Felt252::from(-5))]).return_value;
+        assert_bool_output(result, 0);
     }
 }
