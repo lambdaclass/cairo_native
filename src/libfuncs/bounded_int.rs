@@ -1179,4 +1179,172 @@ mod test {
             ),
         );
     }
+
+    #[test]
+    fn test_sub() {
+        let cairo = load_cairo! {
+            #[feature("bounded-int-utils")]
+            use core::internal::bounded_int::{BoundedInt, sub, SubHelper};
+
+            impl SubHelper1 of SubHelper<BoundedInt<1, 1>, BoundedInt<1, 5>> {
+                type Result = BoundedInt<-4, 0>;
+            }
+
+            fn run_test_1(
+                a: felt252,
+                b: felt252,
+            ) -> BoundedInt<-4, 0> {
+                let a: BoundedInt<1, 1> = a.try_into().unwrap();
+                let b: BoundedInt<1, 5> = b.try_into().unwrap();
+                return sub(a, b);
+            }
+
+            impl SubHelper2 of SubHelper<BoundedInt<1, 1>, BoundedInt<1, 1>> {
+                type Result = BoundedInt<0, 0>;
+            }
+
+            fn run_test_2(
+                a: felt252,
+                b: felt252,
+            ) -> BoundedInt<-4, 0> {
+                let a: BoundedInt<1, 1> = a.try_into().unwrap();
+                let b: BoundedInt<1, 1> = b.try_into().unwrap();
+                return sub(a, b);
+            }
+
+            impl SubHelper3 of SubHelper<BoundedInt<-3, -3>, BoundedInt<-3, -3>> {
+                type Result = BoundedInt<0, 0>;
+            }
+
+            fn run_test_3(
+                a: felt252,
+                b: felt252,
+            ) -> BoundedInt<-4, 0> {
+                let a: BoundedInt<-3, -3> = a.try_into().unwrap();
+                let b: BoundedInt<-3, -3> = b.try_into().unwrap();
+                return sub(a, b);
+            }
+
+            impl SubHelper4 of SubHelper<BoundedInt<-6, -3>, BoundedInt<1, 3>> {
+                type Result = BoundedInt<-9, -4>;
+            }
+
+            fn run_test_4(
+                a: felt252,
+                b: felt252,
+            ) -> BoundedInt<-9, -4> {
+                let a: BoundedInt<-6, -3> = a.try_into().unwrap();
+                let b: BoundedInt<1, 3> = b.try_into().unwrap();
+                return sub(a, b);
+            }
+
+            impl SubHelper5 of SubHelper<BoundedInt<-6, -2>, BoundedInt<-20, -10>> {
+                type Result = BoundedInt<4, 18>;
+            }
+
+            fn run_test_5(
+                a: felt252,
+                b: felt252,
+            ) -> BoundedInt<4, 18> {
+                let a: BoundedInt<-6, -2> = a.try_into().unwrap();
+                let b: BoundedInt<-20, -10> = b.try_into().unwrap();
+                return sub(a, b);
+            }
+        };
+
+        run_program_assert_output(
+            &cairo,
+            "run_test_1",
+            &[
+                Value::Felt252(Felt252::from(1)),
+                Value::Felt252(Felt252::from(5)),
+            ],
+            jit_enum!(
+                0,
+                jit_struct!(Value::BoundedInt {
+                    value: Felt252::from(-4),
+                    range: Range {
+                        lower: BigInt::from(-4),
+                        upper: BigInt::from(1),
+                    }
+                })
+            ),
+        );
+
+        run_program_assert_output(
+            &cairo,
+            "run_test_2",
+            &[
+                Value::Felt252(Felt252::from(1)),
+                Value::Felt252(Felt252::from(1)),
+            ],
+            jit_enum!(
+                0,
+                jit_struct!(Value::BoundedInt {
+                    value: Felt252::from(0),
+                    range: Range {
+                        lower: BigInt::from(0),
+                        upper: BigInt::from(1),
+                    }
+                })
+            ),
+        );
+
+        run_program_assert_output(
+            &cairo,
+            "run_test_3",
+            &[
+                Value::Felt252(Felt252::from(-3)),
+                Value::Felt252(Felt252::from(-3)),
+            ],
+            jit_enum!(
+                0,
+                jit_struct!(Value::BoundedInt {
+                    value: Felt252::from(0),
+                    range: Range {
+                        lower: BigInt::from(0),
+                        upper: BigInt::from(1),
+                    }
+                })
+            ),
+        );
+
+        run_program_assert_output(
+            &cairo,
+            "run_test_4",
+            &[
+                Value::Felt252(Felt252::from(-6)),
+                Value::Felt252(Felt252::from(3)),
+            ],
+            jit_enum!(
+                0,
+                jit_struct!(Value::BoundedInt {
+                    value: Felt252::from(-9),
+                    range: Range {
+                        lower: BigInt::from(-0),
+                        upper: BigInt::from(-3),
+                    }
+                })
+            ),
+        );
+
+        run_program_assert_output(
+            &cairo,
+            "run_test_5",
+            &[
+                Value::Felt252(Felt252::from(-2)),
+                Value::Felt252(Felt252::from(-20)),
+            ],
+            jit_enum!(
+                0,
+                jit_struct!(Value::BoundedInt {
+                    value: Felt252::from(18),
+                    range: Range {
+                        lower: BigInt::from(4),
+                        upper: BigInt::from(19),
+                    }
+                })
+            ),
+        );
+    }
 }
