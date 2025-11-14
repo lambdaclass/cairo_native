@@ -1092,6 +1092,27 @@ mod test {
                     Err(gt0) => gt0,
                 }
             }
+
+            impl ConstrainTest4 of ConstrainHelper<BoundedInt<-200, -100>, -150> {
+                type LowT = BoundedInt<-200, -151>;
+                type HighT = BoundedInt<-150, -100>;
+            }
+
+            fn run_test_9(a: felt252) -> BoundedInt<-200, -151> {
+                let a_bi: BoundedInt<-200, -100> = a.try_into().unwrap();
+                match constrain::<_, -150>(a_bi) {
+                    Ok(lt0) => lt0,
+                    Err(_gt0) => panic!(),
+                }
+            }
+
+            fn run_test_10(a: felt252) -> BoundedInt<-150, -100> {
+                let a_bi: BoundedInt<-200, -100> = a.try_into().unwrap();
+                match constrain::<_, -150>(a_bi) {
+                    Ok(_lt0) => panic!(),
+                    Err(gt0) => gt0,
+                }
+            }
         };
 
         let result = run_program(&program, "run_test_1", &[Value::Sint8(-1)]).return_value;
@@ -1204,6 +1225,40 @@ mod test {
                 range: Range {
                     lower: BigInt::from(31),
                     upper: BigInt::from(62),
+                },
+            },
+        );
+
+        let result = run_program(
+            &program,
+            "run_test_9",
+            &[Value::Felt252(Felt252::from(-200))],
+        )
+        .return_value;
+        assert_constrain_output(
+            result,
+            Value::BoundedInt {
+                value: Felt252::from(-200),
+                range: Range {
+                    lower: BigInt::from(-200),
+                    upper: BigInt::from(-150),
+                },
+            },
+        );
+
+        let result = run_program(
+            &program,
+            "run_test_10",
+            &[Value::Felt252(Felt252::from(-150))],
+        )
+        .return_value;
+        assert_constrain_output(
+            result,
+            Value::BoundedInt {
+                value: Felt252::from(-150),
+                range: Range {
+                    lower: BigInt::from(-150),
+                    upper: BigInt::from(-99),
                 },
             },
         );
