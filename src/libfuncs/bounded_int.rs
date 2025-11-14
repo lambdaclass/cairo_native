@@ -178,8 +178,7 @@ fn build_add<'ctx, 'this>(
     let res_value = entry.addi(lhs_value, rhs_value, location)?;
 
     // Offset and truncate the result to the output type.
-    let res_offset = &dst_range.lower - &compute_range.lower;
-    let res_offset = res_offset - &compute_range.lower;
+    let res_offset = &dst_range.lower - &compute_range.lower * 2;
     let res_value = if res_offset != BigInt::ZERO {
         let res_offset = entry.const_int_from_type(context, location, res_offset, compute_ty)?;
         entry.append_op_result(arith::subi(res_value, res_offset, location))?
@@ -1161,6 +1160,9 @@ mod test {
             ),
         );
 
+        // TODO: This fails with:
+        // loc("10 : i3":1:1): error: integer constant out of range for attribute
+        // Could not compile test program to MLIR.: MlirError(AttributeParse("10 : i3"))
         // run_program_assert_output(
         //     &cairo,
         //     "run_test_5",
