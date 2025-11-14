@@ -796,25 +796,21 @@ fn build_is_zero<'ctx, 'this>(
     _metadata: &mut MetadataStorage,
     info: &SignatureOnlyConcreteLibfunc,
 ) -> Result<()> {
-    let mut src_value: Value = entry.arg(0)?;
+    let src_value: Value = entry.arg(0)?;
 
     let src_ty = registry.get_type(&info.signature.param_signatures[0].ty)?;
     let src_range = src_ty.integer_range(registry)?;
-
-    if src_ty.is_bounded_int(registry)? {
-        let ty = IntegerType::new(context, src_range.offset_bit_width()).into();
-        let lower_bound =
-            entry.const_int_from_type(context, location, src_range.lower.clone(), ty)?;
-        src_value = entry.extui(src_value, ty, location)?;
-        src_value = entry.addi(src_value, lower_bound, location)?;
-    }
 
     native_assert!(
         src_range.lower <= BigInt::ZERO && BigInt::ZERO < src_range.upper,
         "value can never be zero"
     );
 
-    let k0 = entry.const_int_from_type(context, location, 0, src_value.r#type())?;
+    let k0 = if src_ty.is_bounded_int(registry)? {
+        entry.const_int_from_type(context, location, 0 - src_range.lower, src_value.r#type())?
+    } else {
+        entry.const_int_from_type(context, location, 0, src_value.r#type())?
+    };
     let src_is_zero = entry.cmpi(context, CmpiPredicate::Eq, src_value, k0, location)?;
 
     helper.cond_br(
