@@ -851,44 +851,172 @@ fn build_wrap_non_zero<'ctx, 'this>(
 
 #[cfg(test)]
 mod test {
+    use cairo_lang_sierra::extensions::utils::Range;
     use cairo_vm::Felt252;
+    use num_bigint::BigInt;
 
     use crate::{
         context::NativeContext, execution_result::ExecutionResult, executor::JitNativeExecutor,
-        load_cairo, OptLevel, Value,
+        jit_enum, jit_struct, load_cairo, utils::testing::run_program_assert_output, OptLevel,
+        Value,
     };
 
     #[test]
-    fn test_trim_some_pos_i8() {
-        let (_, program) = load_cairo!(
+    fn test_bounded_int_mul() {
+        let cairo = load_cairo!(
             #[feature("bounded-int-utils")]
-            use core::internal::bounded_int::{self, BoundedInt};
-            use core::internal::OptionRev;
+            use core::internal::bounded_int::{self, BoundedInt, MulHelper, mul};
 
-            fn main() -> BoundedInt<-128, 126> {
-                let num = match bounded_int::trim_max::<i8>(1) {
-                    OptionRev::Some(n) => n,
-                    OptionRev::None => 0,
-                };
+            impl MulHelper1 of MulHelper<BoundedInt<-128, 127>, BoundedInt<-128, 127>> {
+                type Result = BoundedInt<-16256, 16384>;
+            }
 
-                num
+            impl MulHelper2 of MulHelper<BoundedInt<0, 128>, BoundedInt<0, 128>> {
+                type Result = BoundedInt<0, 16384>;
+            }
+
+            impl MulHelper3 of MulHelper<BoundedInt<1, 31>, BoundedInt<1, 1>> {
+                type Result = BoundedInt<1, 31>;
+            }
+
+            impl MulHelper4 of MulHelper<BoundedInt<-1, 31>, BoundedInt<-1, -1>> {
+                type Result = BoundedInt<-31, 1>;
+            }
+
+            impl MulHelper5 of MulHelper<BoundedInt<31, 31>, BoundedInt<1, 1>> {
+                type Result = BoundedInt<31, 31>;
+            }
+
+            fn run_test_1(a: felt252, b: felt252) -> BoundedInt<-16256, 16384> {
+                let a: BoundedInt<-128, 127> = a.try_into().unwrap();
+                let b: BoundedInt<-128, 127> = b.try_into().unwrap();
+
+                mul(a,b)
+            }
+
+            fn run_test_2(a: felt252, b: felt252) -> BoundedInt<0, 16384> {
+                let a: BoundedInt<0, 128> = a.try_into().unwrap();
+                let b: BoundedInt<0, 128> = b.try_into().unwrap();
+
+                mul(a,b)
+            }
+
+            fn run_test_3(a: felt252, b: felt252) -> BoundedInt<31, 31> {
+                let a: BoundedInt<31, 31> = a.try_into().unwrap();
+                let b: BoundedInt<1, 1> = b.try_into().unwrap();
+
+                mul(a,b)
+            }
+
+            fn run_test_4(a: felt252, b: felt252) -> BoundedInt<-31, 1> {
+                let a: BoundedInt<-1, 31> = a.try_into().unwrap();
+                let b: BoundedInt<-1, -1> = b.try_into().unwrap();
+
+                mul(a,b)
+            }
+
+            fn run_test_5(a: felt252, b: felt252) -> BoundedInt<31, 31> {
+                let a: BoundedInt<31, 31> = a.try_into().unwrap();
+                let b: BoundedInt<1, 1> = b.try_into().unwrap();
+
+                mul(a,b)
             }
         );
-        let ctx = NativeContext::new();
-        let module = ctx.compile(&program, false, None, None).unwrap();
-        let executor = JitNativeExecutor::from_native_module(module, OptLevel::Default).unwrap();
-        let ExecutionResult {
-            remaining_gas: _,
-            return_value,
-            builtin_stats: _,
-        } = executor
-            .invoke_dynamic(&program.funcs[0].id, &[], None)
-            .unwrap();
 
-        let Value::BoundedInt { value, range: _ } = return_value else {
-            panic!();
-        };
-        assert_eq!(value, Felt252::from(1_u8));
+        run_program_assert_output(
+            &cairo,
+            "run_test_1",
+            &[
+                Value::Felt252(Felt252::from(-128)),
+                Value::Felt252(Felt252::from(-128)),
+            ],
+            jit_enum!(
+                0,
+                jit_struct!(Value::BoundedInt {
+                    value: Felt252::from(16384),
+                    range: Range {
+                        lower: BigInt::from(-16256),
+                        upper: BigInt::from(16385),
+                    }
+                })
+            ),
+        );
+
+        run_program_assert_output(
+            &cairo,
+            "run_test_2",
+            &[
+                Value::Felt252(Felt252::from(126)),
+                Value::Felt252(Felt252::from(128)),
+            ],
+            jit_enum!(
+                0,
+                jit_struct!(Value::BoundedInt {
+                    value: Felt252::from(16128),
+                    range: Range {
+                        lower: BigInt::from(0),
+                        upper: BigInt::from(16385),
+                    }
+                })
+            ),
+        );
+
+        run_program_assert_output(
+            &cairo,
+            "run_test_3",
+            &[
+                Value::Felt252(Felt252::from(31)),
+                Value::Felt252(Felt252::from(1)),
+            ],
+            jit_enum!(
+                0,
+                jit_struct!(Value::BoundedInt {
+                    value: Felt252::from(31),
+                    range: Range {
+                        lower: BigInt::from(1),
+                        upper: BigInt::from(32),
+                    }
+                })
+            ),
+        );
+
+        run_program_assert_output(
+            &cairo,
+            "run_test_4",
+            &[
+                Value::Felt252(Felt252::from(31)),
+                Value::Felt252(Felt252::from(-1)),
+            ],
+            jit_enum!(
+                0,
+                jit_struct!(Value::BoundedInt {
+                    value: Felt252::from(-31),
+                    range: Range {
+                        lower: BigInt::from(-31),
+                        upper: BigInt::from(2),
+                    }
+                })
+            ),
+        );
+
+        run_program_assert_output(
+            &cairo,
+            "run_test_5",
+            &[
+                Value::Felt252(Felt252::from(31)),
+                Value::Felt252(Felt252::from(1)),
+            ],
+            jit_enum!(
+                0,
+                jit_struct!(Value::BoundedInt {
+                    value: Felt252::from(31),
+                    range: Range {
+                        lower: BigInt::from(31),
+                        upper: BigInt::from(32),
+                    }
+                })
+            ),
+        );
     }
 
     #[test]
