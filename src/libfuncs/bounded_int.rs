@@ -816,6 +816,8 @@ fn build_is_zero<'ctx, 'this>(
     );
 
     let k0 = if src_ty.is_bounded_int(registry)? {
+        // We can do the substraction since the lower bound of the bounded int will
+        // always be less or equal than 0.
         entry.const_int_from_type(context, location, 0 - src_range.lower, src_value.r#type())?
     } else {
         entry.const_int_from_type(context, location, 0, src_value.r#type())?
