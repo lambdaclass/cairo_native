@@ -1116,6 +1116,19 @@ mod test {
                     Err(gt0) => gt0,
                 }
             }
+
+            impl ConstrainTest5 of ConstrainHelper<BoundedInt<30, 100>, 100> {
+                type LowT = BoundedInt<30, 99>;
+                type HighT = BoundedInt<100, 100>;
+            }
+
+            fn run_test_11(a: felt252) -> BoundedInt<100, 100> {
+                let a_bi: BoundedInt<30, 100> = a.try_into().unwrap();
+                match constrain::<_, 100>(a_bi) {
+                    Ok(_lt0) => panic!(),
+                    Err(gt0) => gt0,
+                }
+            }
         };
 
         let result = run_program(&program, "run_test_1", &[Value::Sint8(-1)]).return_value;
@@ -1262,6 +1275,23 @@ mod test {
                 range: Range {
                     lower: BigInt::from(-150),
                     upper: BigInt::from(-99),
+                },
+            },
+        );
+
+        let result = run_program(
+            &program,
+            "run_test_11",
+            &[Value::Felt252(Felt252::from(100))],
+        )
+        .return_value;
+        assert_constrain_output(
+            result,
+            Value::BoundedInt {
+                value: Felt252::from(100),
+                range: Range {
+                    lower: BigInt::from(100),
+                    upper: BigInt::from(101),
                 },
             },
         );
