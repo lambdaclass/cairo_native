@@ -815,7 +815,13 @@ fn build_is_zero<'ctx, 'this>(
         "value can never be zero"
     );
 
-    let k0 = entry.const_int_from_type(context, location, 0, src_value.r#type())?;
+    let k0 = if src_ty.is_bounded_int(registry)? {
+        // We can do the substraction since the lower bound of the bounded int will
+        // always be less or equal than 0.
+        entry.const_int_from_type(context, location, 0 - src_range.lower, src_value.r#type())?
+    } else {
+        entry.const_int_from_type(context, location, 0, src_value.r#type())?
+    };
     let src_is_zero = entry.cmpi(context, CmpiPredicate::Eq, src_value, k0, location)?;
 
     helper.cond_br(
@@ -999,6 +1005,58 @@ mod test {
             panic!();
         };
         assert_eq!(value, Felt252::from(0));
+    }
+
+    fn assert_bool_output(result: Value, expected_tag: usize) {
+        if let Value::Enum { tag, value, .. } = result {
+            assert_eq!(tag, 0);
+            if let Value::Struct { fields, .. } = *value {
+                if let Value::Enum { tag, .. } = fields[0] {
+                    assert_eq!(tag, expected_tag)
+                }
+            }
+        }
+    }
+
+    #[test]
+    fn test_is_zero() {
+        let program = load_cairo! {
+            #[feature("bounded-int-utils")]
+            use core::internal::bounded_int::{self, BoundedInt, is_zero};
+            use core::zeroable::IsZeroResult;
+
+            fn run_test_1(a: felt252) -> bool {
+                let bi: BoundedInt<0, 5> = a.try_into().unwrap();
+                match is_zero(bi) {
+                    IsZeroResult::Zero => true,
+                    IsZeroResult::NonZero(_) => false,
+                }
+            }
+
+            fn run_test_2(a: felt252) -> bool {
+                let bi: BoundedInt<-5, 5> = a.try_into().unwrap();
+                match is_zero(bi) {
+                    IsZeroResult::Zero => true,
+                    IsZeroResult::NonZero(_) => false,
+                }
+            }
+        };
+
+        let result =
+            run_program(&program, "run_test_1", &[Value::Felt252(Felt252::from(0))]).return_value;
+        assert_bool_output(result, 1);
+
+        let result =
+            run_program(&program, "run_test_1", &[Value::Felt252(Felt252::from(5))]).return_value;
+        assert_bool_output(result, 0);
+
+        let result =
+            run_program(&program, "run_test_2", &[Value::Felt252(Felt252::from(0))]).return_value;
+        assert_bool_output(result, 1);
+
+        let result =
+            run_program(&program, "run_test_2", &[Value::Felt252(Felt252::from(-5))]).return_value;
+        assert_bool_output(result, 0);
     }
 
     fn assert_constrain_output(result: Value, expected_bi: Value) {
