@@ -19,6 +19,7 @@ use cairo_native::{
 use colored::Colorize;
 use itertools::Itertools;
 use num_traits::ToPrimitive;
+use rayon::iter::{IntoParallelIterator, ParallelIterator};
 #[cfg(feature = "scarb")]
 use scarb_metadata::{PackageMetadata, TargetMetadata};
 use starknet_types_core::felt::Felt;
@@ -182,32 +183,33 @@ pub fn run_tests(
         .compile(&sierra_program, false, Some(Default::default()), None)
         .unwrap();
 
-    let native_executor: Box<dyn Fn(_, _, _, &mut StubSyscallHandler) -> _> = match args.run_mode {
-        RunMode::Aot => {
-            let executor =
-                AotNativeExecutor::from_native_module(native_module, args.opt_level.into())?;
-            Box::new(move |function_id, args, gas, syscall_handler| {
-                executor.invoke_dynamic_with_syscall_handler(
-                    function_id,
-                    args,
-                    gas,
-                    syscall_handler,
-                )
-            })
-        }
-        RunMode::Jit => {
-            let executor =
-                JitNativeExecutor::from_native_module(native_module, args.opt_level.into())?;
-            Box::new(move |function_id, args, gas, syscall_handler| {
-                executor.invoke_dynamic_with_syscall_handler(
-                    function_id,
-                    args,
-                    gas,
-                    syscall_handler,
-                )
-            })
-        }
-    };
+    let native_executor: Box<dyn Fn(_, _, _, &mut StubSyscallHandler) -> _ + Sync> =
+        match args.run_mode {
+            RunMode::Aot => {
+                let executor =
+                    AotNativeExecutor::from_native_module(native_module, args.opt_level.into())?;
+                Box::new(move |function_id, args, gas, syscall_handler| {
+                    executor.invoke_dynamic_with_syscall_handler(
+                        function_id,
+                        args,
+                        gas,
+                        syscall_handler,
+                    )
+                })
+            }
+            RunMode::Jit => {
+                let executor =
+                    JitNativeExecutor::from_native_module(native_module, args.opt_level.into())?;
+                Box::new(move |function_id, args, gas, syscall_handler| {
+                    executor.invoke_dynamic_with_syscall_handler(
+                        function_id,
+                        args,
+                        gas,
+                        syscall_handler,
+                    )
+                })
+            }
+        };
 
     let gas_metadata = GasMetadata::new(
         &sierra_program,
@@ -231,7 +233,7 @@ pub fn run_tests(
         mismatch_reason: vec![],
     }));
     named_tests
-        .into_iter()
+        .into_par_iter()
         .map(
             |(name, test)| -> anyhow::Result<(String, Option<TestResult>)> {
                 if test.ignored {
