@@ -269,6 +269,7 @@ pub fn eval_trim(
         Value::U32(v) => BigInt::from(v),
         Value::U64(v) => BigInt::from(v),
         Value::U128(v) => BigInt::from(v),
+        Value::BoundedInt { value, .. } => value,
         _ => panic!("Not a valid integer type"),
     };
     let is_invalid = value == info.trimmed_value;
