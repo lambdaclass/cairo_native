@@ -887,6 +887,14 @@ mod test {
                 type Result = BoundedInt<31, 31>;
             }
 
+            impl MulHelper6 of MulHelper<BoundedInt<-100, 0>, BoundedInt<0, 100>> {
+                type Result = BoundedInt<-10000, 0>;
+            }
+
+            impl MulHelper6 of MulHelper<BoundedInt<1, 1>, BoundedInt<1, 1>> {
+                type Result = BoundedInt<1, 1>;
+            }
+
             fn run_test_1(a: felt252, b: felt252) -> BoundedInt<-16256, 16384> {
                 let a: BoundedInt<-128, 127> = a.try_into().unwrap();
                 let b: BoundedInt<-128, 127> = b.try_into().unwrap();
@@ -901,8 +909,8 @@ mod test {
                 mul(a,b)
             }
 
-            fn run_test_3(a: felt252, b: felt252) -> BoundedInt<31, 31> {
-                let a: BoundedInt<31, 31> = a.try_into().unwrap();
+            fn run_test_3(a: felt252, b: felt252) -> BoundedInt<1, 31> {
+                let a: BoundedInt<1, 31> = a.try_into().unwrap();
                 let b: BoundedInt<1, 1> = b.try_into().unwrap();
 
                 mul(a,b)
@@ -918,6 +926,13 @@ mod test {
             fn run_test_5(a: felt252, b: felt252) -> BoundedInt<31, 31> {
                 let a: BoundedInt<31, 31> = a.try_into().unwrap();
                 let b: BoundedInt<1, 1> = b.try_into().unwrap();
+
+                mul(a,b)
+            }
+
+            fn run_test_6(a: felt252, b: felt252) -> BoundedInt<-10000,0> {
+                let a: BoundedInt<-100, 0> = a.try_into().unwrap();
+                let b: BoundedInt<0, 100> = b.try_into().unwrap();
 
                 mul(a,b)
             }
@@ -1013,6 +1028,25 @@ mod test {
                     range: Range {
                         lower: BigInt::from(31),
                         upper: BigInt::from(32),
+                    }
+                })
+            ),
+        );
+
+        run_program_assert_output(
+            &cairo,
+            "run_test_6",
+            &[
+                Value::Felt252(Felt252::from(-100)),
+                Value::Felt252(Felt252::from(100)),
+            ],
+            jit_enum!(
+                0,
+                jit_struct!(Value::BoundedInt {
+                    value: Felt252::from(-10000),
+                    range: Range {
+                        lower: BigInt::from(-10000),
+                        upper: BigInt::from(1),
                     }
                 })
             ),
