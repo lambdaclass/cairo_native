@@ -1054,6 +1054,39 @@ mod test {
     }
 
     #[test]
+    fn test_trim_some_pos_i8() {
+        let (_, program) = load_cairo!(
+            #[feature("bounded-int-utils")]
+            use core::internal::bounded_int::{self, BoundedInt};
+            use core::internal::OptionRev;
+
+            fn main() -> BoundedInt<-128, 126> {
+                let num = match bounded_int::trim_max::<i8>(1) {
+                    OptionRev::Some(n) => n,
+                    OptionRev::None => 0,
+                };
+
+                num
+            }
+        );
+        let ctx = NativeContext::new();
+        let module = ctx.compile(&program, false, None, None).unwrap();
+        let executor = JitNativeExecutor::from_native_module(module, OptLevel::Default).unwrap();
+        let ExecutionResult {
+            remaining_gas: _,
+            return_value,
+            builtin_stats: _,
+        } = executor
+            .invoke_dynamic(&program.funcs[0].id, &[], None)
+            .unwrap();
+
+        let Value::BoundedInt { value, range: _ } = return_value else {
+            panic!();
+        };
+        assert_eq!(value, Felt252::from(1_u8));
+    }
+
+    #[test]
     fn test_trim_some_neg_i8() {
         let (_, program) = load_cairo!(
             #[feature("bounded-int-utils")]
