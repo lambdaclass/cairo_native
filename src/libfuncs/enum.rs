@@ -203,11 +203,6 @@ pub fn build_from_bounded_int<'ctx, 'this>(
         )?
         .try_into()?;
     let enum_type = registry.get_type(&info.branch_signatures()[0].vars[0].ty)?;
-    // we assume its never memory allocated since its always an enum with only a tag
-    native_assert!(
-        !enum_type.is_memory_allocated(registry)?,
-        "an enum with only a tag should not be allocated in memory"
-    );
 
     let enum_ty = enum_type.build(
         context,
