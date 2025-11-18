@@ -821,27 +821,7 @@ impl TypeBuilder for CoreTypeConcrete {
             CoreTypeConcrete::RangeCheck(_) => false,
             CoreTypeConcrete::RangeCheck96(_) => false,
             CoreTypeConcrete::Uninitialized(_) => false,
-            CoreTypeConcrete::Enum(info) => {
-                // Enums are memory-allocated if either:
-                //   - Has only variant which is memory-allocated.
-                //   - Has more than one variants, at least one of them being non-ZST.
-                match info.variants.len() {
-                    0 => false,
-                    1 => registry
-                        .get_type(&info.variants[0])?
-                        .is_memory_allocated(registry)?,
-                    _ => {
-                        let mut is_memory_allocated = false;
-                        for variant in &info.variants {
-                            if !registry.get_type(variant)?.is_zst(registry)? {
-                                is_memory_allocated = true;
-                                break;
-                            }
-                        }
-                        is_memory_allocated
-                    }
-                }
-            }
+            CoreTypeConcrete::Enum(_) => !self.is_zst(registry)?,
             CoreTypeConcrete::Struct(info) => {
                 let mut is_memory_allocated = false;
                 for member in &info.members {
