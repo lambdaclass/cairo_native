@@ -5,6 +5,7 @@ use cairo_lang_sierra_gas::core_libfunc_cost::{
     DICT_SQUASH_REPEATED_ACCESS_COST, DICT_SQUASH_UNIQUE_KEY_COST,
 };
 use itertools::Itertools;
+use lambdaworks_math::{traits::ByteConversion, unsigned_integer::element::U256};
 use lazy_static::lazy_static;
 use num_bigint::BigInt;
 use num_traits::{ToPrimitive, Zero};
@@ -319,7 +320,8 @@ pub unsafe extern "C" fn cairo_native__dict_squash(
     let no_big_keys = dict
         .mappings
         .keys()
-        .map(Felt::from_bytes_le)
+        .map(|b| U256::from_bytes_le(b).expect("felt bytes should be valid"))
+        .map(|v| Felt::from_raw(v.limbs))
         .all(|key| key < Felt::from(BigInt::from(1).shl(128)));
     let number_of_keys = dict.mappings.len() as u64;
 

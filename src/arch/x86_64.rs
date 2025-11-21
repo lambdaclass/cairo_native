@@ -10,7 +10,11 @@
 #![cfg(target_arch = "x86_64")]
 
 use super::AbiArgument;
-use crate::{error::Error, starknet::U256, utils::get_integer_layout};
+use crate::{
+    error::Error,
+    starknet::U256,
+    utils::{get_integer_layout, montgomery::MontyBytes},
+};
 use cairo_lang_sierra::ids::ConcreteTypeId;
 use num_traits::ToBytes;
 use starknet_types_core::felt::Felt;
@@ -159,7 +163,7 @@ impl AbiArgument for Felt {
             align_to(buffer, get_integer_layout(252).align());
         }
 
-        buffer.extend_from_slice(&self.to_bytes_le());
+        buffer.extend_from_slice(&self.to_bytes_le_raw());
         Ok(())
     }
 }

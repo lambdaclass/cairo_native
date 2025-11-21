@@ -111,6 +111,7 @@ repository.workspace = true
 resolver = "2"
 
 [features]
+default = ["with-debug-utils"]
 with-cheatcode = []
 with-debug-utils = []
 with-mem-tracing = []
@@ -130,6 +131,7 @@ cairo-lang-sierra.workspace = true
 cairo-lang-utils.workspace = true
 educe.workspace = true
 itertools.workspace = true
+lambdaworks-math.workspace = true
 lazy_static.workspace = true
 libc.workspace = true
 libloading.workspace = true
