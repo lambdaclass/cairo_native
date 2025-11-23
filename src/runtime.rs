@@ -296,6 +296,27 @@ pub unsafe extern "C" fn cairo_native__dict_get(
     is_present as c_int
 }
 
+pub unsafe extern "C" fn cairo_native__dict_len(dict_ptr: *const FeltDict) -> u64 {
+    let dict_rc = Rc::from_raw(dict_ptr);
+    let dict_len = dict_rc.mappings.len() as u64;
+    forget(dict_rc); // TODO: Should we forget it?
+
+    dict_len
+}
+
+pub unsafe extern "C" fn cairo_native__dict_get_all(
+    dict_ptr: *const FeltDict,
+    value_ptr: *mut *mut c_void,
+) {
+    let dict_rc = Rc::from_raw(dict_ptr);
+    *value_ptr = dict_rc
+        .elements
+        .byte_add(dict_rc.layout.pad_to_align().size() * 0) // TODO: Delete this line
+        .cast();
+
+    forget(dict_rc); // TODO: Should we forget it?
+}
+
 /// Simulates the felt252_dict_squash libfunc.
 ///
 /// # Safety
