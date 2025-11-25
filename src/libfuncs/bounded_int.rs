@@ -340,7 +340,7 @@ fn build_mul<'ctx, 'this>(
     let lhs_value = entry.arg(0)?;
     let rhs_value = entry.arg(1)?;
 
-    // Extract the ranges for the operands and the result type.
+    // Extract the ranges for the operands.
     let lhs_ty = registry.get_type(&info.signature.param_signatures[0].ty)?;
     let rhs_ty = registry.get_type(&info.signature.param_signatures[1].ty)?;
 
@@ -351,41 +351,57 @@ fn build_mul<'ctx, 'this>(
         .integer_range(registry)?;
 
     let lhs_width = if lhs_ty.is_bounded_int(registry)? {
+        // P
         lhs_range.offset_bit_width()
     } else {
         lhs_range.zero_based_bit_width()
     };
     let rhs_width = if rhs_ty.is_bounded_int(registry)? {
+        // Q
         rhs_range.offset_bit_width()
     } else {
         rhs_range.zero_based_bit_width()
     };
-
-    // Calculate the computation range.
-    let compute_range = Range {
-        lower: (&lhs_range.lower)
-            .min(&rhs_range.lower)
-            .min(&dst_range.lower)
-            .min(&BigInt::ZERO)
-            .clone(),
-        upper: (&lhs_range.upper)
-            .max(&rhs_range.upper)
-            .max(&dst_range.upper)
-            .clone(),
+    let lhs_lower_width = if lhs_range.lower.sign() != Sign::Minus {
+        // R
+        lhs_range.lower.bits()
+    } else {
+        lhs_range.lower.bits() + 1 // TODO: Check if this is correct
     };
-    let compute_ty = IntegerType::new(context, compute_range.zero_based_bit_width()).into();
+    let rhs_lower_width = if rhs_range.lower.sign() != Sign::Minus {
+        // S
+        rhs_range.lower.bits()
+    } else {
+        rhs_range.lower.bits() + 1 // TODO: Check if this is correct
+    };
+
+    let compile_time_val =
+        lhs_range.lower.clone() * rhs_range.lower.clone() - dst_range.lower.clone();
+    let w = if compile_time_val.sign() != Sign::Minus {
+        // W
+        compile_time_val.bits()
+    } else {
+        compile_time_val.bits() + 1 // TODO: Check if this is correct
+    };
+
+    let x = (lhs_width.max(rhs_width) * 2) as u64;
+    let y = lhs_lower_width.max(rhs_lower_width) * 2;
+    let z = (rhs_width as u64).max(lhs_lower_width) * 2;
+
+    let compute_width = (x.max(y).max(z).max(w) + 3) as u32;
+    let compute_ty = IntegerType::new(context, compute_width).into();
 
     // Zero-extend operands into the computation range.
     native_assert!(
-        compute_range.offset_bit_width() >= lhs_width,
+        compute_width >= lhs_width,
         "the lhs_range bit_width must be less or equal than the compute_range"
     );
     native_assert!(
-        compute_range.offset_bit_width() >= rhs_width,
+        compute_width >= rhs_width,
         "the rhs_range bit_width must be less or equal than the compute_range"
     );
 
-    let lhs_value = if compute_range.zero_based_bit_width() > lhs_width {
+    let lhs_value = if compute_width > lhs_width {
         if lhs_range.lower.sign() != Sign::Minus || lhs_ty.is_bounded_int(registry)? {
             entry.extui(lhs_value, compute_ty, location)?
         } else {
@@ -394,7 +410,7 @@ fn build_mul<'ctx, 'this>(
     } else {
         lhs_value
     };
-    let rhs_value = if compute_range.zero_based_bit_width() > rhs_width {
+    let rhs_value = if compute_width > rhs_width {
         if rhs_range.lower.sign() != Sign::Minus || rhs_ty.is_bounded_int(registry)? {
             entry.extui(rhs_value, compute_ty, location)?
         } else {
@@ -404,43 +420,32 @@ fn build_mul<'ctx, 'this>(
         rhs_value
     };
 
-    // Offset the operands so that they are compatible with the operation.
-    let lhs_value = if lhs_ty.is_bounded_int(registry)? && lhs_range.lower != BigInt::ZERO {
-        let lhs_offset =
-            entry.const_int_from_type(context, location, lhs_range.lower, compute_ty)?;
-        entry.addi(lhs_value, lhs_offset, location)?
-    } else {
-        lhs_value
-    };
-    let rhs_value = if rhs_ty.is_bounded_int(registry)? && rhs_range.lower != BigInt::ZERO {
-        let rhs_offset =
-            entry.const_int_from_type(context, location, rhs_range.lower, compute_ty)?;
-        entry.addi(rhs_value, rhs_offset, location)?
-    } else {
-        rhs_value
-    };
+    let ao = entry.const_int_from_type(context, location, lhs_range.lower, compute_ty)?;
+    let bo = entry.const_int_from_type(context, location, rhs_range.lower, compute_ty)?;
 
-    // Compute the operation.
-    let res_value = entry.muli(lhs_value, rhs_value, location)?;
+    let ad_bd = entry.muli(lhs_value, rhs_value, location)?;
+    let ad_bo = entry.muli(lhs_value, bo, location)?;
+    let bd_ao = entry.muli(rhs_value, ao, location)?;
+    let compile_time_val =
+        entry.const_int_from_type(context, location, compile_time_val, compute_ty)?;
 
-    // Offset and truncate the result to the output type.
-    let res_offset = (&dst_range.lower).max(&compute_range.lower).clone();
-    let res_value = if res_offset != BigInt::ZERO {
-        let res_offset = entry.const_int_from_type(context, location, res_offset, compute_ty)?;
-        entry.append_op_result(arith::subi(res_value, res_offset, location))?
-    } else {
-        res_value
-    };
+    let res_value = entry.addi(ad_bd, ad_bo, location)?;
+    let res_value = entry.addi(res_value, bd_ao, location)?;
+    let mut res_value = entry.addi(res_value, compile_time_val, location)?;
 
-    let res_value = if dst_range.offset_bit_width() < compute_range.zero_based_bit_width() {
-        entry.trunci(
+    if compute_width > dst_range.offset_bit_width() {
+        res_value = entry.trunci(
             res_value,
             IntegerType::new(context, dst_range.offset_bit_width()).into(),
             location,
         )?
-    } else {
-        res_value
-    };
+    } else if compute_width < dst_range.offset_bit_width() {
+        res_value = entry.extui(
+            res_value,
+            IntegerType::new(context, dst_range.offset_bit_width()).into(),
+            location,
+        )?
+    }
 
     helper.br(entry, 0, &[res_value], location)
 }
@@ -862,7 +867,7 @@ mod test {
     };
 
     #[test]
-    fn test_bounded_int_mul() {
+    fn test_mul() {
         let cairo = load_cairo!(
             #[feature("bounded-int-utils")]
             use core::internal::bounded_int::{self, BoundedInt, MulHelper, mul};
@@ -891,7 +896,7 @@ mod test {
                 type Result = BoundedInt<-10000, 0>;
             }
 
-            impl MulHelper6 of MulHelper<BoundedInt<1, 1>, BoundedInt<1, 1>> {
+            impl MulHelper7 of MulHelper<BoundedInt<1, 1>, BoundedInt<1, 1>> {
                 type Result = BoundedInt<1, 1>;
             }
 
