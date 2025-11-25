@@ -9,6 +9,7 @@ use crate::{
     types::TypeBuilder,
     utils::RangeExt,
 };
+use ark_ff::Zero;
 use cairo_lang_sierra::{
     extensions::{
         bounded_int::{
@@ -83,8 +84,8 @@ fn build_add<'ctx, 'this>(
     _metadata: &mut MetadataStorage,
     info: &SignatureOnlyConcreteLibfunc,
 ) -> Result<()> {
-    let lhs_value = entry.arg(0)?;
-    let rhs_value = entry.arg(1)?;
+    let mut lhs_value = entry.arg(0)?;
+    let mut rhs_value = entry.arg(1)?;
 
     // Extract the ranges for the operands and the result type.
     let lhs_ty = registry.get_type(&info.signature.param_signatures[0].ty)?;
@@ -96,100 +97,53 @@ fn build_add<'ctx, 'this>(
         .get_type(&info.signature.branch_signatures[0].vars[0].ty)?
         .integer_range(registry)?;
 
+    let lhs_lower = lhs_range.lower.clone();
+    let rhs_lower = rhs_range.lower.clone();
+    let dst_lower = dst_range.lower.clone();
+    let compile_time_val = lhs_lower + rhs_lower - dst_lower; // TODO: Isn't this always 0?
+    assert_eq!(compile_time_val, BigInt::zero());
+    let compile_time_width = compile_time_val.bits() as u32; // TODO: Do this safer
+
     let lhs_width = if lhs_ty.is_bounded_int(registry)? {
+        // TODO: Is it necessary to check this? Aren´t they always bounded ints?
         lhs_range.offset_bit_width()
     } else {
         lhs_range.zero_based_bit_width()
     };
     let rhs_width = if rhs_ty.is_bounded_int(registry)? {
+        // TODO: Is it necessary to check this? Aren´t they always bounded ints?
         rhs_range.offset_bit_width()
     } else {
         rhs_range.zero_based_bit_width()
     };
+    let dst_width = dst_range.offset_bit_width();
 
-    // Calculate the computation range.
-    let compute_range = Range {
-        lower: (&lhs_range.lower)
-            .min(&rhs_range.lower)
-            .min(&dst_range.lower)
-            .clone(),
-        upper: (&lhs_range.upper)
-            .max(&rhs_range.upper)
-            .max(&dst_range.upper)
-            .clone(),
-    };
-    let compute_ty = IntegerType::new(context, compute_range.offset_bit_width()).into();
+    let compute_width = compile_time_width.max(lhs_width).max(rhs_width) + 2; // TODO: Check this +2
+    let compute_ty = IntegerType::new(context, compute_width).into();
 
-    // Zero-extend operands into the computation range.
-    native_assert!(
-        compute_range.offset_bit_width() >= lhs_width,
-        "the lhs_range bit_width must be less or equal than the compute_range"
-    );
-    native_assert!(
-        compute_range.offset_bit_width() >= rhs_width,
-        "the rhs_range bit_width must be less or equal than the compute_range"
-    );
+    if compute_width > lhs_width {
+        lhs_value = entry.extui(lhs_value, compute_ty, location)?;
+    }
+    if compute_width > rhs_width {
+        rhs_value = entry.extui(rhs_value, compute_ty, location)?;
+    }
+    let compile_time_val =
+        entry.const_int_from_type(context, location, compile_time_val, compute_ty)?;
 
-    let lhs_value = if compute_range.offset_bit_width() > lhs_width {
-        if lhs_range.lower.sign() != Sign::Minus || lhs_ty.is_bounded_int(registry)? {
-            entry.extui(lhs_value, compute_ty, location)?
-        } else {
-            entry.extsi(lhs_value, compute_ty, location)?
-        }
-    } else {
-        lhs_value
-    };
-    let rhs_value = if compute_range.offset_bit_width() > rhs_width {
-        if rhs_range.lower.sign() != Sign::Minus || rhs_ty.is_bounded_int(registry)? {
-            entry.extui(rhs_value, compute_ty, location)?
-        } else {
-            entry.extsi(rhs_value, compute_ty, location)?
-        }
-    } else {
-        rhs_value
-    };
-
-    // Offset the operands so that they are compatible.
-    let lhs_offset = if lhs_ty.is_bounded_int(registry)? {
-        &lhs_range.lower - &compute_range.lower
-    } else {
-        lhs_range.lower
-    };
-    let lhs_value = if lhs_offset != BigInt::ZERO {
-        let lhs_offset = entry.const_int_from_type(context, location, lhs_offset, compute_ty)?;
-        entry.addi(lhs_value, lhs_offset, location)?
-    } else {
-        lhs_value
-    };
-
-    let rhs_offset = if rhs_ty.is_bounded_int(registry)? {
-        &rhs_range.lower - &compute_range.lower
-    } else {
-        rhs_range.lower
-    };
-    let rhs_value = if rhs_offset != BigInt::ZERO {
-        let rhs_offset = entry.const_int_from_type(context, location, rhs_offset, compute_ty)?;
-        entry.addi(rhs_value, rhs_offset, location)?
-    } else {
-        rhs_value
-    };
-
-    // Compute the operation.
     let res_value = entry.addi(lhs_value, rhs_value, location)?;
+    let res_value = entry.addi(res_value, compile_time_val, location)?;
 
-    // Offset and truncate the result to the output type.
-    let res_offset = &dst_range.lower - &compute_range.lower * 2;
-    let res_value = if res_offset != BigInt::ZERO {
-        let res_offset = entry.const_int_from_type(context, location, res_offset, compute_ty)?;
-        entry.append_op_result(arith::subi(res_value, res_offset, location))?
-    } else {
-        res_value
-    };
-
-    let res_value = if dst_range.offset_bit_width() < compute_range.offset_bit_width() {
+    let res_value = if compute_width > dst_width {
         entry.trunci(
             res_value,
-            IntegerType::new(context, dst_range.offset_bit_width()).into(),
+            IntegerType::new(context, dst_width).into(),
+            location,
+        )?
+    } else if compute_width < dst_width {
+        // TODO: Check if this can happen
+        entry.extui(
+            res_value,
+            IntegerType::new(context, dst_width).into(),
             location,
         )?
     } else {
@@ -1051,18 +1005,18 @@ mod test {
                 return add(a, b);
             }
 
-            // impl AddHelper5 of AddHelper<BoundedInt<-5, -5>, BoundedInt<-5, -5>> {
-            //     type Result = BoundedInt<-10, -10>;
-            // }
+            impl AddHelper5 of AddHelper<BoundedInt<-5, -5>, BoundedInt<-5, -5>> {
+                type Result = BoundedInt<-10, -10>;
+            }
 
-            // fn run_test_5(
-            //     a: felt252,
-            //     b: felt252,
-            // ) -> BoundedInt<-10, -10> {
-            //     let a: BoundedInt<-5, -5> = a.try_into().unwrap();
-            //     let b: BoundedInt<-5, -5> = b.try_into().unwrap();
-            //     return add(a, b);
-            // }
+            fn run_test_5(
+                a: felt252,
+                b: felt252,
+            ) -> BoundedInt<-10, -10> {
+                let a: BoundedInt<-5, -5> = a.try_into().unwrap();
+                let b: BoundedInt<-5, -5> = b.try_into().unwrap();
+                return add(a, b);
+            }
         };
 
         run_program_assert_output(
@@ -1160,26 +1114,23 @@ mod test {
             ),
         );
 
-        // TODO: This fails with:
-        // loc("10 : i3":1:1): error: integer constant out of range for attribute
-        // Could not compile test program to MLIR.: MlirError(AttributeParse("10 : i3"))
-        // run_program_assert_output(
-        //     &cairo,
-        //     "run_test_5",
-        //     &[
-        //         Value::Felt252(Felt252::from(-5)),
-        //         Value::Felt252(Felt252::from(-5)),
-        //     ],
-        //     jit_enum!(
-        //         0,
-        //         jit_struct!(Value::BoundedInt {
-        //             value: Felt252::from(-10),
-        //             range: Range {
-        //                 lower: BigInt::from(-10),
-        //                 upper: BigInt::from(-10),
-        //             }
-        //         })
-        //     ),
-        // );
+        run_program_assert_output(
+            &cairo,
+            "run_test_5",
+            &[
+                Value::Felt252(Felt252::from(-5)),
+                Value::Felt252(Felt252::from(-5)),
+            ],
+            jit_enum!(
+                0,
+                jit_struct!(Value::BoundedInt {
+                    value: Felt252::from(-10),
+                    range: Range {
+                        lower: BigInt::from(-10),
+                        upper: BigInt::from(-9),
+                    }
+                })
+            ),
+        );
     }
 }
