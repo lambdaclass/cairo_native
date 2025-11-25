@@ -1047,6 +1047,28 @@ mod test {
                     OptionRev::None => panic!("boundary"),
                 };
             }
+
+            impl MinHelper_m100_100 of TrimMinHelper<BoundedInt<-100, 100>> {
+                type Target = BoundedInt<-99, 100>;
+            }
+            fn test_m100_100_min(a: felt252) {
+                let a_int: BoundedInt<-100, 100> = a.try_into().unwrap();
+                match trim_min::<BoundedInt<-100, 100>>(a_int) {
+                    OptionRev::Some(v) => assert!(v == a.try_into().unwrap(), "invariant"),
+                    OptionRev::None => panic!("boundary"),
+                };
+            }
+
+            impl MaxHelper_m100_100 of TrimMaxHelper<BoundedInt<-100, 100>> {
+                type Target = BoundedInt<-100, 99>;
+            }
+            fn test_m100_100_max(a: felt252) {
+                let a_int: BoundedInt<-100, 100> = a.try_into().unwrap();
+                match trim_max::<BoundedInt<-100, 100>>(a_int) {
+                    OptionRev::Some(v) => assert!(v == a.try_into().unwrap(), "invariant"),
+                    OptionRev::None => panic!("boundary"),
+                };
+            }
         };
 
         for (name, argument, expected) in [
@@ -1102,6 +1124,18 @@ mod test {
             ("test_m100_m10_max", -10, Some("boundary")),
             ("test_m100_m10_max", -50, None),
             ("test_m100_m10_max", -100, None),
+            // test -100 100 min
+            ("test_m100_100_min", -100, Some("boundary")),
+            ("test_m100_100_min", -50, None),
+            ("test_m100_100_min", 0, None),
+            ("test_m100_100_min", 50, None),
+            ("test_m100_100_min", 100, None),
+            // test -100 100 max
+            ("test_m100_100_max", -100, None),
+            ("test_m100_100_max", -50, None),
+            ("test_m100_100_max", 0, None),
+            ("test_m100_100_max", 50, None),
+            ("test_m100_100_max", 100, Some("boundary")),
         ] {
             let arguments = &[Felt252::from(argument).into()];
             let execution = run_program(&program, name, arguments);
