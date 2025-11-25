@@ -122,7 +122,7 @@ pub fn load_cairo_str(program_str: &str) -> (String, Program, SierraCasmRunner) 
     let mut db = RootDatabase::builder().detect_corelib().build().unwrap();
     let main_crate_ids = {
         let main_crate_inputs =
-            setup_project(&mut db, program_str.as_ref()).expect("failed to setup project");
+            setup_project(&mut db, program_file.as_ref()).expect("failed to setup project");
         CrateInput::into_crate_ids(&db, main_crate_inputs)
     };
     let sierra_program_with_dbg = compile_prepared_db(
