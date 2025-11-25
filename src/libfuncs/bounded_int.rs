@@ -73,6 +73,11 @@ pub fn build<'ctx, 'this>(
 }
 
 /// Generate MLIR operations for the `bounded_int_add` libfunc.
+///
+/// Since we want to get C = A + B, we can translate this to
+/// Co + Cd = Ao + Ad + Bo + Bd. Where Ao, Bo and Co represent the lower bound
+/// of the ranges in the BoundedInt and Ad, Bd and Cd represent the offsets. Since
+/// we also know that Co = Ao + Bo we can simplify the equation to Cd = Ad + Bd.
 #[allow(clippy::too_many_arguments)]
 fn build_add<'ctx, 'this>(
     context: &'ctx Context,
@@ -86,7 +91,7 @@ fn build_add<'ctx, 'this>(
     let lhs_value = entry.arg(0)?;
     let rhs_value = entry.arg(1)?;
 
-    // Extract the ranges for the operands and the result type.
+    // Extract the ranges for the operands.
     let lhs_ty = registry.get_type(&info.signature.param_signatures[0].ty)?;
     let rhs_ty = registry.get_type(&info.signature.param_signatures[1].ty)?;
 
@@ -96,6 +101,7 @@ fn build_add<'ctx, 'this>(
         .get_type(&info.signature.branch_signatures[0].vars[0].ty)?
         .integer_range(registry)?;
 
+    // Extract the bit width.
     let lhs_width = if lhs_ty.is_bounded_int(registry)? {
         lhs_range.offset_bit_width()
     } else {
@@ -108,10 +114,10 @@ fn build_add<'ctx, 'this>(
     };
     let dst_width = dst_range.offset_bit_width();
 
-    let compute_width = lhs_width.max(rhs_width) + 2; // TODO: Check this +2
+    // Get the compute type so we can do the addition without problems
+    let compute_width = lhs_width.max(rhs_width) + 1;
     let compute_ty = IntegerType::new(context, compute_width).into();
 
-    // Zero-extend operands into the computation range.
     native_assert!(
         compute_width >= lhs_width,
         "the lhs_range bit_width must be less or equal than the compute_range"
@@ -121,6 +127,7 @@ fn build_add<'ctx, 'this>(
         "the rhs_range bit_width must be less or equal than the compute_range"
     );
 
+    // Get the operands on the same number of bits so we can operate with them
     let lhs_value = if compute_width > lhs_width {
         if lhs_range.lower.sign() != Sign::Minus || lhs_ty.is_bounded_int(registry)? {
             entry.extui(lhs_value, compute_ty, location)?
@@ -140,6 +147,7 @@ fn build_add<'ctx, 'this>(
         rhs_value
     };
 
+    // Addition and get the result value on the desired range
     let res_value = entry.addi(lhs_value, rhs_value, location)?;
     let res_value = if compute_width > dst_width {
         entry.trunci(
