@@ -233,31 +233,25 @@ fn build_sub<'ctx, 'this>(
     } else {
         rhs_range.zero_based_bit_width()
     };
+    let dst_width = dst_range.offset_bit_width();
 
-    // Calculate the computation range.
-    let compute_range = Range {
-        lower: (&lhs_range.lower)
-            .min(&rhs_range.lower)
-            .min(&dst_range.lower)
-            .clone(),
-        upper: (&lhs_range.upper)
-            .max(&rhs_range.upper)
-            .max(&dst_range.upper)
-            .clone(),
-    };
-    let compute_ty = IntegerType::new(context, compute_range.offset_bit_width()).into();
+    let compile_time_val = lhs_range.lower.clone() - rhs_range.lower.clone() - dst_range.lower;
+    let compile_time_val_width = compile_time_val.bits() as u32; // TODO: Do this safer
+
+    let compute_width = lhs_width.max(rhs_width).max(compile_time_val_width) + 1; // TODO: Check if the +1 is necessary
+    let compute_ty = IntegerType::new(context, compute_width).into();
 
     // Zero-extend operands into the computation range.
     native_assert!(
-        compute_range.offset_bit_width() >= lhs_width,
+        compute_width >= lhs_width,
         "the lhs_range bit_width must be less or equal than the compute_range"
     );
     native_assert!(
-        compute_range.offset_bit_width() >= rhs_width,
+        compute_width >= rhs_width,
         "the rhs_range bit_width must be less or equal than the compute_range"
     );
 
-    let lhs_value = if compute_range.offset_bit_width() > lhs_width {
+    let lhs_value = if compute_width > lhs_width {
         if lhs_range.lower.sign() != Sign::Minus || lhs_ty.is_bounded_int(registry)? {
             entry.extui(lhs_value, compute_ty, location)?
         } else {
@@ -266,7 +260,7 @@ fn build_sub<'ctx, 'this>(
     } else {
         lhs_value
     };
-    let rhs_value = if compute_range.offset_bit_width() > rhs_width {
+    let rhs_value = if compute_width > rhs_width {
         if rhs_range.lower.sign() != Sign::Minus || rhs_ty.is_bounded_int(registry)? {
             entry.extui(rhs_value, compute_ty, location)?
         } else {
@@ -276,47 +270,20 @@ fn build_sub<'ctx, 'this>(
         rhs_value
     };
 
-    // Offset the operands so that they are compatible.
-    let lhs_offset = if lhs_ty.is_bounded_int(registry)? {
-        &lhs_range.lower - &compute_range.lower
-    } else {
-        lhs_range.lower
-    };
-    let lhs_value = if lhs_offset != BigInt::ZERO {
-        let lhs_offset = entry.const_int_from_type(context, location, lhs_offset, compute_ty)?;
-        entry.addi(lhs_value, lhs_offset, location)?
-    } else {
-        lhs_value
-    };
-
-    let rhs_offset = if rhs_ty.is_bounded_int(registry)? {
-        &rhs_range.lower - &compute_range.lower
-    } else {
-        rhs_range.lower
-    };
-    let rhs_value = if rhs_offset != BigInt::ZERO {
-        let rhs_offset = entry.const_int_from_type(context, location, rhs_offset, compute_ty)?;
-        entry.addi(rhs_value, rhs_offset, location)?
-    } else {
-        rhs_value
-    };
-
-    // Compute the operation.
-    let res_value = entry.append_op_result(arith::subi(lhs_value, rhs_value, location))?;
-
-    // Offset and truncate the result to the output type.
-    let res_offset = dst_range.lower.clone();
-    let res_value = if res_offset != BigInt::ZERO {
-        let res_offset = entry.const_int_from_type(context, location, res_offset, compute_ty)?;
-        entry.append_op_result(arith::subi(res_value, res_offset, location))?
-    } else {
-        res_value
-    };
-
-    let res_value = if dst_range.offset_bit_width() < compute_range.offset_bit_width() {
+    let compile_time_val =
+        entry.const_int_from_type(context, location, compile_time_val, compute_ty)?;
+    let res_value = entry.subi(lhs_value, rhs_value, location)?;
+    let res_value = entry.addi(res_value, compile_time_val, location)?;
+    let res_value = if compute_width > dst_width {
         entry.trunci(
             res_value,
-            IntegerType::new(context, dst_range.offset_bit_width()).into(),
+            IntegerType::new(context, dst_width).into(),
+            location,
+        )?
+    } else if compute_width < dst_width {
+        entry.extui(
+            res_value,
+            IntegerType::new(context, dst_width).into(),
             location,
         )?
     } else {
