@@ -759,25 +759,44 @@ fn build_trim<'ctx, 'this>(
     info: &BoundedIntTrimConcreteLibfunc,
 ) -> Result<()> {
     let value: Value = entry.arg(0)?;
-    let trimmed_value = entry.const_int_from_type(
-        context,
-        location,
-        info.trimmed_value.clone(),
-        value.r#type(),
-    )?;
-    let trim_type = registry.get_type(&info.param_signatures()[0].ty)?;
-    let is_invalid = entry.cmpi(context, CmpiPredicate::Eq, value, trimmed_value, location)?;
-    let int_range = trim_type.integer_range(registry)?;
 
-    // There is no need to truncate the value type since we're only receiving power-of-two integers
-    // and constraining their range a single value from either the lower or upper limit. However,
-    // since we're returning a `BoundedInt` we need to offset its internal representation
-    // accordingly.
-    let value = if info.trimmed_value == BigInt::ZERO || int_range.lower < BigInt::ZERO {
+    let src_ty = registry.get_type(&info.param_signatures()[0].ty)?;
+    let dst_ty = registry.get_type(&info.branch_signatures()[1].vars[0].ty)?;
+
+    let trimmed_value = if src_ty.is_bounded_int(registry)? {
+        entry.const_int_from_type(
+            context,
+            location,
+            info.trimmed_value.clone() - src_ty.integer_range(registry)?.lower,
+            value.r#type(),
+        )?
+    } else {
+        entry.const_int_from_type(
+            context,
+            location,
+            info.trimmed_value.clone(),
+            value.r#type(),
+        )?
+    };
+    let is_invalid = entry.cmpi(context, CmpiPredicate::Eq, value, trimmed_value, location)?;
+
+    let value = if !src_ty.is_bounded_int(registry)?
+        && dst_ty.integer_range(registry)?.lower != BigInt::ZERO
+    {
         let offset = entry.const_int_from_type(
             context,
             location,
-            &info.trimmed_value + 1,
+            dst_ty.integer_range(registry)?.lower,
+            value.r#type(),
+        )?;
+        entry.append_op_result(arith::subi(value, offset, location))?
+    } else if src_ty.is_bounded_int(registry)?
+        && dst_ty.integer_range(registry)?.lower != src_ty.integer_range(registry)?.lower
+    {
+        let offset = entry.const_int_from_type(
+            context,
+            location,
+            dst_ty.integer_range(registry)?.lower - src_ty.integer_range(registry)?.lower,
             value.r#type(),
         )?;
         entry.append_op_result(arith::subi(value, offset, location))?
@@ -941,6 +960,49 @@ mod test {
                 };
             }
 
+            impl MinHelper_0_100 of TrimMinHelper<BoundedInt<0, 100>> {
+                type Target = BoundedInt<1, 100>;
+            }
+            fn test_0_100_min(a: felt252) {
+                let a_int: BoundedInt<0, 100> = a.try_into().unwrap();
+                match trim_min::<BoundedInt<0, 100>>(a_int) {
+                    OptionRev::Some(v) => assert!(v == a.try_into().unwrap(), "invariant"),
+                    OptionRev::None => panic!("boundary"),
+                };
+            }
+
+            impl MaxHelper_0_100 of TrimMaxHelper<BoundedInt<0, 100>> {
+                type Target = BoundedInt<0, 99>;
+            }
+            fn test_0_100_max(a: felt252) {
+                let a_int: BoundedInt<0, 100> = a.try_into().unwrap();
+                match trim_max::<BoundedInt<0, 100>>(a_int) {
+                    OptionRev::Some(v) => assert!(v == a.try_into().unwrap(), "invariant"),
+                    OptionRev::None => panic!("boundary"),
+                };
+            }
+
+            impl MinHelper_10_100 of TrimMinHelper<BoundedInt<10, 100>> {
+                type Target = BoundedInt<11, 100>;
+            }
+            fn test_10_100_min(a: felt252) {
+                let a_int: BoundedInt<10, 100> = a.try_into().unwrap();
+                match trim_min::<BoundedInt<10, 100>>(a_int) {
+                    OptionRev::Some(v) => assert!(v == a.try_into().unwrap(), "invariant"),
+                    OptionRev::None => panic!("boundary"),
+                };
+            }
+
+            impl MaxHelper_10_100 of TrimMaxHelper<BoundedInt<10, 100>> {
+                type Target = BoundedInt<10, 99>;
+            }
+            fn test_10_100_max(a: felt252) {
+                let a_int: BoundedInt<10, 100> = a.try_into().unwrap();
+                match trim_max::<BoundedInt<10, 100>>(a_int) {
+                    OptionRev::Some(v) => assert!(v == a.try_into().unwrap(), "invariant"),
+                    OptionRev::None => panic!("boundary"),
+                };
+            }
         };
 
         for (name, argument, expected) in [
@@ -964,6 +1026,22 @@ mod test {
             ("test_u8_max", 20, None),
             ("test_u8_max", 0, None),
             ("test_u8_max", 255, Some("boundary")),
+            // test 0 100 min
+            ("test_0_100_min", 0, Some("boundary")),
+            ("test_0_100_min", 10, None),
+            ("test_0_100_min", 100, None),
+            // test 0 100 max
+            ("test_0_100_max", 0, None),
+            ("test_0_100_max", 10, None),
+            ("test_0_100_max", 100, Some("boundary")),
+            // test 10 100 min
+            ("test_10_100_min", 10, Some("boundary")),
+            ("test_10_100_min", 20, None),
+            ("test_10_100_min", 100, None),
+            // test 10 100 max
+            ("test_10_100_max", 10, None),
+            ("test_10_100_max", 20, None),
+            ("test_10_100_max", 100, Some("boundary")),
         ] {
             let arguments = &[Felt252::from(argument).into()];
             let execution = run_program(&program, name, arguments);
