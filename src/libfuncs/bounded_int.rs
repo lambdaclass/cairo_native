@@ -9,7 +9,6 @@ use crate::{
     types::TypeBuilder,
     utils::RangeExt,
 };
-use ark_ff::Zero;
 use cairo_lang_sierra::{
     extensions::{
         bounded_int::{
@@ -97,13 +96,6 @@ fn build_add<'ctx, 'this>(
         .get_type(&info.signature.branch_signatures[0].vars[0].ty)?
         .integer_range(registry)?;
 
-    let lhs_lower = lhs_range.lower.clone();
-    let rhs_lower = rhs_range.lower.clone();
-    let dst_lower = dst_range.lower.clone();
-    let compile_time_val = lhs_lower + rhs_lower - dst_lower; // TODO: Isn't this always 0?
-    assert_eq!(compile_time_val, BigInt::zero());
-    let compile_time_width = compile_time_val.bits() as u32; // TODO: Do this safer
-
     let lhs_width = if lhs_ty.is_bounded_int(registry)? {
         // TODO: Is it necessary to check this? Aren´t they always bounded ints?
         lhs_range.offset_bit_width()
@@ -118,7 +110,7 @@ fn build_add<'ctx, 'this>(
     };
     let dst_width = dst_range.offset_bit_width();
 
-    let compute_width = compile_time_width.max(lhs_width).max(rhs_width) + 2; // TODO: Check this +2
+    let compute_width = lhs_width.max(rhs_width) + 2; // TODO: Check this +2
     let compute_ty = IntegerType::new(context, compute_width).into();
 
     if compute_width > lhs_width {
@@ -127,11 +119,8 @@ fn build_add<'ctx, 'this>(
     if compute_width > rhs_width {
         rhs_value = entry.extui(rhs_value, compute_ty, location)?;
     }
-    let compile_time_val =
-        entry.const_int_from_type(context, location, compile_time_val, compute_ty)?;
 
     let res_value = entry.addi(lhs_value, rhs_value, location)?;
-    let res_value = entry.addi(res_value, compile_time_val, location)?;
 
     let res_value = if compute_width > dst_width {
         entry.trunci(
