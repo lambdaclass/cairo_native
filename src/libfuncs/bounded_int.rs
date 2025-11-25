@@ -780,30 +780,15 @@ fn build_trim<'ctx, 'this>(
     };
     let is_invalid = entry.cmpi(context, CmpiPredicate::Eq, value, trimmed_value, location)?;
 
-    let value = if !src_ty.is_bounded_int(registry)?
-        && dst_ty.integer_range(registry)?.lower != BigInt::ZERO
-    {
-        let offset = entry.const_int_from_type(
-            context,
-            location,
-            dst_ty.integer_range(registry)?.lower,
-            value.r#type(),
-        )?;
-        entry.append_op_result(arith::subi(value, offset, location))?
-    } else if src_ty.is_bounded_int(registry)?
-        && dst_ty.integer_range(registry)?.lower != src_ty.integer_range(registry)?.lower
-    {
-        let offset = entry.const_int_from_type(
-            context,
-            location,
-            dst_ty.integer_range(registry)?.lower - src_ty.integer_range(registry)?.lower,
-            value.r#type(),
-        )?;
-        entry.append_op_result(arith::subi(value, offset, location))?
-    } else {
-        value
+    let offset = match src_ty.is_bounded_int(registry)? {
+        true => dst_ty.integer_range(registry)?.lower - src_ty.integer_range(registry)?.lower,
+        false => dst_ty.integer_range(registry)?.lower,
     };
-
+    let value = entry.append_op_result(arith::subi(
+        value,
+        entry.const_int_from_type(context, location, offset, value.r#type())?,
+        location,
+    ))?;
     let value = entry.trunci(
         value,
         dst_ty.build(
