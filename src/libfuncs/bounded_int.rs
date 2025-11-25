@@ -755,7 +755,7 @@ fn build_trim<'ctx, 'this>(
     entry: &'this Block<'ctx>,
     location: Location<'ctx>,
     helper: &LibfuncHelper<'ctx, 'this>,
-    _metadata: &mut MetadataStorage,
+    metadata: &mut MetadataStorage,
     info: &BoundedIntTrimConcreteLibfunc,
 ) -> Result<()> {
     let value: Value = entry.arg(0)?;
@@ -803,6 +803,18 @@ fn build_trim<'ctx, 'this>(
     } else {
         value
     };
+
+    let value = entry.trunci(
+        value,
+        dst_ty.build(
+            context,
+            helper,
+            registry,
+            metadata,
+            &info.branch_signatures()[1].vars[0].ty,
+        )?,
+        location,
+    )?;
 
     helper.cond_br(
         context,
@@ -1069,6 +1081,27 @@ mod test {
                     OptionRev::None => panic!("boundary"),
                 };
             }
+
+            impl MinHelper_0_8 of TrimMinHelper<BoundedInt<0, 8>> {
+                type Target = BoundedInt<1, 8>;
+            }
+            fn test_0_8_min(a: felt252) {
+                let a_int: BoundedInt<0, 8> = a.try_into().unwrap();
+                match trim_min::<BoundedInt<0, 8>>(a_int) {
+                    OptionRev::Some(v) => assert!(v == a.try_into().unwrap(), "invariant"),
+                    OptionRev::None => panic!("boundary"),
+                };
+            }
+            impl MaxHelper_0_8 of TrimMaxHelper<BoundedInt<0, 8>> {
+                type Target = BoundedInt<0, 7>;
+            }
+            fn test_0_8_max(a: felt252) {
+                let a_int: BoundedInt<0, 8> = a.try_into().unwrap();
+                match trim_max::<BoundedInt<0, 8>>(a_int) {
+                    OptionRev::Some(v) => assert!(v == a.try_into().unwrap(), "invariant"),
+                    OptionRev::None => panic!("boundary"),
+                };
+            }
         };
 
         for (name, argument, expected) in [
@@ -1136,6 +1169,14 @@ mod test {
             ("test_m100_100_max", 0, None),
             ("test_m100_100_max", 50, None),
             ("test_m100_100_max", 100, Some("boundary")),
+            // test 0 8 min
+            ("test_0_8_min", 0, Some("boundary")),
+            ("test_0_8_min", 4, None),
+            ("test_0_8_min", 8, None),
+            // test 0 8 max
+            ("test_0_8_max", 0, None),
+            ("test_0_8_max", 4, None),
+            ("test_0_8_max", 8, Some("boundary")),
         ] {
             let arguments = &[Felt252::from(argument).into()];
             let execution = run_program(&program, name, arguments);
