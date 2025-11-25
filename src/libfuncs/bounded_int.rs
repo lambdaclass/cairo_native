@@ -131,7 +131,6 @@ fn build_add<'ctx, 'this>(
     };
 
     let res_value = entry.addi(lhs_value, rhs_value, location)?;
-
     let res_value = if compute_width > dst_width {
         entry.trunci(
             res_value,
@@ -139,7 +138,6 @@ fn build_add<'ctx, 'this>(
             location,
         )?
     } else if compute_width < dst_width {
-        // TODO: Check if this can happen
         entry.extui(
             res_value,
             IntegerType::new(context, dst_width).into(),
