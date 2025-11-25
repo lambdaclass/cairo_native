@@ -1155,7 +1155,6 @@ dependencies = [
  "cairo-lang-filesystem",
  "cairo-lang-semantic",
  "cairo-lang-sierra",
- "cairo-lang-sierra-type-size",
  "cairo-lang-starknet",
  "cairo-native",
  "clap",
