@@ -882,9 +882,11 @@ fn build_wrap_non_zero<'ctx, 'this>(
 
 #[cfg(test)]
 mod test {
-    use cairo_lang_sierra::extensions::utils::Range;
+    use cairo_lang_sierra::{extensions::utils::Range, program::Program};
     use cairo_vm::Felt252;
+    use lazy_static::lazy_static;
     use num_bigint::BigInt;
+    use test_case::test_case;
 
     use crate::{load_cairo, utils::testing::run_program, Value};
 
@@ -919,9 +921,8 @@ mod test {
         }
     }
 
-    #[test]
-    fn test_trim() {
-        let program = load_cairo! {
+    lazy_static! {
+        static ref TEST_TRIM_PROGRAM: (String, Program) = load_cairo! {
             #[feature("bounded-int-utils")]
             use core::internal::bounded_int::{self, BoundedInt, trim_min, trim_max, TrimMinHelper, TrimMaxHelper};
             use core::internal::OptionRev;
@@ -1088,85 +1089,84 @@ mod test {
                 };
             }
         };
+    }
 
-        for (name, argument, expected) in [
-            // test i8 min
-            ("test_i8_min", 0, None),
-            ("test_i8_min", 20, None),
-            ("test_i8_min", 127, None),
-            ("test_i8_min", -20, None),
-            ("test_i8_min", -128, Some("boundary")),
-            // test i8 max
-            ("test_i8_max", 0, None),
-            ("test_i8_max", 20, None),
-            ("test_i8_max", 127, Some("boundary")),
-            ("test_i8_max", -20, None),
-            ("test_i8_max", -128, None),
-            // test u8 min
-            ("test_u8_min", 0, Some("boundary")),
-            ("test_u8_min", 20, None),
-            ("test_u8_min", 255, None),
-            // test u8 max
-            ("test_u8_max", 20, None),
-            ("test_u8_max", 0, None),
-            ("test_u8_max", 255, Some("boundary")),
-            // test 0 100 min
-            ("test_0_100_min", 0, Some("boundary")),
-            ("test_0_100_min", 10, None),
-            ("test_0_100_min", 100, None),
-            // test 0 100 max
-            ("test_0_100_max", 0, None),
-            ("test_0_100_max", 10, None),
-            ("test_0_100_max", 100, Some("boundary")),
-            // test 10 100 min
-            ("test_10_100_min", 10, Some("boundary")),
-            ("test_10_100_min", 20, None),
-            ("test_10_100_min", 100, None),
-            // test 10 100 max
-            ("test_10_100_max", 10, None),
-            ("test_10_100_max", 20, None),
-            ("test_10_100_max", 100, Some("boundary")),
-            // test -100 0 min
-            ("test_m100_0_min", 0, None),
-            ("test_m100_0_min", -10, None),
-            ("test_m100_0_min", -100, Some("boundary")),
-            // test -100 0 max
-            ("test_m100_0_max", 0, Some("boundary")),
-            ("test_m100_0_max", -10, None),
-            ("test_m100_0_max", -100, None),
-            // test -100 -10 min
-            ("test_m100_m10_min", -10, None),
-            ("test_m100_m10_min", -50, None),
-            ("test_m100_m10_min", -100, Some("boundary")),
-            // test -100 -10 max
-            ("test_m100_m10_max", -10, Some("boundary")),
-            ("test_m100_m10_max", -50, None),
-            ("test_m100_m10_max", -100, None),
-            // test -100 100 min
-            ("test_m100_100_min", -100, Some("boundary")),
-            ("test_m100_100_min", -50, None),
-            ("test_m100_100_min", 0, None),
-            ("test_m100_100_min", 50, None),
-            ("test_m100_100_min", 100, None),
-            // test -100 100 max
-            ("test_m100_100_max", -100, None),
-            ("test_m100_100_max", -50, None),
-            ("test_m100_100_max", 0, None),
-            ("test_m100_100_max", 50, None),
-            ("test_m100_100_max", 100, Some("boundary")),
-            // test 0 8 min
-            ("test_0_8_min", 0, Some("boundary")),
-            ("test_0_8_min", 4, None),
-            ("test_0_8_min", 8, None),
-            // test 0 8 max
-            ("test_0_8_max", 0, None),
-            ("test_0_8_max", 4, None),
-            ("test_0_8_max", 8, Some("boundary")),
-        ] {
-            let arguments = &[Felt252::from(argument).into()];
-            let execution = run_program(&program, name, arguments);
-            assert_error(execution.return_value, expected);
-        }
+    // test trim_min on i8
+    #[test_case("test_i8_min", 0, None)]
+    #[test_case("test_i8_min", 20, None)]
+    #[test_case("test_i8_min", 127, None)]
+    #[test_case("test_i8_min", -21, None)]
+    #[test_case("test_i8_min", -128, Some("boundary"))]
+    // test trim_max on i8
+    #[test_case("test_i8_max", 0, None)]
+    #[test_case("test_i8_max", 20, None)]
+    #[test_case("test_i8_max", 127, Some("boundary"))]
+    #[test_case("test_i8_max", -21, None)]
+    #[test_case("test_i8_max", -128, None)]
+    // test trim_min on u8
+    #[test_case("test_u8_min", 0, Some("boundary"))]
+    #[test_case("test_u8_min", 20, None)]
+    #[test_case("test_u8_min", 255, None)]
+    // test trim_max on u8
+    #[test_case("test_u8_max", 20, None)]
+    #[test_case("test_u8_max", 0, None)]
+    #[test_case("test_u8_max", 255, Some("boundary"))]
+    // test trim_min on BoundedInt<0, 100>
+    #[test_case("test_0_100_min", 0, Some("boundary"))]
+    #[test_case("test_0_100_min", 10, None)]
+    #[test_case("test_0_100_min", 100, None)]
+    // test trim_max on BoundedInt<0, 100>
+    #[test_case("test_0_100_max", 0, None)]
+    #[test_case("test_0_100_max", 10, None)]
+    #[test_case("test_0_100_max", 100, Some("boundary"))]
+    // test trim_min on BoundedInt<10, 100>
+    #[test_case("test_10_100_min", 10, Some("boundary"))]
+    #[test_case("test_10_100_min", 20, None)]
+    #[test_case("test_10_100_min", 100, None)]
+    // test trim_max on BoundedInt<10, 100>
+    #[test_case("test_10_100_max", 10, None)]
+    #[test_case("test_10_100_max", 20, None)]
+    #[test_case("test_10_100_max", 100, Some("boundary"))]
+    // test trim_min on BoundedInt<-100, 0>
+    #[test_case("test_m100_0_min", 0, None)]
+    #[test_case("test_m100_0_min", -10, None)]
+    #[test_case("test_m100_0_min", -100, Some("boundary"))]
+    // test trim_max on BoundedInt<-100, 0>
+    #[test_case("test_m100_0_max", 0, Some("boundary"))]
+    #[test_case("test_m100_0_max", -10, None)]
+    #[test_case("test_m100_0_max", -100, None)]
+    // test trim_min on BoundedInt<-100, -10>
+    #[test_case("test_m100_m10_min", -10, None)]
+    #[test_case("test_m100_m10_min", -50, None)]
+    #[test_case("test_m100_m10_min", -100, Some("boundary"))]
+    // test trim_max on BoundedInt<-100, -10>
+    #[test_case("test_m100_m10_max", -10, Some("boundary"))]
+    #[test_case("test_m100_m10_max", -50, None)]
+    #[test_case("test_m100_m10_max", -100, None)]
+    // test trim_min on BoundedInt<-100, 100>
+    #[test_case("test_m100_100_min", -100, Some("boundary"))]
+    #[test_case("test_m100_100_min", -51, None)]
+    #[test_case("test_m100_100_min", 0, None)]
+    #[test_case("test_m100_100_min", 50, None)]
+    #[test_case("test_m100_100_min", 100, None)]
+    // test trim_max on BoundedInt<-100, 100>
+    #[test_case("test_m100_100_max", -100, None)]
+    #[test_case("test_m100_100_max", -51, None)]
+    #[test_case("test_m100_100_max", 0, None)]
+    #[test_case("test_m100_100_max", 50, None)]
+    #[test_case("test_m100_100_max", 100, Some("boundary"))]
+    // test trim_min on BoundedInt<0, 8>
+    #[test_case("test_0_8_min", 0, Some("boundary"))]
+    #[test_case("test_0_8_min", 4, None)]
+    #[test_case("test_0_8_min", 8, None)]
+    // test trim_max on BoundedInt<0, 8>
+    #[test_case("test_0_8_max", 0, None)]
+    #[test_case("test_0_8_max", 4, None)]
+    #[test_case("test_0_8_max", 8, Some("boundary"))]
+    fn test_trim(entry_point: &str, argument: i32, expected_error: Option<&str>) {
+        let arguments = &[Felt252::from(argument).into()];
+        let execution = run_program(&TEST_TRIM_PROGRAM, entry_point, arguments);
+        assert_error(execution.return_value, expected_error);
     }
 
     fn assert_bool_output(result: Value, expected_tag: usize) {
