@@ -1005,18 +1005,18 @@ mod test {
                 return sub(a, b);
             }
 
-            // impl SubHelper4 of SubHelper<BoundedInt<-6, -3>, BoundedInt<1, 3>> {
-            //     type Result = BoundedInt<-9, -4>;
-            // }
+            impl SubHelper4 of SubHelper<BoundedInt<-6, -3>, BoundedInt<1, 3>> {
+                type Result = BoundedInt<-9, -4>;
+            }
 
-            // fn run_test_4(
-            //     a: felt252,
-            //     b: felt252,
-            // ) -> BoundedInt<-9, -4> {
-            //     let a: BoundedInt<-6, -3> = a.try_into().unwrap();
-            //     let b: BoundedInt<1, 3> = b.try_into().unwrap();
-            //     return sub(a, b);
-            // }
+            fn run_test_4(
+                a: felt252,
+                b: felt252,
+            ) -> BoundedInt<-9, -4> {
+                let a: BoundedInt<-6, -3> = a.try_into().unwrap();
+                let b: BoundedInt<1, 3> = b.try_into().unwrap();
+                return sub(a, b);
+            }
 
             impl SubHelper5 of SubHelper<BoundedInt<-6, -2>, BoundedInt<-20, -10>> {
                 type Result = BoundedInt<4, 18>;
@@ -1089,27 +1089,24 @@ mod test {
             ),
         );
 
-        // TODO: Fails with:
-        // loc("-9 : i4":1:2): error: integer constant out of range for attribute
-        // Could not compile test program to MLIR.: MlirError(AttributeParse("-9 : i4"))
-        // run_program_assert_output(
-        //     &cairo,
-        //     "run_test_4",
-        //     &[
-        //         Value::Felt252(Felt252::from(-6)),
-        //         Value::Felt252(Felt252::from(3)),
-        //     ],
-        //     jit_enum!(
-        //         0,
-        //         jit_struct!(Value::BoundedInt {
-        //             value: Felt252::from(-9),
-        //             range: Range {
-        //                 lower: BigInt::from(-0),
-        //                 upper: BigInt::from(-3),
-        //             }
-        //         })
-        //     ),
-        // );
+        run_program_assert_output(
+            &cairo,
+            "run_test_4",
+            &[
+                Value::Felt252(Felt252::from(-6)),
+                Value::Felt252(Felt252::from(3)),
+            ],
+            jit_enum!(
+                0,
+                jit_struct!(Value::BoundedInt {
+                    value: Felt252::from(-9),
+                    range: Range {
+                        lower: BigInt::from(-9),
+                        upper: BigInt::from(-3),
+                    }
+                })
+            ),
+        );
 
         run_program_assert_output(
             &cairo,
