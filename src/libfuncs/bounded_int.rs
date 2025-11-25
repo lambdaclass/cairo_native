@@ -1003,6 +1003,50 @@ mod test {
                     OptionRev::None => panic!("boundary"),
                 };
             }
+
+            impl MinHelper_m100_0 of TrimMinHelper<BoundedInt<-100, 0>> {
+                type Target = BoundedInt<-99, 0>;
+            }
+            fn test_m100_0_min(a: felt252) {
+                let a_int: BoundedInt<-100, 0> = a.try_into().unwrap();
+                match trim_min::<BoundedInt<-100, 0>>(a_int) {
+                    OptionRev::Some(v) => assert!(v == a.try_into().unwrap(), "invariant"),
+                    OptionRev::None => panic!("boundary"),
+                };
+            }
+
+            impl MaxHelper_m100_0 of TrimMaxHelper<BoundedInt<-100, 0>> {
+                type Target = BoundedInt<-100, -1>;
+            }
+            fn test_m100_0_max(a: felt252) {
+                let a_int: BoundedInt<-100, 0> = a.try_into().unwrap();
+                match trim_max::<BoundedInt<-100, 0>>(a_int) {
+                    OptionRev::Some(v) => assert!(v == a.try_into().unwrap(), "invariant"),
+                    OptionRev::None => panic!("boundary"),
+                };
+            }
+
+            impl MinHelper_m100_m10 of TrimMinHelper<BoundedInt<-100, -10>> {
+                type Target = BoundedInt<-99, -10>;
+            }
+            fn test_m100_m10_min(a: felt252) {
+                let a_int: BoundedInt<-100, -10> = a.try_into().unwrap();
+                match trim_min::<BoundedInt<-100, -10>>(a_int) {
+                    OptionRev::Some(v) => assert!(v == a.try_into().unwrap(), "invariant"),
+                    OptionRev::None => panic!("boundary"),
+                };
+            }
+
+            impl MaxHelper_m100_m10 of TrimMaxHelper<BoundedInt<-100, -10>> {
+                type Target = BoundedInt<-100, -11>;
+            }
+            fn test_m100_m10_max(a: felt252) {
+                let a_int: BoundedInt<-100, -10> = a.try_into().unwrap();
+                match trim_max::<BoundedInt<-100, -10>>(a_int) {
+                    OptionRev::Some(v) => assert!(v == a.try_into().unwrap(), "invariant"),
+                    OptionRev::None => panic!("boundary"),
+                };
+            }
         };
 
         for (name, argument, expected) in [
@@ -1042,6 +1086,22 @@ mod test {
             ("test_10_100_max", 10, None),
             ("test_10_100_max", 20, None),
             ("test_10_100_max", 100, Some("boundary")),
+            // test -100 0 min
+            ("test_m100_0_min", 0, None),
+            ("test_m100_0_min", -10, None),
+            ("test_m100_0_min", -100, Some("boundary")),
+            // test -100 0 max
+            ("test_m100_0_max", 0, Some("boundary")),
+            ("test_m100_0_max", -10, None),
+            ("test_m100_0_max", -100, None),
+            // test -100 -10 min
+            ("test_m100_m10_min", -10, None),
+            ("test_m100_m10_min", -50, None),
+            ("test_m100_m10_min", -100, Some("boundary")),
+            // test -100 -10 max
+            ("test_m100_m10_max", -10, Some("boundary")),
+            ("test_m100_m10_max", -50, None),
+            ("test_m100_m10_max", -100, None),
         ] {
             let arguments = &[Felt252::from(argument).into()];
             let execution = run_program(&program, name, arguments);
