@@ -200,6 +200,10 @@ fn build_add<'ctx, 'this>(
 }
 
 /// Generate MLIR operations for the `bounded_int_sub` libfunc.
+///
+/// Since we want to get C = A - B, we can translate this to
+/// Co + Cd = (Ao + Ad) - (Bo + Bd). Where Ao, Bo and Co represent the lower bound
+/// of the ranges in the BoundedInt and Ad, Bd and Cd represent the offsets.
 #[allow(clippy::too_many_arguments)]
 fn build_sub<'ctx, 'this>(
     context: &'ctx Context,
@@ -213,7 +217,7 @@ fn build_sub<'ctx, 'this>(
     let lhs_value = entry.arg(0)?;
     let rhs_value = entry.arg(1)?;
 
-    // Extract the ranges for the operands and the result type.
+    // Extract the ranges for the operands.
     let lhs_ty = registry.get_type(&info.signature.param_signatures[0].ty)?;
     let rhs_ty = registry.get_type(&info.signature.param_signatures[1].ty)?;
 
@@ -223,6 +227,7 @@ fn build_sub<'ctx, 'this>(
         .get_type(&info.signature.branch_signatures[0].vars[0].ty)?
         .integer_range(registry)?;
 
+    // Extract the bit width.
     let lhs_width = if lhs_ty.is_bounded_int(registry)? {
         lhs_range.offset_bit_width()
     } else {
@@ -235,13 +240,13 @@ fn build_sub<'ctx, 'this>(
     };
     let dst_width = dst_range.offset_bit_width();
 
+    // Get the compute type so we can do the subtraction without problems
     let compile_time_val = lhs_range.lower.clone() - rhs_range.lower.clone() - dst_range.lower;
     let compile_time_val_width = u32::try_from(compile_time_val.bits())?;
 
-    let compute_width = lhs_width.max(rhs_width).max(compile_time_val_width) + 1; // TODO: Check if the +1 is necessary
+    let compute_width = lhs_width.max(rhs_width).max(compile_time_val_width) + 1;
     let compute_ty = IntegerType::new(context, compute_width).into();
 
-    // Zero-extend operands into the computation range.
     native_assert!(
         compute_width >= lhs_width,
         "the lhs_range bit_width must be less or equal than the compute_range"
@@ -251,6 +256,7 @@ fn build_sub<'ctx, 'this>(
         "the rhs_range bit_width must be less or equal than the compute_range"
     );
 
+    // Get the operands on the same number of bits so we can operate with them
     let lhs_value = if compute_width > lhs_width {
         if lhs_range.lower.sign() != Sign::Minus || lhs_ty.is_bounded_int(registry)? {
             entry.extui(lhs_value, compute_ty, location)?
@@ -272,8 +278,11 @@ fn build_sub<'ctx, 'this>(
 
     let compile_time_val =
         entry.const_int_from_type(context, location, compile_time_val, compute_ty)?;
+    // First we do -> Ad - Bd = intermediate_res
     let res_value = entry.subi(lhs_value, rhs_value, location)?;
+    // Then we do -> intermediate_res + (Ao - Bo - Co)
     let res_value = entry.addi(res_value, compile_time_val, location)?;
+    // Get the result value on the desired range
     let res_value = if compute_width > dst_width {
         entry.trunci(
             res_value,
