@@ -2,6 +2,7 @@ use cairo_lang_compiler::{
     compile_prepared_db, db::RootDatabase, project::setup_project, CompilerConfig,
 };
 use cairo_lang_defs::plugin::NamedPlugin;
+use cairo_lang_filesystem::ids::CrateInput;
 use cairo_lang_semantic::plugin::PluginSuite;
 use cairo_lang_sierra::{program::Program, ProgramParser};
 use cairo_lang_starknet::{
@@ -54,7 +55,11 @@ fn load_program(path: &Path, is_contract: bool) -> Result<Program, Box<dyn std::
     Ok(match path.extension().and_then(OsStr::to_str) {
         Some("cairo") if !is_contract => {
             let mut db = RootDatabase::builder().detect_corelib().build()?;
-            let main_crate_ids = setup_project(&mut db, path)?;
+            let main_crate_ids = {
+                let main_crate_inputs =
+                    setup_project(&mut db, path).expect("failed to setup project");
+                CrateInput::into_crate_ids(&db, main_crate_inputs)
+            };
 
             compile_prepared_db(
                 &db,
@@ -76,8 +81,11 @@ fn load_program(path: &Path, is_contract: bool) -> Result<Program, Box<dyn std::
                 .detect_corelib()
                 .with_default_plugin_suite(plugins)
                 .build()?;
-
-            let main_crate_ids = setup_project(&mut db, Path::new(&path))?;
+            let main_crate_ids = {
+                let main_crate_inputs =
+                    setup_project(&mut db, path).expect("failed to setup project");
+                CrateInput::into_crate_ids(&db, main_crate_inputs)
+            };
 
             let contract = compile_contract_in_prepared_db(
                 &db,

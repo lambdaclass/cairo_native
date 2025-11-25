@@ -53,6 +53,7 @@ mod test {
     use std::path::Path;
 
     use cairo_lang_compiler::CompilerConfig;
+    use cairo_lang_lowering::utils::InliningStrategy;
     use cairo_lang_starknet::compile::compile_path;
     use cairo_lang_starknet_classes::contract_class::version_id_from_serialized_sierra_program;
     use sierra_emu::{starknet::StubSyscallHandler, ContractExecutionResult, VirtualMachine};
@@ -68,6 +69,7 @@ mod test {
                 replace_ids: true,
                 ..Default::default()
             },
+            InliningStrategy::Default,
         )
         .unwrap();
 
@@ -115,6 +117,7 @@ mod test {
                 replace_ids: true,
                 ..Default::default()
             },
+            InliningStrategy::Default,
         )
         .unwrap();
 

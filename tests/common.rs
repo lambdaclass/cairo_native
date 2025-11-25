@@ -7,7 +7,7 @@ use ark_ff::One;
 use cairo_lang_compiler::{
     compile_prepared_db, db::RootDatabase, project::setup_project, CompilerConfig,
 };
-use cairo_lang_filesystem::db::init_dev_corelib;
+use cairo_lang_filesystem::{db::init_dev_corelib, ids::CrateInput};
 use cairo_lang_runner::{
     Arg, RunResultStarknet, RunResultValue, RunnerError, SierraCasmRunner, StarknetState,
 };
@@ -33,7 +33,6 @@ use cairo_lang_starknet_classes::{
     casm_contract_class::{CasmContractClass, ENTRY_POINT_COST},
     contract_class::{version_id_from_serialized_sierra_program, ContractClass},
 };
-use cairo_lang_utils::Upcast;
 use cairo_native::{
     context::NativeContext,
     execution_result::{ContractExecutionResult, ExecutionResult},
@@ -121,7 +120,11 @@ pub fn load_cairo_str(program_str: &str) -> (String, Program, SierraCasmRunner) 
     fs::write(&mut program_file, program_str).unwrap();
 
     let mut db = RootDatabase::builder().detect_corelib().build().unwrap();
-    let main_crate_ids = setup_project(&mut db, program_file.path()).unwrap();
+    let main_crate_ids = {
+        let main_crate_inputs =
+            setup_project(&mut db, program_str.as_ref()).expect("failed to setup project");
+        CrateInput::into_crate_ids(&db, main_crate_inputs)
+    };
     let sierra_program_with_dbg = compile_prepared_db(
         &db,
         main_crate_ids.clone(),
@@ -138,7 +141,7 @@ pub fn load_cairo_str(program_str: &str) -> (String, Program, SierraCasmRunner) 
 
     let replacer = DebugReplacer { db: &db };
 
-    let contracts = find_contracts((db).upcast(), &main_crate_ids);
+    let contracts = find_contracts(&db, &main_crate_ids);
     let contracts_info = get_contracts_info(&db, contracts, &replacer).unwrap();
 
     let runner = SierraCasmRunner::new(
@@ -160,7 +163,11 @@ pub fn load_cairo_path(program_path: &str) -> (String, Program, SierraCasmRunner
         &mut db,
         Path::new(&var("CARGO_MANIFEST_DIR").unwrap()).join("corelib/src"),
     );
-    let main_crate_ids = setup_project(&mut db, program_file).unwrap();
+    let main_crate_ids = {
+        let main_crate_inputs =
+            setup_project(&mut db, program_file).expect("failed to setup project");
+        CrateInput::into_crate_ids(&db, main_crate_inputs)
+    };
     let sierra_program_with_dbg = compile_prepared_db(
         &db,
         main_crate_ids.clone(),
@@ -177,7 +184,7 @@ pub fn load_cairo_path(program_path: &str) -> (String, Program, SierraCasmRunner
 
     let replacer = DebugReplacer { db: &db };
     replacer.enrich_function_names(&mut program);
-    let contracts = find_contracts((db).upcast(), &main_crate_ids);
+    let contracts = find_contracts(&db, &main_crate_ids);
     let contracts_info = get_contracts_info(&db, contracts, &replacer).unwrap();
 
     let program = replacer.apply(&program);
@@ -201,8 +208,11 @@ pub fn load_cairo_contract_path(path: &str) -> ContractClass {
         .build()
         .expect("failed to build database");
 
-    let main_crate_ids = setup_project(&mut db, Path::new(&path))
-        .expect("path should be a valid cairo project or file");
+    let main_crate_ids = {
+        let main_crate_inputs = setup_project(&mut db, path.as_ref())
+            .expect("path should be a valid cairo project or file");
+        CrateInput::into_crate_ids(&db, main_crate_inputs)
+    };
 
     compile_contract_in_prepared_db(
         &db,

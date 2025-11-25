@@ -1,6 +1,7 @@
 use std::{error::Error, path::Path, sync::Arc};
 
 use cairo_lang_compiler::{compile_cairo_project_at_path, CompilerConfig};
+use cairo_lang_lowering::utils::InliningStrategy;
 use sierra_emu::{
     find_entry_point_by_name, starknet::StubSyscallHandler, ContractExecutionResult, Value,
     VirtualMachine,
@@ -20,6 +21,7 @@ fn main() -> Result<(), Box<dyn Error>> {
             replace_ids: true,
             ..Default::default()
         },
+        InliningStrategy::Default,
     )?;
 
     // Find entrypoint to execute
