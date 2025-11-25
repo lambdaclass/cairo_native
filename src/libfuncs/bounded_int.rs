@@ -83,8 +83,8 @@ fn build_add<'ctx, 'this>(
     _metadata: &mut MetadataStorage,
     info: &SignatureOnlyConcreteLibfunc,
 ) -> Result<()> {
-    let mut lhs_value = entry.arg(0)?;
-    let mut rhs_value = entry.arg(1)?;
+    let lhs_value = entry.arg(0)?;
+    let rhs_value = entry.arg(1)?;
 
     // Extract the ranges for the operands and the result type.
     let lhs_ty = registry.get_type(&info.signature.param_signatures[0].ty)?;
@@ -97,13 +97,11 @@ fn build_add<'ctx, 'this>(
         .integer_range(registry)?;
 
     let lhs_width = if lhs_ty.is_bounded_int(registry)? {
-        // TODO: Is it necessary to check this? Aren´t they always bounded ints?
         lhs_range.offset_bit_width()
     } else {
         lhs_range.zero_based_bit_width()
     };
     let rhs_width = if rhs_ty.is_bounded_int(registry)? {
-        // TODO: Is it necessary to check this? Aren´t they always bounded ints?
         rhs_range.offset_bit_width()
     } else {
         rhs_range.zero_based_bit_width()
@@ -113,12 +111,24 @@ fn build_add<'ctx, 'this>(
     let compute_width = lhs_width.max(rhs_width) + 2; // TODO: Check this +2
     let compute_ty = IntegerType::new(context, compute_width).into();
 
-    if compute_width > lhs_width {
-        lhs_value = entry.extui(lhs_value, compute_ty, location)?;
-    }
-    if compute_width > rhs_width {
-        rhs_value = entry.extui(rhs_value, compute_ty, location)?;
-    }
+    let lhs_value = if compute_width > lhs_width {
+        if lhs_range.lower.sign() != Sign::Minus || lhs_ty.is_bounded_int(registry)? {
+            entry.extui(lhs_value, compute_ty, location)?
+        } else {
+            entry.extsi(lhs_value, compute_ty, location)?
+        }
+    } else {
+        lhs_value
+    };
+    let rhs_value = if compute_width > rhs_width {
+        if rhs_range.lower.sign() != Sign::Minus || rhs_ty.is_bounded_int(registry)? {
+            entry.extui(rhs_value, compute_ty, location)?
+        } else {
+            entry.extsi(rhs_value, compute_ty, location)?
+        }
+    } else {
+        rhs_value
+    };
 
     let res_value = entry.addi(lhs_value, rhs_value, location)?;
 
@@ -940,7 +950,7 @@ mod test {
     fn test_add() {
         let cairo = load_cairo! {
             #[feature("bounded-int-utils")]
-            use core::internal::bounded_int::{BoundedInt, add, AddHelper};
+            use core::internal::bounded_int::{BoundedInt, add, AddHelper, UnitInt};
 
             impl AddHelper1 of AddHelper<BoundedInt<1, 31>, BoundedInt<1, 1>> {
                 type Result = BoundedInt<2, 32>;
@@ -1003,6 +1013,32 @@ mod test {
                 b: felt252,
             ) -> BoundedInt<-10, -10> {
                 let a: BoundedInt<-5, -5> = a.try_into().unwrap();
+                let b: BoundedInt<-5, -5> = b.try_into().unwrap();
+                return add(a, b);
+            }
+
+            impl AddHelper6 of AddHelper<BoundedInt<-5, -5>, UnitInt<-1>> {
+                type Result = BoundedInt<-6, -6>;
+            }
+
+            fn run_test_6(
+                a: felt252,
+                b: felt252,
+            ) -> BoundedInt<-6, -6> {
+                let a: BoundedInt<-5, -5> = a.try_into().unwrap();
+                let b: UnitInt<-1> = b.try_into().unwrap();
+                return add(a, b);
+            }
+
+            impl AddHelper7 of AddHelper<UnitInt<1>, BoundedInt<-5, -5>> {
+                type Result = BoundedInt<-4, -4>;
+            }
+
+            fn run_test_7(
+                a: felt252,
+                b: felt252,
+            ) -> BoundedInt<-4, -4> {
+                let a: UnitInt<1> = a.try_into().unwrap();
                 let b: BoundedInt<-5, -5> = b.try_into().unwrap();
                 return add(a, b);
             }
@@ -1117,6 +1153,44 @@ mod test {
                     range: Range {
                         lower: BigInt::from(-10),
                         upper: BigInt::from(-9),
+                    }
+                })
+            ),
+        );
+
+        run_program_assert_output(
+            &cairo,
+            "run_test_6",
+            &[
+                Value::Felt252(Felt252::from(-5)),
+                Value::Felt252(Felt252::from(-1)),
+            ],
+            jit_enum!(
+                0,
+                jit_struct!(Value::BoundedInt {
+                    value: Felt252::from(-6),
+                    range: Range {
+                        lower: BigInt::from(-6),
+                        upper: BigInt::from(-5),
+                    }
+                })
+            ),
+        );
+
+        run_program_assert_output(
+            &cairo,
+            "run_test_7",
+            &[
+                Value::Felt252(Felt252::from(1)),
+                Value::Felt252(Felt252::from(-5)),
+            ],
+            jit_enum!(
+                0,
+                jit_struct!(Value::BoundedInt {
+                    value: Felt252::from(-4),
+                    range: Range {
+                        lower: BigInt::from(-4),
+                        upper: BigInt::from(-3),
                     }
                 })
             ),
