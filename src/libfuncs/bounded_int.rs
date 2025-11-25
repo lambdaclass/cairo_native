@@ -236,7 +236,7 @@ fn build_sub<'ctx, 'this>(
     let dst_width = dst_range.offset_bit_width();
 
     let compile_time_val = lhs_range.lower.clone() - rhs_range.lower.clone() - dst_range.lower;
-    let compile_time_val_width = compile_time_val.bits() as u32; // TODO: Do this safer
+    let compile_time_val_width = u32::try_from(compile_time_val.bits())?;
 
     let compute_width = lhs_width.max(rhs_width).max(compile_time_val_width) + 1; // TODO: Check if the +1 is necessary
     let compute_ty = IntegerType::new(context, compute_width).into();
