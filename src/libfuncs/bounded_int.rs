@@ -870,141 +870,105 @@ mod test {
     use cairo_vm::Felt252;
     use num_bigint::BigInt;
 
-    use crate::{
-        context::NativeContext, execution_result::ExecutionResult, executor::JitNativeExecutor,
-        load_cairo, utils::testing::run_program, OptLevel, Value,
-    };
+    use crate::{load_cairo, utils::testing::run_program, Value};
 
-    #[test]
-    fn test_trim_some_pos_i8() {
-        let (_, program) = load_cairo!(
-            #[feature("bounded-int-utils")]
-            use core::internal::bounded_int::{self, BoundedInt};
-            use core::internal::OptionRev;
-
-            fn main() -> BoundedInt<-128, 126> {
-                let num = match bounded_int::trim_max::<i8>(1) {
-                    OptionRev::Some(n) => n,
-                    OptionRev::None => 0,
+    fn assert_error(execution: Value, expected_error: Option<&str>) {
+        let Value::Enum { tag, value, .. } = execution else {
+            panic!("test should return a panic result")
+        };
+        match expected_error {
+            Some(msg) => {
+                assert_eq!(tag, 1, "test should have failed");
+                let Value::Struct {
+                    fields: test_msg_fields,
+                    ..
+                } = *value
+                else {
+                    panic!("test panic should be a felt array struct")
+                };
+                let Value::Array(test_msg_felts) = &test_msg_fields[1] else {
+                    panic!("test panic should be a felt array struct")
+                };
+                let Value::Felt252(test_msg_felt) = test_msg_felts[2] else {
+                    panic!("test panic should be a felt array struct")
                 };
 
-                num
+                let test_msg_bytes = test_msg_felt.to_bytes_be();
+                let test_msg = std::str::from_utf8(&test_msg_bytes)
+                    .expect("test error should be utf8")
+                    .trim_start_matches('\0');
+                assert_eq!(msg, test_msg);
             }
-        );
-        let ctx = NativeContext::new();
-        let module = ctx.compile(&program, false, None, None).unwrap();
-        let executor = JitNativeExecutor::from_native_module(module, OptLevel::Default).unwrap();
-        let ExecutionResult {
-            remaining_gas: _,
-            return_value,
-            builtin_stats: _,
-        } = executor
-            .invoke_dynamic(&program.funcs[0].id, &[], None)
-            .unwrap();
-
-        let Value::BoundedInt { value, range: _ } = return_value else {
-            panic!();
-        };
-        assert_eq!(value, Felt252::from(1_u8));
+            None => assert_eq!(tag, 0, "test should not have failed"),
+        }
     }
 
     #[test]
-    fn test_trim_some_neg_i8() {
-        let (_, program) = load_cairo!(
+    fn test_trim() {
+        let program = load_cairo! {
             #[feature("bounded-int-utils")]
-            use core::internal::bounded_int::{self, BoundedInt};
+            use core::internal::bounded_int::{self, BoundedInt, trim_min, trim_max, TrimMinHelper, TrimMaxHelper};
             use core::internal::OptionRev;
 
-            fn main() -> BoundedInt<-127, 127> {
-                let num = match bounded_int::trim_min::<i8>(1) {
-                    OptionRev::Some(n) => n,
-                    OptionRev::None => 1,
+
+            fn test_i8_min(a: felt252) {
+                let a_int: i8 = a.try_into().unwrap();
+                match trim_min::<i8>(a_int) {
+                    OptionRev::Some(v) => assert!(v == a.try_into().unwrap(), "invariant"),
+                    OptionRev::None => panic!("boundary"),
                 };
-
-                num
             }
-        );
-        let ctx = NativeContext::new();
-        let module = ctx.compile(&program, false, None, None).unwrap();
-        let executor = JitNativeExecutor::from_native_module(module, OptLevel::Default).unwrap();
-        let ExecutionResult {
-            remaining_gas: _,
-            return_value,
-            builtin_stats: _,
-        } = executor
-            .invoke_dynamic(&program.funcs[0].id, &[], None)
-            .unwrap();
-
-        let Value::BoundedInt { value, range: _ } = return_value else {
-            panic!();
-        };
-        assert_eq!(value, Felt252::from(1_u8));
-    }
-
-    #[test]
-    fn test_trim_some_u32() {
-        let (_, program) = load_cairo!(
-            #[feature("bounded-int-utils")]
-            use core::internal::bounded_int::{self, BoundedInt};
-            use core::internal::OptionRev;
-
-            fn main() -> BoundedInt<0, 4294967294> {
-                let num = match bounded_int::trim_max::<u32>(0xfffffffe) {
-                    OptionRev::Some(n) => n,
-                    OptionRev::None => 0,
+            fn test_i8_max(a: felt252) {
+                let a_int: i8 = a.try_into().unwrap();
+                match trim_max::<i8>(a_int) {
+                    OptionRev::Some(v) => assert!(v == a.try_into().unwrap(), "invariant"),
+                    OptionRev::None => panic!("boundary"),
                 };
-
-                num
             }
-        );
-        let ctx = NativeContext::new();
-        let module = ctx.compile(&program, false, None, None).unwrap();
-        let executor = JitNativeExecutor::from_native_module(module, OptLevel::Default).unwrap();
-        let ExecutionResult {
-            remaining_gas: _,
-            return_value,
-            builtin_stats: _,
-        } = executor
-            .invoke_dynamic(&program.funcs[0].id, &[], None)
-            .unwrap();
 
-        let Value::BoundedInt { value, range: _ } = return_value else {
-            panic!();
-        };
-        assert_eq!(value, Felt252::from(0xfffffffe_u32));
-    }
-
-    #[test]
-    fn test_trim_none() {
-        let (_, program) = load_cairo!(
-            #[feature("bounded-int-utils")]
-            use core::internal::bounded_int::{self, BoundedInt};
-            use core::internal::OptionRev;
-
-            fn main() -> BoundedInt<-32767, 32767> {
-                let num = match bounded_int::trim_min::<i16>(-0x8000) {
-                    OptionRev::Some(n) => n,
-                    OptionRev::None => 0,
+            fn test_u8_min(a: felt252) {
+                let a_int: u8 = a.try_into().unwrap();
+                match trim_min::<u8>(a_int) {
+                    OptionRev::Some(v) => assert!(v == a.try_into().unwrap(), "invariant"),
+                    OptionRev::None => panic!("boundary"),
                 };
-
-                num
             }
-        );
-        let ctx = NativeContext::new();
-        let module = ctx.compile(&program, false, None, None).unwrap();
-        let executor = JitNativeExecutor::from_native_module(module, OptLevel::Default).unwrap();
-        let ExecutionResult {
-            remaining_gas: _,
-            return_value,
-            builtin_stats: _,
-        } = executor
-            .invoke_dynamic(&program.funcs[0].id, &[], None)
-            .unwrap();
+            fn test_u8_max(a: felt252) {
+                let a_int: u8 = a.try_into().unwrap();
+                match trim_max::<u8>(a_int) {
+                    OptionRev::Some(v) => assert!(v == a.try_into().unwrap(), "invariant"),
+                    OptionRev::None => panic!("boundary"),
+                };
+            }
 
-        let Value::BoundedInt { value, range: _ } = return_value else {
-            panic!();
         };
-        assert_eq!(value, Felt252::from(0));
+
+        for (name, argument, expected) in [
+            // test i8 min
+            ("test_i8_min", 0, None),
+            ("test_i8_min", 20, None),
+            ("test_i8_min", 127, None),
+            ("test_i8_min", -20, None),
+            ("test_i8_min", -128, Some("boundary")),
+            // test i8 max
+            ("test_i8_max", 0, None),
+            ("test_i8_max", 20, None),
+            ("test_i8_max", 127, Some("boundary")),
+            ("test_i8_max", -20, None),
+            ("test_i8_max", -128, None),
+            // test u8 min
+            ("test_u8_min", 0, Some("boundary")),
+            ("test_u8_min", 20, None),
+            ("test_u8_min", 255, None),
+            // test u8 max
+            ("test_u8_max", 20, None),
+            ("test_u8_max", 0, None),
+            ("test_u8_max", 255, Some("boundary")),
+        ] {
+            let arguments = &[Felt252::from(argument).into()];
+            let execution = run_program(&program, name, arguments);
+            assert_error(execution.return_value, expected);
+        }
     }
 
     fn assert_bool_output(result: Value, expected_tag: usize) {
