@@ -502,17 +502,8 @@ fn build_div_rem<'ctx, 'this>(
 
     // Calculate the computation range.
     let compute_range = Range {
-        lower: (&lhs_range.lower)
-            .min(&rhs_range.lower)
-            .min(&div_range.lower)
-            .min(&rem_range.lower)
-            .min(&BigInt::ZERO)
-            .clone(),
-        upper: (&lhs_range.upper)
-            .max(&rhs_range.upper)
-            .max(&div_range.upper)
-            .max(&rem_range.upper)
-            .clone(),
+        lower: BigInt::ZERO,
+        upper: (&lhs_range.upper).max(&rhs_range.upper).clone(),
     };
     let compute_ty = IntegerType::new(context, compute_range.zero_based_bit_width()).into();
 
@@ -565,23 +556,21 @@ fn build_div_rem<'ctx, 'this>(
     let div_value = entry.append_op_result(arith::divui(lhs_value, rhs_value, location))?;
     let rem_value = entry.append_op_result(arith::remui(lhs_value, rhs_value, location))?;
 
-    // Offset and truncate the result to the output type.
-    let div_offset = (&div_range.lower).max(&compute_range.lower).clone();
-    let rem_offset = (&rem_range.lower).max(&compute_range.lower).clone();
-
-    let div_value = if div_offset != BigInt::ZERO {
-        let div_offset = entry.const_int_from_type(context, location, div_offset, compute_ty)?;
+    // Offset result to the output type.
+    let div_value = if div_range.lower.clone() != BigInt::ZERO {
+        let div_offset =
+            entry.const_int_from_type(context, location, div_range.lower.clone(), compute_ty)?;
         entry.append_op_result(arith::subi(div_value, div_offset, location))?
     } else {
         div_value
     };
-    let rem_value = if rem_offset != BigInt::ZERO {
-        let rem_offset = entry.const_int_from_type(context, location, rem_offset, compute_ty)?;
-        entry.append_op_result(arith::subi(rem_value, rem_offset, location))?
-    } else {
-        rem_value
-    };
 
+    native_assert!(
+        rem_range.lower == BigInt::ZERO,
+        "The remainder range lower bound should be zero"
+    );
+
+    // Truncate to the output type
     let div_value = if div_range.offset_bit_width() < compute_range.zero_based_bit_width() {
         entry.trunci(
             div_value,
