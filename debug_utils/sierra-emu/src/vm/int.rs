@@ -1,4 +1,4 @@
-use std::fmt::Debug;
+use std::{fmt::Debug, u8};
 
 use cairo_lang_sierra::{
     extensions::{
@@ -13,6 +13,7 @@ use cairo_lang_sierra::{
         },
         is_zero::IsZeroTraits,
         lib_func::SignatureOnlyConcreteLibfunc,
+        ConcreteLibfunc,
     },
     ids::ConcreteTypeId,
     program_registry::ProgramRegistry,
@@ -189,13 +190,29 @@ fn eval_diff(
     };
     let [lhs, rhs]: [BigInt; 2] = get_numeric_args_as_bigints(&args[1..]).try_into().unwrap();
 
-    let int_ty = &info.signature.branch_signatures[0].vars[1].ty;
+    let int_ty_id = &info.branch_signatures()[0].vars[1].ty;
+    let int_ty = registry.get_type(int_ty_id).unwrap();
 
-    let (res, had_overflow) =
-        apply_overflowing_op_for_type(registry, int_ty, lhs, rhs, IntOperator::OverflowingSub);
-    let res = get_value_from_integer(registry, int_ty, res);
+    let res = lhs - rhs;
 
-    EvalAction::NormalBranch(had_overflow as usize, smallvec![range_check, res])
+    let (res, has_overflowed) = if res < BigInt::ZERO {
+        let wrapper = match int_ty {
+            CoreTypeConcrete::Uint8(_) => BigInt::from(2).pow(8),
+            CoreTypeConcrete::Uint16(_) => BigInt::from(2).pow(16),
+            CoreTypeConcrete::Uint32(_) => BigInt::from(2).pow(32),
+            CoreTypeConcrete::Uint64(_) => BigInt::from(2).pow(64),
+            CoreTypeConcrete::Uint128(_) => BigInt::from(2).pow(128),
+            _ => unreachable!("should be an integer type"),
+        };
+
+        (wrapper + res, true)
+    } else {
+        (res, false)
+    };
+
+    let res = get_value_from_integer(registry, int_ty_id, res);
+
+    EvalAction::NormalBranch(has_overflowed as usize, smallvec![range_check, res])
 }
 
 fn eval_divmod(
@@ -317,7 +334,7 @@ fn eval_operation(
         panic!()
     };
     let [lhs, rhs]: [BigInt; 2] = get_numeric_args_as_bigints(&args[1..]).try_into().unwrap();
-    let int_ty = &info.signature.branch_signatures[0].vars[1].ty;
+    let int_ty = &info.signature.param_signatures[1].ty;
 
     let (res, had_overflow) =
         apply_overflowing_op_for_type(registry, int_ty, lhs, rhs, info.operator);
