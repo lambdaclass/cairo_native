@@ -897,28 +897,26 @@ mod test {
         match expected_error {
             Some(msg) => {
                 assert_eq!(tag, 1, "test should have failed");
-                let Value::Struct {
-                    fields: test_msg_fields,
-                    ..
-                } = *value
-                else {
-                    panic!("test panic should be a felt array struct")
-                };
-                let Value::Array(test_msg_felts) = &test_msg_fields[1] else {
-                    panic!("test panic should be a felt array struct")
-                };
-                let Value::Felt252(test_msg_felt) = test_msg_felts[2] else {
-                    panic!("test panic should be a felt array struct")
-                };
-
-                let test_msg_bytes = test_msg_felt.to_bytes_be();
-                let test_msg = std::str::from_utf8(&test_msg_bytes)
-                    .expect("test error should be utf8")
-                    .trim_start_matches('\0');
+                let test_msg = extract_panic_message(*value);
                 assert_eq!(msg, test_msg);
             }
             None => assert_eq!(tag, 0, "test should not have failed"),
         }
+    }
+
+    fn extract_panic_message(value: Value) -> String {
+        if let Value::Struct { fields, .. } = value {
+            if let Value::Array(felts) = &fields[1] {
+                if let Value::Felt252(felt) = felts[2] {
+                    let felt_bytes = felt.to_bytes_be();
+                    let message = std::str::from_utf8(&felt_bytes)
+                        .expect("test error should be utf8")
+                        .trim_start_matches('\0');
+                    return message.to_string();
+                };
+            };
+        }
+        panic!("value should be the error variant of a panic result")
     }
 
     lazy_static! {
