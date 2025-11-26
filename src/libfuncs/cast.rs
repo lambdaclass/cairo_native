@@ -3,10 +3,10 @@
 use super::LibfuncHelper;
 use crate::{
     error::Result,
-    metadata::{MetadataStorage, debug_utils::DebugUtils},
+    metadata::MetadataStorage,
     native_assert, native_panic,
     types::TypeBuilder,
-    utils::{HALF_PRIME, PRIME, RangeExt},
+    utils::{RangeExt, HALF_PRIME, PRIME},
 };
 use cairo_lang_sierra::{
     extensions::{
@@ -152,7 +152,7 @@ pub fn build_downcast<'ctx, 'this>(
         let dst_offset = entry.const_int_from_type(
             context,
             location,
-            // TODO: check if this is correct. 
+            // TODO: check if this is correct.
             src_range.lower.clone(),
             src_value.r#type(),
         )?;
