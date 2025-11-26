@@ -3,10 +3,10 @@
 use super::LibfuncHelper;
 use crate::{
     error::Result,
-    metadata::MetadataStorage,
+    metadata::{MetadataStorage, debug_utils::DebugUtils},
     native_assert, native_panic,
     types::TypeBuilder,
-    utils::{RangeExt, HALF_PRIME, PRIME},
+    utils::{HALF_PRIME, PRIME, RangeExt},
 };
 use cairo_lang_sierra::{
     extensions::{
@@ -60,11 +60,11 @@ pub fn build_downcast<'ctx, 'this>(
     let src_value: Value = entry.arg(1)?;
 
     if info.signature.param_signatures[1].ty == info.signature.branch_signatures[0].vars[1].ty {
-        let k0 = entry.const_int(context, location, 0, 1)?;
+        let k1 = entry.const_int(context, location, 1, 1)?;
         return helper.cond_br(
             context,
             entry,
-            k0,
+            k1,
             [0, 1],
             [&[range_check, src_value], &[range_check]],
             location,
@@ -102,6 +102,7 @@ pub fn build_downcast<'ctx, 'this>(
         dst_range.zero_based_bit_width()
     };
 
+    // TODO: check the case in which the lower bound is negative.
     let compute_width = src_range
         .zero_based_bit_width()
         .max(dst_range.zero_based_bit_width());
@@ -151,6 +152,7 @@ pub fn build_downcast<'ctx, 'this>(
         let dst_offset = entry.const_int_from_type(
             context,
             location,
+            // TODO: check if this is correct. 
             src_range.lower.clone(),
             src_value.r#type(),
         )?;
@@ -159,7 +161,7 @@ pub fn build_downcast<'ctx, 'this>(
         src_value
     };
 
-    if !(dst_range.lower > src_range.lower || dst_range.upper < src_range.upper) {
+    if dst_range.lower <= src_range.lower && dst_range.upper >= src_range.upper {
         let dst_value = if dst_ty.is_bounded_int(registry)? && dst_range.lower != BigInt::ZERO {
             let dst_offset = entry.const_int_from_type(
                 context,
@@ -441,7 +443,7 @@ mod test {
     use crate::{
         jit_enum, jit_struct, load_cairo, utils::testing::run_program_assert_output, values::Value,
     };
-    use cairo_lang_sierra::program::Program;
+    use cairo_lang_sierra::{extensions::utils::Range, program::Program};
     use lazy_static::lazy_static;
 
     lazy_static! {
@@ -489,6 +491,17 @@ mod test {
                 )
             }
         };
+        static ref DOWNCAST_BOUNDED_INT: (String, Program) = load_cairo! {
+            #[feature("bounded-int-utils")]
+            use core::internal::bounded_int::BoundedInt;
+
+            extern const fn downcast<FromType, ToType>( x: FromType, ) -> Option<ToType> implicits(RangeCheck) nopanic;
+
+            fn run_test(val: felt252) -> Option<BoundedInt<0,30>> {
+                let bounded: BoundedInt<0,30> = val.try_into().unwrap();
+                downcast(bounded)
+            }
+        };
     }
 
     #[test]
@@ -524,6 +537,25 @@ mod test {
                 ),
                 jit_struct!(jit_enum!(1, jit_struct!()), jit_enum!(1, jit_struct!())),
                 jit_struct!(jit_enum!(1, jit_struct!())),
+            ),
+        );
+    }
+
+    #[test]
+    fn downcast_bounded_int() {
+        run_program_assert_output(
+            &DOWNCAST_BOUNDED_INT,
+            "run_test",
+            &[Value::Felt252(5.into())],
+            jit_enum!(
+                0,
+                Value::BoundedInt {
+                    value: 5.into(),
+                    range: Range {
+                        lower: 0.into(),
+                        upper: 30.into()
+                    }
+                }
             ),
         );
     }
