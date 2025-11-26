@@ -892,7 +892,7 @@ mod test {
     fn test_mul() {
         let cairo = load_cairo!(
             #[feature("bounded-int-utils")]
-            use core::internal::bounded_int::{self, BoundedInt, MulHelper, mul};
+            use core::internal::bounded_int::{self, BoundedInt, MulHelper, mul, UnitInt};
 
             impl MulHelper1 of MulHelper<BoundedInt<-128, 127>, BoundedInt<-128, 127>> {
                 type Result = BoundedInt<-16256, 16384>;
@@ -920,6 +920,10 @@ mod test {
 
             impl MulHelper7 of MulHelper<BoundedInt<1, 1>, BoundedInt<1, 1>> {
                 type Result = BoundedInt<1, 1>;
+            }
+
+            impl MulHelper8 of MulHelper<BoundedInt<-5, 5>, UnitInt<2>> {
+                type Result = BoundedInt<-10, 10>;
             }
 
             fn run_test_1(a: felt252, b: felt252) -> BoundedInt<-16256, 16384> {
@@ -957,9 +961,23 @@ mod test {
                 mul(a,b)
             }
 
-            fn run_test_6(a: felt252, b: felt252) -> BoundedInt<-10000,0> {
+            fn run_test_6(a: felt252, b: felt252) -> BoundedInt<-10000, 0> {
                 let a: BoundedInt<-100, 0> = a.try_into().unwrap();
                 let b: BoundedInt<0, 100> = b.try_into().unwrap();
+
+                mul(a,b)
+            }
+
+            fn run_test_7(a: felt252, b: felt252) -> BoundedInt<1, 1> {
+                let a: BoundedInt<1, 1> = a.try_into().unwrap();
+                let b: BoundedInt<1, 1> = b.try_into().unwrap();
+
+                mul(a,b)
+            }
+
+            fn run_test_8(a: felt252, b: felt252) -> BoundedInt<-10, 10> {
+                let a: BoundedInt<-5, 5> = a.try_into().unwrap();
+                let b: UnitInt<2> = b.try_into().unwrap();
 
                 mul(a,b)
             }
@@ -1074,6 +1092,44 @@ mod test {
                     range: Range {
                         lower: BigInt::from(-10000),
                         upper: BigInt::from(1),
+                    }
+                })
+            ),
+        );
+
+        run_program_assert_output(
+            &cairo,
+            "run_test_7",
+            &[
+                Value::Felt252(Felt252::from(1)),
+                Value::Felt252(Felt252::from(1)),
+            ],
+            jit_enum!(
+                0,
+                jit_struct!(Value::BoundedInt {
+                    value: Felt252::from(1),
+                    range: Range {
+                        lower: BigInt::from(1),
+                        upper: BigInt::from(2),
+                    }
+                })
+            ),
+        );
+
+        run_program_assert_output(
+            &cairo,
+            "run_test_8",
+            &[
+                Value::Felt252(Felt252::from(-3)),
+                Value::Felt252(Felt252::from(2)),
+            ],
+            jit_enum!(
+                0,
+                jit_struct!(Value::BoundedInt {
+                    value: Felt252::from(-6),
+                    range: Range {
+                        lower: BigInt::from(-10),
+                        upper: BigInt::from(11),
                     }
                 })
             ),
