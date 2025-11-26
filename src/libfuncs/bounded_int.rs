@@ -55,7 +55,7 @@ pub fn build<'ctx, 'this>(
             build_mul(context, registry, entry, location, helper, metadata, info)
         }
         BoundedIntConcreteLibfunc::DivRem(info) => {
-            build_divrem(context, registry, entry, location, helper, metadata, info)
+            build_div_rem(context, registry, entry, location, helper, metadata, info)
         }
         BoundedIntConcreteLibfunc::Constrain(info) => {
             build_constrain(context, registry, entry, location, helper, metadata, info)
@@ -445,9 +445,20 @@ fn build_mul<'ctx, 'this>(
     helper.br(entry, 0, &[res_value], location)
 }
 
-/// Generate MLIR operations for the `bounded_int_divrem` libfunc.
-/// Libfunc for dividing two non negative BoundedInts and getting the quotient and remainder.
-fn build_divrem<'ctx, 'this>(
+/// Builds the `bounded_int_div_rem` libfunc, which divides a non negative
+/// integer by a positive integer (non zero), returning the quotient and
+/// the remainder as bounded ints.
+///
+/// # Signature
+///
+/// ```cairo
+/// extern fn bounded_int_div_rem<Lhs, Rhs, impl H: DivRemHelper<Lhs, Rhs>>(
+///     lhs: Lhs, rhs: NonZero<Rhs>,
+/// ) -> (H::DivT, H::RemT) implicits(RangeCheck) nopanic;
+/// ```
+///
+/// The input arguments can be both regular integers or bounded ints.
+fn build_div_rem<'ctx, 'this>(
     context: &'ctx Context,
     registry: &ProgramRegistry<CoreType, CoreLibfunc>,
     entry: &'this Block<'ctx>,
@@ -866,9 +877,11 @@ fn build_wrap_non_zero<'ctx, 'this>(
 
 #[cfg(test)]
 mod test {
-    use cairo_lang_sierra::extensions::utils::Range;
+    use cairo_lang_sierra::{extensions::utils::Range, program::Program};
     use cairo_vm::Felt252;
+    use lazy_static::lazy_static;
     use num_bigint::BigInt;
+    use test_case::test_case;
 
     use crate::{
         context::NativeContext, execution_result::ExecutionResult, executor::JitNativeExecutor,
@@ -1350,5 +1363,57 @@ mod test {
                 },
             },
         );
+    }
+
+    lazy_static! {
+        static ref TEST_DIV_REM_PROGRAM: (String, Program) = load_cairo! {
+            #[feature("bounded-int-utils")]
+            use core::internal::bounded_int::{self, BoundedInt, div_rem, DivRemHelper};
+            use core::internal::OptionRev;
+
+
+            impl Helper_u8_u8 of DivRemHelper<u8, u8> {
+                type DivT = u8;
+                type RemT = u8;
+            }
+
+            fn test_u8(a: felt252, b: felt252) -> (felt252, felt252) {
+                let a_int: u8 = a.try_into().unwrap();
+                let b_int: u8 = b.try_into().unwrap();
+                let b_nz: NonZero<u8> = b_int.try_into().unwrap();
+                let (q, r) = div_rem::<u8, u8, Helper_u8_u8>(a_int, b_nz);
+                return (q.into(), r.into());
+            }
+        };
+    }
+
+    #[test_case("test_u8", 0, 1, 0, 0)]
+    #[test_case("test_u8", 100, 3, 33, 1)]
+    #[test_case("test_u8", 255, 50, 5, 5)]
+    fn test_div_rem(entry_point: &str, a: i32, b: i32, expected_q: u32, expected_r: u32) {
+        let arguments = &[Felt252::from(a).into(), Felt252::from(b).into()];
+        let execution = run_program(&TEST_DIV_REM_PROGRAM, entry_point, arguments);
+
+        let extract_output = |value: &Value| {
+            if let Value::Enum { tag, value, .. } = value {
+                assert_eq!(*tag, 0, "test should not have panicked");
+                if let Value::Struct { fields, .. } = value.as_ref() {
+                    if let Value::Struct { fields, .. } = &fields[0] {
+                        if let Value::Felt252(q) = fields[0] {
+                            if let Value::Felt252(r) = fields[1] {
+                                return (q, r);
+                            }
+                        };
+                    }
+                }
+            }
+            panic!("should have returned a quotient and a reminder");
+        };
+
+        let (q, r) = extract_output(&execution.return_value);
+        let expected_q = Felt252::from(expected_q);
+        let expected_r = Felt252::from(expected_r);
+        assert_eq!(expected_q, q, "expected quotient {expected_q}, got {q}");
+        assert_eq!(expected_r, r, "expected remainder {expected_r}, got {r}");
     }
 }
