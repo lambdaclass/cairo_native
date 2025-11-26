@@ -327,27 +327,6 @@ fn build_sub<'ctx, 'this>(
 }
 
 /// Generate MLIR operations for the `bounded_int_mul` libfunc.
-///
-/// Since we want to get `C = A * B`, we can translate this to
-/// `Co + Cd = (Ad + Ao) * (Bd + Bo)`. Where `Ao`, `Bo` and `Co` represent the lower bound
-/// of the ranges in the BoundedInt and `Ad`, `Bd` and `Cd` represent the offsets.
-///
-/// We want `Cd = (Ad * Bd) + (Ad * Bo) + (Bd * Ao) + (Ao * Bo - Co)`
-///
-/// We can separate it into run-time values:
-/// - `Ad` with `P` bits.
-/// - `Bd` with `Q` bits.
-/// - `Ad * Bd` with `X = max(P, Q) * 2` bits
-/// - `Ad * Bo` with `Y = max(P, S) * 2` bits
-/// - `Bd * Ao` with `Z = max(Q, R) * 2` bits
-///
-/// And compile-time values:
-/// - `Ao` with `R` bits.
-/// - `Bo` with `S` bits.
-/// - `Ao * Bo - Co` with `W` bits.
-///
-/// To compute the `Cd` we will have intermediate values that will need at least
-/// `max(X,Y,Z,W) + 3` bits.
 #[allow(clippy::too_many_arguments)]
 fn build_mul<'ctx, 'this>(
     context: &'ctx Context,
@@ -371,55 +350,58 @@ fn build_mul<'ctx, 'this>(
         .get_type(&info.signature.branch_signatures[0].vars[0].ty)?
         .integer_range(registry)?;
 
-    // Get all the widths so we can get the compute width we need
-    let p_width = if lhs_ty.is_bounded_int(registry)? {
+    let lhs_width = if lhs_ty.is_bounded_int(registry)? {
+        // P
         lhs_range.offset_bit_width()
     } else {
         lhs_range.zero_based_bit_width()
     };
-    let q_width = if rhs_ty.is_bounded_int(registry)? {
+    let rhs_width = if rhs_ty.is_bounded_int(registry)? {
+        // Q
         rhs_range.offset_bit_width()
     } else {
         rhs_range.zero_based_bit_width()
     };
-    let r_width = if lhs_range.lower.sign() != Sign::Minus {
+    let lhs_lower_width = if lhs_range.lower.sign() != Sign::Minus {
+        // R
         lhs_range.lower.bits()
     } else {
-        lhs_range.lower.bits() + 1
+        lhs_range.lower.bits() + 1 // TODO: Check if this is correct
     };
-    let s_width = if rhs_range.lower.sign() != Sign::Minus {
+    let rhs_lower_width = if rhs_range.lower.sign() != Sign::Minus {
+        // S
         rhs_range.lower.bits()
     } else {
-        rhs_range.lower.bits() + 1
+        rhs_range.lower.bits() + 1 // TODO: Check if this is correct
     };
 
     let compile_time_val =
         lhs_range.lower.clone() * rhs_range.lower.clone() - dst_range.lower.clone();
-    let w_width = if compile_time_val.sign() != Sign::Minus {
+    let w = if compile_time_val.sign() != Sign::Minus {
+        // W
         compile_time_val.bits()
     } else {
-        compile_time_val.bits() + 1
+        compile_time_val.bits() + 1 // TODO: Check if this is correct
     };
 
-    let x = (p_width.max(q_width) * 2) as u64;
-    let y = r_width.max(s_width) * 2;
-    let z = (q_width as u64).max(r_width) * 2;
+    let x = (lhs_width.max(rhs_width) * 2) as u64;
+    let y = lhs_lower_width.max(rhs_lower_width) * 2;
+    let z = (rhs_width as u64).max(lhs_lower_width) * 2;
 
-    // Get the compute width
-    let compute_width = (x.max(y).max(z).max(w_width) + 3) as u32;
+    let compute_width = (x.max(y).max(z).max(w) + 3) as u32;
     let compute_ty = IntegerType::new(context, compute_width).into();
 
+    // Zero-extend operands into the computation range.
     native_assert!(
-        compute_width >= p_width,
+        compute_width >= lhs_width,
         "the lhs_range bit_width must be less or equal than the compute_range"
     );
     native_assert!(
-        compute_width >= q_width,
+        compute_width >= rhs_width,
         "the rhs_range bit_width must be less or equal than the compute_range"
     );
 
-    // Extend the operands to the compute width if necessary
-    let lhs_value = if compute_width > p_width {
+    let lhs_value = if compute_width > lhs_width {
         if lhs_range.lower.sign() != Sign::Minus || lhs_ty.is_bounded_int(registry)? {
             entry.extui(lhs_value, compute_ty, location)?
         } else {
@@ -428,7 +410,7 @@ fn build_mul<'ctx, 'this>(
     } else {
         lhs_value
     };
-    let rhs_value = if compute_width > q_width {
+    let rhs_value = if compute_width > rhs_width {
         if rhs_range.lower.sign() != Sign::Minus || rhs_ty.is_bounded_int(registry)? {
             entry.extui(rhs_value, compute_ty, location)?
         } else {
@@ -438,23 +420,19 @@ fn build_mul<'ctx, 'this>(
         rhs_value
     };
 
-    // Get the necessary values
     let ao = entry.const_int_from_type(context, location, lhs_range.lower, compute_ty)?;
     let bo = entry.const_int_from_type(context, location, rhs_range.lower, compute_ty)?;
+
+    let ad_bd = entry.muli(lhs_value, rhs_value, location)?;
+    let ad_bo = entry.muli(lhs_value, bo, location)?;
+    let bd_ao = entry.muli(rhs_value, ao, location)?;
     let compile_time_val =
         entry.const_int_from_type(context, location, compile_time_val, compute_ty)?;
 
-    // Calculate the different terms of the equation
-    let ad_bd = entry.muli(lhs_value, rhs_value, location)?; // Ad * Bd
-    let ad_bo = entry.muli(lhs_value, bo, location)?; // Ad * Bo
-    let bd_ao = entry.muli(rhs_value, ao, location)?; // Bd * Ao
+    let res_value = entry.addi(ad_bd, ad_bo, location)?;
+    let res_value = entry.addi(res_value, bd_ao, location)?;
+    let mut res_value = entry.addi(res_value, compile_time_val, location)?;
 
-    // Calculate the result
-    let res_value = entry.addi(ad_bd, ad_bo, location)?; // (Ad * Bd) + (Ad * Bo)
-    let res_value = entry.addi(res_value, bd_ao, location)?; // (Ad * Bd) + (Ad * Bo) + (Bd * Ao)
-    let mut res_value = entry.addi(res_value, compile_time_val, location)?; // (Ad * Bd) + (Ad * Bo) + (Bd * Ao) + (Ao * Bo - Co)
-
-    // Get the result value on the desired range
     if compute_width > dst_range.offset_bit_width() {
         res_value = entry.trunci(
             res_value,
