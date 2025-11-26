@@ -439,10 +439,14 @@ pub fn build_upcast<'ctx, 'this>(
 #[cfg(test)]
 mod test {
     use crate::{
-        jit_enum, jit_struct, load_cairo, utils::testing::run_program_assert_output, values::Value,
+        jit_enum, jit_struct, load_cairo,
+        utils::testing::{run_program, run_program_assert_output},
+        values::Value,
     };
     use cairo_lang_sierra::program::Program;
+    use cairo_vm::Felt252;
     use lazy_static::lazy_static;
+    use test_case::test_case;
 
     lazy_static! {
         static ref DOWNCAST: (String, Program) = load_cairo! {
@@ -463,29 +467,6 @@ mod test {
                     (downcast(v128), downcast(v64), downcast(v32)),
                     (downcast(v128), downcast(v64)),
                     (downcast(v128),),
-                )
-            }
-        };
-        static ref UPCAST: (String, Program) = load_cairo! {
-            extern const fn upcast<FromType, ToType>(x: FromType) -> ToType nopanic;
-
-            fn run_test(
-                v8: u8, v16: u16, v32: u32, v64: u64, v128: u128, v248: bytes31
-            ) -> (
-                (u8,),
-                (u16, u16),
-                (u32, u32, u32),
-                (u64, u64, u64, u64),
-                (u128, u128, u128, u128, u128),
-                (bytes31, bytes31, bytes31, bytes31, bytes31, bytes31)
-            ) {
-                (
-                    (upcast(v8),),
-                    (upcast(v8), upcast(v16)),
-                    (upcast(v8), upcast(v16), upcast(v32)),
-                    (upcast(v8), upcast(v16), upcast(v32), upcast(v64)),
-                    (upcast(v8), upcast(v16), upcast(v32), upcast(v64), upcast(v128)),
-                    (upcast(v8), upcast(v16), upcast(v32), upcast(v64), upcast(v128), upcast(v248)),
                 )
             }
         };
@@ -528,209 +509,154 @@ mod test {
         );
     }
 
-    #[test]
-    fn upcast() {
-        run_program_assert_output(
-            &UPCAST,
-            "run_test",
-            &[
-                u8::MAX.into(),
-                u16::MAX.into(),
-                u32::MAX.into(),
-                u64::MAX.into(),
-                u128::MAX.into(),
-                Value::Bytes31([0xFF; 31]),
-            ],
-            jit_struct!(
-                jit_struct!(u8::MAX.into()),
-                jit_struct!((u8::MAX as u16).into(), u16::MAX.into()),
-                jit_struct!(
-                    (u8::MAX as u32).into(),
-                    (u16::MAX as u32).into(),
-                    u32::MAX.into()
-                ),
-                jit_struct!(
-                    (u8::MAX as u64).into(),
-                    (u16::MAX as u64).into(),
-                    (u32::MAX as u64).into(),
-                    u64::MAX.into()
-                ),
-                jit_struct!(
-                    (u8::MAX as u128).into(),
-                    (u16::MAX as u128).into(),
-                    (u32::MAX as u128).into(),
-                    (u64::MAX as u128).into(),
-                    u128::MAX.into()
-                ),
-                jit_struct!(
-                    Value::Bytes31([
-                        u8::MAX,
-                        0,
-                        0,
-                        0,
-                        0,
-                        0,
-                        0,
-                        0,
-                        0,
-                        0,
-                        0,
-                        0,
-                        0,
-                        0,
-                        0,
-                        0,
-                        0,
-                        0,
-                        0,
-                        0,
-                        0,
-                        0,
-                        0,
-                        0,
-                        0,
-                        0,
-                        0,
-                        0,
-                        0,
-                        0,
-                        0,
-                    ]),
-                    Value::Bytes31([
-                        u8::MAX,
-                        u8::MAX,
-                        0,
-                        0,
-                        0,
-                        0,
-                        0,
-                        0,
-                        0,
-                        0,
-                        0,
-                        0,
-                        0,
-                        0,
-                        0,
-                        0,
-                        0,
-                        0,
-                        0,
-                        0,
-                        0,
-                        0,
-                        0,
-                        0,
-                        0,
-                        0,
-                        0,
-                        0,
-                        0,
-                        0,
-                        0,
-                    ]),
-                    Value::Bytes31([
-                        u8::MAX,
-                        u8::MAX,
-                        u8::MAX,
-                        u8::MAX,
-                        0,
-                        0,
-                        0,
-                        0,
-                        0,
-                        0,
-                        0,
-                        0,
-                        0,
-                        0,
-                        0,
-                        0,
-                        0,
-                        0,
-                        0,
-                        0,
-                        0,
-                        0,
-                        0,
-                        0,
-                        0,
-                        0,
-                        0,
-                        0,
-                        0,
-                        0,
-                        0,
-                    ]),
-                    Value::Bytes31([
-                        u8::MAX,
-                        u8::MAX,
-                        u8::MAX,
-                        u8::MAX,
-                        u8::MAX,
-                        u8::MAX,
-                        u8::MAX,
-                        u8::MAX,
-                        0,
-                        0,
-                        0,
-                        0,
-                        0,
-                        0,
-                        0,
-                        0,
-                        0,
-                        0,
-                        0,
-                        0,
-                        0,
-                        0,
-                        0,
-                        0,
-                        0,
-                        0,
-                        0,
-                        0,
-                        0,
-                        0,
-                        0,
-                    ]),
-                    Value::Bytes31([
-                        u8::MAX,
-                        u8::MAX,
-                        u8::MAX,
-                        u8::MAX,
-                        u8::MAX,
-                        u8::MAX,
-                        u8::MAX,
-                        u8::MAX,
-                        u8::MAX,
-                        u8::MAX,
-                        u8::MAX,
-                        u8::MAX,
-                        u8::MAX,
-                        u8::MAX,
-                        u8::MAX,
-                        u8::MAX,
-                        0,
-                        0,
-                        0,
-                        0,
-                        0,
-                        0,
-                        0,
-                        0,
-                        0,
-                        0,
-                        0,
-                        0,
-                        0,
-                        0,
-                        0,
-                    ]),
-                    Value::Bytes31([u8::MAX; 31]),
-                ),
-            ),
+    lazy_static! {
+        static ref TEST_UPCAST_PROGRAM: (String, Program) = load_cairo! {
+            extern const fn upcast<FromType, ToType>(x: FromType) -> ToType nopanic;
+
+            fn test_x_y<
+                X,
+                Y,
+                +TryInto<felt252, X>,
+                +Into<Y, felt252>
+            >(v: felt252) -> felt252 {
+                let v: X = v.try_into().unwrap();
+                let v: Y = upcast(v);
+                v.into()
+            }
+
+            fn u8_u16(v: felt252) -> felt252 { test_x_y::<u8, u16>(v) }
+            fn u8_u32(v: felt252) -> felt252 { test_x_y::<u8, u32>(v) }
+            fn u8_u64(v: felt252) -> felt252 { test_x_y::<u8, u64>(v) }
+            fn u8_u128(v: felt252) -> felt252 { test_x_y::<u8, u128>(v) }
+            fn u8_felt252(v: felt252) -> felt252 { test_x_y::<u8, felt252>(v) }
+
+            fn u16_u32(v: felt252) -> felt252 { test_x_y::<u16, u32>(v) }
+            fn u16_u64(v: felt252) -> felt252 { test_x_y::<u16, u64>(v) }
+            fn u16_u128(v: felt252) -> felt252 { test_x_y::<u16, u128>(v) }
+            fn u16_felt252(v: felt252) -> felt252 { test_x_y::<u16, felt252>(v) }
+
+            fn u32_u64(v: felt252) -> felt252 { test_x_y::<u32, u64>(v) }
+            fn u32_u128(v: felt252) -> felt252 { test_x_y::<u32, u128>(v) }
+            fn u32_felt252(v: felt252) -> felt252 { test_x_y::<u32, felt252>(v) }
+
+            fn u64_u128(v: felt252) -> felt252 { test_x_y::<u64, u128>(v) }
+            fn u64_felt252(v: felt252) -> felt252 { test_x_y::<u64, felt252>(v) }
+
+            fn u128_felt252(v: felt252) -> felt252 { test_x_y::<u128, felt252>(v) }
+
+            fn i8_i16(v: felt252) -> felt252 { test_x_y::<i8, i16>(v) }
+            fn i8_i32(v: felt252) -> felt252 { test_x_y::<i8, i32>(v) }
+            fn i8_i64(v: felt252) -> felt252 { test_x_y::<i8, i64>(v) }
+            fn i8_i128(v: felt252) -> felt252 { test_x_y::<i8, i128>(v) }
+            fn i8_felt252(v: felt252) -> felt252 { test_x_y::<i8, felt252>(v) }
+
+            fn i16_i32(v: felt252) -> felt252 { test_x_y::<i16, i32>(v) }
+            fn i16_i64(v: felt252) -> felt252 { test_x_y::<i16, i64>(v) }
+            fn i16_i128(v: felt252) -> felt252 { test_x_y::<i16, i128>(v) }
+            fn i16_felt252(v: felt252) -> felt252 { test_x_y::<i16, felt252>(v) }
+
+            fn i32_i64(v: felt252) -> felt252 { test_x_y::<i32, i64>(v) }
+            fn i32_i128(v: felt252) -> felt252 { test_x_y::<i32, i128>(v) }
+            fn i32_felt252(v: felt252) -> felt252 { test_x_y::<i32, felt252>(v) }
+
+            fn i64_i128(v: felt252) -> felt252 { test_x_y::<i64, i128>(v) }
+            fn i64_felt252(v: felt252) -> felt252 { test_x_y::<i64, felt252>(v) }
+
+            fn i128_felt252(v: felt252) -> felt252 { test_x_y::<i128, felt252>(v) }
+        };
+    }
+
+    // u8 upcast test
+    #[test_case("u8_u16", u8::MIN.into())]
+    #[test_case("u8_u16", u8::MAX.into())]
+    #[test_case("u8_u32", u8::MIN.into())]
+    #[test_case("u8_u32", u8::MAX.into())]
+    #[test_case("u8_u64", u8::MIN.into())]
+    #[test_case("u8_u64", u8::MAX.into())]
+    #[test_case("u8_u128", u8::MIN.into())]
+    #[test_case("u8_u128", u8::MAX.into())]
+    #[test_case("u8_felt252", u8::MIN.into())]
+    #[test_case("u8_felt252", u8::MAX.into())]
+    // u16 upcast test
+    #[test_case("u16_u32", u16::MIN.into())]
+    #[test_case("u16_u32", u16::MAX.into())]
+    #[test_case("u16_u64", u16::MIN.into())]
+    #[test_case("u16_u64", u16::MAX.into())]
+    #[test_case("u16_u128", u16::MIN.into())]
+    #[test_case("u16_u128", u16::MAX.into())]
+    #[test_case("u16_felt252", u16::MIN.into())]
+    #[test_case("u16_felt252", u16::MAX.into())]
+    // u32 upcast test
+    #[test_case("u32_u64", u32::MIN.into())]
+    #[test_case("u32_u64", u32::MAX.into())]
+    #[test_case("u32_u128", u32::MIN.into())]
+    #[test_case("u32_u128", u32::MAX.into())]
+    #[test_case("u32_felt252", u32::MIN.into())]
+    #[test_case("u32_felt252", u32::MAX.into())]
+    // u64 upcast test
+    #[test_case("u64_u128", u64::MIN.into())]
+    #[test_case("u64_u128", u64::MAX.into())]
+    #[test_case("u64_felt252", u64::MIN.into())]
+    #[test_case("u64_felt252", u64::MAX.into())]
+    // u128 upcast test
+    #[test_case("u128_felt252", u128::MIN.into())]
+    #[test_case("u128_felt252", u128::MAX.into())]
+    // i8 upcast test
+    #[test_case("i8_i16", i8::MIN.into())]
+    #[test_case("i8_i16", i8::MAX.into())]
+    #[test_case("i8_i32", i8::MIN.into())]
+    #[test_case("i8_i32", i8::MAX.into())]
+    #[test_case("i8_i64", i8::MIN.into())]
+    #[test_case("i8_i64", i8::MAX.into())]
+    #[test_case("i8_i128", i8::MIN.into())]
+    #[test_case("i8_i128", i8::MAX.into())]
+    #[test_case("i8_felt252", i8::MIN.into())]
+    #[test_case("i8_felt252", i8::MAX.into())]
+    // i16 upcast test
+    #[test_case("i16_i32", i16::MIN.into())]
+    #[test_case("i16_i32", i16::MAX.into())]
+    #[test_case("i16_i64", i16::MIN.into())]
+    #[test_case("i16_i64", i16::MAX.into())]
+    #[test_case("i16_i128", i16::MIN.into())]
+    #[test_case("i16_i128", i16::MAX.into())]
+    #[test_case("i16_felt252", i16::MIN.into())]
+    #[test_case("i16_felt252", i16::MAX.into())]
+    // i32 upcast test
+    #[test_case("i32_i64", i32::MIN.into())]
+    #[test_case("i32_i64", i32::MAX.into())]
+    #[test_case("i32_i128", i32::MIN.into())]
+    #[test_case("i32_i128", i32::MAX.into())]
+    #[test_case("i32_felt252", i32::MIN.into())]
+    #[test_case("i32_felt252", i32::MAX.into())]
+    // i64 upcast test
+    #[test_case("i64_i128", i64::MIN.into())]
+    #[test_case("i64_i128", i64::MAX.into())]
+    #[test_case("i64_felt252", i64::MIN.into())]
+    #[test_case("i64_felt252", i64::MAX.into())]
+    // i128 upcast test
+    #[test_case("i128_felt252", i128::MIN.into())]
+    #[test_case("i128_felt252", i128::MAX.into())]
+    fn upcast(entry_point: &str, value: Felt252) {
+        let arguments = &[value.into()];
+        let execution = run_program(&TEST_UPCAST_PROGRAM, entry_point, arguments);
+
+        let extract_output = |value: &Value| {
+            if let Value::Enum { tag, value, .. } = value {
+                assert_eq!(*tag, 0, "test should not have panicked");
+                if let Value::Struct { fields, .. } = value.as_ref() {
+                    if let Value::Felt252(v) = fields[0] {
+                        return v;
+                    };
+                }
+            }
+            panic!("should have returned a quotient and a reminder");
+        };
+
+        let actual_value = extract_output(&execution.return_value);
+        let expected_value = value;
+        assert_eq!(
+            expected_value, actual_value,
+            "expected {expected_value}, got {actual_value}"
         );
     }
 }
