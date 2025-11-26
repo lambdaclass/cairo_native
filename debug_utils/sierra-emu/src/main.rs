@@ -17,7 +17,7 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
     tracing::subscriber::set_global_default(
         FmtSubscriber::builder()
             .with_env_filter(EnvFilter::from_default_env())
-            // .with_max_level(Level::TRACE)
+            .with_max_level(Level::TRACE)
             .finish(),
     )?;
 

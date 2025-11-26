@@ -60,11 +60,11 @@ pub fn build_downcast<'ctx, 'this>(
     let src_value: Value = entry.arg(1)?;
 
     if info.signature.param_signatures[1].ty == info.signature.branch_signatures[0].vars[1].ty {
-        let k0 = entry.const_int(context, location, 0, 1)?;
+        let k1 = entry.const_int(context, location, 1, 1)?;
         return helper.cond_br(
             context,
             entry,
-            k0,
+            k1,
             [0, 1],
             [&[range_check, src_value], &[range_check]],
             location,
