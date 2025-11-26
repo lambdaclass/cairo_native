@@ -1363,8 +1363,8 @@ mod test {
 
 
             impl Helper_u8_u8 of DivRemHelper<u8, u8> {
-                type DivT = u8;
-                type RemT = u8;
+                type DivT = BoundedInt<0, 255>;
+                type RemT = BoundedInt<0, 254>;
             }
             fn test_u8(a: felt252, b: felt252) -> (felt252, felt252) {
                 let a_int: u8 = a.try_into().unwrap();
