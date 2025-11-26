@@ -22,6 +22,7 @@ use cairo_lang_sierra_to_casm::metadata::{
     calc_metadata, calc_metadata_ap_change_only, Metadata as CairoGasMetadata,
     MetadataComputationConfig, MetadataError as CairoGasMetadataError,
 };
+use cairo_lang_sierra_type_size::ProgramRegistryInfo;
 
 use crate::{
     error::{Error, Result as NativeResult},
@@ -55,12 +56,13 @@ pub enum GasMetadataError {
 impl GasMetadata {
     pub fn new(
         sierra_program: &Program,
+        sierra_program_info: &ProgramRegistryInfo,
         config: Option<MetadataComputationConfig>,
     ) -> Result<GasMetadata, GasMetadataError> {
         let cairo_gas_metadata = if let Some(metadata_config) = config {
-            calc_metadata(sierra_program, metadata_config)?
+            calc_metadata(sierra_program, sierra_program_info, metadata_config)?
         } else {
-            calc_metadata_ap_change_only(sierra_program)?
+            calc_metadata_ap_change_only(sierra_program, sierra_program_info)?
         };
 
         Ok(GasMetadata::from(cairo_gas_metadata))

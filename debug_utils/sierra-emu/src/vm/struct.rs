@@ -21,6 +21,9 @@ pub fn eval(
         StructConcreteLibfunc::SnapshotDeconstruct(info) => {
             eval_snapshot_deconstruct(registry, info, args)
         }
+        StructConcreteLibfunc::BoxedDeconstruct(_info) => {
+            todo!("implement struct_boxed_deconstruct")
+        }
     }
 }
 

@@ -7,9 +7,9 @@ To generate the patch:
 2. Modify the corelib
 3. Run `diff -crN cairo2/corelib cairo2/corelib_1/ > corelib.patch`
 
-diff --color=auto -crN cairo2/corelib/src/starknet/account.cairo cairo2/corelib_1/src/starknet/account.cairo
-*** cairo2/corelib/src/starknet/account.cairo	Mon Aug 25 09:50:36 2025
---- cairo2/corelib_1/src/starknet/account.cairo	Wed Sep  3 12:25:58 2025
+diff -crN cairo2/corelib/src/starknet/account.cairo cairo2/corelib_1/src/starknet/account.cairo
+*** cairo2/corelib/src/starknet/account.cairo	Mon Nov 24 10:47:44 2025
+--- cairo2/corelib_1/src/starknet/account.cairo	Tue Nov 25 16:29:58 2025
 ***************
 *** 50,919 ****
       /// through the `__validate__` entry point.
@@ -883,9 +883,9 @@ diff --color=auto -crN cairo2/corelib/src/starknet/account.cairo cairo2/corelib_
 -     }
 - }
 --- 50,52 ----
-diff --color=auto -crN cairo2/corelib/src/test/dict_test.cairo cairo2/corelib_1/src/test/dict_test.cairo
-*** cairo2/corelib/src/test/dict_test.cairo	Mon Aug 25 09:50:36 2025
---- cairo2/corelib_1/src/test/dict_test.cairo	Wed Sep  3 12:26:23 2025
+diff -crN cairo2/corelib/src/test/dict_test.cairo cairo2/corelib_1/src/test/dict_test.cairo
+*** cairo2/corelib/src/test/dict_test.cairo	Mon Nov 24 10:47:44 2025
+--- cairo2/corelib_1/src/test/dict_test.cairo	Tue Nov 25 16:29:58 2025
 ***************
 *** 177,186 ****
       assert_eq!(dict[0], 2);
@@ -909,9 +909,9 @@ diff --color=auto -crN cairo2/corelib/src/test/dict_test.cairo cairo2/corelib_1/
 ! //         dict.squash().into_entries(), array![(0, 0, 0), (1, 0, 1), (2, 0, 2), (3, 0, 3), (4, 0, 4)],
 ! //     );
 ! // }
-diff --color=auto -crN cairo2/corelib/src/test/hash_test.cairo cairo2/corelib_1/src/test/hash_test.cairo
-*** cairo2/corelib/src/test/hash_test.cairo	Mon Aug 25 09:50:36 2025
---- cairo2/corelib_1/src/test/hash_test.cairo	Wed Sep  3 12:28:28 2025
+diff -crN cairo2/corelib/src/test/hash_test.cairo cairo2/corelib_1/src/test/hash_test.cairo
+*** cairo2/corelib/src/test/hash_test.cairo	Mon Nov 24 10:47:44 2025
+--- cairo2/corelib_1/src/test/hash_test.cairo	Tue Nov 25 16:29:58 2025
 ***************
 *** 1,4 ****
 ! use crate::blake::{blake2s_compress, blake2s_finalize};
@@ -924,7 +924,7 @@ diff --color=auto -crN cairo2/corelib/src/test/hash_test.cairo cairo2/corelib_1/
   use crate::poseidon::PoseidonTrait;
   use crate::test::test_utils::assert_eq;
 ***************
-*** 88,115 ****
+*** 88,131 ****
   }
   
   
@@ -933,27 +933,43 @@ diff --color=auto -crN cairo2/corelib/src/test/hash_test.cairo cairo2/corelib_1/
 !     let state = BoxTrait::new([0_u32; 8]);
 !     let msg = BoxTrait::new([0_u32; 16]);
 !     let byte_count = 64_u32;
-  
-!     let res = blake2s_compress(state, byte_count, msg).unbox();
-  
 !     assert_eq!(
-!         res,
+!         blake2s_compress(state, byte_count, msg).unbox(),
 !         [
-!             3893814314, 2107143640, 4255525973, 2730947657, 3397056017, 3710875177, 3168346915,
-!             365144891,
+!             0xe816e42a, 0x7d9875d8, 0xfda62c55, 0xa2c6f449, 0xca7af611, 0xdd2f7629, 0xbcd92323,
+!             0x15c3ab3b,
 !         ],
 !     );
-  
-!     let res = blake2s_finalize(state, byte_count, msg).unbox();
 !     assert_eq!(
-!         res,
+!         blake2s_finalize(state, byte_count, msg).unbox(),
 !         [
-!             128291589, 1454945417, 3191583614, 1491889056, 794023379, 651000200, 3725903680,
-!             1044330286,
+!             0x7a59305, 0x56b8b489, 0xbe3bb37e, 0x58ec6ba0, 0x2f53d5d3, 0x26cd7988, 0xde14c740,
+!             0x3e3f372e,
 !         ],
 !     );
 ! }
---- 88,115 ----
+  
+! #[test]
+! fn test_blake2s_with_abc() {
+!     // hashing `abc` as it is done in RFC 7693 Appendix B.
+!     // Initial state is the IV, with keylen 0 and output length 32.
+!     let state = BoxTrait::new(
+!         [
+!             0x6A09E667 ^ (0x01010000 ^ 0x20), 0xBB67AE85, 0x3C6EF372, 0xA54FF53A, 0x510E527F,
+!             0x9B05688C, 0x1F83D9AB, 0x5BE0CD19,
+!         ],
+!     );
+!     // Message `abc` padded with zeros.
+!     let msg = BoxTrait::new(['cba', 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0]);
+!     assert_eq!(
+!         blake2s_finalize(state, 3, msg).unbox(),
+!         [
+!             0x8c5e8c50, 0xe2147c32, 0xa32ba7e1, 0x2f45eb4e, 0x208b4537, 0x293ad69e, 0x4c9b994d,
+!             0x82596786,
+!         ],
+!     );
+! }
+--- 88,131 ----
   }
   
   
@@ -962,29 +978,45 @@ diff --color=auto -crN cairo2/corelib/src/test/hash_test.cairo cairo2/corelib_1/
 ! //     let state = BoxTrait::new([0_u32; 8]);
 ! //     let msg = BoxTrait::new([0_u32; 16]);
 ! //     let byte_count = 64_u32;
-  
-! //     let res = blake2s_compress(state, byte_count, msg).unbox();
-  
 ! //     assert_eq!(
-! //         res,
+! //         blake2s_compress(state, byte_count, msg).unbox(),
 ! //         [
-! //             3893814314, 2107143640, 4255525973, 2730947657, 3397056017, 3710875177, 3168346915,
-! //             365144891,
+! //             0xe816e42a, 0x7d9875d8, 0xfda62c55, 0xa2c6f449, 0xca7af611, 0xdd2f7629, 0xbcd92323,
+! //             0x15c3ab3b,
 ! //         ],
 ! //     );
-  
-! //     let res = blake2s_finalize(state, byte_count, msg).unbox();
 ! //     assert_eq!(
-! //         res,
+! //         blake2s_finalize(state, byte_count, msg).unbox(),
 ! //         [
-! //             128291589, 1454945417, 3191583614, 1491889056, 794023379, 651000200, 3725903680,
-! //             1044330286,
+! //             0x7a59305, 0x56b8b489, 0xbe3bb37e, 0x58ec6ba0, 0x2f53d5d3, 0x26cd7988, 0xde14c740,
+! //             0x3e3f372e,
 ! //         ],
 ! //     );
 ! // }
-diff --color=auto -crN cairo2/corelib/src/test/testing_test.cairo cairo2/corelib_1/src/test/testing_test.cairo
-*** cairo2/corelib/src/test/testing_test.cairo	Mon Aug 25 09:50:36 2025
---- cairo2/corelib_1/src/test/testing_test.cairo	Wed Sep  3 12:27:52 2025
+  
+! // #[test]
+! // fn test_blake2s_with_abc() {
+! //     // hashing `abc` as it is done in RFC 7693 Appendix B.
+! //     // Initial state is the IV, with keylen 0 and output length 32.
+! //     let state = BoxTrait::new(
+! //         [
+! //             0x6A09E667 ^ (0x01010000 ^ 0x20), 0xBB67AE85, 0x3C6EF372, 0xA54FF53A, 0x510E527F,
+! //             0x9B05688C, 0x1F83D9AB, 0x5BE0CD19,
+! //         ],
+! //     );
+! //     // Message `abc` padded with zeros.
+! //     let msg = BoxTrait::new(['cba', 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0]);
+! //     assert_eq!(
+! //         blake2s_finalize(state, 3, msg).unbox(),
+! //         [
+! //             0x8c5e8c50, 0xe2147c32, 0xa32ba7e1, 0x2f45eb4e, 0x208b4537, 0x293ad69e, 0x4c9b994d,
+! //             0x82596786,
+! //         ],
+! //     );
+! // }
+diff -crN cairo2/corelib/src/test/testing_test.cairo cairo2/corelib_1/src/test/testing_test.cairo
+*** cairo2/corelib/src/test/testing_test.cairo	Mon Nov 24 10:47:44 2025
+--- cairo2/corelib_1/src/test/testing_test.cairo	Tue Nov 25 16:29:58 2025
 ***************
 *** 135,152 ****
       t
@@ -1024,9 +1056,9 @@ diff --color=auto -crN cairo2/corelib/src/test/testing_test.cairo cairo2/corelib
   
   #[derive(Drop, Debug, PartialEq)]
   struct NoCopy {
-diff --color=auto -crN cairo2/corelib/src/test.cairo cairo2/corelib_1/src/test.cairo
-*** cairo2/corelib/src/test.cairo	Mon Aug 25 09:50:36 2025
---- cairo2/corelib_1/src/test.cairo	Wed Sep  3 12:26:58 2025
+diff -crN cairo2/corelib/src/test.cairo cairo2/corelib_1/src/test.cairo
+*** cairo2/corelib/src/test.cairo	Mon Nov 24 10:47:44 2025
+--- cairo2/corelib_1/src/test.cairo	Tue Nov 25 16:29:58 2025
 ***************
 *** 12,18 ****
   mod ec_test;

@@ -6,7 +6,7 @@ use cairo_lang_compiler::{
     compile_prepared_db, db::RootDatabase, diagnostics::DiagnosticsReporter,
     project::setup_project, CompilerConfig,
 };
-use cairo_lang_filesystem::db::init_dev_corelib;
+use cairo_lang_filesystem::{db::init_dev_corelib, ids::CrateInput};
 use cairo_lang_sierra::program::Program;
 
 use crate::{starknet::StubSyscallHandler, Value, VirtualMachine};
@@ -33,7 +33,10 @@ pub(crate) fn load_cairo_from_str(cairo_str: &str) -> (String, Program) {
         Path::new(&std::env::var("CARGO_MANIFEST_DIR").unwrap()).join("corelib/src"),
     );
 
-    let main_crate_ids = setup_project(&mut db, file.path()).unwrap();
+    let main_crate_ids = {
+        let crate_inputs = setup_project(&mut db, file.path()).unwrap();
+        CrateInput::into_crate_ids(&db, crate_inputs)
+    };
 
     let sierra_with_dbg = compile_prepared_db(
         &db,

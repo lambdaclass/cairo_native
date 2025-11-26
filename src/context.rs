@@ -14,6 +14,7 @@ use cairo_lang_sierra::{
     program_registry::ProgramRegistry,
 };
 use cairo_lang_sierra_to_casm::metadata::MetadataComputationConfig;
+use cairo_lang_sierra_type_size::ProgramRegistryInfo;
 use llvm_sys::target::{
     LLVM_InitializeAllAsmPrinters, LLVM_InitializeAllTargetInfos, LLVM_InitializeAllTargetMCs,
     LLVM_InitializeAllTargets,
@@ -158,7 +159,11 @@ impl NativeContext {
         // Make the runtime library available.
         metadata.insert(RuntimeBindingsMeta::default());
         // We assume that GasMetadata will be always present when the program uses the gas builtin.
-        let gas_metadata = GasMetadata::new(program, gas_metadata_config)?;
+        let gas_metadata = GasMetadata::new(
+            program,
+            &ProgramRegistryInfo::new(program)?,
+            gas_metadata_config,
+        )?;
         // Unwrapping here is not necessary since the insertion will only fail if there was
         // already some metadata of the same type.
         metadata.insert(gas_metadata);

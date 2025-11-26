@@ -73,6 +73,7 @@ use cairo_lang_starknet_classes::contract_class::ContractEntryPoints;
 use cairo_lang_starknet_classes::{
     casm_contract_class::ENTRY_POINT_COST, compiler_version::VersionId,
 };
+use cairo_lang_utils::small_ordered_map::SmallOrderedMap;
 use educe::Educe;
 use itertools::{chain, Itertools};
 use libloading::Library;
@@ -228,7 +229,7 @@ impl AotContractExecutor {
                 .map(|x| {
                     (
                         FunctionId::new(x.function_idx as u64),
-                        [(CostTokenType::Const, ENTRY_POINT_COST)].into(),
+                        SmallOrderedMap::from_iter([(CostTokenType::Const, ENTRY_POINT_COST)]),
                     )
                 })
                 .collect(),

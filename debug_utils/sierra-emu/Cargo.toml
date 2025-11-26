@@ -9,6 +9,7 @@ license.workspace = true
 repository.workspace = true
 
 [dependencies]
+cairo-lang-lowering.workspace = true
 cairo-lang-compiler.workspace = true
 cairo-lang-filesystem.workspace = true
 cairo-lang-runner.workspace = true
@@ -17,6 +18,7 @@ cairo-lang-sierra-gas.workspace = true
 cairo-lang-sierra-generator.workspace = true
 cairo-lang-sierra-to-casm.workspace = true
 cairo-lang-sierra.workspace = true
+cairo-lang-sierra-type-size.workspace = true
 cairo-lang-starknet-classes.workspace = true
 cairo-lang-test-plugin.workspace = true
 cairo-lang-utils.workspace = true
