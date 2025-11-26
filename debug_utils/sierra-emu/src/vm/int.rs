@@ -1,4 +1,4 @@
-use std::{fmt::Debug, u8};
+use std::fmt::Debug;
 
 use cairo_lang_sierra::{
     extensions::{
