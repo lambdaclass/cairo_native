@@ -780,9 +780,10 @@ fn build_trim<'ctx, 'this>(
     };
     let is_invalid = entry.cmpi(context, CmpiPredicate::Eq, value, trimmed_value, location)?;
 
-    let offset = match src_ty.is_bounded_int(registry)? {
-        true => dst_ty.integer_range(registry)?.lower - src_ty.integer_range(registry)?.lower,
-        false => dst_ty.integer_range(registry)?.lower,
+    let offset = if src_ty.is_bounded_int(registry)? {
+        dst_ty.integer_range(registry)?.lower - src_ty.integer_range(registry)?.lower
+    } else {
+        dst_ty.integer_range(registry)?.lower
     };
     let value = entry.append_op_result(arith::subi(
         value,
