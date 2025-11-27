@@ -659,17 +659,16 @@ fn build_constrain<'ctx, 'this>(
         entry.const_int_from_type(context, location, info.boundary.clone(), src_value.r#type())?
     };
 
-    let is_lower = entry.cmpi(
-        context,
-        if src_range.lower.sign() == Sign::Minus {
-            CmpiPredicate::Slt
-        } else {
+    let cmpi_predicate = if src_ty.is_bounded_int(registry)? {
+        CmpiPredicate::Ult
+    } else {
+        if src_range.lower.sign() != Sign::Minus {
             CmpiPredicate::Ult
-        },
-        src_value,
-        boundary,
-        location,
-    )?;
+        } else {
+            CmpiPredicate::Slt
+        }
+    };
+    let is_lower = entry.cmpi(context, cmpi_predicate, src_value, boundary, location)?;
 
     let lower_block = helper.append_block(Block::new(&[]));
     let upper_block = helper.append_block(Block::new(&[]));
@@ -1184,6 +1183,27 @@ mod test {
                     Err(gt0) => gt0,
                 }
             }
+
+            impl ConstrainTest6 of ConstrainHelper<BoundedInt<-30, 31>, 0> {
+                type LowT = BoundedInt<-30, -1>;
+                type HighT = BoundedInt<0, 31>;
+            }
+
+            fn run_test_12(a: felt252) -> BoundedInt<-30, -1> {
+                let a_bi: BoundedInt<-30, 31> = a.try_into().unwrap();
+                match constrain::<_, 0>(a_bi) {
+                    Ok(lt0) => lt0,
+                    Err(_gt0) => panic!(),
+                }
+            }
+
+            fn run_test_13(a: felt252) -> BoundedInt<0, 31> {
+                let a_bi: BoundedInt<-30, 31> = a.try_into().unwrap();
+                match constrain::<_, 0>(a_bi) {
+                    Ok(_lt0) => panic!(),
+                    Err(gt0) => gt0,
+                }
+            }
         };
 
         let result = run_program(&program, "run_test_1", &[Value::Sint8(-1)]).return_value;
@@ -1347,6 +1367,36 @@ mod test {
                 range: Range {
                     lower: BigInt::from(100),
                     upper: BigInt::from(101),
+                },
+            },
+        );
+
+        let result = run_program(
+            &program,
+            "run_test_12",
+            &[Value::Felt252(Felt252::from(-5))],
+        )
+        .return_value;
+        assert_constrain_output(
+            result,
+            Value::BoundedInt {
+                value: Felt252::from(-5),
+                range: Range {
+                    lower: BigInt::from(-30),
+                    upper: BigInt::from(0),
+                },
+            },
+        );
+
+        let result =
+            run_program(&program, "run_test_13", &[Value::Felt252(Felt252::from(5))]).return_value;
+        assert_constrain_output(
+            result,
+            Value::BoundedInt {
+                value: Felt252::from(5),
+                range: Range {
+                    lower: BigInt::from(0),
+                    upper: BigInt::from(32),
                 },
             },
         );
