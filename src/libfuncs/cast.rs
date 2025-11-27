@@ -329,7 +329,15 @@ pub fn build_downcast<'ctx, 'this>(
     Ok(())
 }
 
-/// Generate MLIR operations for the `upcast` libfunc.
+/// Builds the `upcast` libfunc, which convert from a source type `T` to a
+/// target type `U`, where `U` fully includes `T`. This means that the operation
+/// cannot fail.
+///
+/// ## Signature
+///
+/// ```cairo
+/// extern const fn upcast<FromType, ToType>(x: FromType) -> ToType nopanic;
+/// ```
 pub fn build_upcast<'ctx, 'this>(
     context: &'ctx Context,
     registry: &ProgramRegistry<CoreType, CoreLibfunc>,
@@ -350,22 +358,32 @@ pub fn build_upcast<'ctx, 'this>(
 
     let src_range = src_ty.integer_range(registry)?;
     let dst_range = dst_ty.integer_range(registry)?;
-    native_assert!(
-        if dst_ty.is_felt252(registry)? {
-            let alt_range = Range {
+
+    // An upcast is infallible, so the target type should always contain the source type.
+    {
+        let dst_contains_src =
+            dst_range.lower <= src_range.lower && dst_range.upper >= src_range.upper;
+
+        // If the target type is a felt, then both [0; P) and [-P/2, P/2] ranges are valid.
+        let dst_contains_src = if dst_ty.is_felt252(registry)? {
+            let signed_dst_range = Range {
                 lower: BigInt::from_biguint(Sign::Minus, HALF_PRIME.clone()),
                 upper: BigInt::from_biguint(Sign::Plus, HALF_PRIME.clone()) + BigInt::one(),
             };
-
-            (dst_range.lower <= src_range.lower && dst_range.upper >= src_range.upper)
-                || (alt_range.lower <= src_range.lower && alt_range.upper >= src_range.upper)
+            let signed_dst_contains_src = signed_dst_range.lower <= src_range.lower
+                && signed_dst_range.upper >= src_range.upper;
+            dst_contains_src | signed_dst_contains_src
         } else {
-            dst_range.lower <= src_range.lower && dst_range.upper >= src_range.upper
-        },
-        "invalid upcast `{:?}` into `{:?}`: target range doesn't contain the source range",
-        info.signature.param_signatures[0].ty,
-        info.signature.branch_signatures[0].vars[0].ty
-    );
+            dst_contains_src
+        };
+
+        native_assert!(
+            dst_contains_src,
+            "cannot upcast `{:?}` into `{:?}`: target range doesn't contain source range",
+            info.signature.param_signatures[0].ty,
+            info.signature.branch_signatures[0].vars[0].ty
+        );
+    }
 
     let src_width = if src_ty.is_bounded_int(registry)? {
         src_range.offset_bit_width()
@@ -378,17 +396,17 @@ pub fn build_upcast<'ctx, 'this>(
         dst_range.zero_based_bit_width()
     };
 
-    // If the source can be negative, the target type must also contain negatives when upcasting.
-    native_assert!(
-        src_range.lower.sign() != Sign::Minus
-            || dst_ty.is_felt252(registry)?
-            || dst_range.lower.sign() == Sign::Minus,
-        "if the source range contains negatives, the target range must always contain negatives",
-    );
-    let is_signed = src_range.lower.sign() == Sign::Minus;
-
+    // Extend value to target bit width.
     let dst_value = if dst_width > src_width {
-        if is_signed && !src_ty.is_bounded_int(registry)? {
+        if src_ty.is_bounded_int(registry)? {
+            // A bounded int is always represented as a positive integer,
+            // because we store the offset to the lower bound.
+            entry.extui(
+                src_value,
+                IntegerType::new(context, dst_width).into(),
+                location,
+            )?
+        } else if src_range.lower.sign() == Sign::Minus {
             entry.extsi(
                 src_value,
                 IntegerType::new(context, dst_width).into(),
@@ -405,22 +423,22 @@ pub fn build_upcast<'ctx, 'this>(
         src_value
     };
 
-    let dst_value = if src_ty.is_bounded_int(registry)? && src_range.lower != BigInt::ZERO {
-        let dst_offset = entry.const_int_from_type(
-            context,
-            location,
-            if dst_ty.is_bounded_int(registry)? {
-                &src_range.lower - &dst_range.lower
-            } else {
-                src_range.lower.clone()
-            },
-            dst_value.r#type(),
-        )?;
-        entry.addi(dst_value, dst_offset, location)?
+    // When converting to/from bounded ints, we need to take into account the offset.
+    let offset = if src_ty.is_bounded_int(registry)? && dst_ty.is_bounded_int(registry)? {
+        &src_range.lower - &dst_range.lower
+    } else if src_ty.is_bounded_int(registry)? {
+        src_range.lower.clone()
+    } else if dst_ty.is_bounded_int(registry)? {
+        -dst_range.lower
     } else {
-        dst_value
+        BigInt::ZERO
     };
+    let offset_value = entry.const_int_from_type(context, location, offset, dst_value.r#type())?;
+    let dst_value = entry.addi(dst_value, offset_value, location)?;
 
+    // When converting to a felt from a signed integer, we need to convert
+    // the canonical signed integer representation, to the signed felt
+    // representation: `negative = P - absolute`.
     let dst_value = if dst_ty.is_felt252(registry)? && src_range.lower.sign() == Sign::Minus {
         let k0 = entry.const_int(context, location, 0, 252)?;
         let is_negative = entry.cmpi(context, CmpiPredicate::Slt, dst_value, k0, location)?;
@@ -570,7 +588,9 @@ mod test {
             fn b2x5_b2x10(v: felt252) -> felt252 { test_x_y::<BoundedInt<2, 5>, BoundedInt<2, 10>>(v) }
             fn b2x5_b1x10(v: felt252) -> felt252 { test_x_y::<BoundedInt<2, 5>, BoundedInt<1, 10>>(v) }
             fn b0x5_bm10x10(v: felt252) -> felt252 { test_x_y::<BoundedInt<0, 5>, BoundedInt<-10, 10>>(v) }
-
+            fn bm5x5_bm10x10(v: felt252) -> felt252 { test_x_y::<BoundedInt<-5, 5>, BoundedInt<-10, 10>>(v) }
+            fn i8_bm200x200(v: felt252) -> felt252 { test_x_y::<i8, BoundedInt<-200, 200>>(v) }
+            fn bm100x100_i8(v: felt252) -> felt252 { test_x_y::<BoundedInt<-100, 100>, i8>(v) }
         };
     }
 
@@ -653,6 +673,12 @@ mod test {
     #[test_case("b2x5_b1x10", 5.into())]
     #[test_case("b0x5_bm10x10", 0.into())]
     #[test_case("b0x5_bm10x10", 5.into())]
+    #[test_case("bm5x5_bm10x10", Felt252::from(-5))]
+    #[test_case("bm5x5_bm10x10", 5.into())]
+    #[test_case("i8_bm200x200", Felt252::from(-128))]
+    #[test_case("i8_bm200x200", 127.into())]
+    #[test_case("bm100x100_i8", Felt252::from(-100))]
+    #[test_case("bm100x100_i8", 100.into())]
     fn upcast(entry_point: &str, value: Felt252) {
         let arguments = &[value.into()];
         let execution = run_program(&TEST_UPCAST_PROGRAM, entry_point, arguments);
