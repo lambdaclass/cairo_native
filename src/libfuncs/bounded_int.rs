@@ -873,8 +873,12 @@ mod test {
     use test_case::test_case;
 
     use crate::{
-        context::NativeContext, execution_result::ExecutionResult, executor::JitNativeExecutor,
-        load_cairo, utils::testing::run_program, OptLevel, Value,
+        context::NativeContext,
+        execution_result::ExecutionResult,
+        executor::JitNativeExecutor,
+        jit_enum, jit_struct, load_cairo,
+        utils::testing::{run_program, run_program_assert_output},
+        OptLevel, Value,
     };
 
     #[test]
@@ -1403,28 +1407,18 @@ mod test {
     #[test_case("test_50_100_20_40", 100, 30, 3, 10)]
     fn test_div_rem(entry_point: &str, a: i32, b: i32, expected_q: u32, expected_r: u32) {
         let arguments = &[Felt252::from(a).into(), Felt252::from(b).into()];
-        let execution = run_program(&TEST_DIV_REM_PROGRAM, entry_point, arguments);
-
-        let extract_output = |value: &Value| {
-            if let Value::Enum { tag, value, .. } = value {
-                assert_eq!(*tag, 0, "test should not have panicked");
-                if let Value::Struct { fields, .. } = value.as_ref() {
-                    if let Value::Struct { fields, .. } = &fields[0] {
-                        if let Value::Felt252(q) = fields[0] {
-                            if let Value::Felt252(r) = fields[1] {
-                                return (q, r);
-                            }
-                        };
-                    }
-                }
-            }
-            panic!("should have returned a quotient and a reminder");
-        };
-
-        let (q, r) = extract_output(&execution.return_value);
-        let expected_q = Felt252::from(expected_q);
-        let expected_r = Felt252::from(expected_r);
-        assert_eq!(expected_q, q, "expected quotient {expected_q}, got {q}");
-        assert_eq!(expected_r, r, "expected remainder {expected_r}, got {r}");
+        let expected_result = jit_enum!(
+            0,
+            jit_struct!(jit_struct!(
+                Felt252::from(expected_q).into(),
+                Felt252::from(expected_r).into(),
+            ))
+        );
+        run_program_assert_output(
+            &TEST_DIV_REM_PROGRAM,
+            entry_point,
+            arguments,
+            expected_result,
+        );
     }
 }
