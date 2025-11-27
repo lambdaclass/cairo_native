@@ -198,7 +198,7 @@ pub fn build_downcast<'ctx, 'this>(
     } else {
         None
     };
-    
+
     let is_in_bounds = match (lower_check, upper_check) {
         (Some(lower_check), Some(upper_check)) => {
             entry.append_op_result(arith::andi(lower_check, upper_check, location))?

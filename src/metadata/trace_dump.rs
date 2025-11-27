@@ -810,84 +810,8 @@ pub mod trace_dump_runtime {
 
                 Value::Bytes31(Felt::from_bytes_le(&data))
             }
-            CoreTypeConcrete::IntRange(info) => {
-                let type_info = registry.get_type(&info.ty).unwrap();
-
-                match type_info {
-                    CoreTypeConcrete::Sint8(_) => {
-                        let value = value_ptr.cast::<IntRange<i8>>().read();
-                        Value::IntRange {
-                            x: Box::new(value.x.into()),
-                            y: Box::new(value.y.into()),
-                        }
-                    }
-                    CoreTypeConcrete::Sint16(_) => {
-                        let value = value_ptr.cast::<IntRange<i16>>().read();
-                        Value::IntRange {
-                            x: Box::new(value.x.into()),
-                            y: Box::new(value.y.into()),
-                        }
-                    }
-                    CoreTypeConcrete::Sint32(_) => {
-                        let value = value_ptr.cast::<IntRange<i32>>().read();
-                        Value::IntRange {
-                            x: Box::new(value.x.into()),
-                            y: Box::new(value.y.into()),
-                        }
-                    }
-                    CoreTypeConcrete::Sint64(_) => {
-                        let value = value_ptr.cast::<IntRange<i64>>().read();
-                        Value::IntRange {
-                            x: Box::new(value.x.into()),
-                            y: Box::new(value.y.into()),
-                        }
-                    }
-                    CoreTypeConcrete::Sint128(_) => {
-                        let value = value_ptr.cast::<IntRange<i128>>().read();
-                        Value::IntRange {
-                            x: Box::new(value.x.into()),
-                            y: Box::new(value.y.into()),
-                        }
-                    }
-                    CoreTypeConcrete::Uint8(_) => {
-                        let value = value_ptr.cast::<IntRange<u8>>().read();
-                        Value::IntRange {
-                            x: Box::new(value.x.into()),
-                            y: Box::new(value.y.into()),
-                        }
-                    }
-                    CoreTypeConcrete::Uint16(_) => {
-                        let value = value_ptr.cast::<IntRange<u16>>().read();
-                        Value::IntRange {
-                            x: Box::new(value.x.into()),
-                            y: Box::new(value.y.into()),
-                        }
-                    }
-                    CoreTypeConcrete::Uint32(_) => {
-                        let value = value_ptr.cast::<IntRange<u32>>().read();
-                        Value::IntRange {
-                            x: Box::new(value.x.into()),
-                            y: Box::new(value.y.into()),
-                        }
-                    }
-                    CoreTypeConcrete::Uint64(_) => {
-                        let value = value_ptr.cast::<IntRange<u64>>().read();
-                        Value::IntRange {
-                            x: Box::new(value.x.into()),
-                            y: Box::new(value.y.into()),
-                        }
-                    }
-                    CoreTypeConcrete::Uint128(_) => {
-                        let value = value_ptr.cast::<IntRange<u128>>().read();
-                        Value::IntRange {
-                            x: Box::new(value.x.into()),
-                            y: Box::new(value.y.into()),
-                        }
-                    }
-                    _ => unreachable!(),
-                }
-            }
-            CoreTypeConcrete::Blake(_)
+            CoreTypeConcrete::IntRange(_)
+            | CoreTypeConcrete::Blake(_)
             | CoreTypeConcrete::GasReserve(_)
             | CoreTypeConcrete::QM31(_) => {
                 todo!()
@@ -907,13 +831,6 @@ pub mod trace_dump_runtime {
             .collect::<Vec<u8>>();
 
         BigUint::from_bytes_le(&output_limbs)
-    }
-
-    #[derive(Debug)]
-    #[repr(C)]
-    struct IntRange<T> {
-        x: T,
-        y: T,
     }
 
     #[derive(Debug)]
