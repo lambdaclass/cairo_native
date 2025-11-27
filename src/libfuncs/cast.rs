@@ -121,7 +121,7 @@ pub fn build_downcast<'ctx, 'this>(
     //    [-P/2, P/2].
     // 2. if it is a bounded_int, we need to offset the value to get the
     //    actual value.
-    let src_value = if src_ty.is_felt252(registry)? {
+    let src_value = if is_signed && src_ty.is_felt252(registry)? {
         if src_range.upper.is_one() {
             let adj_offset =
                 entry.const_int_from_type(context, location, PRIME.clone(), src_value.r#type())?;
