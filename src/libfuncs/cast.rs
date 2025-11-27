@@ -462,9 +462,8 @@ mod test {
     use crate::{
         jit_enum, jit_struct, load_cairo, utils::testing::run_program_assert_output, values::Value,
     };
-    use cairo_lang_sierra::{extensions::utils::Range, program::Program};
+    use cairo_lang_sierra::program::Program;
     use lazy_static::lazy_static;
-    use num_bigint::BigInt;
     use starknet_types_core::felt::Felt;
     use test_case::test_case;
 
@@ -496,53 +495,34 @@ mod test {
 
             extern const fn downcast<FromType, ToType>( x: FromType, ) -> Option<ToType> implicits(RangeCheck) nopanic;
 
-            fn run_test_1(val: felt252) -> Option<BoundedInt<0,30>> {
-                let bounded: BoundedInt<0,30> = val.try_into().unwrap();
-                downcast(bounded)
+            fn test_x_y<
+                X,
+                Y,
+                +TryInto<felt252, X>,
+                +Into<Y, felt252>
+            >(v: felt252) -> felt252 {
+                let v: X = v.try_into().unwrap();
+                let v: Y = downcast(v).unwrap();
+                v.into()
             }
 
-            fn run_test_2(val: felt252) -> Option<BoundedInt<-31,30>> {
-                let bounded: BoundedInt<-31,30> = val.try_into().unwrap();
-                downcast(bounded)
-            }
-
-            fn run_test_3(val: felt252) -> Option<BoundedInt<-5,30>> {
-                let bounded: BoundedInt<-31,30> = val.try_into().unwrap();
-                downcast(bounded)
-            }
-
-            fn run_test_4(val: felt252) -> Option<BoundedInt<5,30>> {
-                let bounded: BoundedInt<-31,30> = val.try_into().unwrap();
-                downcast(bounded)
-            }
-
-            fn run_test_5(val: felt252) -> Option<BoundedInt<31,31>> {
-                let bounded: BoundedInt<5,31> = val.try_into().unwrap();
-                downcast(bounded)
-            }
-
-            fn run_test_6(val: felt252) -> Option<BoundedInt<-100,-1>> {
-                let bounded: BoundedInt<-100,100> = val.try_into().unwrap();
-                downcast(bounded)
-            }
-
-            fn run_test_7(val: felt252) -> Option<BoundedInt<-31,-31>> {
-                let bounded: BoundedInt<-31,-31> = val.try_into().unwrap();
-                downcast(bounded)
-            }
-
+            fn b0x30_b0x30(v: felt252) -> felt252 { test_x_y::<BoundedInt<0,30>, BoundedInt<0,30>>(v) }
+            fn bm31x30_b31x30(v: felt252) -> felt252 { test_x_y::<BoundedInt<-31,30>, BoundedInt<-31,30>>(v) }
+            fn bm31x30_bm5x30(v: felt252) -> felt252 { test_x_y::<BoundedInt<-31,30>, BoundedInt<-5,30>>(v) }
+            fn bm31x30_b5x30(v: felt252) -> felt252 { test_x_y::<BoundedInt<-31,30>, BoundedInt<5,30>>(v) }
+            fn b5x30_b31x31(v: felt252) -> felt252 { test_x_y::<BoundedInt<5,31>, BoundedInt<31,31>>(v) }
+            fn bm100x100_bm100xm1(v: felt252) -> felt252 { test_x_y::<BoundedInt<-100,100>, BoundedInt<-100,-1>>(v) }
+            fn bm31xm31_bm31xm31(v: felt252) -> felt252 { test_x_y::<BoundedInt<-31,-31>, BoundedInt<-31,-31>>(v) }
             // Check if the target type is wider than the source type
-            fn run_test_8(val: felt252) -> Option<BoundedInt<5,40>> {
-                let bounded: BoundedInt<0,30> = val.try_into().unwrap();
-                downcast(bounded)
-            }
-
+            fn b0x30_b5x40(v: felt252) -> felt252 { test_x_y::<BoundedInt<0,30>, BoundedInt<5,40>>(v) }
             // Check if the source's lower and upper bound are included in the
             // target type.
-            fn run_test_9(val: felt252) -> Option<BoundedInt<-40,40>> {
-                let bounded: BoundedInt<0,30> = val.try_into().unwrap();
-                downcast(bounded)
-            }
+            fn b0x30_bm40x40(v: felt252) -> felt252 { test_x_y::<BoundedInt<0,30>, BoundedInt<-40,40>>(v) }
+
+            fn felt252_i8(v: felt252) -> felt252 { test_x_y::<felt252, i8>(v) }
+            fn felt252_i16(v: felt252) -> felt252 { test_x_y::<felt252, i16>(v) }
+            fn felt252_i32(v: felt252) -> felt252 { test_x_y::<felt252, i32>(v) }
+            fn felt252_i64(v: felt252) -> felt252 { test_x_y::<felt252, i64>(v) }
         };
         static ref DOWNCAST_FELT: (String, Program) = load_cairo! {
             extern const fn downcast<FromType, ToType>( x: FromType, ) -> Option<ToType> implicits(RangeCheck) nopanic;
@@ -625,33 +605,29 @@ mod test {
         );
     }
 
-    #[test_case("run_test_1", 5.into(), 0.into(), 31.into())]
-    #[test_case("run_test_2", 5.into(), (-31).into(), 31.into())]
-    #[test_case("run_test_3", (-5).into(), (-5).into(), 31.into())]
-    #[test_case("run_test_4", 30.into(), 5.into(), 31.into())]
-    #[test_case("run_test_5", 31.into(), 31.into(), 32.into())]
-    #[test_case("run_test_6", (-90).into(), (-100).into(), (0).into())]
-    #[test_case("run_test_7", (-31).into(), (-31).into(), (-30).into())]
-    #[test_case("run_test_8", 10.into(), 5.into(), 41.into())]
-    #[test_case("run_test_9", 10.into(), (-40).into(), 41.into())]
-    fn downcast_bounded_int(entry_point: &str, value: Felt, lower_bnd: BigInt, upper_bnd: BigInt) {
+    #[test_case("b0x30_b0x30", 5.into())]
+    #[test_case("bm31x30_b31x30", 5.into())]
+    #[test_case("bm31x30_bm5x30", (-5).into())]
+    #[test_case("bm31x30_b5x30", 30.into())]
+    #[test_case("b5x30_b31x31", 31.into())]
+    #[test_case("bm100x100_bm100xm1", (-90).into())]
+    #[test_case("bm31xm31_bm31xm31", (-31).into())]
+    #[test_case("b0x30_b5x40", 10.into())]
+    #[test_case("b0x30_bm40x40", 10.into())]
+    #[test_case("felt252_i8", i8::MAX.into())]
+    #[test_case("felt252_i8", i8::MIN.into())]
+    #[test_case("felt252_i16", i16::MAX.into())]
+    #[test_case("felt252_i16", i16::MIN.into())]
+    #[test_case("felt252_i32", i32::MAX.into())]
+    #[test_case("felt252_i32", i32::MIN.into())]
+    #[test_case("felt252_i64", i64::MAX.into())]
+    #[test_case("felt252_i64", i64::MIN.into())]
+    fn downcast_bounded_int(entry_point: &str, value: Felt) {
         run_program_assert_output(
             &DOWNCAST_BOUNDED_INT,
             entry_point,
             &[Value::Felt252(value)],
-            jit_enum!(
-                0,
-                jit_struct!(jit_enum!(
-                    0,
-                    Value::BoundedInt {
-                        value,
-                        range: Range {
-                            lower: lower_bnd,
-                            upper: upper_bnd
-                        }
-                    }
-                ))
-            ),
+            jit_enum!(0, jit_struct!(Value::Felt252(value))),
         );
     }
 
