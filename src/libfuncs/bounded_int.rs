@@ -842,10 +842,6 @@ fn build_wrap_non_zero<'ctx, 'this>(
 
 #[cfg(test)]
 mod test {
-    use cairo_lang_sierra::extensions::utils::Range;
-    use cairo_vm::Felt252;
-    use num_bigint::BigInt;
-
     use crate::{
         context::NativeContext,
         execution_result::ExecutionResult,
@@ -854,6 +850,11 @@ mod test {
         utils::testing::{run_program, run_program_assert_output},
         OptLevel, Value,
     };
+    use cairo_lang_sierra::{extensions::utils::Range, program::Program};
+    use cairo_vm::Felt252;
+    use lazy_static::lazy_static;
+    use num_bigint::BigInt;
+    use test_case::test_case;
 
     #[test]
     fn test_trim_some_pos_i8() {
@@ -987,9 +988,8 @@ mod test {
         assert_eq!(value, Felt252::from(0));
     }
 
-    #[test]
-    fn test_sub() {
-        let cairo = load_cairo! {
+    lazy_static! {
+        static ref TEST_SUB_PROGRAM: (String, Program) = load_cairo! {
             #[feature("bounded-int-utils")]
             use core::internal::bounded_int::{BoundedInt, sub, SubHelper};
 
@@ -1058,101 +1058,39 @@ mod test {
                 return sub(a, b);
             }
         };
+    }
 
+    #[test_case("run_test_1", 1, 5, -4, -4, 1)]
+    #[test_case("run_test_2", 1, 1, 0, 0, 1)]
+    #[test_case("run_test_3", -3, -3, 0, 0, 1)]
+    #[test_case("run_test_4", -6, 3, -9, -9, -3)]
+    #[test_case("run_test_5", -2, -20, 18, 4, 19)]
+    fn test_sub(
+        entry_point: &str,
+        lhs: i32,
+        rhs: i32,
+        result: i32,
+        lower_bound: i32,
+        upper_bound: i32,
+    ) {
         run_program_assert_output(
-            &cairo,
-            "run_test_1",
+            &TEST_SUB_PROGRAM,
+            entry_point,
             &[
-                Value::Felt252(Felt252::from(1)),
-                Value::Felt252(Felt252::from(5)),
+                Value::Felt252(Felt252::from(lhs)),
+                Value::Felt252(Felt252::from(rhs)),
             ],
             jit_enum!(
                 0,
                 jit_struct!(Value::BoundedInt {
-                    value: Felt252::from(-4),
+                    value: Felt252::from(result),
                     range: Range {
-                        lower: BigInt::from(-4),
-                        upper: BigInt::from(1),
+                        lower: BigInt::from(lower_bound),
+                        upper: BigInt::from(upper_bound),
                     }
                 })
             ),
         );
-
-        run_program_assert_output(
-            &cairo,
-            "run_test_2",
-            &[
-                Value::Felt252(Felt252::from(1)),
-                Value::Felt252(Felt252::from(1)),
-            ],
-            jit_enum!(
-                0,
-                jit_struct!(Value::BoundedInt {
-                    value: Felt252::from(0),
-                    range: Range {
-                        lower: BigInt::from(0),
-                        upper: BigInt::from(1),
-                    }
-                })
-            ),
-        );
-
-        run_program_assert_output(
-            &cairo,
-            "run_test_3",
-            &[
-                Value::Felt252(Felt252::from(-3)),
-                Value::Felt252(Felt252::from(-3)),
-            ],
-            jit_enum!(
-                0,
-                jit_struct!(Value::BoundedInt {
-                    value: Felt252::from(0),
-                    range: Range {
-                        lower: BigInt::from(0),
-                        upper: BigInt::from(1),
-                    }
-                })
-            ),
-        );
-
-        run_program_assert_output(
-            &cairo,
-            "run_test_4",
-            &[
-                Value::Felt252(Felt252::from(-6)),
-                Value::Felt252(Felt252::from(3)),
-            ],
-            jit_enum!(
-                0,
-                jit_struct!(Value::BoundedInt {
-                    value: Felt252::from(-9),
-                    range: Range {
-                        lower: BigInt::from(-9),
-                        upper: BigInt::from(-3),
-                    }
-                })
-            ),
-        );
-
-        run_program_assert_output(
-            &cairo,
-            "run_test_5",
-            &[
-                Value::Felt252(Felt252::from(-2)),
-                Value::Felt252(Felt252::from(-20)),
-            ],
-            jit_enum!(
-                0,
-                jit_struct!(Value::BoundedInt {
-                    value: Felt252::from(18),
-                    range: Range {
-                        lower: BigInt::from(4),
-                        upper: BigInt::from(19),
-                    }
-                })
-            ),
-        )
     }
 
     fn assert_bool_output(result: Value, expected_tag: usize) {
