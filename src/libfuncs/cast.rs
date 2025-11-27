@@ -46,10 +46,10 @@ pub fn build<'ctx, 'this>(
     }
 }
 
-/// Generate MLIR operations for the `downcast` libfunc. which converts from a 
-/// source type `T` to a target type `U`, where `U` is included in `T`. This 
+/// Generate MLIR operations for the `downcast` libfunc. which converts from a
+/// source type `T` to a target type `U`, where `U` is included in `T`. This
 /// means that the operation can fail.
-/// 
+///
 /// ## Signature
 /// ```cairo
 /// pub extern const fn downcast<FromType, ToType>(
@@ -117,9 +117,9 @@ pub fn build_downcast<'ctx, 'this>(
     let is_signed = src_range.lower.sign() == Sign::Minus;
 
     // Correct the value representation accordingly.
-    // 1. if it is a felt, then we need to convert the value from [0,P) to 
+    // 1. if it is a felt, then we need to convert the value from [0,P) to
     //    [-P/2, P/2].
-    // 2. if it is a bounded_int, we need to offset the value to get the 
+    // 2. if it is a bounded_int, we need to offset the value to get the
     //    actual value.
     let src_value = if src_ty.is_felt252(registry)? {
         if src_range.upper.is_one() {
@@ -155,7 +155,7 @@ pub fn build_downcast<'ctx, 'this>(
     };
 
     // Check if the source type is included in the target type. If it is not
-    // then check if the value is in bounds. If the value is also not in 
+    // then check if the value is in bounds. If the value is also not in
     // bounds then return an error.
     if dst_range.lower <= src_range.lower && dst_range.upper >= src_range.upper {
         let dst_value = if dst_ty.is_bounded_int(registry)? && dst_range.lower != BigInt::ZERO {
@@ -621,12 +621,7 @@ mod test {
 
     #[test_case(i8::MAX, i16::MAX, i32::MAX, i64::MAX)]
     #[test_case(i8::MIN, i16::MIN, i32::MIN, i64::MIN)]
-    fn downcast_felt(
-        i8_value: i8,
-        i16_value: i16,
-        i32_value: i32,
-        i64_value: i64,
-    ) {
+    fn downcast_felt(i8_value: i8, i16_value: i16, i32_value: i32, i64_value: i64) {
         run_program_assert_output(
             &DOWNCAST_FELT,
             "run_test",
