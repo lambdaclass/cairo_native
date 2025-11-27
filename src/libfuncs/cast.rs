@@ -102,7 +102,6 @@ pub fn build_downcast<'ctx, 'this>(
         dst_range.zero_based_bit_width()
     };
 
-    // TODO: check the case in which the lower bound is negative.
     let compute_width = src_range
         .zero_based_bit_width()
         .max(dst_range.zero_based_bit_width());
@@ -152,7 +151,6 @@ pub fn build_downcast<'ctx, 'this>(
         let dst_offset = entry.const_int_from_type(
             context,
             location,
-            // TODO: check if this is correct.
             src_range.lower.clone(),
             src_value.r#type(),
         )?;
@@ -501,6 +499,35 @@ mod test {
                 let bounded: BoundedInt<5,31> = val.try_into().unwrap();
                 downcast(bounded)
             }
+
+            fn run_test_6(val: felt252) -> Option<BoundedInt<-100,-1>> {
+                let bounded: BoundedInt<-100,100> = val.try_into().unwrap();
+                downcast(bounded)
+            }
+
+            fn run_test_7(val: felt252) -> Option<BoundedInt<-31,-31>> {
+                let bounded: BoundedInt<-31,-31> = val.try_into().unwrap();
+                downcast(bounded)
+            }
+        };
+        static ref DOWNCAST_FELT: (String, Program) = load_cairo! {
+            extern const fn downcast<FromType, ToType>( x: FromType, ) -> Option<ToType> implicits(RangeCheck) nopanic;
+
+            fn run_test(
+                v8: felt252, v16: felt252, v32: felt252, v64: felt252
+            ) -> (
+                Option<u8>,
+                Option<u16>,
+                Option<u32>,
+                Option<u64>,
+            ) {
+                (
+                    downcast(v8),
+                    downcast(v16),
+                    downcast(v32),
+                    downcast(v64),
+                )
+            }
         };
         static ref UPCAST: (String, Program) = load_cairo! {
             extern const fn upcast<FromType, ToType>(x: FromType) -> ToType nopanic;
@@ -569,6 +596,8 @@ mod test {
     #[test_case("run_test_3", (-5).into(), (-5).into(), 31.into())]
     #[test_case("run_test_4", 30.into(), 5.into(), 31.into())]
     #[test_case("run_test_5", 31.into(), 31.into(), 32.into())]
+    #[test_case("run_test_6", (-90).into(), (-100).into(), (0).into())]
+    #[test_case("run_test_7", (-31).into(), (-31).into(), (-30).into())]
     fn downcast_bounded_int(entry_point: &str, value: Felt, lower_bnd: BigInt, upper_bnd: BigInt) {
         run_program_assert_output(
             &DOWNCAST_BOUNDED_INT,
@@ -586,6 +615,33 @@ mod test {
                         }
                     }
                 ))
+            ),
+        );
+    }
+
+    #[test_case(u8::MAX, u16::MAX, u32::MAX, u64::MAX, u128::MAX)]
+    #[test_case(u8::MIN, u16::MIN, u32::MIN, u64::MIN, u128::MIN)]
+    fn downcast_felt(
+        u8_value: u8,
+        u16_value: u16,
+        u32_value: u32,
+        u64_value: u64,
+        u128_value: u128,
+    ) {
+        run_program_assert_output(
+            &DOWNCAST_FELT,
+            "run_test",
+            &[
+                Value::Felt252(u8_value.into()),
+                Value::Felt252(u16_value.into()),
+                Value::Felt252(u32_value.into()),
+                Value::Felt252(u64_value.into()),
+            ],
+            jit_struct!(
+                jit_enum!(0, u8_value.into()),
+                jit_enum!(0, u16_value.into()),
+                jit_enum!(0, u32_value.into()),
+                jit_enum!(0, u64_value.into()),
             ),
         );
     }
