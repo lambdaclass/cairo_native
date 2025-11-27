@@ -468,6 +468,17 @@ mod test {
                 )
             }
         };
+        static ref DOWNCAST_BOUNDED_INT: (String, Program) = load_cairo! {
+            #[feature("bounded-int-utils")]
+            use core::internal::bounded_int::BoundedInt;
+
+            extern const fn downcast<FromType, ToType>( x: FromType, ) -> Option<ToType> implicits(RangeCheck) nopanic;
+
+            fn run_test(val: felt252) -> Option<BoundedInt<0,30>> {
+                let bounded: BoundedInt<0,30> = val.try_into().unwrap();
+                downcast(bounded)
+            }
+        };
         static ref UPCAST: (String, Program) = load_cairo! {
             extern const fn upcast<FromType, ToType>(x: FromType) -> ToType nopanic;
 
@@ -491,17 +502,6 @@ mod test {
                 )
             }
         };
-        static ref DOWNCAST_BOUNDED_INT: (String, Program) = load_cairo! {
-            #[feature("bounded-int-utils")]
-            use core::internal::bounded_int::BoundedInt;
-
-            extern const fn downcast<FromType, ToType>( x: FromType, ) -> Option<ToType> implicits(RangeCheck) nopanic;
-
-            fn run_test(val: felt252) -> Option<BoundedInt<0,30>> {
-                let bounded: BoundedInt<0,30> = val.try_into().unwrap();
-                downcast(bounded)
-            }
-        };
     }
 
     #[test]
@@ -522,21 +522,21 @@ mod test {
                     jit_enum!(1, jit_struct!()),
                     jit_enum!(1, jit_struct!()),
                     jit_enum!(1, jit_struct!()),
-                    jit_enum!(1, jit_struct!()),
+                    jit_enum!(0, u8::MAX.into()),
                 ),
                 jit_struct!(
                     jit_enum!(1, jit_struct!()),
                     jit_enum!(1, jit_struct!()),
                     jit_enum!(1, jit_struct!()),
-                    jit_enum!(1, jit_struct!()),
+                    jit_enum!(0, u16::MAX.into()),
                 ),
                 jit_struct!(
                     jit_enum!(1, jit_struct!()),
                     jit_enum!(1, jit_struct!()),
-                    jit_enum!(1, jit_struct!()),
+                    jit_enum!(0, u32::MAX.into()),
                 ),
-                jit_struct!(jit_enum!(1, jit_struct!()), jit_enum!(1, jit_struct!())),
-                jit_struct!(jit_enum!(1, jit_struct!())),
+                jit_struct!(jit_enum!(1, jit_struct!()), jit_enum!(0, u64::MAX.into())),
+                jit_struct!(jit_enum!(0, u128::MAX.into())),
             ),
         );
     }
@@ -549,13 +549,16 @@ mod test {
             &[Value::Felt252(5.into())],
             jit_enum!(
                 0,
-                Value::BoundedInt {
-                    value: 5.into(),
-                    range: Range {
-                        lower: 0.into(),
-                        upper: 30.into()
+                jit_struct!(jit_enum!(
+                    0,
+                    Value::BoundedInt {
+                        value: 5.into(),
+                        range: Range {
+                            lower: 0.into(),
+                            upper: 31.into()
+                        }
                     }
-                }
+                ))
             ),
         );
     }
