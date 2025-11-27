@@ -700,7 +700,7 @@ mod test {
 
             extern fn enum_from_bounded_int<T>(index: BoundedInt<0, 0>) -> T nopanic;
 
-            enum IndexEnum5 {
+            enum IndexEnum1 {
                 Zero,
             }
 
@@ -710,7 +710,7 @@ mod test {
                 enum_from_bounded_int(index)
             }
 
-            fn run_test(input: felt252) -> IndexEnum5 {
+            fn run_test(input: felt252) -> IndexEnum1 {
                 let bi: BoundedInt<0, 0> = input.try_into().unwrap();
                 generic_func(bi)
             }
