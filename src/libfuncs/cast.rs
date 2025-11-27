@@ -518,30 +518,25 @@ mod test {
             // Check if the source's lower and upper bound are included in the
             // target type.
             fn b0x30_bm40x40(v: felt252) -> felt252 { test_x_y::<BoundedInt<0,30>, BoundedInt<-40,40>>(v) }
+        };
+        static ref DOWNCAST_FELT: (String, Program) = load_cairo! {
+            extern const fn downcast<FromType, ToType>( x: FromType, ) -> Option<ToType> implicits(RangeCheck) nopanic;
+
+            fn test_x_y<
+                X,
+                Y,
+                +TryInto<felt252, X>,
+                +Into<Y, felt252>
+            >(v: felt252) -> felt252 {
+                let v: X = v.try_into().unwrap();
+                let v: Y = downcast(v).unwrap();
+                v.into()
+            }
 
             fn felt252_i8(v: felt252) -> felt252 { test_x_y::<felt252, i8>(v) }
             fn felt252_i16(v: felt252) -> felt252 { test_x_y::<felt252, i16>(v) }
             fn felt252_i32(v: felt252) -> felt252 { test_x_y::<felt252, i32>(v) }
             fn felt252_i64(v: felt252) -> felt252 { test_x_y::<felt252, i64>(v) }
-        };
-        static ref DOWNCAST_FELT: (String, Program) = load_cairo! {
-            extern const fn downcast<FromType, ToType>( x: FromType, ) -> Option<ToType> implicits(RangeCheck) nopanic;
-
-            fn run_test(
-                v8: felt252, v16: felt252, v32: felt252, v64: felt252
-            ) -> (
-                Option<i8>,
-                Option<i16>,
-                Option<i32>,
-                Option<i64>,
-            ) {
-                (
-                    downcast(v8),
-                    downcast(v16),
-                    downcast(v32),
-                    downcast(v64),
-                )
-            }
         };
         static ref UPCAST: (String, Program) = load_cairo! {
             extern const fn upcast<FromType, ToType>(x: FromType) -> ToType nopanic;
@@ -614,14 +609,6 @@ mod test {
     #[test_case("bm31xm31_bm31xm31", (-31).into())]
     #[test_case("b0x30_b5x40", 10.into())]
     #[test_case("b0x30_bm40x40", 10.into())]
-    #[test_case("felt252_i8", i8::MAX.into())]
-    #[test_case("felt252_i8", i8::MIN.into())]
-    #[test_case("felt252_i16", i16::MAX.into())]
-    #[test_case("felt252_i16", i16::MIN.into())]
-    #[test_case("felt252_i32", i32::MAX.into())]
-    #[test_case("felt252_i32", i32::MIN.into())]
-    #[test_case("felt252_i64", i64::MAX.into())]
-    #[test_case("felt252_i64", i64::MIN.into())]
     fn downcast_bounded_int(entry_point: &str, value: Felt) {
         run_program_assert_output(
             &DOWNCAST_BOUNDED_INT,
@@ -631,24 +618,20 @@ mod test {
         );
     }
 
-    #[test_case(i8::MAX, i16::MAX, i32::MAX, i64::MAX)]
-    #[test_case(i8::MIN, i16::MIN, i32::MIN, i64::MIN)]
-    fn downcast_felt(i8_value: i8, i16_value: i16, i32_value: i32, i64_value: i64) {
+    #[test_case("felt252_i8", i8::MAX.into())]
+    #[test_case("felt252_i8", i8::MIN.into())]
+    #[test_case("felt252_i16", i16::MAX.into())]
+    #[test_case("felt252_i16", i16::MIN.into())]
+    #[test_case("felt252_i32", i32::MAX.into())]
+    #[test_case("felt252_i32", i32::MIN.into())]
+    #[test_case("felt252_i64", i64::MAX.into())]
+    #[test_case("felt252_i64", i64::MIN.into())]
+    fn downcast_felt(entry_point: &str, value: Felt) {
         run_program_assert_output(
             &DOWNCAST_FELT,
-            "run_test",
-            &[
-                Value::Felt252(i8_value.into()),
-                Value::Felt252(i16_value.into()),
-                Value::Felt252(i32_value.into()),
-                Value::Felt252(i64_value.into()),
-            ],
-            jit_struct!(
-                jit_enum!(0, i8_value.into()),
-                jit_enum!(0, i16_value.into()),
-                jit_enum!(0, i32_value.into()),
-                jit_enum!(0, i64_value.into()),
-            ),
+            entry_point,
+            &[Value::Felt252(value)],
+            jit_enum!(0, jit_struct!(Value::Felt252(value))),
         );
     }
 
