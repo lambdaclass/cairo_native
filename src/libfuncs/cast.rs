@@ -154,177 +154,135 @@ pub fn build_downcast<'ctx, 'this>(
         src_value
     };
 
-    // Check if the source type is included in the target type. If it is not
-    // then check if the value is in bounds. If the value is also not in
-    // bounds then return an error.
-    if dst_range.lower <= src_range.lower && dst_range.upper >= src_range.upper {
-        let dst_value = if dst_ty.is_bounded_int(registry)? && dst_range.lower != BigInt::ZERO {
-            let dst_offset = entry.const_int_from_type(
-                context,
-                location,
-                dst_range.lower,
-                src_value.r#type(),
-            )?;
-            entry.append_op_result(arith::subi(src_value, dst_offset, location))?
-        } else {
-            src_value
-        };
-
-        let dst_value = if dst_width < compute_width {
-            entry.trunci(
-                dst_value,
-                IntegerType::new(context, dst_width).into(),
-                location,
-            )?
-        } else {
-            dst_value
-        };
-
-        let is_in_bounds = entry.const_int(context, location, 1, 1)?;
-
-        helper.cond_br(
+    // Check if the value is in bounds with respect to the lower bound.
+    let lower_check = if dst_range.lower > src_range.lower {
+        let dst_lower = entry.const_int_from_type(
             context,
-            entry,
-            is_in_bounds,
-            [0, 1],
-            [&[range_check, dst_value], &[range_check]],
             location,
+            dst_range.lower.clone(),
+            src_value.r#type(),
         )?;
+        Some(entry.cmpi(
+            context,
+            if !is_signed {
+                CmpiPredicate::Uge
+            } else {
+                CmpiPredicate::Sge
+            },
+            src_value,
+            dst_lower,
+            location,
+        )?)
     } else {
-        // Check if the value is in bounds with respect to the lower bound.
-        let lower_check = if dst_range.lower > src_range.lower {
-            let dst_lower = entry.const_int_from_type(
-                context,
-                location,
-                dst_range.lower.clone(),
-                src_value.r#type(),
-            )?;
-            Some(entry.cmpi(
-                context,
-                if !is_signed {
-                    CmpiPredicate::Uge
-                } else {
-                    CmpiPredicate::Sge
-                },
-                src_value,
-                dst_lower,
-                location,
-            )?)
-        } else {
-            None
-        };
-        // Check if the value is in bounds with respect to the upper bound.
-        let upper_check = if dst_range.upper < src_range.upper {
-            let dst_upper = entry.const_int_from_type(
-                context,
-                location,
-                dst_range.upper.clone(),
-                src_value.r#type(),
-            )?;
-            Some(entry.cmpi(
-                context,
-                if !is_signed {
-                    CmpiPredicate::Ult
-                } else {
-                    CmpiPredicate::Slt
-                },
-                src_value,
-                dst_upper,
-                location,
-            )?)
-        } else {
-            None
-        };
+        None
+    };
+    // Check if the value is in bounds with respect to the upper bound.
+    let upper_check = if dst_range.upper < src_range.upper {
+        let dst_upper = entry.const_int_from_type(
+            context,
+            location,
+            dst_range.upper.clone(),
+            src_value.r#type(),
+        )?;
+        Some(entry.cmpi(
+            context,
+            if !is_signed {
+                CmpiPredicate::Ult
+            } else {
+                CmpiPredicate::Slt
+            },
+            src_value,
+            dst_upper,
+            location,
+        )?)
+    } else {
+        None
+    };
+    
+    let is_in_bounds = match (lower_check, upper_check) {
+        (Some(lower_check), Some(upper_check)) => {
+            entry.append_op_result(arith::andi(lower_check, upper_check, location))?
+        }
+        (Some(lower_check), None) => lower_check,
+        (None, Some(upper_check)) => upper_check,
+        // its always in bounds since dst is larger than src (i.e no bounds checks needed)
+        (None, None) => {
+            native_panic!("matched an unreachable: no bounds checks are being performed")
+        }
+    };
 
-        let is_in_bounds = match (lower_check, upper_check) {
-            (Some(lower_check), Some(upper_check)) => {
-                entry.append_op_result(arith::andi(lower_check, upper_check, location))?
-            }
-            (Some(lower_check), None) => lower_check,
-            (None, Some(upper_check)) => upper_check,
-            // its always in bounds since dst is larger than src (i.e no bounds checks needed)
-            (None, None) => {
-                native_panic!("matched an unreachable: no bounds checks are being performed")
-            }
-        };
-
-        // Incrementing the range check depends on whether the source range can hold a felt252 or not
-        let range_check = if info.from_range.is_full_felt252_range() {
-            let rc_size = BigInt::from(1) << 128;
-            // If the range can contain a felt252, how the range check is increased depends on whether the value is in bounds or not:
-            // * If it is in bounds, we check whether the destination range size is less than range check size. If it is, increment
-            //   the range check builtin by 2. Otherwise, increment it by 1.
-            //   https://github.com/starkware-libs/cairo/blob/v2.12.0-dev.1/crates/cairo-lang-sierra-to-casm/src/invocations/range_reduction.rs#L87
-            // * If it is not in bounds, increment the range check builtin by 3.
-            //   https://github.com/starkware-libs/cairo/blob/v2.12.0-dev.1/crates/cairo-lang-sierra-to-casm/src/invocations/range_reduction.rs#L79
-            super::increment_builtin_counter_conditionally_by(
-                context,
-                entry,
-                location,
-                range_check,
-                if dst_range.size() < rc_size { 2 } else { 1 },
-                3,
-                is_in_bounds,
-            )?
-        } else {
-            match (lower_check, upper_check) {
-                (Some(_), None) | (None, Some(_)) => {
-                    // If either the lower or the upper bound was checked, increment the range check builtin by 1.
-                    // * In case the lower bound was checked: https://github.com/starkware-libs/cairo/blob/v2.12.0-dev.1/crates/cairo-lang-sierra-to-casm/src/invocations/casts.rs#L135
-                    // * In case the upper bound was checked: https://github.com/starkware-libs/cairo/blob/v2.12.0-dev.1/crates/cairo-lang-sierra-to-casm/src/invocations/casts.rs#L111
-                    super::increment_builtin_counter_by(context, entry, location, range_check, 1)?
-                }
-                (Some(lower_check), Some(upper_check)) => {
-                    let is_in_range =
-                        entry.append_op_result(arith::andi(lower_check, upper_check, location))?;
-
-                    // If the result is in range, increment the range check builtin by 2. Otherwise, increment it by 1.
-                    // https://github.com/starkware-libs/cairo/blob/v2.12.0-dev.1/crates/cairo-lang-sierra-to-casm/src/invocations/casts.rs#L160
-                    super::increment_builtin_counter_conditionally_by(
-                        context,
-                        entry,
-                        location,
-                        range_check,
-                        2,
-                        1,
-                        is_in_range,
-                    )?
-                }
-                (None, None) => range_check,
-            }
-        };
-
-        let dst_value = if dst_ty.is_bounded_int(registry)? && dst_range.lower != BigInt::ZERO {
-            let dst_offset = entry.const_int_from_type(
-                context,
-                location,
-                dst_range.lower,
-                src_value.r#type(),
-            )?;
-            entry.append_op_result(arith::subi(src_value, dst_offset, location))?
-        } else {
-            src_value
-        };
-
-        let dst_value = if dst_width < compute_width {
-            entry.trunci(
-                dst_value,
-                IntegerType::new(context, dst_width).into(),
-                location,
-            )?
-        } else {
-            dst_value
-        };
-
-        helper.cond_br(
+    // Incrementing the range check depends on whether the source range can hold a felt252 or not
+    let range_check = if info.from_range.is_full_felt252_range() {
+        let rc_size = BigInt::from(1) << 128;
+        // If the range can contain a felt252, how the range check is increased depends on whether the value is in bounds or not:
+        // * If it is in bounds, we check whether the destination range size is less than range check size. If it is, increment
+        //   the range check builtin by 2. Otherwise, increment it by 1.
+        //   https://github.com/starkware-libs/cairo/blob/v2.12.0-dev.1/crates/cairo-lang-sierra-to-casm/src/invocations/range_reduction.rs#L87
+        // * If it is not in bounds, increment the range check builtin by 3.
+        //   https://github.com/starkware-libs/cairo/blob/v2.12.0-dev.1/crates/cairo-lang-sierra-to-casm/src/invocations/range_reduction.rs#L79
+        super::increment_builtin_counter_conditionally_by(
             context,
             entry,
-            is_in_bounds,
-            [0, 1],
-            [&[range_check, dst_value], &[range_check]],
             location,
-        )?;
-    }
+            range_check,
+            if dst_range.size() < rc_size { 2 } else { 1 },
+            3,
+            is_in_bounds,
+        )?
+    } else {
+        match (lower_check, upper_check) {
+            (Some(_), None) | (None, Some(_)) => {
+                // If either the lower or the upper bound was checked, increment the range check builtin by 1.
+                // * In case the lower bound was checked: https://github.com/starkware-libs/cairo/blob/v2.12.0-dev.1/crates/cairo-lang-sierra-to-casm/src/invocations/casts.rs#L135
+                // * In case the upper bound was checked: https://github.com/starkware-libs/cairo/blob/v2.12.0-dev.1/crates/cairo-lang-sierra-to-casm/src/invocations/casts.rs#L111
+                super::increment_builtin_counter_by(context, entry, location, range_check, 1)?
+            }
+            (Some(lower_check), Some(upper_check)) => {
+                let is_in_range =
+                    entry.append_op_result(arith::andi(lower_check, upper_check, location))?;
+
+                // If the result is in range, increment the range check builtin by 2. Otherwise, increment it by 1.
+                // https://github.com/starkware-libs/cairo/blob/v2.12.0-dev.1/crates/cairo-lang-sierra-to-casm/src/invocations/casts.rs#L160
+                super::increment_builtin_counter_conditionally_by(
+                    context,
+                    entry,
+                    location,
+                    range_check,
+                    2,
+                    1,
+                    is_in_range,
+                )?
+            }
+            (None, None) => range_check,
+        }
+    };
+
+    let dst_value = if dst_ty.is_bounded_int(registry)? && dst_range.lower != BigInt::ZERO {
+        let dst_offset =
+            entry.const_int_from_type(context, location, dst_range.lower, src_value.r#type())?;
+        entry.append_op_result(arith::subi(src_value, dst_offset, location))?
+    } else {
+        src_value
+    };
+
+    let dst_value = if dst_width < compute_width {
+        entry.trunci(
+            dst_value,
+            IntegerType::new(context, dst_width).into(),
+            location,
+        )?
+    } else {
+        dst_value
+    };
+
+    helper.cond_br(
+        context,
+        entry,
+        is_in_bounds,
+        [0, 1],
+        [&[range_check, dst_value], &[range_check]],
+        location,
+    )?;
 
     Ok(())
 }
@@ -509,6 +467,11 @@ mod test {
                 let bounded: BoundedInt<-31,-31> = val.try_into().unwrap();
                 downcast(bounded)
             }
+
+            // fn run_test_8(val: felt252) -> Option<u128> {
+            //     let bounded: BoundedInt<3000,10000> = val.try_into().unwrap();
+            //     downcast(bounded)
+            // }
         };
         static ref DOWNCAST_FELT: (String, Program) = load_cairo! {
             extern const fn downcast<FromType, ToType>( x: FromType, ) -> Option<ToType> implicits(RangeCheck) nopanic;
@@ -598,6 +561,7 @@ mod test {
     #[test_case("run_test_5", 31.into(), 31.into(), 32.into())]
     #[test_case("run_test_6", (-90).into(), (-100).into(), (0).into())]
     #[test_case("run_test_7", (-31).into(), (-31).into(), (-30).into())]
+    // #[test_case("run_test_8", 3001.into(), 3000.into(), 10001.into())]
     fn downcast_bounded_int(entry_point: &str, value: Felt, lower_bnd: BigInt, upper_bnd: BigInt) {
         run_program_assert_output(
             &DOWNCAST_BOUNDED_INT,
