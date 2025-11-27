@@ -511,6 +511,8 @@ mod test {
 
     lazy_static! {
         static ref TEST_UPCAST_PROGRAM: (String, Program) = load_cairo! {
+            #[feature("bounded-int-utils")]
+            use core::internal::bounded_int::{BoundedInt};
             extern const fn upcast<FromType, ToType>(x: FromType) -> ToType nopanic;
 
             fn test_x_y<
@@ -563,6 +565,10 @@ mod test {
             fn i64_felt252(v: felt252) -> felt252 { test_x_y::<i64, felt252>(v) }
 
             fn i128_felt252(v: felt252) -> felt252 { test_x_y::<i128, felt252>(v) }
+
+            fn b0x5_b0x10(v: felt252) -> felt252 { test_x_y::<BoundedInt<0, 5>, BoundedInt<0, 10>>(v) }
+            fn b2x5_b2x10(v: felt252) -> felt252 { test_x_y::<BoundedInt<2, 5>, BoundedInt<2, 10>>(v) }
+            fn b2x5_b1x10(v: felt252) -> felt252 { test_x_y::<BoundedInt<2, 5>, BoundedInt<1, 10>>(v) }
         };
     }
 
@@ -636,6 +642,13 @@ mod test {
     // i128 upcast test
     #[test_case("i128_felt252", i128::MIN.into())]
     #[test_case("i128_felt252", i128::MAX.into())]
+    // bounded int test
+    #[test_case("b0x5_b0x10", 0.into())]
+    #[test_case("b0x5_b0x10", 5.into())]
+    #[test_case("b2x5_b2x10", 2.into())]
+    #[test_case("b2x5_b2x10", 5.into())]
+    #[test_case("b2x5_b1x10", 2.into())]
+    #[test_case("b2x5_b1x10", 5.into())]
     fn upcast(entry_point: &str, value: Felt252) {
         let arguments = &[value.into()];
         let execution = run_program(&TEST_UPCAST_PROGRAM, entry_point, arguments);
