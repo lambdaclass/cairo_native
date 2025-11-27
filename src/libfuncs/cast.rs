@@ -456,11 +456,7 @@ pub fn build_upcast<'ctx, 'this>(
 
 #[cfg(test)]
 mod test {
-    use crate::{
-        jit_enum, jit_struct, load_cairo,
-        utils::testing::{run_program, run_program_assert_output},
-        values::Value,
-    };
+    use crate::{jit_enum, jit_struct, load_cairo, utils::testing::run_program_assert_output};
     use cairo_lang_sierra::program::Program;
     use cairo_vm::Felt252;
     use lazy_static::lazy_static;
@@ -681,25 +677,12 @@ mod test {
     #[test_case("bm100x100_i8", 100.into())]
     fn upcast(entry_point: &str, value: Felt252) {
         let arguments = &[value.into()];
-        let execution = run_program(&TEST_UPCAST_PROGRAM, entry_point, arguments);
-
-        let extract_output = |value: &Value| {
-            if let Value::Enum { tag, value, .. } = value {
-                assert_eq!(*tag, 0, "test should not have panicked");
-                if let Value::Struct { fields, .. } = value.as_ref() {
-                    if let Value::Felt252(v) = fields[0] {
-                        return v;
-                    };
-                }
-            }
-            panic!("should have returned a quotient and a reminder");
-        };
-
-        let actual_value = extract_output(&execution.return_value);
-        let expected_value = value;
-        assert_eq!(
-            expected_value, actual_value,
-            "expected {expected_value}, got {actual_value}"
+        let expected_result = jit_enum!(0, jit_struct!(value.into(),));
+        run_program_assert_output(
+            &TEST_UPCAST_PROGRAM,
+            entry_point,
+            arguments,
+            expected_result,
         );
     }
 }
