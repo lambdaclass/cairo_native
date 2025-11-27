@@ -445,6 +445,9 @@ mod test {
     };
     use cairo_lang_sierra::{extensions::utils::Range, program::Program};
     use lazy_static::lazy_static;
+    use num_bigint::BigInt;
+    use starknet_types_core::felt::Felt;
+    use test_case::test_case;
 
     lazy_static! {
         static ref DOWNCAST: (String, Program) = load_cairo! {
@@ -474,8 +477,28 @@ mod test {
 
             extern const fn downcast<FromType, ToType>( x: FromType, ) -> Option<ToType> implicits(RangeCheck) nopanic;
 
-            fn run_test(val: felt252) -> Option<BoundedInt<0,30>> {
+            fn run_test_1(val: felt252) -> Option<BoundedInt<0,30>> {
                 let bounded: BoundedInt<0,30> = val.try_into().unwrap();
+                downcast(bounded)
+            }
+
+            fn run_test_2(val: felt252) -> Option<BoundedInt<-31,30>> {
+                let bounded: BoundedInt<-31,30> = val.try_into().unwrap();
+                downcast(bounded)
+            }
+
+            fn run_test_3(val: felt252) -> Option<BoundedInt<-5,30>> {
+                let bounded: BoundedInt<-31,30> = val.try_into().unwrap();
+                downcast(bounded)
+            }
+
+            fn run_test_4(val: felt252) -> Option<BoundedInt<5,30>> {
+                let bounded: BoundedInt<-31,30> = val.try_into().unwrap();
+                downcast(bounded)
+            }
+
+            fn run_test_5(val: felt252) -> Option<BoundedInt<31,31>> {
+                let bounded: BoundedInt<5,31> = val.try_into().unwrap();
                 downcast(bounded)
             }
         };
@@ -541,21 +564,25 @@ mod test {
         );
     }
 
-    #[test]
-    fn downcast_bounded_int() {
+    #[test_case("run_test_1", 5.into(), 0.into(), 31.into())]
+    #[test_case("run_test_2", 5.into(), (-31).into(), 31.into())]
+    #[test_case("run_test_3", (-5).into(), (-5).into(), 31.into())]
+    #[test_case("run_test_4", 30.into(), 5.into(), 31.into())]
+    #[test_case("run_test_5", 31.into(), 31.into(), 32.into())]
+    fn downcast_bounded_int(entry_point: &str, value: Felt, lower_bnd: BigInt, upper_bnd: BigInt) {
         run_program_assert_output(
             &DOWNCAST_BOUNDED_INT,
-            "run_test",
-            &[Value::Felt252(5.into())],
+            entry_point,
+            &[Value::Felt252(value)],
             jit_enum!(
                 0,
                 jit_struct!(jit_enum!(
                     0,
                     Value::BoundedInt {
-                        value: 5.into(),
+                        value,
                         range: Range {
-                            lower: 0.into(),
-                            upper: 31.into()
+                            lower: lower_bnd,
+                            upper: upper_bnd
                         }
                     }
                 ))
