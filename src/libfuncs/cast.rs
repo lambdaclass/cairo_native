@@ -46,7 +46,16 @@ pub fn build<'ctx, 'this>(
     }
 }
 
-/// Generate MLIR operations for the `downcast` libfunc.
+/// Generate MLIR operations for the `downcast` libfunc. which converts from a 
+/// source type `T` to a target type `U`, where `U` is included in `T`. This 
+/// means that the operation can fail.
+/// 
+/// ## Signature
+/// ```cairo
+/// pub extern const fn downcast<FromType, ToType>(
+///     x: FromType,
+/// ) -> Option<ToType> implicits(RangeCheck) nopanic;
+/// ```
 pub fn build_downcast<'ctx, 'this>(
     context: &'ctx Context,
     registry: &ProgramRegistry<CoreType, CoreLibfunc>,
@@ -59,6 +68,7 @@ pub fn build_downcast<'ctx, 'this>(
     let range_check = entry.arg(0)?;
     let src_value: Value = entry.arg(1)?;
 
+    // This is the trivial case, so we just return the value.
     if info.signature.param_signatures[1].ty == info.signature.branch_signatures[0].vars[1].ty {
         let k1 = entry.const_int(context, location, 1, 1)?;
         return helper.cond_br(
@@ -102,31 +112,16 @@ pub fn build_downcast<'ctx, 'this>(
         dst_range.zero_based_bit_width()
     };
 
-    let compute_width = src_range
-        .zero_based_bit_width()
-        .max(dst_range.zero_based_bit_width());
+    let compute_width = src_width.max(dst_width);
 
     let is_signed = src_range.lower.sign() == Sign::Minus;
 
-    let src_value = if compute_width > src_width {
-        if is_signed && !src_ty.is_bounded_int(registry)? && !src_ty.is_felt252(registry)? {
-            entry.extsi(
-                src_value,
-                IntegerType::new(context, compute_width).into(),
-                location,
-            )?
-        } else {
-            entry.extui(
-                src_value,
-                IntegerType::new(context, compute_width).into(),
-                location,
-            )?
-        }
-    } else {
-        src_value
-    };
-
-    let src_value = if is_signed && src_ty.is_felt252(registry)? {
+    // Correct the value representation accordingly.
+    // 1. if it is a felt, then we need to convert the value from [0,P) to 
+    //    [-P/2, P/2].
+    // 2. if it is a bounded_int, we need to offset the value to get the 
+    //    actual value.
+    let src_value = if src_ty.is_felt252(registry)? {
         if src_range.upper.is_one() {
             let adj_offset =
                 entry.const_int_from_type(context, location, PRIME.clone(), src_value.r#type())?;
@@ -159,6 +154,9 @@ pub fn build_downcast<'ctx, 'this>(
         src_value
     };
 
+    // Check if the source type is included in the target type. If it is not
+    // then check if the value is in bounds. If the value is also not in 
+    // bounds then return an error.
     if dst_range.lower <= src_range.lower && dst_range.upper >= src_range.upper {
         let dst_value = if dst_ty.is_bounded_int(registry)? && dst_range.lower != BigInt::ZERO {
             let dst_offset = entry.const_int_from_type(
@@ -193,6 +191,7 @@ pub fn build_downcast<'ctx, 'this>(
             location,
         )?;
     } else {
+        // Check if the value is in bounds with respect to the lower bound.
         let lower_check = if dst_range.lower > src_range.lower {
             let dst_lower = entry.const_int_from_type(
                 context,
@@ -214,6 +213,7 @@ pub fn build_downcast<'ctx, 'this>(
         } else {
             None
         };
+        // Check if the value is in bounds with respect to the upper bound.
         let upper_check = if dst_range.upper < src_range.upper {
             let dst_upper = entry.const_int_from_type(
                 context,
@@ -516,10 +516,10 @@ mod test {
             fn run_test(
                 v8: felt252, v16: felt252, v32: felt252, v64: felt252
             ) -> (
-                Option<u8>,
-                Option<u16>,
-                Option<u32>,
-                Option<u64>,
+                Option<i8>,
+                Option<i16>,
+                Option<i32>,
+                Option<i64>,
             ) {
                 (
                     downcast(v8),
@@ -619,29 +619,28 @@ mod test {
         );
     }
 
-    #[test_case(u8::MAX, u16::MAX, u32::MAX, u64::MAX, u128::MAX)]
-    #[test_case(u8::MIN, u16::MIN, u32::MIN, u64::MIN, u128::MIN)]
+    #[test_case(i8::MAX, i16::MAX, i32::MAX, i64::MAX)]
+    #[test_case(i8::MIN, i16::MIN, i32::MIN, i64::MIN)]
     fn downcast_felt(
-        u8_value: u8,
-        u16_value: u16,
-        u32_value: u32,
-        u64_value: u64,
-        u128_value: u128,
+        i8_value: i8,
+        i16_value: i16,
+        i32_value: i32,
+        i64_value: i64,
     ) {
         run_program_assert_output(
             &DOWNCAST_FELT,
             "run_test",
             &[
-                Value::Felt252(u8_value.into()),
-                Value::Felt252(u16_value.into()),
-                Value::Felt252(u32_value.into()),
-                Value::Felt252(u64_value.into()),
+                Value::Felt252(i8_value.into()),
+                Value::Felt252(i16_value.into()),
+                Value::Felt252(i32_value.into()),
+                Value::Felt252(i64_value.into()),
             ],
             jit_struct!(
-                jit_enum!(0, u8_value.into()),
-                jit_enum!(0, u16_value.into()),
-                jit_enum!(0, u32_value.into()),
-                jit_enum!(0, u64_value.into()),
+                jit_enum!(0, i8_value.into()),
+                jit_enum!(0, i16_value.into()),
+                jit_enum!(0, i32_value.into()),
+                jit_enum!(0, i64_value.into()),
             ),
         );
     }
