@@ -46,9 +46,9 @@ pub fn build<'ctx, 'this>(
     }
 }
 
-/// Generate MLIR operations for the `downcast` libfunc. which converts from a
-/// source type `T` to a target type `U`, where `U` is included in `T`. This
-/// means that the operation can fail.
+/// Generate MLIR operations for the `downcast` libfunc which converts from a
+/// source type `T` to a target type `U`, where `U` might not fully include `T`.
+/// This means that the operation can fail.
 ///
 /// ## Signature
 /// ```cairo
@@ -112,7 +112,9 @@ pub fn build_downcast<'ctx, 'this>(
         dst_range.zero_based_bit_width()
     };
 
-    let compute_width = src_width.max(dst_width);
+    let compute_width = src_range
+        .zero_based_bit_width()
+        .max(dst_range.zero_based_bit_width());
 
     let is_signed = src_range.lower.sign() == Sign::Minus;
 
