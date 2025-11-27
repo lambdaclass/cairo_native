@@ -116,6 +116,25 @@ pub fn build_downcast<'ctx, 'this>(
 
     let is_signed = src_range.lower.sign() == Sign::Minus;
 
+    // It can happen that the target type is wider then the source type. Extend the value representation.
+    let src_value = if compute_width > src_width {
+        if is_signed && !src_ty.is_bounded_int(registry)? && !src_ty.is_felt252(registry)? {
+            entry.extsi(
+                src_value,
+                IntegerType::new(context, compute_width).into(),
+                location,
+            )?
+        } else {
+            entry.extui(
+                src_value,
+                IntegerType::new(context, compute_width).into(),
+                location,
+            )?
+        }
+    } else {
+        src_value
+    };
+
     // Correct the value representation accordingly.
     // 1. if it is a felt, then we need to convert the value from [0,P) to
     //    [-P/2, P/2].
@@ -468,10 +487,10 @@ mod test {
                 downcast(bounded)
             }
 
-            // fn run_test_8(val: felt252) -> Option<u128> {
-            //     let bounded: BoundedInt<3000,10000> = val.try_into().unwrap();
-            //     downcast(bounded)
-            // }
+            fn run_test_8(val: felt252) -> Option<BoundedInt<5,40>> {
+                let bounded: BoundedInt<0,30> = val.try_into().unwrap();
+                downcast(bounded)
+            }
         };
         static ref DOWNCAST_FELT: (String, Program) = load_cairo! {
             extern const fn downcast<FromType, ToType>( x: FromType, ) -> Option<ToType> implicits(RangeCheck) nopanic;
@@ -561,7 +580,7 @@ mod test {
     #[test_case("run_test_5", 31.into(), 31.into(), 32.into())]
     #[test_case("run_test_6", (-90).into(), (-100).into(), (0).into())]
     #[test_case("run_test_7", (-31).into(), (-31).into(), (-30).into())]
-    // #[test_case("run_test_8", 3001.into(), 3000.into(), 10001.into())]
+    #[test_case("run_test_8", 10.into(), 5.into(), 41.into())]
     fn downcast_bounded_int(entry_point: &str, value: Felt, lower_bnd: BigInt, upper_bnd: BigInt) {
         run_program_assert_output(
             &DOWNCAST_BOUNDED_INT,
