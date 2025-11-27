@@ -4,6 +4,8 @@ use cairo_lang_compiler::CompilerConfig;
 use cairo_lang_filesystem::db::init_dev_corelib;
 use cairo_lang_sierra::{program::Program, ProgramParser};
 use cairo_lang_starknet::{compile::compile_contract_in_prepared_db, starknet_plugin_suite};
+use itertools::Itertools;
+use starknet_types_core::felt::Felt;
 use std::{fs, path::Path, sync::Arc};
 
 use crate::{
@@ -77,6 +79,19 @@ macro_rules! jit_panic {
             ))
         };
     }
+
+#[macro_export]
+macro_rules! jit_panic_byte_array {
+    ( $value:expr ) => {
+        $crate::jit_enum!(
+            1,
+            $crate::jit_struct!(
+                $crate::jit_struct!(),
+                $crate::utils::testing::panic_byte_array($value).into()
+            )
+        )
+    };
+}
 
 /// Compile a cairo program found at the given path to sierra.
 pub fn cairo_to_sierra(program: &Path) -> crate::error::Result<Arc<Program>> {
@@ -230,4 +245,34 @@ pub fn run_program_assert_output(
 ) {
     let result = run_program(program, entry_point, args);
     assert_eq!(result.return_value, output);
+}
+
+pub fn panic_byte_array(message: &str) -> Vec<Felt> {
+    // Prepend byte array magic - from Cairo corelib.
+    let mut array = vec![Felt::from_hex_unchecked(
+        "0x46a6158a16a947e5916b2a2ca68501a45e93d7110e81aa2d6438b1c57c879a3",
+    )];
+
+    let chunk_iter = message.bytes().chunks(31);
+    let mut chunks = chunk_iter.into_iter().collect_vec();
+
+    // Take last word as its serialized differently.
+    let pending = chunks
+        .pop()
+        .map(|pendign| pendign.collect_vec())
+        .unwrap_or_default();
+
+    // Serialize length of the byte array.
+    array.push(chunks.len().into());
+
+    // Serialize each byte array element.
+    for chunk in chunks {
+        let chunk = chunk.collect_vec();
+        array.push(Felt::from_bytes_be_slice(&chunk));
+    }
+
+    // Serialize last word with its length.
+    array.extend_from_slice(&[Felt::from_bytes_be_slice(&pending), pending.len().into()]);
+
+    array
 }

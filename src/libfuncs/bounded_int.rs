@@ -889,36 +889,11 @@ mod test {
     use num_bigint::BigInt;
     use test_case::test_case;
 
-    use crate::{load_cairo, utils::testing::run_program, Value};
-
-    fn assert_error(execution: Value, expected_error: Option<&str>) {
-        let Value::Enum { tag, value, .. } = execution else {
-            panic!("test should return a panic result")
-        };
-        match expected_error {
-            Some(msg) => {
-                assert_eq!(tag, 1, "test should have failed");
-                let test_msg = extract_panic_message(*value);
-                assert_eq!(msg, test_msg);
-            }
-            None => assert_eq!(tag, 0, "test should not have failed"),
-        }
-    }
-
-    fn extract_panic_message(value: Value) -> String {
-        if let Value::Struct { fields, .. } = value {
-            if let Value::Array(felts) = &fields[1] {
-                if let Value::Felt252(felt) = felts[2] {
-                    let felt_bytes = felt.to_bytes_be();
-                    let message = std::str::from_utf8(&felt_bytes)
-                        .expect("test error should be utf8")
-                        .trim_start_matches('\0');
-                    return message.to_string();
-                };
-            };
-        }
-        panic!("value should be the error variant of a panic result")
-    }
+    use crate::{
+        jit_enum, jit_panic_byte_array, jit_struct, load_cairo,
+        utils::testing::{run_program, run_program_assert_output},
+        Value,
+    };
 
     lazy_static! {
         static ref TEST_TRIM_PROGRAM: (String, Program) = load_cairo! {
@@ -1164,8 +1139,11 @@ mod test {
     #[test_case("test_0_8_max", 8, Some("boundary"))]
     fn test_trim(entry_point: &str, argument: i32, expected_error: Option<&str>) {
         let arguments = &[Felt252::from(argument).into()];
-        let execution = run_program(&TEST_TRIM_PROGRAM, entry_point, arguments);
-        assert_error(execution.return_value, expected_error);
+        let expected_result = match expected_error {
+            Some(error_message) => jit_panic_byte_array!(error_message),
+            None => jit_enum!(0, jit_struct!(jit_struct!())),
+        };
+        run_program_assert_output(&TEST_TRIM_PROGRAM, entry_point, arguments, expected_result);
     }
 
     fn assert_bool_output(result: Value, expected_tag: usize) {
