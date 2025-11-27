@@ -569,6 +569,8 @@ mod test {
             fn b0x5_b0x10(v: felt252) -> felt252 { test_x_y::<BoundedInt<0, 5>, BoundedInt<0, 10>>(v) }
             fn b2x5_b2x10(v: felt252) -> felt252 { test_x_y::<BoundedInt<2, 5>, BoundedInt<2, 10>>(v) }
             fn b2x5_b1x10(v: felt252) -> felt252 { test_x_y::<BoundedInt<2, 5>, BoundedInt<1, 10>>(v) }
+            fn b0x5_bm10x10(v: felt252) -> felt252 { test_x_y::<BoundedInt<0, 5>, BoundedInt<-10, 10>>(v) }
+
         };
     }
 
@@ -649,6 +651,8 @@ mod test {
     #[test_case("b2x5_b2x10", 5.into())]
     #[test_case("b2x5_b1x10", 2.into())]
     #[test_case("b2x5_b1x10", 5.into())]
+    #[test_case("b0x5_bm10x10", 0.into())]
+    #[test_case("b0x5_bm10x10", 5.into())]
     fn upcast(entry_point: &str, value: Felt252) {
         let arguments = &[value.into()];
         let execution = run_program(&TEST_UPCAST_PROGRAM, entry_point, arguments);
