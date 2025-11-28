@@ -755,35 +755,52 @@ fn build_trim<'ctx, 'this>(
     entry: &'this Block<'ctx>,
     location: Location<'ctx>,
     helper: &LibfuncHelper<'ctx, 'this>,
-    _metadata: &mut MetadataStorage,
+    metadata: &mut MetadataStorage,
     info: &BoundedIntTrimConcreteLibfunc,
 ) -> Result<()> {
     let value: Value = entry.arg(0)?;
-    let trimmed_value = entry.const_int_from_type(
-        context,
-        location,
-        info.trimmed_value.clone(),
-        value.r#type(),
-    )?;
-    let trim_type = registry.get_type(&info.param_signatures()[0].ty)?;
-    let is_invalid = entry.cmpi(context, CmpiPredicate::Eq, value, trimmed_value, location)?;
-    let int_range = trim_type.integer_range(registry)?;
 
-    // There is no need to truncate the value type since we're only receiving power-of-two integers
-    // and constraining their range a single value from either the lower or upper limit. However,
-    // since we're returning a `BoundedInt` we need to offset its internal representation
-    // accordingly.
-    let value = if info.trimmed_value == BigInt::ZERO || int_range.lower < BigInt::ZERO {
-        let offset = entry.const_int_from_type(
+    let src_ty = registry.get_type(&info.param_signatures()[0].ty)?;
+    let dst_ty = registry.get_type(&info.branch_signatures()[1].vars[0].ty)?;
+
+    let trimmed_value = if src_ty.is_bounded_int(registry)? {
+        entry.const_int_from_type(
             context,
             location,
-            &info.trimmed_value + 1,
+            info.trimmed_value.clone() - src_ty.integer_range(registry)?.lower,
             value.r#type(),
-        )?;
-        entry.append_op_result(arith::subi(value, offset, location))?
+        )?
     } else {
-        value
+        entry.const_int_from_type(
+            context,
+            location,
+            info.trimmed_value.clone(),
+            value.r#type(),
+        )?
     };
+    let is_invalid = entry.cmpi(context, CmpiPredicate::Eq, value, trimmed_value, location)?;
+
+    let offset = if src_ty.is_bounded_int(registry)? {
+        dst_ty.integer_range(registry)?.lower - src_ty.integer_range(registry)?.lower
+    } else {
+        dst_ty.integer_range(registry)?.lower
+    };
+    let value = entry.append_op_result(arith::subi(
+        value,
+        entry.const_int_from_type(context, location, offset, value.r#type())?,
+        location,
+    ))?;
+    let value = entry.trunci(
+        value,
+        dst_ty.build(
+            context,
+            helper,
+            registry,
+            metadata,
+            &info.branch_signatures()[1].vars[0].ty,
+        )?,
+        location,
+    )?;
 
     helper.cond_br(
         context,
@@ -873,144 +890,260 @@ mod test {
     use test_case::test_case;
 
     use crate::{
-        context::NativeContext,
-        execution_result::ExecutionResult,
-        executor::JitNativeExecutor,
-        jit_enum, jit_struct, load_cairo,
+        jit_enum, jit_panic_byte_array, jit_struct, load_cairo,
         utils::testing::{run_program, run_program_assert_output},
-        OptLevel, Value,
+        Value,
     };
 
-    #[test]
-    fn test_trim_some_pos_i8() {
-        let (_, program) = load_cairo!(
+    lazy_static! {
+        static ref TEST_TRIM_PROGRAM: (String, Program) = load_cairo! {
             #[feature("bounded-int-utils")]
-            use core::internal::bounded_int::{self, BoundedInt};
+            use core::internal::bounded_int::{self, BoundedInt, trim_min, trim_max, TrimMinHelper, TrimMaxHelper};
             use core::internal::OptionRev;
 
-            fn main() -> BoundedInt<-128, 126> {
-                let num = match bounded_int::trim_max::<i8>(1) {
-                    OptionRev::Some(n) => n,
-                    OptionRev::None => 0,
+
+            fn test_i8_min(a: felt252) {
+                let a_int: i8 = a.try_into().unwrap();
+                match trim_min::<i8>(a_int) {
+                    OptionRev::Some(v) => assert!(v == a.try_into().unwrap(), "invariant"),
+                    OptionRev::None => panic!("boundary"),
                 };
-
-                num
             }
-        );
-        let ctx = NativeContext::new();
-        let module = ctx.compile(&program, false, None, None).unwrap();
-        let executor = JitNativeExecutor::from_native_module(module, OptLevel::Default).unwrap();
-        let ExecutionResult {
-            remaining_gas: _,
-            return_value,
-            builtin_stats: _,
-        } = executor
-            .invoke_dynamic(&program.funcs[0].id, &[], None)
-            .unwrap();
+            fn test_i8_max(a: felt252) {
+                let a_int: i8 = a.try_into().unwrap();
+                match trim_max::<i8>(a_int) {
+                    OptionRev::Some(v) => assert!(v == a.try_into().unwrap(), "invariant"),
+                    OptionRev::None => panic!("boundary"),
+                };
+            }
 
-        let Value::BoundedInt { value, range: _ } = return_value else {
-            panic!();
+            fn test_u8_min(a: felt252) {
+                let a_int: u8 = a.try_into().unwrap();
+                match trim_min::<u8>(a_int) {
+                    OptionRev::Some(v) => assert!(v == a.try_into().unwrap(), "invariant"),
+                    OptionRev::None => panic!("boundary"),
+                };
+            }
+            fn test_u8_max(a: felt252) {
+                let a_int: u8 = a.try_into().unwrap();
+                match trim_max::<u8>(a_int) {
+                    OptionRev::Some(v) => assert!(v == a.try_into().unwrap(), "invariant"),
+                    OptionRev::None => panic!("boundary"),
+                };
+            }
+
+            impl MinHelper_0_100 of TrimMinHelper<BoundedInt<0, 100>> {
+                type Target = BoundedInt<1, 100>;
+            }
+            fn test_0_100_min(a: felt252) {
+                let a_int: BoundedInt<0, 100> = a.try_into().unwrap();
+                match trim_min::<BoundedInt<0, 100>>(a_int) {
+                    OptionRev::Some(v) => assert!(v == a.try_into().unwrap(), "invariant"),
+                    OptionRev::None => panic!("boundary"),
+                };
+            }
+
+            impl MaxHelper_0_100 of TrimMaxHelper<BoundedInt<0, 100>> {
+                type Target = BoundedInt<0, 99>;
+            }
+            fn test_0_100_max(a: felt252) {
+                let a_int: BoundedInt<0, 100> = a.try_into().unwrap();
+                match trim_max::<BoundedInt<0, 100>>(a_int) {
+                    OptionRev::Some(v) => assert!(v == a.try_into().unwrap(), "invariant"),
+                    OptionRev::None => panic!("boundary"),
+                };
+            }
+
+            impl MinHelper_10_100 of TrimMinHelper<BoundedInt<10, 100>> {
+                type Target = BoundedInt<11, 100>;
+            }
+            fn test_10_100_min(a: felt252) {
+                let a_int: BoundedInt<10, 100> = a.try_into().unwrap();
+                match trim_min::<BoundedInt<10, 100>>(a_int) {
+                    OptionRev::Some(v) => assert!(v == a.try_into().unwrap(), "invariant"),
+                    OptionRev::None => panic!("boundary"),
+                };
+            }
+
+            impl MaxHelper_10_100 of TrimMaxHelper<BoundedInt<10, 100>> {
+                type Target = BoundedInt<10, 99>;
+            }
+            fn test_10_100_max(a: felt252) {
+                let a_int: BoundedInt<10, 100> = a.try_into().unwrap();
+                match trim_max::<BoundedInt<10, 100>>(a_int) {
+                    OptionRev::Some(v) => assert!(v == a.try_into().unwrap(), "invariant"),
+                    OptionRev::None => panic!("boundary"),
+                };
+            }
+
+            impl MinHelper_m100_0 of TrimMinHelper<BoundedInt<-100, 0>> {
+                type Target = BoundedInt<-99, 0>;
+            }
+            fn test_m100_0_min(a: felt252) {
+                let a_int: BoundedInt<-100, 0> = a.try_into().unwrap();
+                match trim_min::<BoundedInt<-100, 0>>(a_int) {
+                    OptionRev::Some(v) => assert!(v == a.try_into().unwrap(), "invariant"),
+                    OptionRev::None => panic!("boundary"),
+                };
+            }
+
+            impl MaxHelper_m100_0 of TrimMaxHelper<BoundedInt<-100, 0>> {
+                type Target = BoundedInt<-100, -1>;
+            }
+            fn test_m100_0_max(a: felt252) {
+                let a_int: BoundedInt<-100, 0> = a.try_into().unwrap();
+                match trim_max::<BoundedInt<-100, 0>>(a_int) {
+                    OptionRev::Some(v) => assert!(v == a.try_into().unwrap(), "invariant"),
+                    OptionRev::None => panic!("boundary"),
+                };
+            }
+
+            impl MinHelper_m100_m10 of TrimMinHelper<BoundedInt<-100, -10>> {
+                type Target = BoundedInt<-99, -10>;
+            }
+            fn test_m100_m10_min(a: felt252) {
+                let a_int: BoundedInt<-100, -10> = a.try_into().unwrap();
+                match trim_min::<BoundedInt<-100, -10>>(a_int) {
+                    OptionRev::Some(v) => assert!(v == a.try_into().unwrap(), "invariant"),
+                    OptionRev::None => panic!("boundary"),
+                };
+            }
+
+            impl MaxHelper_m100_m10 of TrimMaxHelper<BoundedInt<-100, -10>> {
+                type Target = BoundedInt<-100, -11>;
+            }
+            fn test_m100_m10_max(a: felt252) {
+                let a_int: BoundedInt<-100, -10> = a.try_into().unwrap();
+                match trim_max::<BoundedInt<-100, -10>>(a_int) {
+                    OptionRev::Some(v) => assert!(v == a.try_into().unwrap(), "invariant"),
+                    OptionRev::None => panic!("boundary"),
+                };
+            }
+
+            impl MinHelper_m100_100 of TrimMinHelper<BoundedInt<-100, 100>> {
+                type Target = BoundedInt<-99, 100>;
+            }
+            fn test_m100_100_min(a: felt252) {
+                let a_int: BoundedInt<-100, 100> = a.try_into().unwrap();
+                match trim_min::<BoundedInt<-100, 100>>(a_int) {
+                    OptionRev::Some(v) => assert!(v == a.try_into().unwrap(), "invariant"),
+                    OptionRev::None => panic!("boundary"),
+                };
+            }
+
+            impl MaxHelper_m100_100 of TrimMaxHelper<BoundedInt<-100, 100>> {
+                type Target = BoundedInt<-100, 99>;
+            }
+            fn test_m100_100_max(a: felt252) {
+                let a_int: BoundedInt<-100, 100> = a.try_into().unwrap();
+                match trim_max::<BoundedInt<-100, 100>>(a_int) {
+                    OptionRev::Some(v) => assert!(v == a.try_into().unwrap(), "invariant"),
+                    OptionRev::None => panic!("boundary"),
+                };
+            }
+
+            impl MinHelper_0_8 of TrimMinHelper<BoundedInt<0, 8>> {
+                type Target = BoundedInt<1, 8>;
+            }
+            fn test_0_8_min(a: felt252) {
+                let a_int: BoundedInt<0, 8> = a.try_into().unwrap();
+                match trim_min::<BoundedInt<0, 8>>(a_int) {
+                    OptionRev::Some(v) => assert!(v == a.try_into().unwrap(), "invariant"),
+                    OptionRev::None => panic!("boundary"),
+                };
+            }
+            impl MaxHelper_0_8 of TrimMaxHelper<BoundedInt<0, 8>> {
+                type Target = BoundedInt<0, 7>;
+            }
+            fn test_0_8_max(a: felt252) {
+                let a_int: BoundedInt<0, 8> = a.try_into().unwrap();
+                match trim_max::<BoundedInt<0, 8>>(a_int) {
+                    OptionRev::Some(v) => assert!(v == a.try_into().unwrap(), "invariant"),
+                    OptionRev::None => panic!("boundary"),
+                };
+            }
         };
-        assert_eq!(value, Felt252::from(1_u8));
     }
 
-    #[test]
-    fn test_trim_some_neg_i8() {
-        let (_, program) = load_cairo!(
-            #[feature("bounded-int-utils")]
-            use core::internal::bounded_int::{self, BoundedInt};
-            use core::internal::OptionRev;
-
-            fn main() -> BoundedInt<-127, 127> {
-                let num = match bounded_int::trim_min::<i8>(1) {
-                    OptionRev::Some(n) => n,
-                    OptionRev::None => 1,
-                };
-
-                num
-            }
-        );
-        let ctx = NativeContext::new();
-        let module = ctx.compile(&program, false, None, None).unwrap();
-        let executor = JitNativeExecutor::from_native_module(module, OptLevel::Default).unwrap();
-        let ExecutionResult {
-            remaining_gas: _,
-            return_value,
-            builtin_stats: _,
-        } = executor
-            .invoke_dynamic(&program.funcs[0].id, &[], None)
-            .unwrap();
-
-        let Value::BoundedInt { value, range: _ } = return_value else {
-            panic!();
+    // test trim_min on i8
+    #[test_case("test_i8_min", 0, None)]
+    #[test_case("test_i8_min", 20, None)]
+    #[test_case("test_i8_min", 127, None)]
+    #[test_case("test_i8_min", -21, None)]
+    #[test_case("test_i8_min", -128, Some("boundary"))]
+    // test trim_max on i8
+    #[test_case("test_i8_max", 0, None)]
+    #[test_case("test_i8_max", 20, None)]
+    #[test_case("test_i8_max", 127, Some("boundary"))]
+    #[test_case("test_i8_max", -21, None)]
+    #[test_case("test_i8_max", -128, None)]
+    // test trim_min on u8
+    #[test_case("test_u8_min", 0, Some("boundary"))]
+    #[test_case("test_u8_min", 20, None)]
+    #[test_case("test_u8_min", 255, None)]
+    // test trim_max on u8
+    #[test_case("test_u8_max", 20, None)]
+    #[test_case("test_u8_max", 0, None)]
+    #[test_case("test_u8_max", 255, Some("boundary"))]
+    // test trim_min on BoundedInt<0, 100>
+    #[test_case("test_0_100_min", 0, Some("boundary"))]
+    #[test_case("test_0_100_min", 10, None)]
+    #[test_case("test_0_100_min", 100, None)]
+    // test trim_max on BoundedInt<0, 100>
+    #[test_case("test_0_100_max", 0, None)]
+    #[test_case("test_0_100_max", 10, None)]
+    #[test_case("test_0_100_max", 100, Some("boundary"))]
+    // test trim_min on BoundedInt<10, 100>
+    #[test_case("test_10_100_min", 10, Some("boundary"))]
+    #[test_case("test_10_100_min", 20, None)]
+    #[test_case("test_10_100_min", 100, None)]
+    // test trim_max on BoundedInt<10, 100>
+    #[test_case("test_10_100_max", 10, None)]
+    #[test_case("test_10_100_max", 20, None)]
+    #[test_case("test_10_100_max", 100, Some("boundary"))]
+    // test trim_min on BoundedInt<-100, 0>
+    #[test_case("test_m100_0_min", 0, None)]
+    #[test_case("test_m100_0_min", -10, None)]
+    #[test_case("test_m100_0_min", -100, Some("boundary"))]
+    // test trim_max on BoundedInt<-100, 0>
+    #[test_case("test_m100_0_max", 0, Some("boundary"))]
+    #[test_case("test_m100_0_max", -10, None)]
+    #[test_case("test_m100_0_max", -100, None)]
+    // test trim_min on BoundedInt<-100, -10>
+    #[test_case("test_m100_m10_min", -10, None)]
+    #[test_case("test_m100_m10_min", -50, None)]
+    #[test_case("test_m100_m10_min", -100, Some("boundary"))]
+    // test trim_max on BoundedInt<-100, -10>
+    #[test_case("test_m100_m10_max", -10, Some("boundary"))]
+    #[test_case("test_m100_m10_max", -50, None)]
+    #[test_case("test_m100_m10_max", -100, None)]
+    // test trim_min on BoundedInt<-100, 100>
+    #[test_case("test_m100_100_min", -100, Some("boundary"))]
+    #[test_case("test_m100_100_min", -51, None)]
+    #[test_case("test_m100_100_min", 0, None)]
+    #[test_case("test_m100_100_min", 50, None)]
+    #[test_case("test_m100_100_min", 100, None)]
+    // test trim_max on BoundedInt<-100, 100>
+    #[test_case("test_m100_100_max", -100, None)]
+    #[test_case("test_m100_100_max", -51, None)]
+    #[test_case("test_m100_100_max", 0, None)]
+    #[test_case("test_m100_100_max", 50, None)]
+    #[test_case("test_m100_100_max", 100, Some("boundary"))]
+    // test trim_min on BoundedInt<0, 8>
+    #[test_case("test_0_8_min", 0, Some("boundary"))]
+    #[test_case("test_0_8_min", 4, None)]
+    #[test_case("test_0_8_min", 8, None)]
+    // test trim_max on BoundedInt<0, 8>
+    #[test_case("test_0_8_max", 0, None)]
+    #[test_case("test_0_8_max", 4, None)]
+    #[test_case("test_0_8_max", 8, Some("boundary"))]
+    fn test_trim(entry_point: &str, argument: i32, expected_error: Option<&str>) {
+        let arguments = &[Felt252::from(argument).into()];
+        let expected_result = match expected_error {
+            Some(error_message) => jit_panic_byte_array!(error_message),
+            None => jit_enum!(0, jit_struct!(jit_struct!())),
         };
-        assert_eq!(value, Felt252::from(1_u8));
-    }
-
-    #[test]
-    fn test_trim_some_u32() {
-        let (_, program) = load_cairo!(
-            #[feature("bounded-int-utils")]
-            use core::internal::bounded_int::{self, BoundedInt};
-            use core::internal::OptionRev;
-
-            fn main() -> BoundedInt<0, 4294967294> {
-                let num = match bounded_int::trim_max::<u32>(0xfffffffe) {
-                    OptionRev::Some(n) => n,
-                    OptionRev::None => 0,
-                };
-
-                num
-            }
-        );
-        let ctx = NativeContext::new();
-        let module = ctx.compile(&program, false, None, None).unwrap();
-        let executor = JitNativeExecutor::from_native_module(module, OptLevel::Default).unwrap();
-        let ExecutionResult {
-            remaining_gas: _,
-            return_value,
-            builtin_stats: _,
-        } = executor
-            .invoke_dynamic(&program.funcs[0].id, &[], None)
-            .unwrap();
-
-        let Value::BoundedInt { value, range: _ } = return_value else {
-            panic!();
-        };
-        assert_eq!(value, Felt252::from(0xfffffffe_u32));
-    }
-
-    #[test]
-    fn test_trim_none() {
-        let (_, program) = load_cairo!(
-            #[feature("bounded-int-utils")]
-            use core::internal::bounded_int::{self, BoundedInt};
-            use core::internal::OptionRev;
-
-            fn main() -> BoundedInt<-32767, 32767> {
-                let num = match bounded_int::trim_min::<i16>(-0x8000) {
-                    OptionRev::Some(n) => n,
-                    OptionRev::None => 0,
-                };
-
-                num
-            }
-        );
-        let ctx = NativeContext::new();
-        let module = ctx.compile(&program, false, None, None).unwrap();
-        let executor = JitNativeExecutor::from_native_module(module, OptLevel::Default).unwrap();
-        let ExecutionResult {
-            remaining_gas: _,
-            return_value,
-            builtin_stats: _,
-        } = executor
-            .invoke_dynamic(&program.funcs[0].id, &[], None)
-            .unwrap();
-
-        let Value::BoundedInt { value, range: _ } = return_value else {
-            panic!();
-        };
-        assert_eq!(value, Felt252::from(0));
+        run_program_assert_output(&TEST_TRIM_PROGRAM, entry_point, arguments, expected_result);
     }
 
     fn assert_bool_output(result: Value, expected_tag: usize) {
