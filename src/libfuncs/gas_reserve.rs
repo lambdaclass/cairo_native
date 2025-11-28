@@ -69,7 +69,8 @@ fn build_gas_reserve_create<'ctx, 'this>(
 
     let gas_builtin_ty = IntegerType::new(context, 64).into();
     let spare_gas_128 = entry.append_op_result(arith::subi(current_gas_128, amount, location))?;
-    let spare_gas = entry.append_op_result(arith::trunci(spare_gas_128, gas_builtin_ty, location))?;
+    let spare_gas =
+        entry.append_op_result(arith::trunci(spare_gas_128, gas_builtin_ty, location))?;
 
     helper.cond_br(
         context,
