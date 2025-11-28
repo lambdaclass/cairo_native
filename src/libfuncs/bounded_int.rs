@@ -73,6 +73,22 @@ pub fn build<'ctx, 'this>(
 }
 
 /// Generate MLIR operations for the `bounded_int_add` libfunc.
+///
+/// # Cairo Signature
+///
+/// ```cairo
+/// extern fn bounded_int_add<Lhs, Rhs, impl H: AddHelper<Lhs, Rhs>>(
+///    lhs: Lhs, rhs: Rhs,
+/// ) -> H::Result nopanic;
+/// ```
+///
+/// A number X as a `BoundedInt` is internally represented as an offset Xd from the lower bound Xo.
+/// So X = Xo + Xd.
+///
+/// Since we want to get C = A + B, we can translate this to
+/// Co + Cd = Ao + Ad + Bo + Bd. Where Ao, Bo and Co represent the lower bound
+/// of the ranges in the `BoundedInt` and Ad, Bd and Cd represent the offsets. Since
+/// we also know that Co = Ao + Bo we can simplify the equation to Cd = Ad + Bd.
 #[allow(clippy::too_many_arguments)]
 fn build_add<'ctx, 'this>(
     context: &'ctx Context,
@@ -86,7 +102,7 @@ fn build_add<'ctx, 'this>(
     let lhs_value = entry.arg(0)?;
     let rhs_value = entry.arg(1)?;
 
-    // Extract the ranges for the operands and the result type.
+    // Extract the ranges for the operands.
     let lhs_ty = registry.get_type(&info.signature.param_signatures[0].ty)?;
     let rhs_ty = registry.get_type(&info.signature.param_signatures[1].ty)?;
 
@@ -96,6 +112,7 @@ fn build_add<'ctx, 'this>(
         .get_type(&info.signature.branch_signatures[0].vars[0].ty)?
         .integer_range(registry)?;
 
+    // Extract the bit width.
     let lhs_width = if lhs_ty.is_bounded_int(registry)? {
         lhs_range.offset_bit_width()
     } else {
@@ -106,31 +123,14 @@ fn build_add<'ctx, 'this>(
     } else {
         rhs_range.zero_based_bit_width()
     };
+    let dst_width = dst_range.offset_bit_width();
 
-    // Calculate the computation range.
-    let compute_range = Range {
-        lower: (&lhs_range.lower)
-            .min(&rhs_range.lower)
-            .min(&dst_range.lower)
-            .clone(),
-        upper: (&lhs_range.upper)
-            .max(&rhs_range.upper)
-            .max(&dst_range.upper)
-            .clone(),
-    };
-    let compute_ty = IntegerType::new(context, compute_range.offset_bit_width()).into();
+    // Get the compute type so we can do the addition without problems
+    let compute_width = lhs_width.max(rhs_width) + 1;
+    let compute_ty = IntegerType::new(context, compute_width).into();
 
-    // Zero-extend operands into the computation range.
-    native_assert!(
-        compute_range.offset_bit_width() >= lhs_width,
-        "the lhs_range bit_width must be less or equal than the compute_range"
-    );
-    native_assert!(
-        compute_range.offset_bit_width() >= rhs_width,
-        "the rhs_range bit_width must be less or equal than the compute_range"
-    );
-
-    let lhs_value = if compute_range.offset_bit_width() > lhs_width {
+    // Get the operands on the same number of bits so we can operate with them
+    let lhs_value = if compute_width > lhs_width {
         if lhs_range.lower.sign() != Sign::Minus || lhs_ty.is_bounded_int(registry)? {
             entry.extui(lhs_value, compute_ty, location)?
         } else {
@@ -139,7 +139,7 @@ fn build_add<'ctx, 'this>(
     } else {
         lhs_value
     };
-    let rhs_value = if compute_range.offset_bit_width() > rhs_width {
+    let rhs_value = if compute_width > rhs_width {
         if rhs_range.lower.sign() != Sign::Minus || rhs_ty.is_bounded_int(registry)? {
             entry.extui(rhs_value, compute_ty, location)?
         } else {
@@ -149,47 +149,18 @@ fn build_add<'ctx, 'this>(
         rhs_value
     };
 
-    // Offset the operands so that they are compatible.
-    let lhs_offset = if lhs_ty.is_bounded_int(registry)? {
-        &lhs_range.lower - &compute_range.lower
-    } else {
-        lhs_range.lower
-    };
-    let lhs_value = if lhs_offset != BigInt::ZERO {
-        let lhs_offset = entry.const_int_from_type(context, location, lhs_offset, compute_ty)?;
-        entry.addi(lhs_value, lhs_offset, location)?
-    } else {
-        lhs_value
-    };
-
-    let rhs_offset = if rhs_ty.is_bounded_int(registry)? {
-        &rhs_range.lower - &compute_range.lower
-    } else {
-        rhs_range.lower
-    };
-    let rhs_value = if rhs_offset != BigInt::ZERO {
-        let rhs_offset = entry.const_int_from_type(context, location, rhs_offset, compute_ty)?;
-        entry.addi(rhs_value, rhs_offset, location)?
-    } else {
-        rhs_value
-    };
-
-    // Compute the operation.
+    // Addition and get the result value on the desired range
     let res_value = entry.addi(lhs_value, rhs_value, location)?;
-
-    // Offset and truncate the result to the output type.
-    let res_offset = &dst_range.lower - &compute_range.lower;
-    let res_value = if res_offset != BigInt::ZERO {
-        let res_offset = entry.const_int_from_type(context, location, res_offset, compute_ty)?;
-        entry.append_op_result(arith::subi(res_value, res_offset, location))?
-    } else {
-        res_value
-    };
-
-    let res_value = if dst_range.offset_bit_width() < compute_range.offset_bit_width() {
+    let res_value = if compute_width > dst_width {
         entry.trunci(
             res_value,
-            IntegerType::new(context, dst_range.offset_bit_width()).into(),
+            IntegerType::new(context, dst_width).into(),
+            location,
+        )?
+    } else if compute_width < dst_width {
+        entry.extui(
+            res_value,
+            IntegerType::new(context, dst_width).into(),
             location,
         )?
     } else {
@@ -1139,6 +1110,136 @@ mod test {
             None => jit_enum!(0, jit_struct!(jit_struct!())),
         };
         run_program_assert_output(&TEST_TRIM_PROGRAM, entry_point, arguments, expected_result);
+    }
+
+    lazy_static! {
+        static ref TEST_ADD_PROGRAM: (String, Program) = load_cairo! {
+            #[feature("bounded-int-utils")]
+            use core::internal::bounded_int::{BoundedInt, add, AddHelper, UnitInt};
+
+            impl AddHelperBI_1x31_BI_1x1 of AddHelper<BoundedInt<1, 31>, BoundedInt<1, 1>> {
+                type Result = BoundedInt<2, 32>;
+            }
+
+            fn bi_1x31_plus_bi_1x1(
+                a: felt252,
+                b: felt252,
+            ) -> BoundedInt<2, 32> {
+                let a: BoundedInt<1, 31> = a.try_into().unwrap();
+                let b: BoundedInt<1, 1> = b.try_into().unwrap();
+                return add(a, b);
+            }
+
+            impl AddHelperBI_1x31_BI_m1xm1 of AddHelper<BoundedInt<1, 31>, BoundedInt<-1, -1>> {
+                type Result = BoundedInt<0, 30>;
+            }
+
+            fn bi_1x31_plus_bi_m1xm1(
+                a: felt252,
+                b: felt252,
+            ) -> BoundedInt<0, 30> {
+                let a: BoundedInt<1, 31> = a.try_into().unwrap();
+                let b: BoundedInt<-1, -1> = b.try_into().unwrap();
+                return add(a, b);
+            }
+
+            impl AddHelperBI_0x30_BI_0x10 of AddHelper<BoundedInt<0, 30>, BoundedInt<0, 10>> {
+                type Result = BoundedInt<0, 40>;
+            }
+
+            fn bi_0x30_plus_bi_0x10(
+                a: felt252,
+                b: felt252,
+            ) -> BoundedInt<0, 40> {
+                let a: BoundedInt<0, 30> = a.try_into().unwrap();
+                let b: BoundedInt<0, 10> = b.try_into().unwrap();
+                return add(a, b);
+            }
+
+            impl AddHelperBI_m20xm15_BI_0x10 of AddHelper<BoundedInt<-20, -15>, BoundedInt<0, 10>> {
+                type Result = BoundedInt<-20, -5>;
+            }
+
+            fn bi_m20xm15_plus_bi_0x10(
+                a: felt252,
+                b: felt252,
+            ) -> BoundedInt<-20, -5> {
+                let a: BoundedInt<-20, -15> = a.try_into().unwrap();
+                let b: BoundedInt<0, 10> = b.try_into().unwrap();
+                return add(a, b);
+            }
+
+            impl AddHelperBI_m5xm5_BI_m5xm5 of AddHelper<BoundedInt<-5, -5>, BoundedInt<-5, -5>> {
+                type Result = BoundedInt<-10, -10>;
+            }
+
+            fn bi_m5xm5_plus_bi_m5xm5(
+                a: felt252,
+                b: felt252,
+            ) -> BoundedInt<-10, -10> {
+                let a: BoundedInt<-5, -5> = a.try_into().unwrap();
+                let b: BoundedInt<-5, -5> = b.try_into().unwrap();
+                return add(a, b);
+            }
+
+            impl AddHelperBI_m5xm5_UI_m1 of AddHelper<BoundedInt<-5, -5>, UnitInt<-1>> {
+                type Result = BoundedInt<-6, -6>;
+            }
+
+            fn bi_m5xm5_plus_ui_m1(
+                a: felt252,
+                b: felt252,
+            ) -> BoundedInt<-6, -6> {
+                let a: BoundedInt<-5, -5> = a.try_into().unwrap();
+                let b: UnitInt<-1> = b.try_into().unwrap();
+                return add(a, b);
+            }
+
+            impl AddHelperUI_1_BI_m5xm5 of AddHelper<UnitInt<1>, BoundedInt<-5, -5>> {
+                type Result = BoundedInt<-4, -4>;
+            }
+
+            fn ui_m1_plus_bi_m5xm5(
+                a: felt252,
+                b: felt252,
+            ) -> BoundedInt<-4, -4> {
+                let a: UnitInt<1> = a.try_into().unwrap();
+                let b: BoundedInt<-5, -5> = b.try_into().unwrap();
+                return add(a, b);
+            }
+        };
+    }
+
+    #[test_case("bi_1x31_plus_bi_1x1", 31, 1, 32)]
+    #[test_case("bi_1x31_plus_bi_m1xm1", 31, -1, 30)]
+    #[test_case("bi_0x30_plus_bi_0x10", 30, 10, 40)]
+    #[test_case("bi_m20xm15_plus_bi_0x10", -15, 10, -5)]
+    #[test_case("bi_m20xm15_plus_bi_0x10", -20, 10, -10)]
+    #[test_case("bi_m5xm5_plus_bi_m5xm5", -5, -5, -10)]
+    #[test_case("bi_m5xm5_plus_ui_m1", -5, -1, -6)]
+    #[test_case("ui_m1_plus_bi_m5xm5", 1, -5, -4)]
+    fn test_add(entry_point: &str, lhs: i32, rhs: i32, expected_result: i32) {
+        let result = run_program(
+            &TEST_ADD_PROGRAM,
+            entry_point,
+            &[
+                Value::Felt252(Felt252::from(lhs)),
+                Value::Felt252(Felt252::from(rhs)),
+            ],
+        )
+        .return_value;
+
+        if let Value::Enum { value, .. } = result {
+            if let Value::Struct { fields, .. } = *value {
+                assert!(
+                    matches!(fields[0], Value::BoundedInt { value, .. } if value == Felt252::from(expected_result))
+                )
+            } else {
+                panic!("Test returned an unexpected value");
+            }
+        } else {
+            panic!("Test returned value was not an Enum as expected");
+        }
     }
 
     fn assert_bool_output(result: Value, expected_tag: usize) {
