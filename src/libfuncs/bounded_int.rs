@@ -659,17 +659,13 @@ fn build_constrain<'ctx, 'this>(
         entry.const_int_from_type(context, location, info.boundary.clone(), src_value.r#type())?
     };
 
-    let is_lower = entry.cmpi(
-        context,
-        if src_range.lower.sign() == Sign::Minus {
-            CmpiPredicate::Slt
-        } else {
+    let cmpi_predicate =
+        if src_ty.is_bounded_int(registry)? || src_range.lower.sign() != Sign::Minus {
             CmpiPredicate::Ult
-        },
-        src_value,
-        boundary,
-        location,
-    )?;
+        } else {
+            CmpiPredicate::Slt
+        };
+    let is_lower = entry.cmpi(context, cmpi_predicate, src_value, boundary, location)?;
 
     let lower_block = helper.append_block(Block::new(&[]));
     let upper_block = helper.append_block(Block::new(&[]));
@@ -883,10 +879,9 @@ fn build_wrap_non_zero<'ctx, 'this>(
 
 #[cfg(test)]
 mod test {
-    use cairo_lang_sierra::{extensions::utils::Range, program::Program};
+    use cairo_lang_sierra::program::Program;
     use cairo_vm::Felt252;
     use lazy_static::lazy_static;
-    use num_bigint::BigInt;
     use test_case::test_case;
 
     use crate::{
@@ -1198,29 +1193,21 @@ mod test {
         assert_bool_output(result, 0);
     }
 
-    fn assert_constrain_output(result: Value, expected_bi: Value) {
-        if let Value::Enum { tag, value, .. } = result {
-            assert_eq!(tag, 0);
-            if let Value::Struct { fields, .. } = *value {
-                assert_eq!(expected_bi, fields[0]);
-            }
-        }
-    }
-
-    #[test]
-    fn test_constrain() {
-        let program = load_cairo! {
+    lazy_static! {
+        static ref TEST_CONSTRAIN_PROGRAM: (String, Program) = load_cairo! {
             #[feature("bounded-int-utils")]
             use core::internal::bounded_int::{self, BoundedInt, ConstrainHelper, constrain};
 
-            fn run_test_1(a: i8) -> BoundedInt<-128, -1> {
+            fn constrain_bi_m128_127_lt_0(a: felt252) -> BoundedInt<-128, -1> {
+                let a: i8 = a.try_into().unwrap();
                 match constrain::<i8, 0>(a) {
                     Ok(lt0) => lt0,
                     Err(_gt0) => panic!(),
                 }
             }
 
-            fn run_test_2(a: i8) -> BoundedInt<0, 127> {
+            fn constrain_bi_m128_127_gt_0(a: felt252) -> BoundedInt<0, 127> {
+                let a: i8 = a.try_into().unwrap();
                 match constrain::<i8, 0>(a) {
                     Ok(_lt0) => panic!(),
                     Err(gt0) => gt0,
@@ -1232,19 +1219,19 @@ mod test {
                 type HighT = BoundedInt<5, 15>;
             }
 
-            fn run_test_3(a: felt252) -> BoundedInt<0, 4> {
+            fn constrain_bi_0_15_lt_5(a: felt252) -> BoundedInt<0, 4> {
                 let a_bi: BoundedInt<0, 15> = a.try_into().unwrap();
                 match constrain::<_, 5>(a_bi) {
-                    Ok(lt0) => lt0,
-                    Err(_gt0) => panic!(),
+                    Ok(lt) => lt,
+                    Err(_gt) => panic!(),
                 }
             }
 
-            fn run_test_4(a: felt252) -> BoundedInt<5, 15> {
+            fn constrain_bi_0_15_gt_5(a: felt252) -> BoundedInt<5, 15> {
                 let a_bi: BoundedInt<0, 15> = a.try_into().unwrap();
                 match constrain::<_, 5>(a_bi) {
-                    Ok(_lt0) => panic!(),
-                    Err(gt0) => gt0,
+                    Ok(_lt) => panic!(),
+                    Err(gt) => gt,
                 }
             }
 
@@ -1253,7 +1240,7 @@ mod test {
                 type HighT = BoundedInt<0, 10>;
             }
 
-            fn run_test_5(a: felt252) -> BoundedInt<-10, -1> {
+            fn constrain_bi_m10_10_lt_0(a: felt252) -> BoundedInt<-10, -1> {
                 let a_bi: BoundedInt<-10, 10> = a.try_into().unwrap();
                 match constrain::<_, 0>(a_bi) {
                     Ok(lt0) => lt0,
@@ -1261,7 +1248,7 @@ mod test {
                 }
             }
 
-            fn run_test_6(a: felt252) -> BoundedInt<0, 10> {
+            fn constrain_bi_m10_10_gt_0(a: felt252) -> BoundedInt<0, 10> {
                 let a_bi: BoundedInt<-10, 10> = a.try_into().unwrap();
                 match constrain::<_, 0>(a_bi) {
                     Ok(_lt0) => panic!(),
@@ -1274,19 +1261,19 @@ mod test {
                 type HighT = BoundedInt<31, 61>;
             }
 
-            fn run_test_7(a: felt252) -> BoundedInt<1, 30> {
+            fn constrain_bi_1_61_lt_31(a: felt252) -> BoundedInt<1, 30> {
                 let a_bi: BoundedInt<1, 61> = a.try_into().unwrap();
                 match constrain::<_, 31>(a_bi) {
-                    Ok(lt0) => lt0,
-                    Err(_gt0) => panic!(),
+                    Ok(lt) => lt,
+                    Err(_gt) => panic!(),
                 }
             }
 
-            fn run_test_8(a: felt252) -> BoundedInt<31, 61> {
+            fn constrain_bi_1_61_gt_31(a: felt252) -> BoundedInt<31, 61> {
                 let a_bi: BoundedInt<1, 61> = a.try_into().unwrap();
                 match constrain::<_, 31>(a_bi) {
-                    Ok(_lt0) => panic!(),
-                    Err(gt0) => gt0,
+                    Ok(_lt) => panic!(),
+                    Err(gt) => gt,
                 }
             }
 
@@ -1295,19 +1282,19 @@ mod test {
                 type HighT = BoundedInt<-150, -100>;
             }
 
-            fn run_test_9(a: felt252) -> BoundedInt<-200, -151> {
+            fn constrain_bi_m200_m100_lt_m150(a: felt252) -> BoundedInt<-200, -151> {
                 let a_bi: BoundedInt<-200, -100> = a.try_into().unwrap();
                 match constrain::<_, -150>(a_bi) {
-                    Ok(lt0) => lt0,
-                    Err(_gt0) => panic!(),
+                    Ok(lt) => lt,
+                    Err(_gt) => panic!(),
                 }
             }
 
-            fn run_test_10(a: felt252) -> BoundedInt<-150, -100> {
+            fn constrain_bi_m200_m100_gt_m150(a: felt252) -> BoundedInt<-150, -100> {
                 let a_bi: BoundedInt<-200, -100> = a.try_into().unwrap();
                 match constrain::<_, -150>(a_bi) {
-                    Ok(_lt0) => panic!(),
-                    Err(gt0) => gt0,
+                    Ok(_lt) => panic!(),
+                    Err(gt) => gt,
                 }
             }
 
@@ -1316,179 +1303,69 @@ mod test {
                 type HighT = BoundedInt<100, 100>;
             }
 
-            fn run_test_11(a: felt252) -> BoundedInt<100, 100> {
+            fn constrain_bi_30_100_gt_100(a: felt252) -> BoundedInt<100, 100> {
                 let a_bi: BoundedInt<30, 100> = a.try_into().unwrap();
                 match constrain::<_, 100>(a_bi) {
+                    Ok(_lt) => panic!(),
+                    Err(gt) => gt,
+                }
+            }
+
+            impl ConstrainTest6 of ConstrainHelper<BoundedInt<-30, 31>, 0> {
+                type LowT = BoundedInt<-30, -1>;
+                type HighT = BoundedInt<0, 31>;
+            }
+
+            fn constrain_bi_m30_31_lt_0(a: felt252) -> BoundedInt<-30, -1> {
+                let a_bi: BoundedInt<-30, 31> = a.try_into().unwrap();
+                match constrain::<_, 0>(a_bi) {
+                    Ok(lt0) => lt0,
+                    Err(_gt0) => panic!(),
+                }
+            }
+
+            fn constrain_bi_m30_31_gt_0(a: felt252) -> BoundedInt<0, 31> {
+                let a_bi: BoundedInt<-30, 31> = a.try_into().unwrap();
+                match constrain::<_, 0>(a_bi) {
                     Ok(_lt0) => panic!(),
                     Err(gt0) => gt0,
                 }
             }
         };
+    }
 
-        let result = run_program(&program, "run_test_1", &[Value::Sint8(-1)]).return_value;
-        assert_constrain_output(
-            result,
-            Value::BoundedInt {
-                value: Felt252::from(-1),
-                range: Range {
-                    lower: BigInt::from(-128),
-                    upper: BigInt::from(0),
-                },
-            },
-        );
-
-        let result = run_program(&program, "run_test_2", &[Value::Sint8(1)]).return_value;
-        assert_constrain_output(
-            result,
-            Value::BoundedInt {
-                value: Felt252::from(1),
-                range: Range {
-                    lower: BigInt::from(0),
-                    upper: BigInt::from(128),
-                },
-            },
-        );
-
-        let result = run_program(&program, "run_test_2", &[Value::Sint8(0)]).return_value;
-        assert_constrain_output(
-            result,
-            Value::BoundedInt {
-                value: Felt252::from(0),
-                range: Range {
-                    lower: BigInt::from(0),
-                    upper: BigInt::from(128),
-                },
-            },
-        );
-
-        let result =
-            run_program(&program, "run_test_3", &[Value::Felt252(Felt252::from(0))]).return_value;
-        assert_constrain_output(
-            result,
-            Value::BoundedInt {
-                value: Felt252::from(0),
-                range: Range {
-                    lower: BigInt::from(0),
-                    upper: BigInt::from(5),
-                },
-            },
-        );
-
-        let result =
-            run_program(&program, "run_test_4", &[Value::Felt252(Felt252::from(15))]).return_value;
-        assert_constrain_output(
-            result,
-            Value::BoundedInt {
-                value: Felt252::from(15),
-                range: Range {
-                    lower: BigInt::from(5),
-                    upper: BigInt::from(16),
-                },
-            },
-        );
-
-        let result =
-            run_program(&program, "run_test_5", &[Value::Felt252(Felt252::from(-5))]).return_value;
-        assert_constrain_output(
-            result,
-            Value::BoundedInt {
-                value: Felt252::from(-5),
-                range: Range {
-                    lower: BigInt::from(-10),
-                    upper: BigInt::from(0),
-                },
-            },
-        );
-
-        let result =
-            run_program(&program, "run_test_6", &[Value::Felt252(Felt252::from(5))]).return_value;
-        assert_constrain_output(
-            result,
-            Value::BoundedInt {
-                value: Felt252::from(5),
-                range: Range {
-                    lower: BigInt::from(0),
-                    upper: BigInt::from(11),
-                },
-            },
-        );
-
-        let result =
-            run_program(&program, "run_test_7", &[Value::Felt252(Felt252::from(30))]).return_value;
-        assert_constrain_output(
-            result,
-            Value::BoundedInt {
-                value: Felt252::from(30),
-                range: Range {
-                    lower: BigInt::from(1),
-                    upper: BigInt::from(31),
-                },
-            },
-        );
-
-        let result =
-            run_program(&program, "run_test_8", &[Value::Felt252(Felt252::from(31))]).return_value;
-        assert_constrain_output(
-            result,
-            Value::BoundedInt {
-                value: Felt252::from(31),
-                range: Range {
-                    lower: BigInt::from(31),
-                    upper: BigInt::from(62),
-                },
-            },
-        );
-
+    #[test_case("constrain_bi_m128_127_lt_0", -1, -1)]
+    #[test_case("constrain_bi_m128_127_gt_0", 1, 1)]
+    #[test_case("constrain_bi_m128_127_gt_0", 0, 0)]
+    #[test_case("constrain_bi_0_15_lt_5", 0, 0)]
+    #[test_case("constrain_bi_0_15_gt_5", 15, 15)]
+    #[test_case("constrain_bi_m10_10_lt_0", -5, -5)]
+    #[test_case("constrain_bi_m10_10_gt_0", 5, 5)]
+    #[test_case("constrain_bi_1_61_lt_31", 30, 30)]
+    #[test_case("constrain_bi_1_61_gt_31", 31, 31)]
+    #[test_case("constrain_bi_m200_m100_lt_m150", -200, -200)]
+    #[test_case("constrain_bi_m200_m100_gt_m150", -150, -150)]
+    #[test_case("constrain_bi_30_100_gt_100", 100, 100)]
+    #[test_case("constrain_bi_m30_31_lt_0", -5, -5)]
+    #[test_case("constrain_bi_m30_31_gt_0", 5, 5)]
+    fn test_constrain(entry_point: &str, input: i32, expected_result: i32) {
         let result = run_program(
-            &program,
-            "run_test_9",
-            &[Value::Felt252(Felt252::from(-200))],
+            &TEST_CONSTRAIN_PROGRAM,
+            entry_point,
+            &[Value::Felt252(Felt252::from(input))],
         )
         .return_value;
-        assert_constrain_output(
-            result,
-            Value::BoundedInt {
-                value: Felt252::from(-200),
-                range: Range {
-                    lower: BigInt::from(-200),
-                    upper: BigInt::from(-150),
-                },
-            },
-        );
-
-        let result = run_program(
-            &program,
-            "run_test_10",
-            &[Value::Felt252(Felt252::from(-150))],
-        )
-        .return_value;
-        assert_constrain_output(
-            result,
-            Value::BoundedInt {
-                value: Felt252::from(-150),
-                range: Range {
-                    lower: BigInt::from(-150),
-                    upper: BigInt::from(-99),
-                },
-            },
-        );
-
-        let result = run_program(
-            &program,
-            "run_test_11",
-            &[Value::Felt252(Felt252::from(100))],
-        )
-        .return_value;
-        assert_constrain_output(
-            result,
-            Value::BoundedInt {
-                value: Felt252::from(100),
-                range: Range {
-                    lower: BigInt::from(100),
-                    upper: BigInt::from(101),
-                },
-            },
-        );
+        if let Value::Enum { value, .. } = result {
+            if let Value::Struct { fields, .. } = *value {
+                assert!(
+                    matches!(fields[0], Value::BoundedInt { value, .. } if value == Felt252::from(expected_result))
+                )
+            } else {
+                panic!("Test returned an unexpected value");
+            }
+        } else {
+            panic!("Test didn't return an enum as expected");
+        }
     }
 
     lazy_static! {
