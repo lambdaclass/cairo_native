@@ -190,7 +190,7 @@ pub fn build_enum_value<'ctx, 'this>(
 ///   of possible values in the `BoundedInt` range.
 /// - The range of the `BoundedInt` must start from **0**.
 ///
-/// # Cairo Signature
+/// # Signature
 ///
 /// ```cairo
 /// fn enum_from_bounded_int<T, U>(index: U) -> T nopanic
