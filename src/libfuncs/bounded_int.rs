@@ -990,11 +990,11 @@ mod test {
             #[feature("bounded-int-utils")]
             use core::internal::bounded_int::{BoundedInt, sub, SubHelper};
 
-            impl SubHelper1 of SubHelper<BoundedInt<1, 1>, BoundedInt<1, 5>> {
+            impl SubHelperBI_1x1_BI_1x5 of SubHelper<BoundedInt<1, 1>, BoundedInt<1, 5>> {
                 type Result = BoundedInt<-4, 0>;
             }
 
-            fn run_test_1(
+            fn bi_1x1_minus_bi_1x5(
                 a: felt252,
                 b: felt252,
             ) -> BoundedInt<-4, 0> {
@@ -1003,11 +1003,11 @@ mod test {
                 return sub(a, b);
             }
 
-            impl SubHelper2 of SubHelper<BoundedInt<1, 1>, BoundedInt<1, 1>> {
+            impl SubHelperBI_1x1_BI_1x1 of SubHelper<BoundedInt<1, 1>, BoundedInt<1, 1>> {
                 type Result = BoundedInt<0, 0>;
             }
 
-            fn run_test_2(
+            fn bi_1x1_minus_bi_1x1(
                 a: felt252,
                 b: felt252,
             ) -> BoundedInt<0, 0> {
@@ -1016,11 +1016,11 @@ mod test {
                 return sub(a, b);
             }
 
-            impl SubHelper3 of SubHelper<BoundedInt<-3, -3>, BoundedInt<-3, -3>> {
+            impl SubHelperBI_m3xm3_BI_m3xm3 of SubHelper<BoundedInt<-3, -3>, BoundedInt<-3, -3>> {
                 type Result = BoundedInt<0, 0>;
             }
 
-            fn run_test_3(
+            fn bi_m3xm3_minus_bi_m3xm3(
                 a: felt252,
                 b: felt252,
             ) -> BoundedInt<0, 0> {
@@ -1029,11 +1029,11 @@ mod test {
                 return sub(a, b);
             }
 
-            impl SubHelper4 of SubHelper<BoundedInt<-6, -3>, BoundedInt<1, 3>> {
+            impl SubHelperBI_m6xm3_BI_1x3 of SubHelper<BoundedInt<-6, -3>, BoundedInt<1, 3>> {
                 type Result = BoundedInt<-9, -4>;
             }
 
-            fn run_test_4(
+            fn bi_m6xm3_minus_bi_1x3(
                 a: felt252,
                 b: felt252,
             ) -> BoundedInt<-9, -4> {
@@ -1042,11 +1042,11 @@ mod test {
                 return sub(a, b);
             }
 
-            impl SubHelper5 of SubHelper<BoundedInt<-6, -2>, BoundedInt<-20, -10>> {
+            impl SubHelperBI_m6xm2_BI_m20xm10 of SubHelper<BoundedInt<-6, -2>, BoundedInt<-20, -10>> {
                 type Result = BoundedInt<4, 18>;
             }
 
-            fn run_test_5(
+            fn bi_m6xm2_minus_bi_m20xm10(
                 a: felt252,
                 b: felt252,
             ) -> BoundedInt<4, 18> {
@@ -1057,11 +1057,11 @@ mod test {
         };
     }
 
-    #[test_case("run_test_1", 1, 5, -4)]
-    #[test_case("run_test_2", 1, 1, 0)]
-    #[test_case("run_test_3", -3, -3, 0)]
-    #[test_case("run_test_4", -6, 3, -9)]
-    #[test_case("run_test_5", -2, -20, 18)]
+    #[test_case("bi_1x1_minus_bi_1x5", 1, 5, -4)]
+    #[test_case("bi_1x1_minus_bi_1x1", 1, 1, 0)]
+    #[test_case("bi_m3xm3_minus_bi_m3xm3", -3, -3, 0)]
+    #[test_case("bi_m6xm3_minus_bi_1x3", -6, 3, -9)]
+    #[test_case("bi_m6xm2_minus_bi_m20xm10", -2, -20, 18)]
     fn test_sub(entry_point: &str, lhs: i32, rhs: i32, expected_result: i32) {
         let result = run_program(
             &TEST_SUB_PROGRAM,
