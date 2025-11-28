@@ -985,11 +985,11 @@ mod test {
             #[feature("bounded-int-utils")]
             use core::internal::bounded_int::{BoundedInt, add, AddHelper, UnitInt};
 
-            impl AddHelperBI_1_31_BI_1_1 of AddHelper<BoundedInt<1, 31>, BoundedInt<1, 1>> {
+            impl AddHelperBI_1x31_BI_1x1 of AddHelper<BoundedInt<1, 31>, BoundedInt<1, 1>> {
                 type Result = BoundedInt<2, 32>;
             }
 
-            fn bi_1_31_plus_bi_1_1(
+            fn bi_1x31_plus_bi_1x1(
                 a: felt252,
                 b: felt252,
             ) -> BoundedInt<2, 32> {
@@ -998,11 +998,11 @@ mod test {
                 return add(a, b);
             }
 
-            impl AddHelperBI_1_31_BI_m1_m1 of AddHelper<BoundedInt<1, 31>, BoundedInt<-1, -1>> {
+            impl AddHelperBI_1x31_BI_m1xm1 of AddHelper<BoundedInt<1, 31>, BoundedInt<-1, -1>> {
                 type Result = BoundedInt<0, 30>;
             }
 
-            fn bi_1_31_plus_bi_m1_m1(
+            fn bi_1x31_plus_bi_m1xm1(
                 a: felt252,
                 b: felt252,
             ) -> BoundedInt<0, 30> {
@@ -1011,11 +1011,11 @@ mod test {
                 return add(a, b);
             }
 
-            impl AddHelperBI_0_30_BI_0_10 of AddHelper<BoundedInt<0, 30>, BoundedInt<0, 10>> {
+            impl AddHelperBI_0x30_BI_0x10 of AddHelper<BoundedInt<0, 30>, BoundedInt<0, 10>> {
                 type Result = BoundedInt<0, 40>;
             }
 
-            fn bi_0_30_plus_bi_0_10(
+            fn bi_0x30_plus_bi_0x10(
                 a: felt252,
                 b: felt252,
             ) -> BoundedInt<0, 40> {
@@ -1024,11 +1024,11 @@ mod test {
                 return add(a, b);
             }
 
-            impl AddHelperBI_m20_m15_BI_0_10 of AddHelper<BoundedInt<-20, -15>, BoundedInt<0, 10>> {
+            impl AddHelperBI_m20xm15_BI_0x10 of AddHelper<BoundedInt<-20, -15>, BoundedInt<0, 10>> {
                 type Result = BoundedInt<-20, -5>;
             }
 
-            fn bi_m20_m15_plus_bi_0_10(
+            fn bi_m20xm15_plus_bi_0x10(
                 a: felt252,
                 b: felt252,
             ) -> BoundedInt<-20, -5> {
@@ -1037,11 +1037,11 @@ mod test {
                 return add(a, b);
             }
 
-            impl AddHelperBI_m5_m5_BI_m5_m5 of AddHelper<BoundedInt<-5, -5>, BoundedInt<-5, -5>> {
+            impl AddHelperBI_m5xm5_BI_m5xm5 of AddHelper<BoundedInt<-5, -5>, BoundedInt<-5, -5>> {
                 type Result = BoundedInt<-10, -10>;
             }
 
-            fn bi_m5_m5_plus_bi_m5_m5(
+            fn bi_m5xm5_plus_bi_m5xm5(
                 a: felt252,
                 b: felt252,
             ) -> BoundedInt<-10, -10> {
@@ -1050,11 +1050,11 @@ mod test {
                 return add(a, b);
             }
 
-            impl AddHelperBI_m5_m5_UI_m1 of AddHelper<BoundedInt<-5, -5>, UnitInt<-1>> {
+            impl AddHelperBI_m5xm5_UI_m1 of AddHelper<BoundedInt<-5, -5>, UnitInt<-1>> {
                 type Result = BoundedInt<-6, -6>;
             }
 
-            fn bi_m5_m5_plus_ui_m1(
+            fn bi_m5xm5_plus_ui_m1(
                 a: felt252,
                 b: felt252,
             ) -> BoundedInt<-6, -6> {
@@ -1063,11 +1063,11 @@ mod test {
                 return add(a, b);
             }
 
-            impl AddHelperUI_1_BI_m5_m5 of AddHelper<UnitInt<1>, BoundedInt<-5, -5>> {
+            impl AddHelperUI_1_BI_m5xm5 of AddHelper<UnitInt<1>, BoundedInt<-5, -5>> {
                 type Result = BoundedInt<-4, -4>;
             }
 
-            fn ui_m1_plus_bi_m5_m5(
+            fn ui_m1_plus_bi_m5xm5(
                 a: felt252,
                 b: felt252,
             ) -> BoundedInt<-4, -4> {
@@ -1078,14 +1078,14 @@ mod test {
         };
     }
 
-    #[test_case("bi_1_31_plus_bi_1_1", 31, 1, 32)]
-    #[test_case("bi_1_31_plus_bi_m1_m1", 31, -1, 30)]
-    #[test_case("bi_0_30_plus_bi_0_10", 30, 10, 40)]
-    #[test_case("bi_m20_m15_plus_bi_0_10", -15, 10, -5)]
-    #[test_case("bi_m20_m15_plus_bi_0_10", -20, 10, -10)]
-    #[test_case("bi_m5_m5_plus_bi_m5_m5", -5, -5, -10)]
-    #[test_case("bi_m5_m5_plus_ui_m1", -5, -1, -6)]
-    #[test_case("ui_m1_plus_bi_m5_m5", 1, -5, -4)]
+    #[test_case("bi_1x31_plus_bi_1x1", 31, 1, 32)]
+    #[test_case("bi_1x31_plus_bi_m1xm1", 31, -1, 30)]
+    #[test_case("bi_0x30_plus_bi_0x10", 30, 10, 40)]
+    #[test_case("bi_m20xm15_plus_bi_0x10", -15, 10, -5)]
+    #[test_case("bi_m20xm15_plus_bi_0x10", -20, 10, -10)]
+    #[test_case("bi_m5xm5_plus_bi_m5xm5", -5, -5, -10)]
+    #[test_case("bi_m5xm5_plus_ui_m1", -5, -1, -6)]
+    #[test_case("ui_m1_plus_bi_m5xm5", 1, -5, -4)]
     fn test_add(entry_point: &str, lhs: i32, rhs: i32, expected_result: i32) {
         let result = run_program(
             &TEST_ADD_PROGRAM,
