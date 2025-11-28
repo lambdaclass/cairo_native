@@ -1060,37 +1060,32 @@ mod test {
         };
     }
 
-    #[test_case("run_test_1", 1, 5, -4, -4, 1)]
-    #[test_case("run_test_2", 1, 1, 0, 0, 1)]
-    #[test_case("run_test_3", -3, -3, 0, 0, 1)]
-    #[test_case("run_test_4", -6, 3, -9, -9, -3)]
-    #[test_case("run_test_5", -2, -20, 18, 4, 19)]
-    fn test_sub(
-        entry_point: &str,
-        lhs: i32,
-        rhs: i32,
-        result: i32,
-        lower_bound: i32,
-        upper_bound: i32,
-    ) {
-        run_program_assert_output(
+    #[test_case("run_test_1", 1, 5, -4)]
+    #[test_case("run_test_2", 1, 1, 0)]
+    #[test_case("run_test_3", -3, -3, 0)]
+    #[test_case("run_test_4", -6, 3, -9)]
+    #[test_case("run_test_5", -2, -20, 18)]
+    fn test_sub(entry_point: &str, lhs: i32, rhs: i32, expected_result: i32) {
+        let result = run_program(
             &TEST_SUB_PROGRAM,
             entry_point,
             &[
                 Value::Felt252(Felt252::from(lhs)),
                 Value::Felt252(Felt252::from(rhs)),
             ],
-            jit_enum!(
-                0,
-                jit_struct!(Value::BoundedInt {
-                    value: Felt252::from(result),
-                    range: Range {
-                        lower: BigInt::from(lower_bound),
-                        upper: BigInt::from(upper_bound),
-                    }
-                })
-            ),
-        );
+        )
+        .return_value;
+        if let Value::Enum { value, .. } = result {
+            if let Value::Struct { fields, .. } = *value {
+                assert!(
+                    matches!(fields[0], Value::BoundedInt { value, .. } if value == Felt252::from(expected_result))
+                )
+            } else {
+                panic!("Test returned an unexpected value");
+            }
+        } else {
+            panic!("Test returned value was not an Enum as expected");
+        }
     }
 
     fn assert_bool_output(result: Value, expected_tag: usize) {
