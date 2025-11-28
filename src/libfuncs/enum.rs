@@ -187,7 +187,7 @@ pub fn build_enum_value<'ctx, 'this>(
 /// # Constraints
 ///
 /// - The target `Enum` must contain the same number of empty variants as the number
-/// of possible values in the `BoundedInt` range.
+///   of possible values in the `BoundedInt` range.
 /// - The range of the `BoundedInt` must start from **0**.
 ///
 /// # Cairo Signature
