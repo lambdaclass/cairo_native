@@ -2,11 +2,7 @@
 
 use super::LibfuncHelper;
 use crate::{
-    error::Result,
-    metadata::MetadataStorage,
-    native_assert, native_panic,
-    types::TypeBuilder,
-    utils::{RangeExt, HALF_PRIME, PRIME},
+    error::Result, libfuncs::increment_builtin_counter, metadata::MetadataStorage, native_assert, native_panic, types::TypeBuilder, utils::{HALF_PRIME, PRIME, RangeExt}
 };
 use cairo_lang_sierra::{
     extensions::{
@@ -68,19 +64,6 @@ pub fn build_downcast<'ctx, 'this>(
     let range_check = entry.arg(0)?;
     let src_value: Value = entry.arg(1)?;
 
-    // This is the trivial case, so we just return the value.
-    if info.signature.param_signatures[1].ty == info.signature.branch_signatures[0].vars[1].ty {
-        let k1 = entry.const_int(context, location, 1, 1)?;
-        return helper.cond_br(
-            context,
-            entry,
-            k1,
-            [0, 1],
-            [&[range_check, src_value], &[range_check]],
-            location,
-        );
-    }
-
     let src_ty = registry.get_type(&info.signature.param_signatures[1].ty)?;
     let dst_ty = registry.get_type(&info.signature.branch_signatures[0].vars[1].ty)?;
 
@@ -100,6 +83,29 @@ pub fn build_downcast<'ctx, 'this>(
     } else {
         src_ty.integer_range(registry)?
     };
+
+    // This is the trivial case, so we just return the value.
+    if info.signature.param_signatures[1].ty == info.signature.branch_signatures[0].vars[1].ty {
+        // if it is a trivial case and the source type's lower bound is equal 
+        // to zero then the cairo compiler checks the upper bound: 
+        // https://github.com/starkware-libs/cairo/blob/main/crates/cairo-lang-sierra/src/extensions/modules/casts.rs#L67.
+        // This means the range check gets incremented by one:
+        // https://github.com/starkware-libs/cairo/blob/main/crates/cairo-lang-sierra-to-casm/src/invocations/casts.rs#L56.
+        let range_check = if src_range.lower == 0.into() {
+            increment_builtin_counter(context, entry, location, range_check)?
+        } else {
+            range_check
+        };
+        let k1 = entry.const_int(context, location, 1, 1)?;
+        return helper.cond_br(
+            context,
+            entry,
+            k1,
+            [0, 1],
+            [&[range_check, src_value], &[range_check]],
+            location,
+        );
+    }
 
     let src_width = if src_ty.is_bounded_int(registry)? {
         src_range.offset_bit_width()
