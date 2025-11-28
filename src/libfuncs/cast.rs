@@ -124,7 +124,7 @@ pub fn build_downcast<'ctx, 'this>(
 
     let is_signed = src_range.lower.sign() == Sign::Minus;
 
-    // It can happen that the target type is wider then the source type. Extend the value representation.
+    // If the target type is wider than the source type, extend the value representation width.
     let src_value = if compute_width > src_width {
         if is_signed && !src_ty.is_bounded_int(registry)? && !src_ty.is_felt252(registry)? {
             entry.extsi(
