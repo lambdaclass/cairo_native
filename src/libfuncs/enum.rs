@@ -544,10 +544,8 @@ pub fn build_snapshot_match<'ctx, 'this>(
 #[cfg(test)]
 mod test {
     use crate::{
-        context::NativeContext,
-        jit_enum, jit_struct, load_cairo,
-        utils::testing::{run_program, run_program_assert_output},
-        Value,
+        context::NativeContext, jit_enum, jit_struct, load_cairo,
+        utils::testing::run_program_assert_output, Value,
     };
     use cairo_lang_sierra::program::Program;
     use lazy_static::lazy_static;
@@ -650,73 +648,77 @@ mod test {
             .unwrap();
     }
 
-    fn assert_from_bounded_int_output(result: Value, expected_tag: usize) {
-        if let Value::Enum { value, .. } = result {
-            if let Value::Struct { fields, .. } = *value {
-                if let Value::Enum { tag, .. } = fields[0] {
-                    assert_eq!(tag, expected_tag);
-                }
-            }
-        }
-    }
-
     #[test]
     fn create_enum_from_bounded_int() {
-        let program1 = load_cairo! {
+        let program = load_cairo! {
             #[feature("bounded-int-utils")]
-            use core::internal::bounded_int::{self, BoundedInt};
+            use core::internal::bounded_int::BoundedInt;
+            mod b0x4 {
+                #[feature("bounded-int-utils")]
+                use core::internal::bounded_int::BoundedInt;
+                pub extern fn enum_from_bounded_int<T>(index: BoundedInt<0, 4>) -> T nopanic;
 
-            extern fn enum_from_bounded_int<T>(index: BoundedInt<0, 4>) -> T nopanic;
+                // This wrapper is required so that the compiler won't assume extern `enum_from_bounded_int` is a
+                // branch function. Without it, the program does not compile.
+                fn wrapper<T>(index: BoundedInt<0, 4>) -> T {
+                    enum_from_bounded_int(index)
+                }
+            }
 
-            enum IndexEnum5 {
+            mod b0x0 {
+                #[feature("bounded-int-utils")]
+                use core::internal::bounded_int::BoundedInt;
+                pub extern fn enum_from_bounded_int<T>(index: BoundedInt<0, 0>) -> T nopanic;
+
+                // This wrapper is required so that the compiler won't assume extern `enum_from_bounded_int` is a
+                // branch function. Without it, the program does not compile.
+                fn wrapper<T>(index: BoundedInt<0, 0>) -> T {
+                    enum_from_bounded_int(index)
+                }
+            }
+
+            enum Enum1 {
+                Zero
+            }
+
+            enum Enum5 {
                 Zero,
                 One,
                 Two,
                 Three,
-                Four,
+                Four
             }
 
-            // This wrapper is required so that the compiler won't assume extern `enum_from_bounded_int` is a
-            // branch function. Without it, the program does not compile.
-            fn generic_func<T>(index: BoundedInt<0, 4>) -> T {
-                enum_from_bounded_int(index)
-            }
-
-            fn run_test(input: felt252) -> IndexEnum5 {
-                let bi: BoundedInt<0, 4> = input.try_into().unwrap();
-                generic_func(bi)
-            }
-        };
-
-        let result = run_program(&program1, "run_test", &[Value::Felt252(0.into())]).return_value;
-        assert_from_bounded_int_output(result, 0);
-
-        let result = run_program(&program1, "run_test", &[Value::Felt252(4.into())]).return_value;
-        assert_from_bounded_int_output(result, 4);
-
-        let program2 = load_cairo! {
-            #[feature("bounded-int-utils")]
-            use core::internal::bounded_int::{self, BoundedInt};
-
-            extern fn enum_from_bounded_int<T>(index: BoundedInt<0, 0>) -> T nopanic;
-
-            enum IndexEnum1 {
-                Zero,
-            }
-
-            // This wrapper is required so that the compiler won't assume extern `enum_from_bounded_int` is a
-            // branch function. Without it, the program does not compile.
-            fn generic_func<T>(index: BoundedInt<0, 0>) -> T {
-                enum_from_bounded_int(index)
-            }
-
-            fn run_test(input: felt252) -> IndexEnum1 {
+            fn test_1_variants(input: felt252) -> Enum1 {
                 let bi: BoundedInt<0, 0> = input.try_into().unwrap();
-                generic_func(bi)
+                b0x0::wrapper(bi)
+            }
+
+            fn test_5_variants(input: felt252) -> Enum5 {
+                let bi: BoundedInt<0, 4> = input.try_into().unwrap();
+                b0x4::wrapper(bi)
             }
         };
 
-        let result = run_program(&program2, "run_test", &[Value::Felt252(1.into())]).return_value;
-        assert_from_bounded_int_output(result, 0);
+        run_program_assert_output(
+            &program,
+            "test_1_variants",
+            &[Value::Felt252(0.into())],
+            jit_enum!(0, jit_struct!(jit_enum!(0, jit_struct!()))),
+        );
+
+        run_program_assert_output(
+            &program,
+            "test_5_variants",
+            &[Value::Felt252(0.into())],
+            jit_enum!(0, jit_struct!(jit_enum!(0, jit_struct!()))),
+        );
+
+        run_program_assert_output(
+            &program,
+            "test_5_variants",
+            &[Value::Felt252(4.into())],
+            jit_enum!(0, jit_struct!(jit_enum!(4, jit_struct!()))),
+        );
     }
 }
