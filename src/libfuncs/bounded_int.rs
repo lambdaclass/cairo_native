@@ -55,7 +55,7 @@ pub fn build<'ctx, 'this>(
             build_mul(context, registry, entry, location, helper, metadata, info)
         }
         BoundedIntConcreteLibfunc::DivRem(info) => {
-            build_divrem(context, registry, entry, location, helper, metadata, info)
+            build_div_rem(context, registry, entry, location, helper, metadata, info)
         }
         BoundedIntConcreteLibfunc::Constrain(info) => {
             build_constrain(context, registry, entry, location, helper, metadata, info)
@@ -445,9 +445,20 @@ fn build_mul<'ctx, 'this>(
     helper.br(entry, 0, &[res_value], location)
 }
 
-/// Generate MLIR operations for the `bounded_int_divrem` libfunc.
-/// Libfunc for dividing two non negative BoundedInts and getting the quotient and remainder.
-fn build_divrem<'ctx, 'this>(
+/// Builds the `bounded_int_div_rem` libfunc, which divides a non negative
+/// integer by a positive integer (non zero), returning the quotient and
+/// the remainder as bounded ints.
+///
+/// # Signature
+///
+/// ```cairo
+/// extern fn bounded_int_div_rem<Lhs, Rhs, impl H: DivRemHelper<Lhs, Rhs>>(
+///     lhs: Lhs, rhs: NonZero<Rhs>,
+/// ) -> (H::DivT, H::RemT) implicits(RangeCheck) nopanic;
+/// ```
+///
+/// The input arguments can be both regular integers or bounded ints.
+fn build_div_rem<'ctx, 'this>(
     context: &'ctx Context,
     registry: &ProgramRegistry<CoreType, CoreLibfunc>,
     entry: &'this Block<'ctx>,
@@ -491,17 +502,8 @@ fn build_divrem<'ctx, 'this>(
 
     // Calculate the computation range.
     let compute_range = Range {
-        lower: (&lhs_range.lower)
-            .min(&rhs_range.lower)
-            .min(&div_range.lower)
-            .min(&rem_range.lower)
-            .min(&BigInt::ZERO)
-            .clone(),
-        upper: (&lhs_range.upper)
-            .max(&rhs_range.upper)
-            .max(&div_range.upper)
-            .max(&rem_range.upper)
-            .clone(),
+        lower: BigInt::ZERO,
+        upper: (&lhs_range.upper).max(&rhs_range.upper).clone(),
     };
     let compute_ty = IntegerType::new(context, compute_range.zero_based_bit_width()).into();
 
@@ -554,23 +556,21 @@ fn build_divrem<'ctx, 'this>(
     let div_value = entry.append_op_result(arith::divui(lhs_value, rhs_value, location))?;
     let rem_value = entry.append_op_result(arith::remui(lhs_value, rhs_value, location))?;
 
-    // Offset and truncate the result to the output type.
-    let div_offset = (&div_range.lower).max(&compute_range.lower).clone();
-    let rem_offset = (&rem_range.lower).max(&compute_range.lower).clone();
-
-    let div_value = if div_offset != BigInt::ZERO {
-        let div_offset = entry.const_int_from_type(context, location, div_offset, compute_ty)?;
+    // Offset result to the output type.
+    let div_value = if div_range.lower.clone() != BigInt::ZERO {
+        let div_offset =
+            entry.const_int_from_type(context, location, div_range.lower.clone(), compute_ty)?;
         entry.append_op_result(arith::subi(div_value, div_offset, location))?
     } else {
         div_value
     };
-    let rem_value = if rem_offset != BigInt::ZERO {
-        let rem_offset = entry.const_int_from_type(context, location, rem_offset, compute_ty)?;
-        entry.append_op_result(arith::subi(rem_value, rem_offset, location))?
-    } else {
-        rem_value
-    };
 
+    native_assert!(
+        rem_range.lower == BigInt::ZERO,
+        "The remainder range lower bound should be zero"
+    );
+
+    // Truncate to the output type
     let div_value = if div_range.offset_bit_width() < compute_range.zero_based_bit_width() {
         entry.trunci(
             div_value,
@@ -648,8 +648,17 @@ fn build_constrain<'ctx, 'this>(
         .get_type(&info.branch_signatures()[1].vars[1].ty)?
         .integer_range(registry)?;
 
-    let boundary =
-        entry.const_int_from_type(context, location, info.boundary.clone(), src_value.r#type())?;
+    let boundary = if src_ty.is_bounded_int(registry)? {
+        entry.const_int_from_type(
+            context,
+            location,
+            info.boundary.clone() - src_range.lower.clone(),
+            src_value.r#type(),
+        )?
+    } else {
+        entry.const_int_from_type(context, location, info.boundary.clone(), src_value.r#type())?
+    };
+
     let is_lower = entry.cmpi(
         context,
         if src_range.lower.sign() == Sign::Minus {
@@ -806,7 +815,13 @@ fn build_is_zero<'ctx, 'this>(
         "value can never be zero"
     );
 
-    let k0 = entry.const_int_from_type(context, location, 0, src_value.r#type())?;
+    let k0 = if src_ty.is_bounded_int(registry)? {
+        // We can do the substraction since the lower bound of the bounded int will
+        // always be less or equal than 0.
+        entry.const_int_from_type(context, location, 0 - src_range.lower, src_value.r#type())?
+    } else {
+        entry.const_int_from_type(context, location, 0, src_value.r#type())?
+    };
     let src_is_zero = entry.cmpi(context, CmpiPredicate::Eq, src_value, k0, location)?;
 
     helper.cond_br(
@@ -851,11 +866,19 @@ fn build_wrap_non_zero<'ctx, 'this>(
 
 #[cfg(test)]
 mod test {
+    use cairo_lang_sierra::{extensions::utils::Range, program::Program};
     use cairo_vm::Felt252;
+    use lazy_static::lazy_static;
+    use num_bigint::BigInt;
+    use test_case::test_case;
 
     use crate::{
-        context::NativeContext, execution_result::ExecutionResult, executor::JitNativeExecutor,
-        load_cairo, OptLevel, Value,
+        context::NativeContext,
+        execution_result::ExecutionResult,
+        executor::JitNativeExecutor,
+        jit_enum, jit_struct, load_cairo,
+        utils::testing::{run_program, run_program_assert_output},
+        OptLevel, Value,
     };
 
     #[test]
@@ -988,5 +1011,414 @@ mod test {
             panic!();
         };
         assert_eq!(value, Felt252::from(0));
+    }
+
+    fn assert_bool_output(result: Value, expected_tag: usize) {
+        if let Value::Enum { tag, value, .. } = result {
+            assert_eq!(tag, 0);
+            if let Value::Struct { fields, .. } = *value {
+                if let Value::Enum { tag, .. } = fields[0] {
+                    assert_eq!(tag, expected_tag)
+                }
+            }
+        }
+    }
+
+    #[test]
+    fn test_is_zero() {
+        let program = load_cairo! {
+            #[feature("bounded-int-utils")]
+            use core::internal::bounded_int::{self, BoundedInt, is_zero};
+            use core::zeroable::IsZeroResult;
+
+            fn run_test_1(a: felt252) -> bool {
+                let bi: BoundedInt<0, 5> = a.try_into().unwrap();
+                match is_zero(bi) {
+                    IsZeroResult::Zero => true,
+                    IsZeroResult::NonZero(_) => false,
+                }
+            }
+
+            fn run_test_2(a: felt252) -> bool {
+                let bi: BoundedInt<-5, 5> = a.try_into().unwrap();
+                match is_zero(bi) {
+                    IsZeroResult::Zero => true,
+                    IsZeroResult::NonZero(_) => false,
+                }
+            }
+        };
+
+        let result =
+            run_program(&program, "run_test_1", &[Value::Felt252(Felt252::from(0))]).return_value;
+        assert_bool_output(result, 1);
+
+        let result =
+            run_program(&program, "run_test_1", &[Value::Felt252(Felt252::from(5))]).return_value;
+        assert_bool_output(result, 0);
+
+        let result =
+            run_program(&program, "run_test_2", &[Value::Felt252(Felt252::from(0))]).return_value;
+        assert_bool_output(result, 1);
+
+        let result =
+            run_program(&program, "run_test_2", &[Value::Felt252(Felt252::from(-5))]).return_value;
+        assert_bool_output(result, 0);
+    }
+
+    fn assert_constrain_output(result: Value, expected_bi: Value) {
+        if let Value::Enum { tag, value, .. } = result {
+            assert_eq!(tag, 0);
+            if let Value::Struct { fields, .. } = *value {
+                assert_eq!(expected_bi, fields[0]);
+            }
+        }
+    }
+
+    #[test]
+    fn test_constrain() {
+        let program = load_cairo! {
+            #[feature("bounded-int-utils")]
+            use core::internal::bounded_int::{self, BoundedInt, ConstrainHelper, constrain};
+
+            fn run_test_1(a: i8) -> BoundedInt<-128, -1> {
+                match constrain::<i8, 0>(a) {
+                    Ok(lt0) => lt0,
+                    Err(_gt0) => panic!(),
+                }
+            }
+
+            fn run_test_2(a: i8) -> BoundedInt<0, 127> {
+                match constrain::<i8, 0>(a) {
+                    Ok(_lt0) => panic!(),
+                    Err(gt0) => gt0,
+                }
+            }
+
+            impl ConstrainTest1 of ConstrainHelper<BoundedInt<0, 15>, 5> {
+                type LowT = BoundedInt<0, 4>;
+                type HighT = BoundedInt<5, 15>;
+            }
+
+            fn run_test_3(a: felt252) -> BoundedInt<0, 4> {
+                let a_bi: BoundedInt<0, 15> = a.try_into().unwrap();
+                match constrain::<_, 5>(a_bi) {
+                    Ok(lt0) => lt0,
+                    Err(_gt0) => panic!(),
+                }
+            }
+
+            fn run_test_4(a: felt252) -> BoundedInt<5, 15> {
+                let a_bi: BoundedInt<0, 15> = a.try_into().unwrap();
+                match constrain::<_, 5>(a_bi) {
+                    Ok(_lt0) => panic!(),
+                    Err(gt0) => gt0,
+                }
+            }
+
+            impl ConstrainTest2 of ConstrainHelper<BoundedInt<-10, 10>, 0> {
+                type LowT = BoundedInt<-10, -1>;
+                type HighT = BoundedInt<0, 10>;
+            }
+
+            fn run_test_5(a: felt252) -> BoundedInt<-10, -1> {
+                let a_bi: BoundedInt<-10, 10> = a.try_into().unwrap();
+                match constrain::<_, 0>(a_bi) {
+                    Ok(lt0) => lt0,
+                    Err(_gt0) => panic!(),
+                }
+            }
+
+            fn run_test_6(a: felt252) -> BoundedInt<0, 10> {
+                let a_bi: BoundedInt<-10, 10> = a.try_into().unwrap();
+                match constrain::<_, 0>(a_bi) {
+                    Ok(_lt0) => panic!(),
+                    Err(gt0) => gt0,
+                }
+            }
+
+            impl ConstrainTest3 of ConstrainHelper<BoundedInt<1, 61>, 31> {
+                type LowT = BoundedInt<1, 30>;
+                type HighT = BoundedInt<31, 61>;
+            }
+
+            fn run_test_7(a: felt252) -> BoundedInt<1, 30> {
+                let a_bi: BoundedInt<1, 61> = a.try_into().unwrap();
+                match constrain::<_, 31>(a_bi) {
+                    Ok(lt0) => lt0,
+                    Err(_gt0) => panic!(),
+                }
+            }
+
+            fn run_test_8(a: felt252) -> BoundedInt<31, 61> {
+                let a_bi: BoundedInt<1, 61> = a.try_into().unwrap();
+                match constrain::<_, 31>(a_bi) {
+                    Ok(_lt0) => panic!(),
+                    Err(gt0) => gt0,
+                }
+            }
+
+            impl ConstrainTest4 of ConstrainHelper<BoundedInt<-200, -100>, -150> {
+                type LowT = BoundedInt<-200, -151>;
+                type HighT = BoundedInt<-150, -100>;
+            }
+
+            fn run_test_9(a: felt252) -> BoundedInt<-200, -151> {
+                let a_bi: BoundedInt<-200, -100> = a.try_into().unwrap();
+                match constrain::<_, -150>(a_bi) {
+                    Ok(lt0) => lt0,
+                    Err(_gt0) => panic!(),
+                }
+            }
+
+            fn run_test_10(a: felt252) -> BoundedInt<-150, -100> {
+                let a_bi: BoundedInt<-200, -100> = a.try_into().unwrap();
+                match constrain::<_, -150>(a_bi) {
+                    Ok(_lt0) => panic!(),
+                    Err(gt0) => gt0,
+                }
+            }
+
+            impl ConstrainTest5 of ConstrainHelper<BoundedInt<30, 100>, 100> {
+                type LowT = BoundedInt<30, 99>;
+                type HighT = BoundedInt<100, 100>;
+            }
+
+            fn run_test_11(a: felt252) -> BoundedInt<100, 100> {
+                let a_bi: BoundedInt<30, 100> = a.try_into().unwrap();
+                match constrain::<_, 100>(a_bi) {
+                    Ok(_lt0) => panic!(),
+                    Err(gt0) => gt0,
+                }
+            }
+        };
+
+        let result = run_program(&program, "run_test_1", &[Value::Sint8(-1)]).return_value;
+        assert_constrain_output(
+            result,
+            Value::BoundedInt {
+                value: Felt252::from(-1),
+                range: Range {
+                    lower: BigInt::from(-128),
+                    upper: BigInt::from(0),
+                },
+            },
+        );
+
+        let result = run_program(&program, "run_test_2", &[Value::Sint8(1)]).return_value;
+        assert_constrain_output(
+            result,
+            Value::BoundedInt {
+                value: Felt252::from(1),
+                range: Range {
+                    lower: BigInt::from(0),
+                    upper: BigInt::from(128),
+                },
+            },
+        );
+
+        let result = run_program(&program, "run_test_2", &[Value::Sint8(0)]).return_value;
+        assert_constrain_output(
+            result,
+            Value::BoundedInt {
+                value: Felt252::from(0),
+                range: Range {
+                    lower: BigInt::from(0),
+                    upper: BigInt::from(128),
+                },
+            },
+        );
+
+        let result =
+            run_program(&program, "run_test_3", &[Value::Felt252(Felt252::from(0))]).return_value;
+        assert_constrain_output(
+            result,
+            Value::BoundedInt {
+                value: Felt252::from(0),
+                range: Range {
+                    lower: BigInt::from(0),
+                    upper: BigInt::from(5),
+                },
+            },
+        );
+
+        let result =
+            run_program(&program, "run_test_4", &[Value::Felt252(Felt252::from(15))]).return_value;
+        assert_constrain_output(
+            result,
+            Value::BoundedInt {
+                value: Felt252::from(15),
+                range: Range {
+                    lower: BigInt::from(5),
+                    upper: BigInt::from(16),
+                },
+            },
+        );
+
+        let result =
+            run_program(&program, "run_test_5", &[Value::Felt252(Felt252::from(-5))]).return_value;
+        assert_constrain_output(
+            result,
+            Value::BoundedInt {
+                value: Felt252::from(-5),
+                range: Range {
+                    lower: BigInt::from(-10),
+                    upper: BigInt::from(0),
+                },
+            },
+        );
+
+        let result =
+            run_program(&program, "run_test_6", &[Value::Felt252(Felt252::from(5))]).return_value;
+        assert_constrain_output(
+            result,
+            Value::BoundedInt {
+                value: Felt252::from(5),
+                range: Range {
+                    lower: BigInt::from(0),
+                    upper: BigInt::from(11),
+                },
+            },
+        );
+
+        let result =
+            run_program(&program, "run_test_7", &[Value::Felt252(Felt252::from(30))]).return_value;
+        assert_constrain_output(
+            result,
+            Value::BoundedInt {
+                value: Felt252::from(30),
+                range: Range {
+                    lower: BigInt::from(1),
+                    upper: BigInt::from(31),
+                },
+            },
+        );
+
+        let result =
+            run_program(&program, "run_test_8", &[Value::Felt252(Felt252::from(31))]).return_value;
+        assert_constrain_output(
+            result,
+            Value::BoundedInt {
+                value: Felt252::from(31),
+                range: Range {
+                    lower: BigInt::from(31),
+                    upper: BigInt::from(62),
+                },
+            },
+        );
+
+        let result = run_program(
+            &program,
+            "run_test_9",
+            &[Value::Felt252(Felt252::from(-200))],
+        )
+        .return_value;
+        assert_constrain_output(
+            result,
+            Value::BoundedInt {
+                value: Felt252::from(-200),
+                range: Range {
+                    lower: BigInt::from(-200),
+                    upper: BigInt::from(-150),
+                },
+            },
+        );
+
+        let result = run_program(
+            &program,
+            "run_test_10",
+            &[Value::Felt252(Felt252::from(-150))],
+        )
+        .return_value;
+        assert_constrain_output(
+            result,
+            Value::BoundedInt {
+                value: Felt252::from(-150),
+                range: Range {
+                    lower: BigInt::from(-150),
+                    upper: BigInt::from(-99),
+                },
+            },
+        );
+
+        let result = run_program(
+            &program,
+            "run_test_11",
+            &[Value::Felt252(Felt252::from(100))],
+        )
+        .return_value;
+        assert_constrain_output(
+            result,
+            Value::BoundedInt {
+                value: Felt252::from(100),
+                range: Range {
+                    lower: BigInt::from(100),
+                    upper: BigInt::from(101),
+                },
+            },
+        );
+    }
+
+    lazy_static! {
+        static ref TEST_DIV_REM_PROGRAM: (String, Program) = load_cairo! {
+            #[feature("bounded-int-utils")]
+            use core::internal::bounded_int::{self, BoundedInt, div_rem, DivRemHelper};
+            use core::internal::OptionRev;
+            extern fn bounded_int_wrap_non_zero<T>(v: T) -> NonZero<T> nopanic;
+
+
+            impl Helper_u8_u8 of DivRemHelper<u8, u8> {
+                type DivT = BoundedInt<0, 255>;
+                type RemT = BoundedInt<0, 254>;
+            }
+            fn test_u8(a: felt252, b: felt252) -> (felt252, felt252) {
+                let a_int: u8 = a.try_into().unwrap();
+                let b_int: u8 = b.try_into().unwrap();
+                let b_nz: NonZero<u8> = b_int.try_into().unwrap();
+                let (q, r) = div_rem(a_int, b_nz);
+                return (q.into(), r.into());
+            }
+
+            impl Helper_10_100_10_40 of DivRemHelper<BoundedInt<10, 100>, BoundedInt<10, 40>> {
+                type DivT = BoundedInt<0, 10>;
+                type RemT = BoundedInt<0, 39>;
+            }
+            fn test_10_100_10_40(a: felt252, b: felt252) -> (felt252, felt252) {
+                let a_int: BoundedInt<10, 100> = a.try_into().unwrap();
+                let b_int: BoundedInt<10, 40> = b.try_into().unwrap();
+                let (q, r) = div_rem(a_int, bounded_int_wrap_non_zero(b_int));
+                return (q.into(), r.into());
+            }
+
+            impl Helper_50_100_20_40 of DivRemHelper<BoundedInt<50, 100>, BoundedInt<20, 40>> {
+                type DivT = BoundedInt<1, 5>;
+                type RemT = BoundedInt<0, 39>;
+            }
+            fn test_50_100_20_40(a: felt252, b: felt252) -> (felt252, felt252) {
+                let a_int: BoundedInt<50, 100> = a.try_into().unwrap();
+                let b_int: BoundedInt<20, 40> = b.try_into().unwrap();
+                let (q, r) = div_rem(a_int, bounded_int_wrap_non_zero(b_int));
+                return (q.into(), r.into());
+            }
+        };
+    }
+
+    #[test_case("test_u8", 100, 30, 3, 10)]
+    #[test_case("test_10_100_10_40", 100, 30, 3, 10)]
+    #[test_case("test_50_100_20_40", 100, 30, 3, 10)]
+    fn test_div_rem(entry_point: &str, a: i32, b: i32, expected_q: u32, expected_r: u32) {
+        let arguments = &[Felt252::from(a).into(), Felt252::from(b).into()];
+        let expected_result = jit_enum!(
+            0,
+            jit_struct!(jit_struct!(
+                Felt252::from(expected_q).into(),
+                Felt252::from(expected_r).into(),
+            ))
+        );
+        run_program_assert_output(
+            &TEST_DIV_REM_PROGRAM,
+            entry_point,
+            arguments,
+            expected_result,
+        );
     }
 }

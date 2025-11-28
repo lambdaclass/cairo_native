@@ -109,6 +109,9 @@ fn invoke_dynamic(
         .peekable();
 
     let num_return_args = ret_types_iter.clone().count();
+    // If there is more than one return value, or the return value is _complex_,
+    // as defined by the architecture ABI, then we pass a return pointer as
+    // the first argument to the program entrypoint.
     let mut return_ptr = if num_return_args > 1
         || ret_types_iter
             .peek()
@@ -116,6 +119,7 @@ fn invoke_dynamic(
             .transpose()?
             == Some(true)
     {
+        // The return pointer should be able to hold all the return values.
         let layout = ret_types_iter.try_fold(Layout::new::<()>(), |layout, id| {
             let type_info = registry.get_type(id)?;
             Result::<_, Error>::Ok(layout.extend(type_info.layout(registry)?)?.0)
