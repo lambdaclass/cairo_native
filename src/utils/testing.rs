@@ -247,8 +247,13 @@ pub fn run_program_assert_output(
     assert_eq!(result.return_value, output);
 }
 
+/// Serializes a message into a vector of felts, the same way that Cairo
+/// serializes byte arrays. Used for asserting panic message on tests.
+///
+/// https://github.com/starkware-libs/cairo/tree/v2.12.3/corelib/src/debug.cairo#L142
 pub fn panic_byte_array(message: &str) -> Vec<Felt> {
-    // Prepend byte array magic - from Cairo corelib.
+    // Prepend byte array magic, used to identify serialized `ByteArray` variables.
+    // https://github.com/starkware-libs/cairo/tree/v2.12.3/corelib/src/byte_array.cairo#L64
     let mut array = vec![Felt::from_hex_unchecked(
         "0x46a6158a16a947e5916b2a2ca68501a45e93d7110e81aa2d6438b1c57c879a3",
     )];
