@@ -177,6 +177,7 @@ fn test_program_cases(program_path: &str) {
 #[test_case("tests/cases/cairo_vm/contracts/field_sqrt.cairo", &[])]
 #[test_case("tests/cases/cairo_vm/contracts/random_ec_point.cairo", &[])]
 #[test_case("tests/cases/cairo_vm/contracts/alloc_constant_size.cairo", &[10, 10, 10])]
+#[test_case("tests/cases/cairo_vm/contracts/heavy_blake2s.cairo", &[])]
 fn test_contract_cases(program_path: &str, args: &[u128]) {
     let args = args.iter().map(|&arg| arg.into()).collect_vec();
 
@@ -206,6 +207,9 @@ fn test_contract_cases(program_path: &str, args: &[u128]) {
     let native_output = native_result.return_values;
 
     let vm_output = run_vm_contract(&contract, &entrypoint.selector, &args);
+
+    dbg!(&native_output);
+    dbg!(&vm_output);
 
     assert_eq_sorted!(vm_output, native_output);
 }
