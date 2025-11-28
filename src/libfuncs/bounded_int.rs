@@ -1003,7 +1003,7 @@ mod test {
                 panic!("Test returned an unexpected value");
             }
         } else {
-            panic!("Test returned value was not an Enum as expected");
+            panic!("Test didn't return an enum as expected");
         }
     }
 
