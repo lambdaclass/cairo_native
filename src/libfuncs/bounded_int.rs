@@ -1061,7 +1061,7 @@ mod test {
             #[feature("bounded-int-utils")]
             use core::internal::bounded_int::{self, BoundedInt, ConstrainHelper, constrain};
 
-            fn run_test_1(a: felt252) -> BoundedInt<-128, -1> {
+            fn constrain_bi_m128_127_lt_0(a: felt252) -> BoundedInt<-128, -1> {
                 let a: i8 = a.try_into().unwrap();
                 match constrain::<i8, 0>(a) {
                     Ok(lt0) => lt0,
@@ -1069,7 +1069,7 @@ mod test {
                 }
             }
 
-            fn run_test_2(a: felt252) -> BoundedInt<0, 127> {
+            fn constrain_bi_m128_127_gt_0(a: felt252) -> BoundedInt<0, 127> {
                 let a: i8 = a.try_into().unwrap();
                 match constrain::<i8, 0>(a) {
                     Ok(_lt0) => panic!(),
@@ -1082,19 +1082,19 @@ mod test {
                 type HighT = BoundedInt<5, 15>;
             }
 
-            fn run_test_3(a: felt252) -> BoundedInt<0, 4> {
+            fn constrain_bi_0_15_lt_5(a: felt252) -> BoundedInt<0, 4> {
                 let a_bi: BoundedInt<0, 15> = a.try_into().unwrap();
                 match constrain::<_, 5>(a_bi) {
-                    Ok(lt0) => lt0,
-                    Err(_gt0) => panic!(),
+                    Ok(lt) => lt,
+                    Err(_gt) => panic!(),
                 }
             }
 
-            fn run_test_4(a: felt252) -> BoundedInt<5, 15> {
+            fn constrain_bi_0_15_gt_5(a: felt252) -> BoundedInt<5, 15> {
                 let a_bi: BoundedInt<0, 15> = a.try_into().unwrap();
                 match constrain::<_, 5>(a_bi) {
-                    Ok(_lt0) => panic!(),
-                    Err(gt0) => gt0,
+                    Ok(_lt) => panic!(),
+                    Err(gt) => gt,
                 }
             }
 
@@ -1103,7 +1103,7 @@ mod test {
                 type HighT = BoundedInt<0, 10>;
             }
 
-            fn run_test_5(a: felt252) -> BoundedInt<-10, -1> {
+            fn constrain_bi_m10_10_lt_0(a: felt252) -> BoundedInt<-10, -1> {
                 let a_bi: BoundedInt<-10, 10> = a.try_into().unwrap();
                 match constrain::<_, 0>(a_bi) {
                     Ok(lt0) => lt0,
@@ -1111,7 +1111,7 @@ mod test {
                 }
             }
 
-            fn run_test_6(a: felt252) -> BoundedInt<0, 10> {
+            fn constrain_bi_m10_10_gt_0(a: felt252) -> BoundedInt<0, 10> {
                 let a_bi: BoundedInt<-10, 10> = a.try_into().unwrap();
                 match constrain::<_, 0>(a_bi) {
                     Ok(_lt0) => panic!(),
@@ -1124,19 +1124,19 @@ mod test {
                 type HighT = BoundedInt<31, 61>;
             }
 
-            fn run_test_7(a: felt252) -> BoundedInt<1, 30> {
+            fn constrain_bi_1_61_lt_31(a: felt252) -> BoundedInt<1, 30> {
                 let a_bi: BoundedInt<1, 61> = a.try_into().unwrap();
                 match constrain::<_, 31>(a_bi) {
-                    Ok(lt0) => lt0,
-                    Err(_gt0) => panic!(),
+                    Ok(lt) => lt,
+                    Err(_gt) => panic!(),
                 }
             }
 
-            fn run_test_8(a: felt252) -> BoundedInt<31, 61> {
+            fn constrain_bi_1_61_gt_31(a: felt252) -> BoundedInt<31, 61> {
                 let a_bi: BoundedInt<1, 61> = a.try_into().unwrap();
                 match constrain::<_, 31>(a_bi) {
-                    Ok(_lt0) => panic!(),
-                    Err(gt0) => gt0,
+                    Ok(_lt) => panic!(),
+                    Err(gt) => gt,
                 }
             }
 
@@ -1145,19 +1145,19 @@ mod test {
                 type HighT = BoundedInt<-150, -100>;
             }
 
-            fn run_test_9(a: felt252) -> BoundedInt<-200, -151> {
+            fn constrain_bi_m200_m100_lt_m150(a: felt252) -> BoundedInt<-200, -151> {
                 let a_bi: BoundedInt<-200, -100> = a.try_into().unwrap();
                 match constrain::<_, -150>(a_bi) {
-                    Ok(lt0) => lt0,
-                    Err(_gt0) => panic!(),
+                    Ok(lt) => lt,
+                    Err(_gt) => panic!(),
                 }
             }
 
-            fn run_test_10(a: felt252) -> BoundedInt<-150, -100> {
+            fn constrain_bi_m200_m100_gt_m150(a: felt252) -> BoundedInt<-150, -100> {
                 let a_bi: BoundedInt<-200, -100> = a.try_into().unwrap();
                 match constrain::<_, -150>(a_bi) {
-                    Ok(_lt0) => panic!(),
-                    Err(gt0) => gt0,
+                    Ok(_lt) => panic!(),
+                    Err(gt) => gt,
                 }
             }
 
@@ -1166,11 +1166,11 @@ mod test {
                 type HighT = BoundedInt<100, 100>;
             }
 
-            fn run_test_11(a: felt252) -> BoundedInt<100, 100> {
+            fn constrain_bi_30_100_gt_100(a: felt252) -> BoundedInt<100, 100> {
                 let a_bi: BoundedInt<30, 100> = a.try_into().unwrap();
                 match constrain::<_, 100>(a_bi) {
-                    Ok(_lt0) => panic!(),
-                    Err(gt0) => gt0,
+                    Ok(_lt) => panic!(),
+                    Err(gt) => gt,
                 }
             }
 
@@ -1179,7 +1179,7 @@ mod test {
                 type HighT = BoundedInt<0, 31>;
             }
 
-            fn run_test_12(a: felt252) -> BoundedInt<-30, -1> {
+            fn constrain_bi_m30_31_lt_0(a: felt252) -> BoundedInt<-30, -1> {
                 let a_bi: BoundedInt<-30, 31> = a.try_into().unwrap();
                 match constrain::<_, 0>(a_bi) {
                     Ok(lt0) => lt0,
@@ -1187,7 +1187,7 @@ mod test {
                 }
             }
 
-            fn run_test_13(a: felt252) -> BoundedInt<0, 31> {
+            fn constrain_bi_m30_31_gt_0(a: felt252) -> BoundedInt<0, 31> {
                 let a_bi: BoundedInt<-30, 31> = a.try_into().unwrap();
                 match constrain::<_, 0>(a_bi) {
                     Ok(_lt0) => panic!(),
@@ -1197,20 +1197,20 @@ mod test {
         };
     }
 
-    #[test_case("run_test_1", -1, -1)]
-    #[test_case("run_test_2", 1, 1)]
-    #[test_case("run_test_2", 0, 0)]
-    #[test_case("run_test_3", 0, 0)]
-    #[test_case("run_test_4", 15, 15)]
-    #[test_case("run_test_5", -5, -5)]
-    #[test_case("run_test_6", 5, 5)]
-    #[test_case("run_test_7", 30, 30)]
-    #[test_case("run_test_8", 31, 31)]
-    #[test_case("run_test_9", -200, -200)]
-    #[test_case("run_test_10", -150, -150)]
-    #[test_case("run_test_11", 100, 100)]
-    #[test_case("run_test_12", -5, -5)]
-    #[test_case("run_test_13", 5, 5)]
+    #[test_case("constrain_bi_m128_127_lt_0", -1, -1)]
+    #[test_case("constrain_bi_m128_127_gt_0", 1, 1)]
+    #[test_case("constrain_bi_m128_127_gt_0", 0, 0)]
+    #[test_case("constrain_bi_0_15_lt_5", 0, 0)]
+    #[test_case("constrain_bi_0_15_gt_5", 15, 15)]
+    #[test_case("constrain_bi_m10_10_lt_0", -5, -5)]
+    #[test_case("constrain_bi_m10_10_gt_0", 5, 5)]
+    #[test_case("constrain_bi_1_61_lt_31", 30, 30)]
+    #[test_case("constrain_bi_1_61_gt_31", 31, 31)]
+    #[test_case("constrain_bi_m200_m100_lt_m150", -200, -200)]
+    #[test_case("constrain_bi_m200_m100_gt_m150", -150, -150)]
+    #[test_case("constrain_bi_30_100_gt_100", 100, 100)]
+    #[test_case("constrain_bi_m30_31_lt_0", -5, -5)]
+    #[test_case("constrain_bi_m30_31_gt_0", 5, 5)]
     fn test_constrain(entry_point: &str, input: i32, expected_result: i32) {
         let result = run_program(
             &TEST_CONSTRAIN_PROGRAM,
