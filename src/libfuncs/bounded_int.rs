@@ -279,9 +279,9 @@ fn build_sub<'ctx, 'this>(
 
     let compile_time_val =
         entry.const_int_from_type(context, location, compile_time_val, compute_ty)?;
-    // First we do -> Ad - Bd = intermediate_res
+    // First we do -> intermediate_res = Ad - Bd
     let res_value = entry.subi(lhs_value, rhs_value, location)?;
-    // Then we do -> intermediate_res + (Ao - Bo - Co)
+    // Then we do -> intermediate_res += (Ao - Bo - Co)
     let res_value = entry.addi(res_value, compile_time_val, location)?;
     // Get the result value on the desired range
     let res_value = if compute_width > dst_width {
