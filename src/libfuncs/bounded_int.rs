@@ -129,15 +129,6 @@ fn build_add<'ctx, 'this>(
     let compute_width = lhs_width.max(rhs_width) + 1;
     let compute_ty = IntegerType::new(context, compute_width).into();
 
-    native_assert!(
-        compute_width >= lhs_width,
-        "the lhs_range bit_width must be less or equal than the compute_range"
-    );
-    native_assert!(
-        compute_width >= rhs_width,
-        "the rhs_range bit_width must be less or equal than the compute_range"
-    );
-
     // Get the operands on the same number of bits so we can operate with them
     let lhs_value = if compute_width > lhs_width {
         if lhs_range.lower.sign() != Sign::Minus || lhs_ty.is_bounded_int(registry)? {
