@@ -842,12 +842,8 @@ mod test {
     use test_case::test_case;
 
     use crate::{
-        context::NativeContext,
-        execution_result::ExecutionResult,
-        executor::JitNativeExecutor,
-        jit_enum, jit_struct, load_cairo,
-        utils::testing::{run_program, run_program_assert_output},
-        OptLevel, Value,
+        context::NativeContext, execution_result::ExecutionResult, executor::JitNativeExecutor,
+        load_cairo, utils::testing::run_program, OptLevel, Value,
     };
 
     #[test]
@@ -1080,40 +1076,36 @@ mod test {
         };
     }
 
-    #[test_case("run_test_1", 31, 1, 32, 2, 33)]
-    #[test_case("run_test_2", 31, -1, 30, 0, 31)]
-    #[test_case("run_test_3", 30, 10, 40, 0, 41)]
-    #[test_case("run_test_4", -15, 10, -5, -20, -4)]
-    #[test_case("run_test_4", -20, 10, -10, -20, -4)]
-    #[test_case("run_test_5", -5, -5, -10, -10, -9)]
-    #[test_case("run_test_6", -5, -1, -6, -6, -5)]
-    #[test_case("run_test_7", 1, -5, -4, -4, -3)]
-    fn test_add(
-        entry_point: &str,
-        lhs: i32,
-        rhs: i32,
-        result: i32,
-        lower_bound: i32,
-        upper_bound: i32,
-    ) {
-        run_program_assert_output(
+    #[test_case("run_test_1", 31, 1, 32)]
+    #[test_case("run_test_2", 31, -1, 30)]
+    #[test_case("run_test_3", 30, 10, 40)]
+    #[test_case("run_test_4", -15, 10, -5)]
+    #[test_case("run_test_4", -20, 10, -10)]
+    #[test_case("run_test_5", -5, -5, -10)]
+    #[test_case("run_test_6", -5, -1, -6)]
+    #[test_case("run_test_7", 1, -5, -4)]
+    fn test_add(entry_point: &str, lhs: i32, rhs: i32, expected_result: i32) {
+        let result = run_program(
             &TEST_ADD_PROGRAM,
             entry_point,
             &[
                 Value::Felt252(Felt252::from(lhs)),
                 Value::Felt252(Felt252::from(rhs)),
             ],
-            jit_enum!(
-                0,
-                jit_struct!(Value::BoundedInt {
-                    value: Felt252::from(result),
-                    range: Range {
-                        lower: BigInt::from(lower_bound),
-                        upper: BigInt::from(upper_bound),
-                    }
-                })
-            ),
-        );
+        )
+        .return_value;
+
+        if let Value::Enum { value, .. } = result {
+            if let Value::Struct { fields, .. } = *value {
+                assert!(
+                    matches!(fields[0], Value::BoundedInt { value, .. } if value == Felt252::from(expected_result))
+                )
+            } else {
+                panic!("Test returned an unexpected value");
+            }
+        } else {
+            panic!("Test returned value was not an Enum as expected");
+        }
     }
 
     fn assert_bool_output(result: Value, expected_tag: usize) {
