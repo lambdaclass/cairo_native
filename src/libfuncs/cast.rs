@@ -488,7 +488,9 @@ pub fn build_upcast<'ctx, 'this>(
 
 #[cfg(test)]
 mod test {
-    use crate::{Value, jit_enum, jit_struct, load_cairo, utils::testing::run_program_assert_output};
+    use crate::{
+        jit_enum, jit_struct, load_cairo, utils::testing::run_program_assert_output, Value,
+    };
     use cairo_lang_sierra::program::Program;
     use lazy_static::lazy_static;
     use starknet_types_core::felt::Felt;
