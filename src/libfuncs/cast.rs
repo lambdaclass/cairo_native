@@ -329,7 +329,7 @@ pub fn build_downcast<'ctx, 'this>(
     Ok(())
 }
 
-/// Builds the `upcast` libfunc, which convert from a source type `T` to a
+/// Builds the `upcast` libfunc, which converts from a source type `T` to a
 /// target type `U`, where `U` fully includes `T`. This means that the operation
 /// cannot fail.
 ///
