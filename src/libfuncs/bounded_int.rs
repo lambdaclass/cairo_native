@@ -844,12 +844,8 @@ fn build_wrap_non_zero<'ctx, 'this>(
 #[cfg(test)]
 mod test {
     use crate::{
-        context::NativeContext,
-        execution_result::ExecutionResult,
-        executor::JitNativeExecutor,
-        jit_enum, jit_struct, load_cairo,
-        utils::testing::{run_program, run_program_assert_output},
-        OptLevel, Value,
+        context::NativeContext, execution_result::ExecutionResult, executor::JitNativeExecutor,
+        load_cairo, utils::testing::run_program, OptLevel, Value,
     };
     use cairo_lang_sierra::{extensions::utils::Range, program::Program};
     use cairo_vm::Felt252;
