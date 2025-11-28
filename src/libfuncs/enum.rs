@@ -183,6 +183,18 @@ pub fn build_enum_value<'ctx, 'this>(
 }
 
 /// Generate MLIR operations for the `enum_from_bounded_int` libfunc.
+///
+/// # Constraints
+///
+/// - The target `Enum` must contain the same number of empty variants as the number
+/// of possible values in the `BoundedInt` range.
+/// - The range of the `BoundedInt` must start from **0**.
+///
+/// # Cairo Signature
+///
+/// ```cairo
+/// fn enum_from_bounded_int<T, U>(index: U) -> T nopanic
+/// ```
 pub fn build_from_bounded_int<'ctx, 'this>(
     context: &'ctx Context,
     registry: &ProgramRegistry<CoreType, CoreLibfunc>,
