@@ -372,7 +372,7 @@ pub fn build_upcast<'ctx, 'this>(
             };
             let signed_dst_contains_src = signed_dst_range.lower <= src_range.lower
                 && signed_dst_range.upper >= src_range.upper;
-            dst_contains_src | signed_dst_contains_src
+            dst_contains_src || signed_dst_contains_src
         } else {
             dst_contains_src
         };
