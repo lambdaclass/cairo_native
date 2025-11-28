@@ -89,13 +89,12 @@ pub fn build_downcast<'ctx, 'this>(
         src_ty.integer_range(registry)?
     };
 
-    // This is the trivial case, so we just return the value.
+    // When the source type is the same as the target type, we just return the
+    // value as it cannot fail. However, for backwards compatibility, we need to
+    // increment the range check as if we were checking the upper bound. See:
+    // - https://github.com/starkware-libs/cairo/tree/v2.12.3/crates/cairo-lang-sierra/src/extensions/modules/casts.rs#L67.
+    // - https://github.com/starkware-libs/cairo/tree/v2.12.3/crates/cairo-lang-sierra-to-casm/src/invocations/casts.rs#L56.
     if info.signature.param_signatures[1].ty == info.signature.branch_signatures[0].vars[1].ty {
-        // if it is a trivial case and the source type's lower bound is equal
-        // to zero then the cairo compiler checks the upper bound:
-        // https://github.com/starkware-libs/cairo/blob/main/crates/cairo-lang-sierra/src/extensions/modules/casts.rs#L67.
-        // This means the range check gets incremented by one:
-        // https://github.com/starkware-libs/cairo/blob/main/crates/cairo-lang-sierra-to-casm/src/invocations/casts.rs#L56.
         let range_check = if src_range.lower == 0.into() {
             increment_builtin_counter(context, entry, location, range_check)?
         } else {
