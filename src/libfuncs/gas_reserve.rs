@@ -197,7 +197,7 @@ mod test {
                 }
             );
 
-            let result = run_program(&program, "run_test", &[Value::Uint128(gas_quant)]).return_value;
+            let result = run_program(&program, "run_test", &[Value::Uint128(gas_quant as u128)]).return_value;
             if let Value::Enum { tag, .. } = result {
                 assert_eq!(tag, 1);
             }
