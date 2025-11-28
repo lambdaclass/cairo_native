@@ -201,9 +201,19 @@ fn build_add<'ctx, 'this>(
 
 /// Generate MLIR operations for the `bounded_int_sub` libfunc.
 ///
+/// # Cairo Signature
+/// ```cairo
+/// extern fn bounded_int_sub<Lhs, Rhs, impl H: SubHelper<Lhs, Rhs>>(
+///    lhs: Lhs, rhs: Rhs,
+/// ) -> H::Result nopanic;
+/// ```
+///
+/// A number X as a `BoundedInt` is internally represented as an offset Xd from the lower bound Xo.
+/// So X = Xo + Xd.
+///
 /// Since we want to get C = A - B, we can translate this to
 /// Co + Cd = (Ao + Ad) - (Bo + Bd). Where Ao, Bo and Co represent the lower bound
-/// of the ranges in the BoundedInt and Ad, Bd and Cd represent the offsets.
+/// of the ranges in the `BoundedInt` and Ad, Bd and Cd represent the offsets.
 #[allow(clippy::too_many_arguments)]
 fn build_sub<'ctx, 'this>(
     context: &'ctx Context,
