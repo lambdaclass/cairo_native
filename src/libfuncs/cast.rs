@@ -2,7 +2,12 @@
 
 use super::LibfuncHelper;
 use crate::{
-    error::Result, libfuncs::increment_builtin_counter, metadata::MetadataStorage, native_assert, native_panic, types::TypeBuilder, utils::{HALF_PRIME, PRIME, RangeExt}
+    error::Result,
+    libfuncs::increment_builtin_counter,
+    metadata::MetadataStorage,
+    native_assert, native_panic,
+    types::TypeBuilder,
+    utils::{RangeExt, HALF_PRIME, PRIME},
 };
 use cairo_lang_sierra::{
     extensions::{
@@ -86,8 +91,8 @@ pub fn build_downcast<'ctx, 'this>(
 
     // This is the trivial case, so we just return the value.
     if info.signature.param_signatures[1].ty == info.signature.branch_signatures[0].vars[1].ty {
-        // if it is a trivial case and the source type's lower bound is equal 
-        // to zero then the cairo compiler checks the upper bound: 
+        // if it is a trivial case and the source type's lower bound is equal
+        // to zero then the cairo compiler checks the upper bound:
         // https://github.com/starkware-libs/cairo/blob/main/crates/cairo-lang-sierra/src/extensions/modules/casts.rs#L67.
         // This means the range check gets incremented by one:
         // https://github.com/starkware-libs/cairo/blob/main/crates/cairo-lang-sierra-to-casm/src/invocations/casts.rs#L56.
