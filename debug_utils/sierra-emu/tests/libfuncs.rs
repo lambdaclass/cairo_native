@@ -1,6 +1,7 @@
 use std::{path::Path, sync::Arc};
 
 use cairo_lang_compiler::{compile_cairo_project_at_path, CompilerConfig};
+use cairo_lang_lowering::utils::InliningStrategy;
 use cairo_lang_sierra::program::{GenFunction, Program, StatementIdx};
 use num_bigint::BigInt;
 use sierra_emu::{starknet::StubSyscallHandler, Value, VirtualMachine};
@@ -15,6 +16,7 @@ fn run_program(path: &str, func_name: &str, args: &[Value]) -> Vec<Value> {
                 replace_ids: true,
                 ..Default::default()
             },
+            InliningStrategy::Default,
         )
         .unwrap(),
     );

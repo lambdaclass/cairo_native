@@ -1,7 +1,8 @@
 #![cfg(any(test, feature = "testing"))]
 
 use cairo_lang_compiler::CompilerConfig;
-use cairo_lang_filesystem::db::init_dev_corelib;
+use cairo_lang_filesystem::{db::init_dev_corelib, ids::CrateInput};
+use cairo_lang_lowering::utils::InliningStrategy;
 use cairo_lang_sierra::{program::Program, ProgramParser};
 use cairo_lang_starknet::{compile::compile_contract_in_prepared_db, starknet_plugin_suite};
 use itertools::Itertools;
@@ -110,6 +111,7 @@ pub fn cairo_to_sierra(program: &Path) -> crate::error::Result<Arc<Program>> {
                 replace_ids: true,
                 ..Default::default()
             },
+            InliningStrategy::Default,
         )
         .map_err(|err| crate::error::Error::ProgramParser(err.to_string()))
     } else {
@@ -157,7 +159,10 @@ pub(crate) fn compile_contract(program_str: &str, mut db: RootDatabase) -> (Stri
         &mut db,
         Path::new(&var("CARGO_MANIFEST_DIR").unwrap()).join("corelib/src"),
     );
-    let main_crate_ids = setup_project(&mut db, program_file.path()).unwrap();
+    let main_crate_ids = {
+        let main_crate_inputs = setup_project(&mut db, program_file.path()).unwrap();
+        CrateInput::into_crate_ids(&db, main_crate_inputs)
+    };
     let contract = compile_contract_in_prepared_db(
         &db,
         None,
@@ -187,7 +192,10 @@ pub(crate) fn compile_program(program_str: &str, mut db: RootDatabase) -> (Strin
         &mut db,
         Path::new(&var("CARGO_MANIFEST_DIR").unwrap()).join("corelib/src"),
     );
-    let main_crate_ids = setup_project(&mut db, program_file.path()).unwrap();
+    let main_crate_ids = {
+        let main_crate_inputs = setup_project(&mut db, program_file.path()).unwrap();
+        CrateInput::into_crate_ids(&db, main_crate_inputs)
+    };
     let sierra_program_with_dbg = compile_prepared_db(
         &db,
         main_crate_ids,

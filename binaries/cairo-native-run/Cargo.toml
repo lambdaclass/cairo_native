@@ -8,9 +8,11 @@ with-trace-dump = [ "cairo-native/with-trace-dump" ]
 
 [dependencies]
 anyhow.workspace = true
+cairo-lang-filesystem.workspace = true
 cairo-lang-compiler.workspace = true
 cairo-lang-runner.workspace = true
 cairo-lang-sierra-to-casm.workspace = true
+cairo-lang-sierra-type-size.workspace = true
 cairo-lang-sierra.workspace = true
 cairo-native.workspace = true
 cairo-native-bin-utils.workspace = true
