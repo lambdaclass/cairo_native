@@ -308,22 +308,26 @@ pub unsafe extern "C" fn cairo_native__dict_into_entries(
     dict_ptr: *const FeltDict,
     data_ptr: *mut c_void,
 ) {
-    let dict_rc = Rc::from_raw(dict_ptr);
+    // let dict_rc = Rc::from_raw(dict_ptr);
 
     // There may me multiple reference to the same dictionary (snapshots), but
     // as snapshots cannot access the inner dictionary, then it is safe to modify it
     // without cloning it.
-    let dict = Rc::as_ptr(&dict_rc)
-        .cast_mut()
-        .as_mut()
-        .expect("rc inner pointer should never be null");
+    // let dict = Rc::as_ptr(&dict_rc)
+    //     .cast_mut()
+    //     .as_mut()
+    //     .expect("rc inner pointer should never be null");
 
-    let tuple_stride =
-        dict.layout.pad_to_align().size() + 2 + Layout::new::<[u8; 32]>().pad_to_align().size(); // TODO: Check how to really get the size of a felt252
-    let a = vec![[1_u32; 32], 3 as u32, 4 as u32];
-    *data_ptr = a;
+    // let tuple_stride =
+    //     dict.layout.pad_to_align().size() * 2 + Layout::new::<[u8; 32]>().pad_to_align().size();
+    // TODO: Check how to really get the size of a felt252
 
-    data_ptr.byte_add(count)
+    let first_ptr = data_ptr as *const [u8; 32];
+    let first = &*first_ptr; // leer la referencia
+
+    println!("Primer elemento como array: {:?}", first);
+
+    // data_ptr.byte_add(count)
 }
 
 // pub unsafe extern "C" fn cairo_native__dict_get_all(

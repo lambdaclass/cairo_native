@@ -2,8 +2,8 @@ use super::LibfuncHelper;
 use crate::{
     error::{Error, Result},
     metadata::{
-        realloc_bindings::ReallocBindingsMeta, runtime_bindings::RuntimeBindingsMeta,
-        MetadataStorage,
+        debug_utils::DebugUtils, realloc_bindings::ReallocBindingsMeta,
+        runtime_bindings::RuntimeBindingsMeta, MetadataStorage,
     },
     native_panic,
     types::array::calc_data_prefix_offset,
@@ -91,7 +91,6 @@ fn build_entries_array<'ctx, 'this>(
     let len_ty = IntegerType::new(context, 32).into();
 
     let nullptr = entry.append_op_result(llvm::zero(ptr_ty, location))?;
-    let k0 = entry.const_int_from_type(context, location, 0, len_ty)?;
 
     let value = entry.append_op_result(llvm::undef(
         llvm::r#type::r#struct(context, &[ptr_ty, len_ty, len_ty, len_ty], false),
@@ -100,13 +99,13 @@ fn build_entries_array<'ctx, 'this>(
     let allocated_capacity =
         entry.trunci(dict_len, IntegerType::new(context, 32).into(), location)?; // TODO: Check if this is the correct capacity
     let end_offset = entry.trunci(dict_len, IntegerType::new(context, 32).into(), location)?; // TODO: Check if this is the correct end_offset. Is it the number of bytes or the quantity of elements
+    let start_offset = entry.const_int_from_type(context, location, 0, len_ty)?; // TODO: What value should go here? I think it is okay to have 0.
 
-    // let start_offset = TODO: What value should go here?
     let arr = entry.insert_values(
         context,
         location,
         value,
-        &[nullptr, k0, end_offset, allocated_capacity],
+        &[nullptr, start_offset, end_offset, allocated_capacity],
     )?;
 
     // Alloc space for elements of the array
@@ -152,29 +151,6 @@ fn build_entries_array<'ctx, 'this>(
     // Insert the pointer to the data pointer inside the array
     let arr = entry.insert_value(context, location, arr, array_ptr_ptr, 0)?;
 
-    // Set max length
-    // let max_len_ptr = entry.gep(
-    //     context,
-    //     location,
-    //     array_ptr,
-    //     &[GepIndex::Const(
-    //         -((data_prefix_size - size_of::<u32>()) as i32),
-    //     )],
-    //     IntegerType::new(context, 8).into(),
-    // )?;
-    // let max_length = entry.trunci(dict_len, IntegerType::new(context, 32).into(), location)?;
-    // entry.store(context, location, max_len_ptr, max_length)?;
-    // Set reference counter to 1
-    // let refcount_ptr = entry.gep(
-    //     context,
-    //     location,
-    //     array_ptr,
-    //     &[GepIndex::Const(-(data_prefix_size as i32))],
-    //     IntegerType::new(context, 8).into(),
-    // )?;
-    // let k1 = entry.const_int(context, location, 1, 32)?;
-    // entry.store(context, location, refcount_ptr, k1)?;
-
     Ok(arr)
 }
 
@@ -198,19 +174,19 @@ pub fn build_into_entries<'ctx, 'this>(
     let dict_ptr = entry.arg(0)?;
 
     // Call runtime function that pushes the tuples into the array
-    metadata
-        .get_mut::<RuntimeBindingsMeta>()
-        .ok_or(Error::MissingMetadata)?
-        .dict_into_entries(context, helper, entry, dict_ptr, data_ptr, location)?;
+    // metadata
+    //     .get_mut::<RuntimeBindingsMeta>()
+    //     .ok_or(Error::MissingMetadata)?
+    //     .dict_into_entries(context, helper, entry, dict_ptr, data_ptr, location)?;
 
     // let len_ty = IntegerType::new(context, 32).into();
     // let start_off = entry.extract_value(context, location, entries_array, len_ty, 1)?;
     // let end_off = entry.extract_value(context, location, entries_array, len_ty, 2)?;
     // let capacity = entry.extract_value(context, location, entries_array, len_ty, 3)?;
-    // metadata
-    //     .get_mut::<DebugUtils>()
-    //     .unwrap()
-    //     .print_pointer(context, helper, entry, ptr, location)?;
+    metadata
+        .get_mut::<DebugUtils>()
+        .unwrap()
+        .print_pointer(context, helper, entry, data_ptr, location)?;
     // metadata
     //     .get_mut::<DebugUtils>()
     //     .unwrap()
