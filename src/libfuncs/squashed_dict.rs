@@ -142,6 +142,7 @@ fn build_entries_array<'ctx, 'this>(
         IntegerType::new(context, 8).into(),
     )?;
     // Alloc space in the null_ptr so it can store the ptr to the array
+    let nullptr = entry.append_op_result(llvm::zero(ptr_ty, location))?;
     let k8 = entry.const_int(context, location, 8, 64)?;
     let array_ptr_ptr = entry.append_op_result(ReallocBindingsMeta::realloc(
         context, nullptr, k8, location,
