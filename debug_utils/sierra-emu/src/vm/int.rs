@@ -25,7 +25,6 @@ use starknet_crypto::Felt;
 use starknet_types_core::felt::NonZeroFelt;
 
 use crate::{
-    debug::type_to_name,
     utils::{get_numeric_args_as_bigints, get_value_from_integer, integer_range},
     Value,
 };
