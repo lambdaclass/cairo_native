@@ -29,9 +29,9 @@ use num_bigint::BigUint;
 use num_traits::Num;
 use starknet_types_core::felt::Felt;
 
-// R parameter for felts. R = 2^{256} which is the smallets power of 2 greater than prime.
+// R parameter for felts. R = 2^{256} which is the smallest power of 2 greater than prime.
 pub static MONTY_R: LazyLock<BigUint> = LazyLock::new(|| BigUint::from(1u64) << 256);
-// R2 parameter for felts. R2 = 2^{256 * 2} mod prime. This value is a U256 instead of a 
+// R2 parameter for felts. R2 = 2^{256 * 2} mod prime. This value is a U256 instead of a
 // BigUint to integrate with lambdaworks with ease.
 pub static MONTY_R2: LazyLock<U256> = LazyLock::new(|| {
     UnsignedInteger::from_hex_unchecked(
@@ -70,8 +70,13 @@ impl MontyBytes for Felt {
     }
 }
 
-/// Computes the Montgomery reduction.
-/// TODO: add docs.
+/// Computes the Montgomery reduction (REDC).
+///
+/// Having a value `x' = x . r mod n`, the Montgomery reduction can be
+/// interpreted as dividing `x by r mod n`, such that `REDC(x') = x`.
+///
+/// For more info on this operation check:
+/// https://en.wikipedia.org/wiki/Montgomery_modular_multiplication#The_REDC_algorithm.
 pub fn monty_reduction(x: &BigUint, modulus: &BigUint) -> Result<BigUint, CreationError> {
     let x = U256::from_hex(&x.to_str_radix(16))?;
     let modulus = U256::from_hex(&modulus.to_str_radix(16))?;
@@ -82,7 +87,13 @@ pub fn monty_reduction(x: &BigUint, modulus: &BigUint) -> Result<BigUint, Creati
 }
 
 /// Computes the Montgomery transform operation.
-/// TODO: add docs.
+///
+/// To efficiently perform this operation, a precomputed `r^{2}` value is used.
+/// This way `x' = REDC(x * r^{2})`. Since we are multiplying by `r^{2}`, and we want
+/// `x' = x * r mod n`, we need to apply a reduction after multiplication.
+///
+/// For more info on this operation check:
+/// https://en.wikipedia.org/wiki/Montgomery_modular_multiplication#Arithmetic_in_Montgomery_form.
 pub fn monty_transform(x: &BigUint, modulus: &BigUint) -> Result<BigUint, CreationError> {
     let x = U256::from_hex(&x.to_str_radix(16))?;
     let modulus = U256::from_hex(&modulus.to_str_radix(16))?;
@@ -90,12 +101,6 @@ pub fn monty_transform(x: &BigUint, modulus: &BigUint) -> Result<BigUint, Creati
     let reduced = MontgomeryAlgorithms::cios(&x, &MONTY_R2, &modulus, &MONTY_MU_U64);
 
     Ok(BigUint::from_bytes_le(&reduced.to_bytes_le()))
-}
-
-pub fn monty_inverse() {
-    let felt = Felt::from(1).inverse().unwrap();
-    let felt = U256::from_bytes_le(&felt.to_bytes_le_raw()).unwrap();
-    dbg!(felt.to_hex());
 }
 
 pub mod mlir {
@@ -113,6 +118,7 @@ pub mod mlir {
         Context,
     };
 
+    /// Computes Montgomery multiplication in MLIR.
     pub fn monty_mul<'c, 'a>(
         context: &'c Context,
         block: &'a Block<'c>,
@@ -133,6 +139,7 @@ pub mod mlir {
         Ok(block.trunci(result, res_ty, location)?)
     }
 
+    /// Computes Montgomery division in MLIR.
     pub fn monty_div<'c, 'a>(
         context: &'c Context,
         block: &'a Block<'c>,
@@ -152,9 +159,8 @@ pub mod mlir {
     ///     1. Compute x = a^{-1}2^{k} mod p, where n < k < 2n (denoted as
     ///        almost inverse).
     ///     2. Corrects the result from phase 1 so that x = a^{-1}2^{n} mod p.
-    /// The algorithm can be check
-    /// [here](https://www.researchgate.net/publication/225962646_Efficient_Software-Implementation_of_Finite_Fields_with_Applications_to_Cryptography)
-    /// (Algorithm 17).
+    /// The algorithm can also be checked here:
+    /// https://www.researchgate.net/publication/3044233_The_Montgomery_modular_inverse_-_Revisited.
     fn monty_inverse<'c, 'a>(
         context: &'c Context,
         block: &'a Block<'c>,
@@ -165,10 +171,20 @@ pub mod mlir {
         let (r, k) = almost_inverse(context, block, value, location)?;
         let inverse = inverse_correction(context, block, r, k, location)?;
 
+        // Since value is already in its Montgomery form, we currently that
+        // inverse = MontyInv(value) = (value * r)^{-1} mod n. Since we need
+        // inverse = value^{-1} * r mod n, we still need to perform one more
+        // correction. So,
+        // inverse = MontyProd(inverse, r^{2}) = value^{-1} * r mod n.
         let r2 = block.const_int_from_type(context, location, *MONTY_R2, inverse.r#type())?;
         monty_mul(context, block, inverse, r2, inverse.r#type(), location)
     }
 
+    /// Performs the Montgomery inverse correction.
+    ///
+    /// This algorithm represented phase 2 of of B. S. Kaliski Jr.'s Montgomery
+    /// inverse which returns (a * 2^{m})^{-1} mod n, where `a` is the value
+    /// to invert and `m` the smallest value such that 2^{m} > n.
     fn inverse_correction<'c, 'a>(
         context: &'c Context,
         block: &'a Block<'c>,
@@ -253,6 +269,12 @@ pub mod mlir {
         Ok(result.result(0)?.into())
     }
 
+    /// Performs a first approach to the Montgomery Inverse.
+    ///
+    /// This algorithm represents phase 1 of B. S. Kaliski Jr.'s Montgomery
+    /// inverse which returns `alm_inv = (a * 2^{k})^{-1} mod n`, where `a` is
+    /// the value to invert and `k` a value such that `m < k < 2 * m`, being
+    /// `m` the smallest value such that 2^{m} > n.
     fn almost_inverse<'c, 'a>(
         context: &'c Context,
         block: &'a Block<'c>,
@@ -490,6 +512,7 @@ pub mod mlir {
         Ok((almost_inv, k))
     }
 
+    /// Computes Montgomery reduction in MLIR.
     fn monty_reduce<'c, 'a>(
         context: &'c Context,
         block: &'a Block<'c>,
