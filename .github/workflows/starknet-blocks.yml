@@ -33,7 +33,7 @@ jobs:
           repository: lambdaclass/starknet-replay
           path: starknet-replay
           # https://github.com/lambdaclass/starknet-replay/pull/213
-          ref: 953a2435724631ec0418d5943021ae9dd7978867
+          ref: 4d63d69d2ab01ce8ba83eb785cb87b3c86c07fdc
       # We need native to use the linux deps ci action
       - name: Checkout Native
         uses: actions/checkout@v4
@@ -45,7 +45,7 @@ jobs:
           repository: lambdaclass/sequencer
           path: sequencer
           # https://github.com/lambdaclass/sequencer/pull/81
-          ref: cb674a9ede8e851722be45fdd62e90d6e2ab8a40
+          ref: bc3349ec0099d0e2a968c52889c9ac5cfd441e76
       
       - name: Restore RPC Calls
         id: restore-rpc-calls
