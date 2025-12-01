@@ -89,13 +89,12 @@ pub fn build_downcast<'ctx, 'this>(
         src_ty.integer_range(registry)?
     };
 
-    // This is the trivial case, so we just return the value.
+    // When the source type is the same as the target type, we just return the
+    // value as it cannot fail. However, for backwards compatibility, we need to
+    // increment the range check as if we were checking the upper bound. See:
+    // - https://github.com/starkware-libs/cairo/tree/v2.12.3/crates/cairo-lang-sierra/src/extensions/modules/casts.rs#L67.
+    // - https://github.com/starkware-libs/cairo/tree/v2.12.3/crates/cairo-lang-sierra-to-casm/src/invocations/casts.rs#L56.
     if info.signature.param_signatures[1].ty == info.signature.branch_signatures[0].vars[1].ty {
-        // if it is a trivial case and the source type's lower bound is equal
-        // to zero then the cairo compiler checks the upper bound:
-        // https://github.com/starkware-libs/cairo/blob/main/crates/cairo-lang-sierra/src/extensions/modules/casts.rs#L67.
-        // This means the range check gets incremented by one:
-        // https://github.com/starkware-libs/cairo/blob/main/crates/cairo-lang-sierra-to-casm/src/invocations/casts.rs#L56.
         let range_check = if src_range.lower == 0.into() {
             increment_builtin_counter(context, entry, location, range_check)?
         } else {
@@ -361,7 +360,15 @@ pub fn build_downcast<'ctx, 'this>(
     Ok(())
 }
 
-/// Generate MLIR operations for the `upcast` libfunc.
+/// Builds the `upcast` libfunc, which converts from a source type `T` to a
+/// target type `U`, where `U` fully includes `T`. This means that the operation
+/// cannot fail.
+///
+/// ## Signature
+///
+/// ```cairo
+/// extern const fn upcast<FromType, ToType>(x: FromType) -> ToType nopanic;
+/// ```
 pub fn build_upcast<'ctx, 'this>(
     context: &'ctx Context,
     registry: &ProgramRegistry<CoreType, CoreLibfunc>,
@@ -382,22 +389,32 @@ pub fn build_upcast<'ctx, 'this>(
 
     let src_range = src_ty.integer_range(registry)?;
     let dst_range = dst_ty.integer_range(registry)?;
-    native_assert!(
-        if dst_ty.is_felt252(registry)? {
-            let alt_range = Range {
+
+    // An upcast is infallible, so the target type should always contain the source type.
+    {
+        let dst_contains_src =
+            dst_range.lower <= src_range.lower && dst_range.upper >= src_range.upper;
+
+        // If the target type is a felt, then both [0; P) and [-P/2, P/2] ranges are valid.
+        let dst_contains_src = if dst_ty.is_felt252(registry)? {
+            let signed_dst_range = Range {
                 lower: BigInt::from_biguint(Sign::Minus, HALF_PRIME.clone()),
                 upper: BigInt::from_biguint(Sign::Plus, HALF_PRIME.clone()) + BigInt::one(),
             };
-
-            (dst_range.lower <= src_range.lower && dst_range.upper >= src_range.upper)
-                || (alt_range.lower <= src_range.lower && alt_range.upper >= src_range.upper)
+            let signed_dst_contains_src = signed_dst_range.lower <= src_range.lower
+                && signed_dst_range.upper >= src_range.upper;
+            dst_contains_src || signed_dst_contains_src
         } else {
-            dst_range.lower <= src_range.lower && dst_range.upper >= src_range.upper
-        },
-        "invalid upcast `{:?}` into `{:?}`: target range doesn't contain the source range",
-        info.signature.param_signatures[0].ty,
-        info.signature.branch_signatures[0].vars[0].ty
-    );
+            dst_contains_src
+        };
+
+        native_assert!(
+            dst_contains_src,
+            "cannot upcast `{:?}` into `{:?}`: target range doesn't contain source range",
+            info.signature.param_signatures[0].ty,
+            info.signature.branch_signatures[0].vars[0].ty
+        );
+    }
 
     let src_width = if src_ty.is_bounded_int(registry)? {
         src_range.offset_bit_width()
@@ -410,17 +427,17 @@ pub fn build_upcast<'ctx, 'this>(
         dst_range.zero_based_bit_width()
     };
 
-    // If the source can be negative, the target type must also contain negatives when upcasting.
-    native_assert!(
-        src_range.lower.sign() != Sign::Minus
-            || dst_ty.is_felt252(registry)?
-            || dst_range.lower.sign() == Sign::Minus,
-        "if the source range contains negatives, the target range must always contain negatives",
-    );
-    let is_signed = src_range.lower.sign() == Sign::Minus;
-
+    // Extend value to target bit width.
     let dst_value = if dst_width > src_width {
-        if is_signed && !src_ty.is_bounded_int(registry)? {
+        if src_ty.is_bounded_int(registry)? {
+            // A bounded int is always represented as a positive integer,
+            // because we store the offset to the lower bound.
+            entry.extui(
+                src_value,
+                IntegerType::new(context, dst_width).into(),
+                location,
+            )?
+        } else if src_range.lower.sign() == Sign::Minus {
             entry.extsi(
                 src_value,
                 IntegerType::new(context, dst_width).into(),
@@ -437,22 +454,22 @@ pub fn build_upcast<'ctx, 'this>(
         src_value
     };
 
-    let dst_value = if src_ty.is_bounded_int(registry)? && src_range.lower != BigInt::ZERO {
-        let dst_offset = entry.const_int_from_type(
-            context,
-            location,
-            if dst_ty.is_bounded_int(registry)? {
-                &src_range.lower - &dst_range.lower
-            } else {
-                src_range.lower.clone()
-            },
-            dst_value.r#type(),
-        )?;
-        entry.addi(dst_value, dst_offset, location)?
+    // When converting to/from bounded ints, we need to take into account the offset.
+    let offset = if src_ty.is_bounded_int(registry)? && dst_ty.is_bounded_int(registry)? {
+        &src_range.lower - &dst_range.lower
+    } else if src_ty.is_bounded_int(registry)? {
+        src_range.lower.clone()
+    } else if dst_ty.is_bounded_int(registry)? {
+        -dst_range.lower
     } else {
-        dst_value
+        BigInt::ZERO
     };
+    let offset_value = entry.const_int_from_type(context, location, offset, dst_value.r#type())?;
+    let dst_value = entry.addi(dst_value, offset_value, location)?;
 
+    // When converting to a felt from a signed integer, we need to convert
+    // the canonical signed integer representation, to the signed felt
+    // representation: `negative = P - absolute`.
     let dst_value = if dst_ty.is_felt252(registry)? && src_range.lower.sign() == Sign::Minus {
         let k0 = entry.const_int(context, location, 0, 252)?;
         let is_negative = entry.cmpi(context, CmpiPredicate::Slt, dst_value, k0, location)?;
@@ -471,7 +488,7 @@ pub fn build_upcast<'ctx, 'this>(
 #[cfg(test)]
 mod test {
     use crate::{
-        jit_enum, jit_struct, load_cairo, utils::testing::run_program_assert_output, values::Value,
+        jit_enum, jit_struct, load_cairo, utils::testing::run_program_assert_output, Value,
     };
     use cairo_lang_sierra::program::Program;
     use lazy_static::lazy_static;
@@ -549,29 +566,6 @@ mod test {
             fn felt252_i32(v: felt252) -> felt252 { test_x_y::<felt252, i32>(v) }
             fn felt252_i64(v: felt252) -> felt252 { test_x_y::<felt252, i64>(v) }
         };
-        static ref UPCAST: (String, Program) = load_cairo! {
-            extern const fn upcast<FromType, ToType>(x: FromType) -> ToType nopanic;
-
-            fn run_test(
-                v8: u8, v16: u16, v32: u32, v64: u64, v128: u128, v248: bytes31
-            ) -> (
-                (u8,),
-                (u16, u16),
-                (u32, u32, u32),
-                (u64, u64, u64, u64),
-                (u128, u128, u128, u128, u128),
-                (bytes31, bytes31, bytes31, bytes31, bytes31, bytes31)
-            ) {
-                (
-                    (upcast(v8),),
-                    (upcast(v8), upcast(v16)),
-                    (upcast(v8), upcast(v16), upcast(v32)),
-                    (upcast(v8), upcast(v16), upcast(v32), upcast(v64)),
-                    (upcast(v8), upcast(v16), upcast(v32), upcast(v64), upcast(v128)),
-                    (upcast(v8), upcast(v16), upcast(v32), upcast(v64), upcast(v128), upcast(v248)),
-                )
-            }
-        };
     }
 
     #[test]
@@ -646,209 +640,166 @@ mod test {
         );
     }
 
-    #[test]
-    fn upcast() {
+    lazy_static! {
+        static ref TEST_UPCAST_PROGRAM: (String, Program) = load_cairo! {
+            #[feature("bounded-int-utils")]
+            use core::internal::bounded_int::{BoundedInt};
+            extern const fn upcast<FromType, ToType>(x: FromType) -> ToType nopanic;
+
+            fn test_x_y<
+                X,
+                Y,
+                +TryInto<felt252, X>,
+                +Into<Y, felt252>
+            >(v: felt252) -> felt252 {
+                let v: X = v.try_into().unwrap();
+                let v: Y = upcast(v);
+                v.into()
+            }
+
+            fn u8_u16(v: felt252) -> felt252 { test_x_y::<u8, u16>(v) }
+            fn u8_u32(v: felt252) -> felt252 { test_x_y::<u8, u32>(v) }
+            fn u8_u64(v: felt252) -> felt252 { test_x_y::<u8, u64>(v) }
+            fn u8_u128(v: felt252) -> felt252 { test_x_y::<u8, u128>(v) }
+            fn u8_felt252(v: felt252) -> felt252 { test_x_y::<u8, felt252>(v) }
+
+            fn u16_u32(v: felt252) -> felt252 { test_x_y::<u16, u32>(v) }
+            fn u16_u64(v: felt252) -> felt252 { test_x_y::<u16, u64>(v) }
+            fn u16_u128(v: felt252) -> felt252 { test_x_y::<u16, u128>(v) }
+            fn u16_felt252(v: felt252) -> felt252 { test_x_y::<u16, felt252>(v) }
+
+            fn u32_u64(v: felt252) -> felt252 { test_x_y::<u32, u64>(v) }
+            fn u32_u128(v: felt252) -> felt252 { test_x_y::<u32, u128>(v) }
+            fn u32_felt252(v: felt252) -> felt252 { test_x_y::<u32, felt252>(v) }
+
+            fn u64_u128(v: felt252) -> felt252 { test_x_y::<u64, u128>(v) }
+            fn u64_felt252(v: felt252) -> felt252 { test_x_y::<u64, felt252>(v) }
+
+            fn u128_felt252(v: felt252) -> felt252 { test_x_y::<u128, felt252>(v) }
+
+            fn i8_i16(v: felt252) -> felt252 { test_x_y::<i8, i16>(v) }
+            fn i8_i32(v: felt252) -> felt252 { test_x_y::<i8, i32>(v) }
+            fn i8_i64(v: felt252) -> felt252 { test_x_y::<i8, i64>(v) }
+            fn i8_i128(v: felt252) -> felt252 { test_x_y::<i8, i128>(v) }
+            fn i8_felt252(v: felt252) -> felt252 { test_x_y::<i8, felt252>(v) }
+
+            fn i16_i32(v: felt252) -> felt252 { test_x_y::<i16, i32>(v) }
+            fn i16_i64(v: felt252) -> felt252 { test_x_y::<i16, i64>(v) }
+            fn i16_i128(v: felt252) -> felt252 { test_x_y::<i16, i128>(v) }
+            fn i16_felt252(v: felt252) -> felt252 { test_x_y::<i16, felt252>(v) }
+
+            fn i32_i64(v: felt252) -> felt252 { test_x_y::<i32, i64>(v) }
+            fn i32_i128(v: felt252) -> felt252 { test_x_y::<i32, i128>(v) }
+            fn i32_felt252(v: felt252) -> felt252 { test_x_y::<i32, felt252>(v) }
+
+            fn i64_i128(v: felt252) -> felt252 { test_x_y::<i64, i128>(v) }
+            fn i64_felt252(v: felt252) -> felt252 { test_x_y::<i64, felt252>(v) }
+
+            fn i128_felt252(v: felt252) -> felt252 { test_x_y::<i128, felt252>(v) }
+
+            fn b0x5_b0x10(v: felt252) -> felt252 { test_x_y::<BoundedInt<0, 5>, BoundedInt<0, 10>>(v) }
+            fn b2x5_b2x10(v: felt252) -> felt252 { test_x_y::<BoundedInt<2, 5>, BoundedInt<2, 10>>(v) }
+            fn b2x5_b1x10(v: felt252) -> felt252 { test_x_y::<BoundedInt<2, 5>, BoundedInt<1, 10>>(v) }
+            fn b0x5_bm10x10(v: felt252) -> felt252 { test_x_y::<BoundedInt<0, 5>, BoundedInt<-10, 10>>(v) }
+            fn bm5x5_bm10x10(v: felt252) -> felt252 { test_x_y::<BoundedInt<-5, 5>, BoundedInt<-10, 10>>(v) }
+            fn i8_bm200x200(v: felt252) -> felt252 { test_x_y::<i8, BoundedInt<-200, 200>>(v) }
+            fn bm100x100_i8(v: felt252) -> felt252 { test_x_y::<BoundedInt<-100, 100>, i8>(v) }
+        };
+    }
+
+    // u8 upcast test
+    #[test_case("u8_u16", u8::MIN.into())]
+    #[test_case("u8_u16", u8::MAX.into())]
+    #[test_case("u8_u32", u8::MIN.into())]
+    #[test_case("u8_u32", u8::MAX.into())]
+    #[test_case("u8_u64", u8::MIN.into())]
+    #[test_case("u8_u64", u8::MAX.into())]
+    #[test_case("u8_u128", u8::MIN.into())]
+    #[test_case("u8_u128", u8::MAX.into())]
+    #[test_case("u8_felt252", u8::MIN.into())]
+    #[test_case("u8_felt252", u8::MAX.into())]
+    // u16 upcast test
+    #[test_case("u16_u32", u16::MIN.into())]
+    #[test_case("u16_u32", u16::MAX.into())]
+    #[test_case("u16_u64", u16::MIN.into())]
+    #[test_case("u16_u64", u16::MAX.into())]
+    #[test_case("u16_u128", u16::MIN.into())]
+    #[test_case("u16_u128", u16::MAX.into())]
+    #[test_case("u16_felt252", u16::MIN.into())]
+    #[test_case("u16_felt252", u16::MAX.into())]
+    // u32 upcast test
+    #[test_case("u32_u64", u32::MIN.into())]
+    #[test_case("u32_u64", u32::MAX.into())]
+    #[test_case("u32_u128", u32::MIN.into())]
+    #[test_case("u32_u128", u32::MAX.into())]
+    #[test_case("u32_felt252", u32::MIN.into())]
+    #[test_case("u32_felt252", u32::MAX.into())]
+    // u64 upcast test
+    #[test_case("u64_u128", u64::MIN.into())]
+    #[test_case("u64_u128", u64::MAX.into())]
+    #[test_case("u64_felt252", u64::MIN.into())]
+    #[test_case("u64_felt252", u64::MAX.into())]
+    // u128 upcast test
+    #[test_case("u128_felt252", u128::MIN.into())]
+    #[test_case("u128_felt252", u128::MAX.into())]
+    // i8 upcast test
+    #[test_case("i8_i16", i8::MIN.into())]
+    #[test_case("i8_i16", i8::MAX.into())]
+    #[test_case("i8_i32", i8::MIN.into())]
+    #[test_case("i8_i32", i8::MAX.into())]
+    #[test_case("i8_i64", i8::MIN.into())]
+    #[test_case("i8_i64", i8::MAX.into())]
+    #[test_case("i8_i128", i8::MIN.into())]
+    #[test_case("i8_i128", i8::MAX.into())]
+    #[test_case("i8_felt252", i8::MIN.into())]
+    #[test_case("i8_felt252", i8::MAX.into())]
+    // i16 upcast test
+    #[test_case("i16_i32", i16::MIN.into())]
+    #[test_case("i16_i32", i16::MAX.into())]
+    #[test_case("i16_i64", i16::MIN.into())]
+    #[test_case("i16_i64", i16::MAX.into())]
+    #[test_case("i16_i128", i16::MIN.into())]
+    #[test_case("i16_i128", i16::MAX.into())]
+    #[test_case("i16_felt252", i16::MIN.into())]
+    #[test_case("i16_felt252", i16::MAX.into())]
+    // i32 upcast test
+    #[test_case("i32_i64", i32::MIN.into())]
+    #[test_case("i32_i64", i32::MAX.into())]
+    #[test_case("i32_i128", i32::MIN.into())]
+    #[test_case("i32_i128", i32::MAX.into())]
+    #[test_case("i32_felt252", i32::MIN.into())]
+    #[test_case("i32_felt252", i32::MAX.into())]
+    // i64 upcast test
+    #[test_case("i64_i128", i64::MIN.into())]
+    #[test_case("i64_i128", i64::MAX.into())]
+    #[test_case("i64_felt252", i64::MIN.into())]
+    #[test_case("i64_felt252", i64::MAX.into())]
+    // i128 upcast test
+    #[test_case("i128_felt252", i128::MIN.into())]
+    #[test_case("i128_felt252", i128::MAX.into())]
+    // bounded int test
+    #[test_case("b0x5_b0x10", 0.into())]
+    #[test_case("b0x5_b0x10", 5.into())]
+    #[test_case("b2x5_b2x10", 2.into())]
+    #[test_case("b2x5_b2x10", 5.into())]
+    #[test_case("b2x5_b1x10", 2.into())]
+    #[test_case("b2x5_b1x10", 5.into())]
+    #[test_case("b0x5_bm10x10", 0.into())]
+    #[test_case("b0x5_bm10x10", 5.into())]
+    #[test_case("bm5x5_bm10x10", Felt::from(-5))]
+    #[test_case("bm5x5_bm10x10", 5.into())]
+    #[test_case("i8_bm200x200", Felt::from(-128))]
+    #[test_case("i8_bm200x200", 127.into())]
+    #[test_case("bm100x100_i8", Felt::from(-100))]
+    #[test_case("bm100x100_i8", 100.into())]
+    fn upcast(entry_point: &str, value: Felt) {
+        let arguments = &[value.into()];
+        let expected_result = jit_enum!(0, jit_struct!(value.into(),));
         run_program_assert_output(
-            &UPCAST,
-            "run_test",
-            &[
-                u8::MAX.into(),
-                u16::MAX.into(),
-                u32::MAX.into(),
-                u64::MAX.into(),
-                u128::MAX.into(),
-                Value::Bytes31([0xFF; 31]),
-            ],
-            jit_struct!(
-                jit_struct!(u8::MAX.into()),
-                jit_struct!((u8::MAX as u16).into(), u16::MAX.into()),
-                jit_struct!(
-                    (u8::MAX as u32).into(),
-                    (u16::MAX as u32).into(),
-                    u32::MAX.into()
-                ),
-                jit_struct!(
-                    (u8::MAX as u64).into(),
-                    (u16::MAX as u64).into(),
-                    (u32::MAX as u64).into(),
-                    u64::MAX.into()
-                ),
-                jit_struct!(
-                    (u8::MAX as u128).into(),
-                    (u16::MAX as u128).into(),
-                    (u32::MAX as u128).into(),
-                    (u64::MAX as u128).into(),
-                    u128::MAX.into()
-                ),
-                jit_struct!(
-                    Value::Bytes31([
-                        u8::MAX,
-                        0,
-                        0,
-                        0,
-                        0,
-                        0,
-                        0,
-                        0,
-                        0,
-                        0,
-                        0,
-                        0,
-                        0,
-                        0,
-                        0,
-                        0,
-                        0,
-                        0,
-                        0,
-                        0,
-                        0,
-                        0,
-                        0,
-                        0,
-                        0,
-                        0,
-                        0,
-                        0,
-                        0,
-                        0,
-                        0,
-                    ]),
-                    Value::Bytes31([
-                        u8::MAX,
-                        u8::MAX,
-                        0,
-                        0,
-                        0,
-                        0,
-                        0,
-                        0,
-                        0,
-                        0,
-                        0,
-                        0,
-                        0,
-                        0,
-                        0,
-                        0,
-                        0,
-                        0,
-                        0,
-                        0,
-                        0,
-                        0,
-                        0,
-                        0,
-                        0,
-                        0,
-                        0,
-                        0,
-                        0,
-                        0,
-                        0,
-                    ]),
-                    Value::Bytes31([
-                        u8::MAX,
-                        u8::MAX,
-                        u8::MAX,
-                        u8::MAX,
-                        0,
-                        0,
-                        0,
-                        0,
-                        0,
-                        0,
-                        0,
-                        0,
-                        0,
-                        0,
-                        0,
-                        0,
-                        0,
-                        0,
-                        0,
-                        0,
-                        0,
-                        0,
-                        0,
-                        0,
-                        0,
-                        0,
-                        0,
-                        0,
-                        0,
-                        0,
-                        0,
-                    ]),
-                    Value::Bytes31([
-                        u8::MAX,
-                        u8::MAX,
-                        u8::MAX,
-                        u8::MAX,
-                        u8::MAX,
-                        u8::MAX,
-                        u8::MAX,
-                        u8::MAX,
-                        0,
-                        0,
-                        0,
-                        0,
-                        0,
-                        0,
-                        0,
-                        0,
-                        0,
-                        0,
-                        0,
-                        0,
-                        0,
-                        0,
-                        0,
-                        0,
-                        0,
-                        0,
-                        0,
-                        0,
-                        0,
-                        0,
-                        0,
-                    ]),
-                    Value::Bytes31([
-                        u8::MAX,
-                        u8::MAX,
-                        u8::MAX,
-                        u8::MAX,
-                        u8::MAX,
-                        u8::MAX,
-                        u8::MAX,
-                        u8::MAX,
-                        u8::MAX,
-                        u8::MAX,
-                        u8::MAX,
-                        u8::MAX,
-                        u8::MAX,
-                        u8::MAX,
-                        u8::MAX,
-                        u8::MAX,
-                        0,
-                        0,
-                        0,
-                        0,
-                        0,
-                        0,
-                        0,
-                        0,
-                        0,
-                        0,
-                        0,
-                        0,
-                        0,
-                        0,
-                        0,
-                    ]),
-                    Value::Bytes31([u8::MAX; 31]),
-                ),
-            ),
+            &TEST_UPCAST_PROGRAM,
+            entry_point,
+            arguments,
+            expected_result,
         );
     }
 }
