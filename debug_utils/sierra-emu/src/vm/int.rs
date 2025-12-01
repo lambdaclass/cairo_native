@@ -199,13 +199,18 @@ fn eval_diff(
     // Err(2**n + lhs - rhs).
     if res < BigInt::ZERO {
         let max_integer = integer_range(int_ty, registry).upper;
-        let res = get_value_from_integer(registry, int_ty, max_integer + res);
-
-        EvalAction::NormalBranch(1, smallvec![range_check, res])
+        EvalAction::NormalBranch(
+            1,
+            smallvec![
+                range_check,
+                get_value_from_integer(registry, int_ty, max_integer + res)
+            ],
+        )
     } else {
-        let res = get_value_from_integer(registry, int_ty, res);
-
-        EvalAction::NormalBranch(0 as usize, smallvec![range_check, res])
+        EvalAction::NormalBranch(
+            0,
+            smallvec![range_check, get_value_from_integer(registry, int_ty, res)],
+        )
     }
 }
 
