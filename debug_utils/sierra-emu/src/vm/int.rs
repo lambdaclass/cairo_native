@@ -195,8 +195,8 @@ fn eval_diff(
     let res = lhs - rhs;
 
     // Since this libfunc returns an unsigned value, If lhs >= rhs then just
-    // return Ok(lhs - rhs). Otherwise, we need to wrap with value, returning
-    // Err(2**n + lhs - rhs).
+    // return Ok(lhs - rhs). Otherwise, we need to wrap around the value, returning
+    // Err(2**n + lhs - rhs), where n is the amount of bits for that integer type.
     if res < BigInt::ZERO {
         let max_integer = integer_range(int_ty, registry).upper;
         EvalAction::NormalBranch(
