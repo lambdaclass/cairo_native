@@ -435,7 +435,7 @@ mod test {
     use crate::{load_cairo, test_utils::run_test_program, Value};
 
     #[test]
-    fn test_diff_() {
+    fn test_diff_14_m2() {
         let (_, program) = load_cairo!(
             pub extern fn i8_diff(lhs: i8, rhs: i8) -> Result<u8, u8> implicits(RangeCheck) nopanic;
 
