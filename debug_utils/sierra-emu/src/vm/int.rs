@@ -25,6 +25,7 @@ use starknet_crypto::Felt;
 use starknet_types_core::felt::NonZeroFelt;
 
 use crate::{
+    debug::type_to_name,
     utils::{get_numeric_args_as_bigints, get_value_from_integer, integer_range},
     Value,
 };
@@ -190,29 +191,23 @@ fn eval_diff(
     };
     let [lhs, rhs]: [BigInt; 2] = get_numeric_args_as_bigints(&args[1..]).try_into().unwrap();
 
-    let int_ty_id = &info.branch_signatures()[0].vars[1].ty;
-    let int_ty = registry.get_type(int_ty_id).unwrap();
+    let int_ty = &info.branch_signatures()[0].vars[1].ty;
 
     let res = lhs - rhs;
 
-    let (res, has_overflowed) = if res < BigInt::ZERO {
-        let wrapper = match int_ty {
-            CoreTypeConcrete::Uint8(_) => BigInt::from(2).pow(8),
-            CoreTypeConcrete::Uint16(_) => BigInt::from(2).pow(16),
-            CoreTypeConcrete::Uint32(_) => BigInt::from(2).pow(32),
-            CoreTypeConcrete::Uint64(_) => BigInt::from(2).pow(64),
-            CoreTypeConcrete::Uint128(_) => BigInt::from(2).pow(128),
-            _ => unreachable!("should be an integer type"),
-        };
+    // Since this libfunc returns an unsigned value, If lhs >= rhs then just
+    // return Ok(lhs - rhs). Otherwise, we need to wrap with value, returning
+    // Err(2**n + lhs - rhs).
+    if res < BigInt::ZERO {
+        let max_integer = integer_range(int_ty, registry).upper;
+        let res = get_value_from_integer(registry, int_ty, max_integer + res);
 
-        (wrapper + res, true)
+        EvalAction::NormalBranch(1, smallvec![range_check, res])
     } else {
-        (res, false)
-    };
+        let res = get_value_from_integer(registry, int_ty, res);
 
-    let res = get_value_from_integer(registry, int_ty_id, res);
-
-    EvalAction::NormalBranch(has_overflowed as usize, smallvec![range_check, res])
+        EvalAction::NormalBranch(0 as usize, smallvec![range_check, res])
+    }
 }
 
 fn eval_divmod(
@@ -429,4 +424,89 @@ fn eval_byte_reverse(
     let value = value.swap_bytes();
 
     EvalAction::NormalBranch(0, smallvec![bitwise, Value::U128(value)])
+}
+
+#[cfg(test)]
+mod test {
+    use crate::{load_cairo, test_utils::run_test_program, Value};
+
+    #[test]
+    fn test_diff_() {
+        let (_, program) = load_cairo!(
+            pub extern fn i8_diff(lhs: i8, rhs: i8) -> Result<u8, u8> implicits(RangeCheck) nopanic;
+
+            fn main() -> Result<u8, u8> {
+                i8_diff(14, -2)
+            }
+        );
+
+        let result = run_test_program(program);
+        let result = result.last().unwrap();
+
+        let Value::Enum { payload, .. } = result else {
+            panic!()
+        };
+
+        assert_eq!(**payload, Value::U8(16))
+    }
+
+    #[test]
+    fn test_diff_m14_m2() {
+        let (_, program) = load_cairo!(
+            pub extern fn i8_diff(lhs: i8, rhs: i8) -> Result<u8, u8> implicits(RangeCheck) nopanic;
+
+            fn main() -> Result<u8, u8> {
+                i8_diff(-14, -2)
+            }
+        );
+
+        let result = run_test_program(program);
+        let result = result.last().unwrap();
+
+        let Value::Enum { payload, .. } = result else {
+            panic!()
+        };
+
+        assert_eq!(**payload, Value::U8(244))
+    }
+
+    #[test]
+    fn test_diff_m2_0() {
+        let (_, program) = load_cairo!(
+            pub extern fn i8_diff(lhs: i8, rhs: i8) -> Result<u8, u8> implicits(RangeCheck) nopanic;
+
+            fn main() -> Result<u8, u8> {
+                i8_diff(-2, 0)
+            }
+        );
+
+        let result = run_test_program(program);
+        let result = result.last().unwrap();
+
+        let Value::Enum { payload, .. } = result else {
+            panic!()
+        };
+
+        assert_eq!(**payload, Value::U8(254))
+    }
+
+    #[test]
+    fn test_diff_2_10() {
+        let (_, program) = load_cairo!(
+            pub extern fn i8_diff(lhs: i8, rhs: i8) -> Result<u8, u8> implicits(RangeCheck) nopanic;
+
+            fn main() -> Result<u8, u8> {
+                i8_diff(2, 10)
+            }
+        );
+
+        let result = run_test_program(program);
+        let result = result.last().unwrap();
+
+        let Value::Enum { payload, .. } = result else {
+            panic!()
+        };
+
+        assert_eq!(**payload, Value::U8(248))
+    }
 }
