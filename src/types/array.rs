@@ -39,7 +39,7 @@ use cairo_lang_sierra::{
     program_registry::ProgramRegistry,
 };
 use melior::{
-    dialect::{arith, llvm},
+    dialect::{arith, cf, llvm},
     ir::{r#type::IntegerType, Block, Location, Module, Type},
     Context,
 };
@@ -69,11 +69,17 @@ pub fn build<'ctx>(
         registry,
         metadata,
         info.self_ty(),
-        |metadata| {
-            // There's no need to build the type here because it'll always be built within
-            // `build_dup`.
-
-            Ok(Some(build_dup(context, module, registry, metadata, &info)?))
+        |metadata, region, entry_block, return_block| {
+            build_dup(
+                context,
+                module,
+                region,
+                entry_block,
+                return_block,
+                registry,
+                metadata,
+                &info,
+            )
         },
     )?;
     DropOverridesMeta::register_with(
@@ -105,21 +111,21 @@ pub fn build<'ctx>(
 /// This function clones the array shallowly. That is, it'll increment the reference counter but not
 /// actually clone anything. The deep clone implementation is provided in `src/libfuncs/array.rs` as
 /// part of some libfuncs's implementations.
+#[allow(clippy::too_many_arguments)]
 fn build_dup<'ctx>(
     context: &'ctx Context,
-    module: &Module<'ctx>,
+    _module: &Module<'ctx>,
+    _region: &Region<'ctx>,
+    entry: &Block<'ctx>,
+    return_block: &Block<'ctx>,
     registry: &ProgramRegistry<CoreType, CoreLibfunc>,
-    metadata: &mut MetadataStorage,
+    _metadata: &mut MetadataStorage,
     info: &WithSelf<InfoAndTypeConcreteType>,
-) -> Result<Region<'ctx>> {
+) -> Result<()> {
     let location = Location::unknown(context);
-    let value_ty = registry.build_type(context, module, metadata, info.self_ty())?;
 
     let elem_layout = registry.get_type(&info.ty)?.layout(registry)?;
     let refcount_offset = calc_data_prefix_offset(elem_layout);
-
-    let region = Region::new();
-    let entry = region.append_block(Block::new(&[(value_ty, location)]));
 
     let array_cap = entry.extract_value(
         context,
@@ -189,11 +195,13 @@ fn build_dup<'ctx>(
         location,
     ));
 
-    entry.append_operation(func::r#return(
+    entry.append_operation(cf::br(
+        return_block,
         &[entry.argument(0)?.into(), entry.argument(0)?.into()],
         location,
     ));
-    Ok(region)
+
+    Ok(())
 }
 
 /// This function decreases the reference counter of the array by one.

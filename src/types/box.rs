@@ -30,7 +30,7 @@ use cairo_lang_sierra::{
     program_registry::ProgramRegistry,
 };
 use melior::{
-    dialect::{func, llvm, ods},
+    dialect::{cf, func, llvm, ods},
     helpers::{ArithBlockExt, BuiltinBlockExt, LlvmBlockExt},
     ir::{
         attribute::IntegerAttribute, r#type::IntegerType, Block, BlockLike, Location, Module,
@@ -55,11 +55,17 @@ pub fn build<'ctx>(
         registry,
         metadata,
         info.self_ty(),
-        |metadata| {
-            // There's no need to build the type here because it'll always be built within
-            // `build_dup`.
-
-            Ok(Some(build_dup(context, module, registry, metadata, &info)?))
+        |metadata, region, entry_block, return_block| {
+            build_dup(
+                context,
+                module,
+                region,
+                entry_block,
+                return_block,
+                registry,
+                metadata,
+                &info,
+            )
         },
     )?;
     DropOverridesMeta::register_with(
@@ -81,13 +87,17 @@ pub fn build<'ctx>(
     Ok(llvm::r#type::pointer(context, 0))
 }
 
+#[allow(clippy::too_many_arguments)]
 fn build_dup<'ctx>(
     context: &'ctx Context,
     module: &Module<'ctx>,
+    _region: &Region<'ctx>,
+    entry: &Block<'ctx>,
+    return_block: &Block<'ctx>,
     registry: &ProgramRegistry<CoreType, CoreLibfunc>,
     metadata: &mut MetadataStorage,
     info: &WithSelf<InfoAndTypeConcreteType>,
-) -> Result<Region<'ctx>> {
+) -> Result<()> {
     let location = Location::unknown(context);
     if metadata.get::<ReallocBindingsMeta>().is_none() {
         metadata.insert(ReallocBindingsMeta::new(context, module));
@@ -96,9 +106,6 @@ fn build_dup<'ctx>(
     let inner_ty = registry.get_type(&info.ty)?;
     let inner_len = inner_ty.layout(registry)?.pad_to_align().size();
     let inner_ty = inner_ty.build(context, module, registry, metadata, &info.ty)?;
-
-    let region = Region::new();
-    let entry = region.append_block(Block::new(&[(llvm::r#type::pointer(context, 0), location)]));
 
     let null_ptr =
         entry.append_op_result(llvm::zero(llvm::r#type::pointer(context, 0), location))?;
@@ -116,7 +123,7 @@ fn build_dup<'ctx>(
         Some(dup_override_meta) if dup_override_meta.is_overriden(&info.ty) => {
             let value = entry.load(context, location, src_value, inner_ty)?;
             let values =
-                dup_override_meta.invoke_override(context, &entry, location, &info.ty, value)?;
+                dup_override_meta.invoke_override(context, entry, location, &info.ty, value)?;
             entry.store(context, location, src_value, values.0)?;
             entry.store(context, location, dst_value, values.1)?;
         }
@@ -135,8 +142,9 @@ fn build_dup<'ctx>(
         }
     }
 
-    entry.append_operation(func::r#return(&[src_value, dst_value], location));
-    Ok(region)
+    entry.append_operation(cf::br(return_block, &[src_value, dst_value], location));
+
+    Ok(())
 }
 
 fn build_drop<'ctx>(

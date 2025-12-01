@@ -29,7 +29,7 @@ use cairo_lang_sierra::{
     program_registry::ProgramRegistry,
 };
 use melior::{
-    dialect::func,
+    dialect::{cf, func},
     helpers::BuiltinBlockExt,
     ir::{Block, BlockLike, Location, Module, Region, Type},
     Context,
@@ -57,25 +57,30 @@ pub fn build<'ctx>(
     }
 
     // Register clone override (if required).
-    DupOverridesMeta::register_with(
-        context,
-        module,
-        registry,
-        metadata,
-        info.self_ty(),
-        |metadata| {
-            registry.build_type(context, module, metadata, &info.ty)?;
-
-            // The following unwrap is unreachable because `register_with` will always insert it before
-            // calling this closure.
-            metadata
-                .get::<DupOverridesMeta>()
-                .ok_or(Error::MissingMetadata)?
-                .is_overriden(&info.ty)
-                .then(|| build_dup(context, module, registry, metadata, &info))
-                .transpose()
-        },
-    )?;
+    let needs_dup_override = metadata
+        .get_or_insert_with::<DupOverridesMeta>(Default::default)
+        .is_overriden(&info.ty);
+    if needs_dup_override {
+        DupOverridesMeta::register_with(
+            context,
+            module,
+            registry,
+            metadata,
+            info.self_ty(),
+            |metadata, region, entry_block, return_block| {
+                build_dup(
+                    context,
+                    module,
+                    region,
+                    entry_block,
+                    return_block,
+                    registry,
+                    metadata,
+                    &info,
+                )
+            },
+        )?;
+    }
     // Register clone override (if required).
     DropOverridesMeta::register_with(
         context,
@@ -100,28 +105,28 @@ pub fn build<'ctx>(
     registry.build_type(context, module, metadata, &info.ty)
 }
 
+#[allow(clippy::too_many_arguments)]
 fn build_dup<'ctx>(
     context: &'ctx Context,
-    module: &Module<'ctx>,
-    registry: &ProgramRegistry<CoreType, CoreLibfunc>,
+    _module: &Module<'ctx>,
+    _region: &Region<'ctx>,
+    entry: &Block<'ctx>,
+    return_block: &Block<'ctx>,
+    _registry: &ProgramRegistry<CoreType, CoreLibfunc>,
     metadata: &mut MetadataStorage,
     info: &WithSelf<InfoAndTypeConcreteType>,
-) -> Result<Region<'ctx>> {
+) -> Result<()> {
     let location = Location::unknown(context);
-
-    let inner_ty = registry.build_type(context, module, metadata, &info.ty)?;
-
-    let region = Region::new();
-    let entry = region.append_block(Block::new(&[(inner_ty, location)]));
 
     // The following unwrap is unreachable because the registration logic will always insert it.
     let values = metadata
         .get::<DupOverridesMeta>()
         .ok_or(Error::MissingMetadata)?
-        .invoke_override(context, &entry, location, &info.ty, entry.arg(0)?)?;
+        .invoke_override(context, entry, location, &info.ty, entry.arg(0)?)?;
 
-    entry.append_operation(func::r#return(&[values.0, values.1], location));
-    Ok(region)
+    entry.append_operation(cf::br(return_block, &[values.0, values.1], location));
+
+    Ok(())
 }
 
 fn build_drop<'ctx>(

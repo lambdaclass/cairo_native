@@ -48,7 +48,7 @@ use cairo_lang_sierra::{
     program_registry::ProgramRegistry,
 };
 use melior::{
-    dialect::{func, llvm},
+    dialect::{cf, func, llvm},
     helpers::{BuiltinBlockExt, LlvmBlockExt},
     ir::{Block, BlockLike, Location, Module, Region, Type},
     Context,
@@ -64,33 +64,40 @@ pub fn build<'ctx>(
     metadata: &mut MetadataStorage,
     info: WithSelf<StructConcreteType>,
 ) -> Result<Type<'ctx>> {
-    DupOverridesMeta::register_with(
-        context,
-        module,
-        registry,
-        metadata,
-        info.self_ty(),
-        |metadata| {
-            // The following unwrap is unreachable because `register_with` will always insert it
-            // before calling this closure.
-            let mut needs_override = false;
-            for member in &info.members {
-                registry.build_type(context, module, metadata, member)?;
-                if metadata
-                    .get::<DupOverridesMeta>()
-                    .ok_or(Error::MissingMetadata)?
-                    .is_overriden(member)
-                {
-                    needs_override = true;
-                    break;
-                }
-            }
+    let mut needs_dup_override = false;
+    for member in &info.members {
+        registry.build_type(context, module, metadata, member)?;
+        if metadata
+            .get_or_insert_with::<DupOverridesMeta>(Default::default)
+            .is_overriden(member)
+        {
+            needs_dup_override = true;
+            break;
+        }
+    }
 
-            needs_override
-                .then(|| build_dup(context, module, registry, metadata, &info))
-                .transpose()
-        },
-    )?;
+    // Register enum's clone impl (if required).
+    if needs_dup_override {
+        DupOverridesMeta::register_with(
+            context,
+            module,
+            registry,
+            metadata,
+            info.self_ty(),
+            |metadata, region, entry_block, return_block| {
+                build_dup(
+                    context,
+                    module,
+                    region,
+                    entry_block,
+                    return_block,
+                    registry,
+                    metadata,
+                    &info,
+                )
+            },
+        )?;
+    }
     DropOverridesMeta::register_with(
         context,
         module,
@@ -127,19 +134,20 @@ pub fn build<'ctx>(
     Ok(llvm::r#type::r#struct(context, &members, false))
 }
 
+#[allow(clippy::too_many_arguments)]
 fn build_dup<'ctx>(
     context: &'ctx Context,
     module: &Module<'ctx>,
+    _region: &Region<'ctx>,
+    entry: &Block<'ctx>,
+    return_block: &Block<'ctx>,
     registry: &ProgramRegistry<CoreType, CoreLibfunc>,
     metadata: &mut MetadataStorage,
     info: &WithSelf<StructConcreteType>,
-) -> Result<Region<'ctx>> {
+) -> Result<()> {
     let location = Location::unknown(context);
 
     let self_ty = registry.build_type(context, module, metadata, info.self_ty())?;
-
-    let region = Region::new();
-    let entry = region.append_block(Block::new(&[(self_ty, location)]));
 
     let mut src_value = entry.arg(0)?;
     let mut dst_value = entry.append_op_result(llvm::undef(self_ty, location))?;
@@ -152,14 +160,15 @@ fn build_dup<'ctx>(
         let values = metadata
             .get::<DupOverridesMeta>()
             .ok_or(Error::MissingMetadata)?
-            .invoke_override(context, &entry, location, member_id, member_val)?;
+            .invoke_override(context, entry, location, member_id, member_val)?;
 
         src_value = entry.insert_value(context, location, src_value, values.0, idx)?;
         dst_value = entry.insert_value(context, location, dst_value, values.1, idx)?;
     }
 
-    entry.append_operation(func::r#return(&[src_value, dst_value], location));
-    Ok(region)
+    entry.append_operation(cf::br(return_block, &[src_value, dst_value], location));
+
+    Ok(())
 }
 
 fn build_drop<'ctx>(
