@@ -1766,7 +1766,7 @@ pub fn build_send_message_to_l1<'ctx, 'this>(
         &[llvm::r#type::r#struct(
             context,
             &[
-                llvm::r#type::pointer(context, 0),
+                llvm::r#type::pointer(context, 0), // ptr to felt
                 IntegerType::new(context, 32).into(),
                 IntegerType::new(context, 32).into(),
                 IntegerType::new(context, 32).into(),
