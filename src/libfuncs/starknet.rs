@@ -241,7 +241,7 @@ pub fn build_call_contract<'ctx, 'this>(
         get_integer_layout(64).align(),
     )?;
     entry.store(context, location, calldata_arg_ptr, entry.arg(4)?)?;
-    
+
     // Extract function pointer.
     let fn_ptr = entry.gep(
         context,
