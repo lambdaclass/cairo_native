@@ -294,45 +294,33 @@ pub fn build_into_entries<'ctx, 'this>(
         build_entries_array(context, registry, entry, location, helper, metadata, info)?;
 
     // Get the ptr to the data and pass it to the runtime function
-    // let ptr_ty = llvm::r#type::pointer(context, 0);
-    // let data_ptr_ptr = entry.extract_value(context, location, entries_array, ptr_ty, 0)?;
-    // let data_ptr = entry.load(context, location, data_ptr_ptr, ptr_ty)?;
-    // let dict_ptr = entry.arg(0)?;
+    let ptr_ty = llvm::r#type::pointer(context, 0);
+    let data_ptr_ptr = entry.extract_value(context, location, entries_array, ptr_ty, 0)?;
+    let data_ptr = entry.load(context, location, data_ptr_ptr, ptr_ty)?;
+    let dict_ptr = entry.arg(0)?;
 
     // Call runtime function that pushes the tuples into the array
-    // metadata
-    //     .get_mut::<RuntimeBindingsMeta>()
-    //     .ok_or(Error::MissingMetadata)?
-    //     .dict_into_entries(context, helper, entry, dict_ptr, data_ptr, location)?;
+    metadata
+        .get_mut::<RuntimeBindingsMeta>()
+        .ok_or(Error::MissingMetadata)?
+        .dict_into_entries(context, helper, entry, dict_ptr, data_ptr, location)?;
 
-    let len_ty = IntegerType::new(context, 32).into();
+    // let len_ty = IntegerType::new(context, 32).into();
     // let start_off = entry.extract_value(context, location, entries_array, len_ty, 1)?;
-    let end_off = entry.extract_value(context, location, entries_array, len_ty, 2)?;
+    // let end_off = entry.extract_value(context, location, entries_array, len_ty, 2)?;
     // let capacity = entry.extract_value(context, location, entries_array, len_ty, 3)?;
     // metadata
     //     .get_mut::<DebugUtils>()
     //     .unwrap()
     //     .print_i32(context, helper, entry, start_off, location)?;
-    metadata
-        .get_mut::<DebugUtils>()
-        .unwrap()
-        .print_i32(context, helper, entry, end_off, location)?;
+    // metadata
+    //     .get_mut::<DebugUtils>()
+    //     .unwrap()
+    //     .print_i32(context, helper, entry, end_off, location)?;
     // metadata
     //     .get_mut::<DebugUtils>()
     //     .unwrap()
     //     .print_i32(context, helper, entry, capacity, location)?;
-
-    // let ptr_ty = llvm::r#type::pointer(context, 0);
-    // let len_ty = IntegerType::new(context, 32).into();
-
-    // let nullptr = entry.append_op_result(llvm::zero(ptr_ty, location))?;
-    // let k0 = entry.const_int_from_type(context, location, 0, len_ty)?;
-
-    // let value = entry.append_op_result(llvm::undef(
-    //     llvm::r#type::r#struct(context, &[ptr_ty, len_ty, len_ty, len_ty], false),
-    //     location,
-    // ))?;
-    // let value = entry.insert_values(context, location, value, &[nullptr, k0, k0, k0])?;
 
     helper.br(entry, 0, &[entries_array], location)
 }

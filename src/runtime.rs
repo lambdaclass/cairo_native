@@ -304,44 +304,40 @@ pub unsafe extern "C" fn cairo_native__dict_len(dict_ptr: *const FeltDict) -> u6
     dict_len
 }
 
+#[repr(C)]
+pub struct TupleResult {
+    key: [u8; 32],
+    first_value: *mut c_void,
+    last_value: *mut c_void,
+}
+
 pub unsafe extern "C" fn cairo_native__dict_into_entries(
     dict_ptr: *const FeltDict,
-    data_ptr: *mut c_void,
+    data_ptr: *mut TupleResult,
 ) {
-    // let dict_rc = Rc::from_raw(dict_ptr);
+    let dict_rc = Rc::from_raw(dict_ptr);
 
     // There may me multiple reference to the same dictionary (snapshots), but
     // as snapshots cannot access the inner dictionary, then it is safe to modify it
     // without cloning it.
-    // let dict = Rc::as_ptr(&dict_rc)
-    //     .cast_mut()
-    //     .as_mut()
-    //     .expect("rc inner pointer should never be null");
+    let dict = Rc::as_ptr(&dict_rc)
+        .cast_mut()
+        .as_mut()
+        .expect("rc inner pointer should never be null");
 
-    // let tuple_stride =
-    //     dict.layout.pad_to_align().size() * 2 + Layout::new::<[u8; 32]>().pad_to_align().size();
-    // TODO: Check how to really get the size of a felt252
+    for (key, elem_index) in &dict.mappings {
+        let val = dict
+            .elements
+            .byte_add(dict.layout.pad_to_align().size() * elem_index);
 
-    let first_ptr = data_ptr as *const [u8; 32];
-    let first = &*first_ptr; // leer la referencia
-
-    println!("Primer elemento como array: {:?}", first);
-
-    // data_ptr.byte_add(count)
+        let curr_tuple = &mut *data_ptr.add(*elem_index);
+        curr_tuple.key = *key;
+        // curr_tuple.first_value = *elem_index as *mut c_void;
+        let b = val as *mut u8;
+        println!("{:?}", *b);
+        curr_tuple.last_value = val as *mut c_void; // TODO: Check how to properly do this cast
+    }
 }
-
-// pub unsafe extern "C" fn cairo_native__dict_get_all(
-//     dict_ptr: *const FeltDict,
-//     value_ptr: *mut *mut c_void,
-// ) {
-//     let dict_rc = Rc::from_raw(dict_ptr);
-//     *value_ptr = dict_rc
-//         .elements
-//         .byte_add(dict_rc.layout.pad_to_align().size() * 0) // TODO: Delete this line
-//         .cast();
-
-//     forget(dict_rc); // TODO: Should we forget it?
-// }
 
 /// Simulates the felt252_dict_squash libfunc.
 ///
