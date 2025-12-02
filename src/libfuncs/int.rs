@@ -398,7 +398,8 @@ fn build_from_felt252<'ctx, 'this>(
         &info.signature.branch_signatures[0].vars[1].ty,
     )?;
 
-    // We casting from a felt, so we need to reduce it.
+    // We casting from a felt, so we need convert it from Montgomery back to
+    // its original representation.
     let input = entry.arg(1)?;
     let k1 = entry.const_int_from_type(context, location, 1, input.r#type())?;
     let input = montgomery::mlir::monty_mul(context, entry, input, k1, input.r#type(), location)?;
@@ -902,7 +903,7 @@ fn build_to_felt252<'ctx, 'this>(
         entry.arg(0)?
     };
 
-    // We are casting to a felt, so we need convert it into Montgomery space.
+    // We are casting to a felt, so we need convert it into Montgomery.
     let r2 = entry.const_int(context, location, *MONTY_R2, 257)?;
     let value = montgomery::mlir::monty_mul(context, entry, value, r2, felt252_ty, location)?;
 
@@ -920,7 +921,8 @@ fn build_u128s_from_felt252<'ctx, 'this>(
 ) -> Result<()> {
     let target_ty = IntegerType::new(context, 128).into();
 
-    // We casting from a felt, so we need to reduce it.
+    // We casting from a felt, so we need convert it from Montgomery back to
+    // its original representation.
     let felt = entry.arg(1)?;
     let k1 = entry.const_int_from_type(context, location, 1, felt.r#type())?;
     let lo = montgomery::mlir::monty_mul(context, entry, felt, k1, felt.r#type(), location)?;

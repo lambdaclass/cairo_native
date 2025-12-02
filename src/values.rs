@@ -177,6 +177,8 @@ impl Value {
                 Self::Felt252(value) => {
                     let ptr = arena.alloc_layout(get_integer_layout(252)).cast();
 
+                    // Felts are represented in Montgomery form. Due to this,
+                    // we need to take its raw bytes.
                     let data = value.to_bytes_le_raw();
                     ptr.cast::<[u8; 32]>().as_mut().copy_from_slice(&data);
                     ptr
@@ -433,6 +435,8 @@ impl Value {
                         // next key must be called before next_value
 
                         for (key, value) in map.iter() {
+                            // Felts are represented in Montgomery form. Due to this,
+                            // we need to take its raw bytes.
                             let key = key.to_bytes_le_raw();
                             let value =
                                 value.to_ptr(arena, registry, &info.ty, find_dict_drop_override)?;
@@ -741,6 +745,9 @@ impl Value {
                 CoreTypeConcrete::Felt252(_) => {
                     let data = ptr.cast::<[u8; 32]>().as_mut();
                     data[31] &= 0x0F; // Filter out first 4 bits (they're outside an i252).
+
+                    // Felts are represented in Montgomery form. Due to this, we
+                    // need to convert them back to their original representation.
                     let data = U256::from_bytes_le(data).unwrap();
                     Self::Felt252(Felt::from_raw(data.limbs))
                 }
@@ -868,7 +875,8 @@ impl Value {
                         let mut key = key;
                         key[31] &= 0x0F; // Filter out first 4 bits (they're outside an i252).
 
-                        // TODO: add comment here.
+                        // Felts are represented in Montgomery form. Due to this, we
+                        // need to convert them back to their original representation.
                         let key = {
                             let key = U256::from_bytes_le(&key).unwrap();
                             Felt::from_raw(key.limbs)
@@ -926,6 +934,9 @@ impl Value {
                         // felt values
                         let data = ptr.cast::<[u8; 32]>().as_mut();
                         data[31] &= 0x0F; // Filter out first 4 bits (they're outside an i252).
+
+                        // Felts are represented in Montgomery form. Due to this, we
+                        // need to convert them back to their original representation.
                         let data = U256::from_bytes_le(data).unwrap();
                         Self::Felt252(Felt::from_raw(data.limbs))
                     }

@@ -320,6 +320,8 @@ pub unsafe extern "C" fn cairo_native__dict_squash(
     let no_big_keys = dict
         .mappings
         .keys()
+        // Felts are represented in Montgomery form. Due to this, we
+        // need to convert them back to their original representation.
         .map(|b| U256::from_bytes_le(b).expect("felt bytes should be valid"))
         .map(|v| Felt::from_raw(v.limbs))
         .all(|key| key < Felt::from(BigInt::from(1).shl(128)));

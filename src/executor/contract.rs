@@ -76,7 +76,7 @@ use cairo_lang_starknet_classes::{
 use cairo_lang_utils::small_ordered_map::SmallOrderedMap;
 use educe::Educe;
 use itertools::{chain, Itertools};
-use lambdaworks_math::{traits::ByteConversion, unsigned_integer::element::UnsignedInteger};
+use lambdaworks_math::{traits::ByteConversion, unsigned_integer::element::U256};
 use libloading::Library;
 use serde::{Deserialize, Serialize};
 use starknet_types_core::felt::Felt;
@@ -672,8 +672,10 @@ impl AotContractExecutor {
 
                 data[31] &= 0x0F; // Filter out first 4 bits (they're outside an i252).
 
+                // Felts are represented in Montgomery form. Due to this, we
+                // need to convert them back to their original representation.
                 let felt = {
-                    let data = UnsignedInteger::from_bytes_le(&data).unwrap();
+                    let data = U256::from_bytes_le(&data).unwrap();
                     Felt::from_raw(data.limbs)
                 };
 
