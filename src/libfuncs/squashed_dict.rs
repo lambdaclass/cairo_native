@@ -106,6 +106,16 @@ fn append_entry_tuples<'ctx, 'this>(
             (arr.r#type(), location),
         ]));
         let loop_arr = block.arg(1)?;
+        let array_ptr_ptr = block.extract_value(
+            context,
+            location,
+            loop_arr,
+            llvm::r#type::pointer(context, 0),
+            0,
+        )?;
+        let ptr_ty = llvm::r#type::pointer(context, 0);
+
+        let array_ptr = block.load(context, location, array_ptr_ptr, ptr_ty)?;
         let end_offset = block.extract_value(
             context,
             location,
@@ -113,14 +123,34 @@ fn append_entry_tuples<'ctx, 'this>(
             IntegerType::new(context, 32).into(),
             2,
         )?;
+        let end_offset = block.extui(end_offset, IntegerType::new(context, 64).into(), location)?;
+        let target_offset = block.muli(end_offset, elem_stride, location)?;
+        let target_ptr = block.gep(
+            context,
+            location,
+            array_ptr,
+            &[GepIndex::Value(target_offset)],
+            IntegerType::new(context, 8).into(),
+        )?;
 
-        metadata
-            .get_mut::<DebugUtils>()
-            .unwrap()
-            .print_i32(context, helper, &block, end_offset, location)?;
+        // Build tuple and store it
+        let (felt_ty, generic_ty) = get_inner_types(context, registry, helper, metadata, info)?;
+        let tuple = block.append_op_result(llvm::undef(
+            llvm::r#type::r#struct(context, &[felt_ty, generic_ty, generic_ty], false),
+            location,
+        ))?;
+        block.store(context, location, target_ptr, tuple)?;
 
-        let k1 = block.const_int(context, location, 1, 32)?;
+        // Update end offset
+        let k1 = block.const_int_from_type(
+            context,
+            location,
+            1,
+            IntegerType::new(context, 64).into(),
+        )?;
         let end_offset = block.addi(end_offset, k1, location)?;
+        let end_offset =
+            block.trunci(end_offset, IntegerType::new(context, 32).into(), location)?;
 
         let new_arr = block.insert_value(context, location, loop_arr, end_offset, 2)?;
         block.append_operation(scf::r#yield(&[new_arr], location));
@@ -138,74 +168,6 @@ fn append_entry_tuples<'ctx, 'this>(
             .add_regions([region])
             .build()?,
     )?)
-
-    // Ok(entry.append_operation(scf::r#for(
-    //     k0,
-    //     dict_len,
-    //     k1,
-    //     {
-    //         let region = Region::new();
-    //         let block = region.append_block(Block::new(&[(
-    //             IntegerType::new(context, 64).into(),
-    //             location,
-    //         )])); // TODO: Do I need to pass the arr as an argument?
-
-    //         metadata.get_mut::<DebugUtils>().unwrap().debug_print(
-    //             context,
-    //             helper,
-    //             &block,
-    //             "LOOP ITERATION",
-    //             location,
-    //         )?;
-
-    //         let array_ptr = block.extract_value(
-    //             context,
-    //             location,
-    //             arr,
-    //             llvm::r#type::pointer(context, 0),
-    //             0,
-    //         )?;
-    //         let end_offset = block.extract_value(
-    //             context,
-    //             location,
-    //             arr,
-    //             IntegerType::new(context, 32).into(),
-    //             2,
-    //         )?;
-    //         let end_offset =
-    //             block.extui(end_offset, IntegerType::new(context, 64).into(), location)?;
-    //         let target_offset = block.muli(end_offset, elem_stride, location)?;
-    //         let target_ptr = block.gep(
-    //             context,
-    //             location,
-    //             array_ptr,
-    //             &[GepIndex::Value(target_offset)],
-    //             IntegerType::new(context, 8).into(),
-    //         )?;
-
-    //         // Build tuple and store it
-    //         let (felt_ty, generic_ty) = get_inner_types(context, registry, helper, metadata, info)?;
-    //         let tuple = block.append_op_result(llvm::undef(
-    //             llvm::r#type::r#struct(context, &[felt_ty, generic_ty, generic_ty], false),
-    //             location,
-    //         ))?;
-    //         block.store(context, location, target_ptr, tuple)?;
-
-    //         // Update end offset
-    //         let end_offset = block.addi(end_offset, k1, location)?;
-    //         let end_offset =
-    //             entry.trunci(end_offset, IntegerType::new(context, 32).into(), location)?;
-    //         metadata
-    //             .get_mut::<DebugUtils>()
-    //             .unwrap()
-    //             .print_i32(context, helper, &block, end_offset, location)?;
-    //         block.insert_value(context, location, arr, end_offset, 2)?;
-
-    //         block.append_operation(scf::r#yield(&[], location)); // TODO: Do I need to return the arr here?
-    //         region
-    //     },
-    //     location,
-    // )))
 }
 
 fn build_entries_array<'ctx, 'this>(
