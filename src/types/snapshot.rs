@@ -57,10 +57,7 @@ pub fn build<'ctx>(
     }
 
     // Register clone override (if required).
-    let needs_dup_override = metadata
-        .get_or_insert_with::<DupOverridesMeta>(Default::default)
-        .is_overriden(&info.ty);
-    if needs_dup_override {
+    if DupOverridesMeta::is_overriden(metadata, &info.ty) {
         DupOverridesMeta::register_with(
             context,
             module,
@@ -118,11 +115,14 @@ fn build_dup<'ctx>(
 ) -> Result<()> {
     let location = Location::unknown(context);
 
-    // The following unwrap is unreachable because the registration logic will always insert it.
-    let values = metadata
-        .get::<DupOverridesMeta>()
-        .ok_or(Error::MissingMetadata)?
-        .invoke_override(context, entry, location, &info.ty, entry.arg(0)?)?;
+    let values = DupOverridesMeta::invoke_override(
+        context,
+        entry,
+        location,
+        metadata,
+        &info.ty,
+        entry.arg(0)?,
+    )?;
 
     entry.append_operation(cf::br(return_block, &[values.0, values.1], location));
 

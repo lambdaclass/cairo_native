@@ -388,8 +388,8 @@ pub fn build_tuple_from_span<'ctx, 'this>(
                 let region = Region::new();
                 let block = region.append_block(Block::new(&[]));
 
-                match metadata.get::<DupOverridesMeta>() {
-                    Some(dup_overrides_meta) if dup_overrides_meta.is_overriden(&info.ty) => {
+                match DupOverridesMeta::is_overriden(metadata, &info.ty) {
+                    true => {
                         let src_ptr = array_data_start_ptr;
                         let dst_ptr = value;
 
@@ -397,8 +397,9 @@ pub fn build_tuple_from_span<'ctx, 'this>(
 
                         // Invoke the tuple's clone mechanism, which will take care of copying or
                         // cloning each item in the array.
-                        let values = dup_overrides_meta
-                            .invoke_override(context, &block, location, &info.ty, value)?;
+                        let values = DupOverridesMeta::invoke_override(
+                            context, &block, location, metadata, &info.ty, value,
+                        )?;
                         block.store(context, location, src_ptr, values.0)?;
                         block.store(context, location, dst_ptr, values.1)?;
                     }
@@ -898,8 +899,8 @@ fn build_pop<'ctx, 'this, const CONSUME: bool, const REVERSE: bool>(
         )?)?;
 
         // Clone popped items.
-        match metadata.get::<DupOverridesMeta>() {
-            Some(dup_overrides_meta) if dup_overrides_meta.is_overriden(elem_ty) => {
+        match DupOverridesMeta::is_overriden(metadata, elem_ty) {
+            true => {
                 for i in 0..extract_len {
                     let source_ptr = valid_block.gep(
                         context,
@@ -921,10 +922,11 @@ fn build_pop<'ctx, 'this, const CONSUME: bool, const REVERSE: bool>(
                     )?;
 
                     let value = valid_block.load(context, location, source_ptr, elem_type)?;
-                    let values = dup_overrides_meta.invoke_override(
+                    let values = DupOverridesMeta::invoke_override(
                         context,
                         valid_block,
                         location,
+                        metadata,
                         elem_ty,
                         value,
                     )?;
@@ -1042,13 +1044,14 @@ pub fn build_get<'ctx, 'this>(
         )?)?;
 
         // Clone the output data.
-        match metadata.get::<DupOverridesMeta>() {
-            Some(dup_overrides_meta) if dup_overrides_meta.is_overriden(&info.ty) => {
+        match DupOverridesMeta::is_overriden(metadata, &info.ty) {
+            true => {
                 let value = valid_block.load(context, location, source_ptr, elem_ty)?;
-                let values = dup_overrides_meta.invoke_override(
+                let values = DupOverridesMeta::invoke_override(
                     context,
                     valid_block,
                     location,
+                    metadata,
                     &info.ty,
                     value,
                 )?;

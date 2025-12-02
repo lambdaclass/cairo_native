@@ -120,21 +120,24 @@ impl DupOverridesMeta {
     }
 
     /// Returns whether a type has a registered dup implementation.
-    pub(crate) fn is_overriden(&self, id: &ConcreteTypeId) -> bool {
-        self.overriden_types.contains(id)
+    pub(crate) fn is_overriden(metadata: &mut MetadataStorage, id: &ConcreteTypeId) -> bool {
+        metadata
+            .get_or_insert_with(Self::default)
+            .overriden_types
+            .contains(id)
     }
 
     /// Generates code to invoke a dup implementation for a type, or just returns the same value
     /// twice if no implementation was registered.
     pub(crate) fn invoke_override<'ctx, 'this>(
-        &self,
         context: &'ctx Context,
         block: &'this Block<'ctx>,
         location: Location<'ctx>,
+        metadata: &mut MetadataStorage,
         id: &ConcreteTypeId,
         value: Value<'ctx, 'this>,
     ) -> Result<(Value<'ctx, 'this>, Value<'ctx, 'this>)> {
-        Ok(if self.overriden_types.contains(id) {
+        Ok(if Self::is_overriden(metadata, id) {
             let res = block.append_operation(func::call(
                 context,
                 FlatSymbolRefAttribute::new(context, &format!("dup${}", id.id)),

@@ -119,11 +119,12 @@ fn build_dup<'ctx>(
         location,
     )?)?;
 
-    match metadata.get::<DupOverridesMeta>() {
-        Some(dup_override_meta) if dup_override_meta.is_overriden(&info.ty) => {
+    match DupOverridesMeta::is_overriden(metadata, &info.ty) {
+        true => {
             let value = entry.load(context, location, src_value, inner_ty)?;
-            let values =
-                dup_override_meta.invoke_override(context, entry, location, &info.ty, value)?;
+            let values = DupOverridesMeta::invoke_override(
+                context, entry, location, metadata, &info.ty, value,
+            )?;
             entry.store(context, location, src_value, values.0)?;
             entry.store(context, location, dst_value, values.1)?;
         }

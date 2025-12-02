@@ -167,10 +167,7 @@ pub fn build<'ctx>(
     let mut needs_dup_override = false;
     for variant in &info.variants {
         registry.build_type(context, module, metadata, variant)?;
-        if metadata
-            .get_or_insert_with::<DupOverridesMeta>(Default::default)
-            .is_overriden(variant)
-        {
+        if DupOverridesMeta::is_overriden(metadata, variant) {
             needs_dup_override = true;
             break;
         }
@@ -300,12 +297,14 @@ fn build_dup<'ctx>(
     match variant_tys.len() {
         0 => native_panic!("attempt to clone a zero-variant enum"),
         1 => {
-            // The following unwrap is unreachable because the registration logic will always insert
-            // it.
-            let values = metadata
-                .get::<DupOverridesMeta>()
-                .ok_or(Error::MissingMetadata)?
-                .invoke_override(context, entry, location, &info.variants[0], entry.arg(0)?)?;
+            let values = DupOverridesMeta::invoke_override(
+                context,
+                entry,
+                location,
+                metadata,
+                &info.variants[0],
+                entry.arg(0)?,
+            )?;
 
             entry.append_operation(cf::br(return_block, &[values.0, values.1], location));
         }
@@ -330,12 +329,9 @@ fn build_dup<'ctx>(
                     )?;
                     let value = block.extract_value(context, location, container, variant_ty, 1)?;
 
-                    // The following unwrap is unreachable because the registration logic will
-                    // always insert it.
-                    let values = metadata
-                        .get::<DupOverridesMeta>()
-                        .ok_or(Error::MissingMetadata)?
-                        .invoke_override(context, block, location, variant_id, value)?;
+                    let values = DupOverridesMeta::invoke_override(
+                        context, block, location, metadata, variant_id, value,
+                    )?;
 
                     let value = block.insert_value(context, location, container, values.0, 1)?;
                     block.store(context, location, ptr, value)?;

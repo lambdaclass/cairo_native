@@ -139,13 +139,14 @@ fn build_dup<'ctx>(
             location,
         )?)?;
 
-        match metadata.get::<DupOverridesMeta>() {
-            Some(dup_override_meta) if dup_override_meta.is_overriden(&info.ty) => {
+        match DupOverridesMeta::is_overriden(metadata, &info.ty) {
+            true => {
                 let value = block_realloc.load(context, location, src_value, inner_ty)?;
-                let values = dup_override_meta.invoke_override(
+                let values = DupOverridesMeta::invoke_override(
                     context,
                     &block_realloc,
                     location,
+                    metadata,
                     &info.ty,
                     value,
                 )?;

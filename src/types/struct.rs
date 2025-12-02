@@ -67,10 +67,7 @@ pub fn build<'ctx>(
     let mut needs_dup_override = false;
     for member in &info.members {
         registry.build_type(context, module, metadata, member)?;
-        if metadata
-            .get_or_insert_with::<DupOverridesMeta>(Default::default)
-            .is_overriden(member)
-        {
+        if DupOverridesMeta::is_overriden(metadata, member) {
             needs_dup_override = true;
             break;
         }
@@ -156,11 +153,9 @@ fn build_dup<'ctx>(
         let member_ty = registry.build_type(context, module, metadata, member_id)?;
         let member_val = entry.extract_value(context, location, src_value, member_ty, idx)?;
 
-        // The following unwrap is unreachable because the registration logic will always insert it.
-        let values = metadata
-            .get::<DupOverridesMeta>()
-            .ok_or(Error::MissingMetadata)?
-            .invoke_override(context, entry, location, member_id, member_val)?;
+        let values = DupOverridesMeta::invoke_override(
+            context, entry, location, metadata, member_id, member_val,
+        )?;
 
         src_value = entry.insert_value(context, location, src_value, values.0, idx)?;
         dst_value = entry.insert_value(context, location, dst_value, values.1, idx)?;
