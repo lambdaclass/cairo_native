@@ -461,14 +461,7 @@ pub fn build_storage_read<'ctx, 'this>(
     )?;
     let fn_ptr = entry.load(context, location, fn_ptr, llvm::r#type::pointer(context, 0))?;
 
-    let mut args = vec![
-        fn_ptr,
-        ptr,
-        ptr,
-        gas_builtin_ptr,
-        entry.arg(2)?,
-        address_arg_ptr,
-    ];
+    let mut args = vec![fn_ptr, ptr, gas_builtin_ptr, entry.arg(2)?, address_arg_ptr];
     let (result_tag, payload_ok, payload_err) = call_syscall(
         context,
         registry,
