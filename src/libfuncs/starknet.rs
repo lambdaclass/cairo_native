@@ -241,7 +241,7 @@ pub fn build_call_contract<'ctx, 'this>(
         get_integer_layout(64).align(),
     )?;
     entry.store(context, location, calldata_arg_ptr, entry.arg(4)?)?;
-
+    
     // Extract function pointer.
     let fn_ptr = entry.gep(
         context,
@@ -1761,19 +1761,24 @@ pub fn build_send_message_to_l1<'ctx, 'this>(
     entry.store(context, location, to_address_arg_ptr, entry.arg(2)?)?;
 
     // Allocate `payload` argument and write the value.
-    let payload_arg_ptr = helper.init_block().alloca1(
+    let payload_arg_ty = llvm::r#type::r#struct(
         context,
-        location,
-        llvm::r#type::r#struct(
+        &[llvm::r#type::r#struct(
             context,
             &[
-                llvm::r#type::pointer(context, 0), // ptr to felt
+                llvm::r#type::pointer(context, 0),
                 IntegerType::new(context, 32).into(),
                 IntegerType::new(context, 32).into(),
                 IntegerType::new(context, 32).into(),
             ],
             false,
-        ),
+        )],
+        false,
+    );
+    let payload_arg_ptr = helper.init_block().alloca1(
+        context,
+        location,
+        payload_arg_ty,
         get_integer_layout(64).align(),
     )?;
     entry.store(context, location, payload_arg_ptr, entry.arg(3)?)?;
