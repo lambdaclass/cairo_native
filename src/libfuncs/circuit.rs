@@ -595,11 +595,6 @@ fn build_gate_evaluation<'ctx, 'this>(
                 }
                 // INV: lhs = 1 / rhs
                 (None, Some(rhs_value), Some(_)) => {
-                    // Extend to avoid overflow
-                    let u768_type = IntegerType::new(context, 768).into();
-                    let rhs_value = block.extui(rhs_value, u768_type, location)?;
-                    let circuit_modulus_u768 = block.extui(circuit_modulus, u768_type, location)?;
-
                     // Apply egcd to find gcd and inverse
                     let euclidean_result = runtime_bindings_meta.extended_euclidean_algorithm(
                         context,
@@ -607,16 +602,16 @@ fn build_gate_evaluation<'ctx, 'this>(
                         block,
                         location,
                         rhs_value,
-                        circuit_modulus_u768,
+                        circuit_modulus,
                     )?;
                     // Extract the values from the result struct
                     let gcd =
-                        block.extract_value(context, location, euclidean_result, u768_type, 0)?;
+                        block.extract_value(context, location, euclidean_result, u384_type, 0)?;
                     let inverse =
-                        block.extract_value(context, location, euclidean_result, u768_type, 1)?;
+                        block.extract_value(context, location, euclidean_result, u384_type, 1)?;
 
                     // if the gcd is not 1, then fail (a and b are not coprimes)
-                    let one = block.const_int_from_type(context, location, 1, u768_type)?;
+                    let one = block.const_int_from_type(context, location, 1, u384_type)?;
                     let gate_offset_idx_value = block.const_int_from_type(
                         context,
                         location,
@@ -637,7 +632,7 @@ fn build_gate_evaluation<'ctx, 'this>(
                     block = has_inverse_block;
 
                     // if the inverse is negative, then add modulus
-                    let zero = block.const_int_from_type(context, location, 0, u768_type)?;
+                    let zero = block.const_int_from_type(context, location, 0, u384_type)?;
                     let is_negative = block
                         .append_operation(arith::cmpi(
                             context,
@@ -648,16 +643,13 @@ fn build_gate_evaluation<'ctx, 'this>(
                         ))
                         .result(0)?
                         .into();
-                    let wrapped_inverse = block.addi(inverse, circuit_modulus_u768, location)?;
+                    let wrapped_inverse = block.addi(inverse, circuit_modulus, location)?;
                     let inverse = block.append_op_result(arith::select(
                         is_negative,
                         wrapped_inverse,
                         inverse,
                         location,
                     ))?;
-
-                    // Truncate back
-                    let inverse = block.trunci(inverse, u384_type, location)?;
 
                     gates[gate_offset.lhs] = Some(inverse);
                 }

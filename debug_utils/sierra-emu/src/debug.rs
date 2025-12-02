@@ -306,6 +306,7 @@ pub fn libfunc_to_name(value: &CoreConcreteLibfunc) -> &'static str {
             StructConcreteLibfunc::Construct(_) => "struct_construct",
             StructConcreteLibfunc::Deconstruct(_) => "struct_deconstruct",
             StructConcreteLibfunc::SnapshotDeconstruct(_) => "struct_snapshot_deconstruct",
+            StructConcreteLibfunc::BoxedDeconstruct(_) => "struct_boxed_deconstruct",
         },
         CoreConcreteLibfunc::Felt252Dict(value) => match value {
             Felt252DictConcreteLibfunc::New(_) => "felt252dict_new",

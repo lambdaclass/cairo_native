@@ -1,4 +1,5 @@
 use cairo_lang_compiler::CompilerConfig;
+use cairo_lang_lowering::utils::InliningStrategy;
 use cairo_lang_starknet::compile::compile_path;
 use cairo_native::{
     context::NativeContext,
@@ -447,6 +448,7 @@ fn main() {
             replace_ids: true,
             ..Default::default()
         },
+        InliningStrategy::Default,
     )
     .unwrap();
 
