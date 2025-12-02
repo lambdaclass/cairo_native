@@ -398,7 +398,7 @@ pub fn build_tuple_from_span<'ctx, 'this>(
                         // Invoke the tuple's clone mechanism, which will take care of copying or
                         // cloning each item in the array.
                         let values = DupOverridesMeta::invoke_override(
-                            context, &block, location, metadata, &info.ty, value,
+                            context, registry, helper, &block, location, metadata, &info.ty, value,
                         )?;
                         block.store(context, location, src_ptr, values.0)?;
                         block.store(context, location, dst_ptr, values.1)?;
@@ -924,6 +924,8 @@ fn build_pop<'ctx, 'this, const CONSUME: bool, const REVERSE: bool>(
                     let value = valid_block.load(context, location, source_ptr, elem_type)?;
                     let values = DupOverridesMeta::invoke_override(
                         context,
+                        registry,
+                        helper,
                         valid_block,
                         location,
                         metadata,
@@ -1049,6 +1051,8 @@ pub fn build_get<'ctx, 'this>(
                 let value = valid_block.load(context, location, source_ptr, elem_ty)?;
                 let values = DupOverridesMeta::invoke_override(
                     context,
+                    registry,
+                    helper,
                     valid_block,
                     location,
                     metadata,

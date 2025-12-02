@@ -30,7 +30,7 @@ use melior::{
 /// implementation for `Box<T>`. That's why we need to provide a clone in MLIR.
 pub fn build<'ctx, 'this>(
     context: &'ctx Context,
-    _registry: &ProgramRegistry<CoreType, CoreLibfunc>,
+    registry: &ProgramRegistry<CoreType, CoreLibfunc>,
     entry: &'this Block<'ctx>,
     location: Location<'ctx>,
     helper: &LibfuncHelper<'ctx, 'this>,
@@ -39,6 +39,8 @@ pub fn build<'ctx, 'this>(
 ) -> Result<()> {
     let values = DupOverridesMeta::invoke_override(
         context,
+        registry,
+        helper,
         entry,
         location,
         metadata,

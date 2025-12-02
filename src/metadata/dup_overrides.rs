@@ -129,8 +129,11 @@ impl DupOverridesMeta {
 
     /// Generates code to invoke a dup implementation for a type, or just returns the same value
     /// twice if no implementation was registered.
+    #[allow(clippy::too_many_arguments)]
     pub(crate) fn invoke_override<'ctx, 'this>(
         context: &'ctx Context,
+        registry: &ProgramRegistry<CoreType, CoreLibfunc>,
+        module: &Module<'ctx>,
         block: &'this Block<'ctx>,
         location: Location<'ctx>,
         metadata: &mut MetadataStorage,

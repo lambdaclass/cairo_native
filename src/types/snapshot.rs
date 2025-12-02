@@ -105,11 +105,11 @@ pub fn build<'ctx>(
 #[allow(clippy::too_many_arguments)]
 fn build_dup<'ctx>(
     context: &'ctx Context,
-    _module: &Module<'ctx>,
+    module: &Module<'ctx>,
     _region: &Region<'ctx>,
     entry: &Block<'ctx>,
     return_block: &Block<'ctx>,
-    _registry: &ProgramRegistry<CoreType, CoreLibfunc>,
+    registry: &ProgramRegistry<CoreType, CoreLibfunc>,
     metadata: &mut MetadataStorage,
     info: &WithSelf<InfoAndTypeConcreteType>,
 ) -> Result<()> {
@@ -117,6 +117,8 @@ fn build_dup<'ctx>(
 
     let values = DupOverridesMeta::invoke_override(
         context,
+        registry,
+        module,
         entry,
         location,
         metadata,

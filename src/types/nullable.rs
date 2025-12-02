@@ -144,6 +144,8 @@ fn build_dup<'ctx>(
                 let value = block_realloc.load(context, location, src_value, inner_ty)?;
                 let values = DupOverridesMeta::invoke_override(
                     context,
+                    registry,
+                    module,
                     &block_realloc,
                     location,
                     metadata,
