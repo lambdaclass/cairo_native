@@ -2063,7 +2063,7 @@ fn call_syscall<'ctx, 'this>(
         result_layout.align(),
     )?;
 
-    // The return pointer is expected to be 2nd argument of the call.
+    // The return pointer is expected to be the 2nd argument of the call.
     args.insert(1, result_ptr);
 
     block.append_operation(
