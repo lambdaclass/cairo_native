@@ -821,7 +821,13 @@ impl TypeBuilder for CoreTypeConcrete {
             CoreTypeConcrete::RangeCheck(_) => false,
             CoreTypeConcrete::RangeCheck96(_) => false,
             CoreTypeConcrete::Uninitialized(_) => false,
-            CoreTypeConcrete::Enum(_) => true,
+            CoreTypeConcrete::Enum(info) => match info.variants.len() {
+                0 => false,
+                1 => registry
+                    .get_type(&info.variants[0])?
+                    .is_memory_allocated(registry)?,
+                _ => true,
+            },
             CoreTypeConcrete::Struct(info) => {
                 let mut is_memory_allocated = false;
                 for member in &info.members {
