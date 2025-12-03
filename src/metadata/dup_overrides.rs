@@ -23,6 +23,7 @@
 use super::MetadataStorage;
 use crate::{
     error::{Error, Result},
+    types::TypeBuilder,
     utils::ProgramRegistryExt,
 };
 use cairo_lang_sierra::{
@@ -31,12 +32,12 @@ use cairo_lang_sierra::{
     program_registry::ProgramRegistry,
 };
 use melior::{
-    dialect::func,
-    helpers::BuiltinBlockExt,
+    dialect::{cf, func, llvm},
+    helpers::{BuiltinBlockExt, LlvmBlockExt},
     ir::{
         attribute::{FlatSymbolRefAttribute, StringAttribute, TypeAttribute},
         r#type::FunctionType,
-        Attribute, Block, BlockLike, Identifier, Location, Module, Region, Value, ValueLike,
+        Attribute, Block, BlockLike, Identifier, Location, Module, Region, Value,
     },
     Context,
 };
@@ -81,21 +82,35 @@ impl DupOverridesMeta {
         }
 
         let location = Location::unknown(context);
+
         let ty = registry.build_type(context, module, metadata, id)?;
+        let ptr_ty = llvm::r#type::pointer(context, 0);
 
         let region = Region::new();
-        let entry_block = region.append_block(Block::new(&[(ty, location)]));
+
+        let entry_block = {
+            let pre_entry_block = region.append_block(Block::new(&[(ptr_ty, location)]));
+            let entry_block = region.append_block(Block::new(&[(ty, location)]));
+            pre_entry_block.append_operation(cf::br(
+                &entry_block,
+                &[pre_entry_block.load(context, location, pre_entry_block.arg(0)?, ty)?],
+                location,
+            ));
+            entry_block
+        };
+
         let return_block = region.append_block(Block::new(&[(ty, location), (ty, location)]));
-        f(metadata, &region, &entry_block, &return_block)?;
         return_block.append_operation(func::r#return(
             &[return_block.arg(0)?, return_block.arg(1)?],
             location,
         ));
 
+        f(metadata, &region, &entry_block, &return_block)?;
+
         module.body().append_operation(func::func(
             context,
             StringAttribute::new(context, &format!("dup${}", id.id)),
-            TypeAttribute::new(FunctionType::new(context, &[ty], &[ty, ty]).into()),
+            TypeAttribute::new(FunctionType::new(context, &[ptr_ty], &[ty, ty]).into()),
             region,
             &[
                 (
@@ -141,15 +156,28 @@ impl DupOverridesMeta {
         value: Value<'ctx, 'this>,
     ) -> Result<(Value<'ctx, 'this>, Value<'ctx, 'this>)> {
         Ok(if Self::is_overriden(metadata, id) {
-            let res = block.append_operation(func::call(
+            let ty = registry.build_type(context, module, metadata, id)?;
+            let sierra_ty = registry.get_type(id)?;
+
+            let value = {
+                let value_ptr =
+                    block.alloca1(context, location, ty, sierra_ty.layout(registry)?.align())?;
+                block.store(context, location, value_ptr, value)?;
+                value_ptr
+            };
+
+            let result = block.append_operation(func::call(
                 context,
                 FlatSymbolRefAttribute::new(context, &format!("dup${}", id.id)),
                 &[value],
-                &[value.r#type(), value.r#type()],
+                &[ty, ty],
                 location,
             ));
 
-            (res.result(0)?.into(), res.result(1)?.into())
+            let original = result.result(0)?.into();
+            let copy = result.result(1)?.into();
+
+            (original, copy)
         } else {
             (value, value)
         })
