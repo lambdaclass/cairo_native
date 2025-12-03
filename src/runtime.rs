@@ -314,6 +314,7 @@ pub struct TupleResult {
 pub unsafe extern "C" fn cairo_native__dict_into_entries(
     dict_ptr: *const FeltDict,
     data_ptr: *mut c_void,
+    value_ptr: *mut *mut c_void,
 ) {
     let dict_rc = Rc::from_raw(dict_ptr);
 
@@ -335,13 +336,29 @@ pub unsafe extern "C" fn cairo_native__dict_into_entries(
         // Save the key and move to the offset of the 'first_value'
         *key_ptr = *key;
         let first_val_ptr = key_ptr.byte_add(key_stride) as *mut u8;
+        *first_val_ptr = 9;
         // Get the element, move to the offset of the 'last_value' and save the element in that address
-        let element = dict
-            .elements
-            .byte_add(dict.layout.pad_to_align().size() * elem_index);
-        let last_val_ptr = first_val_ptr.byte_add(generic_ty_stride) as *mut ();
-        *last_val_ptr = *element;
+        let element =
+            dict.elements
+                .byte_add(dict.layout.pad_to_align().size() * elem_index) as *mut u8;
+        let last_val_ptr = first_val_ptr.byte_add(generic_ty_stride) as *mut u8;
+
+        std::ptr::copy_nonoverlapping(element, last_val_ptr, dict.layout.pad_to_align().size());
+        dict.count += 1; // TODO: Check if we need to do this for every accesed item.
     }
+
+    *value_ptr = dict
+        .elements
+        .byte_add(dict.layout.pad_to_align().size() * 2)
+        .cast();
+    dict.count += 1;
+    let value_ptr = value_ptr.byte_add(Layout::new::<*mut ()>().pad_to_align().size());
+    *value_ptr = dict
+        .elements
+        .byte_add(dict.layout.pad_to_align().size() * 2)
+        .cast();
+    dict.count += 1;
+    forget(dict_rc);
 }
 
 /// Simulates the felt252_dict_squash libfunc.
