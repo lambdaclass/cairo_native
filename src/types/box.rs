@@ -166,12 +166,11 @@ fn build_drop<'ctx>(
     let entry = region.append_block(Block::new(&[(llvm::r#type::pointer(context, 0), location)]));
 
     let value = entry.arg(0)?;
-    match metadata.get::<DropOverridesMeta>() {
-        Some(drop_override_meta) if drop_override_meta.is_overriden(&info.ty) => {
-            let value = entry.load(context, location, value, inner_ty)?;
-            drop_override_meta.invoke_override(context, &entry, location, &info.ty, value)?;
-        }
-        _ => {}
+    if DropOverridesMeta::is_overriden(metadata, &info.ty) {
+        let value = entry.load(context, location, value, inner_ty)?;
+        DropOverridesMeta::invoke_override(
+            context, registry, module, &entry, location, metadata, &info.ty, value,
+        )?;
     }
 
     entry.append_operation(ReallocBindingsMeta::free(context, value, location)?);

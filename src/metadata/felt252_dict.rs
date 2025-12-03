@@ -40,8 +40,8 @@ impl Felt252DictOverrides {
         let location = Location::unknown(context);
 
         let inner_ty = registry.build_type(context, module, metadata, type_id)?;
-        Ok(match metadata.get::<DropOverridesMeta>() {
-            Some(drop_overrides_meta) if drop_overrides_meta.is_overriden(type_id) => {
+        Ok(match DropOverridesMeta::is_overriden(metadata, type_id) {
+            true => {
                 let drop_fn_symbol = format!("drop${}$item", type_id.id);
                 let flat_symbol_ref = FlatSymbolRefAttribute::new(context, &drop_fn_symbol);
 
@@ -53,8 +53,9 @@ impl Felt252DictOverrides {
                         .append_block(Block::new(&[(llvm::r#type::pointer(context, 0), location)]));
 
                     let value = entry.load(context, location, entry.arg(0)?, inner_ty)?;
-                    drop_overrides_meta
-                        .invoke_override(context, &entry, location, type_id, value)?;
+                    DropOverridesMeta::invoke_override(
+                        context, registry, module, &entry, location, metadata, type_id, value,
+                    )?;
 
                     entry.append_operation(llvm::r#return(None, location));
 

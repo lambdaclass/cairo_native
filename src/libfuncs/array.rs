@@ -2,7 +2,7 @@
 
 use super::LibfuncHelper;
 use crate::{
-    error::{panic::ToNativeAssertError, Error, Result, SierraAssertError},
+    error::{Error, Result, SierraAssertError},
     metadata::{
         drop_overrides::DropOverridesMeta, dup_overrides::DupOverridesMeta,
         realloc_bindings::ReallocBindingsMeta, MetadataStorage,
@@ -407,16 +407,16 @@ pub fn build_tuple_from_span<'ctx, 'this>(
                 }
 
                 // Drop the original array (by decreasing its reference counter).
-                metadata
-                    .get::<DropOverridesMeta>()
-                    .to_native_assert_error("array always has a drop implementation")?
-                    .invoke_override(
-                        context,
-                        &block,
-                        location,
-                        &info.signature.param_signatures[0].ty,
-                        entry.argument(0)?.into(),
-                    )?;
+                DropOverridesMeta::invoke_override(
+                    context,
+                    registry,
+                    helper,
+                    &block,
+                    location,
+                    metadata,
+                    &info.signature.param_signatures[0].ty,
+                    entry.argument(0)?.into(),
+                )?;
 
                 block.append_operation(scf::r#yield(&[], location));
                 region
@@ -462,16 +462,16 @@ pub fn build_tuple_from_span<'ctx, 'this>(
 
     {
         // When there's a length mismatch, just consume (drop) the array.
-        metadata
-            .get::<DropOverridesMeta>()
-            .ok_or(Error::MissingMetadata)?
-            .invoke_override(
-                context,
-                error_block,
-                location,
-                &info.signature.param_signatures[0].ty,
-                entry.argument(0)?.into(),
-            )?;
+        DropOverridesMeta::invoke_override(
+            context,
+            registry,
+            helper,
+            error_block,
+            location,
+            metadata,
+            &info.signature.param_signatures[0].ty,
+            entry.argument(0)?.into(),
+        )?;
 
         helper.br(error_block, 1, &[], location)
     }
@@ -948,10 +948,16 @@ fn build_pop<'ctx, 'this, const CONSUME: bool, const REVERSE: bool>(
         let mut branch_values = branch_values.clone();
 
         if CONSUME {
-            metadata
-                .get::<DropOverridesMeta>()
-                .to_native_assert_error("drop overrides meta should exist")?
-                .invoke_override(context, error_block, location, self_ty, array_obj)?;
+            DropOverridesMeta::invoke_override(
+                context,
+                registry,
+                helper,
+                error_block,
+                location,
+                metadata,
+                self_ty,
+                array_obj,
+            )?;
         } else {
             branch_values.push(array_obj);
         }
@@ -1066,31 +1072,31 @@ pub fn build_get<'ctx, 'this>(
         }
 
         // Drop the input array.
-        metadata
-            .get::<DropOverridesMeta>()
-            .to_native_assert_error("drop overrides metadata should be available")?
-            .invoke_override(
-                context,
-                valid_block,
-                location,
-                &info.signature.param_signatures[1].ty,
-                entry.argument(1)?.into(),
-            )?;
+        DropOverridesMeta::invoke_override(
+            context,
+            registry,
+            helper,
+            valid_block,
+            location,
+            metadata,
+            &info.signature.param_signatures[1].ty,
+            entry.argument(1)?.into(),
+        )?;
 
         helper.br(valid_block, 0, &[range_check, target_ptr], location)?;
     }
 
     {
-        metadata
-            .get::<DropOverridesMeta>()
-            .to_native_assert_error("drop overrides meta should exist")?
-            .invoke_override(
-                context,
-                error_block,
-                location,
-                &info.signature.param_signatures[1].ty,
-                entry.argument(1)?.into(),
-            )?;
+        DropOverridesMeta::invoke_override(
+            context,
+            registry,
+            helper,
+            error_block,
+            location,
+            metadata,
+            &info.signature.param_signatures[1].ty,
+            entry.argument(1)?.into(),
+        )?;
 
         helper.br(error_block, 1, &[range_check], location)?;
     }
@@ -1101,7 +1107,7 @@ pub fn build_get<'ctx, 'this>(
 /// Generate MLIR operations for the `array_slice` libfunc.
 pub fn build_slice<'ctx, 'this>(
     context: &'ctx Context,
-    _registry: &ProgramRegistry<CoreType, CoreLibfunc>,
+    registry: &ProgramRegistry<CoreType, CoreLibfunc>,
     entry: &'this Block<'ctx>,
     location: Location<'ctx>,
     helper: &LibfuncHelper<'ctx, 'this>,
@@ -1162,16 +1168,16 @@ pub fn build_slice<'ctx, 'this>(
     }
 
     {
-        metadata
-            .get::<DropOverridesMeta>()
-            .ok_or(Error::MissingMetadata)?
-            .invoke_override(
-                context,
-                error_block,
-                location,
-                &info.signature.param_signatures[1].ty,
-                array_obj,
-            )?;
+        DropOverridesMeta::invoke_override(
+            context,
+            registry,
+            helper,
+            error_block,
+            location,
+            metadata,
+            &info.signature.param_signatures[1].ty,
+            array_obj,
+        )?;
 
         helper.br(error_block, 1, &[range_check], location)?;
     }
@@ -1182,7 +1188,7 @@ pub fn build_slice<'ctx, 'this>(
 /// Generate MLIR operations for the `array_len` libfunc.
 pub fn build_len<'ctx, 'this>(
     context: &'ctx Context,
-    _registry: &ProgramRegistry<CoreType, CoreLibfunc>,
+    registry: &ProgramRegistry<CoreType, CoreLibfunc>,
     entry: &'this Block<'ctx>,
     location: Location<'ctx>,
     helper: &LibfuncHelper<'ctx, 'this>,
@@ -1197,16 +1203,16 @@ pub fn build_len<'ctx, 'this>(
 
     let array_len = entry.append_op_result(arith::subi(array_end, array_start, location))?;
 
-    metadata
-        .get::<DropOverridesMeta>()
-        .to_native_assert_error("drop overrides meta should exist")?
-        .invoke_override(
-            context,
-            entry,
-            location,
-            &info.signature.param_signatures[0].ty,
-            entry.argument(0)?.into(),
-        )?;
+    DropOverridesMeta::invoke_override(
+        context,
+        registry,
+        helper,
+        entry,
+        location,
+        metadata,
+        &info.signature.param_signatures[0].ty,
+        entry.argument(0)?.into(),
+    )?;
 
     helper.br(entry, 0, &[array_len], location)
 }

@@ -120,21 +120,27 @@ impl DropOverridesMeta {
     }
 
     /// Returns whether a type has a registered drop implementation.
-    pub(crate) fn is_overriden(&self, id: &ConcreteTypeId) -> bool {
-        self.overriden_types.contains(id)
+    pub(crate) fn is_overriden(metadata: &mut MetadataStorage, id: &ConcreteTypeId) -> bool {
+        metadata
+            .get_or_insert_with(Self::default)
+            .overriden_types
+            .contains(id)
     }
 
     /// Generates code to invoke a drop implementation for a type, or does nothing if no
     /// implementation was registered.
+    #[allow(clippy::too_many_arguments)]
     pub(crate) fn invoke_override<'ctx, 'this>(
-        &self,
         context: &'ctx Context,
+        _registry: &ProgramRegistry<CoreType, CoreLibfunc>,
+        _module: &Module<'ctx>,
         block: &'this Block<'ctx>,
         location: Location<'ctx>,
+        metadata: &mut MetadataStorage,
         id: &ConcreteTypeId,
         value: Value<'ctx, 'this>,
     ) -> Result<()> {
-        if self.overriden_types.contains(id) {
+        if Self::is_overriden(metadata, id) {
             block.append_operation(func::call(
                 context,
                 FlatSymbolRefAttribute::new(context, &format!("drop${}", id.id)),

@@ -14,7 +14,7 @@
 
 use super::{TypeBuilder, WithSelf};
 use crate::{
-    error::{Error, Result},
+    error::Result,
     metadata::{
         drop_overrides::DropOverridesMeta, dup_overrides::DupOverridesMeta,
         enum_snapshot_variants::EnumSnapshotVariantsMeta, MetadataStorage,
@@ -88,12 +88,7 @@ pub fn build<'ctx>(
         |metadata| {
             registry.build_type(context, module, metadata, &info.ty)?;
 
-            // The following unwrap is unreachable because `register_with` will always insert it before
-            // calling this closure.
-            metadata
-                .get::<DropOverridesMeta>()
-                .ok_or(Error::MissingMetadata)?
-                .is_overriden(&info.ty)
+            DropOverridesMeta::is_overriden(metadata, &info.ty)
                 .then(|| build_drop(context, module, registry, metadata, &info))
                 .transpose()
         },
@@ -145,11 +140,16 @@ fn build_drop<'ctx>(
     let region = Region::new();
     let entry = region.append_block(Block::new(&[(inner_ty, location)]));
 
-    // The following unwrap is unreachable because the registration logic will always insert it.
-    metadata
-        .get::<DropOverridesMeta>()
-        .ok_or(Error::MissingMetadata)?
-        .invoke_override(context, &entry, location, &info.ty, entry.arg(0)?)?;
+    DropOverridesMeta::invoke_override(
+        context,
+        registry,
+        module,
+        &entry,
+        location,
+        metadata,
+        &info.ty,
+        entry.arg(0)?,
+    )?;
 
     entry.append_operation(func::r#return(&[], location));
     Ok(region)
