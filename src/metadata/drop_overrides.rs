@@ -23,6 +23,7 @@
 use super::MetadataStorage;
 use crate::{
     error::{Error, Result},
+    types::TypeBuilder,
     utils::ProgramRegistryExt,
 };
 use cairo_lang_sierra::{
@@ -31,7 +32,8 @@ use cairo_lang_sierra::{
     program_registry::ProgramRegistry,
 };
 use melior::{
-    dialect::func,
+    dialect::{cf, func, llvm},
+    helpers::{BuiltinBlockExt, LlvmBlockExt},
     ir::{
         attribute::{FlatSymbolRefAttribute, StringAttribute, TypeAttribute},
         r#type::FunctionType,
@@ -82,11 +84,24 @@ impl DropOverridesMeta {
 
         match f(metadata)? {
             Some(region) => {
+                let location = Location::unknown(context);
+
                 let ty = registry.build_type(context, module, metadata, id)?;
+                let ptr_ty = llvm::r#type::pointer(context, 0);
+
+                let entry_block = region.first_block().unwrap();
+                let pre_entry_block =
+                    region.insert_block_before(entry_block, Block::new(&[(ptr_ty, location)]));
+                pre_entry_block.append_operation(cf::br(
+                    &entry_block,
+                    &[pre_entry_block.load(context, location, pre_entry_block.arg(0)?, ty)?],
+                    location,
+                ));
+
                 module.body().append_operation(func::func(
                     context,
                     StringAttribute::new(context, &format!("drop${}", id.id)),
-                    TypeAttribute::new(FunctionType::new(context, &[ty], &[]).into()),
+                    TypeAttribute::new(FunctionType::new(context, &[ptr_ty], &[]).into()),
                     region,
                     &[
                         (
@@ -132,8 +147,8 @@ impl DropOverridesMeta {
     #[allow(clippy::too_many_arguments)]
     pub(crate) fn invoke_override<'ctx, 'this>(
         context: &'ctx Context,
-        _registry: &ProgramRegistry<CoreType, CoreLibfunc>,
-        _module: &Module<'ctx>,
+        registry: &ProgramRegistry<CoreType, CoreLibfunc>,
+        module: &Module<'ctx>,
         block: &'this Block<'ctx>,
         location: Location<'ctx>,
         metadata: &mut MetadataStorage,
@@ -141,6 +156,16 @@ impl DropOverridesMeta {
         value: Value<'ctx, 'this>,
     ) -> Result<()> {
         if Self::is_overriden(metadata, id) {
+            let ty = registry.build_type(context, module, metadata, id)?;
+            let sierra_ty = registry.get_type(id)?;
+
+            let value = {
+                let value_ptr =
+                    block.alloca1(context, location, ty, sierra_ty.layout(registry)?.align())?;
+                block.store(context, location, value_ptr, value)?;
+                value_ptr
+            };
+
             block.append_operation(func::call(
                 context,
                 FlatSymbolRefAttribute::new(context, &format!("drop${}", id.id)),
