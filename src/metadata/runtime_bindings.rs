@@ -811,12 +811,10 @@ impl RuntimeBindingsMeta {
             RuntimeBinding::DictIntoEntries,
         )?;
 
-        // let ptr_ty = llvm::r#type::pointer(context, 0);
         Ok(block.append_operation(
             OperationBuilder::new("llvm.call", location)
                 .add_operands(&[function])
                 .add_operands(&[dict_ptr, data_ptr])
-                // .add_results(&[ptr_ty]) // TODO: Check if this type is correct
                 .build()?,
         ))
     }

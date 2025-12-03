@@ -313,7 +313,7 @@ pub struct TupleResult {
 
 pub unsafe extern "C" fn cairo_native__dict_into_entries(
     dict_ptr: *const FeltDict,
-    data_ptr: *mut TupleResult,
+    data_ptr: *mut c_void,
 ) {
     let dict_rc = Rc::from_raw(dict_ptr);
 
@@ -325,17 +325,22 @@ pub unsafe extern "C" fn cairo_native__dict_into_entries(
         .as_mut()
         .expect("rc inner pointer should never be null");
 
+    let key_stride = Layout::new::<[u8; 32]>().pad_to_align().size();
+    let generic_ty_stride = dict.layout.pad_to_align().size();
+
     for (key, elem_index) in &dict.mappings {
-        let val = dict
+        // Move the ptr to the offset of the element we want to modify
+        let key_ptr = data_ptr.byte_add(48 * elem_index) as *mut [u8; 32]; // TODO: Get the 48 (tuple layout size) from the MLIR. Maybe do it like calc_data_prefix_offset()?
+
+        // Save the key and move to the offset of the 'first_value'
+        *key_ptr = *key;
+        let first_val_ptr = key_ptr.byte_add(key_stride) as *mut u8;
+        // Get the element, move to the offset of the 'last_value' and save the element in that address
+        let element = dict
             .elements
             .byte_add(dict.layout.pad_to_align().size() * elem_index);
-
-        let curr_tuple = &mut *data_ptr.add(*elem_index);
-        curr_tuple.key = *key;
-        // curr_tuple.first_value = *elem_index as *mut c_void;
-        let b = val as *mut u8;
-        println!("{:?}", *b);
-        curr_tuple.last_value = val as *mut c_void; // TODO: Check how to properly do this cast
+        let last_val_ptr = first_val_ptr.byte_add(generic_ty_stride) as *mut ();
+        *last_val_ptr = *element;
     }
 }
 
