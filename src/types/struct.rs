@@ -182,7 +182,7 @@ fn build_drop<'ctx>(
         let member_val = entry.extract_value(context, location, value, member_ty, idx)?;
 
         DropOverridesMeta::invoke_override(
-            context, registry, module, &entry, location, metadata, member_id, member_val,
+            context, registry, module, &entry, &entry, location, metadata, member_id, member_val,
         )?;
     }
 

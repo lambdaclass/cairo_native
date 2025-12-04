@@ -111,6 +111,7 @@ pub fn build_print<'ctx, 'this>(
         context,
         registry,
         helper,
+        helper.init_block(),
         entry,
         location,
         metadata,

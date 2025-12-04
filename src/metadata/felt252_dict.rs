@@ -54,7 +54,8 @@ impl Felt252DictOverrides {
 
                     let value = entry.load(context, location, entry.arg(0)?, inner_ty)?;
                     DropOverridesMeta::invoke_override(
-                        context, registry, module, &entry, location, metadata, type_id, value,
+                        context, registry, module, &entry, &entry, location, metadata, type_id,
+                        value,
                     )?;
 
                     entry.append_operation(llvm::r#return(None, location));

@@ -2815,6 +2815,7 @@ pub fn build_sha256_process_block_syscall<'ctx, 'this>(
         context,
         registry,
         helper,
+        helper.init_block(),
         entry,
         location,
         metadata,

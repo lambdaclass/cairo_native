@@ -45,6 +45,7 @@ pub fn build<'ctx, 'this>(
         context,
         registry,
         helper,
+        helper.init_block(),
         entry,
         location,
         metadata,

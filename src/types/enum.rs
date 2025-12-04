@@ -398,6 +398,7 @@ fn build_drop<'ctx>(
                 registry,
                 module,
                 &entry,
+                &entry,
                 location,
                 metadata,
                 &info.variants[0],
@@ -428,7 +429,8 @@ fn build_drop<'ctx>(
                     let value = block.extract_value(context, location, container, variant_ty, 1)?;
 
                     DropOverridesMeta::invoke_override(
-                        context, registry, module, block, location, metadata, variant_id, value,
+                        context, registry, module, block, block, location, metadata, variant_id,
+                        value,
                     )?;
 
                     block.append_operation(func::r#return(&[], location));

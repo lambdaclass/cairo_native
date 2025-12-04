@@ -368,7 +368,7 @@ fn build_drop<'ctx>(
                                 let elem_val = block.load(context, location, elem_ptr, elem_ty)?;
 
                                 DropOverridesMeta::invoke_override(
-                                    context, registry, module, &block, location, metadata,
+                                    context, registry, module, &block, &block, location, metadata,
                                     &info.ty, elem_val,
                                 )?;
 

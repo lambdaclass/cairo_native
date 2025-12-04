@@ -169,7 +169,7 @@ fn build_drop<'ctx>(
     if DropOverridesMeta::is_overriden(metadata, &info.ty) {
         let value = entry.load(context, location, value, inner_ty)?;
         DropOverridesMeta::invoke_override(
-            context, registry, module, &entry, location, metadata, &info.ty, value,
+            context, registry, module, &entry, &entry, location, metadata, &info.ty, value,
         )?;
     }
 

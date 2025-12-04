@@ -145,6 +145,7 @@ fn build_drop<'ctx>(
         registry,
         module,
         &entry,
+        &entry,
         location,
         metadata,
         &info.ty,
