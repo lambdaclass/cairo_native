@@ -304,17 +304,10 @@ pub unsafe extern "C" fn cairo_native__dict_len(dict_ptr: *const FeltDict) -> u6
     dict_len
 }
 
-#[repr(C)]
-pub struct TupleResult {
-    key: [u8; 32],
-    first_value: *mut c_void,
-    last_value: *mut c_void,
-}
-
 pub unsafe extern "C" fn cairo_native__dict_into_entries(
     dict_ptr: *const FeltDict,
     data_ptr: *mut c_void,
-    value_ptr: *mut *mut c_void,
+    tuple_stride: u32,
 ) {
     let dict_rc = Rc::from_raw(dict_ptr);
 
@@ -331,12 +324,11 @@ pub unsafe extern "C" fn cairo_native__dict_into_entries(
 
     for (key, elem_index) in &dict.mappings {
         // Move the ptr to the offset of the element we want to modify
-        let key_ptr = data_ptr.byte_add(48 * elem_index) as *mut [u8; 32]; // TODO: Get the 48 (tuple layout size) from the MLIR. Maybe do it like calc_data_prefix_offset()?
+        let key_ptr = data_ptr.byte_add(tuple_stride as usize * elem_index) as *mut [u8; 32]; // TODO: Get the 48 (tuple layout size) from the MLIR. Maybe do it like calc_data_prefix_offset()?
 
         // Save the key and move to the offset of the 'first_value'
         *key_ptr = *key;
         let first_val_ptr = key_ptr.byte_add(key_stride) as *mut u8;
-        *first_val_ptr = 9;
         // Get the element, move to the offset of the 'last_value' and save the element in that address
         let element =
             dict.elements
@@ -347,17 +339,6 @@ pub unsafe extern "C" fn cairo_native__dict_into_entries(
         dict.count += 1; // TODO: Check if we need to do this for every accesed item.
     }
 
-    *value_ptr = dict
-        .elements
-        .byte_add(dict.layout.pad_to_align().size() * 2)
-        .cast();
-    dict.count += 1;
-    let value_ptr = value_ptr.byte_add(Layout::new::<*mut ()>().pad_to_align().size());
-    *value_ptr = dict
-        .elements
-        .byte_add(dict.layout.pad_to_align().size() * 2)
-        .cast();
-    dict.count += 1;
     forget(dict_rc);
 }
 

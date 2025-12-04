@@ -1,5 +1,6 @@
 use super::LibfuncHelper;
 use crate::{
+    debug::type_to_name,
     error::{Error, Result},
     metadata::{
         debug_utils::DebugUtils, realloc_bindings::ReallocBindingsMeta,
@@ -26,7 +27,7 @@ use melior::{
     },
     Context,
 };
-use std::alloc::Layout;
+use std::{alloc::Layout, os::raw::c_void};
 
 /// Select and call the correct libfunc builder function from the selector.
 pub fn build<'ctx, 'this>(
@@ -80,6 +81,9 @@ fn get_inner_types<'ctx, 'this>(
     };
     let felt_ty_id = &info.members[0];
     let generic_ty_id = &info.members[1];
+
+    let temp = registry.get_type(generic_ty_id)?;
+    println!("El generic es: {}", type_to_name(registry, temp));
 
     let felt_ty = registry.build_type(context, helper, metadata, felt_ty_id)?;
     let generic_ty = registry.build_type(context, helper, metadata, generic_ty_id)?;
@@ -183,6 +187,7 @@ fn build_entries_array<'ctx, 'this>(
     // Register dup and drop implentations
     // register_dup_and_drop(context, registry, helper, metadata, info); // TODO: Investigate this
     let inner_type_layout = get_inner_type_layout(context, registry, helper, metadata, info)?;
+    println!("align del layout: {}", inner_type_layout.align());
     let data_prefix_size = calc_data_prefix_offset(inner_type_layout);
     let elem_stride = entry.const_int(
         context,
@@ -300,27 +305,25 @@ pub fn build_into_entries<'ctx, 'this>(
     let dict_ptr = entry.arg(0)?;
 
     // Call runtime function that pushes the tuples into the array
+    let tuple_layout = get_inner_type_layout(context, registry, helper, metadata, info)?;
+    let tuple_stride = entry.const_int_from_type(
+        context,
+        location,
+        tuple_layout.pad_to_align().size(),
+        IntegerType::new(context, 32).into(),
+    )?;
     metadata
         .get_mut::<RuntimeBindingsMeta>()
         .ok_or(Error::MissingMetadata)?
-        .dict_into_entries(context, helper, entry, dict_ptr, data_ptr, location)?;
-
-    // let len_ty = IntegerType::new(context, 32).into();
-    // let start_off = entry.extract_value(context, location, entries_array, len_ty, 1)?;
-    // let end_off = entry.extract_value(context, location, entries_array, len_ty, 2)?;
-    // let capacity = entry.extract_value(context, location, entries_array, len_ty, 3)?;
-    // metadata
-    //     .get_mut::<DebugUtils>()
-    //     .unwrap()
-    //     .print_i32(context, helper, entry, start_off, location)?;
-    // metadata
-    //     .get_mut::<DebugUtils>()
-    //     .unwrap()
-    //     .print_i32(context, helper, entry, end_off, location)?;
-    // metadata
-    //     .get_mut::<DebugUtils>()
-    //     .unwrap()
-    //     .print_i32(context, helper, entry, capacity, location)?;
+        .dict_into_entries(
+            context,
+            helper,
+            entry,
+            dict_ptr,
+            data_ptr,
+            tuple_stride,
+            location,
+        )?;
 
     helper.br(entry, 0, &[entries_array], location)
 }
