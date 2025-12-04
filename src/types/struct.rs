@@ -141,7 +141,7 @@ fn build_dup<'ctx>(
         let member_val = entry.extract_value(context, location, src_value, member_ty, idx)?;
 
         let values = DupOverridesMeta::invoke_override(
-            context, registry, module, &entry, location, metadata, member_id, member_val,
+            context, registry, module, &entry, &entry, location, metadata, member_id, member_val,
         )?;
 
         src_value = entry.insert_value(context, location, src_value, values.0, idx)?;

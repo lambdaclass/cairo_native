@@ -116,7 +116,7 @@ fn build_dup<'ctx>(
         true => {
             let value = entry.load(context, location, src_value, inner_ty)?;
             let values = DupOverridesMeta::invoke_override(
-                context, registry, module, &entry, location, metadata, &info.ty, value,
+                context, registry, module, &entry, &entry, location, metadata, &info.ty, value,
             )?;
             entry.store(context, location, src_value, values.0)?;
             entry.store(context, location, dst_value, values.1)?;

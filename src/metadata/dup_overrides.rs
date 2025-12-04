@@ -149,6 +149,7 @@ impl DupOverridesMeta {
         context: &'ctx Context,
         registry: &ProgramRegistry<CoreType, CoreLibfunc>,
         module: &Module<'ctx>,
+        init_block: &'this Block<'ctx>,
         block: &'this Block<'ctx>,
         location: Location<'ctx>,
         metadata: &mut MetadataStorage,
@@ -160,8 +161,12 @@ impl DupOverridesMeta {
             let sierra_ty = registry.get_type(id)?;
 
             let value = {
-                let value_ptr =
-                    block.alloca1(context, location, ty, sierra_ty.layout(registry)?.align())?;
+                let value_ptr = init_block.alloca1(
+                    context,
+                    location,
+                    ty,
+                    sierra_ty.layout(registry)?.align(),
+                )?;
                 block.store(context, location, value_ptr, value)?;
                 value_ptr
             };

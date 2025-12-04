@@ -140,6 +140,7 @@ fn build_dup<'ctx>(
                     registry,
                     module,
                     &block_realloc,
+                    &block_realloc,
                     location,
                     metadata,
                     &info.ty,

@@ -290,6 +290,7 @@ fn build_dup<'ctx>(
                 registry,
                 module,
                 &entry,
+                &entry,
                 location,
                 metadata,
                 &info.variants[0],
@@ -320,7 +321,8 @@ fn build_dup<'ctx>(
                     let value = block.extract_value(context, location, container, variant_ty, 1)?;
 
                     let values = DupOverridesMeta::invoke_override(
-                        context, registry, module, block, location, metadata, variant_id, value,
+                        context, registry, module, block, block, location, metadata, variant_id,
+                        value,
                     )?;
 
                     let value = block.insert_value(context, location, container, values.0, 1)?;
