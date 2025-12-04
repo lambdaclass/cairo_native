@@ -1,10 +1,8 @@
 use crate::common::{compare_outputs, load_cairo, run_native_program, run_vm_program, DEFAULT_GAS};
-use cairo_lang_runner::{Arg, SierraCasmRunner};
+use cairo_lang_runner::SierraCasmRunner;
 use cairo_lang_sierra::program::Program;
-use cairo_native::{starknet::DummySyscallHandler, Value};
+use cairo_native::starknet::DummySyscallHandler;
 use lazy_static::lazy_static;
-use proptest::prelude::*;
-use starknet_types_core::felt::Felt;
 
 lazy_static! {
     static ref INTO_ENTRIES_U8_VALUES: (String, Program, SierraCasmRunner) = load_cairo! {
@@ -57,7 +55,6 @@ lazy_static! {
 fn test_into_entries_u8_values() {
     let program = &INTO_ENTRIES_U8_VALUES;
     let endpoint = "into_entries_u8_values";
-    let a = true;
     let result_vm = run_vm_program(program, endpoint, vec![], Some(DEFAULT_GAS as usize)).unwrap();
     let result_native = run_native_program(
         program,
@@ -84,7 +81,6 @@ fn test_into_entries_u8_values() {
 fn test_into_entries_u32_values() {
     let program = &INTO_ENTRIES_U32_VALUES;
     let endpoint = "into_entries_u32_values";
-    let a = true;
     let result_vm = run_vm_program(program, endpoint, vec![], Some(DEFAULT_GAS as usize)).unwrap();
     let result_native = run_native_program(
         program,
@@ -111,7 +107,6 @@ fn test_into_entries_u32_values() {
 fn test_into_entries_u128_values() {
     let program = &INTO_ENTRIES_U128_VALUES;
     let endpoint = "into_entries_u128_values";
-    let a = true;
     let result_vm = run_vm_program(program, endpoint, vec![], Some(DEFAULT_GAS as usize)).unwrap();
     let result_native = run_native_program(
         program,
@@ -138,7 +133,6 @@ fn test_into_entries_u128_values() {
 fn test_into_entries_felt252_values() {
     let program = &INTO_ENTRIES_FELT252_VALUES;
     let endpoint = "into_entries_felt252_values";
-    let a = true;
     let result_vm = run_vm_program(program, endpoint, vec![], Some(DEFAULT_GAS as usize)).unwrap();
     let result_native = run_native_program(
         program,
