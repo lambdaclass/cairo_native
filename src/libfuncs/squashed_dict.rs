@@ -328,3 +328,135 @@ pub fn build_into_entries<'ctx, 'this>(
 
     helper.br(entry, 0, &[entries_array], location)
 }
+
+#[cfg(test)]
+mod test {
+    use crate::{jit_struct, load_cairo, utils::testing::run_program, Value};
+
+    #[test]
+    fn nose() {
+        let program = load_cairo! {
+            use core::dict::{Felt252Dict, Felt252DictEntryTrait, SquashedFelt252DictTrait};
+
+            fn into_entries_u8_values() -> Array<(felt252, u8, u8)> {
+                let mut dict: Felt252Dict<u8> = Default::default();
+                dict.insert(0, 0);
+                dict.insert(1, 1);
+                dict.insert(2, 2);
+                dict.squash().into_entries()
+            }
+
+            fn into_entries_u32_values() -> Array<(felt252, u32, u32)> {
+                let mut dict: Felt252Dict<u32> = Default::default();
+                dict.insert(0, 0);
+                dict.insert(1, 1);
+                dict.insert(2, 2);
+                dict.squash().into_entries()
+            }
+
+            fn into_entries_u128_values() -> Array<(felt252, u128, u128)> {
+                let mut dict: Felt252Dict<u128> = Default::default();
+                dict.insert(0, 0);
+                dict.insert(1, 1);
+                dict.insert(2, 2);
+                dict.squash().into_entries()
+            }
+
+            fn into_entries_felt252_values() -> Array<(felt252, felt252, felt252)> {
+                let mut dict: Felt252Dict<felt252> = Default::default();
+                dict.insert(0, 0);
+                dict.insert(1, 1);
+                dict.insert(2, 2);
+                dict.squash().into_entries()
+            }
+        };
+
+        let result = run_program(&program, "into_entries_u8_values", &[]).return_value;
+        if let Value::Array(arr) = result {
+            assert_eq!(
+                arr[0],
+                jit_struct!(Value::Felt252(0.into()), Value::Uint8(0), Value::Uint8(0))
+            );
+            assert_eq!(
+                arr[1],
+                jit_struct!(Value::Felt252(1.into()), Value::Uint8(0), Value::Uint8(1))
+            );
+            assert_eq!(
+                arr[2],
+                jit_struct!(Value::Felt252(2.into()), Value::Uint8(0), Value::Uint8(2))
+            );
+        }
+
+        let result = run_program(&program, "into_entries_u32_values", &[]).return_value;
+        if let Value::Array(arr) = result {
+            assert_eq!(
+                arr[0],
+                jit_struct!(Value::Felt252(0.into()), Value::Uint32(0), Value::Uint32(0))
+            );
+            assert_eq!(
+                arr[1],
+                jit_struct!(Value::Felt252(1.into()), Value::Uint32(0), Value::Uint32(1))
+            );
+            assert_eq!(
+                arr[2],
+                jit_struct!(Value::Felt252(2.into()), Value::Uint32(0), Value::Uint32(2))
+            );
+        }
+
+        let result = run_program(&program, "into_entries_u128_values", &[]).return_value;
+        if let Value::Array(arr) = result {
+            assert_eq!(
+                arr[0],
+                jit_struct!(
+                    Value::Felt252(0.into()),
+                    Value::Uint128(0),
+                    Value::Uint128(0)
+                )
+            );
+            assert_eq!(
+                arr[1],
+                jit_struct!(
+                    Value::Felt252(1.into()),
+                    Value::Uint128(0),
+                    Value::Uint128(1)
+                )
+            );
+            assert_eq!(
+                arr[2],
+                jit_struct!(
+                    Value::Felt252(2.into()),
+                    Value::Uint128(0),
+                    Value::Uint128(2)
+                )
+            );
+        }
+
+        let result = run_program(&program, "into_entries_felt252_values", &[]).return_value;
+        if let Value::Array(arr) = result {
+            assert_eq!(
+                arr[0],
+                jit_struct!(
+                    Value::Felt252(0.into()),
+                    Value::Felt252(0.into()),
+                    Value::Felt252(0.into())
+                )
+            );
+            assert_eq!(
+                arr[1],
+                jit_struct!(
+                    Value::Felt252(1.into()),
+                    Value::Felt252(0.into()),
+                    Value::Felt252(1.into())
+                )
+            );
+            assert_eq!(
+                arr[2],
+                jit_struct!(
+                    Value::Felt252(2.into()),
+                    Value::Felt252(0.into()),
+                    Value::Felt252(2.into())
+                )
+            );
+        }
+    }
+}
