@@ -91,6 +91,7 @@ fn get_inner_types<'ctx, 'this>(
     Ok((felt_ty, generic_ty))
 }
 
+/// Fills the Array with tuples of the form (felt252, T, T).
 #[allow(clippy::too_many_arguments)]
 fn append_entry_tuples<'ctx, 'this>(
     context: &'ctx Context,
@@ -104,6 +105,7 @@ fn append_entry_tuples<'ctx, 'this>(
     dict_len: Value<'ctx, 'this>,
     elem_stride: Value<'ctx, 'this>,
 ) -> Result<Value<'ctx, 'this>> {
+    // Region of the 'for loop' which holds the logic to append a tuple in the array
     let region = {
         let region = Region::new();
         let block = region.append_block(Block::new(&[
@@ -111,6 +113,7 @@ fn append_entry_tuples<'ctx, 'this>(
             (arr.r#type(), location),
         ]));
         let loop_arr = block.arg(1)?;
+        // Get the array and move the pointer to the new slot where the tuple will be inserted (end_offset * element_size)
         let array_ptr_ptr = block.extract_value(
             context,
             location,
@@ -119,7 +122,6 @@ fn append_entry_tuples<'ctx, 'this>(
             0,
         )?;
         let ptr_ty = llvm::r#type::pointer(context, 0);
-
         let array_ptr = block.load(context, location, array_ptr_ptr, ptr_ty)?;
         let end_offset = block.extract_value(
             context,
@@ -138,7 +140,7 @@ fn append_entry_tuples<'ctx, 'this>(
             IntegerType::new(context, 8).into(),
         )?;
 
-        // Build tuple and store it
+        // Build tuple and store it in the empty slot
         let (felt_ty, generic_ty) = get_inner_types(context, registry, helper, metadata, info)?;
         let tuple = block.append_op_result(llvm::undef(
             llvm::r#type::r#struct(context, &[felt_ty, generic_ty, generic_ty], false),
@@ -156,8 +158,9 @@ fn append_entry_tuples<'ctx, 'this>(
         let end_offset = block.addi(end_offset, k1, location)?;
         let end_offset =
             block.trunci(end_offset, IntegerType::new(context, 32).into(), location)?;
-
         let new_arr = block.insert_value(context, location, loop_arr, end_offset, 2)?;
+
+        // Return the updated array so the next iteration can use it
         block.append_operation(scf::r#yield(&[new_arr], location));
         region
     };
@@ -175,6 +178,7 @@ fn append_entry_tuples<'ctx, 'this>(
     )?)
 }
 
+/// Builds an Array<(felt252, T, T)>.
 fn build_entries_array<'ctx, 'this>(
     context: &'ctx Context,
     registry: &ProgramRegistry<CoreType, CoreLibfunc>,
@@ -186,9 +190,15 @@ fn build_entries_array<'ctx, 'this>(
 ) -> Result<Value<'ctx, 'this>> {
     metadata.get_or_insert_with(|| ReallocBindingsMeta::new(context, helper));
     // Register dup and drop implentations
-    // register_dup_and_drop(context, registry, helper, metadata, info); // TODO: Investigate this
+    // register_dup_and_drop(
+    //     context,
+    //     registry,
+    //     helper,
+    //     metadata,
+    //     WithSelf::new(&info.ty, info),
+    // ); // TODO: Investigate this
+
     let inner_type_layout = get_inner_type_layout(context, registry, helper, metadata, info)?;
-    println!("align del layout: {}", inner_type_layout.align());
     let data_prefix_size = calc_data_prefix_offset(inner_type_layout);
     let elem_stride = entry.const_int(
         context,
@@ -197,27 +207,24 @@ fn build_entries_array<'ctx, 'this>(
         64,
     )?;
 
-    // Get the lenght of the dictionary and the layout of the elements
+    // Get the lenght of the dictionary
     let dict_len = metadata
         .get_mut::<RuntimeBindingsMeta>()
         .ok_or(Error::MissingMetadata)?
         .dict_len(context, helper, entry, entry.arg(0)?, location)?;
 
-    // Build the array
+    // Build the array structure
     let ptr_ty = llvm::r#type::pointer(context, 0);
     let len_ty = IntegerType::new(context, 32).into();
-
     let nullptr = entry.append_op_result(llvm::zero(ptr_ty, location))?;
-
     let value = entry.append_op_result(llvm::undef(
         llvm::r#type::r#struct(context, &[ptr_ty, len_ty, len_ty, len_ty], false),
         location,
     ))?;
     let allocated_capacity =
-        entry.trunci(dict_len, IntegerType::new(context, 32).into(), location)?; // TODO: Check if this is the correct capacity
-    let end_offset = entry.const_int_from_type(context, location, 0, len_ty)?; // TODO: Check if this is the correct end_offset. Is it the number of bytes or the quantity of elements
-    let start_offset = entry.const_int_from_type(context, location, 0, len_ty)?; // TODO: What value should go here? I think it is okay to have 0.
-
+        entry.trunci(dict_len, IntegerType::new(context, 32).into(), location)?;
+    let end_offset = entry.const_int_from_type(context, location, 0, len_ty)?;
+    let start_offset = entry.const_int_from_type(context, location, 0, len_ty)?;
     let arr = entry.insert_values(
         context,
         location,
@@ -225,8 +232,9 @@ fn build_entries_array<'ctx, 'this>(
         &[nullptr, start_offset, end_offset, allocated_capacity],
     )?;
 
-    // Alloc space for elements of the array
-    let nullptr = entry.append_op_result(llvm::zero(ptr_ty, location))?; // TODO: Maybe I should use the one from above
+    // Alloc space for elements of the array. We need space to hold the prefix (reference counter and max lenght)
+    // and the N tuples, where N is the number of elements in the dict.
+    let nullptr = entry.append_op_result(llvm::zero(ptr_ty, location))?;
     let data_prefix_size_value = entry.const_int(context, location, data_prefix_size, 64)?;
     let realloc_len = entry.muli(elem_stride, dict_len, location)?;
     let realloc_len = entry.addi(realloc_len, data_prefix_size_value, location)?;
@@ -239,7 +247,7 @@ fn build_entries_array<'ctx, 'this>(
     // Store the reference counter
     let k1 = entry.const_int_from_type(context, location, 1, len_ty)?;
     entry.store(context, location, array_ptr, k1)?;
-    // Store the max length
+    // After the reference counter we need to store the max length
     let max_len_ptr = entry.gep(
         context,
         location,
@@ -248,7 +256,7 @@ fn build_entries_array<'ctx, 'this>(
         IntegerType::new(context, 8).into(),
     )?;
     let max_length = entry.trunci(dict_len, IntegerType::new(context, 32).into(), location)?;
-    entry.store(context, location, max_len_ptr, max_length)?; // TODO: Check if this is the correct value to store here
+    entry.store(context, location, max_len_ptr, max_length)?;
 
     // Move to get the pointer in the position of the data
     let array_ptr = entry.gep(
@@ -286,6 +294,24 @@ fn build_entries_array<'ctx, 'this>(
     Ok(arr)
 }
 
+/// Generate MLIR operations for the `squashed_felt252_dict_entries` libfunc.
+///
+/// Receives a `SquashedFelt252Dict<T>` and returns an `Array<(felt252, T, T)>`. This
+/// array will have a tuple for each element on the dictionary. The first item represents
+/// the key of the element in the dictionary, it is followed by the first value and last
+/// value of that same element. Then (felt252, T, T) = (key, first_value, last_value).
+///
+/// # Caveats
+///
+/// In the tuple, the value that represents the first value will hold the value 0.
+///
+/// # Signature
+///
+/// ```cairo
+/// extern fn squashed_felt252_dict_entries<T>(
+///    dict: SquashedFelt252Dict<T>,
+/// ) -> Array<(felt252, T, T)> nopanic;
+/// ```
 pub fn build_into_entries<'ctx, 'this>(
     context: &'ctx Context,
     registry: &ProgramRegistry<CoreType, CoreLibfunc>,
@@ -295,17 +321,17 @@ pub fn build_into_entries<'ctx, 'this>(
     metadata: &mut MetadataStorage,
     info: &SignatureAndTypeConcreteLibfunc,
 ) -> Result<()> {
-    // Build the tuples array
+    // Build the entries array (Array<(felt252, T, T)>)
     let entries_array =
         build_entries_array(context, registry, entry, location, helper, metadata, info)?;
 
-    // Get the ptr to the data and pass it to the runtime function
+    // Get the ptr to the data of the array and pass it to the runtime function
     let ptr_ty = llvm::r#type::pointer(context, 0);
     let data_ptr_ptr = entry.extract_value(context, location, entries_array, ptr_ty, 0)?;
     let data_ptr = entry.load(context, location, data_ptr_ptr, ptr_ty)?;
     let dict_ptr = entry.arg(0)?;
 
-    // Call runtime function that pushes the tuples into the array
+    // Call runtime function that pushes the elements and keys into the tuples of the array
     let tuple_layout = get_inner_type_layout(context, registry, helper, metadata, info)?;
     let tuple_stride = entry.const_int_from_type(
         context,

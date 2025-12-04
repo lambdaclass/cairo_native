@@ -752,6 +752,11 @@ impl RuntimeBindingsMeta {
         Ok(dict_len)
     }
 
+    /// Register if necessary, then invoke the `dict_into_entries()` function.
+    ///
+    /// Inserts the content in the `data_ptr`, this content is taken from the dictionary
+    /// in `dict_ptr`. The `tuple_stride` is used to know how much space takes each of the
+    /// elements that is going to be inserted.
     #[allow(clippy::too_many_arguments)]
     pub fn dict_into_entries<'c, 'a>(
         &mut self,

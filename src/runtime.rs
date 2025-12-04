@@ -304,6 +304,17 @@ pub unsafe extern "C" fn cairo_native__dict_len(dict_ptr: *const FeltDict) -> u6
     dict_len
 }
 
+/// Fills each of the tuples in the array with the corresponding content.
+///
+/// Receives a pointer to the dictionary and a pointer to the first element (tuple) of the
+/// array of tuples. The dictionary is iterated and for each element, a tuple is filled with the key
+/// and the value. To fill the tuples, the 'tuple_stride' is used to move the pointer and get the
+/// necessary offset.
+///
+/// # Caveats
+///
+/// Each tuple has the form (felt252, T, T) = (key, first_value, last_value). 'last_value' is represents
+/// the value of the element in the dictionary and 'first_value' is always 0.
 pub unsafe extern "C" fn cairo_native__dict_into_entries(
     dict_ptr: *const FeltDict,
     data_ptr: *mut c_void,
@@ -311,7 +322,7 @@ pub unsafe extern "C" fn cairo_native__dict_into_entries(
 ) {
     let dict_rc = Rc::from_raw(dict_ptr);
 
-    // There may me multiple reference to the same dictionary (snapshots), but
+    // There may be multiple references to the same dictionary (snapshots), but
     // as snapshots cannot access the inner dictionary, then it is safe to modify it
     // without cloning it.
     let dict = Rc::as_ptr(&dict_rc)
@@ -319,12 +330,13 @@ pub unsafe extern "C" fn cairo_native__dict_into_entries(
         .as_mut()
         .expect("rc inner pointer should never be null");
 
+    // Get the stride for the inner types of the tuple
     let key_stride = Layout::new::<[u8; 32]>().pad_to_align().size();
     let generic_ty_stride = dict.layout.pad_to_align().size();
 
     for (key, elem_index) in &dict.mappings {
-        // Move the ptr to the offset of the element we want to modify
-        let key_ptr = data_ptr.byte_add(tuple_stride as usize * elem_index) as *mut [u8; 32]; // TODO: Get the 48 (tuple layout size) from the MLIR. Maybe do it like calc_data_prefix_offset()?
+        // Move the ptr to the offset of the tuple we want to modify
+        let key_ptr = data_ptr.byte_add(tuple_stride as usize * elem_index) as *mut [u8; 32];
 
         // Save the key and move to the offset of the 'first_value'
         *key_ptr = *key;
@@ -334,9 +346,7 @@ pub unsafe extern "C" fn cairo_native__dict_into_entries(
             dict.elements
                 .byte_add(dict.layout.pad_to_align().size() * elem_index) as *mut u8;
         let last_val_ptr = first_val_ptr.byte_add(generic_ty_stride);
-
         std::ptr::copy_nonoverlapping(element, last_val_ptr, dict.layout.pad_to_align().size());
-        dict.count += 1; // TODO: Check if we need to do this for every accesed item.
     }
 
     forget(dict_rc);
