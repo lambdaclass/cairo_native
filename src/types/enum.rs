@@ -164,38 +164,28 @@ pub fn build<'ctx>(
     metadata: &mut MetadataStorage,
     info: WithSelf<EnumConcreteType>,
 ) -> Result<Type<'ctx>> {
-    let mut needs_dup_override = false;
-    for variant in &info.variants {
-        registry.build_type(context, module, metadata, variant)?;
-        if DupOverridesMeta::is_overriden(metadata, variant) {
-            needs_dup_override = true;
-            break;
-        }
-    }
-
     // Register enum's clone impl (if required).
-    if needs_dup_override {
-        DupOverridesMeta::register_with(
-            context,
-            module,
-            registry,
-            metadata,
-            info.self_ty(),
-            |metadata, region, entry_block, return_block| {
-                build_dup(
-                    context,
-                    module,
-                    region,
-                    entry_block,
-                    return_block,
-                    registry,
-                    metadata,
-                    &info,
-                )
-            },
-        )?;
-    }
+    DupOverridesMeta::register_with(
+        context,
+        module,
+        registry,
+        metadata,
+        info.self_ty(),
+        |metadata| {
+            let mut needs_override = false;
+            for variant in &info.variants {
+                registry.build_type(context, module, metadata, variant)?;
+                if DupOverridesMeta::is_overriden(metadata, variant) {
+                    needs_override = true;
+                    break;
+                }
+            }
 
+            needs_override
+                .then(|| build_dup(context, module, registry, metadata, &info))
+                .transpose()
+        },
+    )?;
     DropOverridesMeta::register_with(
         context,
         module,
@@ -268,20 +258,19 @@ pub fn build<'ctx>(
     })
 }
 
-#[allow(clippy::too_many_arguments)]
 fn build_dup<'ctx>(
     context: &'ctx Context,
     module: &Module<'ctx>,
-    region: &Region<'ctx>,
-    entry: &Block<'ctx>,
-    return_block: &Block<'ctx>,
     registry: &ProgramRegistry<CoreType, CoreLibfunc>,
     metadata: &mut MetadataStorage,
     info: &WithSelf<EnumConcreteType>,
-) -> Result<()> {
+) -> Result<Region<'ctx>> {
     let location = Location::unknown(context);
 
     let self_ty = registry.build_type(context, module, metadata, info.self_ty())?;
+
+    let region = Region::new();
+    let entry = region.append_block(Block::new(&[(self_ty, location)]));
 
     let (layout, (tag_ty, _), variant_tys) = crate::types::r#enum::get_type_for_variants(
         context,
@@ -294,18 +283,20 @@ fn build_dup<'ctx>(
     match variant_tys.len() {
         0 => native_panic!("attempt to clone a zero-variant enum"),
         1 => {
+            // The following unwrap is unreachable because the registration logic will always insert
+            // it.
             let values = DupOverridesMeta::invoke_override(
                 context,
                 registry,
                 module,
-                entry,
+                &entry,
                 location,
                 metadata,
                 &info.variants[0],
                 entry.arg(0)?,
             )?;
 
-            entry.append_operation(cf::br(return_block, &[values.0, values.1], location));
+            entry.append_operation(func::r#return(&[values.0, values.1], location));
         }
         _ => {
             let ptr = entry.alloca1(context, location, self_ty, layout.align())?;
@@ -340,7 +331,7 @@ fn build_dup<'ctx>(
                     block.store(context, location, ptr, value)?;
                     let value1 = block.load(context, location, ptr, self_ty)?;
 
-                    block.append_operation(cf::br(return_block, &[value0, value1], location));
+                    block.append_operation(func::r#return(&[value0, value1], location));
                 }
             }
 
@@ -365,7 +356,7 @@ fn build_dup<'ctx>(
         }
     }
 
-    Ok(())
+    Ok(region)
 }
 
 fn build_drop<'ctx>(

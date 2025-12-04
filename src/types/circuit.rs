@@ -21,7 +21,7 @@ use cairo_lang_sierra::{
     program_registry::ProgramRegistry,
 };
 use melior::{
-    dialect::{cf, func, llvm},
+    dialect::{func, llvm},
     helpers::{ArithBlockExt, BuiltinBlockExt, LlvmBlockExt},
     ir::{r#type::IntegerType, Block, BlockLike, Location, Module, Region, Type, Value},
     Context,
@@ -126,8 +126,11 @@ pub fn build_circuit_accumulator<'ctx>(
         registry,
         metadata,
         info.self_ty(),
-        |_metadata, _region, entry, return_block| {
+        |metadata| {
             let location = Location::unknown(context);
+            let region = Region::new();
+            let value_ty = registry.build_type(context, module, metadata, info.self_ty())?;
+            let entry = region.append_block(Block::new(&[(value_ty, location)]));
 
             let accumulator = entry.arg(0)?;
             let inputs_ptr = entry.extract_value(
@@ -142,7 +145,7 @@ pub fn build_circuit_accumulator<'ctx>(
 
             let new_inputs_ptr = build_array_dup(
                 context,
-                entry,
+                &entry,
                 location,
                 inputs_ptr,
                 circuit.circuit_info.n_inputs,
@@ -151,14 +154,9 @@ pub fn build_circuit_accumulator<'ctx>(
 
             let new_accumulator =
                 entry.insert_value(context, location, accumulator, new_inputs_ptr, 1)?;
+            entry.append_operation(func::r#return(&[accumulator, new_accumulator], location));
 
-            entry.append_operation(cf::br(
-                return_block,
-                &[accumulator, new_accumulator],
-                location,
-            ));
-
-            Ok(())
+            Ok(Some(region))
         },
     )?;
     DropOverridesMeta::register_with(
@@ -228,8 +226,11 @@ pub fn build_circuit_data<'ctx>(
         registry,
         metadata,
         info.self_ty(),
-        |_metadata, _region, entry, return_block| {
+        |metadata| {
             let location = Location::unknown(context);
+            let region = Region::new();
+            let value_ty = registry.build_type(context, module, metadata, info.self_ty())?;
+            let entry = region.append_block(Block::new(&[(value_ty, location)]));
 
             let data_ptr = entry.arg(0)?;
 
@@ -237,16 +238,16 @@ pub fn build_circuit_data<'ctx>(
 
             let new_data_ptr = build_array_dup(
                 context,
-                entry,
+                &entry,
                 location,
                 data_ptr,
                 circuit.circuit_info.n_inputs,
                 u384_layout,
             )?;
 
-            entry.append_operation(cf::br(return_block, &[data_ptr, new_data_ptr], location));
+            entry.append_operation(func::r#return(&[data_ptr, new_data_ptr], location));
 
-            Ok(())
+            Ok(Some(region))
         },
     )?;
     DropOverridesMeta::register_with(
@@ -316,8 +317,11 @@ pub fn build_circuit_outputs<'ctx>(
         registry,
         metadata,
         info.self_ty(),
-        |_metadata, _region, entry, return_block| {
+        |metadata| {
             let location = Location::unknown(context);
+            let region = Region::new();
+            let value_ty = registry.build_type(context, module, metadata, info.self_ty())?;
+            let entry = region.append_block(Block::new(&[(value_ty, location)]));
 
             let outputs = entry.arg(0)?;
             let gates_ptr = entry.extract_value(
@@ -332,7 +336,7 @@ pub fn build_circuit_outputs<'ctx>(
 
             let new_gates_ptr = build_array_dup(
                 context,
-                entry,
+                &entry,
                 location,
                 gates_ptr,
                 circuit.circuit_info.values.len(),
@@ -340,10 +344,9 @@ pub fn build_circuit_outputs<'ctx>(
             )?;
 
             let new_outputs = entry.insert_value(context, location, outputs, new_gates_ptr, 0)?;
+            entry.append_operation(func::r#return(&[outputs, new_outputs], location));
 
-            entry.append_operation(cf::br(return_block, &[outputs, new_outputs], location));
-
-            Ok(())
+            Ok(Some(region))
         },
     )?;
     DropOverridesMeta::register_with(

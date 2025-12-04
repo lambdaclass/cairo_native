@@ -24,7 +24,7 @@ use cairo_lang_sierra::{
     program_registry::ProgramRegistry,
 };
 use melior::{
-    dialect::{cf, func, llvm},
+    dialect::{func, llvm},
     helpers::BuiltinBlockExt,
     ir::{Block, BlockLike, Location, Module, Region, Type},
     Context,
@@ -46,17 +46,11 @@ pub fn build<'ctx>(
         registry,
         metadata,
         info.self_ty(),
-        |metadata, region, entry_block, return_block| {
-            build_dup(
-                context,
-                module,
-                region,
-                entry_block,
-                return_block,
-                registry,
-                metadata,
-                &info,
-            )
+        |metadata| {
+            // There's no need to build the type here because it'll always be built within
+            // `build_dup`.
+
+            Ok(Some(build_dup(context, module, registry, metadata, &info)?))
         },
     )?;
     DropOverridesMeta::register_with(
@@ -78,31 +72,32 @@ pub fn build<'ctx>(
     Ok(llvm::r#type::pointer(context, 0))
 }
 
-#[allow(clippy::too_many_arguments)]
 fn build_dup<'ctx>(
     context: &'ctx Context,
     module: &Module<'ctx>,
-    _region: &Region<'ctx>,
-    entry: &Block<'ctx>,
-    return_block: &Block<'ctx>,
-    _registry: &ProgramRegistry<CoreType, CoreLibfunc>,
+    registry: &ProgramRegistry<CoreType, CoreLibfunc>,
     metadata: &mut MetadataStorage,
-    _info: &WithSelf<InfoAndTypeConcreteType>,
-) -> Result<()> {
+    info: &WithSelf<InfoAndTypeConcreteType>,
+) -> Result<Region<'ctx>> {
     let location = Location::unknown(context);
     if metadata.get::<ReallocBindingsMeta>().is_none() {
         metadata.insert(ReallocBindingsMeta::new(context, module));
     }
 
+    let value_ty = registry.build_type(context, module, metadata, info.self_ty())?;
+
+    let region = Region::new();
+    let entry = region.append_block(Block::new(&[(value_ty, location)]));
+
+    // The following unwrap is unreachable because the registration logic will always insert it.
     let value0 = entry.arg(0)?;
     let value1 = metadata
         .get_mut::<RuntimeBindingsMeta>()
         .ok_or(Error::MissingMetadata)?
-        .dict_dup(context, module, entry, value0, location)?;
+        .dict_dup(context, module, &entry, value0, location)?;
 
-    entry.append_operation(cf::br(return_block, &[value0, value1], location));
-
-    Ok(())
+    entry.append_operation(func::r#return(&[value0, value1], location));
+    Ok(region)
 }
 
 fn build_drop<'ctx>(

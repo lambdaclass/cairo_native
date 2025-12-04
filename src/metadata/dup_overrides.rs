@@ -71,65 +71,65 @@ impl DupOverridesMeta {
         registry: &ProgramRegistry<CoreType, CoreLibfunc>,
         metadata: &mut MetadataStorage,
         id: &ConcreteTypeId,
-        f: impl FnOnce(&mut MetadataStorage, &Region<'ctx>, &Block<'ctx>, &Block<'ctx>) -> Result<()>,
+        f: impl FnOnce(&mut MetadataStorage) -> Result<Option<Region<'ctx>>>,
     ) -> Result<()> {
         {
             let dup_override_meta = metadata.get_or_insert_with(Self::default);
             if dup_override_meta.overriden_types.contains(id) {
                 return Ok(());
             }
+
             dup_override_meta.overriden_types.insert(id.clone());
         }
 
-        let location = Location::unknown(context);
+        match f(metadata)? {
+            Some(region) => {
+                let location = Location::unknown(context);
 
-        let ty = registry.build_type(context, module, metadata, id)?;
-        let ptr_ty = llvm::r#type::pointer(context, 0);
+                let ty = registry.build_type(context, module, metadata, id)?;
+                let ptr_ty = llvm::r#type::pointer(context, 0);
 
-        let region = Region::new();
+                let entry_block = region.first_block().unwrap();
+                let pre_entry_block =
+                    region.insert_block_before(entry_block, Block::new(&[(ptr_ty, location)]));
+                pre_entry_block.append_operation(cf::br(
+                    &entry_block,
+                    &[pre_entry_block.load(context, location, pre_entry_block.arg(0)?, ty)?],
+                    location,
+                ));
 
-        let entry_block = {
-            let pre_entry_block = region.append_block(Block::new(&[(ptr_ty, location)]));
-            let entry_block = region.append_block(Block::new(&[(ty, location)]));
-            pre_entry_block.append_operation(cf::br(
-                &entry_block,
-                &[pre_entry_block.load(context, location, pre_entry_block.arg(0)?, ty)?],
-                location,
-            ));
-            entry_block
-        };
-
-        let return_block = region.append_block(Block::new(&[(ty, location), (ty, location)]));
-        return_block.append_operation(func::r#return(
-            &[return_block.arg(0)?, return_block.arg(1)?],
-            location,
-        ));
-
-        f(metadata, &region, &entry_block, &return_block)?;
-
-        module.body().append_operation(func::func(
-            context,
-            StringAttribute::new(context, &format!("dup${}", id.id)),
-            TypeAttribute::new(FunctionType::new(context, &[ptr_ty], &[ty, ty]).into()),
-            region,
-            &[
-                (
-                    Identifier::new(context, "sym_visibility"),
-                    StringAttribute::new(context, "public").into(),
-                ),
-                (
-                    Identifier::new(context, "llvm.CConv"),
-                    Attribute::parse(context, "#llvm.cconv<fastcc>")
-                        .ok_or(Error::ParseAttributeError)?,
-                ),
-                (
-                    Identifier::new(context, "llvm.linkage"),
-                    Attribute::parse(context, "#llvm.linkage<private>")
-                        .ok_or(Error::ParseAttributeError)?,
-                ),
-            ],
-            location,
-        ));
+                module.body().append_operation(func::func(
+                    context,
+                    StringAttribute::new(context, &format!("dup${}", id.id)),
+                    TypeAttribute::new(FunctionType::new(context, &[ptr_ty], &[ty, ty]).into()),
+                    region,
+                    &[
+                        (
+                            Identifier::new(context, "sym_visibility"),
+                            StringAttribute::new(context, "public").into(),
+                        ),
+                        (
+                            Identifier::new(context, "llvm.CConv"),
+                            Attribute::parse(context, "#llvm.cconv<fastcc>")
+                                .ok_or(Error::ParseAttributeError)?,
+                        ),
+                        (
+                            Identifier::new(context, "llvm.linkage"),
+                            Attribute::parse(context, "#llvm.linkage<private>")
+                                .ok_or(Error::ParseAttributeError)?,
+                        ),
+                    ],
+                    Location::unknown(context),
+                ));
+            }
+            None => {
+                // The following getter should always return a value, but the if statement is kept
+                // just in case the meta has been removed (which it shouldn't).
+                if let Some(dup_override_meta) = metadata.get_mut::<Self>() {
+                    dup_override_meta.overriden_types.remove(id);
+                }
+            }
+        }
 
         Ok(())
     }

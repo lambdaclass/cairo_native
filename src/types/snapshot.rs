@@ -29,7 +29,7 @@ use cairo_lang_sierra::{
     program_registry::ProgramRegistry,
 };
 use melior::{
-    dialect::{cf, func},
+    dialect::func,
     helpers::BuiltinBlockExt,
     ir::{Block, BlockLike, Location, Module, Region, Type},
     Context,
@@ -57,27 +57,19 @@ pub fn build<'ctx>(
     }
 
     // Register clone override (if required).
-    if DupOverridesMeta::is_overriden(metadata, &info.ty) {
-        DupOverridesMeta::register_with(
-            context,
-            module,
-            registry,
-            metadata,
-            info.self_ty(),
-            |metadata, region, entry_block, return_block| {
-                build_dup(
-                    context,
-                    module,
-                    region,
-                    entry_block,
-                    return_block,
-                    registry,
-                    metadata,
-                    &info,
-                )
-            },
-        )?;
-    }
+    DupOverridesMeta::register_with(
+        context,
+        module,
+        registry,
+        metadata,
+        info.self_ty(),
+        |metadata| {
+            registry.build_type(context, module, metadata, &info.ty)?;
+            DupOverridesMeta::is_overriden(metadata, &info.ty)
+                .then(|| build_dup(context, module, registry, metadata, &info))
+                .transpose()
+        },
+    )?;
     // Register clone override (if required).
     DropOverridesMeta::register_with(
         context,
@@ -97,33 +89,33 @@ pub fn build<'ctx>(
     registry.build_type(context, module, metadata, &info.ty)
 }
 
-#[allow(clippy::too_many_arguments)]
 fn build_dup<'ctx>(
     context: &'ctx Context,
     module: &Module<'ctx>,
-    _region: &Region<'ctx>,
-    entry: &Block<'ctx>,
-    return_block: &Block<'ctx>,
     registry: &ProgramRegistry<CoreType, CoreLibfunc>,
     metadata: &mut MetadataStorage,
     info: &WithSelf<InfoAndTypeConcreteType>,
-) -> Result<()> {
+) -> Result<Region<'ctx>> {
     let location = Location::unknown(context);
+
+    let inner_ty = registry.build_type(context, module, metadata, &info.ty)?;
+
+    let region = Region::new();
+    let entry = region.append_block(Block::new(&[(inner_ty, location)]));
 
     let values = DupOverridesMeta::invoke_override(
         context,
         registry,
         module,
-        entry,
+        &entry,
         location,
         metadata,
         &info.ty,
         entry.arg(0)?,
     )?;
 
-    entry.append_operation(cf::br(return_block, &[values.0, values.1], location));
-
-    Ok(())
+    entry.append_operation(func::r#return(&[values.0, values.1], location));
+    Ok(region)
 }
 
 fn build_drop<'ctx>(
