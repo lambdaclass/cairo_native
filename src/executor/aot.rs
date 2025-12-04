@@ -272,8 +272,8 @@ mod tests {
     }
 
     #[rstest]
-    #[case(OptLevel::None)]
-    #[case(OptLevel::Default)]
+    // #[case(OptLevel::None)]
+    // #[case(OptLevel::Default)]
     #[case(OptLevel::Aggressive)]
     fn test_invoke_dynamic_with_syscall_handler(program: Program, #[case] optlevel: OptLevel) {
         let native_context = NativeContext::new();

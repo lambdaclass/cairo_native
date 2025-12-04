@@ -1525,7 +1525,10 @@ mod test {
                     .cast::<[[u8; 32]; 2]>()
                     .as_ptr()
             },
-            [Felt::from(1234).to_bytes_le_raw(), Felt::from(4321).to_bytes_le_raw()]
+            [
+                Felt::from(1234).to_bytes_le_raw(),
+                Felt::from(4321).to_bytes_le_raw()
+            ]
         );
     }
 

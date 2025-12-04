@@ -136,7 +136,7 @@ pub unsafe extern "C" fn cairo_native__libfunc__hades_permutation(
     let mut state = [
         montgomery::felt_from_monty_bytes(op0),
         montgomery::felt_from_monty_bytes(op1),
-        montgomery::felt_from_monty_bytes(op2)
+        montgomery::felt_from_monty_bytes(op2),
     ];
 
     // Compute Poseidon permutation.
