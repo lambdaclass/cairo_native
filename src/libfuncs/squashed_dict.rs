@@ -3,8 +3,8 @@ use crate::{
     debug::type_to_name,
     error::{Error, Result},
     metadata::{
-        debug_utils::DebugUtils, realloc_bindings::ReallocBindingsMeta,
-        runtime_bindings::RuntimeBindingsMeta, MetadataStorage,
+        realloc_bindings::ReallocBindingsMeta, runtime_bindings::RuntimeBindingsMeta,
+        MetadataStorage,
     },
     native_panic,
     types::array::calc_data_prefix_offset,
@@ -22,12 +22,12 @@ use melior::{
     dialect::{llvm, scf},
     helpers::{ArithBlockExt, BuiltinBlockExt, GepIndex, LlvmBlockExt},
     ir::{
-        operation::OperationBuilder, r#type::IntegerType, Block, BlockLike, Location, OperationRef,
-        Region, Type, Value, ValueLike,
+        operation::OperationBuilder, r#type::IntegerType, Block, BlockLike, Location, Region, Type,
+        Value, ValueLike,
     },
     Context,
 };
-use std::{alloc::Layout, os::raw::c_void};
+use std::alloc::Layout;
 
 /// Select and call the correct libfunc builder function from the selector.
 pub fn build<'ctx, 'this>(
@@ -91,6 +91,7 @@ fn get_inner_types<'ctx, 'this>(
     Ok((felt_ty, generic_ty))
 }
 
+#[allow(clippy::too_many_arguments)]
 fn append_entry_tuples<'ctx, 'this>(
     context: &'ctx Context,
     registry: &ProgramRegistry<CoreType, CoreLibfunc>,

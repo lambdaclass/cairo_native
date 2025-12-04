@@ -333,7 +333,7 @@ pub unsafe extern "C" fn cairo_native__dict_into_entries(
         let element =
             dict.elements
                 .byte_add(dict.layout.pad_to_align().size() * elem_index) as *mut u8;
-        let last_val_ptr = first_val_ptr.byte_add(generic_ty_stride) as *mut u8;
+        let last_val_ptr = first_val_ptr.byte_add(generic_ty_stride);
 
         std::ptr::copy_nonoverlapping(element, last_val_ptr, dict.layout.pad_to_align().size());
         dict.count += 1; // TODO: Check if we need to do this for every accesed item.
