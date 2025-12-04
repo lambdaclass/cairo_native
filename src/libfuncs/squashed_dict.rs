@@ -334,7 +334,7 @@ mod test {
     use crate::{jit_struct, load_cairo, utils::testing::run_program, Value};
 
     #[test]
-    fn nose() {
+    fn test_into_entries() {
         let program = load_cairo! {
             use core::dict::{Felt252Dict, Felt252DictEntryTrait, SquashedFelt252DictTrait};
 
