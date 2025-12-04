@@ -358,10 +358,11 @@ pub fn build_into_entries<'ctx, 'this>(
 #[cfg(test)]
 mod test {
     use crate::{jit_struct, load_cairo, utils::testing::run_program, Value};
+    use cairo_lang_sierra::program::Program;
+    use lazy_static::lazy_static;
 
-    #[test]
-    fn test_into_entries() {
-        let program = load_cairo! {
+    lazy_static! {
+        static ref INTO_ENTRIES_U8_VALUES: (String, Program) = load_cairo! {
             use core::dict::{Felt252Dict, Felt252DictEntryTrait, SquashedFelt252DictTrait};
 
             fn into_entries_u8_values() -> Array<(felt252, u8, u8)> {
@@ -371,6 +372,9 @@ mod test {
                 dict.insert(2, 2);
                 dict.squash().into_entries()
             }
+        };
+        static ref INTO_ENTRIES_U32_VALUES: (String, Program) = load_cairo! {
+            use core::dict::{Felt252Dict, Felt252DictEntryTrait, SquashedFelt252DictTrait};
 
             fn into_entries_u32_values() -> Array<(felt252, u32, u32)> {
                 let mut dict: Felt252Dict<u32> = Default::default();
@@ -379,6 +383,9 @@ mod test {
                 dict.insert(2, 2);
                 dict.squash().into_entries()
             }
+        };
+        static ref INTO_ENTRIES_U128_VALUES: (String, Program) = load_cairo! {
+            use core::dict::{Felt252Dict, Felt252DictEntryTrait, SquashedFelt252DictTrait};
 
             fn into_entries_u128_values() -> Array<(felt252, u128, u128)> {
                 let mut dict: Felt252Dict<u128> = Default::default();
@@ -387,6 +394,9 @@ mod test {
                 dict.insert(2, 2);
                 dict.squash().into_entries()
             }
+        };
+        static ref INTO_ENTRIES_FELT252_VALUES: (String, Program) = load_cairo! {
+            use core::dict::{Felt252Dict, Felt252DictEntryTrait, SquashedFelt252DictTrait};
 
             fn into_entries_felt252_values() -> Array<(felt252, felt252, felt252)> {
                 let mut dict: Felt252Dict<felt252> = Default::default();
@@ -396,8 +406,12 @@ mod test {
                 dict.squash().into_entries()
             }
         };
+    }
 
-        let result = run_program(&program, "into_entries_u8_values", &[]).return_value;
+    #[test]
+    fn test_into_entries_u8_values() {
+        let result =
+            run_program(&INTO_ENTRIES_U8_VALUES, "into_entries_u8_values", &[]).return_value;
         if let Value::Array(arr) = result {
             assert_eq!(
                 arr[0],
@@ -412,8 +426,12 @@ mod test {
                 jit_struct!(Value::Felt252(2.into()), Value::Uint8(0), Value::Uint8(2))
             );
         }
+    }
 
-        let result = run_program(&program, "into_entries_u32_values", &[]).return_value;
+    #[test]
+    fn test_into_entries_u32_values() {
+        let result =
+            run_program(&INTO_ENTRIES_U32_VALUES, "into_entries_u32_values", &[]).return_value;
         if let Value::Array(arr) = result {
             assert_eq!(
                 arr[0],
@@ -428,8 +446,12 @@ mod test {
                 jit_struct!(Value::Felt252(2.into()), Value::Uint32(0), Value::Uint32(2))
             );
         }
+    }
 
-        let result = run_program(&program, "into_entries_u128_values", &[]).return_value;
+    #[test]
+    fn test_into_entries_u128_values() {
+        let result =
+            run_program(&INTO_ENTRIES_U128_VALUES, "into_entries_u128_values", &[]).return_value;
         if let Value::Array(arr) = result {
             assert_eq!(
                 arr[0],
@@ -456,8 +478,16 @@ mod test {
                 )
             );
         }
+    }
 
-        let result = run_program(&program, "into_entries_felt252_values", &[]).return_value;
+    #[test]
+    fn test_into_entries_felt252_values() {
+        let result = run_program(
+            &INTO_ENTRIES_FELT252_VALUES,
+            "into_entries_felt252_values",
+            &[],
+        )
+        .return_value;
         if let Value::Array(arr) = result {
             assert_eq!(
                 arr[0],

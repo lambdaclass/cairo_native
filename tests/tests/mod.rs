@@ -10,6 +10,7 @@ pub mod felt252;
 pub mod libfuncs;
 pub mod programs;
 pub mod result;
+pub mod squashed_dict;
 pub mod starknet;
 pub mod trampoline;
 pub mod uint;
