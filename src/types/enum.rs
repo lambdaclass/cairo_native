@@ -283,8 +283,6 @@ fn build_dup<'ctx>(
     match variant_tys.len() {
         0 => native_panic!("attempt to clone a zero-variant enum"),
         1 => {
-            // The following unwrap is unreachable because the registration logic will always insert
-            // it.
             let values = DupOverridesMeta::invoke_override(
                 context,
                 registry,
