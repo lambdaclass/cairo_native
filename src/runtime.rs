@@ -1,6 +1,9 @@
 #![allow(non_snake_case)]
 
-use crate::utils::BuiltinCosts;
+use crate::utils::{
+    montgomery::{self, MontyBytes},
+    BuiltinCosts,
+};
 use cairo_lang_sierra_gas::core_libfunc_cost::{
     DICT_SQUASH_REPEATED_ACCESS_COST, DICT_SQUASH_UNIQUE_KEY_COST,
 };
@@ -100,12 +103,12 @@ pub unsafe extern "C" fn cairo_native__libfunc__pedersen(
     rhs[31] &= 0x0F; // Filter out first 4 bits (they're outside an i252).
 
     // Convert to FieldElement.
-    let lhs = Felt::from_bytes_le(&lhs);
-    let rhs = Felt::from_bytes_le(&rhs);
+    let lhs = montgomery::felt_from_monty_bytes(&lhs);
+    let rhs = montgomery::felt_from_monty_bytes(&rhs);
 
     // Compute pedersen hash and copy the result into `dst`.
     let res = starknet_types_core::hash::Pedersen::hash(&lhs, &rhs);
-    *dst = res.to_bytes_le();
+    *dst = res.to_bytes_le_raw();
 }
 
 /// Compute `hades_permutation(op0, op1, op2)` and replace the operands with the results.
@@ -131,18 +134,18 @@ pub unsafe extern "C" fn cairo_native__libfunc__hades_permutation(
 
     // Convert to FieldElement.
     let mut state = [
-        Felt::from_bytes_le(op0),
-        Felt::from_bytes_le(op1),
-        Felt::from_bytes_le(op2),
+        montgomery::felt_from_monty_bytes(op0),
+        montgomery::felt_from_monty_bytes(op1),
+        montgomery::felt_from_monty_bytes(op2)
     ];
 
     // Compute Poseidon permutation.
     starknet_types_core::hash::Poseidon::hades_permutation(&mut state);
 
     // Write back the results.
-    *op0 = state[0].to_bytes_le();
-    *op1 = state[1].to_bytes_le();
-    *op2 = state[2].to_bytes_le();
+    *op0 = state[0].to_bytes_le_raw();
+    *op1 = state[1].to_bytes_le_raw();
+    *op2 = state[2].to_bytes_le_raw();
 }
 
 /// Felt252 type used in cairo native runtime
@@ -383,7 +386,12 @@ pub unsafe extern "C" fn cairo_native__libfunc__ec__ec_point_from_x_nz(
     point_ptr: &mut [[u8; 32]; 2],
 ) -> bool {
     point_ptr[0][31] &= 0x0F; // Filter out first 4 bits (they're outside an i252).
-    let x = Felt::from_bytes_le(&point_ptr[0]);
+
+    // Felts are represented in Montgomery form. Due to this, we
+    // need to convert them back to their original representation.
+    let value = U256::from_bytes_le(&point_ptr[0]).unwrap();
+
+    let x = Felt::from_raw(value.limbs);
 
     // https://github.com/starkware-libs/cairo/blob/aaad921bba52e729dc24ece07fab2edf09ccfa15/crates/cairo-lang-sierra-to-casm/src/invocations/ec.rs#L63
 
@@ -399,7 +407,7 @@ pub unsafe extern "C" fn cairo_native__libfunc__ec__ec_point_from_x_nz(
 
     match AffinePoint::new(x, y) {
         Ok(point) => {
-            point_ptr[1] = point.y().to_bytes_le();
+            point_ptr[1] = point.y().to_bytes_le_raw();
             true
         }
         Err(_) => false,
@@ -422,13 +430,15 @@ pub unsafe extern "C" fn cairo_native__libfunc__ec__ec_point_try_new_nz(
     point_ptr[0][31] &= 0x0F; // Filter out first 4 bits (they're outside an i252).
     point_ptr[1][31] &= 0x0F; // Filter out first 4 bits (they're outside an i252).
 
-    let x = Felt::from_bytes_le(&point_ptr[0]);
-    let y = Felt::from_bytes_le(&point_ptr[1]);
+    // Felts are represented in Montgomery form, so we need to convert them
+    // back their original representation before operating.
+    let x = montgomery::felt_from_monty_bytes(&point_ptr[0]);
+    let y = montgomery::felt_from_monty_bytes(&point_ptr[1]);
 
     match AffinePoint::new(x, y) {
         Ok(point) => {
-            point_ptr[0] = point.x().to_bytes_le();
-            point_ptr[1] = point.y().to_bytes_le();
+            point_ptr[0] = point.x().to_bytes_le_raw();
+            point_ptr[1] = point.y().to_bytes_le_raw();
             true
         }
         Err(_) => false,
@@ -457,8 +467,8 @@ pub unsafe extern "C" fn cairo_native__libfunc__ec__ec_state_init(state_ptr: &mu
     // We already made sure its a valid point.
     let state = AffinePoint::new_unchecked(random_x, random_y);
 
-    state_ptr[0] = state.x().to_bytes_le();
-    state_ptr[1] = state.y().to_bytes_le();
+    state_ptr[0] = state.x().to_bytes_le_raw();
+    state_ptr[1] = state.y().to_bytes_le_raw();
     state_ptr[2] = state_ptr[0];
     state_ptr[3] = state_ptr[1];
 }
@@ -484,21 +494,24 @@ pub unsafe extern "C" fn cairo_native__libfunc__ec__ec_state_add(
     point_ptr[0][31] &= 0x0F; // Filter out first 4 bits (they're outside an i252).
     point_ptr[1][31] &= 0x0F; // Filter out first 4 bits (they're outside an i252).
 
-    // We use unchecked methods because the inputs must already be valid points.
+    // Here the points should already be checked as valid, so we can use unchecked.
+    //
+    // Felts are represented in Montgomery form. Due to this, we
+    // need to convert them back to their original representation.
     let mut state = ProjectivePoint::from_affine_unchecked(
-        Felt::from_bytes_le(&state_ptr[0]),
-        Felt::from_bytes_le(&state_ptr[1]),
+        montgomery::felt_from_monty_bytes(&state_ptr[0]),
+        montgomery::felt_from_monty_bytes(&state_ptr[1]),
     );
     let point = AffinePoint::new_unchecked(
-        Felt::from_bytes_le(&point_ptr[0]),
-        Felt::from_bytes_le(&point_ptr[1]),
+        montgomery::felt_from_monty_bytes(&point_ptr[0]),
+        montgomery::felt_from_monty_bytes(&point_ptr[1]),
     );
 
     state += &point;
     let state = state.to_affine().unwrap();
 
-    state_ptr[0] = state.x().to_bytes_le();
-    state_ptr[1] = state.y().to_bytes_le();
+    state_ptr[0] = state.x().to_bytes_le_raw();
+    state_ptr[1] = state.y().to_bytes_le_raw();
 }
 
 /// Compute `ec_state_add_mul(state, scalar, point)` and store the state back.
@@ -527,21 +540,25 @@ pub unsafe extern "C" fn cairo_native__libfunc__ec__ec_state_add_mul(
     scalar_ptr[31] &= 0x0F; // Filter out first 4 bits (they're outside an i252).
 
     // Here the points should already be checked as valid, so we can use unchecked.
+    //
+    // Felts are represented in Montgomery form. Due to this, we
+    // need to convert them back to their original representation.
     let mut state = ProjectivePoint::from_affine_unchecked(
-        Felt::from_bytes_le(&state_ptr[0]),
-        Felt::from_bytes_le(&state_ptr[1]),
+        montgomery::felt_from_monty_bytes(&state_ptr[0]),
+        montgomery::felt_from_monty_bytes(&state_ptr[1]),
     );
     let point = ProjectivePoint::from_affine_unchecked(
-        Felt::from_bytes_le(&point_ptr[0]),
-        Felt::from_bytes_le(&point_ptr[1]),
+        montgomery::felt_from_monty_bytes(&point_ptr[0]),
+        montgomery::felt_from_monty_bytes(&point_ptr[1]),
     );
-    let scalar = Felt::from_bytes_le(&scalar_ptr);
+
+    let scalar = montgomery::felt_from_monty_bytes(&scalar_ptr);
 
     state += &point.mul(scalar);
     let state = state.to_affine().unwrap();
 
-    state_ptr[0] = state.x().to_bytes_le();
-    state_ptr[1] = state.y().to_bytes_le();
+    state_ptr[0] = state.x().to_bytes_le_raw();
+    state_ptr[1] = state.y().to_bytes_le_raw();
 }
 
 /// Compute `ec_state_try_finalize_nz(state)` and store the result.
@@ -566,12 +583,12 @@ pub unsafe extern "C" fn cairo_native__libfunc__ec__ec_state_try_finalize_nz(
 
     // We use unchecked methods because the inputs must already be valid points.
     let state = ProjectivePoint::from_affine_unchecked(
-        Felt::from_bytes_le(&state_ptr[0]),
-        Felt::from_bytes_le(&state_ptr[1]),
+        montgomery::felt_from_monty_bytes(&state_ptr[0]),
+        montgomery::felt_from_monty_bytes(&state_ptr[1]),
     );
     let random = ProjectivePoint::from_affine_unchecked(
-        Felt::from_bytes_le(&state_ptr[2]),
-        Felt::from_bytes_le(&state_ptr[3]),
+        montgomery::felt_from_monty_bytes(&state_ptr[2]),
+        montgomery::felt_from_monty_bytes(&state_ptr[3]),
     );
 
     if state.x() == random.x() && state.y() == random.y() {
@@ -580,8 +597,8 @@ pub unsafe extern "C" fn cairo_native__libfunc__ec__ec_state_try_finalize_nz(
         let point = &state - &random;
         let point = point.to_affine().unwrap();
 
-        point_ptr[0] = point.x().to_bytes_le();
-        point_ptr[1] = point.y().to_bytes_le();
+        point_ptr[0] = point.x().to_bytes_le_raw();
+        point_ptr[1] = point.y().to_bytes_le_raw();
 
         true
     }
@@ -830,15 +847,15 @@ mod tests {
     #[test]
     fn test_pederesen() {
         let mut dst = [0; 32];
-        let lhs = Felt::from(1).to_bytes_le();
-        let rhs = Felt::from(3).to_bytes_le();
+        let lhs = Felt::from(1).to_bytes_le_raw();
+        let rhs = Felt::from(3).to_bytes_le_raw();
 
         unsafe {
             cairo_native__libfunc__pedersen(&mut dst, &lhs, &rhs);
         }
 
         assert_eq!(
-            dst,
+            montgomery::felt_from_monty_bytes(&dst).to_bytes_le(),
             [
                 84, 98, 174, 134, 3, 124, 237, 179, 166, 110, 159, 98, 170, 35, 83, 237, 130, 154,
                 236, 0, 205, 134, 200, 185, 39, 92, 0, 228, 132, 217, 130, 5
@@ -848,26 +865,26 @@ mod tests {
 
     #[test]
     fn test_hades_permutation() {
-        let mut op0 = Felt::from(1).to_bytes_le();
-        let mut op1 = Felt::from(1).to_bytes_le();
-        let mut op2 = Felt::from(1).to_bytes_le();
+        let mut op0 = Felt::from(1).to_bytes_le_raw();
+        let mut op1 = Felt::from(1).to_bytes_le_raw();
+        let mut op2 = Felt::from(1).to_bytes_le_raw();
 
         unsafe {
             cairo_native__libfunc__hades_permutation(&mut op0, &mut op1, &mut op2);
         }
 
         assert_eq!(
-            Felt::from_bytes_le(&op0),
+            montgomery::felt_from_monty_bytes(&op0),
             Felt::from_hex("0x4ebdde1149fcacbb41e4fc342432a48c97994fd045f432ad234ae9279269779")
                 .unwrap()
         );
         assert_eq!(
-            Felt::from_bytes_le(&op1),
+            montgomery::felt_from_monty_bytes(&op1),
             Felt::from_hex("0x7f4cec57dd08b69414f7de7dffa230fc90fa3993673c422408af05831e0cc98")
                 .unwrap()
         );
         assert_eq!(
-            Felt::from_bytes_le(&op2),
+            montgomery::felt_from_monty_bytes(&op2),
             Felt::from_hex("0x5b5d00fd09caade43caffe70527fa84d5d9cd51e22c2ce115693ecbb5854d6a")
                 .unwrap()
         );
@@ -943,22 +960,22 @@ mod tests {
                 "874739451078007766457464989774322083649278607533249481151382481072868806602",
             )
             .unwrap()
-            .to_bytes_le(),
+            .to_bytes_le_raw(),
             Felt::from_dec_str(
                 "152666792071518830868575557812948353041420400780739481342941381225525861407",
             )
             .unwrap()
-            .to_bytes_le(),
+            .to_bytes_le_raw(),
             Felt::from_dec_str(
                 "874739451078007766457464989774322083649278607533249481151382481072868806602",
             )
             .unwrap()
-            .to_bytes_le(),
+            .to_bytes_le_raw(),
             Felt::from_dec_str(
                 "152666792071518830868575557812948353041420400780739481342941381225525861407",
             )
             .unwrap()
-            .to_bytes_le(),
+            .to_bytes_le_raw(),
         ];
 
         let point = [
@@ -966,12 +983,12 @@ mod tests {
                 "874739451078007766457464989774322083649278607533249481151382481072868806602",
             )
             .unwrap()
-            .to_bytes_le(),
+            .to_bytes_le_raw(),
             Felt::from_dec_str(
                 "152666792071518830868575557812948353041420400780739481342941381225525861407",
             )
             .unwrap()
-            .to_bytes_le(),
+            .to_bytes_le_raw(),
         ];
 
         unsafe {
@@ -984,7 +1001,7 @@ mod tests {
                 "3324833730090626974525872402899302150520188025637965566623476530814354734325",
             )
             .unwrap()
-            .to_bytes_le()
+            .to_bytes_le_raw()
         );
         assert_eq!(
             state[1],
@@ -992,7 +1009,7 @@ mod tests {
                 "3147007486456030910661996439995670279305852583596209647900952752170983517249",
             )
             .unwrap()
-            .to_bytes_le()
+            .to_bytes_le_raw()
         );
     }
 }

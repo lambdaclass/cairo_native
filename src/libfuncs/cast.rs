@@ -7,7 +7,10 @@ use crate::{
     metadata::MetadataStorage,
     native_assert, native_panic,
     types::TypeBuilder,
-    utils::{RangeExt, HALF_PRIME, PRIME},
+    utils::{
+        montgomery::{self},
+        RangeExt, HALF_PRIME, PRIME,
+    },
 };
 use cairo_lang_sierra::{
     extensions::{
@@ -152,26 +155,51 @@ pub fn build_downcast<'ctx, 'this>(
     //    [-P/2, P/2].
     // 2. if it is a bounded_int, we need to offset the value to get the
     //    actual value.
-    let src_value = if is_signed && src_ty.is_felt252(registry)? {
-        if src_range.upper.is_one() {
-            let adj_offset =
-                entry.const_int_from_type(context, location, PRIME.clone(), src_value.r#type())?;
-            entry.append_op_result(arith::subi(src_value, adj_offset, location))?
+    let src_value = if src_ty.is_felt252(registry)? {
+        let felt252_ty = IntegerType::new(context, 252).into();
+
+        // Felts are represented in Montgomery form, so we need to convert it
+        // back to its original representation before operating.
+        let src_value =
+            montgomery::mlir::monty_reduce(context, entry, src_value, felt252_ty, location)?;
+
+        if is_signed {
+            if src_range.upper.is_one() {
+                let adj_offset = entry.const_int_from_type(
+                    context,
+                    location,
+                    PRIME.clone(),
+                    src_value.r#type(),
+                )?;
+                entry.append_op_result(arith::subi(src_value, adj_offset, location))?
+            } else {
+                let adj_offset = entry.const_int_from_type(
+                    context,
+                    location,
+                    HALF_PRIME.clone(),
+                    src_value.r#type(),
+                )?;
+                let is_negative =
+                    entry.cmpi(context, CmpiPredicate::Ugt, src_value, adj_offset, location)?;
+
+                let k_prime = entry.const_int_from_type(
+                    context,
+                    location,
+                    PRIME.clone(),
+                    src_value.r#type(),
+                )?;
+                let adj_value =
+                    entry.append_op_result(arith::subi(src_value, k_prime, location))?;
+
+                entry.append_op_result(arith::select(
+                    is_negative,
+                    adj_value,
+                    src_value,
+                    location,
+                ))?
+            }
         } else {
-            let adj_offset = entry.const_int_from_type(
-                context,
-                location,
-                HALF_PRIME.clone(),
-                src_value.r#type(),
-            )?;
-            let is_negative =
-                entry.cmpi(context, CmpiPredicate::Ugt, src_value, adj_offset, location)?;
-
-            let k_prime =
-                entry.const_int_from_type(context, location, PRIME.clone(), src_value.r#type())?;
-            let adj_value = entry.append_op_result(arith::subi(src_value, k_prime, location))?;
-
-            entry.append_op_result(arith::select(is_negative, adj_value, src_value, location))?
+            src_value
         }
     } else if src_ty.is_bounded_int(registry)? && src_range.lower != BigInt::ZERO {
         let dst_offset = entry.const_int_from_type(
@@ -470,14 +498,23 @@ pub fn build_upcast<'ctx, 'this>(
     // When converting to a felt from a signed integer, we need to convert
     // the canonical signed integer representation, to the signed felt
     // representation: `negative = P - absolute`.
-    let dst_value = if dst_ty.is_felt252(registry)? && src_range.lower.sign() == Sign::Minus {
-        let k0 = entry.const_int(context, location, 0, 252)?;
-        let is_negative = entry.cmpi(context, CmpiPredicate::Slt, dst_value, k0, location)?;
+    let dst_value = if dst_ty.is_felt252(registry)? {
+        let felt252_ty = IntegerType::new(context, 252).into();
 
-        let k_prime = entry.const_int(context, location, PRIME.clone(), 252)?;
-        let adj_value = entry.addi(dst_value, k_prime, location)?;
+        let value = if src_range.lower.sign() == Sign::Minus {
+            let k0 = entry.const_int(context, location, 0, 252)?;
+            let is_negative = entry.cmpi(context, CmpiPredicate::Slt, dst_value, k0, location)?;
 
-        entry.append_op_result(arith::select(is_negative, adj_value, dst_value, location))?
+            let k_prime = entry.const_int(context, location, PRIME.clone(), 252)?;
+            let adj_value = entry.addi(dst_value, k_prime, location)?;
+
+            entry.append_op_result(arith::select(is_negative, adj_value, dst_value, location))?
+        } else {
+            dst_value
+        };
+
+        // Felts are represented in Montgomery form.
+        montgomery::mlir::monty_transform(context, entry, value, felt252_ty, location)?
     } else {
         dst_value
     };

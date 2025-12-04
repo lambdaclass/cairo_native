@@ -70,6 +70,13 @@ impl MontyBytes for Felt {
     }
 }
 
+/// Utility function to convert Felt bytes in Montgomery form into a Felt with
+/// its correct representation.
+pub fn felt_from_monty_bytes(value: &[u8; 32]) -> Felt {
+    let value = U256::from_bytes_le(value).unwrap();
+    Felt::from_raw(value.limbs)
+}
+
 /// Computes the Montgomery reduction (REDC).
 ///
 /// Having a value `x' = x . r mod n`, the Montgomery reduction can be
@@ -134,9 +141,7 @@ pub mod mlir {
 
         let t = block.muli(lhs, rhs, location)?;
 
-        let result = monty_reduce(context, block, t, location)?;
-
-        Ok(block.trunci(result, res_ty, location)?)
+        Ok(monty_reduce(context, block, t, res_ty, location)?)
     }
 
     /// Computes Montgomery division in MLIR.
@@ -513,12 +518,14 @@ pub mod mlir {
     }
 
     /// Computes Montgomery reduction in MLIR.
-    fn monty_reduce<'c, 'a>(
+    pub fn monty_reduce<'c, 'a>(
         context: &'c Context,
         block: &'a Block<'c>,
         x: Value<'c, '_>,
+        res_ty: Type<'c>,
         location: Location<'c>,
     ) -> Result<Value<'c, 'a>> {
+        let x = block.extui(x, IntegerType::new(context, 512).into(), location)?;
         let mu = block.const_int(context, location, MONTY_MU_U256.clone(), 512)?;
         let r_minus_1 = block.const_int(context, location, MONTY_R.clone() - 1u8, 512)?;
         let k256 = block.const_int(context, location, 256, 512)?;
@@ -538,7 +545,20 @@ pub mod mlir {
 
         let is_negative = block.cmpi(context, arith::CmpiPredicate::Ugt, m, x, location)?;
 
-        Ok(block.append_op_result(arith::select(is_negative, y_plus_mod, y, location))?)
+        let value = block.append_op_result(arith::select(is_negative, y_plus_mod, y, location))?;
+        Ok(block.trunci(value, res_ty, location)?)
+    }
+
+    /// Computes to Montgomery space conversion in MLIR.
+    pub fn monty_transform<'c, 'a>(
+        context: &'c Context,
+        block: &'a Block<'c>,
+        x: Value<'c, '_>,
+        res_ty: Type<'c>,
+        location: Location<'c>,
+    ) -> Result<Value<'c, 'a>> {
+        let r2 = block.const_int(context, location, *MONTY_R2, 257)?;
+        monty_mul(context, block, x, r2, res_ty, location)
     }
 }
 

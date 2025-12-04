@@ -4,7 +4,7 @@ use super::LibfuncHelper;
 use crate::{
     error::{Error, Result},
     metadata::MetadataStorage,
-    utils::ProgramRegistryExt,
+    utils::{montgomery, ProgramRegistryExt},
 };
 use cairo_lang_sierra::{
     extensions::{
@@ -22,7 +22,7 @@ use melior::{
         cf,
     },
     helpers::{ArithBlockExt, BuiltinBlockExt},
-    ir::{Attribute, Block, BlockLike, Location, Value},
+    ir::{r#type::IntegerType, Attribute, Block, BlockLike, Location, Value},
     Context,
 };
 use num_bigint::BigUint;
@@ -96,7 +96,13 @@ pub fn build_to_felt252<'ctx, 'this>(
     )?;
     let value: Value = entry.arg(0)?;
 
-    let result = entry.extui(value, felt252_ty, location)?;
+    let result = {
+        let result = entry.extui(value, felt252_ty, location)?;
+
+        // Felts are represented in Montgomery form, so we need to convert
+        // before returning them.
+        montgomery::mlir::monty_transform(context, entry, result, felt252_ty, location)?
+    };
 
     helper.br(entry, 0, &[result], location)
 }
@@ -116,7 +122,15 @@ pub fn build_from_felt252<'ctx, 'this>(
     let range_check: Value =
         super::increment_builtin_counter_by(context, entry, location, entry.arg(0)?, 3)?;
 
-    let value: Value = entry.arg(1)?;
+    // Felts are represented in Montgomery form, so we need to convert them
+    // back to their original representation before operating.
+    let value: Value = montgomery::mlir::monty_reduce(
+        context,
+        entry,
+        entry.arg(1)?,
+        IntegerType::new(context, 252).into(),
+        location,
+    )?;
 
     let felt252_ty =
         registry.build_type(context, helper, metadata, &info.param_signatures()[1].ty)?;

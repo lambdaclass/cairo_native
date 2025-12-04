@@ -7,7 +7,7 @@ use crate::{
     metadata::MetadataStorage,
     native_assert,
     types::TypeBuilder,
-    utils::RangeExt,
+    utils::{montgomery, RangeExt},
 };
 use cairo_lang_sierra::{
     extensions::{
@@ -149,6 +149,17 @@ fn build_add<'ctx, 'this>(
         rhs_value
     };
 
+    let lhs_value = if lhs_ty.is_felt252(registry)? {
+        montgomery::mlir::monty_reduce(context, entry, lhs_value, lhs_value.r#type(), location)?
+    } else {
+        lhs_value
+    };
+    let rhs_value = if lhs_ty.is_felt252(registry)? {
+        montgomery::mlir::monty_reduce(context, entry, rhs_value, rhs_value.r#type(), location)?
+    } else {
+        rhs_value
+    };
+
     // Addition and get the result value on the desired range
     let res_value = entry.addi(lhs_value, rhs_value, location)?;
     let res_value = if compute_width > dst_width {
@@ -244,6 +255,17 @@ fn build_sub<'ctx, 'this>(
         } else {
             entry.extsi(rhs_value, compute_ty, location)?
         }
+    } else {
+        rhs_value
+    };
+
+    let lhs_value = if lhs_ty.is_felt252(registry)? {
+        montgomery::mlir::monty_reduce(context, entry, lhs_value, lhs_value.r#type(), location)?
+    } else {
+        lhs_value
+    };
+    let rhs_value = if lhs_ty.is_felt252(registry)? {
+        montgomery::mlir::monty_reduce(context, entry, rhs_value, rhs_value.r#type(), location)?
     } else {
         rhs_value
     };
@@ -357,6 +379,8 @@ fn build_mul<'ctx, 'this>(
         let lhs_offset =
             entry.const_int_from_type(context, location, lhs_range.lower, compute_ty)?;
         entry.addi(lhs_value, lhs_offset, location)?
+    } else if lhs_ty.is_felt252(registry)? {
+        montgomery::mlir::monty_reduce(context, entry, lhs_value, lhs_value.r#type(), location)?
     } else {
         lhs_value
     };
@@ -364,6 +388,8 @@ fn build_mul<'ctx, 'this>(
         let rhs_offset =
             entry.const_int_from_type(context, location, rhs_range.lower, compute_ty)?;
         entry.addi(rhs_value, rhs_offset, location)?
+    } else if lhs_ty.is_felt252(registry)? {
+        montgomery::mlir::monty_reduce(context, entry, rhs_value, rhs_value.r#type(), location)?
     } else {
         rhs_value
     };
@@ -489,6 +515,8 @@ fn build_div_rem<'ctx, 'this>(
         let lhs_offset =
             entry.const_int_from_type(context, location, lhs_range.lower, compute_ty)?;
         entry.addi(lhs_value, lhs_offset, location)?
+    } else if lhs_ty.is_felt252(registry)? {
+        montgomery::mlir::monty_reduce(context, entry, lhs_value, lhs_value.r#type(), location)?
     } else {
         lhs_value
     };
@@ -496,6 +524,8 @@ fn build_div_rem<'ctx, 'this>(
         let rhs_offset =
             entry.const_int_from_type(context, location, rhs_range.lower, compute_ty)?;
         entry.addi(rhs_value, rhs_offset, location)?
+    } else if lhs_ty.is_felt252(registry)? {
+        montgomery::mlir::monty_reduce(context, entry, rhs_value, rhs_value.r#type(), location)?
     } else {
         rhs_value
     };
@@ -578,7 +608,6 @@ fn build_constrain<'ctx, 'this>(
     info: &BoundedIntConstrainConcreteLibfunc,
 ) -> Result<()> {
     let range_check = super::increment_builtin_counter(context, entry, location, entry.arg(0)?)?;
-    let src_value: Value = entry.arg(1)?;
 
     let src_ty = registry.get_type(&info.param_signatures()[1].ty)?;
     let src_range = src_ty.integer_range(registry)?;
@@ -587,6 +616,20 @@ fn build_constrain<'ctx, 'this>(
         src_range.offset_bit_width()
     } else {
         src_range.zero_based_bit_width()
+    };
+
+    // Felts are represented in Montgomery form, so we need to convert them
+    // back to the original representation.
+    let src_value: Value = if src_ty.is_felt252(registry)? {
+        montgomery::mlir::monty_reduce(
+            context,
+            entry,
+            entry.arg(1)?,
+            IntegerType::new(context, 252).into(),
+            location,
+        )?
+    } else {
+        entry.arg(1)?
     };
 
     let lower_range = registry
@@ -783,6 +826,7 @@ fn build_is_zero<'ctx, 'this>(
     } else {
         entry.const_int_from_type(context, location, 0, src_value.r#type())?
     };
+
     let src_is_zero = entry.cmpi(context, CmpiPredicate::Eq, src_value, k0, location)?;
 
     helper.cond_br(
