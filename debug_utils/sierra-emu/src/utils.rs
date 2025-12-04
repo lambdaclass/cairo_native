@@ -13,6 +13,7 @@ use starknet_types_core::felt::CAIRO_PRIME_BIGINT;
 use crate::{debug::type_to_name, Value};
 
 /// Receives a vector of values, filters any which is non numeric and returns a `Vec<BigInt>`
+///
 /// Useful when a binary operation takes generic values (like with bounded ints).
 pub fn get_numeric_args_as_bigints(args: &[Value]) -> Vec<BigInt> {
     args.iter()
