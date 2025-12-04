@@ -89,19 +89,28 @@ impl DupOverridesMeta {
                 let ty = registry.build_type(context, module, metadata, id)?;
                 let ptr_ty = llvm::r#type::pointer(context, 0);
 
-                let entry_block = region.first_block().unwrap();
-                let pre_entry_block =
-                    region.insert_block_before(entry_block, Block::new(&[(ptr_ty, location)]));
-                pre_entry_block.append_operation(cf::br(
-                    &entry_block,
-                    &[pre_entry_block.load(context, location, pre_entry_block.arg(0)?, ty)?],
-                    location,
-                ));
+                let sierra_ty = registry.get_type(id)?;
+                let is_memory_allocated = sierra_ty.is_memory_allocated(registry)?;
+
+                let signature_ty = if is_memory_allocated { ptr_ty } else { ty };
+
+                if is_memory_allocated {
+                    let entry_block = region.first_block().unwrap();
+                    let pre_entry_block =
+                        region.insert_block_before(entry_block, Block::new(&[(ptr_ty, location)]));
+                    pre_entry_block.append_operation(cf::br(
+                        &entry_block,
+                        &[pre_entry_block.load(context, location, pre_entry_block.arg(0)?, ty)?],
+                        location,
+                    ));
+                }
 
                 module.body().append_operation(func::func(
                     context,
                     StringAttribute::new(context, &format!("dup${}", id.id)),
-                    TypeAttribute::new(FunctionType::new(context, &[ptr_ty], &[ty, ty]).into()),
+                    TypeAttribute::new(
+                        FunctionType::new(context, &[signature_ty], &[ty, ty]).into(),
+                    ),
                     region,
                     &[
                         (
@@ -159,8 +168,9 @@ impl DupOverridesMeta {
         Ok(if Self::is_overriden(metadata, id) {
             let ty = registry.build_type(context, module, metadata, id)?;
             let sierra_ty = registry.get_type(id)?;
+            let is_memory_allocated = sierra_ty.is_memory_allocated(registry)?;
 
-            let value = {
+            let value = if is_memory_allocated {
                 let value_ptr = init_block.alloca1(
                     context,
                     location,
@@ -169,6 +179,8 @@ impl DupOverridesMeta {
                 )?;
                 block.store(context, location, value_ptr, value)?;
                 value_ptr
+            } else {
+                value
             };
 
             let result = block.append_operation(func::call(
