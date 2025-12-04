@@ -179,7 +179,7 @@ impl Value {
 
                     // Felts are represented in Montgomery form. Due to this,
                     // we need to take its raw bytes.
-                    let data = value.to_bytes_le_raw();
+                    let data = value.to_monty_bytes_le();
                     ptr.cast::<[u8; 32]>().as_mut().copy_from_slice(&data);
                     ptr
                 }
@@ -437,7 +437,7 @@ impl Value {
                         for (key, value) in map.iter() {
                             // Felts are represented in Montgomery form. Due to this,
                             // we need to take its raw bytes.
-                            let key = key.to_bytes_le_raw();
+                            let key = key.to_monty_bytes_le();
                             let value =
                                 value.to_ptr(arena, registry, &info.ty, find_dict_drop_override)?;
 
@@ -527,8 +527,8 @@ impl Value {
                         .alloc_layout(layout_repeat(&get_integer_layout(252), 2)?.0.pad_to_align())
                         .cast();
 
-                    let a = felt252_bigint(a.to_bigint()).to_bytes_le_raw();
-                    let b = felt252_bigint(b.to_bigint()).to_bytes_le_raw();
+                    let a = felt252_bigint(a.to_bigint()).to_monty_bytes_le();
+                    let b = felt252_bigint(b.to_bigint()).to_monty_bytes_le();
                     let data = [a, b];
 
                     ptr.cast::<[[u8; 32]; 2]>().as_mut().copy_from_slice(&data);
@@ -540,10 +540,10 @@ impl Value {
                         .alloc_layout(layout_repeat(&get_integer_layout(252), 4)?.0.pad_to_align())
                         .cast();
 
-                    let a = felt252_bigint(a.to_bigint()).to_bytes_le_raw();
-                    let b = felt252_bigint(b.to_bigint()).to_bytes_le_raw();
-                    let c = felt252_bigint(c.to_bigint()).to_bytes_le_raw();
-                    let d = felt252_bigint(d.to_bigint()).to_bytes_le_raw();
+                    let a = felt252_bigint(a.to_bigint()).to_monty_bytes_le();
+                    let b = felt252_bigint(b.to_bigint()).to_monty_bytes_le();
+                    let c = felt252_bigint(c.to_bigint()).to_monty_bytes_le();
+                    let d = felt252_bigint(d.to_bigint()).to_monty_bytes_le();
                     let data = [a, b, c, d];
 
                     ptr.cast::<[[u8; 32]; 4]>().as_mut().copy_from_slice(&data);
@@ -1254,7 +1254,7 @@ mod test {
                     .cast::<[u8; 32]>()
                     .as_ptr()
             },
-            Felt::MAX.to_bytes_le_raw()
+            Felt::MAX.to_monty_bytes_le()
         );
 
         assert_eq!(
@@ -1526,8 +1526,8 @@ mod test {
                     .as_ptr()
             },
             [
-                Felt::from(1234).to_bytes_le_raw(),
-                Felt::from(4321).to_bytes_le_raw()
+                Felt::from(1234).to_monty_bytes_le(),
+                Felt::from(4321).to_monty_bytes_le()
             ]
         );
     }
@@ -1559,10 +1559,10 @@ mod test {
                 .as_ptr()
             },
             [
-                Felt::from(1234).to_bytes_le_raw(),
-                Felt::from(4321).to_bytes_le_raw(),
-                Felt::from(3333).to_bytes_le_raw(),
-                Felt::from(4444).to_bytes_le_raw()
+                Felt::from(1234).to_monty_bytes_le(),
+                Felt::from(4321).to_monty_bytes_le(),
+                Felt::from(3333).to_monty_bytes_le(),
+                Felt::from(4444).to_monty_bytes_le()
             ]
         );
     }

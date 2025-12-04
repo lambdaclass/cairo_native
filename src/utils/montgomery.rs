@@ -52,11 +52,11 @@ pub static MONTY_MU_U256: LazyLock<BigUint> = LazyLock::new(|| {
 });
 
 pub trait MontyBytes {
-    fn to_bytes_le_raw(&self) -> [u8; 32];
+    fn to_monty_bytes_le(&self) -> [u8; 32];
 }
 
 impl MontyBytes for Felt {
-    fn to_bytes_le_raw(&self) -> [u8; 32] {
+    fn to_monty_bytes_le(&self) -> [u8; 32] {
         let limbs = self.to_raw();
         let mut buffer = [0; 32];
 
@@ -574,7 +574,7 @@ mod tests {
     #[test]
     fn felt_to_bytes_raw() {
         let felt = Felt::from(10);
-        let bytes = felt.to_bytes_le_raw();
+        let bytes = felt.to_monty_bytes_le();
         let felt_from_raw = {
             let value = U256::from_bytes_le(&bytes).unwrap();
             Felt::from_raw(value.limbs)
@@ -583,7 +583,7 @@ mod tests {
         assert_eq!(felt_from_raw, felt);
 
         let felt = Felt::from(-10);
-        let bytes = felt.to_bytes_le_raw();
+        let bytes = felt.to_monty_bytes_le();
         let felt_from_raw = {
             let value = U256::from_bytes_le(&bytes).unwrap();
             Felt::from_raw(value.limbs)
@@ -592,7 +592,7 @@ mod tests {
         assert_eq!(felt_from_raw, felt);
 
         let felt = Felt::from(PRIME.clone());
-        let bytes = felt.to_bytes_le_raw();
+        let bytes = felt.to_monty_bytes_le();
         let felt_from_raw = {
             let value = U256::from_bytes_le(&bytes).unwrap();
             Felt::from_raw(value.limbs)

@@ -108,7 +108,7 @@ pub unsafe extern "C" fn cairo_native__libfunc__pedersen(
 
     // Compute pedersen hash and copy the result into `dst`.
     let res = starknet_types_core::hash::Pedersen::hash(&lhs, &rhs);
-    *dst = res.to_bytes_le_raw();
+    *dst = res.to_monty_bytes_le();
 }
 
 /// Compute `hades_permutation(op0, op1, op2)` and replace the operands with the results.
@@ -143,9 +143,9 @@ pub unsafe extern "C" fn cairo_native__libfunc__hades_permutation(
     starknet_types_core::hash::Poseidon::hades_permutation(&mut state);
 
     // Write back the results.
-    *op0 = state[0].to_bytes_le_raw();
-    *op1 = state[1].to_bytes_le_raw();
-    *op2 = state[2].to_bytes_le_raw();
+    *op0 = state[0].to_monty_bytes_le();
+    *op1 = state[1].to_monty_bytes_le();
+    *op2 = state[2].to_monty_bytes_le();
 }
 
 /// Felt252 type used in cairo native runtime
@@ -407,7 +407,7 @@ pub unsafe extern "C" fn cairo_native__libfunc__ec__ec_point_from_x_nz(
 
     match AffinePoint::new(x, y) {
         Ok(point) => {
-            point_ptr[1] = point.y().to_bytes_le_raw();
+            point_ptr[1] = point.y().to_monty_bytes_le();
             true
         }
         Err(_) => false,
@@ -437,8 +437,8 @@ pub unsafe extern "C" fn cairo_native__libfunc__ec__ec_point_try_new_nz(
 
     match AffinePoint::new(x, y) {
         Ok(point) => {
-            point_ptr[0] = point.x().to_bytes_le_raw();
-            point_ptr[1] = point.y().to_bytes_le_raw();
+            point_ptr[0] = point.x().to_monty_bytes_le();
+            point_ptr[1] = point.y().to_monty_bytes_le();
             true
         }
         Err(_) => false,
@@ -467,8 +467,8 @@ pub unsafe extern "C" fn cairo_native__libfunc__ec__ec_state_init(state_ptr: &mu
     // We already made sure its a valid point.
     let state = AffinePoint::new_unchecked(random_x, random_y);
 
-    state_ptr[0] = state.x().to_bytes_le_raw();
-    state_ptr[1] = state.y().to_bytes_le_raw();
+    state_ptr[0] = state.x().to_monty_bytes_le();
+    state_ptr[1] = state.y().to_monty_bytes_le();
     state_ptr[2] = state_ptr[0];
     state_ptr[3] = state_ptr[1];
 }
@@ -510,8 +510,8 @@ pub unsafe extern "C" fn cairo_native__libfunc__ec__ec_state_add(
     state += &point;
     let state = state.to_affine().unwrap();
 
-    state_ptr[0] = state.x().to_bytes_le_raw();
-    state_ptr[1] = state.y().to_bytes_le_raw();
+    state_ptr[0] = state.x().to_monty_bytes_le();
+    state_ptr[1] = state.y().to_monty_bytes_le();
 }
 
 /// Compute `ec_state_add_mul(state, scalar, point)` and store the state back.
@@ -557,8 +557,8 @@ pub unsafe extern "C" fn cairo_native__libfunc__ec__ec_state_add_mul(
     state += &point.mul(scalar);
     let state = state.to_affine().unwrap();
 
-    state_ptr[0] = state.x().to_bytes_le_raw();
-    state_ptr[1] = state.y().to_bytes_le_raw();
+    state_ptr[0] = state.x().to_monty_bytes_le();
+    state_ptr[1] = state.y().to_monty_bytes_le();
 }
 
 /// Compute `ec_state_try_finalize_nz(state)` and store the result.
@@ -597,8 +597,8 @@ pub unsafe extern "C" fn cairo_native__libfunc__ec__ec_state_try_finalize_nz(
         let point = &state - &random;
         let point = point.to_affine().unwrap();
 
-        point_ptr[0] = point.x().to_bytes_le_raw();
-        point_ptr[1] = point.y().to_bytes_le_raw();
+        point_ptr[0] = point.x().to_monty_bytes_le();
+        point_ptr[1] = point.y().to_monty_bytes_le();
 
         true
     }
@@ -847,8 +847,8 @@ mod tests {
     #[test]
     fn test_pederesen() {
         let mut dst = [0; 32];
-        let lhs = Felt::from(1).to_bytes_le_raw();
-        let rhs = Felt::from(3).to_bytes_le_raw();
+        let lhs = Felt::from(1).to_monty_bytes_le();
+        let rhs = Felt::from(3).to_monty_bytes_le();
 
         unsafe {
             cairo_native__libfunc__pedersen(&mut dst, &lhs, &rhs);
@@ -865,9 +865,9 @@ mod tests {
 
     #[test]
     fn test_hades_permutation() {
-        let mut op0 = Felt::from(1).to_bytes_le_raw();
-        let mut op1 = Felt::from(1).to_bytes_le_raw();
-        let mut op2 = Felt::from(1).to_bytes_le_raw();
+        let mut op0 = Felt::from(1).to_monty_bytes_le();
+        let mut op1 = Felt::from(1).to_monty_bytes_le();
+        let mut op2 = Felt::from(1).to_monty_bytes_le();
 
         unsafe {
             cairo_native__libfunc__hades_permutation(&mut op0, &mut op1, &mut op2);
@@ -960,22 +960,22 @@ mod tests {
                 "874739451078007766457464989774322083649278607533249481151382481072868806602",
             )
             .unwrap()
-            .to_bytes_le_raw(),
+            .to_monty_bytes_le(),
             Felt::from_dec_str(
                 "152666792071518830868575557812948353041420400780739481342941381225525861407",
             )
             .unwrap()
-            .to_bytes_le_raw(),
+            .to_monty_bytes_le(),
             Felt::from_dec_str(
                 "874739451078007766457464989774322083649278607533249481151382481072868806602",
             )
             .unwrap()
-            .to_bytes_le_raw(),
+            .to_monty_bytes_le(),
             Felt::from_dec_str(
                 "152666792071518830868575557812948353041420400780739481342941381225525861407",
             )
             .unwrap()
-            .to_bytes_le_raw(),
+            .to_monty_bytes_le(),
         ];
 
         let point = [
@@ -983,12 +983,12 @@ mod tests {
                 "874739451078007766457464989774322083649278607533249481151382481072868806602",
             )
             .unwrap()
-            .to_bytes_le_raw(),
+            .to_monty_bytes_le(),
             Felt::from_dec_str(
                 "152666792071518830868575557812948353041420400780739481342941381225525861407",
             )
             .unwrap()
-            .to_bytes_le_raw(),
+            .to_monty_bytes_le(),
         ];
 
         unsafe {
@@ -1001,7 +1001,7 @@ mod tests {
                 "3324833730090626974525872402899302150520188025637965566623476530814354734325",
             )
             .unwrap()
-            .to_bytes_le_raw()
+            .to_monty_bytes_le()
         );
         assert_eq!(
             state[1],
@@ -1009,7 +1009,7 @@ mod tests {
                 "3147007486456030910661996439995670279305852583596209647900952752170983517249",
             )
             .unwrap()
-            .to_bytes_le_raw()
+            .to_monty_bytes_le()
         );
     }
 }

@@ -502,7 +502,7 @@ impl AotContractExecutor {
         };
 
         for (idx, elem) in args.iter().enumerate() {
-            let f = elem.to_bytes_le_raw();
+            let f = elem.to_monty_bytes_le();
 
             unsafe {
                 std::ptr::copy_nonoverlapping(

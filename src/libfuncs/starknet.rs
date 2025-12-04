@@ -2385,7 +2385,6 @@ fn call_syscall<'ctx, 'this>(
         )?;
         block.extract_value(context, location, value, variant_tys[0].0, 1)?
     };
-    dbg!("PAYLOAD OK {}", payload_ok.r#type());
     let payload_err = {
         let value = block.load(
             context,
@@ -2395,7 +2394,6 @@ fn call_syscall<'ctx, 'this>(
         )?;
         block.extract_value(context, location, value, variant_tys[1].0, 1)?
     };
-    dbg!("PAYLOAD ERR {}", payload_err.r#type());
 
     let payload_ok = monty_convert(
         context,
