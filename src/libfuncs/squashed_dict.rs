@@ -1,6 +1,5 @@
 use super::LibfuncHelper;
 use crate::{
-    debug::type_to_name,
     error::{Error, Result},
     metadata::{
         realloc_bindings::ReallocBindingsMeta, runtime_bindings::RuntimeBindingsMeta,
@@ -81,9 +80,6 @@ fn get_inner_types<'ctx, 'this>(
     };
     let felt_ty_id = &info.members[0];
     let generic_ty_id = &info.members[1];
-
-    let temp = registry.get_type(generic_ty_id)?;
-    println!("El generic es: {}", type_to_name(registry, temp));
 
     let felt_ty = registry.build_type(context, helper, metadata, felt_ty_id)?;
     let generic_ty = registry.build_type(context, helper, metadata, generic_ty_id)?;
