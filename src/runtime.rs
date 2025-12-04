@@ -341,6 +341,8 @@ pub unsafe extern "C" fn cairo_native__dict_into_entries(
         // Save the key and move to the offset of the 'first_value'
         *key_ptr = *key;
         let first_val_ptr = key_ptr.byte_add(key_stride) as *mut u8;
+        first_val_ptr.write_bytes(0, dict.layout.pad_to_align().size());
+
         // Get the element, move to the offset of the 'last_value' and save the element in that address
         let element =
             dict.elements
