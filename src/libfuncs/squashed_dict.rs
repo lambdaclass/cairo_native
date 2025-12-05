@@ -185,15 +185,6 @@ fn build_entries_array<'ctx, 'this>(
     info: &SignatureAndTypeConcreteLibfunc,
 ) -> Result<Value<'ctx, 'this>> {
     metadata.get_or_insert_with(|| ReallocBindingsMeta::new(context, helper));
-    // Register dup and drop implentations
-    // register_dup_and_drop(
-    //     context,
-    //     registry,
-    //     helper,
-    //     metadata,
-    //     WithSelf::new(&info.ty, info),
-    // ); // TODO: Investigate this
-
     let inner_type_layout = get_inner_type_layout(context, registry, helper, metadata, info)?;
     let data_prefix_size = calc_data_prefix_offset(inner_type_layout);
     let elem_stride = entry.const_int(
