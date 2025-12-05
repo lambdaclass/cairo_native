@@ -1777,7 +1777,7 @@ pub(crate) mod handler {
             selector: &Felt252Abi,
             input: &ArrayAbi<Felt252Abi>,
         ) {
-            let selector = Felt::from(selector);
+            let selector = Felt::from_bytes_le(&selector.0);
             let input_vec: Vec<_> = input.into();
 
             unsafe {

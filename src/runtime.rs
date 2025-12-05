@@ -65,7 +65,7 @@ pub unsafe extern "C" fn cairo_native__libfunc__debug__print(
         let mut data = *data.add(i);
         data[31] &= 0x0F; // Filter out first 4 bits (they're outside an i252).
 
-        let value = Felt::from_bytes_le(&data);
+        let value = montgomery::felt_from_monty_bytes(&data);
         items.push(value);
     }
 
@@ -830,7 +830,7 @@ mod tests {
         {
             let fd = file.as_raw_fd();
             let data = felt252_short_str("hello world");
-            let data = data.to_bytes_le();
+            let data = data.to_monty_bytes_le();
             unsafe { cairo_native__libfunc__debug__print(fd, &data, 1) };
         }
         file.seek(std::io::SeekFrom::Start(0)).unwrap();
