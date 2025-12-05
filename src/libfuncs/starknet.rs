@@ -2025,7 +2025,7 @@ pub fn build_get_class_hash_at<'ctx, 'this>(
 /// This function receives the necessary arguments needed by the syscall as
 /// well as the return types, and returns the result of its call.
 #[allow(clippy::too_many_arguments)]
-fn call_syscall<'ctx, 'this>(
+fn execute_syscall<'ctx, 'this>(
     context: &'ctx Context,
     registry: &ProgramRegistry<CoreType, CoreLibfunc>,
     block: &'this Block<'ctx>,
