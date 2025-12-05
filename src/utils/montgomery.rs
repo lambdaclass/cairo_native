@@ -142,7 +142,7 @@ pub mod mlir {
 
         let t = block.muli(lhs, rhs, location)?;
 
-        Ok(monty_reduce(context, block, t, res_ty, location)?)
+        monty_reduce(context, block, t, res_ty, location)
     }
 
     /// Computes Montgomery division in MLIR.
