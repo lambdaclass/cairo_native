@@ -16,6 +16,7 @@ use cairo_lang_sierra::{
         starknet::{testing::TestingConcreteLibfunc, StarknetConcreteLibfunc},
         ConcreteLibfunc,
     },
+    ids::ConcreteTypeId,
     program_registry::ProgramRegistry,
 };
 use melior::{
@@ -26,7 +27,7 @@ use melior::{
     helpers::{ArithBlockExt, BuiltinBlockExt, GepIndex, LlvmBlockExt},
     ir::{
         attribute::DenseI64ArrayAttribute, operation::OperationBuilder, r#type::IntegerType,
-        Attribute, Block, BlockLike, Location, Type, ValueLike,
+        Attribute, Block, BlockLike, Location, Type, Value, ValueLike,
     },
     Context,
 };
@@ -173,36 +174,6 @@ pub fn build_call_contract<'ctx, 'this>(
         llvm::r#type::pointer(context, 0),
     )?;
 
-    // Allocate space for the return value.
-    let (result_layout, (result_tag_ty, result_tag_layout), variant_tys) =
-        crate::types::r#enum::get_type_for_variants(
-            context,
-            helper,
-            registry,
-            metadata,
-            &[
-                info.branch_signatures()[0].vars[2].ty.clone(),
-                info.branch_signatures()[1].vars[2].ty.clone(),
-            ],
-        )?;
-
-    let result_ptr = helper.init_block().alloca1(
-        context,
-        location,
-        llvm::r#type::r#struct(
-            context,
-            &[
-                result_tag_ty,
-                llvm::r#type::array(
-                    IntegerType::new(context, 8).into(),
-                    (result_layout.size() - 1).try_into()?,
-                ),
-            ],
-            false,
-        ),
-        result_layout.align(),
-    )?;
-
     // Allocate space and write the current gas.
     let (gas_ty, gas_layout) = registry.build_type_with_layout(
         context,
@@ -283,68 +254,25 @@ pub fn build_call_contract<'ctx, 'this>(
     )?;
     let fn_ptr = entry.load(context, location, fn_ptr, llvm::r#type::pointer(context, 0))?;
 
-    entry.append_operation(
-        OperationBuilder::new("llvm.call", location)
-            .add_operands(&[
-                fn_ptr,
-                result_ptr,
-                ptr,
-                gas_builtin_ptr,
-                address_arg_ptr,
-                entry_point_selector_arg_ptr,
-                calldata_arg_ptr,
-            ])
-            .build()?,
-    );
-
-    let result = entry.load(
+    let mut args = vec![
+        ptr,
+        gas_builtin_ptr,
+        address_arg_ptr,
+        entry_point_selector_arg_ptr,
+        calldata_arg_ptr,
+    ];
+    let (result_tag, payload_ok, payload_err) = execute_syscall(
         context,
+        registry,
+        entry,
+        fn_ptr,
+        &mut args,
         location,
-        result_ptr,
-        llvm::r#type::r#struct(
-            context,
-            &[
-                result_tag_ty,
-                llvm::r#type::array(
-                    IntegerType::new(context, 8).into(),
-                    (result_layout.size() - 1).try_into()?,
-                ),
-            ],
-            false,
-        ),
+        helper,
+        metadata,
+        info.branch_signatures()[0].vars[2].ty.clone(),
+        info.branch_signatures()[1].vars[2].ty.clone(),
     )?;
-    let result_tag = entry.extract_value(
-        context,
-        location,
-        result,
-        IntegerType::new(context, 1).into(),
-        0,
-    )?;
-
-    let payload_ok = {
-        let ptr = entry.gep(
-            context,
-            location,
-            result_ptr,
-            &[GepIndex::Const(
-                result_tag_layout.extend(variant_tys[0].1)?.1.try_into()?,
-            )],
-            IntegerType::new(context, 8).into(),
-        )?;
-        entry.load(context, location, ptr, variant_tys[0].0)?
-    };
-    let payload_err = {
-        let ptr = entry.gep(
-            context,
-            location,
-            result_ptr,
-            &[GepIndex::Const(
-                result_tag_layout.extend(variant_tys[1].1)?.1.try_into()?,
-            )],
-            IntegerType::new(context, 8).into(),
-        )?;
-        entry.load(context, location, ptr, variant_tys[1].0)?
-    };
 
     let remaining_gas = entry.load(
         context,
@@ -501,36 +429,6 @@ pub fn build_storage_read<'ctx, 'this>(
         llvm::r#type::pointer(context, 0),
     )?;
 
-    // Allocate space for the return value.
-    let (result_layout, (result_tag_ty, result_tag_layout), variant_tys) =
-        crate::types::r#enum::get_type_for_variants(
-            context,
-            helper,
-            registry,
-            metadata,
-            &[
-                info.branch_signatures()[0].vars[2].ty.clone(),
-                info.branch_signatures()[1].vars[2].ty.clone(),
-            ],
-        )?;
-
-    let result_ptr = helper.init_block().alloca1(
-        context,
-        location,
-        llvm::r#type::r#struct(
-            context,
-            &[
-                result_tag_ty,
-                llvm::r#type::array(
-                    IntegerType::new(context, 8).into(),
-                    (result_layout.size() - 1).try_into()?,
-                ),
-            ],
-            false,
-        ),
-        result_layout.align(),
-    )?;
-
     // Allocate space and write the current gas.
     let (gas_ty, gas_layout) = registry.build_type_with_layout(
         context,
@@ -563,67 +461,19 @@ pub fn build_storage_read<'ctx, 'this>(
     )?;
     let fn_ptr = entry.load(context, location, fn_ptr, llvm::r#type::pointer(context, 0))?;
 
-    entry.append_operation(
-        OperationBuilder::new("llvm.call", location)
-            .add_operands(&[
-                fn_ptr,
-                result_ptr,
-                ptr,
-                gas_builtin_ptr,
-                entry.arg(2)?,
-                address_arg_ptr,
-            ])
-            .build()?,
-    );
-
-    let result = entry.load(
+    let mut args = vec![ptr, gas_builtin_ptr, entry.arg(2)?, address_arg_ptr];
+    let (result_tag, payload_ok, payload_err) = execute_syscall(
         context,
+        registry,
+        entry,
+        fn_ptr,
+        &mut args,
         location,
-        result_ptr,
-        llvm::r#type::r#struct(
-            context,
-            &[
-                result_tag_ty,
-                llvm::r#type::array(
-                    IntegerType::new(context, 8).into(),
-                    (result_layout.size() - 1).try_into()?,
-                ),
-            ],
-            false,
-        ),
+        helper,
+        metadata,
+        info.branch_signatures()[0].vars[2].ty.clone(),
+        info.branch_signatures()[1].vars[2].ty.clone(),
     )?;
-    let result_tag = entry.extract_value(
-        context,
-        location,
-        result,
-        IntegerType::new(context, 1).into(),
-        0,
-    )?;
-
-    let payload_ok = {
-        let ptr = entry.gep(
-            context,
-            location,
-            result_ptr,
-            &[GepIndex::Const(
-                result_tag_layout.extend(variant_tys[0].1)?.1.try_into()?,
-            )],
-            IntegerType::new(context, 8).into(),
-        )?;
-        entry.load(context, location, ptr, variant_tys[0].0)?
-    };
-    let payload_err = {
-        let ptr = entry.gep(
-            context,
-            location,
-            result_ptr,
-            &[GepIndex::Const(
-                result_tag_layout.extend(variant_tys[1].1)?.1.try_into()?,
-            )],
-            IntegerType::new(context, 8).into(),
-        )?;
-        entry.load(context, location, ptr, variant_tys[1].0)?
-    };
 
     let remaining_gas = entry.load(context, location, gas_builtin_ptr, gas_ty)?;
 
@@ -655,40 +505,6 @@ pub fn build_storage_write<'ctx, 'this>(
         location,
         entry.arg(1)?,
         llvm::r#type::pointer(context, 0),
-    )?;
-
-    // Allocate space for the return value.
-    let (result_layout, (result_tag_ty, result_tag_layout), variant_tys) =
-        crate::types::r#enum::get_type_for_variants(
-            context,
-            helper,
-            registry,
-            metadata,
-            &[
-                // The branch is deliberately duplicated because:
-                //   - There is no `[0].vars[2]` (it returns `()`).
-                //   - We need a variant to make the length be 2.
-                //   - It requires a `ConcreteTypeId`, we can't pass an MLIR type.
-                info.branch_signatures()[1].vars[2].ty.clone(),
-                info.branch_signatures()[1].vars[2].ty.clone(),
-            ],
-        )?;
-
-    let result_ptr = helper.init_block().alloca1(
-        context,
-        location,
-        llvm::r#type::r#struct(
-            context,
-            &[
-                result_tag_ty,
-                llvm::r#type::array(
-                    IntegerType::new(context, 8).into(),
-                    (result_layout.size() - 1).try_into()?,
-                ),
-            ],
-            false,
-        ),
-        result_layout.align(),
     )?;
 
     // Allocate space and write the current gas.
@@ -729,68 +545,29 @@ pub fn build_storage_write<'ctx, 'this>(
     )?;
     let fn_ptr = entry.load(context, location, fn_ptr, llvm::r#type::pointer(context, 0))?;
 
-    entry.append_operation(
-        OperationBuilder::new("llvm.call", location)
-            .add_operands(&[
-                fn_ptr,
-                result_ptr,
-                ptr,
-                gas_builtin_ptr,
-                entry.arg(2)?,
-                address_arg_ptr,
-                value_arg_ptr,
-            ])
-            .build()?,
-    );
-
-    let result = entry.load(
+    let mut args = vec![
+        ptr,
+        gas_builtin_ptr,
+        entry.arg(2)?,
+        address_arg_ptr,
+        value_arg_ptr,
+    ];
+    let (result_tag, payload_ok, payload_err) = execute_syscall(
         context,
+        registry,
+        entry,
+        fn_ptr,
+        &mut args,
         location,
-        result_ptr,
-        llvm::r#type::r#struct(
-            context,
-            &[
-                result_tag_ty,
-                llvm::r#type::array(
-                    IntegerType::new(context, 8).into(),
-                    (result_layout.size() - 1).try_into()?,
-                ),
-            ],
-            false,
-        ),
+        helper,
+        metadata,
+        // The branch is deliberately duplicated because:
+        //   - There is no `[0].vars[2]` (it returns `()`).
+        //   - We need a variant to make the length be 2.
+        //   - It requires a `ConcreteTypeId`, we can't pass an MLIR type.
+        info.branch_signatures()[1].vars[2].ty.clone(),
+        info.branch_signatures()[1].vars[2].ty.clone(),
     )?;
-    let result_tag = entry.extract_value(
-        context,
-        location,
-        result,
-        IntegerType::new(context, 1).into(),
-        0,
-    )?;
-
-    let payload_ok = {
-        let ptr = entry.gep(
-            context,
-            location,
-            result_ptr,
-            &[GepIndex::Const(
-                result_tag_layout.extend(variant_tys[0].1)?.1.try_into()?,
-            )],
-            IntegerType::new(context, 8).into(),
-        )?;
-        entry.load(context, location, ptr, variant_tys[0].0)?
-    };
-    let payload_err = {
-        let ptr = entry.gep(
-            context,
-            location,
-            result_ptr,
-            &[GepIndex::Const(
-                result_tag_layout.extend(variant_tys[1].1)?.1.try_into()?,
-            )],
-            IntegerType::new(context, 8).into(),
-        )?;
-        entry.load(context, location, ptr, variant_tys[1].0)?
-    };
 
     let remaining_gas = entry.load(context, location, gas_builtin_ptr, gas_ty)?;
 
@@ -801,6 +578,9 @@ pub fn build_storage_write<'ctx, 'this>(
         [1, 0],
         [
             &[remaining_gas, entry.arg(1)?, payload_err],
+            // This syscall returns `()` if there was no error. We still need
+            // to return something in this case, so the data hold by `payload_ok`
+            // is should not be used.
             &[remaining_gas, entry.arg(1)?, payload_ok],
         ],
         location,
@@ -941,40 +721,6 @@ pub fn build_emit_event<'ctx, 'this>(
         llvm::r#type::pointer(context, 0),
     )?;
 
-    // Allocate space for the return value.
-    let (result_layout, (result_tag_ty, result_tag_layout), variant_tys) =
-        crate::types::r#enum::get_type_for_variants(
-            context,
-            helper,
-            registry,
-            metadata,
-            &[
-                // The branch is deliberately duplicated because:
-                //   - There is no `[0].vars[2]` (it returns `()`).
-                //   - We need a variant to make the length be 2.
-                //   - It requires a `ConcreteTypeId`, we can't pass an MLIR type.
-                info.branch_signatures()[1].vars[2].ty.clone(),
-                info.branch_signatures()[1].vars[2].ty.clone(),
-            ],
-        )?;
-
-    let result_ptr = helper.init_block().alloca1(
-        context,
-        location,
-        llvm::r#type::r#struct(
-            context,
-            &[
-                result_tag_ty,
-                llvm::r#type::array(
-                    IntegerType::new(context, 8).into(),
-                    (result_layout.size() - 1).try_into()?,
-                ),
-            ],
-            false,
-        ),
-        result_layout.align(),
-    )?;
-
     // Allocate space and write the current gas.
     let (gas_ty, gas_layout) = registry.build_type_with_layout(
         context,
@@ -1049,67 +795,23 @@ pub fn build_emit_event<'ctx, 'this>(
     )?;
     let fn_ptr = entry.load(context, location, fn_ptr, llvm::r#type::pointer(context, 0))?;
 
-    entry.append_operation(
-        OperationBuilder::new("llvm.call", location)
-            .add_operands(&[
-                fn_ptr,
-                result_ptr,
-                ptr,
-                gas_builtin_ptr,
-                keys_arg_ptr,
-                data_arg_ptr,
-            ])
-            .build()?,
-    );
-
-    let result = entry.load(
+    let mut args = vec![ptr, gas_builtin_ptr, keys_arg_ptr, data_arg_ptr];
+    let (result_tag, payload_ok, payload_err) = execute_syscall(
         context,
+        registry,
+        entry,
+        fn_ptr,
+        &mut args,
         location,
-        result_ptr,
-        llvm::r#type::r#struct(
-            context,
-            &[
-                result_tag_ty,
-                llvm::r#type::array(
-                    IntegerType::new(context, 8).into(),
-                    (result_layout.size() - 1).try_into()?,
-                ),
-            ],
-            false,
-        ),
+        helper,
+        metadata,
+        // The branch is deliberately duplicated because:
+        //   - There is no `[0].vars[2]` (it returns `()`).
+        //   - We need a variant to make the length be 2.
+        //   - It requires a `ConcreteTypeId`, we can't pass an MLIR type.
+        info.branch_signatures()[1].vars[2].ty.clone(),
+        info.branch_signatures()[1].vars[2].ty.clone(),
     )?;
-    let result_tag = entry.extract_value(
-        context,
-        location,
-        result,
-        IntegerType::new(context, 1).into(),
-        0,
-    )?;
-
-    let payload_ok = {
-        let ptr = entry.gep(
-            context,
-            location,
-            result_ptr,
-            &[GepIndex::Const(
-                result_tag_layout.extend(variant_tys[0].1)?.1.try_into()?,
-            )],
-            IntegerType::new(context, 8).into(),
-        )?;
-        entry.load(context, location, ptr, variant_tys[0].0)?
-    };
-    let payload_err = {
-        let ptr = entry.gep(
-            context,
-            location,
-            result_ptr,
-            &[GepIndex::Const(
-                result_tag_layout.extend(variant_tys[1].1)?.1.try_into()?,
-            )],
-            IntegerType::new(context, 8).into(),
-        )?;
-        entry.load(context, location, ptr, variant_tys[1].0)?
-    };
 
     let remaining_gas = entry.load(context, location, gas_builtin_ptr, gas_ty)?;
 
@@ -1120,6 +822,9 @@ pub fn build_emit_event<'ctx, 'this>(
         [1, 0],
         [
             &[remaining_gas, entry.arg(1)?, payload_err],
+            // This syscall returns `()` if there was no error. We still need
+            // to return something in this case, so the data hold by payload_ok
+            // is should not be used.
             &[remaining_gas, entry.arg(1)?, payload_ok],
         ],
         location,
@@ -1141,36 +846,6 @@ pub fn build_get_block_hash<'ctx, 'this>(
         location,
         entry.arg(1)?,
         llvm::r#type::pointer(context, 0),
-    )?;
-
-    // Allocate space for the return value.
-    let (result_layout, (result_tag_ty, result_tag_layout), variant_tys) =
-        crate::types::r#enum::get_type_for_variants(
-            context,
-            helper,
-            registry,
-            metadata,
-            &[
-                info.branch_signatures()[0].vars[2].ty.clone(),
-                info.branch_signatures()[1].vars[2].ty.clone(),
-            ],
-        )?;
-
-    let result_ptr = helper.init_block().alloca1(
-        context,
-        location,
-        llvm::r#type::r#struct(
-            context,
-            &[
-                result_tag_ty,
-                llvm::r#type::array(
-                    IntegerType::new(context, 8).into(),
-                    (result_layout.size() - 1).try_into()?,
-                ),
-            ],
-            false,
-        ),
-        result_layout.align(),
     )?;
 
     // Allocate space and write the current gas.
@@ -1204,60 +879,19 @@ pub fn build_get_block_hash<'ctx, 'this>(
     )?;
     let fn_ptr = entry.load(context, location, fn_ptr, llvm::r#type::pointer(context, 0))?;
 
-    entry.append_operation(
-        OperationBuilder::new("llvm.call", location)
-            .add_operands(&[fn_ptr, result_ptr, ptr, gas_builtin_ptr, entry.arg(2)?])
-            .build()?,
-    );
-
-    let result = entry.load(
+    let mut args = vec![ptr, gas_builtin_ptr, entry.arg(2)?];
+    let (result_tag, payload_ok, payload_err) = execute_syscall(
         context,
+        registry,
+        entry,
+        fn_ptr,
+        &mut args,
         location,
-        result_ptr,
-        llvm::r#type::r#struct(
-            context,
-            &[
-                result_tag_ty,
-                llvm::r#type::array(
-                    IntegerType::new(context, 8).into(),
-                    (result_layout.size() - 1).try_into()?,
-                ),
-            ],
-            false,
-        ),
+        helper,
+        metadata,
+        info.branch_signatures()[0].vars[2].ty.clone(),
+        info.branch_signatures()[1].vars[2].ty.clone(),
     )?;
-    let result_tag = entry.extract_value(
-        context,
-        location,
-        result,
-        IntegerType::new(context, 1).into(),
-        0,
-    )?;
-
-    let payload_ok = {
-        let ptr = entry.gep(
-            context,
-            location,
-            result_ptr,
-            &[GepIndex::Const(
-                result_tag_layout.extend(variant_tys[0].1)?.1.try_into()?,
-            )],
-            IntegerType::new(context, 8).into(),
-        )?;
-        entry.load(context, location, ptr, variant_tys[0].0)?
-    };
-    let payload_err = {
-        let ptr = entry.gep(
-            context,
-            location,
-            result_ptr,
-            &[GepIndex::Const(
-                result_tag_layout.extend(variant_tys[1].1)?.1.try_into()?,
-            )],
-            IntegerType::new(context, 8).into(),
-        )?;
-        entry.load(context, location, ptr, variant_tys[1].0)?
-    };
 
     let remaining_gas = entry.load(context, location, gas_builtin_ptr, gas_ty)?;
 
@@ -1291,36 +925,6 @@ pub fn build_get_execution_info<'ctx, 'this>(
         llvm::r#type::pointer(context, 0),
     )?;
 
-    // Allocate space for the return value.
-    let (result_layout, (result_tag_ty, result_tag_layout), variant_tys) =
-        crate::types::r#enum::get_type_for_variants(
-            context,
-            helper,
-            registry,
-            metadata,
-            &[
-                info.branch_signatures()[0].vars[2].ty.clone(),
-                info.branch_signatures()[1].vars[2].ty.clone(),
-            ],
-        )?;
-
-    let result_ptr = helper.init_block().alloca1(
-        context,
-        location,
-        llvm::r#type::r#struct(
-            context,
-            &[
-                result_tag_ty,
-                llvm::r#type::array(
-                    IntegerType::new(context, 8).into(),
-                    (result_layout.size() - 1).try_into()?,
-                ),
-            ],
-            false,
-        ),
-        result_layout.align(),
-    )?;
-
     // Allocate space and write the current gas.
     let (gas_ty, gas_layout) = registry.build_type_with_layout(
         context,
@@ -1346,60 +950,19 @@ pub fn build_get_execution_info<'ctx, 'this>(
     )?;
     let fn_ptr = entry.load(context, location, fn_ptr, llvm::r#type::pointer(context, 0))?;
 
-    entry.append_operation(
-        OperationBuilder::new("llvm.call", location)
-            .add_operands(&[fn_ptr, result_ptr, ptr, gas_builtin_ptr])
-            .build()?,
-    );
-
-    let result = entry.load(
+    let mut args = vec![ptr, gas_builtin_ptr];
+    let (result_tag, payload_ok, payload_err) = execute_syscall(
         context,
+        registry,
+        entry,
+        fn_ptr,
+        &mut args,
         location,
-        result_ptr,
-        llvm::r#type::r#struct(
-            context,
-            &[
-                result_tag_ty,
-                llvm::r#type::array(
-                    IntegerType::new(context, 8).into(),
-                    (result_layout.size() - 1).try_into()?,
-                ),
-            ],
-            false,
-        ),
+        helper,
+        metadata,
+        info.branch_signatures()[0].vars[2].ty.clone(),
+        info.branch_signatures()[1].vars[2].ty.clone(),
     )?;
-    let result_tag = entry.extract_value(
-        context,
-        location,
-        result,
-        IntegerType::new(context, 1).into(),
-        0,
-    )?;
-
-    let payload_ok = {
-        let ptr = entry.gep(
-            context,
-            location,
-            result_ptr,
-            &[GepIndex::Const(
-                result_tag_layout.extend(variant_tys[0].1)?.1.try_into()?,
-            )],
-            IntegerType::new(context, 8).into(),
-        )?;
-        entry.load(context, location, ptr, variant_tys[0].0)?
-    };
-    let payload_err = {
-        let ptr = entry.gep(
-            context,
-            location,
-            result_ptr,
-            &[GepIndex::Const(
-                result_tag_layout.extend(variant_tys[1].1)?.1.try_into()?,
-            )],
-            IntegerType::new(context, 8).into(),
-        )?;
-        entry.load(context, location, ptr, variant_tys[1].0)?
-    };
 
     let remaining_gas = entry.load(context, location, gas_builtin_ptr, gas_ty)?;
 
@@ -1433,36 +996,6 @@ pub fn build_get_execution_info_v2<'ctx, 'this>(
         llvm::r#type::pointer(context, 0),
     )?;
 
-    // Allocate space for the return value.
-    let (result_layout, (result_tag_ty, result_tag_layout), variant_tys) =
-        crate::types::r#enum::get_type_for_variants(
-            context,
-            helper,
-            registry,
-            metadata,
-            &[
-                info.branch_signatures()[0].vars[2].ty.clone(),
-                info.branch_signatures()[1].vars[2].ty.clone(),
-            ],
-        )?;
-
-    let result_ptr = helper.init_block().alloca1(
-        context,
-        location,
-        llvm::r#type::r#struct(
-            context,
-            &[
-                result_tag_ty,
-                llvm::r#type::array(
-                    IntegerType::new(context, 8).into(),
-                    (result_layout.size() - 1).try_into()?,
-                ),
-            ],
-            false,
-        ),
-        result_layout.align(),
-    )?;
-
     // Allocate space and write the current gas.
     let (gas_ty, gas_layout) = registry.build_type_with_layout(
         context,
@@ -1488,60 +1021,19 @@ pub fn build_get_execution_info_v2<'ctx, 'this>(
     )?;
     let fn_ptr = entry.load(context, location, fn_ptr, llvm::r#type::pointer(context, 0))?;
 
-    entry.append_operation(
-        OperationBuilder::new("llvm.call", location)
-            .add_operands(&[fn_ptr, result_ptr, ptr, gas_builtin_ptr])
-            .build()?,
-    );
-
-    let result = entry.load(
+    let mut args = vec![ptr, gas_builtin_ptr];
+    let (result_tag, payload_ok, payload_err) = execute_syscall(
         context,
+        registry,
+        entry,
+        fn_ptr,
+        &mut args,
         location,
-        result_ptr,
-        llvm::r#type::r#struct(
-            context,
-            &[
-                result_tag_ty,
-                llvm::r#type::array(
-                    IntegerType::new(context, 8).into(),
-                    (result_layout.size() - 1).try_into()?,
-                ),
-            ],
-            false,
-        ),
+        helper,
+        metadata,
+        info.branch_signatures()[0].vars[2].ty.clone(),
+        info.branch_signatures()[1].vars[2].ty.clone(),
     )?;
-    let result_tag = entry.extract_value(
-        context,
-        location,
-        result,
-        IntegerType::new(context, 1).into(),
-        0,
-    )?;
-
-    let payload_ok = {
-        let ptr = entry.gep(
-            context,
-            location,
-            result_ptr,
-            &[GepIndex::Const(
-                result_tag_layout.extend(variant_tys[0].1)?.1.try_into()?,
-            )],
-            IntegerType::new(context, 8).into(),
-        )?;
-        entry.load(context, location, ptr, variant_tys[0].0)?
-    };
-    let payload_err = {
-        let ptr = entry.gep(
-            context,
-            location,
-            result_ptr,
-            &[GepIndex::Const(
-                result_tag_layout.extend(variant_tys[1].1)?.1.try_into()?,
-            )],
-            IntegerType::new(context, 8).into(),
-        )?;
-        entry.load(context, location, ptr, variant_tys[1].0)?
-    };
 
     let remaining_gas = entry.load(context, location, gas_builtin_ptr, gas_ty)?;
 
@@ -1832,36 +1324,6 @@ pub fn build_keccak<'ctx, 'this>(
         llvm::r#type::pointer(context, 0),
     )?;
 
-    // Allocate space for the return value.
-    let (result_layout, (result_tag_ty, result_tag_layout), variant_tys) =
-        crate::types::r#enum::get_type_for_variants(
-            context,
-            helper,
-            registry,
-            metadata,
-            &[
-                info.branch_signatures()[0].vars[2].ty.clone(),
-                info.branch_signatures()[1].vars[2].ty.clone(),
-            ],
-        )?;
-
-    let result_ptr = helper.init_block().alloca1(
-        context,
-        location,
-        llvm::r#type::r#struct(
-            context,
-            &[
-                result_tag_ty,
-                llvm::r#type::array(
-                    IntegerType::new(context, 8).into(),
-                    (result_layout.size() - 1).try_into()?,
-                ),
-            ],
-            false,
-        ),
-        result_layout.align(),
-    )?;
-
     // Allocate space and write the current gas.
     let (gas_ty, gas_layout) = registry.build_type_with_layout(
         context,
@@ -1904,60 +1366,20 @@ pub fn build_keccak<'ctx, 'this>(
     )?;
     let fn_ptr = entry.load(context, location, fn_ptr, llvm::r#type::pointer(context, 0))?;
 
-    entry.append_operation(
-        OperationBuilder::new("llvm.call", location)
-            .add_operands(&[fn_ptr, result_ptr, ptr, gas_builtin_ptr, input_arg_ptr])
-            .build()?,
-    );
-
-    let result = entry.load(
+    let mut args = vec![ptr, gas_builtin_ptr, input_arg_ptr];
+    let (result_tag, payload_ok, payload_err) = execute_syscall(
         context,
+        registry,
+        entry,
+        fn_ptr,
+        &mut args,
         location,
-        result_ptr,
-        llvm::r#type::r#struct(
-            context,
-            &[
-                result_tag_ty,
-                llvm::r#type::array(
-                    IntegerType::new(context, 8).into(),
-                    (result_layout.size() - 1).try_into()?,
-                ),
-            ],
-            false,
-        ),
-    )?;
-    let result_tag = entry.extract_value(
-        context,
-        location,
-        result,
-        IntegerType::new(context, 1).into(),
-        0,
+        helper,
+        metadata,
+        info.branch_signatures()[0].vars[2].ty.clone(),
+        info.branch_signatures()[1].vars[2].ty.clone(),
     )?;
 
-    let payload_ok = {
-        let ptr = entry.gep(
-            context,
-            location,
-            result_ptr,
-            &[GepIndex::Const(
-                result_tag_layout.extend(variant_tys[0].1)?.1.try_into()?,
-            )],
-            IntegerType::new(context, 8).into(),
-        )?;
-        entry.load(context, location, ptr, variant_tys[0].0)?
-    };
-    let payload_err = {
-        let ptr = entry.gep(
-            context,
-            location,
-            result_ptr,
-            &[GepIndex::Const(
-                result_tag_layout.extend(variant_tys[1].1)?.1.try_into()?,
-            )],
-            IntegerType::new(context, 8).into(),
-        )?;
-        entry.load(context, location, ptr, variant_tys[1].0)?
-    };
     let remaining_gas = entry.load(context, location, gas_builtin_ptr, gas_ty)?;
 
     helper.cond_br(
@@ -1988,36 +1410,6 @@ pub fn build_library_call<'ctx, 'this>(
         location,
         entry.arg(1)?,
         llvm::r#type::pointer(context, 0),
-    )?;
-
-    // Allocate space for the return value.
-    let (result_layout, (result_tag_ty, result_tag_layout), variant_tys) =
-        crate::types::r#enum::get_type_for_variants(
-            context,
-            helper,
-            registry,
-            metadata,
-            &[
-                info.branch_signatures()[0].vars[2].ty.clone(),
-                info.branch_signatures()[1].vars[2].ty.clone(),
-            ],
-        )?;
-
-    let result_ptr = helper.init_block().alloca1(
-        context,
-        location,
-        llvm::r#type::r#struct(
-            context,
-            &[
-                result_tag_ty,
-                llvm::r#type::array(
-                    IntegerType::new(context, 8).into(),
-                    (result_layout.size() - 1).try_into()?,
-                ),
-            ],
-            false,
-        ),
-        result_layout.align(),
     )?;
 
     // Allocate space and write the current gas.
@@ -2080,68 +1472,25 @@ pub fn build_library_call<'ctx, 'this>(
     )?;
     let fn_ptr = entry.load(context, location, fn_ptr, llvm::r#type::pointer(context, 0))?;
 
-    entry.append_operation(
-        OperationBuilder::new("llvm.call", location)
-            .add_operands(&[
-                fn_ptr,
-                result_ptr,
-                ptr,
-                gas_builtin_ptr,
-                class_hash_arg_ptr,
-                function_selector_arg_ptr,
-                calldata_arg_ptr,
-            ])
-            .build()?,
-    );
-
-    let result = entry.load(
+    let mut args = vec![
+        ptr,
+        gas_builtin_ptr,
+        class_hash_arg_ptr,
+        function_selector_arg_ptr,
+        calldata_arg_ptr,
+    ];
+    let (result_tag, payload_ok, payload_err) = execute_syscall(
         context,
+        registry,
+        entry,
+        fn_ptr,
+        &mut args,
         location,
-        result_ptr,
-        llvm::r#type::r#struct(
-            context,
-            &[
-                result_tag_ty,
-                llvm::r#type::array(
-                    IntegerType::new(context, 8).into(),
-                    (result_layout.size() - 1).try_into()?,
-                ),
-            ],
-            false,
-        ),
+        helper,
+        metadata,
+        info.branch_signatures()[0].vars[2].ty.clone(),
+        info.branch_signatures()[1].vars[2].ty.clone(),
     )?;
-    let result_tag = entry.extract_value(
-        context,
-        location,
-        result,
-        IntegerType::new(context, 1).into(),
-        0,
-    )?;
-
-    let payload_ok = {
-        let ptr = entry.gep(
-            context,
-            location,
-            result_ptr,
-            &[GepIndex::Const(
-                result_tag_layout.extend(variant_tys[0].1)?.1.try_into()?,
-            )],
-            IntegerType::new(context, 8).into(),
-        )?;
-        entry.load(context, location, ptr, variant_tys[0].0)?
-    };
-    let payload_err = {
-        let ptr = entry.gep(
-            context,
-            location,
-            result_ptr,
-            &[GepIndex::Const(
-                result_tag_layout.extend(variant_tys[1].1)?.1.try_into()?,
-            )],
-            IntegerType::new(context, 8).into(),
-        )?;
-        entry.load(context, location, ptr, variant_tys[1].0)?
-    };
 
     let remaining_gas = entry.load(context, location, gas_builtin_ptr, gas_ty)?;
 
@@ -2186,36 +1535,6 @@ pub fn build_meta_tx_v0<'ctx, 'this>(
         location,
         entry.arg(1)?,
         llvm::r#type::pointer(context, 0),
-    )?;
-
-    // Allocate space for the return value.
-    let (result_layout, (result_tag_ty, result_tag_layout), variant_tys) =
-        crate::types::r#enum::get_type_for_variants(
-            context,
-            helper,
-            registry,
-            metadata,
-            &[
-                info.branch_signatures()[0].vars[2].ty.clone(),
-                info.branch_signatures()[1].vars[2].ty.clone(),
-            ],
-        )?;
-
-    let result_ptr = helper.init_block().alloca1(
-        context,
-        location,
-        llvm::r#type::r#struct(
-            context,
-            &[
-                result_tag_ty,
-                llvm::r#type::array(
-                    IntegerType::new(context, 8).into(),
-                    (result_layout.size() - 1).try_into()?,
-                ),
-            ],
-            false,
-        ),
-        result_layout.align(),
     )?;
 
     // Allocate space and write the current gas.
@@ -2295,69 +1614,26 @@ pub fn build_meta_tx_v0<'ctx, 'this>(
     )?;
     let fn_ptr = entry.load(context, location, fn_ptr, llvm::r#type::pointer(context, 0))?;
 
-    entry.append_operation(
-        OperationBuilder::new("llvm.call", location)
-            .add_operands(&[
-                fn_ptr,
-                result_ptr,
-                ptr,
-                gas_builtin_ptr,
-                address_arg_ptr,
-                entry_point_selector_arg_ptr,
-                calldata_arg_ptr,
-                signature_arg_ptr,
-            ])
-            .build()?,
-    );
-
-    let result = entry.load(
+    let mut args = vec![
+        ptr,
+        gas_builtin_ptr,
+        address_arg_ptr,
+        entry_point_selector_arg_ptr,
+        calldata_arg_ptr,
+        signature_arg_ptr,
+    ];
+    let (result_tag, payload_ok, payload_err) = execute_syscall(
         context,
+        registry,
+        entry,
+        fn_ptr,
+        &mut args,
         location,
-        result_ptr,
-        llvm::r#type::r#struct(
-            context,
-            &[
-                result_tag_ty,
-                llvm::r#type::array(
-                    IntegerType::new(context, 8).into(),
-                    (result_layout.size() - 1).try_into()?,
-                ),
-            ],
-            false,
-        ),
+        helper,
+        metadata,
+        info.branch_signatures()[0].vars[2].ty.clone(),
+        info.branch_signatures()[1].vars[2].ty.clone(),
     )?;
-    let result_tag = entry.extract_value(
-        context,
-        location,
-        result,
-        IntegerType::new(context, 1).into(),
-        0,
-    )?;
-
-    let payload_ok = {
-        let ptr = entry.gep(
-            context,
-            location,
-            result_ptr,
-            &[GepIndex::Const(
-                result_tag_layout.extend(variant_tys[0].1)?.1.try_into()?,
-            )],
-            IntegerType::new(context, 8).into(),
-        )?;
-        entry.load(context, location, ptr, variant_tys[0].0)?
-    };
-    let payload_err = {
-        let ptr = entry.gep(
-            context,
-            location,
-            result_ptr,
-            &[GepIndex::Const(
-                result_tag_layout.extend(variant_tys[1].1)?.1.try_into()?,
-            )],
-            IntegerType::new(context, 8).into(),
-        )?;
-        entry.load(context, location, ptr, variant_tys[1].0)?
-    };
 
     let remaining_gas = entry.load(
         context,
@@ -2396,40 +1672,6 @@ pub fn build_replace_class<'ctx, 'this>(
         llvm::r#type::pointer(context, 0),
     )?;
 
-    // Allocate space for the return value.
-    let (result_layout, (result_tag_ty, result_tag_layout), variant_tys) =
-        crate::types::r#enum::get_type_for_variants(
-            context,
-            helper,
-            registry,
-            metadata,
-            &[
-                // The branch is deliberately duplicated because:
-                //   - There is no `[0].vars[2]` (it returns `()`).
-                //   - We need a variant to make the length be 2.
-                //   - It requires a `ConcreteTypeId`, we can't pass an MLIR type.
-                info.branch_signatures()[1].vars[2].ty.clone(),
-                info.branch_signatures()[1].vars[2].ty.clone(),
-            ],
-        )?;
-
-    let result_ptr = helper.init_block().alloca1(
-        context,
-        location,
-        llvm::r#type::r#struct(
-            context,
-            &[
-                result_tag_ty,
-                llvm::r#type::array(
-                    IntegerType::new(context, 8).into(),
-                    (result_layout.size() - 1).try_into()?,
-                ),
-            ],
-            false,
-        ),
-        result_layout.align(),
-    )?;
-
     // Allocate space and write the current gas.
     let (gas_ty, gas_layout) = registry.build_type_with_layout(
         context,
@@ -2461,60 +1703,23 @@ pub fn build_replace_class<'ctx, 'this>(
     )?;
     let fn_ptr = entry.load(context, location, fn_ptr, llvm::r#type::pointer(context, 0))?;
 
-    entry.append_operation(
-        OperationBuilder::new("llvm.call", location)
-            .add_operands(&[fn_ptr, result_ptr, ptr, gas_builtin_ptr, class_hash_arg_ptr])
-            .build()?,
-    );
-
-    let result = entry.load(
+    let mut args = vec![ptr, gas_builtin_ptr, class_hash_arg_ptr];
+    let (result_tag, payload_ok, payload_err) = execute_syscall(
         context,
+        registry,
+        entry,
+        fn_ptr,
+        &mut args,
         location,
-        result_ptr,
-        llvm::r#type::r#struct(
-            context,
-            &[
-                result_tag_ty,
-                llvm::r#type::array(
-                    IntegerType::new(context, 8).into(),
-                    (result_layout.size() - 1).try_into()?,
-                ),
-            ],
-            false,
-        ),
+        helper,
+        metadata,
+        // The branch is deliberately duplicated because:
+        //   - There is no `[0].vars[2]` (it returns `()`).
+        //   - We need a variant to make the length be 2.
+        //   - It requires a `ConcreteTypeId`, we can't pass an MLIR type.
+        info.branch_signatures()[1].vars[2].ty.clone(),
+        info.branch_signatures()[1].vars[2].ty.clone(),
     )?;
-    let result_tag = entry.extract_value(
-        context,
-        location,
-        result,
-        IntegerType::new(context, 1).into(),
-        0,
-    )?;
-
-    let payload_ok = {
-        let ptr = entry.gep(
-            context,
-            location,
-            result_ptr,
-            &[GepIndex::Const(
-                result_tag_layout.extend(variant_tys[0].1)?.1.try_into()?,
-            )],
-            IntegerType::new(context, 8).into(),
-        )?;
-        entry.load(context, location, ptr, variant_tys[0].0)?
-    };
-    let payload_err = {
-        let ptr = entry.gep(
-            context,
-            location,
-            result_ptr,
-            &[GepIndex::Const(
-                result_tag_layout.extend(variant_tys[1].1)?.1.try_into()?,
-            )],
-            IntegerType::new(context, 8).into(),
-        )?;
-        entry.load(context, location, ptr, variant_tys[1].0)?
-    };
 
     let remaining_gas = entry.load(context, location, gas_builtin_ptr, gas_ty)?;
 
@@ -2525,6 +1730,9 @@ pub fn build_replace_class<'ctx, 'this>(
         [1, 0],
         [
             &[remaining_gas, entry.arg(1)?, payload_err],
+            // This syscall returns `()` if there was no error. We still need
+            // to return something in this case, so the data hold by payload_ok
+            // is should not be used.
             &[remaining_gas, entry.arg(1)?, payload_ok],
         ],
         location,
@@ -2548,40 +1756,6 @@ pub fn build_send_message_to_l1<'ctx, 'this>(
         llvm::r#type::pointer(context, 0),
     )?;
 
-    // Allocate space for the return value.
-    let (result_layout, (result_tag_ty, result_tag_layout), variant_tys) =
-        crate::types::r#enum::get_type_for_variants(
-            context,
-            helper,
-            registry,
-            metadata,
-            &[
-                // The branch is deliberately duplicated because:
-                //   - There is no `[0].vars[2]` (it returns `()`).
-                //   - We need a variant to make the length be 2.
-                //   - It requires a `ConcreteTypeId`, we can't pass an MLIR type.
-                info.branch_signatures()[1].vars[2].ty.clone(),
-                info.branch_signatures()[1].vars[2].ty.clone(),
-            ],
-        )?;
-
-    let result_ptr = helper.init_block().alloca1(
-        context,
-        location,
-        llvm::r#type::r#struct(
-            context,
-            &[
-                result_tag_ty,
-                llvm::r#type::array(
-                    IntegerType::new(context, 8).into(),
-                    (result_layout.size() - 1).try_into()?,
-                ),
-            ],
-            false,
-        ),
-        result_layout.align(),
-    )?;
-
     // Allocate space and write the current gas.
     let (gas_ty, gas_layout) = registry.build_type_with_layout(
         context,
@@ -2603,10 +1777,9 @@ pub fn build_send_message_to_l1<'ctx, 'this>(
     entry.store(context, location, to_address_arg_ptr, entry.arg(2)?)?;
 
     // Allocate `payload` argument and write the value.
-    let payload_arg_ptr = helper.init_block().alloca1(
+    let payload_arg_ty = llvm::r#type::r#struct(
         context,
-        location,
-        llvm::r#type::r#struct(
+        &[llvm::r#type::r#struct(
             context,
             &[
                 llvm::r#type::pointer(context, 0), // ptr to felt
@@ -2615,7 +1788,13 @@ pub fn build_send_message_to_l1<'ctx, 'this>(
                 IntegerType::new(context, 32).into(),
             ],
             false,
-        ),
+        )],
+        false,
+    );
+    let payload_arg_ptr = helper.init_block().alloca1(
+        context,
+        location,
+        payload_arg_ty,
         get_integer_layout(64).align(),
     )?;
     entry.store(context, location, payload_arg_ptr, entry.arg(3)?)?;
@@ -2631,67 +1810,23 @@ pub fn build_send_message_to_l1<'ctx, 'this>(
     )?;
     let fn_ptr = entry.load(context, location, fn_ptr, llvm::r#type::pointer(context, 0))?;
 
-    entry.append_operation(
-        OperationBuilder::new("llvm.call", location)
-            .add_operands(&[
-                fn_ptr,
-                result_ptr,
-                ptr,
-                gas_builtin_ptr,
-                to_address_arg_ptr,
-                payload_arg_ptr,
-            ])
-            .build()?,
-    );
-
-    let result = entry.load(
+    let mut args = vec![ptr, gas_builtin_ptr, to_address_arg_ptr, payload_arg_ptr];
+    let (result_tag, payload_ok, payload_err) = execute_syscall(
         context,
+        registry,
+        entry,
+        fn_ptr,
+        &mut args,
         location,
-        result_ptr,
-        llvm::r#type::r#struct(
-            context,
-            &[
-                result_tag_ty,
-                llvm::r#type::array(
-                    IntegerType::new(context, 8).into(),
-                    (result_layout.size() - 1).try_into()?,
-                ),
-            ],
-            false,
-        ),
+        helper,
+        metadata,
+        // The branch is deliberately duplicated because:
+        //   - There is no `[0].vars[2]` (it returns `()`).
+        //   - We need a variant to make the length be 2.
+        //   - It requires a `ConcreteTypeId`, we can't pass an MLIR type.
+        info.branch_signatures()[1].vars[2].ty.clone(),
+        info.branch_signatures()[1].vars[2].ty.clone(),
     )?;
-    let result_tag = entry.extract_value(
-        context,
-        location,
-        result,
-        IntegerType::new(context, 1).into(),
-        0,
-    )?;
-
-    let payload_ok = {
-        let ptr = entry.gep(
-            context,
-            location,
-            result_ptr,
-            &[GepIndex::Const(
-                result_tag_layout.extend(variant_tys[0].1)?.1.try_into()?,
-            )],
-            IntegerType::new(context, 8).into(),
-        )?;
-        entry.load(context, location, ptr, variant_tys[0].0)?
-    };
-    let payload_err = {
-        let ptr = entry.gep(
-            context,
-            location,
-            result_ptr,
-            &[GepIndex::Const(
-                result_tag_layout.extend(variant_tys[1].1)?.1.try_into()?,
-            )],
-            IntegerType::new(context, 8).into(),
-        )?;
-        entry.load(context, location, ptr, variant_tys[1].0)?
-    };
 
     let remaining_gas = entry.load(context, location, gas_builtin_ptr, gas_ty)?;
 
@@ -2702,6 +1837,9 @@ pub fn build_send_message_to_l1<'ctx, 'this>(
         [1, 0],
         [
             &[remaining_gas, entry.arg(1)?, payload_err],
+            // This syscall returns `()` if there was no error. We still need
+            // to return something in this case, so the data hold by payload_ok
+            // is should not be used.
             &[remaining_gas, entry.arg(1)?, payload_ok],
         ],
         location,
@@ -2728,36 +1866,6 @@ pub fn build_sha256_process_block_syscall<'ctx, 'this>(
         ))
         .result(0)?
         .into();
-
-    // Allocate space for the return value.
-    let (result_layout, (result_tag_ty, _), variant_tys) =
-        crate::types::r#enum::get_type_for_variants(
-            context,
-            helper,
-            registry,
-            metadata,
-            &[
-                info.branch_signatures()[0].vars[2].ty.clone(),
-                info.branch_signatures()[1].vars[2].ty.clone(),
-            ],
-        )?;
-
-    let result_ptr = helper.init_block().alloca1(
-        context,
-        location,
-        llvm::r#type::r#struct(
-            context,
-            &[
-                result_tag_ty,
-                llvm::r#type::array(
-                    IntegerType::new(context, 8).into(),
-                    (result_layout.size() - 1).try_into()?,
-                ),
-            ],
-            false,
-        ),
-        result_layout.align(),
-    )?;
 
     // Allocate space and write the current gas.
     let (gas_ty, gas_layout) = registry.build_type_with_layout(
@@ -2792,18 +1900,24 @@ pub fn build_sha256_process_block_syscall<'ctx, 'this>(
     )?;
     let fn_ptr = entry.load(context, location, fn_ptr, llvm::r#type::pointer(context, 0))?;
 
-    entry.append_operation(
-        OperationBuilder::new("llvm.call", location)
-            .add_operands(&[
-                fn_ptr,
-                result_ptr,
-                ptr,
-                gas_builtin_ptr,
-                sha256_prev_state_ptr,
-                sha256_current_block_ptr,
-            ])
-            .build()?,
-    );
+    let mut args = vec![
+        ptr,
+        gas_builtin_ptr,
+        sha256_prev_state_ptr,
+        sha256_current_block_ptr,
+    ];
+    let (result_tag, payload_ok, payload_err) = execute_syscall(
+        context,
+        registry,
+        entry,
+        fn_ptr,
+        &mut args,
+        location,
+        helper,
+        metadata,
+        info.branch_signatures()[0].vars[2].ty.clone(),
+        info.branch_signatures()[1].vars[2].ty.clone(),
+    )?;
 
     registry.build_type(
         context,
@@ -2821,27 +1935,6 @@ pub fn build_sha256_process_block_syscall<'ctx, 'this>(
             &info.signature.param_signatures[3].ty,
             sha256_current_block_ptr,
         )?;
-
-    let result_tag = entry.load(context, location, result_ptr, result_tag_ty)?;
-
-    let payload_ok = {
-        let value = entry.load(
-            context,
-            location,
-            result_ptr,
-            llvm::r#type::r#struct(context, &[result_tag_ty, variant_tys[0].0], false),
-        )?;
-        entry.extract_value(context, location, value, variant_tys[0].0, 1)?
-    };
-    let payload_err = {
-        let value = entry.load(
-            context,
-            location,
-            result_ptr,
-            llvm::r#type::r#struct(context, &[result_tag_ty, variant_tys[1].0], false),
-        )?;
-        entry.extract_value(context, location, value, variant_tys[1].0, 1)?
-    };
 
     let remaining_gas = entry.load(context, location, gas_builtin_ptr, gas_ty)?;
 
@@ -2873,36 +1966,6 @@ pub fn build_get_class_hash_at<'ctx, 'this>(
         location,
         entry.arg(1)?,
         llvm::r#type::pointer(context, 0),
-    )?;
-
-    // Allocate space for the return value.
-    let (result_layout, (result_tag_ty, _), variant_tys) =
-        crate::types::r#enum::get_type_for_variants(
-            context,
-            helper,
-            registry,
-            metadata,
-            &[
-                info.branch_signatures()[0].vars[2].ty.clone(),
-                info.branch_signatures()[1].vars[2].ty.clone(),
-            ],
-        )?;
-
-    let result_ptr = helper.init_block().alloca1(
-        context,
-        location,
-        llvm::r#type::r#struct(
-            context,
-            &[
-                result_tag_ty,
-                llvm::r#type::array(
-                    IntegerType::new(context, 8).into(),
-                    (result_layout.size() - 1).try_into()?,
-                ),
-            ],
-            false,
-        ),
-        result_layout.align(),
     )?;
 
     // Allocate space and write the current gas.
@@ -2943,19 +2006,105 @@ pub fn build_get_class_hash_at<'ctx, 'this>(
     )?;
     let fn_ptr = entry.load(context, location, fn_ptr, llvm::r#type::pointer(context, 0))?;
 
-    entry.append_operation(
+    let mut args = vec![ptr, gas_builtin_ptr, contract_address_ptr];
+    let (result_tag, payload_ok, payload_err) = execute_syscall(
+        context,
+        registry,
+        entry,
+        fn_ptr,
+        &mut args,
+        location,
+        helper,
+        metadata,
+        info.branch_signatures()[0].vars[2].ty.clone(),
+        info.branch_signatures()[1].vars[2].ty.clone(),
+    )?;
+
+    let remaining_gas = entry.load(context, location, gas_builtin_ptr, gas_ty)?;
+
+    helper.cond_br(
+        context,
+        entry,
+        result_tag,
+        [1, 0],
+        [
+            &[remaining_gas, entry.arg(1)?, payload_err],
+            &[remaining_gas, entry.arg(1)?, payload_ok],
+        ],
+        location,
+    )
+}
+
+/// Helper function to call a syscall.
+///
+/// This function receives the necessary arguments needed by the syscall as
+/// well as the return types, and returns the result of its call.
+///
+/// ## Arguments
+///
+/// The `args` vector should **only** hold syscall's arguments in the order
+/// stated by its signature. This function is in charge of creating the return
+/// pointer in which the syscall will store the result. So, the `args` vector
+/// **should not** hold it.
+///
+/// ## Return Types
+///
+/// Cairo Native's syscalls implementations always expect two result branches.
+/// There are some syscalls which don't have a result type for the ok case.
+/// For these cases, the paylad ok should be build with a duplicated type from
+/// the error branch. Due to this, it should only be built and **never** be
+/// used.
+#[allow(clippy::too_many_arguments)]
+fn execute_syscall<'ctx, 'this>(
+    context: &'ctx Context,
+    registry: &ProgramRegistry<CoreType, CoreLibfunc>,
+    block: &'this Block<'ctx>,
+    fn_ptr: Value<'ctx, 'this>,
+    args: &mut Vec<Value<'ctx, 'this>>,
+    location: Location<'ctx>,
+    helper: &LibfuncHelper<'ctx, 'this>,
+    metadata: &mut MetadataStorage,
+    payload_ok_ty: ConcreteTypeId,
+    payload_err_ty: ConcreteTypeId,
+) -> Result<(Value<'ctx, 'this>, Value<'ctx, 'this>, Value<'ctx, 'this>)> {
+    // Allocate space for the return value.
+    let (result_layout, (result_tag_ty, _), variant_tys) =
+        crate::types::r#enum::get_type_for_variants(
+            context,
+            helper,
+            registry,
+            metadata,
+            &[payload_ok_ty, payload_err_ty],
+        )?;
+
+    let result_ptr = helper.init_block().alloca1(
+        context,
+        location,
+        llvm::r#type::r#struct(
+            context,
+            &[
+                result_tag_ty,
+                llvm::r#type::array(
+                    IntegerType::new(context, 8).into(),
+                    (result_layout.size() - 1).try_into()?,
+                ),
+            ],
+            false,
+        ),
+        result_layout.align(),
+    )?;
+
+    // The return pointer is expected to be the 2nd argument of the call.
+    args.insert(0, result_ptr);
+    args.insert(0, fn_ptr);
+
+    block.append_operation(
         OperationBuilder::new("llvm.call", location)
-            .add_operands(&[
-                fn_ptr,
-                result_ptr,
-                ptr,
-                gas_builtin_ptr,
-                contract_address_ptr,
-            ])
+            .add_operands(args)
             .build()?,
     );
 
-    let result = entry.load(
+    let result = block.load(
         context,
         location,
         result_ptr,
@@ -2971,7 +2120,7 @@ pub fn build_get_class_hash_at<'ctx, 'this>(
             false,
         ),
     )?;
-    let result_tag = entry.extract_value(
+    let result_tag = block.extract_value(
         context,
         location,
         result,
@@ -2980,37 +2129,25 @@ pub fn build_get_class_hash_at<'ctx, 'this>(
     )?;
 
     let payload_ok = {
-        let value = entry.load(
+        let value = block.load(
             context,
             location,
             result_ptr,
             llvm::r#type::r#struct(context, &[result_tag_ty, variant_tys[0].0], false),
         )?;
-        entry.extract_value(context, location, value, variant_tys[0].0, 1)?
+        block.extract_value(context, location, value, variant_tys[0].0, 1)?
     };
     let payload_err = {
-        let value = entry.load(
+        let value = block.load(
             context,
             location,
             result_ptr,
             llvm::r#type::r#struct(context, &[result_tag_ty, variant_tys[1].0], false),
         )?;
-        entry.extract_value(context, location, value, variant_tys[1].0, 1)?
+        block.extract_value(context, location, value, variant_tys[1].0, 1)?
     };
 
-    let remaining_gas = entry.load(context, location, gas_builtin_ptr, gas_ty)?;
-
-    helper.cond_br(
-        context,
-        entry,
-        result_tag,
-        [1, 0],
-        [
-            &[remaining_gas, entry.arg(1)?, payload_err],
-            &[remaining_gas, entry.arg(1)?, payload_ok],
-        ],
-        location,
-    )
+    Ok((result_tag, payload_ok, payload_err))
 }
 
 #[cfg(test)]
