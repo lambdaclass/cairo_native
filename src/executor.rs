@@ -34,7 +34,6 @@ use cairo_lang_sierra::{
 use libc::c_void;
 use num_bigint::BigInt;
 use num_traits::One;
-use starknet_types_core::felt::Felt;
 use std::{alloc::Layout, arch::global_asm, ptr::NonNull};
 
 mod aot;
@@ -458,6 +457,7 @@ fn parse_result(
                     use lambdaworks_math::{
                         traits::ByteConversion, unsigned_integer::element::U256,
                     };
+                    use starknet_types_core::felt::Felt;
 
                     let data = unsafe {
                         std::mem::transmute::<&mut [u64; 4], &mut [u8; 32]>(&mut ret_registers)
