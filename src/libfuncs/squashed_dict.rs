@@ -145,6 +145,14 @@ mod test {
     use lazy_static::lazy_static;
 
     lazy_static! {
+        static ref INTO_ENTRIES_EMPTY_DICT: (String, Program) = load_cairo! {
+            use core::dict::{Felt252Dict, Felt252DictEntryTrait, SquashedFelt252DictTrait};
+
+            fn into_entries_empty_dict() -> Array<(felt252, u8, u8)> {
+                let mut dict: Felt252Dict<u8> = Default::default();
+                dict.squash().into_entries()
+            }
+        };
         static ref INTO_ENTRIES_U8_VALUES: (String, Program) = load_cairo! {
             use core::dict::{Felt252Dict, Felt252DictEntryTrait, SquashedFelt252DictTrait};
 
@@ -189,6 +197,15 @@ mod test {
                 dict.squash().into_entries()
             }
         };
+    }
+
+    #[test]
+    fn test_into_entries_empty_dict() {
+        let result =
+            run_program(&INTO_ENTRIES_EMPTY_DICT, "into_entries_empty_dict", &[]).return_value;
+        if let Value::Array(arr) = result {
+            assert_eq!(arr.len(), 0);
+        }
     }
 
     #[test]
