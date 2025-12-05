@@ -125,7 +125,7 @@
 
 use super::{TypeBuilder, WithSelf};
 use crate::{
-    error::{Error, Result},
+    error::Result,
     metadata::{
         drop_overrides::DropOverridesMeta, dup_overrides::DupOverridesMeta, MetadataStorage,
     },
@@ -172,16 +172,10 @@ pub fn build<'ctx>(
         metadata,
         info.self_ty(),
         |metadata| {
-            // The following unwrap is unreachable because `register_with` will always insert it
-            // before calling this closure.
             let mut needs_override = false;
             for variant in &info.variants {
                 registry.build_type(context, module, metadata, variant)?;
-                if metadata
-                    .get::<DupOverridesMeta>()
-                    .ok_or(Error::MissingMetadata)?
-                    .is_overriden(variant)
-                {
+                if DupOverridesMeta::is_overriden(metadata, variant) {
                     needs_override = true;
                     break;
                 }
@@ -204,11 +198,8 @@ pub fn build<'ctx>(
             let mut needs_override = false;
             for variant in &info.variants {
                 registry.build_type(context, module, metadata, variant)?;
-                if metadata
-                    .get::<DropOverridesMeta>()
-                    .ok_or(Error::MissingMetadata)?
-                    .is_overriden(variant)
-                {
+
+                if DropOverridesMeta::is_overriden(metadata, variant) {
                     needs_override = true;
                     break;
                 }
@@ -292,12 +283,17 @@ fn build_dup<'ctx>(
     match variant_tys.len() {
         0 => native_panic!("attempt to clone a zero-variant enum"),
         1 => {
-            // The following unwrap is unreachable because the registration logic will always insert
-            // it.
-            let values = metadata
-                .get::<DupOverridesMeta>()
-                .ok_or(Error::MissingMetadata)?
-                .invoke_override(context, &entry, location, &info.variants[0], entry.arg(0)?)?;
+            let values = DupOverridesMeta::invoke_override(
+                context,
+                registry,
+                module,
+                &entry,
+                &entry,
+                location,
+                metadata,
+                &info.variants[0],
+                entry.arg(0)?,
+            )?;
 
             entry.append_operation(func::r#return(&[values.0, values.1], location));
         }
@@ -322,12 +318,10 @@ fn build_dup<'ctx>(
                     )?;
                     let value = block.extract_value(context, location, container, variant_ty, 1)?;
 
-                    // The following unwrap is unreachable because the registration logic will
-                    // always insert it.
-                    let values = metadata
-                        .get::<DupOverridesMeta>()
-                        .ok_or(Error::MissingMetadata)?
-                        .invoke_override(context, block, location, variant_id, value)?;
+                    let values = DupOverridesMeta::invoke_override(
+                        context, registry, module, block, block, location, metadata, variant_id,
+                        value,
+                    )?;
 
                     let value = block.insert_value(context, location, container, values.0, 1)?;
                     block.store(context, location, ptr, value)?;
@@ -390,12 +384,17 @@ fn build_drop<'ctx>(
     match variant_tys.len() {
         0 => native_panic!("attempt to drop a zero-variant enum"),
         1 => {
-            // The following unwrap is unreachable because the registration logic will always insert
-            // it.
-            metadata
-                .get::<DropOverridesMeta>()
-                .ok_or(Error::MissingMetadata)?
-                .invoke_override(context, &entry, location, &info.variants[0], entry.arg(0)?)?;
+            DropOverridesMeta::invoke_override(
+                context,
+                registry,
+                module,
+                &entry,
+                &entry,
+                location,
+                metadata,
+                &info.variants[0],
+                entry.arg(0)?,
+            )?;
 
             entry.append_operation(func::r#return(&[], location));
         }
@@ -420,12 +419,10 @@ fn build_drop<'ctx>(
                     )?;
                     let value = block.extract_value(context, location, container, variant_ty, 1)?;
 
-                    // The following unwrap is unreachable because the registration logic will
-                    // always insert it.
-                    metadata
-                        .get::<DropOverridesMeta>()
-                        .ok_or(Error::MissingMetadata)?
-                        .invoke_override(context, block, location, variant_id, value)?;
+                    DropOverridesMeta::invoke_override(
+                        context, registry, module, block, block, location, metadata, variant_id,
+                        value,
+                    )?;
 
                     block.append_operation(func::r#return(&[], location));
                 }

@@ -24,27 +24,29 @@ use melior::{
 };
 
 /// Generate MLIR operations for the `dup` libfunc.
+///
+/// The Cairo compiler will avoid using `dup` for some non-trivially-copyable
+/// types, but not all of them. For example, it'll not generate a clone
+/// implementation for `Box<T>`. That's why we need to provide a clone in MLIR.
 pub fn build<'ctx, 'this>(
     context: &'ctx Context,
-    _registry: &ProgramRegistry<CoreType, CoreLibfunc>,
+    registry: &ProgramRegistry<CoreType, CoreLibfunc>,
     entry: &'this Block<'ctx>,
     location: Location<'ctx>,
     helper: &LibfuncHelper<'ctx, 'this>,
     metadata: &mut MetadataStorage,
     info: &SignatureOnlyConcreteLibfunc,
 ) -> Result<()> {
-    // Note: The Cairo compiler will avoid using `dup` for some non-trivially-copyable types, but
-    //   not all of them. For example, it'll not generate a clone implementation for `Box<T>`.
-    //   That's why we need to check for clone implementations within the compiler.
-
-    let values = metadata
-        .get_or_insert_with(DupOverridesMeta::default)
-        .invoke_override(
-            context,
-            entry,
-            location,
-            &info.signature.param_signatures[0].ty,
-            entry.arg(0)?,
-        )?;
+    let values = DupOverridesMeta::invoke_override(
+        context,
+        registry,
+        helper,
+        helper.init_block(),
+        entry,
+        location,
+        metadata,
+        &info.signature.param_signatures[0].ty,
+        entry.arg(0)?,
+    )?;
     helper.br(entry, 0, &[values.0, values.1], location)
 }

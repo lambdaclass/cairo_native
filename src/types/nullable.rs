@@ -132,13 +132,17 @@ fn build_dup<'ctx>(
             location,
         )?)?;
 
-        match metadata.get::<DupOverridesMeta>() {
-            Some(dup_override_meta) if dup_override_meta.is_overriden(&info.ty) => {
+        match DupOverridesMeta::is_overriden(metadata, &info.ty) {
+            true => {
                 let value = block_realloc.load(context, location, src_value, inner_ty)?;
-                let values = dup_override_meta.invoke_override(
+                let values = DupOverridesMeta::invoke_override(
                     context,
+                    registry,
+                    module,
+                    &block_realloc,
                     &block_realloc,
                     location,
+                    metadata,
                     &info.ty,
                     value,
                 )?;
@@ -217,18 +221,19 @@ fn build_drop<'ctx>(
     ));
 
     {
-        match metadata.get::<DropOverridesMeta>() {
-            Some(drop_override_meta) if drop_override_meta.is_overriden(&info.ty) => {
-                let value = block_free.load(context, location, value, inner_ty)?;
-                drop_override_meta.invoke_override(
-                    context,
-                    &block_free,
-                    location,
-                    &info.ty,
-                    value,
-                )?;
-            }
-            _ => {}
+        if DropOverridesMeta::is_overriden(metadata, &info.ty) {
+            let value = block_free.load(context, location, value, inner_ty)?;
+            DropOverridesMeta::invoke_override(
+                context,
+                registry,
+                module,
+                &block_free,
+                &block_free,
+                location,
+                metadata,
+                &info.ty,
+                value,
+            )?;
         }
 
         block_free.append_operation(ReallocBindingsMeta::free(context, value, location)?);
