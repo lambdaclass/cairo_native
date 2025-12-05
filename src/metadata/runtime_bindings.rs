@@ -754,9 +754,8 @@ impl RuntimeBindingsMeta {
 
     /// Register if necessary, then invoke the `dict_into_entries()` function.
     ///
-    /// Inserts the content in the `data_ptr`, this content is taken from the dictionary
-    /// in `dict_ptr`. The `tuple_stride` is used to know how much space takes each of the
-    /// elements that is going to be inserted.
+    /// Returns an array with the tuples of the form (felt252, T, T) by storing it
+    /// on `array_ptr`.
     #[allow(clippy::too_many_arguments)]
     pub fn dict_into_entries<'c, 'a>(
         &mut self,
@@ -764,8 +763,9 @@ impl RuntimeBindingsMeta {
         helper: &LibfuncHelper<'c, 'a>,
         block: &'a Block<'c>,
         dict_ptr: Value<'c, 'a>,
-        data_ptr: Value<'c, 'a>,
+        data_prefix_offset: Value<'c, 'a>,
         tuple_stride: Value<'c, 'a>,
+        array_ptr: Value<'c, 'a>,
         location: Location<'c>,
     ) -> Result<OperationRef<'c, 'a>>
     where
@@ -782,7 +782,7 @@ impl RuntimeBindingsMeta {
         Ok(block.append_operation(
             OperationBuilder::new("llvm.call", location)
                 .add_operands(&[function])
-                .add_operands(&[dict_ptr, data_ptr, tuple_stride])
+                .add_operands(&[dict_ptr, data_prefix_offset, tuple_stride, array_ptr])
                 .build()?,
         ))
     }

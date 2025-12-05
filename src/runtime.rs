@@ -1,6 +1,9 @@
 #![allow(non_snake_case)]
 
-use crate::utils::BuiltinCosts;
+use crate::{
+    starknet::ArrayAbi,
+    utils::{libc_malloc, BuiltinCosts},
+};
 use cairo_lang_sierra_gas::core_libfunc_cost::{
     DICT_SQUASH_REPEATED_ACCESS_COST, DICT_SQUASH_UNIQUE_KEY_COST,
 };
@@ -25,7 +28,7 @@ use std::{
     mem::{forget, ManuallyDrop},
     ops::Shl,
     os::fd::FromRawFd,
-    ptr,
+    ptr::{self, null_mut},
     rc::Rc,
 };
 use std::{ops::Mul, vec::IntoIter};
@@ -304,10 +307,80 @@ pub unsafe extern "C" fn cairo_native__dict_len(dict_ptr: *const FeltDict) -> u6
     dict_len
 }
 
+/// Creates an array (Array<(felt252, T, T)>) by iterating the dictionary.
+unsafe fn create_mlir_array(
+    dict: &mut FeltDict,
+    data_prefix_offset: u64,
+    tuple_stride: u64,
+) -> ArrayAbi<c_void> {
+    let len = dict.mappings.len();
+    match len {
+        0 => ArrayAbi {
+            ptr: null_mut(),
+            since: 0,
+            until: 0,
+            capacity: 0,
+        },
+        _ => {
+            // Pointer to the space in memory with enough memory to hold the entire array
+            let ptr = libc_malloc(
+                ((tuple_stride * dict.mappings.len() as u64) + data_prefix_offset) as usize,
+            );
+
+            // Store the reference counter
+            ptr.cast::<u32>().write(1);
+            // Store the max lenght
+            ptr.byte_add(size_of::<u32>())
+                .cast::<u32>()
+                .write(len as u32);
+            // Move the pointer past the prefix (reference counter and max length) into where the data
+            // will be stored
+            let ptr = ptr.byte_add(data_prefix_offset as usize);
+
+            // Get the stride for the inner types of the tuple
+            let key_size = Layout::new::<[u8; 32]>().pad_to_align().size();
+            let generic_ty_size = dict.layout.pad_to_align().size();
+
+            for (key, elem_index) in &dict.mappings {
+                // Move the ptr to the offset of the tuple we want to modify
+                let key_ptr = ptr.byte_add(tuple_stride as usize * elem_index) as *mut [u8; 32];
+
+                // Save the key and move to the offset of the 'first_value'
+                *key_ptr = *key;
+                let first_val_ptr = key_ptr.byte_add(key_size) as *mut u8;
+                first_val_ptr.write_bytes(0, dict.layout.pad_to_align().size());
+
+                // Get the element, move to the offset of the 'last_value' and save the element in that address
+                let element = dict
+                    .elements
+                    .byte_add(dict.layout.pad_to_align().size() * elem_index)
+                    as *mut u8;
+                let last_val_ptr = first_val_ptr.byte_add(generic_ty_size);
+                std::ptr::copy_nonoverlapping(
+                    element,
+                    last_val_ptr,
+                    dict.layout.pad_to_align().size(),
+                );
+            }
+
+            let ptr_ptr = libc_malloc(size_of::<*mut ()>()).cast::<*mut c_void>();
+            ptr_ptr.write(ptr);
+
+            ArrayAbi {
+                ptr: ptr_ptr,
+                since: 0,
+                until: len as u32,
+                capacity: len as u32,
+            }
+        }
+    }
+}
+
 /// Fills each of the tuples in the array with the corresponding content.
 ///
-/// Receives a pointer to the dictionary and a pointer to the first element (tuple) of the
-/// array of tuples. The dictionary is iterated and for each element, a tuple is filled with the key
+/// Receives a pointer to the dictionary and a pointer to a space in memmory with the enough space
+/// to store an array of the form Array<(felt252, T, T)> that has N tuples, where N is the quantity
+/// of elements in the dictionary. The dictionary is iterated and for each element, a tuple is filled with the key
 /// and the value. To fill the tuples, the 'tuple_stride' is used to move the pointer and get the
 /// necessary offset.
 ///
@@ -317,8 +390,9 @@ pub unsafe extern "C" fn cairo_native__dict_len(dict_ptr: *const FeltDict) -> u6
 /// the value of the element in the dictionary and 'first_value' is always 0.
 pub unsafe extern "C" fn cairo_native__dict_into_entries(
     dict_ptr: *const FeltDict,
-    data_ptr: *mut c_void,
-    tuple_stride: u32,
+    data_prefix_offset: u64,
+    tuple_stride: u64,
+    array_ptr: *mut ArrayAbi<c_void>,
 ) {
     let dict_rc = Rc::from_raw(dict_ptr);
 
@@ -330,27 +404,9 @@ pub unsafe extern "C" fn cairo_native__dict_into_entries(
         .as_mut()
         .expect("rc inner pointer should never be null");
 
-    // Get the stride for the inner types of the tuple
-    let key_stride = Layout::new::<[u8; 32]>().pad_to_align().size();
-    let generic_ty_stride = dict.layout.pad_to_align().size();
+    let arr = create_mlir_array(dict, data_prefix_offset, tuple_stride);
 
-    for (key, elem_index) in &dict.mappings {
-        // Move the ptr to the offset of the tuple we want to modify
-        let key_ptr = data_ptr.byte_add(tuple_stride as usize * elem_index) as *mut [u8; 32];
-
-        // Save the key and move to the offset of the 'first_value'
-        *key_ptr = *key;
-        let first_val_ptr = key_ptr.byte_add(key_stride) as *mut u8;
-        first_val_ptr.write_bytes(0, dict.layout.pad_to_align().size());
-
-        // Get the element, move to the offset of the 'last_value' and save the element in that address
-        let element =
-            dict.elements
-                .byte_add(dict.layout.pad_to_align().size() * elem_index) as *mut u8;
-        let last_val_ptr = first_val_ptr.byte_add(generic_ty_stride);
-        std::ptr::copy_nonoverlapping(element, last_val_ptr, dict.layout.pad_to_align().size());
-    }
-
+    *array_ptr = arr;
     forget(dict_rc);
 }
 
