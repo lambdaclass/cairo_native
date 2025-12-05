@@ -255,17 +255,17 @@ pub fn build_call_contract<'ctx, 'this>(
     let fn_ptr = entry.load(context, location, fn_ptr, llvm::r#type::pointer(context, 0))?;
 
     let mut args = vec![
-        fn_ptr,
         ptr,
         gas_builtin_ptr,
         address_arg_ptr,
         entry_point_selector_arg_ptr,
         calldata_arg_ptr,
     ];
-    let (result_tag, payload_ok, payload_err) = call_syscall(
+    let (result_tag, payload_ok, payload_err) = execute_syscall(
         context,
         registry,
         entry,
+        fn_ptr,
         &mut args,
         location,
         helper,
@@ -461,11 +461,12 @@ pub fn build_storage_read<'ctx, 'this>(
     )?;
     let fn_ptr = entry.load(context, location, fn_ptr, llvm::r#type::pointer(context, 0))?;
 
-    let mut args = vec![fn_ptr, ptr, gas_builtin_ptr, entry.arg(2)?, address_arg_ptr];
-    let (result_tag, payload_ok, payload_err) = call_syscall(
+    let mut args = vec![ptr, gas_builtin_ptr, entry.arg(2)?, address_arg_ptr];
+    let (result_tag, payload_ok, payload_err) = execute_syscall(
         context,
         registry,
         entry,
+        fn_ptr,
         &mut args,
         location,
         helper,
@@ -545,17 +546,17 @@ pub fn build_storage_write<'ctx, 'this>(
     let fn_ptr = entry.load(context, location, fn_ptr, llvm::r#type::pointer(context, 0))?;
 
     let mut args = vec![
-        fn_ptr,
         ptr,
         gas_builtin_ptr,
         entry.arg(2)?,
         address_arg_ptr,
         value_arg_ptr,
     ];
-    let (result_tag, payload_ok, payload_err) = call_syscall(
+    let (result_tag, payload_ok, payload_err) = execute_syscall(
         context,
         registry,
         entry,
+        fn_ptr,
         &mut args,
         location,
         helper,
@@ -577,6 +578,9 @@ pub fn build_storage_write<'ctx, 'this>(
         [1, 0],
         [
             &[remaining_gas, entry.arg(1)?, payload_err],
+            // This syscall returns `()` if there was no error. We still need 
+            // to return something in this case, so the data hold by `payload_ok` 
+            // is should not be used.
             &[remaining_gas, entry.arg(1)?, payload_ok],
         ],
         location,
@@ -791,11 +795,12 @@ pub fn build_emit_event<'ctx, 'this>(
     )?;
     let fn_ptr = entry.load(context, location, fn_ptr, llvm::r#type::pointer(context, 0))?;
 
-    let mut args = vec![fn_ptr, ptr, gas_builtin_ptr, keys_arg_ptr, data_arg_ptr];
-    let (result_tag, payload_ok, payload_err) = call_syscall(
+    let mut args = vec![ptr, gas_builtin_ptr, keys_arg_ptr, data_arg_ptr];
+    let (result_tag, payload_ok, payload_err) = execute_syscall(
         context,
         registry,
         entry,
+        fn_ptr,
         &mut args,
         location,
         helper,
@@ -817,6 +822,9 @@ pub fn build_emit_event<'ctx, 'this>(
         [1, 0],
         [
             &[remaining_gas, entry.arg(1)?, payload_err],
+            // This syscall returns `()` if there was no error. We still need 
+            // to return something in this case, so the data hold by payload_ok 
+            // is should not be used.
             &[remaining_gas, entry.arg(1)?, payload_ok],
         ],
         location,
@@ -871,11 +879,12 @@ pub fn build_get_block_hash<'ctx, 'this>(
     )?;
     let fn_ptr = entry.load(context, location, fn_ptr, llvm::r#type::pointer(context, 0))?;
 
-    let mut args = vec![fn_ptr, ptr, gas_builtin_ptr, entry.arg(2)?];
-    let (result_tag, payload_ok, payload_err) = call_syscall(
+    let mut args = vec![ptr, gas_builtin_ptr, entry.arg(2)?];
+    let (result_tag, payload_ok, payload_err) = execute_syscall(
         context,
         registry,
         entry,
+        fn_ptr,
         &mut args,
         location,
         helper,
@@ -941,11 +950,12 @@ pub fn build_get_execution_info<'ctx, 'this>(
     )?;
     let fn_ptr = entry.load(context, location, fn_ptr, llvm::r#type::pointer(context, 0))?;
 
-    let mut args = vec![fn_ptr, ptr, gas_builtin_ptr];
-    let (result_tag, payload_ok, payload_err) = call_syscall(
+    let mut args = vec![ptr, gas_builtin_ptr];
+    let (result_tag, payload_ok, payload_err) = execute_syscall(
         context,
         registry,
         entry,
+        fn_ptr,
         &mut args,
         location,
         helper,
@@ -1011,11 +1021,12 @@ pub fn build_get_execution_info_v2<'ctx, 'this>(
     )?;
     let fn_ptr = entry.load(context, location, fn_ptr, llvm::r#type::pointer(context, 0))?;
 
-    let mut args = vec![fn_ptr, ptr, gas_builtin_ptr];
-    let (result_tag, payload_ok, payload_err) = call_syscall(
+    let mut args = vec![ptr, gas_builtin_ptr];
+    let (result_tag, payload_ok, payload_err) = execute_syscall(
         context,
         registry,
         entry,
+        fn_ptr,
         &mut args,
         location,
         helper,
@@ -1355,11 +1366,12 @@ pub fn build_keccak<'ctx, 'this>(
     )?;
     let fn_ptr = entry.load(context, location, fn_ptr, llvm::r#type::pointer(context, 0))?;
 
-    let mut args = vec![fn_ptr, ptr, gas_builtin_ptr, input_arg_ptr];
-    let (result_tag, payload_ok, payload_err) = call_syscall(
+    let mut args = vec![ptr, gas_builtin_ptr, input_arg_ptr];
+    let (result_tag, payload_ok, payload_err) = execute_syscall(
         context,
         registry,
         entry,
+        fn_ptr,
         &mut args,
         location,
         helper,
@@ -1461,17 +1473,17 @@ pub fn build_library_call<'ctx, 'this>(
     let fn_ptr = entry.load(context, location, fn_ptr, llvm::r#type::pointer(context, 0))?;
 
     let mut args = vec![
-        fn_ptr,
         ptr,
         gas_builtin_ptr,
         class_hash_arg_ptr,
         function_selector_arg_ptr,
         calldata_arg_ptr,
     ];
-    let (result_tag, payload_ok, payload_err) = call_syscall(
+    let (result_tag, payload_ok, payload_err) = execute_syscall(
         context,
         registry,
         entry,
+        fn_ptr,
         &mut args,
         location,
         helper,
@@ -1603,7 +1615,6 @@ pub fn build_meta_tx_v0<'ctx, 'this>(
     let fn_ptr = entry.load(context, location, fn_ptr, llvm::r#type::pointer(context, 0))?;
 
     let mut args = vec![
-        fn_ptr,
         ptr,
         gas_builtin_ptr,
         address_arg_ptr,
@@ -1611,10 +1622,11 @@ pub fn build_meta_tx_v0<'ctx, 'this>(
         calldata_arg_ptr,
         signature_arg_ptr,
     ];
-    let (result_tag, payload_ok, payload_err) = call_syscall(
+    let (result_tag, payload_ok, payload_err) = execute_syscall(
         context,
         registry,
         entry,
+        fn_ptr,
         &mut args,
         location,
         helper,
@@ -1691,11 +1703,12 @@ pub fn build_replace_class<'ctx, 'this>(
     )?;
     let fn_ptr = entry.load(context, location, fn_ptr, llvm::r#type::pointer(context, 0))?;
 
-    let mut args = vec![fn_ptr, ptr, gas_builtin_ptr, class_hash_arg_ptr];
-    let (result_tag, payload_ok, payload_err) = call_syscall(
+    let mut args = vec![ptr, gas_builtin_ptr, class_hash_arg_ptr];
+    let (result_tag, payload_ok, payload_err) = execute_syscall(
         context,
         registry,
         entry,
+        fn_ptr,
         &mut args,
         location,
         helper,
@@ -1717,6 +1730,9 @@ pub fn build_replace_class<'ctx, 'this>(
         [1, 0],
         [
             &[remaining_gas, entry.arg(1)?, payload_err],
+            // This syscall returns `()` if there was no error. We still need 
+            // to return something in this case, so the data hold by payload_ok 
+            // is should not be used.
             &[remaining_gas, entry.arg(1)?, payload_ok],
         ],
         location,
@@ -1794,17 +1810,12 @@ pub fn build_send_message_to_l1<'ctx, 'this>(
     )?;
     let fn_ptr = entry.load(context, location, fn_ptr, llvm::r#type::pointer(context, 0))?;
 
-    let mut args = vec![
-        fn_ptr,
-        ptr,
-        gas_builtin_ptr,
-        to_address_arg_ptr,
-        payload_arg_ptr,
-    ];
-    let (result_tag, payload_ok, payload_err) = call_syscall(
+    let mut args = vec![ptr, gas_builtin_ptr, to_address_arg_ptr, payload_arg_ptr];
+    let (result_tag, payload_ok, payload_err) = execute_syscall(
         context,
         registry,
         entry,
+        fn_ptr,
         &mut args,
         location,
         helper,
@@ -1826,6 +1837,9 @@ pub fn build_send_message_to_l1<'ctx, 'this>(
         [1, 0],
         [
             &[remaining_gas, entry.arg(1)?, payload_err],
+            // This syscall returns `()` if there was no error. We still need 
+            // to return something in this case, so the data hold by payload_ok 
+            // is should not be used.
             &[remaining_gas, entry.arg(1)?, payload_ok],
         ],
         location,
@@ -1887,16 +1901,16 @@ pub fn build_sha256_process_block_syscall<'ctx, 'this>(
     let fn_ptr = entry.load(context, location, fn_ptr, llvm::r#type::pointer(context, 0))?;
 
     let mut args = vec![
-        fn_ptr,
         ptr,
         gas_builtin_ptr,
         sha256_prev_state_ptr,
         sha256_current_block_ptr,
     ];
-    let (result_tag, payload_ok, payload_err) = call_syscall(
+    let (result_tag, payload_ok, payload_err) = execute_syscall(
         context,
         registry,
         entry,
+        fn_ptr,
         &mut args,
         location,
         helper,
@@ -1992,11 +2006,12 @@ pub fn build_get_class_hash_at<'ctx, 'this>(
     )?;
     let fn_ptr = entry.load(context, location, fn_ptr, llvm::r#type::pointer(context, 0))?;
 
-    let mut args = vec![fn_ptr, ptr, gas_builtin_ptr, contract_address_ptr];
-    let (result_tag, payload_ok, payload_err) = call_syscall(
+    let mut args = vec![ptr, gas_builtin_ptr, contract_address_ptr];
+    let (result_tag, payload_ok, payload_err) = execute_syscall(
         context,
         registry,
         entry,
+        fn_ptr,
         &mut args,
         location,
         helper,
@@ -2024,11 +2039,27 @@ pub fn build_get_class_hash_at<'ctx, 'this>(
 ///
 /// This function receives the necessary arguments needed by the syscall as
 /// well as the return types, and returns the result of its call.
+///
+/// ## Arguments
+///
+/// The `args` vector should **only** hold syscall's arguments in the order 
+/// stated by its signature. This function is in charge of creating the return 
+/// pointer in which the syscall will store the result. So, the `args` vector 
+/// **should not** hold it.
+///
+/// ## Return Types
+/// 
+/// Cairo Native's syscalls implementations always expect two result branches. 
+/// There are some syscalls which don't have a result type for the ok case. 
+/// For these cases, the paylad ok should be build with a duplicated type from
+/// the error branch. Due to this, it should only be built and **never** be 
+/// used.
 #[allow(clippy::too_many_arguments)]
 fn execute_syscall<'ctx, 'this>(
     context: &'ctx Context,
     registry: &ProgramRegistry<CoreType, CoreLibfunc>,
     block: &'this Block<'ctx>,
+    fn_ptr: Value<'ctx, 'this>,
     args: &mut Vec<Value<'ctx, 'this>>,
     location: Location<'ctx>,
     helper: &LibfuncHelper<'ctx, 'this>,
@@ -2064,7 +2095,8 @@ fn execute_syscall<'ctx, 'this>(
     )?;
 
     // The return pointer is expected to be the 2nd argument of the call.
-    args.insert(1, result_ptr);
+    args.insert(0, result_ptr);
+    args.insert(0, fn_ptr);
 
     block.append_operation(
         OperationBuilder::new("llvm.call", location)
