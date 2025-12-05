@@ -48,6 +48,9 @@ enum RuntimeBinding {
     DebugPrint,
     ExtendedEuclideanAlgorithm,
     CircuitArithOperation,
+    DictLen,
+    // DictGetAll,
+    DictIntoEntries,
     #[cfg(feature = "with-cheatcode")]
     VtableCheatcode,
 }
@@ -76,6 +79,9 @@ impl RuntimeBinding {
                 "cairo_native__extended_euclidean_algorithm"
             }
             RuntimeBinding::CircuitArithOperation => "cairo_native__circuit_arith_operation",
+            RuntimeBinding::DictLen => "cairo_native__dict_len",
+            // RuntimeBinding::DictGetAll => "cairo_native__dict_get_all",
+            RuntimeBinding::DictIntoEntries => "cairo_native__dict_into_entries",
             #[cfg(feature = "with-cheatcode")]
             RuntimeBinding::VtableCheatcode => "cairo_native__vtable_cheatcode",
         }
@@ -123,6 +129,11 @@ impl RuntimeBinding {
             RuntimeBinding::DictDup => crate::runtime::cairo_native__dict_dup as *const (),
             RuntimeBinding::GetCostsBuiltin => {
                 crate::runtime::cairo_native__get_costs_builtin as *const ()
+            }
+            RuntimeBinding::DictLen => crate::runtime::cairo_native__dict_len as *const (),
+            // RuntimeBinding::DictGetAll => crate::runtime::cairo_native__dict_get_all as *const (),
+            RuntimeBinding::DictIntoEntries => {
+                crate::runtime::cairo_native__dict_into_entries as *const ()
             }
             RuntimeBinding::ExtendedEuclideanAlgorithm => return None,
             RuntimeBinding::CircuitArithOperation => return None,
@@ -716,6 +727,66 @@ impl RuntimeBindingsMeta {
         ))
     }
 
+    pub fn dict_len<'c, 'a>(
+        &mut self,
+        context: &'c Context,
+        module: &Module,
+        block: &'a Block<'c>,
+        dict_ptr: Value<'c, 'a>,
+        location: Location<'c>,
+    ) -> Result<Value<'c, 'a>>
+    where
+        'c: 'a,
+    {
+        let function =
+            self.build_function(context, module, block, location, RuntimeBinding::DictLen)?;
+
+        let dict_len = block.append_op_result(
+            OperationBuilder::new("llvm.call", location)
+                .add_operands(&[function])
+                .add_operands(&[dict_ptr])
+                .add_results(&[IntegerType::new(context, 64).into()])
+                .build()?,
+        )?;
+
+        Ok(dict_len)
+    }
+
+    /// Register if necessary, then invoke the `dict_into_entries()` function.
+    ///
+    /// Returns an array with the tuples of the form (felt252, T, T) by storing it
+    /// on `array_ptr`.
+    #[allow(clippy::too_many_arguments)]
+    pub fn dict_into_entries<'c, 'a>(
+        &mut self,
+        context: &'c Context,
+        helper: &LibfuncHelper<'c, 'a>,
+        block: &'a Block<'c>,
+        dict_ptr: Value<'c, 'a>,
+        data_prefix_offset: Value<'c, 'a>,
+        tuple_stride: Value<'c, 'a>,
+        array_ptr: Value<'c, 'a>,
+        location: Location<'c>,
+    ) -> Result<OperationRef<'c, 'a>>
+    where
+        'c: 'a,
+    {
+        let function = self.build_function(
+            context,
+            helper,
+            block,
+            location,
+            RuntimeBinding::DictIntoEntries,
+        )?;
+
+        Ok(block.append_operation(
+            OperationBuilder::new("llvm.call", location)
+                .add_operands(&[function])
+                .add_operands(&[dict_ptr, data_prefix_offset, tuple_stride, array_ptr])
+                .build()?,
+        ))
+    }
+
     // Register if necessary, then invoke the `get_costs_builtin()` function.
     #[allow(clippy::too_many_arguments)]
     pub fn get_costs_builtin<'c, 'a>(
@@ -799,6 +870,9 @@ pub fn setup_runtime(find_symbol_ptr: impl Fn(&str) -> Option<*mut c_void>) {
         RuntimeBinding::DictDup,
         RuntimeBinding::GetCostsBuiltin,
         RuntimeBinding::DebugPrint,
+        RuntimeBinding::DictLen,
+        // RuntimeBinding::DictGetAll,
+        RuntimeBinding::DictIntoEntries,
         #[cfg(feature = "with-cheatcode")]
         RuntimeBinding::VtableCheatcode,
     ] {
