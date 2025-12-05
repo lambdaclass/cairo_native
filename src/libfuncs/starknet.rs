@@ -6,7 +6,7 @@ use crate::{
     ffi::get_struct_field_type_at,
     metadata::{drop_overrides::DropOverridesMeta, MetadataStorage},
     starknet::handler::StarknetSyscallHandlerCallbacks,
-    utils::{get_integer_layout, ProgramRegistryExt, PRIME},
+    utils::{get_integer_layout, montgomery, ProgramRegistryExt, PRIME},
 };
 use cairo_lang_sierra::{
     extensions::{
@@ -403,6 +403,8 @@ pub fn build_class_hash_try_from_felt252<'ctx, 'this>(
         super::increment_builtin_counter_by(context, entry, location, entry.arg(0)?, 3)?;
 
     let value = entry.arg(1)?;
+    let tmp_value =
+        montgomery::mlir::monty_reduce(context, entry, value, value.r#type(), location)?;
 
     let limit = entry.append_op_result(arith::constant(
         context,
@@ -413,7 +415,7 @@ pub fn build_class_hash_try_from_felt252<'ctx, 'this>(
         .ok_or(Error::ParseAttributeError)?,
         location,
     ))?;
-    let is_in_range = entry.cmpi(context, CmpiPredicate::Ult, value, limit, location)?;
+    let is_in_range = entry.cmpi(context, CmpiPredicate::Ult, tmp_value, limit, location)?;
 
     helper.cond_br(
         context,
@@ -462,6 +464,8 @@ pub fn build_contract_address_try_from_felt252<'ctx, 'this>(
         super::increment_builtin_counter_by(context, entry, location, entry.arg(0)?, 3)?;
 
     let value = entry.arg(1)?;
+    let tmp_value =
+        montgomery::mlir::monty_reduce(context, entry, value, value.r#type(), location)?;
 
     let limit = entry.append_op_result(arith::constant(
         context,
@@ -472,7 +476,7 @@ pub fn build_contract_address_try_from_felt252<'ctx, 'this>(
         .ok_or(Error::ParseAttributeError)?,
         location,
     ))?;
-    let is_in_range = entry.cmpi(context, CmpiPredicate::Ult, value, limit, location)?;
+    let is_in_range = entry.cmpi(context, CmpiPredicate::Ult, tmp_value, limit, location)?;
 
     helper.cond_br(
         context,
@@ -843,6 +847,10 @@ pub fn build_storage_base_address_from_felt252<'ctx, 'this>(
     let range_check =
         super::increment_builtin_counter_by(context, entry, location, entry.arg(0)?, 3)?;
 
+    let value = entry.arg(1)?;
+    let tmp_value =
+        montgomery::mlir::monty_reduce(context, entry, value, value.r#type(), location)?;
+
     let k_limit = entry.append_op_result(arith::constant(
         context,
         Attribute::parse(
@@ -853,19 +861,19 @@ pub fn build_storage_base_address_from_felt252<'ctx, 'this>(
         location,
     ))?;
 
-    let limited_value = entry.append_op_result(arith::subi(entry.arg(1)?, k_limit, location))?;
+    let limited_value = entry.append_op_result(arith::subi(tmp_value, k_limit, location))?;
 
-    let is_within_limit = entry.cmpi(
-        context,
-        CmpiPredicate::Ult,
-        entry.arg(1)?,
-        k_limit,
-        location,
-    )?;
+    let is_within_limit = entry.cmpi(context, CmpiPredicate::Ult, tmp_value, k_limit, location)?;
     let value = entry.append_op_result(arith::select(
         is_within_limit,
-        entry.arg(1)?,
-        limited_value,
+        value,
+        montgomery::mlir::monty_transform(
+            context,
+            entry,
+            limited_value,
+            limited_value.r#type(),
+            location,
+        )?,
         location,
     ))?;
 
@@ -873,7 +881,7 @@ pub fn build_storage_base_address_from_felt252<'ctx, 'this>(
 }
 
 pub fn build_storage_address_from_base_and_offset<'ctx, 'this>(
-    _context: &'ctx Context,
+    context: &'ctx Context,
     _registry: &ProgramRegistry<CoreType, CoreLibfunc>,
     entry: &'this Block<'ctx>,
     location: Location<'ctx>,
@@ -881,10 +889,21 @@ pub fn build_storage_address_from_base_and_offset<'ctx, 'this>(
     _metadata: &mut MetadataStorage,
     _info: &SignatureOnlyConcreteLibfunc,
 ) -> Result<()> {
-    let offset = entry.extui(entry.arg(1)?, entry.argument(0)?.r#type(), location)?;
-    let addr = entry.addi(entry.arg(0)?, offset, location)?;
+    let felt252_ty = entry.arg(0)?.r#type();
 
-    helper.br(entry, 0, &[addr], location)
+    let addr_base =
+        montgomery::mlir::monty_reduce(context, entry, entry.arg(0)?, felt252_ty, location)?;
+    let offset = entry.extui(entry.arg(1)?, felt252_ty, location)?;
+    let addr = entry.addi(addr_base, offset, location)?;
+
+    helper.br(
+        entry,
+        0,
+        &[montgomery::mlir::monty_transform(
+            context, entry, addr, felt252_ty, location,
+        )?],
+        location,
+    )
 }
 
 pub fn build_storage_address_try_from_felt252<'ctx, 'this>(
@@ -902,6 +921,8 @@ pub fn build_storage_address_try_from_felt252<'ctx, 'this>(
         super::increment_builtin_counter_by(context, entry, location, entry.arg(0)?, 3)?;
 
     let value = entry.arg(1)?;
+    let tmp_value =
+        montgomery::mlir::monty_reduce(context, entry, value, value.r#type(), location)?;
 
     let limit = entry.append_op_result(arith::constant(
         context,
@@ -912,7 +933,7 @@ pub fn build_storage_address_try_from_felt252<'ctx, 'this>(
         .ok_or(Error::ParseAttributeError)?,
         location,
     ))?;
-    let is_in_range = entry.cmpi(context, CmpiPredicate::Ult, value, limit, location)?;
+    let is_in_range = entry.cmpi(context, CmpiPredicate::Ult, tmp_value, limit, location)?;
 
     helper.cond_br(
         context,

@@ -5,7 +5,7 @@ use crate::{
     error::{panic::ToNativeAssertError, Result},
     metadata::MetadataStorage,
     types::TypeBuilder,
-    utils::ProgramRegistryExt,
+    utils::{montgomery, ProgramRegistryExt},
 };
 use cairo_lang_sierra::{
     extensions::{
@@ -200,9 +200,10 @@ pub fn build_bool_to_felt252<'ctx, 'this>(
     let value = entry.arg(0)?;
     let tag_value = entry.extract_value(context, location, value, tag_ty, 0)?;
 
-    let result = entry.extui(tag_value, felt252_ty, location)?;
+    // Convert into Montgomery representation.
+    let felt = montgomery::mlir::monty_transform(context, entry, tag_value, felt252_ty, location)?;
 
-    helper.br(entry, 0, &[result], location)
+    helper.br(entry, 0, &[felt], location)
 }
 
 #[cfg(test)]

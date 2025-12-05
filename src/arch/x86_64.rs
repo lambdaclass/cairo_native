@@ -10,7 +10,11 @@
 #![cfg(target_arch = "x86_64")]
 
 use super::AbiArgument;
-use crate::{error::Error, starknet::U256, utils::get_integer_layout};
+use crate::{
+    error::Error,
+    starknet::U256,
+    utils::{get_integer_layout, montgomery::MontyBytes},
+};
 use cairo_lang_sierra::ids::ConcreteTypeId;
 use num_traits::ToBytes;
 use starknet_types_core::felt::Felt;
@@ -159,7 +163,7 @@ impl AbiArgument for Felt {
             align_to(buffer, get_integer_layout(252).align());
         }
 
-        buffer.extend_from_slice(&self.to_bytes_le());
+        buffer.extend_from_slice(&self.to_monty_bytes_le());
         Ok(())
     }
 }
@@ -240,8 +244,10 @@ mod test {
             buffer,
             [0; 24]
                 .into_iter()
-                .chain([0xFF; 31])
-                .chain([0x00])
+                .chain([
+                    37, 0, 126, 115, 253, 255, 255, 255, 255, 15, 51, 1, 0, 0, 0, 0, 128, 111, 255,
+                    255, 255, 255, 255, 255, 184, 2, 94, 171, 212, 255, 255, 7
+                ])
                 .collect::<Vec<_>>()
         );
 
@@ -255,8 +261,10 @@ mod test {
             buffer,
             [0; 32]
                 .into_iter()
-                .chain([0xFF; 31])
-                .chain([0x00])
+                .chain([
+                    37, 0, 126, 115, 253, 255, 255, 255, 255, 15, 51, 1, 0, 0, 0, 0, 128, 111, 255,
+                    255, 255, 255, 255, 255, 184, 2, 94, 171, 212, 255, 255, 7
+                ])
                 .collect::<Vec<_>>()
         );
 
@@ -270,8 +278,10 @@ mod test {
             buffer,
             [0; 48]
                 .into_iter()
-                .chain([0xFF; 31])
-                .chain([0x00])
+                .chain([
+                    37, 0, 126, 115, 253, 255, 255, 255, 255, 15, 51, 1, 0, 0, 0, 0, 128, 111, 255,
+                    255, 255, 255, 255, 255, 184, 2, 94, 171, 212, 255, 255, 7
+                ])
                 .collect::<Vec<_>>()
         );
     }

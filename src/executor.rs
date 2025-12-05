@@ -454,11 +454,21 @@ fn parse_result(
 
                 #[cfg(target_arch = "aarch64")]
                 Ok(Value::Felt252({
+                    use lambdaworks_math::{
+                        traits::ByteConversion, unsigned_integer::element::U256,
+                    };
+                    use starknet_types_core::felt::Felt;
+
                     let data = unsafe {
                         std::mem::transmute::<&mut [u64; 4], &mut [u8; 32]>(&mut ret_registers)
                     };
                     data[31] &= 0x0F; // Filter out first 4 bits (they're outside an i252).
-                    starknet_types_core::felt::Felt::from_bytes_le(data)
+
+                    // Felts are represented in Montgomery form. Due to this, we
+                    // need to convert them back to their original representation.
+                    let value = U256::from_bytes_le(data).unwrap();
+
+                    Felt::from_raw(value.limbs)
                 }))
             }
         },

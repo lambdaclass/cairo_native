@@ -6,7 +6,7 @@ use crate::{
     metadata::MetadataStorage,
     native_panic,
     types::TypeBuilder,
-    utils::{ProgramRegistryExt, PRIME},
+    utils::{montgomery, ProgramRegistryExt, PRIME},
 };
 use cairo_lang_sierra::{
     extensions::{
@@ -387,7 +387,6 @@ fn build_from_felt252<'ctx, 'this>(
     let value_ty = registry.get_type(&info.signature.branch_signatures[0].vars[1].ty)?;
     let threshold = value_ty.integer_range(registry)?;
     let threshold_size = threshold.size();
-
     let value_ty = value_ty.build(
         context,
         helper,
@@ -396,7 +395,10 @@ fn build_from_felt252<'ctx, 'this>(
         &info.signature.branch_signatures[0].vars[1].ty,
     )?;
 
+    // We casting from a felt, so we need convert it from Montgomery back to
+    // its original representation.
     let input = entry.arg(1)?;
+    let input = montgomery::mlir::monty_reduce(context, entry, input, input.r#type(), location)?;
 
     // Handle signedness separately.
     let (is_in_range, value) = if threshold.lower.is_zero() {
@@ -894,8 +896,11 @@ fn build_to_felt252<'ctx, 'this>(
 
         entry.append_op_result(arith::select(is_negative, neg_value, value, location))?
     } else {
-        entry.extui(entry.arg(0)?, felt252_ty, location)?
+        entry.arg(0)?
     };
+
+    // We are casting to a felt, so we need convert it into Montgomery.
+    let value = montgomery::mlir::monty_transform(context, entry, value, felt252_ty, location)?;
 
     helper.br(entry, 0, &[value], location)
 }
@@ -911,10 +916,15 @@ fn build_u128s_from_felt252<'ctx, 'this>(
 ) -> Result<()> {
     let target_ty = IntegerType::new(context, 128).into();
 
-    let lo = entry.trunci(entry.arg(1)?, target_ty, location)?;
+    // We casting from a felt, so we need convert it from Montgomery back to
+    // its original representation.
+    let felt = entry.arg(1)?;
+    let lo = montgomery::mlir::monty_reduce(context, entry, felt, felt.r#type(), location)?;
 
-    let k128 = entry.const_int_from_type(context, location, 128, entry.arg(1)?.r#type())?;
-    let hi = entry.shrui(entry.arg(1)?, k128, location)?;
+    let k128 = entry.const_int_from_type(context, location, 128, felt.r#type())?;
+    let hi = entry.shrui(lo, k128, location)?;
+
+    let lo = entry.trunci(lo, target_ty, location)?;
     let hi = entry.trunci(hi, target_ty, location)?;
 
     let k0 = entry.const_int_from_type(context, location, 0, target_ty)?;
