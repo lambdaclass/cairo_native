@@ -56,6 +56,7 @@ pub trait MontyBytes {
 }
 
 impl MontyBytes for Felt {
+    /// Returns the raw bytes of a Felt, which are in Montgomery representation.
     fn to_monty_bytes_le(&self) -> [u8; 32] {
         let limbs = self.to_raw();
         let mut buffer = [0; 32];

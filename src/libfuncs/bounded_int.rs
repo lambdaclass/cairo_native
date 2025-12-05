@@ -618,8 +618,6 @@ fn build_constrain<'ctx, 'this>(
         src_range.zero_based_bit_width()
     };
 
-    // Felts are represented in Montgomery form, so we need to convert them
-    // back to the original representation.
     let src_value: Value = if src_ty.is_felt252(registry)? {
         montgomery::mlir::monty_reduce(
             context,

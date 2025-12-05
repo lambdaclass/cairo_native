@@ -158,8 +158,6 @@ pub fn build_downcast<'ctx, 'this>(
     let src_value = if src_ty.is_felt252(registry)? {
         let felt252_ty = IntegerType::new(context, 252).into();
 
-        // Felts are represented in Montgomery form, so we need to convert it
-        // back to its original representation before operating.
         let src_value =
             montgomery::mlir::monty_reduce(context, entry, src_value, felt252_ty, location)?;
 
@@ -513,7 +511,6 @@ pub fn build_upcast<'ctx, 'this>(
             dst_value
         };
 
-        // Felts are represented in Montgomery form.
         montgomery::mlir::monty_transform(context, entry, value, felt252_ty, location)?
     } else {
         dst_value

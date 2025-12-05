@@ -99,8 +99,6 @@ pub fn build_to_felt252<'ctx, 'this>(
     let result = {
         let result = entry.extui(value, felt252_ty, location)?;
 
-        // Felts are represented in Montgomery form, so we need to convert
-        // before returning them.
         montgomery::mlir::monty_transform(context, entry, result, felt252_ty, location)?
     };
 
@@ -122,8 +120,6 @@ pub fn build_from_felt252<'ctx, 'this>(
     let range_check: Value =
         super::increment_builtin_counter_by(context, entry, location, entry.arg(0)?, 3)?;
 
-    // Felts are represented in Montgomery form, so we need to convert them
-    // back to their original representation before operating.
     let value: Value = montgomery::mlir::monty_reduce(
         context,
         entry,
