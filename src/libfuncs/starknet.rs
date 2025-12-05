@@ -578,8 +578,8 @@ pub fn build_storage_write<'ctx, 'this>(
         [1, 0],
         [
             &[remaining_gas, entry.arg(1)?, payload_err],
-            // This syscall returns `()` if there was no error. We still need 
-            // to return something in this case, so the data hold by `payload_ok` 
+            // This syscall returns `()` if there was no error. We still need
+            // to return something in this case, so the data hold by `payload_ok`
             // is should not be used.
             &[remaining_gas, entry.arg(1)?, payload_ok],
         ],
@@ -822,8 +822,8 @@ pub fn build_emit_event<'ctx, 'this>(
         [1, 0],
         [
             &[remaining_gas, entry.arg(1)?, payload_err],
-            // This syscall returns `()` if there was no error. We still need 
-            // to return something in this case, so the data hold by payload_ok 
+            // This syscall returns `()` if there was no error. We still need
+            // to return something in this case, so the data hold by payload_ok
             // is should not be used.
             &[remaining_gas, entry.arg(1)?, payload_ok],
         ],
@@ -1730,8 +1730,8 @@ pub fn build_replace_class<'ctx, 'this>(
         [1, 0],
         [
             &[remaining_gas, entry.arg(1)?, payload_err],
-            // This syscall returns `()` if there was no error. We still need 
-            // to return something in this case, so the data hold by payload_ok 
+            // This syscall returns `()` if there was no error. We still need
+            // to return something in this case, so the data hold by payload_ok
             // is should not be used.
             &[remaining_gas, entry.arg(1)?, payload_ok],
         ],
@@ -1837,8 +1837,8 @@ pub fn build_send_message_to_l1<'ctx, 'this>(
         [1, 0],
         [
             &[remaining_gas, entry.arg(1)?, payload_err],
-            // This syscall returns `()` if there was no error. We still need 
-            // to return something in this case, so the data hold by payload_ok 
+            // This syscall returns `()` if there was no error. We still need
+            // to return something in this case, so the data hold by payload_ok
             // is should not be used.
             &[remaining_gas, entry.arg(1)?, payload_ok],
         ],
@@ -2042,17 +2042,17 @@ pub fn build_get_class_hash_at<'ctx, 'this>(
 ///
 /// ## Arguments
 ///
-/// The `args` vector should **only** hold syscall's arguments in the order 
-/// stated by its signature. This function is in charge of creating the return 
-/// pointer in which the syscall will store the result. So, the `args` vector 
+/// The `args` vector should **only** hold syscall's arguments in the order
+/// stated by its signature. This function is in charge of creating the return
+/// pointer in which the syscall will store the result. So, the `args` vector
 /// **should not** hold it.
 ///
 /// ## Return Types
-/// 
-/// Cairo Native's syscalls implementations always expect two result branches. 
-/// There are some syscalls which don't have a result type for the ok case. 
+///
+/// Cairo Native's syscalls implementations always expect two result branches.
+/// There are some syscalls which don't have a result type for the ok case.
 /// For these cases, the paylad ok should be build with a duplicated type from
-/// the error branch. Due to this, it should only be built and **never** be 
+/// the error branch. Due to this, it should only be built and **never** be
 /// used.
 #[allow(clippy::too_many_arguments)]
 fn execute_syscall<'ctx, 'this>(
