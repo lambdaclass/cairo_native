@@ -2,24 +2,30 @@
 
 use super::LibfuncHelper;
 use crate::{
-    error::Result, metadata::MetadataStorage, native_panic, types::TypeBuilder,
+    error::Result,
+    metadata::{realloc_bindings::ReallocBindingsMeta, MetadataStorage},
+    native_panic,
+    types::TypeBuilder,
     utils::ProgramRegistryExt,
 };
 use cairo_lang_sierra::{
     extensions::{
         core::{CoreLibfunc, CoreType, CoreTypeConcrete},
         lib_func::SignatureOnlyConcreteLibfunc,
-        structure::StructConcreteLibfunc,
-        ConcreteLibfunc,
+        structure::{ConcreteStructBoxedDeconstructLibfunc, StructConcreteLibfunc},
+        ConcreteLibfunc, SignatureBasedConcreteLibfunc,
     },
     ids::ConcreteTypeId,
     program_registry::ProgramRegistry,
 };
 use itertools::Itertools;
 use melior::{
-    dialect::llvm,
-    helpers::{BuiltinBlockExt, LlvmBlockExt},
-    ir::{Block, BlockLike, Location, Value},
+    dialect::{
+        llvm::{self, r#type::pointer, LoadStoreOptions},
+        ods,
+    },
+    helpers::{ArithBlockExt, BuiltinBlockExt, LlvmBlockExt},
+    ir::{attribute::IntegerAttribute, r#type::IntegerType, Block, BlockLike, Location, Value},
     Context,
 };
 
@@ -41,8 +47,8 @@ pub fn build<'ctx, 'this>(
         | StructConcreteLibfunc::SnapshotDeconstruct(info) => {
             build_deconstruct(context, registry, entry, location, helper, metadata, info)
         }
-        StructConcreteLibfunc::BoxedDeconstruct(_info) => {
-            native_panic!("implement struct_boxed_deconstruct")
+        StructConcreteLibfunc::BoxedDeconstruct(info) => {
+            build_boxed_deconstruct(context, registry, entry, location, helper, metadata, info)
         }
     }
 }
@@ -145,6 +151,114 @@ pub fn build_deconstruct<'ctx, 'this>(
         let value = entry.extract_value(context, location, container, field_ty, i)?;
 
         fields.push(value);
+    }
+
+    helper.br(entry, 0, &fields, location)
+}
+
+fn unbox_container<'ctx, 'this>(
+    context: &'ctx Context,
+    registry: &ProgramRegistry<CoreType, CoreLibfunc>,
+    entry: &'this Block<'ctx>,
+    location: Location<'ctx>,
+    helper: &LibfuncHelper<'ctx, 'this>,
+    metadata: &mut MetadataStorage,
+    info: &ConcreteStructBoxedDeconstructLibfunc,
+) -> Result<Value<'ctx, 'this>> {
+    let container_type_id = &info.param_signatures()[0].ty;
+    let (container_ty, container_layout) =
+        registry.build_type_with_layout(context, helper, metadata, container_type_id)?;
+
+    let value = entry
+        .append_operation(llvm::load(
+            context,
+            entry.arg(0)?,
+            container_ty,
+            location,
+            LoadStoreOptions::new().align(Some(IntegerAttribute::new(
+                IntegerType::new(context, 64).into(),
+                container_layout.align() as i64,
+            ))),
+        ))
+        .result(0)?
+        .into();
+
+    Ok(value)
+
+    // entry.append_operation(ReallocBindingsMeta::free(context, entry.arg(0)?, location)?); // TODO: Should I do this free?
+}
+
+fn box_member<'ctx, 'this>(
+    context: &'ctx Context,
+    registry: &ProgramRegistry<CoreType, CoreLibfunc>,
+    entry: &'this Block<'ctx>,
+    location: Location<'ctx>,
+    helper: &LibfuncHelper<'ctx, 'this>,
+    metadata: &mut MetadataStorage,
+    member: Value<'ctx, 'this>,
+    member_ty_id: &ConcreteTypeId,
+) -> Result<Value<'ctx, 'this>> {
+    let (_, member_layout) =
+        registry.build_type_with_layout(context, helper, metadata, member_ty_id)?;
+
+    let len = entry.const_int(context, location, member_layout.pad_to_align().size(), 64)?;
+    let ptr = entry
+        .append_operation(ods::llvm::mlir_zero(context, pointer(context, 0), location).into())
+        .result(0)?
+        .into();
+    let ptr = entry
+        .append_operation(ReallocBindingsMeta::realloc(context, ptr, len, location)?)
+        .result(0)?
+        .into();
+
+    entry.store(context, location, ptr, member)?;
+
+    Ok(ptr)
+
+    // entry.append_operation(llvm::store(
+    //     context,
+    //     member,
+    //     ptr,
+    //     location,
+    //     LoadStoreOptions::new().align(Some(IntegerAttribute::new(
+    //         IntegerType::new(context, 64).into(),
+    //         member_layout.align() as i64,
+    //     ))), // TODO: Check if we need the extra options
+    // ));
+}
+
+pub fn build_boxed_deconstruct<'ctx, 'this>(
+    context: &'ctx Context,
+    registry: &ProgramRegistry<CoreType, CoreLibfunc>,
+    entry: &'this Block<'ctx>,
+    location: Location<'ctx>,
+    helper: &LibfuncHelper<'ctx, 'this>,
+    metadata: &mut MetadataStorage,
+    info: &ConcreteStructBoxedDeconstructLibfunc,
+) -> Result<()> {
+    metadata.get_or_insert_with(|| ReallocBindingsMeta::new(context, helper));
+
+    // Unbox the container
+    let container = unbox_container(context, registry, entry, location, helper, metadata, info)?;
+
+    let mut fields = Vec::<Value>::with_capacity(info.members.len());
+    for (i, member_type_id) in info.members.iter().enumerate() {
+        let type_info = registry.get_type(member_type_id)?;
+        let field_ty = type_info.build(context, helper, registry, metadata, member_type_id)?;
+
+        let member = entry.extract_value(context, location, container, field_ty, i)?;
+        let member = box_member(
+            context,
+            registry,
+            entry,
+            location,
+            helper,
+            metadata,
+            member,
+            member_type_id,
+        )?;
+
+        fields.push(member);
     }
 
     helper.br(entry, 0, &fields, location)
