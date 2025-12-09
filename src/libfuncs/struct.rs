@@ -272,28 +272,95 @@ pub fn build_boxed_deconstruct<'ctx, 'this>(
 
 #[cfg(test)]
 mod test {
-    use crate::{load_cairo, utils::testing::run_program_assert_output, Value};
+    use crate::{jit_struct, load_cairo, utils::testing::run_program_assert_output, Value};
+    use cairo_lang_sierra::program::Program;
+    use lazy_static::lazy_static;
 
-    #[test]
-    fn deconstruct_struct_3_fields() {
-        let program = load_cairo! {
-            fn foo(value: Box<Single>) -> (Box<felt252>, Box<u8>, Box<u128>) {
-                struct_boxed_deconstruct(value)
+    lazy_static! {
+        static ref BOXED_DECONSTRUCT_PROGRAM: (String, Program) = load_cairo! {
+            mod decons_3_fields {
+                extern fn struct_boxed_deconstruct<T>(value: Box<T>) -> (Box<felt252>, Box<u8>, Box<u128>) nopanic;
             }
 
-            extern fn struct_boxed_deconstruct<T>(value: Box<T>) -> (Box<felt252>, Box<u8>, Box<u128>) nopanic;
+            mod decons_1_field {
+                extern fn struct_boxed_deconstruct<T>(value: Box<T>) -> (Box<u8>,) nopanic;
+            }
 
-            struct Single {
+            mod decons_empty_struct {
+                extern fn struct_boxed_deconstruct<T>(value: Box<T>) -> () nopanic;
+            }
+
+            mod decons_struct_snapshot {
+                extern fn struct_boxed_deconstruct<T>(value: Box<T>) -> (Box<@felt252>, Box<@u8>, Box<@u128>) nopanic;
+            }
+
+            struct ThreeFields {
                 x: felt252,
                 y: u8,
                 z: u128,
             }
 
+            struct OneField {
+                x: u8,
+            }
+
+            struct EmptyStruct { }
+
             fn deconstruct_struct_3_fields() -> (Box<felt252>, Box<u8>, Box<u128>) {
-                foo(BoxTrait::new(Single {x: 2, y: 2, z: 2}))
+                decons_3_fields::struct_boxed_deconstruct(BoxTrait::new(ThreeFields {x: 2, y: 2, z: 2}))
+            }
+
+            fn deconstruct_struct_1_field() -> (Box<u8>,) {
+                decons_1_field::struct_boxed_deconstruct(BoxTrait::new(OneField {x: 2}))
+            }
+
+            fn deconstruct_empty_struct() -> () {
+                decons_empty_struct::struct_boxed_deconstruct(BoxTrait::new(EmptyStruct { }))
+            }
+
+            fn deconstruct_struct_snapshot() -> (Box<@felt252>, Box<@u8>, Box<@u128>) {
+                decons_struct_snapshot::struct_boxed_deconstruct(BoxTrait::new(ThreeFields {x: 2, y: 2, z: 2}))
             }
         };
+    }
 
-        run_program_assert_output(&program, "deconstruct_struct_3_fields", &[], Value::Null);
+    #[test]
+    fn boxed_deconstruct_3_fields() {
+        run_program_assert_output(
+            &BOXED_DECONSTRUCT_PROGRAM,
+            "deconstruct_struct_3_fields",
+            &[],
+            jit_struct!(Value::Felt252(2.into()), Value::Uint8(2), Value::Uint128(2)),
+        );
+    }
+
+    #[test]
+    fn boxed_deconstruct_1_field() {
+        run_program_assert_output(
+            &BOXED_DECONSTRUCT_PROGRAM,
+            "deconstruct_struct_1_field",
+            &[],
+            jit_struct!(Value::Uint8(2)),
+        );
+    }
+
+    #[test]
+    fn boxed_deconstruct_empty_struct() {
+        run_program_assert_output(
+            &BOXED_DECONSTRUCT_PROGRAM,
+            "deconstruct_empty_struct",
+            &[],
+            jit_struct!(),
+        );
+    }
+
+    #[test]
+    fn boxed_deconstruct_struct_snapshot() {
+        run_program_assert_output(
+            &BOXED_DECONSTRUCT_PROGRAM,
+            "deconstruct_struct_snapshot",
+            &[],
+            jit_struct!(Value::Felt252(2.into()), Value::Uint8(2), Value::Uint128(2)),
+        );
     }
 }
