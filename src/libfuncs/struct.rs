@@ -1,5 +1,7 @@
 //! # Struct-related libfuncs
 
+use std::alloc::Layout;
+
 use super::LibfuncHelper;
 use crate::{
     error::Result,
@@ -195,17 +197,11 @@ fn unbox_container<'ctx, 'this>(
 
 fn box_member<'ctx, 'this>(
     context: &'ctx Context,
-    registry: &ProgramRegistry<CoreType, CoreLibfunc>,
     entry: &'this Block<'ctx>,
     location: Location<'ctx>,
-    helper: &LibfuncHelper<'ctx, 'this>,
-    metadata: &mut MetadataStorage,
     member: Value<'ctx, 'this>,
-    member_ty_id: &ConcreteTypeId,
+    member_layout: Layout,
 ) -> Result<Value<'ctx, 'this>> {
-    let (_, member_layout) =
-        registry.build_type_with_layout(context, helper, metadata, member_ty_id)?;
-
     let len = entry.const_int(context, location, member_layout.pad_to_align().size(), 64)?;
     let ptr = entry
         .append_operation(ods::llvm::mlir_zero(context, pointer(context, 0), location).into())
@@ -252,17 +248,10 @@ pub fn build_boxed_deconstruct<'ctx, 'this>(
         let field_ty = type_info.build(context, helper, registry, metadata, member_type_id)?;
 
         let member = entry.extract_value(context, location, container, field_ty, i)?;
+        let (_, member_layout) =
+            registry.build_type_with_layout(context, helper, metadata, member_type_id)?;
         // Box the member
-        let member = box_member(
-            context,
-            registry,
-            entry,
-            location,
-            helper,
-            metadata,
-            member,
-            member_type_id,
-        )?;
+        let member = box_member(context, entry, location, member, member_layout)?;
 
         fields.push(member);
     }
