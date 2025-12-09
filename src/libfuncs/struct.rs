@@ -191,8 +191,6 @@ fn unbox_container<'ctx, 'this>(
         .into();
 
     Ok(value)
-
-    // entry.append_operation(ReallocBindingsMeta::free(context, entry.arg(0)?, location)?); // TODO: Should I do this free?
 }
 
 fn box_member<'ctx, 'this>(
@@ -215,17 +213,6 @@ fn box_member<'ctx, 'this>(
     entry.store(context, location, ptr, member)?;
 
     Ok(ptr)
-
-    // entry.append_operation(llvm::store(
-    //     context,
-    //     member,
-    //     ptr,
-    //     location,
-    //     LoadStoreOptions::new().align(Some(IntegerAttribute::new(
-    //         IntegerType::new(context, 64).into(),
-    //         member_layout.align() as i64,
-    //     ))), // TODO: Check if we need the extra options
-    // ));
 }
 
 pub fn build_boxed_deconstruct<'ctx, 'this>(
@@ -255,6 +242,9 @@ pub fn build_boxed_deconstruct<'ctx, 'this>(
 
         fields.push(member);
     }
+
+    // Free the boxed container
+    entry.append_operation(ReallocBindingsMeta::free(context, entry.arg(0)?, location)?);
 
     helper.br(entry, 0, &fields, location)
 }
