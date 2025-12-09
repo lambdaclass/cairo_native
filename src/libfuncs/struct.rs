@@ -13,7 +13,7 @@ use cairo_lang_sierra::{
         core::{CoreLibfunc, CoreType, CoreTypeConcrete},
         lib_func::SignatureOnlyConcreteLibfunc,
         structure::{ConcreteStructBoxedDeconstructLibfunc, StructConcreteLibfunc},
-        ConcreteLibfunc, SignatureBasedConcreteLibfunc,
+        ConcreteLibfunc,
     },
     ids::ConcreteTypeId,
     program_registry::ProgramRegistry,
@@ -165,9 +165,14 @@ fn unbox_container<'ctx, 'this>(
     metadata: &mut MetadataStorage,
     info: &ConcreteStructBoxedDeconstructLibfunc,
 ) -> Result<Value<'ctx, 'this>> {
-    let container_type_id = &info.param_signatures()[0].ty;
+    let boxed_container_ty_id = &info.param_signatures()[0].ty;
+
     let (container_ty, container_layout) =
-        registry.build_type_with_layout(context, helper, metadata, container_type_id)?;
+        if let CoreTypeConcrete::Box(box_info) = registry.get_type(boxed_container_ty_id)? {
+            registry.build_type_with_layout(context, helper, metadata, &box_info.ty)?
+        } else {
+            native_panic!("Should receive a boxed Struct");
+        };
 
     let value = entry
         .append_operation(llvm::load(
@@ -247,6 +252,7 @@ pub fn build_boxed_deconstruct<'ctx, 'this>(
         let field_ty = type_info.build(context, helper, registry, metadata, member_type_id)?;
 
         let member = entry.extract_value(context, location, container, field_ty, i)?;
+        // Box the member
         let member = box_member(
             context,
             registry,
@@ -262,4 +268,32 @@ pub fn build_boxed_deconstruct<'ctx, 'this>(
     }
 
     helper.br(entry, 0, &fields, location)
+}
+
+#[cfg(test)]
+mod test {
+    use crate::{load_cairo, utils::testing::run_program_assert_output, Value};
+
+    #[test]
+    fn deconstruct_struct_3_fields() {
+        let program = load_cairo! {
+            fn foo(value: Box<Single>) -> (Box<felt252>, Box<u8>, Box<u128>) {
+                struct_boxed_deconstruct(value)
+            }
+
+            extern fn struct_boxed_deconstruct<T>(value: Box<T>) -> (Box<felt252>, Box<u8>, Box<u128>) nopanic;
+
+            struct Single {
+                x: felt252,
+                y: u8,
+                z: u128,
+            }
+
+            fn deconstruct_struct_3_fields() -> (Box<felt252>, Box<u8>, Box<u128>) {
+                foo(BoxTrait::new(Single {x: 2, y: 2, z: 2}))
+            }
+        };
+
+        run_program_assert_output(&program, "deconstruct_struct_3_fields", &[], Value::Null);
+    }
 }
