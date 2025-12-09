@@ -2,11 +2,14 @@
 //!
 //! A heap allocated value, which is internally a pointer that can't be null.
 
+use std::alloc::Layout;
+
 use super::LibfuncHelper;
 use crate::{
     error::Result,
     metadata::{realloc_bindings::ReallocBindingsMeta, MetadataStorage},
     types::TypeBuilder,
+    utils::ProgramRegistryExt,
 };
 use cairo_lang_sierra::{
     extensions::{
@@ -14,16 +17,16 @@ use cairo_lang_sierra::{
         core::{CoreLibfunc, CoreType},
         lib_func::SignatureAndTypeConcreteLibfunc,
     },
+    ids::ConcreteTypeId,
     program_registry::ProgramRegistry,
 };
 use melior::{
     dialect::{
-        arith,
         llvm::{self, r#type::pointer, LoadStoreOptions},
         ods,
     },
-    helpers::BuiltinBlockExt,
-    ir::{attribute::IntegerAttribute, r#type::IntegerType, Block, BlockLike, Location},
+    helpers::{ArithBlockExt, BuiltinBlockExt},
+    ir::{attribute::IntegerAttribute, r#type::IntegerType, Block, BlockLike, Location, Value},
     Context,
 };
 
@@ -73,19 +76,20 @@ pub fn build_into_box<'ctx, 'this>(
     let inner_type = registry.get_type(&info.ty)?;
     let inner_layout = inner_type.layout(registry)?;
 
-    let value_len = entry
-        .append_operation(arith::constant(
-            context,
-            IntegerAttribute::new(
-                IntegerType::new(context, 64).into(),
-                inner_layout.pad_to_align().size().try_into()?,
-            )
-            .into(),
-            location,
-        ))
-        .result(0)?
-        .into();
+    let ptr = into_box(context, entry, location, entry.arg(0)?, inner_layout)?;
 
+    helper.br(entry, 0, &[ptr], location)
+}
+
+/// Receives a value and inserts it into a box
+pub fn into_box<'ctx, 'this>(
+    context: &'ctx Context,
+    entry: &'this Block<'ctx>,
+    location: Location<'ctx>,
+    inner_val: Value<'ctx, 'this>,
+    inner_layout: Layout,
+) -> Result<Value<'ctx, 'this>> {
+    let value_len = entry.const_int(context, location, inner_layout.pad_to_align().size(), 64)?;
     let ptr = entry
         .append_operation(ods::llvm::mlir_zero(context, pointer(context, 0), location).into())
         .result(0)?
@@ -99,7 +103,7 @@ pub fn build_into_box<'ctx, 'this>(
 
     entry.append_operation(llvm::store(
         context,
-        entry.arg(0)?,
+        inner_val,
         ptr,
         location,
         LoadStoreOptions::new().align(Some(IntegerAttribute::new(
@@ -108,7 +112,7 @@ pub fn build_into_box<'ctx, 'this>(
         ))),
     ));
 
-    helper.br(entry, 0, &[ptr], location)
+    Ok(ptr)
 }
 
 /// Generate MLIR operations for the `unbox` libfunc.
@@ -121,20 +125,34 @@ pub fn build_unbox<'ctx, 'this>(
     metadata: &mut MetadataStorage,
     info: &SignatureAndTypeConcreteLibfunc,
 ) -> Result<()> {
-    let inner_type = registry.get_type(&info.ty)?;
-    let inner_ty = inner_type.build(context, helper, registry, metadata, &info.ty)?;
-    let inner_layout = inner_type.layout(registry)?;
+    metadata.get_or_insert_with(|| ReallocBindingsMeta::new(context, helper));
 
-    if metadata.get::<ReallocBindingsMeta>().is_none() {
-        metadata.insert(ReallocBindingsMeta::new(context, helper));
-    }
+    let value = unbox(
+        context, registry, entry, location, helper, metadata, &info.ty,
+    )?;
+
+    helper.br(entry, 0, &[value], location)
+}
+
+// Gets the value that is inside a `Box`
+pub fn unbox<'ctx, 'this>(
+    context: &'ctx Context,
+    registry: &ProgramRegistry<CoreType, CoreLibfunc>,
+    entry: &'this Block<'ctx>,
+    location: Location<'ctx>,
+    helper: &LibfuncHelper<'ctx, 'this>,
+    metadata: &mut MetadataStorage,
+    inner_ty_id: &ConcreteTypeId,
+) -> Result<Value<'ctx, 'this>> {
+    let (inner_type, inner_layout) =
+        registry.build_type_with_layout(context, helper, metadata, inner_ty_id)?;
 
     // Load the boxed value from memory.
     let value = entry
         .append_operation(llvm::load(
             context,
             entry.arg(0)?,
-            inner_ty,
+            inner_type,
             location,
             LoadStoreOptions::new().align(Some(IntegerAttribute::new(
                 IntegerType::new(context, 64).into(),
@@ -146,7 +164,7 @@ pub fn build_unbox<'ctx, 'this>(
 
     entry.append_operation(ReallocBindingsMeta::free(context, entry.arg(0)?, location)?);
 
-    helper.br(entry, 0, &[value], location)
+    Ok(value)
 }
 
 #[cfg(test)]
