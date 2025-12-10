@@ -12,4 +12,5 @@ cairo-lang-test-runner.workspace = true
 cairo-native-bin-utils.workspace = true
 clap = { workspace = true, features = ["derive"] }
 tracing-subscriber = { workspace = true, features = ["env-filter"]}
+cairo-native = { workspace = true, features = ["with-cheatcode"]}
 tracing.workspace = true
