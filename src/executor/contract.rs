@@ -51,7 +51,9 @@ use crate::{
     types::TypeBuilder,
     utils::{
         decode_error_message, generate_function_name, get_integer_layout, get_types_total_size,
-        libc_free, libc_malloc, montgomery::MontyBytes, BuiltinCosts,
+        libc_free, libc_malloc,
+        montgomery::{self, MontyBytes},
+        BuiltinCosts,
     },
     OptLevel,
 };
@@ -76,7 +78,6 @@ use cairo_lang_starknet_classes::{
 use cairo_lang_utils::small_ordered_map::SmallOrderedMap;
 use educe::Educe;
 use itertools::{chain, Itertools};
-use lambdaworks_math::{traits::ByteConversion, unsigned_integer::element::U256};
 use libloading::Library;
 use serde::{Deserialize, Serialize};
 use starknet_types_core::felt::Felt;
@@ -674,12 +675,10 @@ impl AotContractExecutor {
 
                 // Felts are represented in Montgomery form. Due to this, we
                 // need to convert them back to their original representation.
-                let felt = {
-                    let data = U256::from_bytes_le(&data).unwrap();
-                    Felt::from_raw(data.limbs)
-                };
-
-                array_value.push(felt);
+                array_value.push(
+                    montgomery::felt_from_monty_bytes(&data)
+                        .to_native_assert_error("Couldn't create felt from Montgomery bytes")?,
+                );
             }
 
             unsafe {

@@ -18,7 +18,7 @@
 use std::sync::LazyLock;
 
 use lambdaworks_math::{
-    errors::CreationError,
+    errors::{ByteConversionError, CreationError},
     traits::ByteConversion,
     unsigned_integer::{
         element::{UnsignedInteger, U256},
@@ -73,9 +73,9 @@ impl MontyBytes for Felt {
 
 /// Utility function to convert Felt bytes in Montgomery form into a Felt with
 /// its correct representation.
-pub fn felt_from_monty_bytes(value: &[u8; 32]) -> Felt {
-    let value = U256::from_bytes_le(value).unwrap();
-    Felt::from_raw(value.limbs)
+pub fn felt_from_monty_bytes(value: &[u8; 32]) -> Result<Felt, ByteConversionError> {
+    let value = U256::from_bytes_le(value)?;
+    Ok(Felt::from_raw(value.limbs))
 }
 
 /// Computes the Montgomery reduction (REDC).
@@ -566,38 +566,28 @@ pub mod mlir {
 #[cfg(test)]
 mod tests {
     use crate::utils::{
-        montgomery::{monty_reduction, monty_transform, MontyBytes},
+        montgomery::{self, monty_reduction, monty_transform, MontyBytes},
         PRIME,
     };
-    use lambdaworks_math::{traits::ByteConversion, unsigned_integer::element::U256};
     use starknet_types_core::felt::Felt;
 
     #[test]
     fn felt_to_bytes_raw() {
         let felt = Felt::from(10);
         let bytes = felt.to_monty_bytes_le();
-        let felt_from_raw = {
-            let value = U256::from_bytes_le(&bytes).unwrap();
-            Felt::from_raw(value.limbs)
-        };
+        let felt_from_raw = montgomery::felt_from_monty_bytes(&bytes).unwrap();
 
         assert_eq!(felt_from_raw, felt);
 
         let felt = Felt::from(-10);
         let bytes = felt.to_monty_bytes_le();
-        let felt_from_raw = {
-            let value = U256::from_bytes_le(&bytes).unwrap();
-            Felt::from_raw(value.limbs)
-        };
+        let felt_from_raw = montgomery::felt_from_monty_bytes(&bytes).unwrap();
 
         assert_eq!(felt_from_raw, felt);
 
         let felt = Felt::from(PRIME.clone());
         let bytes = felt.to_monty_bytes_le();
-        let felt_from_raw = {
-            let value = U256::from_bytes_le(&bytes).unwrap();
-            Felt::from_raw(value.limbs)
-        };
+        let felt_from_raw = montgomery::felt_from_monty_bytes(&bytes).unwrap();
 
         assert_eq!(felt_from_raw, felt);
     }

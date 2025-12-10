@@ -1,5 +1,6 @@
 //! Starknet related code for `cairo_native`
 
+use lambdaworks_math::errors::ByteConversionError;
 use serde::{Deserialize, Serialize};
 use starknet_types_core::felt::Felt;
 
@@ -16,8 +17,10 @@ pub struct ArrayAbi<T> {
     pub capacity: u32,
 }
 
-impl From<&ArrayAbi<Felt252Abi>> for Vec<Felt> {
-    fn from(value: &ArrayAbi<Felt252Abi>) -> Self {
+impl TryFrom<&ArrayAbi<Felt252Abi>> for Vec<Felt> {
+    type Error = ByteConversionError;
+
+    fn try_from(value: &ArrayAbi<Felt252Abi>) -> Result<Self, Self::Error> {
         unsafe {
             let since_offset = value.since as usize;
             let until_offset = value.until as usize;
@@ -29,8 +32,8 @@ impl From<&ArrayAbi<Felt252Abi>> for Vec<Felt> {
             }
         }
         .iter()
-        .map(Felt::from)
-        .collect()
+        .map(Felt::try_from)
+        .collect::<Result<_, _>>()
     }
 }
 
@@ -39,15 +42,19 @@ impl From<&ArrayAbi<Felt252Abi>> for Vec<Felt> {
 #[repr(C, align(16))]
 pub struct Felt252Abi(pub [u8; 32]);
 
-impl From<Felt252Abi> for Felt {
-    fn from(mut value: Felt252Abi) -> Felt {
+impl TryFrom<Felt252Abi> for Felt {
+    type Error = ByteConversionError;
+
+    fn try_from(mut value: Felt252Abi) -> Result<Self, Self::Error> {
         value.0[31] &= 0x0F;
         montgomery::felt_from_monty_bytes(&value.0)
     }
 }
 
-impl From<&Felt252Abi> for Felt {
-    fn from(value: &Felt252Abi) -> Felt {
+impl TryFrom<&Felt252Abi> for Felt {
+    type Error = ByteConversionError;
+
+    fn try_from(value: &Felt252Abi) -> Result<Self, Self::Error> {
         let mut value = *value;
         value.0[31] &= 0x0F;
         montgomery::felt_from_monty_bytes(&value.0)
@@ -1193,10 +1200,14 @@ pub(crate) mod handler {
             calldata: &ArrayAbi<Felt252Abi>,
             deploy_from_zero: bool,
         ) {
-            let class_hash = Felt::from(class_hash);
-            let contract_address_salt = Felt::from(contract_address_salt);
+            let class_hash =
+                Felt::try_from(class_hash).expect("Couldn't create felt from Montgomery bytes");
+            let contract_address_salt = Felt::try_from(contract_address_salt)
+                .expect("Couldn't create felt from Montgomery bytes");
 
-            let calldata_vec: Vec<_> = calldata.into();
+            let calldata_vec: Vec<_> = calldata
+                .try_into()
+                .expect("Couldn't create array of felts from array of Montgomery bytes");
             unsafe {
                 Self::drop_mlir_array(calldata);
             }
@@ -1236,7 +1247,8 @@ pub(crate) mod handler {
             gas: &mut u64,
             class_hash: &Felt252Abi,
         ) {
-            let class_hash = Felt::from(class_hash);
+            let class_hash =
+                Felt::try_from(class_hash).expect("Couldn't create felt from Montgomery bytes");
             let result = ptr.replace_class(class_hash, gas);
 
             *result_ptr = match result {
@@ -1258,10 +1270,14 @@ pub(crate) mod handler {
             function_selector: &Felt252Abi,
             calldata: &ArrayAbi<Felt252Abi>,
         ) {
-            let class_hash = Felt::from(class_hash);
-            let function_selector = Felt::from(function_selector);
+            let class_hash =
+                Felt::try_from(class_hash).expect("Couldn't create felt from Montgomery bytes");
+            let function_selector = Felt::try_from(function_selector)
+                .expect("Couldn't create felt from Montgomery bytes");
 
-            let calldata_vec: Vec<Felt> = calldata.into();
+            let calldata_vec: Vec<Felt> = calldata
+                .try_into()
+                .expect("Couldn't create array of felts from array of Montgomery bytes");
             unsafe {
                 Self::drop_mlir_array(calldata);
             }
@@ -1294,10 +1310,14 @@ pub(crate) mod handler {
             entry_point_selector: &Felt252Abi,
             calldata: &ArrayAbi<Felt252Abi>,
         ) {
-            let address = Felt::from(address);
-            let entry_point_selector = Felt::from(entry_point_selector);
+            let address =
+                Felt::try_from(address).expect("Couldn't create felt from Montgomery bytes");
+            let entry_point_selector = Felt::try_from(entry_point_selector)
+                .expect("Couldn't create felt from Montgomery bytes");
 
-            let calldata_vec: Vec<Felt> = calldata.into();
+            let calldata_vec: Vec<Felt> = calldata
+                .try_into()
+                .expect("Couldn't create array of felts from array of Montgomery bytes");
             unsafe {
                 Self::drop_mlir_array(calldata);
             }
@@ -1329,7 +1349,8 @@ pub(crate) mod handler {
             address_domain: u32,
             address: &Felt252Abi,
         ) {
-            let address = Felt::from(address);
+            let address =
+                Felt::try_from(address).expect("Couldn't create felt from Montgomery bytes");
             let result = ptr.storage_read(address_domain, address, gas);
 
             *result_ptr = match result {
@@ -1351,8 +1372,9 @@ pub(crate) mod handler {
             address: &Felt252Abi,
             value: &Felt252Abi,
         ) {
-            let address = Felt::from(address);
-            let value = Felt::from(value);
+            let address =
+                Felt::try_from(address).expect("Couldn't create felt from Montgomery bytes");
+            let value = Felt::try_from(value).expect("Couldn't create felt from Montgomery bytes");
             let result = ptr.storage_write(address_domain, address, value, gas);
 
             *result_ptr = match result {
@@ -1373,8 +1395,12 @@ pub(crate) mod handler {
             keys: &ArrayAbi<Felt252Abi>,
             data: &ArrayAbi<Felt252Abi>,
         ) {
-            let keys_vec: Vec<_> = keys.into();
-            let data_vec: Vec<_> = data.into();
+            let keys_vec: Vec<_> = keys
+                .try_into()
+                .expect("Couldn't create array of felts from array of Montgomery bytes");
+            let data_vec: Vec<_> = data
+                .try_into()
+                .expect("Couldn't create array of felts from array of Montgomery bytes");
 
             unsafe {
                 Self::drop_mlir_array(keys);
@@ -1401,8 +1427,11 @@ pub(crate) mod handler {
             to_address: &Felt252Abi,
             payload: &ArrayAbi<Felt252Abi>,
         ) {
-            let to_address = Felt::from(to_address);
-            let payload_vec: Vec<_> = payload.into();
+            let to_address =
+                Felt::try_from(to_address).expect("Couldn't create felt from Montgomery bytes");
+            let payload_vec: Vec<_> = payload
+                .try_into()
+                .expect("Couldn't create array of felts from array of Montgomery bytes");
 
             unsafe {
                 Self::drop_mlir_array(payload);
@@ -1710,7 +1739,12 @@ pub(crate) mod handler {
             gas: &mut u64,
             contract_address: &Felt252Abi,
         ) {
-            let result = ptr.get_class_hash_at(contract_address.into(), gas);
+            let result = ptr.get_class_hash_at(
+                contract_address
+                    .try_into()
+                    .expect("Couldn't create array of felts from array of Montgomery bytes"),
+                gas,
+            );
 
             *result_ptr = match result {
                 Ok(x) => SyscallResultAbi {
@@ -1732,14 +1766,20 @@ pub(crate) mod handler {
             calldata: &ArrayAbi<Felt252Abi>,
             signature: &ArrayAbi<Felt252Abi>,
         ) {
-            let address = Felt::from(address);
-            let entry_point_selector = Felt::from(entry_point_selector);
+            let address =
+                Felt::try_from(address).expect("Couldn't create felt from Montgomery bytes");
+            let entry_point_selector = Felt::try_from(entry_point_selector)
+                .expect("Couldn't create felt from Montgomery bytes");
 
-            let calldata_vec: Vec<Felt> = calldata.into();
+            let calldata_vec: Vec<Felt> = calldata
+                .try_into()
+                .expect("Couldn't create array of felts from array of Montgomery bytes");
             unsafe {
                 Self::drop_mlir_array(calldata);
             }
-            let signature_vec: Vec<Felt> = signature.into();
+            let signature_vec: Vec<Felt> = signature
+                .try_into()
+                .expect("Couldn't create array of felts from array of Montgomery bytes");
             unsafe {
                 Self::drop_mlir_array(signature);
             }
@@ -1778,7 +1818,9 @@ pub(crate) mod handler {
             input: &ArrayAbi<Felt252Abi>,
         ) {
             let selector = Felt::from_bytes_le(&selector.0);
-            let input_vec: Vec<_> = input.into();
+            let input_vec: Vec<_> = input
+                .try_into()
+                .expect("Couldn't create array of felts from array of Montgomery bytes");
 
             unsafe {
                 Self::drop_mlir_array(input);

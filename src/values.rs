@@ -10,7 +10,8 @@ use crate::{
     types::TypeBuilder,
     utils::{
         felt252_bigint, get_integer_layout, layout_repeat, libc_free, libc_malloc,
-        montgomery::MontyBytes, RangeExt, PRIME,
+        montgomery::{self, MontyBytes},
+        RangeExt, PRIME,
     },
 };
 use bumpalo::Bump;
@@ -25,7 +26,6 @@ use cairo_lang_sierra::{
     program_registry::ProgramRegistry,
 };
 use educe::Educe;
-use lambdaworks_math::{traits::ByteConversion, unsigned_integer::element::U256};
 use num_bigint::{BigInt, BigUint, Sign};
 use num_traits::{Euclid, One};
 use starknet_types_core::felt::Felt;
@@ -725,10 +725,12 @@ impl Value {
                     data[0][31] &= 0x0F; // Filter out first 4 bits (they're outside an i252).
                     data[1][31] &= 0x0F; // Filter out first 4 bits (they're outside an i252).
 
-                    let x = U256::from_bytes_le(&data[0]).unwrap();
-                    let y = U256::from_bytes_le(&data[1]).unwrap();
+                    let x = montgomery::felt_from_monty_bytes(&data[0])
+                        .to_native_assert_error("Couldn't create felt from Montgomery bytes")?;
+                    let y = montgomery::felt_from_monty_bytes(&data[1])
+                        .to_native_assert_error("Couldn't create felt from Montgomery bytes")?;
 
-                    Self::EcPoint(Felt::from_raw(x.limbs), Felt::from_raw(y.limbs))
+                    Self::EcPoint(x, y)
                 }
                 CoreTypeConcrete::EcState(_) => {
                     let data = ptr.cast::<[[u8; 32]; 4]>().as_mut();
@@ -738,17 +740,16 @@ impl Value {
                     data[2][31] &= 0x0F; // Filter out first 4 bits (they're outside an i252).
                     data[3][31] &= 0x0F; // Filter out first 4 bits (they're outside an i252).
 
-                    let limb0 = U256::from_bytes_le(&data[0]).unwrap();
-                    let limb1 = U256::from_bytes_le(&data[1]).unwrap();
-                    let limb2 = U256::from_bytes_le(&data[2]).unwrap();
-                    let limb3 = U256::from_bytes_le(&data[3]).unwrap();
+                    let limb0 = montgomery::felt_from_monty_bytes(&data[0])
+                        .to_native_assert_error("Couldn't create felt from Montgomery bytes")?;
+                    let limb1 = montgomery::felt_from_monty_bytes(&data[1])
+                        .to_native_assert_error("Couldn't create felt from Montgomery bytes")?;
+                    let limb2 = montgomery::felt_from_monty_bytes(&data[2])
+                        .to_native_assert_error("Couldn't create felt from Montgomery bytes")?;
+                    let limb3 = montgomery::felt_from_monty_bytes(&data[3])
+                        .to_native_assert_error("Couldn't create felt from Montgomery bytes")?;
 
-                    Self::EcState(
-                        Felt::from_raw(limb0.limbs),
-                        Felt::from_raw(limb1.limbs),
-                        Felt::from_raw(limb2.limbs),
-                        Felt::from_raw(limb3.limbs),
-                    )
+                    Self::EcState(limb0, limb1, limb2, limb3)
                 }
                 CoreTypeConcrete::Felt252(_) => {
                     let data = ptr.cast::<[u8; 32]>().as_mut();
@@ -756,8 +757,10 @@ impl Value {
 
                     // Felts are represented in Montgomery form. Due to this, we
                     // need to convert them back to their original representation.
-                    let data = U256::from_bytes_le(data).unwrap();
-                    Self::Felt252(Felt::from_raw(data.limbs))
+                    Self::Felt252(
+                        montgomery::felt_from_monty_bytes(&data)
+                            .to_native_assert_error("Couldn't create felt from Montgomery bytes")?,
+                    )
                 }
                 CoreTypeConcrete::Uint8(_) => Self::Uint8(*ptr.cast::<u8>().as_ref()),
                 CoreTypeConcrete::Uint16(_) => Self::Uint16(*ptr.cast::<u16>().as_ref()),
@@ -885,10 +888,8 @@ impl Value {
 
                         // Felts are represented in Montgomery form. Due to this, we
                         // need to convert them back to their original representation.
-                        let key = {
-                            let key = U256::from_bytes_le(&key).unwrap();
-                            Felt::from_raw(key.limbs)
-                        };
+                        let key = montgomery::felt_from_monty_bytes(&key)
+                            .to_native_assert_error("Couldn't create felt from Montgomery bytes")?;
                         // The dictionary items are not being dropped here. They'll be dropped along
                         // with the dictionary (if requested using `should_drop`).
                         output_map.insert(
@@ -945,8 +946,11 @@ impl Value {
 
                         // Felts are represented in Montgomery form. Due to this, we
                         // need to convert them back to their original representation.
-                        let data = U256::from_bytes_le(data).unwrap();
-                        Self::Felt252(Felt::from_raw(data.limbs))
+                        Self::Felt252(
+                            montgomery::felt_from_monty_bytes(&data).to_native_assert_error(
+                                "Couldn't create felt from Montgomery bytes",
+                            )?,
+                        )
                     }
                     StarknetTypeConcrete::System(_) => {
                         native_panic!("should be handled before")

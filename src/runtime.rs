@@ -8,7 +8,6 @@ use cairo_lang_sierra_gas::core_libfunc_cost::{
     DICT_SQUASH_REPEATED_ACCESS_COST, DICT_SQUASH_UNIQUE_KEY_COST,
 };
 use itertools::Itertools;
-use lambdaworks_math::{traits::ByteConversion, unsigned_integer::element::U256};
 use lazy_static::lazy_static;
 use num_bigint::BigInt;
 use num_traits::{ToPrimitive, Zero};
@@ -65,8 +64,10 @@ pub unsafe extern "C" fn cairo_native__libfunc__debug__print(
         let mut data = *data.add(i);
         data[31] &= 0x0F; // Filter out first 4 bits (they're outside an i252).
 
-        let value = montgomery::felt_from_monty_bytes(&data);
-        items.push(value);
+        items.push(
+            montgomery::felt_from_monty_bytes(&data)
+                .expect("Couldn't create felt from Montgomery bytes"),
+        );
     }
 
     let value = format_for_debug(items.into_iter());
@@ -102,9 +103,11 @@ pub unsafe extern "C" fn cairo_native__libfunc__pedersen(
     lhs[31] &= 0x0F; // Filter out first 4 bits (they're outside an i252).
     rhs[31] &= 0x0F; // Filter out first 4 bits (they're outside an i252).
 
-    // Convert to FieldElement.
-    let lhs = montgomery::felt_from_monty_bytes(&lhs);
-    let rhs = montgomery::felt_from_monty_bytes(&rhs);
+    // Coexpect
+    let lhs = montgomery::felt_from_monty_bytes(&lhs)
+        .expect("Couldn't create felt from Montgomery bytes");
+    let rhs = montgomery::felt_from_monty_bytes(&rhs)
+        .expect("Couldn't create felt from Montgomery bytes");
 
     // Compute pedersen hash and copy the result into `dst`.
     let res = starknet_types_core::hash::Pedersen::hash(&lhs, &rhs);
@@ -134,9 +137,9 @@ pub unsafe extern "C" fn cairo_native__libfunc__hades_permutation(
 
     // Convert to FieldElement.
     let mut state = [
-        montgomery::felt_from_monty_bytes(op0),
-        montgomery::felt_from_monty_bytes(op1),
-        montgomery::felt_from_monty_bytes(op2),
+        montgomery::felt_from_monty_bytes(op0).expect("Couldn't create felt from Montgomery bytes"),
+        montgomery::felt_from_monty_bytes(op1).expect("Couldn't create felt from Montgomery bytes"),
+        montgomery::felt_from_monty_bytes(op2).expect("Couldn't create felt from Montgomery bytes"),
     ];
 
     // Compute Poseidon permutation.
@@ -325,8 +328,10 @@ pub unsafe extern "C" fn cairo_native__dict_squash(
         .keys()
         // Felts are represented in Montgomery form. Due to this, we
         // need to convert them back to their original representation.
-        .map(|b| U256::from_bytes_le(b).expect("felt bytes should be valid"))
-        .map(|v| Felt::from_raw(v.limbs))
+        .map(|b| {
+            montgomery::felt_from_monty_bytes(b)
+                .expect("Couldn't create felt from Montgomery bytes")
+        })
         .all(|key| key < Felt::from(BigInt::from(1).shl(128)));
     let number_of_keys = dict.mappings.len() as u64;
 
@@ -389,9 +394,8 @@ pub unsafe extern "C" fn cairo_native__libfunc__ec__ec_point_from_x_nz(
 
     // Felts are represented in Montgomery form. Due to this, we
     // need to convert them back to their original representation.
-    let value = U256::from_bytes_le(&point_ptr[0]).unwrap();
-
-    let x = Felt::from_raw(value.limbs);
+    let x = montgomery::felt_from_monty_bytes(&point_ptr[0])
+        .expect("Couldn't create felt from Montgomery bytes");
 
     // https://github.com/starkware-libs/cairo/blob/aaad921bba52e729dc24ece07fab2edf09ccfa15/crates/cairo-lang-sierra-to-casm/src/invocations/ec.rs#L63
 
@@ -432,8 +436,10 @@ pub unsafe extern "C" fn cairo_native__libfunc__ec__ec_point_try_new_nz(
 
     // Felts are represented in Montgomery form, so we need to convert them
     // back their original representation before operating.
-    let x = montgomery::felt_from_monty_bytes(&point_ptr[0]);
-    let y = montgomery::felt_from_monty_bytes(&point_ptr[1]);
+    let x = montgomery::felt_from_monty_bytes(&point_ptr[0])
+        .expect("Couldn't create felt from Montgomery bytes");
+    let y = montgomery::felt_from_monty_bytes(&point_ptr[1])
+        .expect("Couldn't create felt from Montgomery bytes");
 
     match AffinePoint::new(x, y) {
         Ok(point) => {
@@ -499,12 +505,16 @@ pub unsafe extern "C" fn cairo_native__libfunc__ec__ec_state_add(
     // Felts are represented in Montgomery form. Due to this, we
     // need to convert them back to their original representation.
     let mut state = ProjectivePoint::from_affine_unchecked(
-        montgomery::felt_from_monty_bytes(&state_ptr[0]),
-        montgomery::felt_from_monty_bytes(&state_ptr[1]),
+        montgomery::felt_from_monty_bytes(&state_ptr[0])
+            .expect("Couldn't create felt from Montgomery bytes"),
+        montgomery::felt_from_monty_bytes(&state_ptr[1])
+            .expect("Couldn't create felt from Montgomery bytes"),
     );
     let point = AffinePoint::new_unchecked(
-        montgomery::felt_from_monty_bytes(&point_ptr[0]),
-        montgomery::felt_from_monty_bytes(&point_ptr[1]),
+        montgomery::felt_from_monty_bytes(&point_ptr[0])
+            .expect("Couldn't create felt from Montgomery bytes"),
+        montgomery::felt_from_monty_bytes(&point_ptr[1])
+            .expect("Couldn't create felt from Montgomery bytes"),
     );
 
     state += &point;
@@ -544,15 +554,20 @@ pub unsafe extern "C" fn cairo_native__libfunc__ec__ec_state_add_mul(
     // Felts are represented in Montgomery form. Due to this, we
     // need to convert them back to their original representation.
     let mut state = ProjectivePoint::from_affine_unchecked(
-        montgomery::felt_from_monty_bytes(&state_ptr[0]),
-        montgomery::felt_from_monty_bytes(&state_ptr[1]),
+        montgomery::felt_from_monty_bytes(&state_ptr[0])
+            .expect("Couldn't create felt from Montgomery bytes"),
+        montgomery::felt_from_monty_bytes(&state_ptr[1])
+            .expect("Couldn't create felt from Montgomery bytes"),
     );
     let point = ProjectivePoint::from_affine_unchecked(
-        montgomery::felt_from_monty_bytes(&point_ptr[0]),
-        montgomery::felt_from_monty_bytes(&point_ptr[1]),
+        montgomery::felt_from_monty_bytes(&point_ptr[0])
+            .expect("Couldn't create felt from Montgomery bytes"),
+        montgomery::felt_from_monty_bytes(&point_ptr[1])
+            .expect("Couldn't create felt from Montgomery bytes"),
     );
 
-    let scalar = montgomery::felt_from_monty_bytes(&scalar_ptr);
+    let scalar = montgomery::felt_from_monty_bytes(&scalar_ptr)
+        .expect("Couldn't create felt from Montgomery bytes");
 
     state += &point.mul(scalar);
     let state = state.to_affine().unwrap();
@@ -583,12 +598,16 @@ pub unsafe extern "C" fn cairo_native__libfunc__ec__ec_state_try_finalize_nz(
 
     // We use unchecked methods because the inputs must already be valid points.
     let state = ProjectivePoint::from_affine_unchecked(
-        montgomery::felt_from_monty_bytes(&state_ptr[0]),
-        montgomery::felt_from_monty_bytes(&state_ptr[1]),
+        montgomery::felt_from_monty_bytes(&state_ptr[0])
+            .expect("Couldn't create felt from Montgomery bytes"),
+        montgomery::felt_from_monty_bytes(&state_ptr[1])
+            .expect("Couldn't create felt from Montgomery bytes"),
     );
     let random = ProjectivePoint::from_affine_unchecked(
-        montgomery::felt_from_monty_bytes(&state_ptr[2]),
-        montgomery::felt_from_monty_bytes(&state_ptr[3]),
+        montgomery::felt_from_monty_bytes(&state_ptr[2])
+            .expect("Couldn't create felt from Montgomery bytes"),
+        montgomery::felt_from_monty_bytes(&state_ptr[3])
+            .expect("Couldn't create felt from Montgomery bytes"),
     );
 
     if state.x() == random.x() && state.y() == random.y() {
@@ -855,7 +874,9 @@ mod tests {
         }
 
         assert_eq!(
-            montgomery::felt_from_monty_bytes(&dst).to_bytes_le(),
+            montgomery::felt_from_monty_bytes(&dst)
+                .unwrap()
+                .to_bytes_le(),
             [
                 84, 98, 174, 134, 3, 124, 237, 179, 166, 110, 159, 98, 170, 35, 83, 237, 130, 154,
                 236, 0, 205, 134, 200, 185, 39, 92, 0, 228, 132, 217, 130, 5
@@ -874,17 +895,17 @@ mod tests {
         }
 
         assert_eq!(
-            montgomery::felt_from_monty_bytes(&op0),
+            montgomery::felt_from_monty_bytes(&op0).unwrap(),
             Felt::from_hex("0x4ebdde1149fcacbb41e4fc342432a48c97994fd045f432ad234ae9279269779")
                 .unwrap()
         );
         assert_eq!(
-            montgomery::felt_from_monty_bytes(&op1),
+            montgomery::felt_from_monty_bytes(&op1).unwrap(),
             Felt::from_hex("0x7f4cec57dd08b69414f7de7dffa230fc90fa3993673c422408af05831e0cc98")
                 .unwrap()
         );
         assert_eq!(
-            montgomery::felt_from_monty_bytes(&op2),
+            montgomery::felt_from_monty_bytes(&op2).unwrap(),
             Felt::from_hex("0x5b5d00fd09caade43caffe70527fa84d5d9cd51e22c2ce115693ecbb5854d6a")
                 .unwrap()
         );
