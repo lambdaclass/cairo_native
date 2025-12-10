@@ -2128,7 +2128,6 @@ fn execute_syscall<'ctx, 'this>(
         0,
     )?;
 
-    // Offset result_ptr to
     let payload_ptr = block.gep(
         context,
         location,
