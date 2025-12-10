@@ -727,31 +727,6 @@ impl RuntimeBindingsMeta {
         ))
     }
 
-    pub fn dict_len<'c, 'a>(
-        &mut self,
-        context: &'c Context,
-        module: &Module,
-        block: &'a Block<'c>,
-        dict_ptr: Value<'c, 'a>,
-        location: Location<'c>,
-    ) -> Result<Value<'c, 'a>>
-    where
-        'c: 'a,
-    {
-        let function =
-            self.build_function(context, module, block, location, RuntimeBinding::DictLen)?;
-
-        let dict_len = block.append_op_result(
-            OperationBuilder::new("llvm.call", location)
-                .add_operands(&[function])
-                .add_operands(&[dict_ptr])
-                .add_results(&[IntegerType::new(context, 64).into()])
-                .build()?,
-        )?;
-
-        Ok(dict_len)
-    }
-
     /// Register if necessary, then invoke the `dict_into_entries()` function.
     ///
     /// Returns an array with the tuples of the form (felt252, T, T) by storing it

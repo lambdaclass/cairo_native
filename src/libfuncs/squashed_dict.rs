@@ -14,13 +14,14 @@ use cairo_lang_sierra::{
         core::{CoreLibfunc, CoreType, CoreTypeConcrete},
         lib_func::SignatureAndTypeConcreteLibfunc,
         squashed_felt252_dict::SquashedFelt252DictConcreteLibfunc,
+        ConcreteLibfunc,
     },
     program_registry::ProgramRegistry,
 };
 use melior::{
     dialect::llvm,
     helpers::{ArithBlockExt, BuiltinBlockExt, LlvmBlockExt},
-    ir::{r#type::IntegerType, Block, Location},
+    ir::{r#type::IntegerType, Block, BlockLike, Location},
     Context,
 };
 use std::alloc::Layout;
@@ -86,13 +87,11 @@ pub fn build_into_entries<'ctx, 'this>(
     metadata: &mut MetadataStorage,
     info: &SignatureAndTypeConcreteLibfunc,
 ) -> Result<()> {
+    metadata.get_or_insert_with(|| ReallocBindingsMeta::new(context, helper));
+
     let dict_ptr = entry.arg(0)?;
 
     // Get the size for the array (prefix + data)
-    let dict_len = metadata
-        .get_mut::<RuntimeBindingsMeta>()
-        .ok_or(Error::MissingMetadata)?
-        .dict_len(context, helper, entry, entry.arg(0)?, location)?;
     let tuple_layout = get_inner_type_layout(context, registry, helper, metadata, info)?;
     let data_prefix_size = calc_data_prefix_offset(tuple_layout);
     let tuple_stride = entry.const_int_from_type(
@@ -102,8 +101,18 @@ pub fn build_into_entries<'ctx, 'this>(
         IntegerType::new(context, 64).into(),
     )?;
     let data_prefix_size_value = entry.const_int(context, location, data_prefix_size, 64)?;
-    let realloc_len = entry.muli(tuple_stride, dict_len, location)?;
-    let realloc_len = entry.addi(realloc_len, data_prefix_size_value, location)?;
+    let (_, array_layout) = registry.build_type_with_layout(
+        context,
+        helper,
+        metadata,
+        &info.branch_signatures()[0].vars[0].ty,
+    )?;
+    let realloc_len = entry.const_int_from_type(
+        context,
+        location,
+        array_layout.pad_to_align().size(),
+        IntegerType::new(context, 64).into(),
+    )?;
     // Create the pointer and alloc the necessary memory
     let ptr_ty = llvm::r#type::pointer(context, 0);
     let nullptr = entry.append_op_result(llvm::zero(ptr_ty, location))?;
@@ -134,6 +143,9 @@ pub fn build_into_entries<'ctx, 'this>(
     let len_ty = IntegerType::new(context, 32).into();
     let arr_ty = llvm::r#type::r#struct(context, &[ptr_ty, len_ty, len_ty, len_ty], false);
     let entries_array = entry.load(context, location, array_ptr, arr_ty)?;
+
+    // Free the pointer where the array was stored
+    entry.append_operation(ReallocBindingsMeta::free(context, array_ptr, location)?);
 
     helper.br(entry, 0, &[entries_array], location)
 }
