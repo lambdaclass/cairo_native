@@ -2128,24 +2128,16 @@ fn execute_syscall<'ctx, 'this>(
         0,
     )?;
 
-    let payload_ok = {
-        let value = block.load(
-            context,
-            location,
-            result_ptr,
-            llvm::r#type::r#struct(context, &[result_tag_ty, variant_tys[0].0], false),
-        )?;
-        block.extract_value(context, location, value, variant_tys[0].0, 1)?
-    };
-    let payload_err = {
-        let value = block.load(
-            context,
-            location,
-            result_ptr,
-            llvm::r#type::r#struct(context, &[result_tag_ty, variant_tys[1].0], false),
-        )?;
-        block.extract_value(context, location, value, variant_tys[1].0, 1)?
-    };
+    // Offset result_ptr to
+    let payload_ptr = block.gep(
+        context,
+        location,
+        result_ptr,
+        &[GepIndex::Const(1)],
+        result_tag_ty,
+    )?;
+    let payload_ok = block.load(context, location, payload_ptr, variant_tys[0].0)?;
+    let payload_err = block.load(context, location, payload_ptr, variant_tys[1].0)?;
 
     Ok((result_tag, payload_ok, payload_err))
 }
