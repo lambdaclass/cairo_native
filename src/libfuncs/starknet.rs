@@ -2,11 +2,11 @@
 
 use super::LibfuncHelper;
 use crate::{
-    error::{Error, Result},
+    error::{Error, Result, panic::ToNativeAssertError},
     ffi::get_struct_field_type_at,
-    metadata::{drop_overrides::DropOverridesMeta, MetadataStorage},
+    metadata::{MetadataStorage, drop_overrides::DropOverridesMeta},
     starknet::handler::StarknetSyscallHandlerCallbacks,
-    utils::{get_integer_layout, montgomery, ProgramRegistryExt, PRIME},
+    utils::{PRIME, ProgramRegistryExt, get_integer_layout, montgomery},
 };
 use cairo_lang_sierra::{
     extensions::{
@@ -378,10 +378,13 @@ pub fn build_class_hash_const<'ctx, 'this>(
     let value = entry.const_int(
         context,
         location,
-        match info.c.sign() {
-            Sign::Minus => &*PRIME - info.c.magnitude(),
-            _ => info.c.magnitude().clone(),
-        },
+        montgomery::monty_transform(
+            &match info.c.sign() {
+                Sign::Minus => &*PRIME - info.c.magnitude(),
+                _ => info.c.magnitude().clone(),
+            },
+            &PRIME,
+        ).to_native_assert_error("couldn't transform Felt into Montgomery space")?,
         252,
     )?;
 
@@ -439,10 +442,13 @@ pub fn build_contract_address_const<'ctx, 'this>(
     let value = entry.const_int(
         context,
         location,
-        match info.c.sign() {
-            Sign::Minus => &*PRIME - info.c.magnitude(),
-            _ => info.c.magnitude().clone(),
-        },
+        montgomery::monty_transform(
+            &match info.c.sign() {
+                Sign::Minus => &*PRIME - info.c.magnitude(),
+                _ => info.c.magnitude().clone(),
+            },
+            &PRIME,
+        ).to_native_assert_error("couldn't transform Felt into Montgomery space")?,
         252,
     )?;
 
@@ -820,13 +826,17 @@ pub fn build_storage_base_address_const<'ctx, 'this>(
     _metadata: &mut MetadataStorage,
     info: &SignatureAndConstConcreteLibfunc,
 ) -> Result<()> {
+    
     let value = entry.const_int(
         context,
         location,
-        match info.c.sign() {
-            Sign::Minus => &*PRIME - info.c.magnitude(),
-            _ => info.c.magnitude().clone(),
-        },
+        montgomery::monty_transform(
+            &match info.c.sign() {
+                Sign::Minus => &*PRIME - info.c.magnitude(),
+                _ => info.c.magnitude().clone(),
+            },
+            &PRIME,
+        ).to_native_assert_error("couldn't transform Felt into Montgomery space")?,
         252,
     )?;
 
