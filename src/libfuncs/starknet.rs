@@ -2068,7 +2068,7 @@ fn execute_syscall<'ctx, 'this>(
     payload_err_ty: ConcreteTypeId,
 ) -> Result<(Value<'ctx, 'this>, Value<'ctx, 'this>, Value<'ctx, 'this>)> {
     // Allocate space for the return value.
-    let (result_layout, (result_tag_ty, _), variant_tys) =
+    let (result_layout, (result_tag_ty, result_tag_layout), variant_tys) =
         crate::types::r#enum::get_type_for_variants(
             context,
             helper,
@@ -2128,15 +2128,30 @@ fn execute_syscall<'ctx, 'this>(
         0,
     )?;
 
-    let payload_ptr = block.gep(
-        context,
-        location,
-        result_ptr,
-        &[GepIndex::Const(1)],
-        result_tag_ty,
-    )?;
-    let payload_ok = block.load(context, location, payload_ptr, variant_tys[0].0)?;
-    let payload_err = block.load(context, location, payload_ptr, variant_tys[1].0)?;
+    let payload_ok = {
+        let ptr = block.gep(
+            context,
+            location,
+            result_ptr,
+            &[GepIndex::Const(
+                result_tag_layout.extend(variant_tys[0].1)?.1.try_into()?,
+            )],
+            IntegerType::new(context, 8).into(),
+        )?;
+        block.load(context, location, ptr, variant_tys[0].0)?
+    };
+    let payload_err = {
+        let ptr = block.gep(
+            context,
+            location,
+            result_ptr,
+            &[GepIndex::Const(
+                result_tag_layout.extend(variant_tys[1].1)?.1.try_into()?,
+            )],
+            IntegerType::new(context, 8).into(),
+        )?;
+        block.load(context, location, ptr, variant_tys[1].0)?
+    };
 
     Ok((result_tag, payload_ok, payload_err))
 }
