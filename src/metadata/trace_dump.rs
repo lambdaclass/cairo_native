@@ -228,7 +228,7 @@ pub mod trace_dump_runtime {
     use crate::{
         starknet::ArrayAbi,
         types::TypeBuilder,
-        utils::{get_integer_layout, layout_repeat},
+        utils::{get_integer_layout, layout_repeat, montgomery},
     };
 
     use crate::runtime::FeltDict;
@@ -308,7 +308,8 @@ pub mod trace_dump_runtime {
             | CoreTypeConcrete::Starknet(StarknetTypeConcrete::ClassHash(_))
             | CoreTypeConcrete::Starknet(StarknetTypeConcrete::StorageAddress(_))
             | CoreTypeConcrete::Starknet(StarknetTypeConcrete::StorageBaseAddress(_)) => {
-                Value::Felt(Felt::from_bytes_le(value_ptr.cast().as_ref()))
+                let value = montgomery::felt_from_monty_bytes(value_ptr.cast().as_ref()).unwrap();
+                Value::Felt(value)
             }
             CoreTypeConcrete::Uint8(_) => Value::U8(value_ptr.cast().read()),
             CoreTypeConcrete::Uint16(_) => Value::U16(value_ptr.cast().read()),
@@ -340,14 +341,20 @@ pub mod trace_dump_runtime {
                 let (x, layout) = {
                     let (layout, offset) = layout.extend(Layout::new::<[u128; 2]>()).unwrap();
                     (
-                        Felt::from_bytes_le(value_ptr.byte_add(offset).cast().as_ref()),
+                        montgomery::felt_from_monty_bytes(
+                            value_ptr.byte_add(offset).cast().as_ref(),
+                        )
+                        .unwrap(),
                         layout,
                     )
                 };
                 let (y, _) = {
                     let (layout, offset) = layout.extend(Layout::new::<[u128; 2]>()).unwrap();
                     (
-                        Felt::from_bytes_le(value_ptr.byte_add(offset).cast().as_ref()),
+                        montgomery::felt_from_monty_bytes(
+                            value_ptr.byte_add(offset).cast().as_ref(),
+                        )
+                        .unwrap(),
                         layout,
                     )
                 };
@@ -359,28 +366,40 @@ pub mod trace_dump_runtime {
                 let (x0, layout) = {
                     let (layout, offset) = layout.extend(Layout::new::<[u128; 2]>()).unwrap();
                     (
-                        Felt::from_bytes_le(value_ptr.byte_add(offset).cast().as_ref()),
+                        montgomery::felt_from_monty_bytes(
+                            value_ptr.byte_add(offset).cast().as_ref(),
+                        )
+                        .unwrap(),
                         layout,
                     )
                 };
                 let (y0, layout) = {
                     let (layout, offset) = layout.extend(Layout::new::<[u128; 2]>()).unwrap();
                     (
-                        Felt::from_bytes_le(value_ptr.byte_add(offset).cast().as_ref()),
+                        montgomery::felt_from_monty_bytes(
+                            value_ptr.byte_add(offset).cast().as_ref(),
+                        )
+                        .unwrap(),
                         layout,
                     )
                 };
                 let (x1, layout) = {
                     let (layout, offset) = layout.extend(Layout::new::<[u128; 2]>()).unwrap();
                     (
-                        Felt::from_bytes_le(value_ptr.byte_add(offset).cast().as_ref()),
+                        montgomery::felt_from_monty_bytes(
+                            value_ptr.byte_add(offset).cast().as_ref(),
+                        )
+                        .unwrap(),
                         layout,
                     )
                 };
                 let (y1, _) = {
                     let (layout, offset) = layout.extend(Layout::new::<[u128; 2]>()).unwrap();
                     (
-                        Felt::from_bytes_le(value_ptr.byte_add(offset).cast().as_ref()),
+                        montgomery::felt_from_monty_bytes(
+                            value_ptr.byte_add(offset).cast().as_ref(),
+                        )
+                        .unwrap(),
                         layout,
                     )
                 };
@@ -688,11 +707,11 @@ pub mod trace_dump_runtime {
                     ])
                 }
             },
-            CoreTypeConcrete::Const(_) => todo!("CoreTypeConcrete::Const"),
+            CoreTypeConcrete::Const(info) => value_from_ptr(registry, &info.inner_ty, value_ptr),
             CoreTypeConcrete::Sint8(_) => Value::I8(value_ptr.cast().read()),
-            CoreTypeConcrete::Sint16(_) => todo!("CoreTypeConcrete::Sint16"),
+            CoreTypeConcrete::Sint16(_) => Value::I16(value_ptr.cast().read()),
             CoreTypeConcrete::Sint32(_) => Value::I32(value_ptr.cast().read()),
-            CoreTypeConcrete::Sint64(_) => todo!("CoreTypeConcrete::Sint64"),
+            CoreTypeConcrete::Sint64(_) => Value::I64(value_ptr.cast().read()),
             CoreTypeConcrete::Sint128(_) => Value::I128(value_ptr.cast().read()),
             CoreTypeConcrete::Nullable(info) => {
                 let inner_ptr = value_ptr.cast::<*mut ()>().read();
@@ -720,7 +739,7 @@ pub mod trace_dump_runtime {
                                 ty: info.ty.clone(),
                             },
                         };
-                        let k = Felt::from_bytes_le(k);
+                        let k = montgomery::felt_from_monty_bytes(k).unwrap();
                         (k, v)
                     })
                     .collect::<HashMap<Felt, Value>>();
@@ -749,11 +768,11 @@ pub mod trace_dump_runtime {
                                 ty: info.ty.clone(),
                             },
                         };
-                        let k = Felt::from_bytes_le(k);
+                        let k = montgomery::felt_from_monty_bytes(k).unwrap();
                         (k, v)
                     })
                     .collect::<HashMap<Felt, Value>>();
-                let key = Felt::from_bytes_le(value.key);
+                let key = montgomery::felt_from_monty_bytes(value.key).unwrap();
 
                 Value::FeltDictEntry {
                     ty: info.ty.clone(),
@@ -808,7 +827,7 @@ pub mod trace_dump_runtime {
                     data[i] = v
                 }
 
-                Value::Bytes31(Felt::from_bytes_le(&data))
+                Value::Bytes31(montgomery::felt_from_monty_bytes(&data).unwrap())
             }
             CoreTypeConcrete::IntRange(_)
             | CoreTypeConcrete::Blake(_)
