@@ -1019,6 +1019,30 @@ dependencies = [
 ]
 
 [[package]]
+name = "cairo-lang-test-runner"
+version = "2.14.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "f68789eedbed61170c15a8353af9f194cfee3d5e311dd4f31866b0c53b124a20"
+dependencies = [
+ "anyhow",
+ "cairo-lang-compiler",
+ "cairo-lang-debug",
+ "cairo-lang-filesystem",
+ "cairo-lang-runner",
+ "cairo-lang-sierra",
+ "cairo-lang-sierra-to-casm",
+ "cairo-lang-starknet",
+ "cairo-lang-test-plugin",
+ "cairo-lang-utils",
+ "colored 3.0.0",
+ "itertools 0.14.0",
+ "num-traits",
+ "rayon",
+ "salsa",
+ "starknet-types-core",
+]
+
+[[package]]
 name = "cairo-lang-test-utils"
 version = "2.14.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -1207,6 +1231,7 @@ dependencies = [
  "cairo-lang-filesystem",
  "cairo-lang-starknet",
  "cairo-lang-test-plugin",
+ "cairo-lang-test-runner",
  "cairo-native-bin-utils",
  "clap",
  "tracing",

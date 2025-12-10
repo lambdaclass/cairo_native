@@ -45,6 +45,7 @@ cairo-lang-sierra-type-size = "~2.14.0"
 cairo-lang-starknet = "~2.14.0"
 cairo-lang-starknet-classes = "~2.14.0"
 cairo-lang-test-plugin = "~2.14.0"
+cairo-lang-test-runner = "~2.14.0"
 cairo-lang-utils = "~2.14.0"
 cairo-native-bin-utils.path = "binaries/cairo-native-bin-utils"
 cairo-native = { path = ".", version = "0.8.0" }
