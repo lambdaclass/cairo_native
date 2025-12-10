@@ -191,3 +191,18 @@ install-scarb-macos:
 .PHONY: build-alexandria
 build-alexandria:
 	cd tests/alexandria; scarb build
+
+.PHONY: cairo-tests
+cairo-tests:
+	rm -rf cairo
+	mkdir cairo
+	cd cairo                                                          ; \
+	git init                                                          ; \
+	git remote add origin https://github.com/starkware-libs/cairo.git ; \
+	git sparse-checkout init --cone                                   ; \
+	git sparse-checkout set tests/bug_samples                         ; \
+	git fetch origin v2.14.0                                          ; \
+	git checkout FETCH_HEAD                                           ; \
+	git sparse-checkout set --no-cone                                   \
+	  tests/bug_samples/                                                \
+	  crates/cairo-lang-starknet/cairo_level_tests/
