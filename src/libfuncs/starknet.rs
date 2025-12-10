@@ -2127,8 +2127,7 @@ fn execute_syscall<'ctx, 'this>(
         IntegerType::new(context, 1).into(),
         0,
     )?;
-
-    // Offset result_ptr to
+    
     let payload_ptr = block.gep(
         context,
         location,
