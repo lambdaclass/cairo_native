@@ -758,7 +758,7 @@ impl Value {
                     // Felts are represented in Montgomery form. Due to this, we
                     // need to convert them back to their original representation.
                     Self::Felt252(
-                        montgomery::felt_from_monty_bytes(&data)
+                        montgomery::felt_from_monty_bytes(data)
                             .to_native_assert_error("Couldn't create felt from Montgomery bytes")?,
                     )
                 }
@@ -947,7 +947,7 @@ impl Value {
                         // Felts are represented in Montgomery form. Due to this, we
                         // need to convert them back to their original representation.
                         Self::Felt252(
-                            montgomery::felt_from_monty_bytes(&data).to_native_assert_error(
+                            montgomery::felt_from_monty_bytes(data).to_native_assert_error(
                                 "Couldn't create felt from Montgomery bytes",
                             )?,
                         )
