@@ -67,6 +67,8 @@ test: check-llvm needs-cairo2 build-alexandria
 .PHONY: test-cairo
 test-cairo: check-llvm needs-cairo2
 	cargo r --profile ci --package cairo-native-test -- --compare-with-cairo-vm corelib
+	cargo r --profile ci --package cairo-native-test -- --compare-with-cairo-vm cairo/tests/bug_samples/ --starknet
+	cargo r --profile ci --package cairo-native-test -- --compare-with-cairo-vm cairo/crates/cairo-lang-starknet/cairo_level_tests/ --starknet
 
 .PHONY: proptest
 proptest: check-llvm needs-cairo2
@@ -124,7 +126,7 @@ clean: stress-clean
 	cargo clean
 
 .PHONY: deps
-deps:
+deps: cairo-tests
 ifeq ($(UNAME), Linux)
 deps: build-cairo-2-compiler install-scarb
 endif
