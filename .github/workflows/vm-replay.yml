@@ -1,6 +1,9 @@
 name: Daily Block Run
 
-on: workflow_dispatch
+on: 
+  workflow_dispatch:
+  pull_request:
+
 
 env:
   RANGE_SIZE: 20
