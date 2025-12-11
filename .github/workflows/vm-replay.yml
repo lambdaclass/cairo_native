@@ -78,6 +78,10 @@ jobs:
         working-directory: ./starknet-replay
 
     steps:
+      - name: Checkout Native
+        uses: actions/checkout@v4
+        with:
+          path: cairo_native
       # We checkout replay as it's the main repository for this workflow
       - name: Checkout Replay
         uses: actions/checkout@v4
