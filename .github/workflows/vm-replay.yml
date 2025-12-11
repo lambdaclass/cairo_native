@@ -22,7 +22,7 @@ jobs:
       matrix:
         block:
           - 740000
-          # - 741000
+          - 741000
           # - 742000
           # - 743000
           # - 744000
@@ -145,5 +145,5 @@ jobs:
       - name: Save dumps
         uses: actions/cache/save@v4.2.0
         with:
-          path: starknet-replay/state_dumps/vm
+          path: state_dumps/vm
           key: dumps-vm
