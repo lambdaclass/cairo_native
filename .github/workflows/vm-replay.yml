@@ -129,3 +129,9 @@ jobs:
         with:
           path: starknet-replay/cache
           key: ${{ steps.restore-rpc-calls.outputs.cache-primary-key }}
+
+      - name: Save VM dump
+        uses: actions/cache/save@v4.2.0
+        with:
+          path: starknet-replay/state_dumps/vm
+          key: state_dumps-vm
