@@ -178,7 +178,7 @@ jobs:
         uses: actions/cache/restore@v4.2.0
         with:
           path: state_dumps/vm
-          key: 
+          key: dumps-vm
         continue-on-error: true
 
       - name: Compare states
