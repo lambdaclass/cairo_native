@@ -94,10 +94,7 @@ jobs:
         uses: actions/cache/restore@v4.2.0
         with:
           path: starknet-replay/cache
-          key: cache-${{matrix.block}}-${{ github.run_id }}
-          restore-keys: |
-            cache-${{matrix.block}} 
-          # TODO: Check this restore-keys
+          key: cache-${{matrix.block}}
 
       # Install dependencies
       - uses: ./cairo_native/.github/actions/install-linux-deps
@@ -134,4 +131,4 @@ jobs:
         uses: actions/cache/save@v4.2.0
         with:
           path: starknet-replay/state_dumps/vm
-          key: state_dumps-vm
+          key: dump-${{matrix.block}}-vm
