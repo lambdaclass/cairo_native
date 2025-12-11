@@ -2051,7 +2051,7 @@ pub fn build_get_class_hash_at<'ctx, 'this>(
 ///
 /// Cairo Native's syscalls implementations always expect two result branches.
 /// There are some syscalls which don't have a result type for the ok case.
-/// For these cases, the paylad ok should be build with a duplicated type from
+/// For these cases, the payload ok should be built with a duplicated type from
 /// the error branch. Due to this, it should only be built and **never** be
 /// used.
 #[allow(clippy::too_many_arguments)]
