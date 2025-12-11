@@ -11,6 +11,8 @@ use crate::starknet::{
 };
 use ark_ec::short_weierstrass::{Affine, Projective, SWCurveConfig};
 use ark_ff::{BigInt, PrimeField};
+use cairo_lang_starknet::contract::ContractInfo;
+use cairo_lang_utils::ordered_hash_map::OrderedHashMap;
 use itertools::Itertools;
 use num_bigint::BigUint;
 use num_traits::Zero;
@@ -43,6 +45,8 @@ pub struct StubSyscallHandler {
     pub execution_info: ExecutionInfo,
     /// A mock history, mapping block number to the class hash.
     pub block_hash: HashMap<u64, Felt>,
+    /// Mapping from class_hash to contract info.
+    pub contracts_info: OrderedHashMap<Felt, ContractInfo>,
     pub events: Vec<StubEvent>,
 }
 
@@ -323,9 +327,9 @@ impl StarknetSyscallHandler for &mut StubSyscallHandler {
             .mod_floor(&ADDR_BOUND)
         };
 
-        // let Some(contract_info) = self.starknet_contracts_info.get(&class_hash) else {
-        //     return Err(vec![Felt::from_bytes_be_slice(b"CLASS_HASH_NOT_FOUND")]);
-        // };
+        let Some(contract_info) = self.contracts_info.get(&class_hash) else {
+            return Err(vec![Felt::from_bytes_be_slice(b"CLASS_HASH_NOT_FOUND")]);
+        };
 
         if self
             .deployed_contracts
@@ -337,7 +341,16 @@ impl StarknetSyscallHandler for &mut StubSyscallHandler {
             )]);
         }
 
-        Ok((deployed_contract_address, vec![]))
+        if let Some(_constructor) = &contract_info.constructor {
+            // TODO: check if it's necessary to call the constructor.
+            Ok((deployed_contract_address, vec![]))
+        } else if calldata.is_empty() {
+            Ok((deployed_contract_address, vec![]))
+        } else {
+            self.deployed_contracts.remove(&deployed_contract_address);
+
+            Err(vec![Felt::from_bytes_be_slice(b"INVALID_CALLDATA_LEN")])
+        }
     }
 
     #[instrument(skip(self))]
@@ -347,7 +360,7 @@ impl StarknetSyscallHandler for &mut StubSyscallHandler {
         remaining_gas: &mut u64,
     ) -> crate::starknet::SyscallResult<()> {
         tracing::debug!("called");
-        if !self.deployed_contracts.contains_key(&class_hash) {
+        if !self.contracts_info.contains_key(&class_hash) {
             return Err(vec![Felt::from_bytes_be_slice(b"CLASS_HASH_NOT_FOUND")]);
         };
         let address = self.execution_info.contract_address;
@@ -377,7 +390,7 @@ impl StarknetSyscallHandler for &mut StubSyscallHandler {
         remaining_gas: &mut u64,
     ) -> crate::starknet::SyscallResult<Vec<Felt>> {
         tracing::debug!("called");
-        tracing::warn!("unimplemented");
+        dbg!("unimplemented");
         Ok(vec![])
     }
 
@@ -455,7 +468,14 @@ impl StarknetSyscallHandler for &mut StubSyscallHandler {
         remaining_gas: &mut u64,
     ) -> crate::starknet::SyscallResult<()> {
         tracing::debug!("called");
-        tracing::warn!("unimplemented");
+
+        let contract = self.execution_info.contract_address;
+        self.logs
+            .entry(contract)
+            .or_default()
+            .l2_to_l1_messages
+            .push_back((to_address, payload.to_vec()));
+
         Ok(())
     }
 
@@ -672,6 +692,12 @@ impl StarknetSyscallHandler for &mut StubSyscallHandler {
                 self.execution_info.tx_info.signature = input.to_vec();
                 vec![]
             }
+            "set_block_hash" => {
+                let [block_number, block_hash] = input.try_into().unwrap();
+                self.block_hash
+                    .insert(block_number.to_biguint().try_into().unwrap(), block_hash);
+                vec![]
+            }
             "pop_log" => self
                 .logs
                 .get_mut(&input[0])
@@ -684,7 +710,7 @@ impl StarknetSyscallHandler for &mut StubSyscallHandler {
                     serialized_log.append(&mut log.data);
                     serialized_log
                 })
-                .unwrap_or_default(),
+                .unwrap_or(vec![]),
             "pop_l2_to_l1_message" => self
                 .logs
                 .get_mut(&input[0])
@@ -726,7 +752,7 @@ impl StarknetSyscallHandler for &mut StubSyscallHandler {
             .deployed_contracts
             .get(&contract_address)
             .cloned()
-            .unwrap_or_default();
+            .unwrap_or_else(Felt::zero);
 
         Ok(class_hash)
     }

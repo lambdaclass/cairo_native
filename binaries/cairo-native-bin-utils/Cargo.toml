@@ -3,6 +3,7 @@ name = "cairo-native-bin-utils"
 edition.workspace = true
 
 [features]
+testing = ["cairo-native/testing"]
 scarb = []
 with-cheatcode = [ "cairo-native/with-cheatcode" ]
 
