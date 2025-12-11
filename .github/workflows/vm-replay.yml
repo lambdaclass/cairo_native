@@ -6,7 +6,7 @@ on:
 
 
 env:
-  RANGE_SIZE: 20
+  RANGE_SIZE: 2
 
 jobs:
   run:
@@ -96,7 +96,7 @@ jobs:
           # TODO: Check this restore-keys
 
       # Install dependencies
-      # - uses: ./cairo_native/.github/actions/install-linux-deps
+      - uses: ./cairo_native/.github/actions/install-linux-deps
       - name: Setup rust env
         uses: dtolnay/rust-toolchain@1.84.1
       - name: Retreive cached dependecies
