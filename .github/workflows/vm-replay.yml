@@ -22,7 +22,7 @@ jobs:
       matrix:
         block:
           - 740000
-          - 741000
+          # - 741000
           # - 742000
           # - 743000
           # - 744000
@@ -127,15 +127,23 @@ jobs:
           path: starknet-replay/cache
           key: ${{ steps.restore-rpc-calls.outputs.cache-primary-key }}
   
-  save-cache:
+  merge-dumps:
     needs: [run]
     runs-on: ubuntu-latest
     defaults:
       run:
         shell: bash
     steps:
-      - name: Save VM dump
+      - name: Download dumps
+        uses: actions/download-artifact@v4
+        with:
+          pattern: dump-*-vm
+          path: state_dumps/vm
+          merge-multiple: true
+        continue-on-error: true
+
+      - name: Save dumps
         uses: actions/cache/save@v4.2.0
         with:
           path: starknet-replay/state_dumps/vm
-          key: dump-vm
+          key: dumps-vm
