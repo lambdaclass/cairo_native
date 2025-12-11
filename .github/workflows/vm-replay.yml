@@ -105,7 +105,7 @@ jobs:
           workspaces: starknet-replay
 
       - name: Run with VM
-        if: steps.restore-rpc-calls.outputs.cache-hit != true
+        # if: steps.restore-rpc-calls.outputs.cache-hit != true
         run: |
           BLOCK_START=${{ matrix.block }}
           BLOCK_END=$(($BLOCK_START + $RANGE_SIZE - 1))
@@ -152,6 +152,15 @@ jobs:
           path: state_dumps/vm
           merge-multiple: true
         continue-on-error: true
+
+      - name: TEST - ls state_dumps
+        run: ls state_dumps 
+
+      - name: TEST - ls state_dumps/vm
+        run: ls state_dumps/vm 
+
+      - name: TEST - ls state_dumps/native
+        run: ls state_dumps/native 
 
       - name: Compare states
         run: python ./scripts/cmp_state_dumps.py | tee output
