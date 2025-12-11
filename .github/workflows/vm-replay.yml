@@ -1,8 +1,6 @@
 name: Daily Block Run
 
-on:
-  pull_request:
-  workflow_dispatch
+on: workflow_dispatch
 
 env:
   RANGE_SIZE: 20
@@ -22,9 +20,9 @@ jobs:
         block:
           - 740000
           - 741000
-          # - 742000
-          # - 743000
-          # - 744000
+          - 742000
+          - 743000
+          - 744000
           # - 745000
           # - 746000
           # - 747000
