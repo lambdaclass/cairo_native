@@ -4,6 +4,7 @@ edition.workspace = true
 
 [features]
 scarb = []
+with-cheatcode = [ "cairo-native/with-cheatcode" ]
 
 [dependencies]
 anyhow.workspace = true

@@ -1232,7 +1232,6 @@ dependencies = [
  "cairo-lang-starknet",
  "cairo-lang-test-plugin",
  "cairo-lang-test-runner",
- "cairo-native",
  "cairo-native-bin-utils",
  "clap",
  "tracing",
