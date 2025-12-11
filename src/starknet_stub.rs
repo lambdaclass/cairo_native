@@ -14,9 +14,20 @@ use ark_ff::{BigInt, PrimeField};
 use itertools::Itertools;
 use num_bigint::BigUint;
 use num_traits::Zero;
-use starknet_types_core::felt::Felt;
+use starknet_types_core::{
+    felt::{Felt, NonZeroFelt},
+    hash::{Pedersen, StarkHash},
+};
 use tracing::instrument;
 
+/// 2 ** 251 - 256
+const ADDR_BOUND: NonZeroFelt = NonZeroFelt::from_felt_unchecked(Felt::from_hex_unchecked(
+    "0x7ffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff00",
+));
+
+/// Cairo string of "STARKNET_CONTRACT_ADDRESS"
+const CONTRACT_ADDRESS_PREFIX: Felt =
+    Felt::from_hex_unchecked("0x535441524b4e45545f434f4e54524143545f41444452455353");
 /// A (somewhat) usable implementation of the starknet syscall handler trait.
 ///
 /// Currently gas is not deducted.
@@ -243,7 +254,12 @@ impl StarknetSyscallHandler for &mut StubSyscallHandler {
         remaining_gas: &mut u64,
     ) -> crate::starknet::SyscallResult<Felt> {
         tracing::debug!("called");
-        Ok(block_number.into())
+
+        if let Some(block_hash) = self.block_hash.get(&block_number) {
+            Ok(block_hash.clone())
+        } else {
+            Err(vec![Felt::from_bytes_be_slice(b"GET_BLOCK_HASH_NOT_SET")])
+        }
     }
 
     #[instrument(skip(self))]
@@ -289,7 +305,39 @@ impl StarknetSyscallHandler for &mut StubSyscallHandler {
         remaining_gas: &mut u64,
     ) -> crate::starknet::SyscallResult<(Felt, Vec<Felt>)> {
         tracing::debug!("called");
-        todo!()
+        let deployer_address = if deploy_from_zero {
+            Felt::zero()
+        } else {
+            self.execution_info.contract_address
+        };
+
+        let deployed_contract_address = {
+            let constructor_calldata_hash = Pedersen::hash_array(calldata);
+            Pedersen::hash_array(&[
+                CONTRACT_ADDRESS_PREFIX,
+                deployer_address,
+                contract_address_salt,
+                class_hash,
+                constructor_calldata_hash,
+            ])
+            .mod_floor(&ADDR_BOUND)
+        };
+
+        // let Some(contract_info) = self.starknet_contracts_info.get(&class_hash) else {
+        //     return Err(vec![Felt::from_bytes_be_slice(b"CLASS_HASH_NOT_FOUND")]);
+        // };
+
+        if self
+            .deployed_contracts
+            .insert(deployed_contract_address, class_hash)
+            .is_some()
+        {
+            return Err(vec![Felt::from_bytes_be_slice(
+                b"CONTRACT_ALREADY_DEPLOYED",
+            )]);
+        }
+
+        Ok((deployed_contract_address, vec![]))
     }
 
     #[instrument(skip(self))]
@@ -299,7 +347,11 @@ impl StarknetSyscallHandler for &mut StubSyscallHandler {
         remaining_gas: &mut u64,
     ) -> crate::starknet::SyscallResult<()> {
         tracing::debug!("called");
-        tracing::warn!("unimplemented");
+        if !self.deployed_contracts.contains_key(&class_hash) {
+            return Err(vec![Felt::from_bytes_be_slice(b"CLASS_HASH_NOT_FOUND")]);
+        };
+        let address = self.execution_info.contract_address;
+        self.deployed_contracts.insert(address, class_hash);
         Ok(())
     }
 
@@ -383,11 +435,15 @@ impl StarknetSyscallHandler for &mut StubSyscallHandler {
         remaining_gas: &mut u64,
     ) -> crate::starknet::SyscallResult<()> {
         tracing::debug!("called");
-        tracing::warn!("unimplemented but stored");
-        self.events.push(StubEvent {
-            keys: keys.to_vec(),
-            data: data.to_vec(),
-        });
+        let contract = self.execution_info.contract_address;
+        self.logs
+            .entry(contract)
+            .or_default()
+            .events
+            .push_back(StubEvent {
+                keys: keys.to_vec(),
+                data: data.to_vec(),
+            });
         Ok(())
     }
 
@@ -666,7 +722,13 @@ impl StarknetSyscallHandler for &mut StubSyscallHandler {
         contract_address: Felt,
         _remaining_gas: &mut u64,
     ) -> SyscallResult<Felt> {
-        Ok(contract_address)
+        let class_hash = self
+            .deployed_contracts
+            .get(&contract_address)
+            .cloned()
+            .unwrap_or_default();
+
+        Ok(class_hash)
     }
 }
 
