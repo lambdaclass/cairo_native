@@ -32,23 +32,16 @@ pub struct StubSyscallHandler {
     pub execution_info: ExecutionInfo,
     /// A mock history, mapping block number to the class hash.
     pub block_hash: HashMap<u64, Felt>,
-    pub events: Vec<StubEvent>,
 }
 
-/// Event emitted by the emit_event syscall.
-#[derive(Debug, Clone)]
-pub struct StubEvent {
-    pub keys: Vec<Felt>,
-    pub data: Vec<Felt>,
-}
+type Log = (Vec<Felt>, Vec<Felt>);
+type L2ToL1Message = (Felt, Vec<Felt>);
 
 #[derive(Debug, Default, Clone)]
 pub struct ContractLogs {
-    pub events: VecDeque<StubEvent>,
+    pub events: VecDeque<Log>,
     pub l2_to_l1_messages: VecDeque<L2ToL1Message>,
 }
-
-type L2ToL1Message = (Felt, Vec<Felt>);
 
 #[derive(PartialEq, Clone, Copy)]
 struct Secp256Point<Curve: SWCurveConfig>(Affine<Curve>);
@@ -243,7 +236,11 @@ impl StarknetSyscallHandler for &mut StubSyscallHandler {
         remaining_gas: &mut u64,
     ) -> crate::starknet::SyscallResult<Felt> {
         tracing::debug!("called");
-        Ok(block_number.into())
+        if let Some(block_hash) = self.block_hash.get(&block_number) {
+            Ok(*block_hash)
+        } else {
+            Err(vec![Felt::from_bytes_be_slice(b"GET_BLOCK_HASH_NOT_SET")])
+        }
     }
 
     #[instrument(skip(self))]
@@ -289,7 +286,8 @@ impl StarknetSyscallHandler for &mut StubSyscallHandler {
         remaining_gas: &mut u64,
     ) -> crate::starknet::SyscallResult<(Felt, Vec<Felt>)> {
         tracing::debug!("called");
-        todo!()
+        tracing::warn!("unimplemented");
+        Err(vec![Felt::from_bytes_be_slice(b"deploy unimplemented")])
     }
 
     #[instrument(skip(self))]
@@ -383,11 +381,14 @@ impl StarknetSyscallHandler for &mut StubSyscallHandler {
         remaining_gas: &mut u64,
     ) -> crate::starknet::SyscallResult<()> {
         tracing::debug!("called");
-        tracing::warn!("unimplemented but stored");
-        self.events.push(StubEvent {
-            keys: keys.to_vec(),
-            data: data.to_vec(),
-        });
+
+        let contract = self.execution_info.contract_address;
+        self.logs
+            .entry(contract)
+            .or_default()
+            .events
+            .push_back((keys.to_vec(), data.to_vec()));
+
         Ok(())
     }
 
@@ -399,7 +400,14 @@ impl StarknetSyscallHandler for &mut StubSyscallHandler {
         remaining_gas: &mut u64,
     ) -> crate::starknet::SyscallResult<()> {
         tracing::debug!("called");
-        tracing::warn!("unimplemented");
+
+        let contract = self.execution_info.contract_address;
+        self.logs
+            .entry(contract)
+            .or_default()
+            .l2_to_l1_messages
+            .push_back((to_address, payload.to_vec()));
+
         Ok(())
     }
 
@@ -612,6 +620,12 @@ impl StarknetSyscallHandler for &mut StubSyscallHandler {
                 self.execution_info.block_info.block_timestamp = block_timestamp;
                 vec![]
             }
+            "set_block_hash" => {
+                let block_number = input[0].to_biguint().try_into().unwrap();
+                let block_hash = input[1];
+                self.block_hash.insert(block_number, block_hash);
+                vec![]
+            }
             "set_signature" => {
                 self.execution_info.tx_info.signature = input.to_vec();
                 vec![]
@@ -622,13 +636,14 @@ impl StarknetSyscallHandler for &mut StubSyscallHandler {
                 .and_then(|logs| logs.events.pop_front())
                 .map(|mut log| {
                     let mut serialized_log = Vec::new();
-                    serialized_log.push(log.keys.len().into());
-                    serialized_log.append(&mut log.keys);
-                    serialized_log.push(log.data.len().into());
-                    serialized_log.append(&mut log.data);
+                    serialized_log.push(log.0.len().into());
+                    serialized_log.append(&mut log.0);
+                    serialized_log.push(log.1.len().into());
+                    serialized_log.append(&mut log.1);
                     serialized_log
                 })
                 .unwrap_or_default(),
+
             "pop_l2_to_l1_message" => self
                 .logs
                 .get_mut(&input[0])
@@ -641,7 +656,7 @@ impl StarknetSyscallHandler for &mut StubSyscallHandler {
                     serialized_log
                 })
                 .unwrap_or_default(),
-            _ => vec![],
+            _ => todo!("cheatcode: {}", selector),
         }
     }
 
