@@ -20,47 +20,12 @@ use tracing::instrument;
 /// A (somewhat) usable implementation of the starknet syscall handler trait.
 ///
 /// Currently gas is not deducted.
-#[derive(Debug, Clone)]
+#[derive(Clone, Default)]
 pub struct StubSyscallHandler {
     pub storage: HashMap<(u32, Felt), Felt>,
     pub events: Vec<StubEvent>,
     pub execution_info: ExecutionInfoV2,
     pub logs: HashMap<Felt, ContractLogs>,
-}
-
-impl Default for StubSyscallHandler {
-    fn default() -> Self {
-        Self {
-            storage: HashMap::new(),
-            events: Vec::new(),
-            execution_info: ExecutionInfoV2 {
-                block_info: BlockInfo {
-                    block_number: 0,
-                    block_timestamp: 0,
-                    sequencer_address: 666.into(),
-                },
-                tx_info: TxV2Info {
-                    version: 1.into(),
-                    account_contract_address: 1.into(),
-                    max_fee: 0,
-                    signature: vec![1.into()],
-                    transaction_hash: 1.into(),
-                    chain_id: 1.into(),
-                    nonce: 0.into(),
-                    resource_bounds: vec![],
-                    tip: 0,
-                    paymaster_data: vec![],
-                    nonce_data_availability_mode: 0,
-                    fee_data_availability_mode: 0,
-                    account_deployment_data: vec![],
-                },
-                caller_address: 2.into(),
-                contract_address: 3.into(),
-                entry_point_selector: 4.into(),
-            },
-            logs: HashMap::new(),
-        }
-    }
 }
 
 /// Event emitted by the emit_event syscall.
