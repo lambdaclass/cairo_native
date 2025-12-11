@@ -22,7 +22,7 @@ jobs:
       matrix:
         block:
           - 740000
-          # - 741000
+          - 741000
           # - 742000
           # - 743000
           # - 744000
@@ -126,9 +126,16 @@ jobs:
         with:
           path: starknet-replay/cache
           key: ${{ steps.restore-rpc-calls.outputs.cache-primary-key }}
-
+  
+  save-cache:
+    needs: [run]
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        shell: bash
+    steps:
       - name: Save VM dump
         uses: actions/cache/save@v4.2.0
         with:
           path: starknet-replay/state_dumps/vm
-          key: dump-${{matrix.block}}-vm
+          key: dump-vm
