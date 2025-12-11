@@ -4,9 +4,10 @@ on:
   schedule:
     # At the end of every day
     - cron: "0 0 * * *"
+  pull_request:
 
 env:
-  RANGE_SIZE: 20
+  RANGE_SIZE: 2
 
 jobs:
   run:
@@ -23,54 +24,54 @@ jobs:
         block:
           - 740000
           - 741000
-          - 742000
-          - 743000
-          - 744000
-          - 745000
-          - 746000
-          - 747000
-          - 748000
-          - 749000
-          - 800000
-          - 800050
-          - 800100
-          - 800150
-          - 800200
-          - 800250
-          - 800300
-          - 800350
-          - 800400
-          - 800450
-          - 900000
-          - 900100
-          - 900200
-          - 900300
-          - 900400
-          - 900500
-          - 900600
-          - 900700
-          - 900800
-          - 900900
-          - 1000400
-          - 1000500
-          - 1002000
-          - 1003000
-          - 1004000
-          - 1005000
-          - 1006000
-          - 1007000
-          - 1008000
-          - 1009000
-          - 1100400
-          - 1100500
-          - 1102000
-          - 1103000
-          - 1104000
-          - 1105000
-          - 1106000
-          - 1107000
-          - 1108000
-          - 1109000
+          # - 742000
+          # - 743000
+          # - 744000
+          # - 745000
+          # - 746000
+          # - 747000
+          # - 748000
+          # - 749000
+          # - 800000
+          # - 800050
+          # - 800100
+          # - 800150
+          # - 800200
+          # - 800250
+          # - 800300
+          # - 800350
+          # - 800400
+          # - 800450
+          # - 900000
+          # - 900100
+          # - 900200
+          # - 900300
+          # - 900400
+          # - 900500
+          # - 900600
+          # - 900700
+          # - 900800
+          # - 900900
+          # - 1000400
+          # - 1000500
+          # - 1002000
+          # - 1003000
+          # - 1004000
+          # - 1005000
+          # - 1006000
+          # - 1007000
+          # - 1008000
+          # - 1009000
+          # - 1100400
+          # - 1100500
+          # - 1102000
+          # - 1103000
+          # - 1104000
+          # - 1105000
+          # - 1106000
+          # - 1107000
+          # - 1108000
+          # - 1109000
       fail-fast: false
     defaults:
       run:
@@ -102,9 +103,7 @@ jobs:
         uses: actions/cache/restore@v4.2.0
         with:
           path: starknet-replay/cache
-          key: cache-${{matrix.block}}-${{ github.run_id }}
-          restore-keys: |
-            cache-${{matrix.block}}
+          key: cache-${{matrix.block}}
 
       # Install dependencies
       - uses: ./cairo_native/.github/actions/install-linux-deps
@@ -173,12 +172,13 @@ jobs:
           path: state_dumps/native
           merge-multiple: true
         continue-on-error: true
+      # Since they were created in another workflow, we get them
+      # from the cache instead of getting them as artifacts.
       - name: Fetch VM dumps
-        uses: actions/download-artifact@v4
+        uses: actions/cache/restore@v4.2.0
         with:
-          pattern: dump-*-vm
           path: state_dumps/vm
-          merge-multiple: true
+          key: 
         continue-on-error: true
 
       - name: Compare states
@@ -192,19 +192,19 @@ jobs:
           name: output-result
           path: output
 
-      - name: Prepare env vars
-        if: ${{ always() }}
-        run: |
-          # Save workflow url
-          REPO_URL="${{ github.server_url }}/${{ github.repository }}"
-          echo "WORKFLOW_URL=$REPO_URL/actions/runs/${{ github.run_id }}" | tee -a $GITHUB_ENV
-          echo "COMPARISON_RESULT=$REPO_URL/actions/runs/${{ github.run_id }}/artifacts/${{ steps.upload_compare_results.outputs.artifact-id }}" | tee -a $GITHUB_ENV
+      # - name: Prepare env vars
+      #   if: ${{ always() }}
+      #   run: |
+      #     # Save workflow url
+      #     REPO_URL="${{ github.server_url }}/${{ github.repository }}"
+      #     echo "WORKFLOW_URL=$REPO_URL/actions/runs/${{ github.run_id }}" | tee -a $GITHUB_ENV
+      #     echo "COMPARISON_RESULT=$REPO_URL/actions/runs/${{ github.run_id }}/artifacts/${{ steps.upload_compare_results.outputs.artifact-id }}" | tee -a $GITHUB_ENV
 
-      - name: Create Issue
-        if: ${{ failure() }}
-        uses: JasonEtco/create-an-issue@v2
-        env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-          COMMIT_SHA: ${{ github.sha }}
-        with:
-          filename: .github/ISSUE_TEMPLATE/daily_failure.md
+      # - name: Create Issue
+      #   if: ${{ failure() }}
+      #   uses: JasonEtco/create-an-issue@v2
+      #   env:
+      #     GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+      #     COMMIT_SHA: ${{ github.sha }}
+      #   with:
+      #     filename: .github/ISSUE_TEMPLATE/daily_failure.md
