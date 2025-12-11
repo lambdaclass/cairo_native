@@ -71,9 +71,6 @@ jobs:
           - 1107000
           - 1108000
           - 1109000
-        runner:
-          - native
-          - vm
       fail-fast: false
     defaults:
       run:
@@ -144,32 +141,18 @@ jobs:
           git diff
 
       - name: Run with Native
-        if: ${{ matrix.runner == 'native' }}
         run: |
           BLOCK_START=${{ matrix.block }}
           BLOCK_END=$(($BLOCK_START + $RANGE_SIZE - 1))
           cargo run --release --bin replay --features state_dump block-range $BLOCK_START $BLOCK_END mainnet
-      - name: Run with VM
-        if: ${{ matrix.runner == 'vm' }}
-        run: |
-          BLOCK_START=${{ matrix.block }}
-          BLOCK_END=$(($BLOCK_START + $RANGE_SIZE - 1))
-          cargo run --release --bin replay --features state_dump,only_cairo_vm block-range $BLOCK_START $BLOCK_END mainnet
 
       # We always upload the dump, even if the job fails
       - name: Upload dumps
         uses: actions/upload-artifact@v4
         if: ${{ always() }}
         with:
-          name: dump-${{matrix.block}}-${{matrix.runner}}
-          path: starknet-replay/state_dumps/${{matrix.runner}}
-
-      - name: Save RPC Calls
-        uses: actions/cache/save@v4.2.0
-        if: ${{ always() && matrix.runner == 'vm' }}
-        with:
-          path: starknet-replay/cache
-          key: ${{ steps.restore-rpc-calls.outputs.cache-primary-key }}
+          name: dump-${{matrix.block}}-native
+          path: starknet-replay/state_dumps/native
 
   compare:
     needs: [run]
