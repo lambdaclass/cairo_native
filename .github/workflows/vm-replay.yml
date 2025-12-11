@@ -1,4 +1,4 @@
-name: Daily Block Run
+name: VM Block Run
 
 on: 
   workflow_dispatch:
