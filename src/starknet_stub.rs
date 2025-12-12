@@ -34,14 +34,20 @@ pub struct StubSyscallHandler {
     pub block_hash: HashMap<u64, Felt>,
 }
 
-type Log = (Vec<Felt>, Vec<Felt>);
-type L2ToL1Message = (Felt, Vec<Felt>);
+/// Event emitted by the emit_event syscall.
+#[derive(Debug, Clone)]
+pub struct StubEvent {
+    pub keys: Vec<Felt>,
+    pub data: Vec<Felt>,
+}
 
 #[derive(Debug, Default, Clone)]
 pub struct ContractLogs {
-    pub events: VecDeque<Log>,
+    pub events: VecDeque<StubEvent>,
     pub l2_to_l1_messages: VecDeque<L2ToL1Message>,
 }
+
+type L2ToL1Message = (Felt, Vec<Felt>);
 
 #[derive(PartialEq, Clone, Copy)]
 struct Secp256Point<Curve: SWCurveConfig>(Affine<Curve>);
@@ -387,7 +393,10 @@ impl StarknetSyscallHandler for &mut StubSyscallHandler {
             .entry(contract)
             .or_default()
             .events
-            .push_back((keys.to_vec(), data.to_vec()));
+            .push_back(StubEvent {
+                keys: keys.to_vec(),
+                data: data.to_vec(),
+            });
 
         Ok(())
     }
@@ -636,10 +645,10 @@ impl StarknetSyscallHandler for &mut StubSyscallHandler {
                 .and_then(|logs| logs.events.pop_front())
                 .map(|mut log| {
                     let mut serialized_log = Vec::new();
-                    serialized_log.push(log.0.len().into());
-                    serialized_log.append(&mut log.0);
-                    serialized_log.push(log.1.len().into());
-                    serialized_log.append(&mut log.1);
+                    serialized_log.push(log.keys.len().into());
+                    serialized_log.append(&mut log.keys);
+                    serialized_log.push(log.data.len().into());
+                    serialized_log.append(&mut log.data);
                     serialized_log
                 })
                 .unwrap_or_default(),
