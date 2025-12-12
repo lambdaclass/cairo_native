@@ -1,0 +1,50 @@
+name: Daily Block Run
+
+on:
+  schedule:
+    # At the end of every day
+    - cron: "0 0 * * *"
+
+env:
+  RANGE_SIZE: 20
+
+jobs:
+  release-tag-check:
+    name: Check Last Cairo Release
+    runs-on: ubuntu-latest
+    env:
+      LLVM_SYS_191_PREFIX: /usr/lib/llvm-19/
+      MLIR_SYS_190_PREFIX: /usr/lib/llvm-19/
+      TABLEGEN_190_PREFIX: /usr/lib/llvm-19/
+
+    steps:
+      - name: Checkout Native
+        uses: actions/checkout@v4
+        with:
+          path: cairo_native
+
+      - uses: ./cairo_native/.github/actions/install-linux-deps
+      - name: Setup Rust Env
+        uses: dtolnay/rust-toolchain@1.84.1
+      - name: Retreive cached dependecies
+        uses: Swatinem/rust-cache@v2
+        with:
+          workspaces: cairo_native
+
+      - name: Patch Native Dependencies
+        run: |
+          # Retrieve last release tag and process it to make it usable
+          last_release=$(curl -s https://api.github.com/repos/starkware-libs/cairo/releases/latest \
+              | jq -r .tag_name \
+              | cut -c 2-
+          )
+
+          # Updates cairo-lang dependency to the last release
+          name='cairo-lang-[[:alnum:]-]+'
+          new_version='"$last_release"'
+          sed -i'' -r "s/^($name) = .+/\1 = $new_version/" Cargo.toml
+
+          git diff
+
+      - name: Run check
+        run: make check 
