@@ -247,11 +247,9 @@ pub fn run_tests(
 
                 let initial_gas = test.available_gas.map(|x| x.try_into().unwrap());
 
-                let mut syscall_handler = {
-                    let mut handler = StubSyscallHandler::default();
-                    handler.contracts_info = contracts_info.clone();
-
-                    handler
+                let mut syscall_handler = StubSyscallHandler {
+                    contracts_info: contracts_info.clone(),
+                    ..Default::default()
                 };
 
                 let native_result =

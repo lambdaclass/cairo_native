@@ -727,12 +727,6 @@ impl StarknetSyscallHandler for &mut StubSyscallHandler {
                 self.execution_info.tx_info.signature = input.to_vec();
                 vec![]
             }
-            "set_block_hash" => {
-                let [block_number, block_hash] = input.try_into().unwrap();
-                self.block_hash
-                    .insert(block_number.to_biguint().try_into().unwrap(), block_hash);
-                vec![]
-            }
             "pop_log" => self
                 .logs
                 .get_mut(&input[0])
