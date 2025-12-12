@@ -7,7 +7,7 @@ on:
         type: string
         description: Comma separated block numbers (e.g "10,50,70")
         required: true
-  # pull_request:
+  pull_request:
 
 
 env:
@@ -25,6 +25,9 @@ jobs:
         uses: actions/checkout@v4
         with:
           path: cairo_native
+
+      - name: TEST - check blocks file BEFORE
+        run: cat blocks.txt
 
       - name: Restore blocks list
         id: cache-restore
@@ -52,6 +55,9 @@ jobs:
         with:
           path: ./blocks.txt
           key: blocks-list
+
+      - name: TEST - check blocks file AFTER
+        run: cat blocks.txt
 
   run:
     needs: setup
