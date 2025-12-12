@@ -4,7 +4,7 @@ on:
   schedule:
     # At the end of every day
     - cron: "0 0 * * *"
-  # pull_request:
+  pull_request:
 
 env:
   RANGE_SIZE: 2
@@ -24,6 +24,7 @@ jobs:
 
       - name: Restore blocks list
         uses: actions/cache/restore@v4.2.0
+        fail-on-cache-miss: true # If the block list is not on the cache, we should run the vm-replay workflow
         with:
           path: ./blocks.txt
           key: blocks-list
