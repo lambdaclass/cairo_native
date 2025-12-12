@@ -11,6 +11,7 @@ use crate::starknet::{
 };
 use ark_ec::short_weierstrass::{Affine, Projective, SWCurveConfig};
 use ark_ff::{BigInt, PrimeField};
+use cairo_lang_sierra::ids::FunctionId;
 use cairo_lang_starknet::contract::ContractInfo;
 use cairo_lang_utils::ordered_hash_map::OrderedHashMap;
 use itertools::Itertools;
@@ -250,6 +251,18 @@ fn maybe_affine<Curve: SWCurveConfig>(
     }
 }
 
+impl StubSyscallHandler {
+    fn call_entry_point(
+        &mut self,
+        _remaining_gas: &mut u64,
+        _entry_point: &FunctionId,
+        _calldata: &[Felt],
+    ) -> crate::starknet::SyscallResult<(Felt, Felt)> {
+        dbg!("unimplemented");
+        Ok((0.into(), 0.into()))
+    }
+}
+
 impl StarknetSyscallHandler for &mut StubSyscallHandler {
     #[instrument(skip(self))]
     fn get_block_hash(
@@ -377,8 +390,24 @@ impl StarknetSyscallHandler for &mut StubSyscallHandler {
         remaining_gas: &mut u64,
     ) -> crate::starknet::SyscallResult<Vec<Felt>> {
         tracing::debug!("called");
-        tracing::warn!("unimplemented");
-        Ok(vec![])
+        let Some(contract_info) = self.contracts_info.get(&class_hash).cloned() else {
+            return Err(vec![Felt::from_bytes_be_slice(b"CLASS_HASH_NOT_DECLARED")]);
+        };
+
+        let Some(entry_point) = contract_info.externals.get(&function_selector) else {
+            return Err(vec![
+                Felt::from_bytes_be_slice(b"ENTRYPOINT_NOT_FOUND"),
+                Felt::from_bytes_be_slice(b"ENTRYPOINT_FAILED"),
+            ]);
+        };
+
+        match self.call_entry_point(remaining_gas, entry_point, calldata) {
+            Ok((res_data_start, res_data_end)) => Ok(vec![res_data_start, res_data_end]),
+            Err(mut revert_reason) => {
+                revert_reason.push(Felt::from_bytes_be_slice(b"ENTRYPOINT_FAILED"));
+                Err(revert_reason)
+            }
+        }
     }
 
     #[instrument(skip(self))]
