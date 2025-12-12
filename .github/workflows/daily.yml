@@ -4,7 +4,7 @@ on:
   schedule:
     # At the end of every day
     - cron: "0 0 * * *"
-  # pull_request:
+  pull_request:
 
 env:
   RANGE_SIZE: 2
@@ -29,13 +29,16 @@ jobs:
           key: blocks-list
           fail-on-cache-miss: true # If the block list is not on the cache, we should run the vm-replay workflow
 
+      - name: Check blocks list content - BEFORE
+        run: cat ./blocks.txt
+
       - name: Parse blocks file
         id: parse-blocks
         run: |
           content=`cat ./blocks.txt`
           echo "blocks_list=$(jq 'split(",")' -Rc <(echo $content))" >> $GITHUB_OUTPUT
       
-      - name: Check blocks list content
+      - name: Check blocks list content - AFTER
         run: cat ./blocks.txt
 
 
