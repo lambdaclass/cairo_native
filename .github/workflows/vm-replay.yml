@@ -32,6 +32,9 @@ jobs:
         with:
           path: ./blocks.txt
           key: blocks-list
+      
+      - name: TEST - check blocks file BEFORE
+        run: cat blocks.txt
 
       - name: Delete blocks cache entry
         if: ${{ steps.cache-restore.outputs.cache-hit }}
