@@ -2,14 +2,28 @@ name: VM Block Run
 
 on: 
   workflow_dispatch:
-  # pull_request:
+  pull_request:
 
 
 env:
   RANGE_SIZE: 2
 
 jobs:
+
+  setup:
+    runs-on: ubuntu-latest
+    outputs:
+      blocks: ${{ steps.parse-blocks.outputs.blocks_list }}
+    steps:
+      name: Parse blocks file
+      id: parse-blocks
+      run: |
+        content=`cat ./blocks.txt`
+        echo "::set-output name=blocks_list::$(jq 'split(",")' -Rc <(echo '$content'))"
+
+
   run:
+    needs: setup
     runs-on: ubuntu-latest
     env:
       LLVM_SYS_191_PREFIX: /usr/lib/llvm-19/
@@ -20,57 +34,7 @@ jobs:
     strategy:
       max-parallel: 25
       matrix:
-        block:
-          - 740000
-          - 741000
-          # - 742000
-          # - 743000
-          # - 744000
-          # - 745000
-          # - 746000
-          # - 747000
-          # - 748000
-          # - 749000
-          # - 800000
-          # - 800050
-          # - 800100
-          # - 800150
-          # - 800200
-          # - 800250
-          # - 800300
-          # - 800350
-          # - 800400
-          # - 800450
-          # - 900000
-          # - 900100
-          # - 900200
-          # - 900300
-          # - 900400
-          # - 900500
-          # - 900600
-          # - 900700
-          # - 900800
-          # - 900900
-          # - 1000400
-          # - 1000500
-          # - 1002000
-          # - 1003000
-          # - 1004000
-          # - 1005000
-          # - 1006000
-          # - 1007000
-          # - 1008000
-          # - 1009000
-          # - 1100400
-          # - 1100500
-          # - 1102000
-          # - 1103000
-          # - 1104000
-          # - 1105000
-          # - 1106000
-          # - 1107000
-          # - 1108000
-          # - 1109000
+        block: ${{ fromJson(needs.setup.outputs.blocks) }}
       fail-fast: false
     defaults:
       run:
