@@ -164,6 +164,12 @@ jobs:
           key: dumps-vm
         continue-on-error: true
 
+      - name: TEST - Check native dumps
+        run: ls state_dumps/native
+      
+      - name: TEST - Check vm dumps
+        run: ls state_dumps/vm
+
       - name: Compare states
         run: python ./scripts/cmp_state_dumps.py | tee output
 
