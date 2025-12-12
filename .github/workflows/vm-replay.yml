@@ -18,7 +18,7 @@ jobs:
       name: Parse blocks file
       id: parse-blocks
       run: |
-        content=`cat ./blocks.txt`
+        content=`cat ./replay-blocks.txt`
         echo "::set-output name=blocks_list::$(jq 'split(",")' -Rc <(echo $content))"
 
 
