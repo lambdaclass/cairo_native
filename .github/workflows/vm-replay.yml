@@ -7,11 +7,11 @@ on:
         type: string
         description: Comma separated block numbers (e.g "10,50,70")
         required: true
-  # pull_request:
+  pull_request:
 
 
 env:
-  RANGE_SIZE: 2
+  RANGE_SIZE: 1
 
 jobs:
 
@@ -153,12 +153,12 @@ jobs:
         uses: actions/download-artifact@v4
         with:
           pattern: dump-*-vm
-          path: new_state_dumps/vm
+          path: state_dumps/vm
           merge-multiple: true
         continue-on-error: true
       
       - name: Save dumps
         uses: actions/cache/save@v4.2.0
         with:
-          path: new_state_dumps/vm
+          path: state_dumps/vm
           key: dumps-vm
