@@ -11,12 +11,26 @@ use crate::starknet::{
 };
 use ark_ec::short_weierstrass::{Affine, Projective, SWCurveConfig};
 use ark_ff::{BigInt, PrimeField};
+use cairo_lang_sierra::ids::FunctionId;
+use cairo_lang_starknet::contract::ContractInfo;
+use cairo_lang_utils::ordered_hash_map::OrderedHashMap;
 use itertools::Itertools;
 use num_bigint::BigUint;
 use num_traits::Zero;
-use starknet_types_core::felt::Felt;
+use starknet_types_core::{
+    felt::{Felt, NonZeroFelt},
+    hash::{Pedersen, StarkHash},
+};
 use tracing::instrument;
 
+/// 2 ** 251 - 256
+const ADDR_BOUND: NonZeroFelt = NonZeroFelt::from_felt_unchecked(Felt::from_hex_unchecked(
+    "0x7ffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff00",
+));
+
+/// Cairo string of "STARKNET_CONTRACT_ADDRESS"
+const CONTRACT_ADDRESS_PREFIX: Felt =
+    Felt::from_hex_unchecked("0x535441524b4e45545f434f4e54524143545f41444452455353");
 /// A (somewhat) usable implementation of the starknet syscall handler trait.
 ///
 /// Currently gas is not deducted.
@@ -32,6 +46,8 @@ pub struct StubSyscallHandler {
     pub execution_info: ExecutionInfo,
     /// A mock history, mapping block number to the class hash.
     pub block_hash: HashMap<u64, Felt>,
+    /// Mapping from class_hash to contract info.
+    pub contracts_info: OrderedHashMap<Felt, ContractInfo>,
 }
 
 /// Event emitted by the emit_event syscall.
@@ -234,6 +250,18 @@ fn maybe_affine<Curve: SWCurveConfig>(
     }
 }
 
+impl StubSyscallHandler {
+    fn call_entry_point(
+        &mut self,
+        _remaining_gas: &mut u64,
+        _entry_point: &FunctionId,
+        _calldata: &[Felt],
+    ) -> crate::starknet::SyscallResult<(Felt, Felt)> {
+        tracing::warn!("unimplemented");
+        Ok((0.into(), 0.into()))
+    }
+}
+
 impl StarknetSyscallHandler for &mut StubSyscallHandler {
     #[instrument(skip(self))]
     fn get_block_hash(
@@ -292,8 +320,48 @@ impl StarknetSyscallHandler for &mut StubSyscallHandler {
         remaining_gas: &mut u64,
     ) -> crate::starknet::SyscallResult<(Felt, Vec<Felt>)> {
         tracing::debug!("called");
-        tracing::warn!("unimplemented");
-        Err(vec![Felt::from_bytes_be_slice(b"deploy unimplemented")])
+        let deployer_address = if deploy_from_zero {
+            Felt::zero()
+        } else {
+            self.execution_info.contract_address
+        };
+
+        let deployed_contract_address = {
+            let constructor_calldata_hash = Pedersen::hash_array(calldata);
+            Pedersen::hash_array(&[
+                CONTRACT_ADDRESS_PREFIX,
+                deployer_address,
+                contract_address_salt,
+                class_hash,
+                constructor_calldata_hash,
+            ])
+            .mod_floor(&ADDR_BOUND)
+        };
+
+        let Some(contract_info) = self.contracts_info.get(&class_hash) else {
+            return Err(vec![Felt::from_bytes_be_slice(b"CLASS_HASH_NOT_FOUND")]);
+        };
+
+        if self
+            .deployed_contracts
+            .insert(deployed_contract_address, class_hash)
+            .is_some()
+        {
+            return Err(vec![Felt::from_bytes_be_slice(
+                b"CONTRACT_ALREADY_DEPLOYED",
+            )]);
+        }
+
+        if let Some(_constructor) = &contract_info.constructor {
+            // TODO: check if it's necessary to call the constructor.
+            Ok((deployed_contract_address, vec![]))
+        } else if calldata.is_empty() {
+            Ok((deployed_contract_address, vec![]))
+        } else {
+            self.deployed_contracts.remove(&deployed_contract_address);
+
+            Err(vec![Felt::from_bytes_be_slice(b"INVALID_CALLDATA_LEN")])
+        }
     }
 
     #[instrument(skip(self))]
@@ -303,7 +371,11 @@ impl StarknetSyscallHandler for &mut StubSyscallHandler {
         remaining_gas: &mut u64,
     ) -> crate::starknet::SyscallResult<()> {
         tracing::debug!("called");
-        tracing::warn!("unimplemented");
+        if !self.contracts_info.contains_key(&class_hash) {
+            return Err(vec![Felt::from_bytes_be_slice(b"CLASS_HASH_NOT_FOUND")]);
+        };
+        let address = self.execution_info.contract_address;
+        self.deployed_contracts.insert(address, class_hash);
         Ok(())
     }
 
@@ -316,8 +388,24 @@ impl StarknetSyscallHandler for &mut StubSyscallHandler {
         remaining_gas: &mut u64,
     ) -> crate::starknet::SyscallResult<Vec<Felt>> {
         tracing::debug!("called");
-        tracing::warn!("unimplemented");
-        Ok(vec![])
+        let Some(contract_info) = self.contracts_info.get(&class_hash).cloned() else {
+            return Err(vec![Felt::from_bytes_be_slice(b"CLASS_HASH_NOT_DECLARED")]);
+        };
+
+        let Some(entry_point) = contract_info.externals.get(&function_selector) else {
+            return Err(vec![
+                Felt::from_bytes_be_slice(b"ENTRYPOINT_NOT_FOUND"),
+                Felt::from_bytes_be_slice(b"ENTRYPOINT_FAILED"),
+            ]);
+        };
+
+        match self.call_entry_point(remaining_gas, entry_point, calldata) {
+            Ok((res_data_start, res_data_end)) => Ok(vec![res_data_start, res_data_end]),
+            Err(mut revert_reason) => {
+                revert_reason.push(Felt::from_bytes_be_slice(b"ENTRYPOINT_FAILED"));
+                Err(revert_reason)
+            }
+        }
     }
 
     #[instrument(skip(self))]
@@ -652,7 +740,6 @@ impl StarknetSyscallHandler for &mut StubSyscallHandler {
                     serialized_log
                 })
                 .unwrap_or_default(),
-
             "pop_l2_to_l1_message" => self
                 .logs
                 .get_mut(&input[0])
@@ -690,7 +777,13 @@ impl StarknetSyscallHandler for &mut StubSyscallHandler {
         contract_address: Felt,
         _remaining_gas: &mut u64,
     ) -> SyscallResult<Felt> {
-        Ok(contract_address)
+        let class_hash = self
+            .deployed_contracts
+            .get(&contract_address)
+            .cloned()
+            .unwrap_or_else(Felt::zero);
+
+        Ok(class_hash)
     }
 }
 

@@ -169,7 +169,7 @@ pub fn run_tests(
                     skip_non_linear_solver_comparisons: false,
                     compute_runtime_costs: false,
                 }),
-                contracts_info,
+                contracts_info.clone(),
                 None,
             )
             .with_context(|| "Failed setting up runner.")?,
@@ -247,13 +247,16 @@ pub fn run_tests(
 
                 let initial_gas = test.available_gas.map(|x| x.try_into().unwrap());
 
-                let native_result = native_executor(
-                    &func.id,
-                    &[],
-                    initial_gas,
-                    &mut StubSyscallHandler::default(),
-                )
-                .with_context(|| format!("Failed to run the function `{}`.", name.as_str()))?;
+                let mut syscall_handler = StubSyscallHandler {
+                    contracts_info: contracts_info.clone(),
+                    ..Default::default()
+                };
+
+                let native_result =
+                    native_executor(&func.id, &[], initial_gas, &mut syscall_handler)
+                        .with_context(|| {
+                            format!("Failed to run the function `{}`.", name.as_str())
+                        })?;
                 let run_result = result_to_runresult(&native_result)?;
 
                 let gas_usage = test
