@@ -7,7 +7,7 @@ on:
         type: string
         description: Comma separated block numbers (e.g "10,50,70")
         required: true
-  # pull_request:
+  pull_request:
 
 
 env:
@@ -25,6 +25,19 @@ jobs:
         uses: actions/checkout@v4
         with:
           path: cairo_native
+
+      - name: Restore blocks list
+        id: cache-restore
+        uses: actions/cache/restore@v4.2.0
+        with:
+          path: ./blocks.txt
+          key: blocks-list
+
+      - name: Delete blocks cache entry
+        if: ${{ steps.cache-restore.outputs.cache-hit }}
+        run: gh cache delete blocks-list
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
       - name: Parse blocks file
         id: parse-blocks
