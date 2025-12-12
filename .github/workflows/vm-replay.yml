@@ -15,10 +15,16 @@ jobs:
     outputs:
       blocks: ${{ steps.parse-blocks.outputs.blocks_list }}
     steps:
+
+      - name: Checkout Native
+          uses: actions/checkout@v4
+          with:
+            path: cairo_native
+
       - name: Parse blocks file
         id: parse-blocks
         run: |
-          content=`cat ../replay-blocks.txt`
+          content=`cat ./cairo_native/.github/replay-blocks.txt`
           echo "::set-output name=blocks_list::$(jq 'split(",")' -Rc <(echo $content))"
 
 
