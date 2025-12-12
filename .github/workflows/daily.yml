@@ -33,6 +33,9 @@ jobs:
         run: |
           content=`cat ./blocks.txt`
           echo "blocks_list=$(jq 'split(",")' -Rc <(echo $content))" >> $GITHUB_OUTPUT
+      
+      - name: Check blocks list content
+        run: cat ./blocks.txt
 
 
   run:
