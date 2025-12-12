@@ -19,7 +19,7 @@ jobs:
       id: parse-blocks
       run: |
         content=`cat ./blocks.txt`
-        echo "::set-output name=blocks_list::$(jq 'split(",")' -Rc <(echo '$content'))"
+        echo "::set-output name=blocks_list::$(jq 'split(",")' -Rc <(echo $content))"
 
 
   run:
