@@ -26,9 +26,6 @@ jobs:
         with:
           path: cairo_native
 
-      - name: TEST - check blocks file BEFORE
-        run: cat blocks.txt
-
       - name: Restore blocks list
         id: cache-restore
         uses: actions/cache/restore@v4.2.0
