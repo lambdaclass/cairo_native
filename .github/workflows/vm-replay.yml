@@ -37,7 +37,8 @@ jobs:
         if: ${{ steps.cache-restore.outputs.cache-hit }}
         run: gh cache delete blocks-list
         env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          GH_REPO: ${{ github.repository }}
 
       - name: Parse blocks file
         id: parse-blocks
