@@ -15,11 +15,11 @@ jobs:
     outputs:
       blocks: ${{ steps.parse-blocks.outputs.blocks_list }}
     steps:
-      name: Parse blocks file
-      id: parse-blocks
-      run: |
-        content=`cat ./replay-blocks.txt`
-        echo "::set-output name=blocks_list::$(jq 'split(",")' -Rc <(echo $content))"
+      - name: Parse blocks file
+        id: parse-blocks
+        run: |
+          content=`cat ./replay-blocks.txt`
+          echo "::set-output name=blocks_list::$(jq 'split(",")' -Rc <(echo $content))"
 
 
   run:
