@@ -3,7 +3,7 @@ name: Daily Block Run
 on:
   schedule:
     # At the end of every day
-    - cron: "0 0 * * *"
+    - cron: "0 8 * * 1"
 
 env:
   RANGE_SIZE: 20
