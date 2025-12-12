@@ -28,8 +28,11 @@ jobs:
           echo "blocks_list=$(jq 'split(",")' -Rc <(echo $content))" >> $GITHUB_OUTPUT
           echo "$content" >> ./blocks.txt
       
-      - name: TEST - Check blocks file
-        run: cat ./blocks.txt
+      - name: Save blocks list
+        uses: actions/cache/save@v4.2.0
+        with:
+          path: ./blocks.txt
+          key: blocks-list
 
 
   run:
