@@ -2,6 +2,11 @@ name: VM Block Run
 
 on: 
   workflow_dispatch:
+    inputs:
+      blocks:
+        type: string
+        description: Comma separated block numbers (e.g "10,50,70")
+        required: true
   pull_request:
 
 
