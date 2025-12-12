@@ -97,7 +97,7 @@ jobs:
           path: starknet-replay/cache
           key: cache-${{matrix.block}}
 
-      # Install dependencies
+      # Install dependenciess
       - uses: ./cairo_native/.github/actions/install-linux-deps
       - name: Setup rust env
         uses: dtolnay/rust-toolchain@1.84.1
