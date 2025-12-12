@@ -48,7 +48,6 @@ pub struct StubSyscallHandler {
     pub block_hash: HashMap<u64, Felt>,
     /// Mapping from class_hash to contract info.
     pub contracts_info: OrderedHashMap<Felt, ContractInfo>,
-    pub events: Vec<StubEvent>,
 }
 
 /// Event emitted by the emit_event syscall.
