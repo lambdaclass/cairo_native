@@ -154,7 +154,7 @@ fn build_add<'ctx, 'this>(
     } else {
         lhs_value
     };
-    let rhs_value = if lhs_ty.is_felt252(registry)? {
+    let rhs_value = if rhs_ty.is_felt252(registry)? {
         montgomery::mlir::monty_reduce(context, entry, rhs_value, rhs_value.r#type(), location)?
     } else {
         rhs_value
@@ -264,7 +264,7 @@ fn build_sub<'ctx, 'this>(
     } else {
         lhs_value
     };
-    let rhs_value = if lhs_ty.is_felt252(registry)? {
+    let rhs_value = if rhs_ty.is_felt252(registry)? {
         montgomery::mlir::monty_reduce(context, entry, rhs_value, rhs_value.r#type(), location)?
     } else {
         rhs_value
@@ -388,7 +388,7 @@ fn build_mul<'ctx, 'this>(
         let rhs_offset =
             entry.const_int_from_type(context, location, rhs_range.lower, compute_ty)?;
         entry.addi(rhs_value, rhs_offset, location)?
-    } else if lhs_ty.is_felt252(registry)? {
+    } else if rhs_ty.is_felt252(registry)? {
         montgomery::mlir::monty_reduce(context, entry, rhs_value, rhs_value.r#type(), location)?
     } else {
         rhs_value
@@ -524,7 +524,7 @@ fn build_div_rem<'ctx, 'this>(
         let rhs_offset =
             entry.const_int_from_type(context, location, rhs_range.lower, compute_ty)?;
         entry.addi(rhs_value, rhs_offset, location)?
-    } else if lhs_ty.is_felt252(registry)? {
+    } else if rhs_ty.is_felt252(registry)? {
         montgomery::mlir::monty_reduce(context, entry, rhs_value, rhs_value.r#type(), location)?
     } else {
         rhs_value
