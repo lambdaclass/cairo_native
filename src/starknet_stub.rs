@@ -3,14 +3,22 @@
 use std::{
     collections::{HashMap, VecDeque},
     fmt,
+    sync::Arc,
 };
 
-use crate::starknet::{
-    ExecutionInfo, ExecutionInfoV2, Secp256k1Point, Secp256r1Point, StarknetSyscallHandler,
-    SyscallResult, TxV2Info, U256,
+use crate::{
+    error::Error,
+    executor::AotNativeExecutor,
+    starknet::{
+        ExecutionInfo, ExecutionInfoV2, Secp256k1Point, Secp256r1Point, StarknetSyscallHandler,
+        SyscallResult, TxV2Info, U256,
+    },
+    Value,
 };
 use ark_ec::short_weierstrass::{Affine, Projective, SWCurveConfig};
 use ark_ff::{BigInt, PrimeField};
+use cairo_lang_runner::RunResultValue;
+use cairo_lang_sierra::ids::FunctionId;
 use cairo_lang_starknet::contract::ContractInfo;
 use cairo_lang_utils::ordered_hash_map::OrderedHashMap;
 use itertools::Itertools;
@@ -35,8 +43,10 @@ const CONTRACT_ADDRESS_PREFIX: Felt =
 /// A (somewhat) usable implementation of the starknet syscall handler trait.
 ///
 /// Currently gas is not deducted.
-#[derive(Debug, Clone, Default)]
+#[derive(Clone, Default, Debug)]
 pub struct StubSyscallHandler {
+    /// The Cairo Native executor
+    pub executor: Option<Arc<AotNativeExecutor>>,
     /// The values of addresses in the simulated storage per contract.
     pub storage: HashMap<Felt, HashMap<Felt, Felt>>,
     /// A mapping from contract address to class hash.
@@ -251,6 +261,148 @@ fn maybe_affine<Curve: SWCurveConfig>(
     }
 }
 
+impl StubSyscallHandler {
+    #[instrument(skip(self))]
+    fn call_entry_point(
+        &mut self,
+        gas_counter: &mut u64,
+        entry_point: &FunctionId,
+        calldata: &[Felt],
+    ) -> Result<Vec<Felt>, Vec<Felt>> {
+        tracing::debug!("invoking");
+        let concrete_result = self
+            .executor
+            .clone()
+            .unwrap()
+            .invoke_dynamic_with_syscall_handler(
+                entry_point,
+                &[Value::Struct {
+                    fields: vec![Value::Array(
+                        calldata.iter().map(|x| Value::from(*x)).collect_vec(),
+                    )],
+                    debug_name: None,
+                }],
+                Some(*gas_counter),
+                self,
+            )
+            .unwrap();
+        tracing::debug!("invoked");
+
+        let starknet_result = value_to_serialized_result(&concrete_result.return_value).unwrap();
+
+        match starknet_result {
+            RunResultValue::Success(felts) => Ok(felts),
+            RunResultValue::Panic(felts) => Err(felts),
+        }
+    }
+
+    /// Replaces the addresses in the context.
+    pub fn open_caller_context(
+        &mut self,
+        (new_contract_address, new_caller_address): (Felt, Felt),
+    ) -> (Felt, Felt) {
+        let old_contract_address = std::mem::replace(
+            &mut self.execution_info.contract_address,
+            new_contract_address,
+        );
+        let old_caller_address =
+            std::mem::replace(&mut self.execution_info.caller_address, new_caller_address);
+        (old_contract_address, old_caller_address)
+    }
+
+    /// Restores the addresses in the context.
+    pub fn close_caller_context(
+        &mut self,
+        (old_contract_address, old_caller_address): (Felt, Felt),
+    ) {
+        self.execution_info.contract_address = old_contract_address;
+        self.execution_info.caller_address = old_caller_address;
+    }
+}
+
+fn value_to_serialized_result(value: &Value) -> Result<RunResultValue, Error> {
+    let unexpected_value_error = Err(Error::UnexpectedValue(String::from(
+        "PanicResult<(Span<Felt>,)>",
+    )));
+
+    // The value should be of type: Enum<Struct<Struct<Span<Felt>>>, Struct<Panic,Array<Felt>>>
+    let Value::Enum { tag, value, .. } = value else {
+        return unexpected_value_error;
+    };
+    match tag {
+        0 => {
+            // The value should be of type: Struct<Struct<Span<Felt>>>
+            let Value::Struct { fields: values, .. } = value.as_ref() else {
+                return unexpected_value_error;
+            };
+            let value = if values.len() != 1 {
+                return unexpected_value_error;
+            } else {
+                &values[0]
+            };
+            // The value should be of type: Struct<Span<Felt>>
+            let Value::Struct { fields: values, .. } = value else {
+                return unexpected_value_error;
+            };
+            let value = if values.len() != 1 {
+                return unexpected_value_error;
+            } else {
+                &values[0]
+            };
+            // The value should be of type: Span<Felt>
+            let Value::Array(values) = value else {
+                return unexpected_value_error;
+            };
+            // The values should be of type: Felt
+            let Some(values) = values
+                .iter()
+                .map(|value| {
+                    if let Value::Felt252(value) = value {
+                        Some(*value)
+                    } else {
+                        None
+                    }
+                })
+                .collect::<Option<Vec<Felt>>>()
+            else {
+                return unexpected_value_error;
+            };
+            Ok(RunResultValue::Success(values))
+        }
+        1 => {
+            // The value should be of type: Struct<Panic,Array<Felt>>
+            let Value::Struct { fields: values, .. } = value.as_ref() else {
+                return unexpected_value_error;
+            };
+            let value = if values.len() != 2 {
+                return unexpected_value_error;
+            } else {
+                &values[1]
+            };
+            // The value should be of type: Array<Felt>
+            let Value::Array(values) = value else {
+                return unexpected_value_error;
+            };
+            // The values should be of type: Felt
+            let Some(values) = values
+                .iter()
+                .map(|value| {
+                    if let Value::Felt252(value) = value {
+                        Some(*value)
+                    } else {
+                        None
+                    }
+                })
+                .collect::<Option<Vec<Felt>>>()
+            else {
+                return unexpected_value_error;
+            };
+            Ok(RunResultValue::Panic(values))
+        }
+        _ => unexpected_value_error,
+    }
+}
+
 impl StarknetSyscallHandler for &mut StubSyscallHandler {
     #[instrument(skip(self))]
     fn get_block_hash(
@@ -355,14 +507,19 @@ impl StarknetSyscallHandler for &mut StubSyscallHandler {
             )]);
         }
 
-        if let Some(_constructor) = &contract_info.constructor {
-            tracing::warn!("call unimplemented");
-            Err(vec![
-                Felt::from_bytes_be_slice(b"REVERT REASON"),
-                Felt::from_bytes_be_slice(b"CONSTRUCTOR_FAILED"),
-            ])
+        if let Some(constructor) = contract_info.constructor.clone() {
+            let old_addrs = self.open_caller_context((deployed_contract_address, deployer_address));
+            let res = self.call_entry_point(remaining_gas, &constructor, calldata);
+            self.close_caller_context(old_addrs);
+            match res {
+                Ok(res) => Ok((deployed_contract_address, res)),
+                Err(mut res) => {
+                    res.push(Felt::from_bytes_be_slice(b"CONSTRUCTOR_FAILED"));
+                    Err(res)
+                }
+            }
         } else if calldata.is_empty() {
-            Ok((deployed_contract_address, vec![Felt::ZERO]))
+            Ok((deployed_contract_address, vec![]))
         } else {
             // Remove the contract from the deployed contracts,
             // since it failed to deploy.
@@ -421,8 +578,36 @@ impl StarknetSyscallHandler for &mut StubSyscallHandler {
         calldata: &[Felt],
         remaining_gas: &mut u64,
     ) -> crate::starknet::SyscallResult<Vec<Felt>> {
-        tracing::warn!("unimplemented");
-        Ok(vec![])
+        tracing::debug!("called");
+
+        let Some(class_hash) = self.deployed_contracts.get(&address) else {
+            return Err(vec![
+                Felt::from_bytes_be_slice(b"REVERT CONTRACT_NOT_DEPLOYED"),
+                Felt::from_bytes_be_slice(b"ENTRYPOINT_FAILED"),
+            ]);
+        };
+        let contract_info = self
+            .contracts_info
+            .get(class_hash)
+            .expect("Deployed contract not found in registry.")
+            .clone();
+        let Some(entry_point) = contract_info.externals.get(&entry_point_selector) else {
+            return Err(vec![
+                Felt::from_bytes_be_slice(b"ENTRYPOINT_NOT_FOUND"),
+                Felt::from_bytes_be_slice(b"ENTRYPOINT_FAILED"),
+            ]);
+        };
+
+        let old_addrs = self.open_caller_context((address, self.execution_info.contract_address));
+        let res = self.call_entry_point(remaining_gas, entry_point, calldata);
+        self.close_caller_context(old_addrs);
+        match res {
+            Ok(res) => Ok(res),
+            Err(mut res) => {
+                res.push(Felt::from_bytes_be_slice(b"ENTRYPOINT_FAILED"));
+                Err(res)
+            }
+        }
     }
 
     fn storage_read(

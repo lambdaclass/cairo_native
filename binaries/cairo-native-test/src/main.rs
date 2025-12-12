@@ -54,6 +54,7 @@ fn main() -> anyhow::Result<()> {
     tracing::subscriber::set_global_default(
         FmtSubscriber::builder()
             .with_env_filter(EnvFilter::from_default_env())
+            .pretty()
             .finish(),
     )?;
 
