@@ -49,7 +49,6 @@ enum RuntimeBinding {
     ExtendedEuclideanAlgorithm,
     CircuitArithOperation,
     DictLen,
-    // DictGetAll,
     DictIntoEntries,
     #[cfg(feature = "with-cheatcode")]
     VtableCheatcode,
@@ -80,7 +79,6 @@ impl RuntimeBinding {
             }
             RuntimeBinding::CircuitArithOperation => "cairo_native__circuit_arith_operation",
             RuntimeBinding::DictLen => "cairo_native__dict_len",
-            // RuntimeBinding::DictGetAll => "cairo_native__dict_get_all",
             RuntimeBinding::DictIntoEntries => "cairo_native__dict_into_entries",
             #[cfg(feature = "with-cheatcode")]
             RuntimeBinding::VtableCheatcode => "cairo_native__vtable_cheatcode",
@@ -131,7 +129,6 @@ impl RuntimeBinding {
                 crate::runtime::cairo_native__get_costs_builtin as *const ()
             }
             RuntimeBinding::DictLen => crate::runtime::cairo_native__dict_len as *const (),
-            // RuntimeBinding::DictGetAll => crate::runtime::cairo_native__dict_get_all as *const (),
             RuntimeBinding::DictIntoEntries => {
                 crate::runtime::cairo_native__dict_into_entries as *const ()
             }
@@ -846,7 +843,6 @@ pub fn setup_runtime(find_symbol_ptr: impl Fn(&str) -> Option<*mut c_void>) {
         RuntimeBinding::GetCostsBuiltin,
         RuntimeBinding::DebugPrint,
         RuntimeBinding::DictLen,
-        // RuntimeBinding::DictGetAll,
         RuntimeBinding::DictIntoEntries,
         #[cfg(feature = "with-cheatcode")]
         RuntimeBinding::VtableCheatcode,
