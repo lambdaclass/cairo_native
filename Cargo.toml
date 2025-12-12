@@ -29,23 +29,23 @@ ark-secp256k1 = "0.5.0"
 ark-secp256r1 = "0.5.0"
 bincode = "2.0.1"
 bumpalo = "3.16.0"
-cairo-lang-casm = "~2.14.0"
-cairo-lang-compiler = "~2.14.0"
-cairo-lang-defs = "~2.14.0"
-cairo-lang-filesystem = "~2.14.0"
-cairo-lang-lowering = "~2.14.0"
-cairo-lang-runner = "~2.14.0"
-cairo-lang-semantic = "~2.14.0"
-cairo-lang-sierra = "~2.14.0"
-cairo-lang-sierra-ap-change = "~2.14.0"
-cairo-lang-sierra-gas = "~2.14.0"
-cairo-lang-sierra-generator = "~2.14.0"
-cairo-lang-sierra-to-casm = "~2.14.0"
-cairo-lang-sierra-type-size = "~2.14.0"
-cairo-lang-starknet = "~2.14.0"
-cairo-lang-starknet-classes = "~2.14.0"
-cairo-lang-test-plugin = "~2.14.0"
-cairo-lang-utils = "~2.14.0"
+cairo-lang-casm = "2.14.1-dev.0"
+cairo-lang-compiler = "2.14.1-dev.0"
+cairo-lang-defs = "2.14.1-dev.0"
+cairo-lang-filesystem = "2.14.1-dev.0"
+cairo-lang-lowering = "2.14.1-dev.0"
+cairo-lang-runner = "2.14.1-dev.0"
+cairo-lang-semantic = "2.14.1-dev.0"
+cairo-lang-sierra = "2.14.1-dev.0"
+cairo-lang-sierra-ap-change = "2.14.1-dev.0"
+cairo-lang-sierra-gas = "2.14.1-dev.0"
+cairo-lang-sierra-generator = "2.14.1-dev.0"
+cairo-lang-sierra-to-casm = "2.14.1-dev.0"
+cairo-lang-sierra-type-size = "2.14.1-dev.0"
+cairo-lang-starknet = "2.14.1-dev.0"
+cairo-lang-starknet-classes = "2.14.1-dev.0"
+cairo-lang-test-plugin = "2.14.1-dev.0"
+cairo-lang-utils = "2.14.1-dev.0"
 cairo-native-bin-utils.path = "binaries/cairo-native-bin-utils"
 cairo-native = { path = ".", version = "0.8.0" }
 clap = "4.5.23"
@@ -124,10 +124,10 @@ testing = ["dep:cairo-lang-compiler", "dep:cairo-lang-starknet", "dep:cairo-lang
 [dependencies]
 aquamarine.workspace = true
 bumpalo.workspace = true
-cairo-lang-compiler = { workspace = true, optional = true }
-cairo-lang-filesystem = { workspace = true, optional = true }
+cairo-lang-compiler = "2.14.1-dev.0"
+cairo-lang-filesystem = "2.14.1-dev.0"
 cairo-lang-lowering.workspace = true
-cairo-lang-starknet = { workspace = true, optional = true }
+cairo-lang-starknet = "2.14.1-dev.0"
 cairo-lang-runner.workspace = true
 cairo-lang-sierra.workspace = true
 cairo-lang-sierra-type-size.workspace = true
