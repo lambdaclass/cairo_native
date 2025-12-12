@@ -25,7 +25,7 @@ jobs:
         id: parse-blocks
         run: |
           content=`cat ./cairo_native/.github/replay-blocks.txt`
-          echo "$(jq 'split(",")' -Rc <(echo $content))" >> $GITHUB_OUTPUT
+          echo "blocks_list=$(jq 'split(",")' -Rc <(echo $content))" >> $GITHUB_OUTPUT
 
 
   run:
