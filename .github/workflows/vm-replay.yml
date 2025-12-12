@@ -17,9 +17,9 @@ jobs:
     steps:
 
       - name: Checkout Native
-          uses: actions/checkout@v4
-          with:
-            path: cairo_native
+        uses: actions/checkout@v4
+        with:
+          path: cairo_native
 
       - name: Parse blocks file
         id: parse-blocks
