@@ -48,7 +48,7 @@ jobs:
         run: |
           content=`cat ./cairo_native/.github/replay-blocks.txt`
           echo "blocks_list=$(jq 'split(",")' -Rc <(echo $content))" >> $GITHUB_OUTPUT
-          echo "$content" >> ./blocks.txt
+          echo "$content" > ./blocks.txt
       
       - name: Save blocks list
         uses: actions/cache/save@v4.2.0
@@ -97,7 +97,7 @@ jobs:
           path: starknet-replay/cache
           key: cache-${{matrix.block}}
 
-      # Install dependenciess
+      # Install dependencies
       - uses: ./cairo_native/.github/actions/install-linux-deps
       - name: Setup rust env
         uses: dtolnay/rust-toolchain@1.84.1
