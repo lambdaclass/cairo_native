@@ -257,7 +257,7 @@ impl StubSyscallHandler {
         _entry_point: &FunctionId,
         _calldata: &[Felt],
     ) -> crate::starknet::SyscallResult<(Felt, Felt)> {
-        dbg!("unimplemented");
+        tracing::warn!("unimplemented");
         Ok((0.into(), 0.into()))
     }
 }
@@ -417,7 +417,7 @@ impl StarknetSyscallHandler for &mut StubSyscallHandler {
         remaining_gas: &mut u64,
     ) -> crate::starknet::SyscallResult<Vec<Felt>> {
         tracing::debug!("called");
-        dbg!("unimplemented");
+        tracing::warn!("unimplemented");
         Ok(vec![])
     }
 
