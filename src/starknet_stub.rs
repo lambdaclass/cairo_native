@@ -271,9 +271,8 @@ impl StarknetSyscallHandler for &mut StubSyscallHandler {
         remaining_gas: &mut u64,
     ) -> crate::starknet::SyscallResult<Felt> {
         tracing::debug!("called");
-
         if let Some(block_hash) = self.block_hash.get(&block_number) {
-            Ok(block_hash.clone())
+            Ok(*block_hash)
         } else {
             Err(vec![Felt::from_bytes_be_slice(b"GET_BLOCK_HASH_NOT_SET")])
         }
@@ -477,6 +476,7 @@ impl StarknetSyscallHandler for &mut StubSyscallHandler {
         remaining_gas: &mut u64,
     ) -> crate::starknet::SyscallResult<()> {
         tracing::debug!("called");
+
         let contract = self.execution_info.contract_address;
         self.logs
             .entry(contract)
@@ -486,6 +486,7 @@ impl StarknetSyscallHandler for &mut StubSyscallHandler {
                 keys: keys.to_vec(),
                 data: data.to_vec(),
             });
+
         Ok(())
     }
 
@@ -717,6 +718,12 @@ impl StarknetSyscallHandler for &mut StubSyscallHandler {
                 self.execution_info.block_info.block_timestamp = block_timestamp;
                 vec![]
             }
+            "set_block_hash" => {
+                let block_number = input[0].to_biguint().try_into().unwrap();
+                let block_hash = input[1];
+                self.block_hash.insert(block_number, block_hash);
+                vec![]
+            }
             "set_signature" => {
                 self.execution_info.tx_info.signature = input.to_vec();
                 vec![]
@@ -739,7 +746,7 @@ impl StarknetSyscallHandler for &mut StubSyscallHandler {
                     serialized_log.append(&mut log.data);
                     serialized_log
                 })
-                .unwrap_or(vec![]),
+                .unwrap_or_default(),
             "pop_l2_to_l1_message" => self
                 .logs
                 .get_mut(&input[0])
@@ -752,7 +759,7 @@ impl StarknetSyscallHandler for &mut StubSyscallHandler {
                     serialized_log
                 })
                 .unwrap_or_default(),
-            _ => vec![],
+            _ => todo!("cheatcode: {}", selector),
         }
     }
 
