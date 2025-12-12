@@ -5,9 +5,6 @@ on:
     # At the end of every day
     - cron: "0 8 * * 1"
 
-env:
-  RANGE_SIZE: 20
-
 jobs:
   release-tag-check:
     name: Check Last Cairo Release
