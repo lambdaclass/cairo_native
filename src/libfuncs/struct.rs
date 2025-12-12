@@ -158,6 +158,7 @@ pub fn build_deconstruct<'ctx, 'this>(
     helper.br(entry, 0, &fields, location)
 }
 
+// Gets the value that is inside a `Box`
 fn unbox_container<'ctx, 'this>(
     context: &'ctx Context,
     registry: &ProgramRegistry<CoreType, CoreLibfunc>,
@@ -193,6 +194,7 @@ fn unbox_container<'ctx, 'this>(
     Ok(value)
 }
 
+/// Receives a value (representing a member of a struct) and inserts it into a box
 fn box_member<'ctx, 'this>(
     context: &'ctx Context,
     entry: &'this Block<'ctx>,
@@ -215,6 +217,23 @@ fn box_member<'ctx, 'this>(
     Ok(ptr)
 }
 
+/// Generate MLIR operations for the `struct_boxed_deconstruct` libfunc.
+///
+/// Receives a `Struct` inside a `Box` and returns a tuple containing each member
+/// of the `Struct` wrapped inside a `Box`.
+///
+/// # Signature
+///
+/// ```cairo
+/// struct MyStruct {
+///     x: u8,
+///     y: felt252,
+/// }
+///
+/// extern fn struct_boxed_deconstruct<T>(
+///     value: Box<T>
+/// ) -> (Box<u8>, Box<felt252>) nopanic;
+/// ```
 pub fn build_boxed_deconstruct<'ctx, 'this>(
     context: &'ctx Context,
     registry: &ProgramRegistry<CoreType, CoreLibfunc>,
