@@ -11,6 +11,8 @@ env:
 
 jobs:
 
+  # Gets the file with the blocks to execute, parses it and
+  # outputs it so it can be used as a matrix in the next job
   setup:
     runs-on: ubuntu-latest
     outputs:
@@ -29,18 +31,11 @@ jobs:
           key: blocks-list
           fail-on-cache-miss: true # If the block list is not on the cache, we should run the vm-replay workflow
 
-      - name: Check blocks list content - BEFORE
-        run: cat ./blocks.txt
-
       - name: Parse blocks file
         id: parse-blocks
         run: |
           content=`cat ./blocks.txt`
           echo "blocks_list=$(jq 'split(",")' -Rc <(echo $content))" >> $GITHUB_OUTPUT
-      
-      - name: Check blocks list content - AFTER
-        run: cat ./blocks.txt
-
 
   run:
     needs: setup
@@ -164,12 +159,6 @@ jobs:
           key: dumps-vm
         continue-on-error: true
 
-      - name: TEST - Check native dumps
-        run: ls state_dumps/native
-      
-      - name: TEST - Check vm dumps
-        run: ls state_dumps/vm
-
       - name: Compare states
         run: python ./scripts/cmp_state_dumps.py | tee output
 
@@ -181,19 +170,19 @@ jobs:
           name: output-result
           path: output
 
-      # - name: Prepare env vars
-      #   if: ${{ always() }}
-      #   run: |
-      #     # Save workflow url
-      #     REPO_URL="${{ github.server_url }}/${{ github.repository }}"
-      #     echo "WORKFLOW_URL=$REPO_URL/actions/runs/${{ github.run_id }}" | tee -a $GITHUB_ENV
-      #     echo "COMPARISON_RESULT=$REPO_URL/actions/runs/${{ github.run_id }}/artifacts/${{ steps.upload_compare_results.outputs.artifact-id }}" | tee -a $GITHUB_ENV
+      - name: Prepare env vars
+        if: ${{ always() }}
+        run: |
+          # Save workflow url
+          REPO_URL="${{ github.server_url }}/${{ github.repository }}"
+          echo "WORKFLOW_URL=$REPO_URL/actions/runs/${{ github.run_id }}" | tee -a $GITHUB_ENV
+          echo "COMPARISON_RESULT=$REPO_URL/actions/runs/${{ github.run_id }}/artifacts/${{ steps.upload_compare_results.outputs.artifact-id }}" | tee -a $GITHUB_ENV
 
-      # - name: Create Issue
-      #   if: ${{ failure() }}
-      #   uses: JasonEtco/create-an-issue@v2
-      #   env:
-      #     GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-      #     COMMIT_SHA: ${{ github.sha }}
-      #   with:
-      #     filename: .github/ISSUE_TEMPLATE/daily_failure.md
+      - name: Create Issue
+        if: ${{ failure() }}
+        uses: JasonEtco/create-an-issue@v2
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          COMMIT_SHA: ${{ github.sha }}
+        with:
+          filename: .github/ISSUE_TEMPLATE/daily_failure.md

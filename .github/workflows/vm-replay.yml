@@ -13,6 +13,8 @@ env:
 
 jobs:
 
+  # Gets the blocks to execute and saves them on the cache so it can
+  # be used by the 'daily' workflow
   setup:
     runs-on: ubuntu-latest
     outputs:
@@ -30,9 +32,6 @@ jobs:
         with:
           path: ./blocks.txt
           key: blocks-list
-      
-      - name: TEST - check blocks file BEFORE
-        run: cat blocks.txt
 
       - name: Delete blocks cache entry
         if: ${{ steps.cache-restore.outputs.cache-hit }}
@@ -52,9 +51,6 @@ jobs:
         with:
           path: ./blocks.txt
           key: blocks-list
-
-      - name: TEST - check blocks file AFTER
-        run: cat blocks.txt
 
   run:
     needs: setup
