@@ -1228,8 +1228,6 @@ version = "0.0.0"
 dependencies = [
  "anyhow",
  "cairo-lang-compiler",
- "cairo-lang-filesystem",
- "cairo-lang-starknet",
  "cairo-lang-test-plugin",
  "cairo-lang-test-runner",
  "cairo-native-bin-utils",

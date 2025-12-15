@@ -5,8 +5,6 @@ edition.workspace = true
 [dependencies]
 anyhow.workspace = true
 cairo-lang-compiler.workspace = true
-cairo-lang-filesystem.workspace = true
-cairo-lang-starknet.workspace = true
 cairo-lang-test-plugin.workspace = true
 cairo-lang-test-runner.workspace = true
 cairo-native-bin-utils = { workspace = true, features = ["with-cheatcode"] }
