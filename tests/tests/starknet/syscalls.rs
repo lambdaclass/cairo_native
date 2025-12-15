@@ -3,8 +3,8 @@ use cairo_lang_runner::SierraCasmRunner;
 use cairo_lang_sierra::program::Program;
 use cairo_native::{
     starknet::{
-        BlockInfo, ExecutionInfo, ExecutionInfoV2, Secp256k1Point, Secp256r1Point,
-        StarknetSyscallHandler, SyscallResult, TxInfo, TxV2Info, U256,
+        BlockInfo, ExecutionInfo, ExecutionInfoV2, ExecutionInfoV3, Secp256k1Point, Secp256r1Point,
+        StarknetSyscallHandler, SyscallResult, TxInfo, TxV2Info, TxV3Info, U256,
     },
     Value,
 };
@@ -164,6 +164,65 @@ impl StarknetSyscallHandler for SyscallHandler {
                 nonce_data_availability_mode: 140600095,
                 fee_data_availability_mode: 988370659,
                 account_deployment_data: Vec::new(),
+            },
+            caller_address: Felt::from_dec_str(
+                "1185632056775552928459345712365014492063999606476424661067102766803470217687",
+            )
+            .unwrap(),
+            contract_address: Felt::from_dec_str(
+                "741063429140548584082645215539704615048011618665759826371923004739480130327",
+            )
+            .unwrap(),
+            entry_point_selector: Felt::from_dec_str(
+                "477501848519111015718660527024172361930966806556174677443839145770405114061",
+            )
+            .unwrap(),
+        })
+    }
+
+    fn get_execution_info_v3(
+        &mut self,
+        _remaining_gas: &mut u64,
+    ) -> SyscallResult<ExecutionInfoV3> {
+        Ok(ExecutionInfoV3 {
+            block_info: BlockInfo {
+                block_number: 10290342497028289173,
+                block_timestamp: 8376161426686560326,
+                sequencer_address: Felt::from_dec_str(
+                    "1815189516202718271265591469295511271015058493881778555617445818147186579905",
+                )
+                .unwrap(),
+            },
+            tx_info: TxV3Info {
+                version: Felt::from_dec_str(
+                    "1946630339019864531118751968563861838541265142438690346764722398811248737786",
+                )
+                .unwrap(),
+                account_contract_address: Felt::from_dec_str(
+                    "2501333093425095943815772537228190103182643237630648877273495185321298605376",
+                )
+                .unwrap(),
+                max_fee: 268753657614351187400966367706860329387,
+                signature: Vec::new(),
+                transaction_hash: Felt::from_dec_str(
+                    "1123336726531770778820945049824733201592457249587063926479184903627272350002",
+                )
+                .unwrap(),
+                chain_id: Felt::from_dec_str(
+                    "2128916697180095451339935431635121484141376377516602728602049361615810538124",
+                )
+                .unwrap(),
+                nonce: Felt::from_dec_str(
+                    "3012936192361023209451741736298028332652992971202997279327088951248532774884",
+                )
+                .unwrap(),
+                resource_bounds: Vec::new(),
+                tip: 215444579144685671333997376989135077200,
+                paymaster_data: Vec::new(),
+                nonce_data_availability_mode: 140600095,
+                fee_data_availability_mode: 988370659,
+                account_deployment_data: Vec::new(),
+                proof_facts: Vec::new(),
             },
             caller_address: Felt::from_dec_str(
                 "1185632056775552928459345712365014492063999606476424661067102766803470217687",

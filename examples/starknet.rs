@@ -5,8 +5,8 @@ use cairo_native::{
     context::NativeContext,
     executor::JitNativeExecutor,
     starknet::{
-        BlockInfo, ExecutionInfo, ExecutionInfoV2, ResourceBounds, Secp256k1Point, Secp256r1Point,
-        StarknetSyscallHandler, SyscallResult, TxInfo, TxV2Info, U256,
+        BlockInfo, ExecutionInfo, ExecutionInfoV2, ExecutionInfoV3, ResourceBounds, Secp256k1Point,
+        Secp256r1Point, StarknetSyscallHandler, SyscallResult, TxInfo, TxV2Info, TxV3Info, U256,
     },
     utils::find_entry_point_by_idx,
 };
@@ -120,6 +120,43 @@ impl StarknetSyscallHandler for SyscallHandler {
                     max_amount: 10,
                     max_price_per_unit: 20,
                 }],
+            },
+            caller_address: 6543.into(),
+            contract_address: 5432.into(),
+            entry_point_selector: 4321.into(),
+        })
+    }
+
+    fn get_execution_info_v3(
+        &mut self,
+        _remaining_gas: &mut u64,
+    ) -> SyscallResult<cairo_native::starknet::ExecutionInfoV3> {
+        println!("Called `get_execution_info_v2()` from MLIR.");
+        Ok(ExecutionInfoV3 {
+            block_info: BlockInfo {
+                block_number: 1234,
+                block_timestamp: 2345,
+                sequencer_address: 3456.into(),
+            },
+            tx_info: TxV3Info {
+                version: 1.into(),
+                account_contract_address: 1.into(),
+                max_fee: 0,
+                signature: vec![1.into()],
+                transaction_hash: 1.into(),
+                chain_id: 1.into(),
+                nonce: 1.into(),
+                tip: 1,
+                paymaster_data: vec![1.into()],
+                nonce_data_availability_mode: 0,
+                fee_data_availability_mode: 0,
+                account_deployment_data: vec![1.into()],
+                resource_bounds: vec![ResourceBounds {
+                    resource: 2.into(),
+                    max_amount: 10,
+                    max_price_per_unit: 20,
+                }],
+                proof_facts: vec![1.into()],
             },
             caller_address: 6543.into(),
             contract_address: 5432.into(),

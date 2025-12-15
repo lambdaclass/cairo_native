@@ -86,8 +86,8 @@ pub fn eval(
         StarknetConcreteLibfunc::GetExecutionInfoV2(info) => {
             eval_get_execution_info_v2(registry, info, args, syscall_handler)
         }
-        StarknetConcreteLibfunc::GetExecutionInfoV3(_info) => {
-            todo!()
+        StarknetConcreteLibfunc::GetExecutionInfoV3(info) => {
+            eval_get_execution_info_v3(registry, info, args, syscall_handler)
         }
         StarknetConcreteLibfunc::Deploy(info) => eval_deploy(registry, info, args, syscall_handler),
         StarknetConcreteLibfunc::Keccak(info) => eval_keccak(registry, info, args, syscall_handler),
@@ -895,6 +895,88 @@ fn eval_get_execution_info_v2(
     };
 
     let result = syscall_handler.get_execution_info_v2(&mut gas);
+
+    let mut out_ty = registry
+        .get_type(&info.branch_signatures()[0].vars[2].ty)
+        .unwrap();
+    let mut out_ty_id = &info.branch_signatures()[0].vars[2].ty;
+
+    if let CoreTypeConcrete::Box(inner) = out_ty {
+        out_ty_id = &inner.ty;
+        out_ty = registry.get_type(&inner.ty).unwrap();
+    };
+
+    if let CoreTypeConcrete::Struct(inner) = out_ty {
+        out_ty_id = &inner.members[1];
+        out_ty = registry.get_type(&inner.members[1]).unwrap();
+    };
+
+    if let CoreTypeConcrete::Box(inner) = out_ty {
+        out_ty_id = &inner.ty;
+        out_ty = registry.get_type(&inner.ty).unwrap();
+    };
+
+    if let CoreTypeConcrete::Struct(inner) = out_ty {
+        out_ty_id = &inner.members[7];
+        out_ty = registry.get_type(&inner.members[7]).unwrap();
+    };
+
+    if let CoreTypeConcrete::Struct(inner) = out_ty {
+        out_ty_id = &inner.members[0];
+        out_ty = registry.get_type(&inner.members[0]).unwrap();
+    };
+    if let CoreTypeConcrete::Snapshot(inner) = out_ty {
+        out_ty_id = &inner.ty;
+        out_ty = registry.get_type(&inner.ty).unwrap();
+    };
+    if let CoreTypeConcrete::Array(inner) = out_ty {
+        out_ty_id = &inner.ty;
+    };
+
+    match result {
+        Ok(res) => EvalAction::NormalBranch(
+            0,
+            smallvec![
+                Value::U64(gas),
+                system,
+                res.into_value(felt_ty, out_ty_id.clone())
+            ],
+        ),
+        Err(e) => EvalAction::NormalBranch(
+            1,
+            smallvec![
+                Value::U64(gas),
+                system,
+                Value::Array {
+                    ty: felt_ty,
+                    data: e.into_iter().map(Value::Felt).collect::<Vec<_>>(),
+                }
+            ],
+        ),
+    }
+}
+
+fn eval_get_execution_info_v3(
+    registry: &ProgramRegistry<CoreType, CoreLibfunc>,
+    info: &SignatureOnlyConcreteLibfunc,
+    args: Vec<Value>,
+    syscall_handler: &mut impl StarknetSyscallHandler,
+) -> EvalAction {
+    let [Value::U64(mut gas), system]: [Value; 2] = args.try_into().unwrap() else {
+        panic!()
+    };
+    // get felt type from the error branch array
+    let felt_ty = {
+        match registry
+            .get_type(&info.branch_signatures()[1].vars[2].ty)
+            .unwrap()
+        {
+            CoreTypeConcrete::Array(info) => info.ty.clone(),
+            _ => unreachable!(),
+        }
+    };
+
+    let result = syscall_handler.get_execution_info_v3(&mut gas);
 
     let mut out_ty = registry
         .get_type(&info.branch_signatures()[0].vars[2].ty)

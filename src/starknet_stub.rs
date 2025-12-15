@@ -6,8 +6,8 @@ use std::{
 };
 
 use crate::starknet::{
-    BlockInfo, ExecutionInfo, ExecutionInfoV2, Secp256k1Point, Secp256r1Point,
-    StarknetSyscallHandler, SyscallResult, TxInfo, TxV2Info, U256,
+    BlockInfo, ExecutionInfo, ExecutionInfoV2, ExecutionInfoV3, Secp256k1Point, Secp256r1Point,
+    StarknetSyscallHandler, SyscallResult, TxInfo, TxV2Info, TxV3Info, U256,
 };
 use ark_ec::short_weierstrass::{Affine, Projective, SWCurveConfig};
 use ark_ff::{BigInt, PrimeField};
@@ -24,7 +24,7 @@ use tracing::instrument;
 pub struct StubSyscallHandler {
     pub storage: HashMap<(u32, Felt), Felt>,
     pub events: Vec<StubEvent>,
-    pub execution_info: ExecutionInfoV2,
+    pub execution_info: ExecutionInfoV3,
     pub logs: HashMap<Felt, ContractLogs>,
 }
 
@@ -33,13 +33,13 @@ impl Default for StubSyscallHandler {
         Self {
             storage: HashMap::new(),
             events: Vec::new(),
-            execution_info: ExecutionInfoV2 {
+            execution_info: ExecutionInfoV3 {
                 block_info: BlockInfo {
                     block_number: 0,
                     block_timestamp: 0,
                     sequencer_address: 666.into(),
                 },
-                tx_info: TxV2Info {
+                tx_info: TxV3Info {
                     version: 1.into(),
                     account_contract_address: 1.into(),
                     max_fee: 0,
@@ -53,6 +53,7 @@ impl Default for StubSyscallHandler {
                     nonce_data_availability_mode: 0,
                     fee_data_availability_mode: 0,
                     account_deployment_data: vec![],
+                    proof_facts: vec![],
                 },
                 caller_address: 2.into(),
                 contract_address: 3.into(),
@@ -302,6 +303,42 @@ impl StarknetSyscallHandler for &mut StubSyscallHandler {
         &mut self,
         remaining_gas: &mut u64,
     ) -> crate::starknet::SyscallResult<crate::starknet::ExecutionInfoV2> {
+        tracing::debug!("called");
+        Ok(ExecutionInfoV2 {
+            block_info: self.execution_info.block_info,
+            tx_info: TxV2Info {
+                version: self.execution_info.tx_info.version,
+                account_contract_address: self.execution_info.tx_info.account_contract_address,
+                max_fee: self.execution_info.tx_info.max_fee,
+                signature: self.execution_info.tx_info.signature.clone(),
+                transaction_hash: self.execution_info.tx_info.transaction_hash,
+                chain_id: self.execution_info.tx_info.chain_id,
+                nonce: self.execution_info.tx_info.nonce,
+                resource_bounds: self.execution_info.tx_info.resource_bounds.clone(),
+                tip: self.execution_info.tx_info.tip,
+                paymaster_data: self.execution_info.tx_info.paymaster_data.clone(),
+                nonce_data_availability_mode: self
+                    .execution_info
+                    .tx_info
+                    .nonce_data_availability_mode,
+                fee_data_availability_mode: self.execution_info.tx_info.fee_data_availability_mode,
+                account_deployment_data: self
+                    .execution_info
+                    .tx_info
+                    .account_deployment_data
+                    .clone(),
+            },
+            caller_address: self.execution_info.caller_address,
+            contract_address: self.execution_info.contract_address,
+            entry_point_selector: self.execution_info.entry_point_selector,
+        })
+    }
+
+    #[instrument(skip(self))]
+    fn get_execution_info_v3(
+        &mut self,
+        remaining_gas: &mut u64,
+    ) -> crate::starknet::SyscallResult<crate::starknet::ExecutionInfoV3> {
         tracing::debug!("called");
         Ok(self.execution_info.clone())
     }

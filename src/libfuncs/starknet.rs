@@ -5,7 +5,6 @@ use crate::{
     error::{Error, Result},
     ffi::get_struct_field_type_at,
     metadata::{drop_overrides::DropOverridesMeta, MetadataStorage},
-    native_panic,
     starknet::handler::StarknetSyscallHandlerCallbacks,
     utils::{get_integer_layout, ProgramRegistryExt, PRIME},
 };
@@ -120,8 +119,8 @@ pub fn build<'ctx, 'this>(
         StarknetConcreteLibfunc::GetExecutionInfoV2(info) => {
             build_get_execution_info_v2(context, registry, entry, location, helper, metadata, info)
         }
-        StarknetConcreteLibfunc::GetExecutionInfoV3(_info) => {
-            native_panic!("implement get_execution_info_v3")
+        StarknetConcreteLibfunc::GetExecutionInfoV3(info) => {
+            build_get_execution_info_v3(context, registry, entry, location, helper, metadata, info)
         }
         StarknetConcreteLibfunc::Deploy(info) => {
             build_deploy(context, registry, entry, location, helper, metadata, info)
@@ -1487,6 +1486,148 @@ pub fn build_get_execution_info_v2<'ctx, 'this>(
         entry.arg(1)?,
         &[GepIndex::Const(
             StarknetSyscallHandlerCallbacks::<()>::GET_EXECUTION_INFOV2.try_into()?,
+        )],
+        pointer(context, 0),
+    )?;
+    let fn_ptr = entry.load(context, location, fn_ptr, llvm::r#type::pointer(context, 0))?;
+
+    entry.append_operation(
+        OperationBuilder::new("llvm.call", location)
+            .add_operands(&[fn_ptr, result_ptr, ptr, gas_builtin_ptr])
+            .build()?,
+    );
+
+    let result = entry.load(
+        context,
+        location,
+        result_ptr,
+        llvm::r#type::r#struct(
+            context,
+            &[
+                result_tag_ty,
+                llvm::r#type::array(
+                    IntegerType::new(context, 8).into(),
+                    (result_layout.size() - 1).try_into()?,
+                ),
+            ],
+            false,
+        ),
+    )?;
+    let result_tag = entry.extract_value(
+        context,
+        location,
+        result,
+        IntegerType::new(context, 1).into(),
+        0,
+    )?;
+
+    let payload_ok = {
+        let ptr = entry.gep(
+            context,
+            location,
+            result_ptr,
+            &[GepIndex::Const(
+                result_tag_layout.extend(variant_tys[0].1)?.1.try_into()?,
+            )],
+            IntegerType::new(context, 8).into(),
+        )?;
+        entry.load(context, location, ptr, variant_tys[0].0)?
+    };
+    let payload_err = {
+        let ptr = entry.gep(
+            context,
+            location,
+            result_ptr,
+            &[GepIndex::Const(
+                result_tag_layout.extend(variant_tys[1].1)?.1.try_into()?,
+            )],
+            IntegerType::new(context, 8).into(),
+        )?;
+        entry.load(context, location, ptr, variant_tys[1].0)?
+    };
+
+    let remaining_gas = entry.load(context, location, gas_builtin_ptr, gas_ty)?;
+
+    helper.cond_br(
+        context,
+        entry,
+        result_tag,
+        [1, 0],
+        [
+            &[remaining_gas, entry.arg(1)?, payload_err],
+            &[remaining_gas, entry.arg(1)?, payload_ok],
+        ],
+        location,
+    )
+}
+
+pub fn build_get_execution_info_v3<'ctx, 'this>(
+    context: &'ctx Context,
+    registry: &ProgramRegistry<CoreType, CoreLibfunc>,
+    entry: &'this Block<'ctx>,
+    location: Location<'ctx>,
+    helper: &LibfuncHelper<'ctx, 'this>,
+    metadata: &mut MetadataStorage,
+    info: &SignatureOnlyConcreteLibfunc,
+) -> Result<()> {
+    // Extract self pointer.
+    let ptr = entry.load(
+        context,
+        location,
+        entry.arg(1)?,
+        llvm::r#type::pointer(context, 0),
+    )?;
+
+    // Allocate space for the return value.
+    let (result_layout, (result_tag_ty, result_tag_layout), variant_tys) =
+        crate::types::r#enum::get_type_for_variants(
+            context,
+            helper,
+            registry,
+            metadata,
+            &[
+                info.branch_signatures()[0].vars[2].ty.clone(),
+                info.branch_signatures()[1].vars[2].ty.clone(),
+            ],
+        )?;
+
+    let result_ptr = helper.init_block().alloca1(
+        context,
+        location,
+        llvm::r#type::r#struct(
+            context,
+            &[
+                result_tag_ty,
+                llvm::r#type::array(
+                    IntegerType::new(context, 8).into(),
+                    (result_layout.size() - 1).try_into()?,
+                ),
+            ],
+            false,
+        ),
+        result_layout.align(),
+    )?;
+
+    // Allocate space and write the current gas.
+    let (gas_ty, gas_layout) = registry.build_type_with_layout(
+        context,
+        helper,
+        metadata,
+        &info.param_signatures()[0].ty,
+    )?;
+    let gas_builtin_ptr =
+        helper
+            .init_block()
+            .alloca1(context, location, gas_ty, gas_layout.align())?;
+    entry.store(context, location, gas_builtin_ptr, entry.arg(0)?)?;
+
+    // Extract function pointer.
+    let fn_ptr = entry.gep(
+        context,
+        location,
+        entry.arg(1)?,
+        &[GepIndex::Const(
+            StarknetSyscallHandlerCallbacks::<()>::GET_EXECUTION_INFOV3.try_into()?,
         )],
         pointer(context, 0),
     )?;

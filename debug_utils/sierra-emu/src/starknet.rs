@@ -3,10 +3,13 @@ use std::{
     iter::once,
 };
 
+use crate::starknet::execution_info_v3::ExecutionInfoV3;
+
 pub use self::{
     block_info::BlockInfo, execution_info::ExecutionInfo, execution_info_v2::ExecutionInfoV2,
     resource_bounds::ResourceBounds, secp256k1_point::Secp256k1Point,
-    secp256r1_point::Secp256r1Point, tx_info::TxInfo, tx_v2_info::TxV2Info, u256::U256,
+    secp256r1_point::Secp256r1Point, tx_info::TxInfo, tx_v2_info::TxV2Info, tx_v3_info::TxV3Info,
+    u256::U256,
 };
 use k256::elliptic_curve::{
     generic_array::GenericArray,
@@ -19,11 +22,13 @@ use starknet_types_core::felt::Felt;
 mod block_info;
 mod execution_info;
 mod execution_info_v2;
+mod execution_info_v3;
 mod resource_bounds;
 mod secp256k1_point;
 mod secp256r1_point;
 mod tx_info;
 mod tx_v2_info;
+mod tx_v3_info;
 mod u256;
 
 pub type SyscallResult<T> = Result<T, Vec<Felt>>;
@@ -35,6 +40,8 @@ pub trait StarknetSyscallHandler {
     fn get_execution_info(&mut self, remaining_gas: &mut u64) -> SyscallResult<ExecutionInfo>;
 
     fn get_execution_info_v2(&mut self, remaining_gas: &mut u64) -> SyscallResult<ExecutionInfoV2>;
+
+    fn get_execution_info_v3(&mut self, remaining_gas: &mut u64) -> SyscallResult<ExecutionInfoV3>;
 
     fn deploy(
         &mut self,
@@ -200,7 +207,7 @@ pub trait StarknetSyscallHandler {
 pub struct StubSyscallHandler {
     pub storage: BTreeMap<(u32, Felt), Felt>,
     pub events: Vec<StubEvent>,
-    pub execution_info: ExecutionInfoV2,
+    pub execution_info: ExecutionInfoV3,
     pub logs: BTreeMap<Felt, ContractLogs>,
 }
 
@@ -224,13 +231,13 @@ impl Default for StubSyscallHandler {
         Self {
             storage: BTreeMap::new(),
             events: Vec::new(),
-            execution_info: ExecutionInfoV2 {
+            execution_info: ExecutionInfoV3 {
                 block_info: BlockInfo {
                     block_number: 0,
                     block_timestamp: 0,
                     sequencer_address: 666.into(),
                 },
-                tx_info: TxV2Info {
+                tx_info: TxV3Info {
                     version: 1.into(),
                     account_contract_address: 1.into(),
                     max_fee: 0,
@@ -244,6 +251,7 @@ impl Default for StubSyscallHandler {
                     nonce_data_availability_mode: 0,
                     fee_data_availability_mode: 0,
                     account_deployment_data: vec![],
+                    proof_facts: vec![],
                 },
                 caller_address: 2.into(),
                 contract_address: 3.into(),
@@ -285,6 +293,37 @@ impl StarknetSyscallHandler for StubSyscallHandler {
         &mut self,
         _remaining_gas: &mut u64,
     ) -> SyscallResult<ExecutionInfoV2> {
+        Ok(ExecutionInfoV2 {
+            block_info: self.execution_info.block_info,
+            tx_info: TxV2Info {
+                version: self.execution_info.tx_info.version,
+                account_contract_address: self.execution_info.tx_info.account_contract_address,
+                max_fee: self.execution_info.tx_info.max_fee,
+                signature: self.execution_info.tx_info.signature.clone(),
+                transaction_hash: self.execution_info.tx_info.transaction_hash,
+                chain_id: self.execution_info.tx_info.chain_id,
+                nonce: self.execution_info.tx_info.nonce,
+                resource_bounds: vec![ResourceBounds {
+                    resource: Felt::default(),
+                    max_amount: 0,
+                    max_price_per_unit: 0,
+                }],
+                tip: 0,
+                paymaster_data: vec![],
+                nonce_data_availability_mode: 0,
+                fee_data_availability_mode: 0,
+                account_deployment_data: vec![],
+            },
+            caller_address: self.execution_info.caller_address,
+            contract_address: self.execution_info.contract_address,
+            entry_point_selector: self.execution_info.entry_point_selector,
+        })
+    }
+
+    fn get_execution_info_v3(
+        &mut self,
+        _remaining_gas: &mut u64,
+    ) -> SyscallResult<ExecutionInfoV3> {
         Ok(self.execution_info.clone())
     }
 
