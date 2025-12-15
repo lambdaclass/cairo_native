@@ -79,6 +79,7 @@ pub fn libfunc_to_name(value: &CoreConcreteLibfunc) -> &'static str {
         },
         CoreConcreteLibfunc::Box(value) => match value {
             BoxConcreteLibfunc::Into(_) => "box_into",
+            BoxConcreteLibfunc::LocalInto(_) => "local_into",
             BoxConcreteLibfunc::Unbox(_) => "box_unbox",
             BoxConcreteLibfunc::ForwardSnapshot(_) => "box_forward_snapshot",
         },
@@ -96,6 +97,7 @@ pub fn libfunc_to_name(value: &CoreConcreteLibfunc) -> &'static str {
         CoreConcreteLibfunc::Ec(value) => match value {
             EcConcreteLibfunc::IsZero(_) => "ec_is_zero",
             EcConcreteLibfunc::Neg(_) => "ec_neg",
+            EcConcreteLibfunc::NegNz(_) => "ec_neg_nz",
             EcConcreteLibfunc::StateAdd(_) => "ec_state_add",
             EcConcreteLibfunc::TryNew(_) => "ec_try_new",
             EcConcreteLibfunc::StateFinalize(_) => "ec_state_finalize",
@@ -350,6 +352,7 @@ pub fn libfunc_to_name(value: &CoreConcreteLibfunc) -> &'static str {
             StarknetConcreteLibfunc::GetBlockHash(_) => "get_block_hash",
             StarknetConcreteLibfunc::GetExecutionInfo(_) => "get_exec_info_v1",
             StarknetConcreteLibfunc::GetExecutionInfoV2(_) => "get_exec_info_v2",
+            StarknetConcreteLibfunc::GetExecutionInfoV3(_) => "get_exec_info_v3",
             StarknetConcreteLibfunc::Deploy(_) => "deploy",
             StarknetConcreteLibfunc::Keccak(_) => "keccak",
             StarknetConcreteLibfunc::LibraryCall(_) => "library_call",

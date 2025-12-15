@@ -5,6 +5,7 @@ use crate::{
     error::{Error, Result},
     ffi::get_struct_field_type_at,
     metadata::{drop_overrides::DropOverridesMeta, MetadataStorage},
+    native_panic,
     starknet::handler::StarknetSyscallHandlerCallbacks,
     utils::{get_integer_layout, ProgramRegistryExt, PRIME},
 };
@@ -118,6 +119,9 @@ pub fn build<'ctx, 'this>(
         }
         StarknetConcreteLibfunc::GetExecutionInfoV2(info) => {
             build_get_execution_info_v2(context, registry, entry, location, helper, metadata, info)
+        }
+        StarknetConcreteLibfunc::GetExecutionInfoV3(_info) => {
+            native_panic!("implement get_execution_info_v3")
         }
         StarknetConcreteLibfunc::Deploy(info) => {
             build_deploy(context, registry, entry, location, helper, metadata, info)

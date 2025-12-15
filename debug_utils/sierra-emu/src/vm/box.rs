@@ -17,6 +17,7 @@ pub fn eval(
 ) -> EvalAction {
     match selector {
         BoxConcreteLibfunc::Into(info) => eval_into_box(registry, info, args),
+        BoxConcreteLibfunc::LocalInto(_info) => todo!(),
         BoxConcreteLibfunc::Unbox(info) => eval_unbox(registry, info, args),
         BoxConcreteLibfunc::ForwardSnapshot(info) => eval_forward_snapshot(registry, info, args),
     }

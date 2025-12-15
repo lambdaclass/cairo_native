@@ -86,6 +86,9 @@ pub fn eval(
         StarknetConcreteLibfunc::GetExecutionInfoV2(info) => {
             eval_get_execution_info_v2(registry, info, args, syscall_handler)
         }
+        StarknetConcreteLibfunc::GetExecutionInfoV3(_info) => {
+            todo!()
+        }
         StarknetConcreteLibfunc::Deploy(info) => eval_deploy(registry, info, args, syscall_handler),
         StarknetConcreteLibfunc::Keccak(info) => eval_keccak(registry, info, args, syscall_handler),
         StarknetConcreteLibfunc::Sha256ProcessBlock(info) => {

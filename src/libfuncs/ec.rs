@@ -6,6 +6,7 @@ use crate::{
     execution_result::EC_OP_BUILTIN_SIZE,
     libfuncs::increment_builtin_counter_conditionally_by,
     metadata::{runtime_bindings::RuntimeBindingsMeta, MetadataStorage},
+    native_panic,
     utils::{get_integer_layout, ProgramRegistryExt, PRIME},
 };
 use cairo_lang_sierra::{
@@ -43,6 +44,9 @@ pub fn build<'ctx, 'this>(
         }
         EcConcreteLibfunc::Neg(info) => {
             build_neg(context, registry, entry, location, helper, metadata, info)
+        }
+        EcConcreteLibfunc::NegNz(_info) => {
+            native_panic!("implement ec_neg_nz")
         }
         EcConcreteLibfunc::PointFromX(info) => {
             build_point_from_x(context, registry, entry, location, helper, metadata, info)

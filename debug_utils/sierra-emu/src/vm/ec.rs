@@ -27,6 +27,7 @@ pub fn eval(
     match selector {
         EcConcreteLibfunc::IsZero(info) => eval_is_zero(registry, info, args),
         EcConcreteLibfunc::Neg(info) => eval_neg(registry, info, args),
+        EcConcreteLibfunc::NegNz(_info) => todo!(),
         EcConcreteLibfunc::StateAdd(info) => eval_state_add(registry, info, args),
         EcConcreteLibfunc::TryNew(info) => eval_new(registry, info, args),
         EcConcreteLibfunc::StateFinalize(info) => eval_state_finalize(registry, info, args),
