@@ -584,7 +584,7 @@ impl StarknetSyscallHandler for &mut StubSyscallHandler {
 
         let Some(class_hash) = self.deployed_contracts.get(&address) else {
             return Err(vec![
-                Felt::from_bytes_be_slice(b"REVERT CONTRACT_NOT_DEPLOYED"),
+                Felt::from_bytes_be_slice(b"CONTRACT_NOT_DEPLOYED"),
                 Felt::from_bytes_be_slice(b"ENTRYPOINT_FAILED"),
             ]);
         };
