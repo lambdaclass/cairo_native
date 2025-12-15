@@ -1068,9 +1068,10 @@ mod tests {
 
         let mut test_syscall_handler = StubSyscallHandler::default();
         let mut test_syscall_handler = &mut test_syscall_handler;
+        let mut gas = u64::MAX;
 
         assert_eq!(
-            test_syscall_handler.secp256k1_get_xy(p, &mut 10).unwrap(),
+            test_syscall_handler.secp256k1_get_xy(p, &mut gas).unwrap(),
             (
                 U256 {
                     hi: 331229800296699308591929724809569456681,
@@ -1088,6 +1089,7 @@ mod tests {
     fn test_secp256k1_secp256k1_new() {
         let mut test_syscall_handler = StubSyscallHandler::default();
         let mut test_syscall_handler = &mut test_syscall_handler;
+        let mut gas = u64::MAX;
 
         let x = U256 {
             lo: 330631467365974629050427735731901850225,
@@ -1099,7 +1101,7 @@ mod tests {
         };
 
         assert_eq!(
-            test_syscall_handler.secp256k1_new(x, y, &mut 10).unwrap(),
+            test_syscall_handler.secp256k1_new(x, y, &mut gas).unwrap(),
             Some(Secp256k1Point {
                 x,
                 y,
@@ -1112,6 +1114,7 @@ mod tests {
     fn test_secp256k1_secp256k1_new_none() {
         let mut test_syscall_handler = StubSyscallHandler::default();
         let mut test_syscall_handler = &mut test_syscall_handler;
+        let mut gas = u64::MAX;
 
         let x = U256 {
             hi: 330631467365974629050427735731901850225,
@@ -1120,7 +1123,7 @@ mod tests {
         let y = U256 { hi: 0, lo: 0 };
 
         assert!(test_syscall_handler
-            .secp256k1_new(x, y, &mut 10)
+            .secp256k1_new(x, y, &mut gas)
             .unwrap()
             .is_none());
     }
@@ -1129,6 +1132,7 @@ mod tests {
     fn test_secp256k1_ssecp256k1_add() {
         let mut test_syscall_handler = StubSyscallHandler::default();
         let mut test_syscall_handler = &mut test_syscall_handler;
+        let mut gas = u64::MAX;
 
         let p1 = Secp256k1Point {
             x: U256 {
@@ -1145,7 +1149,9 @@ mod tests {
         let p2 = p1;
 
         // 2 * P1
-        let p3 = test_syscall_handler.secp256k1_add(p1, p2, &mut 10).unwrap();
+        let p3 = test_syscall_handler
+            .secp256k1_add(p1, p2, &mut gas)
+            .unwrap();
 
         let p1_double = Secp256k1Point {
             x: U256 {
@@ -1161,7 +1167,7 @@ mod tests {
         assert_eq!(p3, p1_double);
         assert_eq!(
             test_syscall_handler
-                .secp256k1_mul(p1, U256 { lo: 2, hi: 0 }, &mut 10)
+                .secp256k1_mul(p1, U256 { lo: 2, hi: 0 }, &mut gas)
                 .unwrap(),
             p1_double
         );
@@ -1179,12 +1185,14 @@ mod tests {
             is_infinity: false,
         };
         assert_eq!(
-            test_syscall_handler.secp256k1_add(p1, p3, &mut 10).unwrap(),
+            test_syscall_handler
+                .secp256k1_add(p1, p3, &mut gas)
+                .unwrap(),
             three_p1
         );
         assert_eq!(
             test_syscall_handler
-                .secp256k1_mul(p1, U256 { lo: 3, hi: 0 }, &mut 10)
+                .secp256k1_mul(p1, U256 { lo: 3, hi: 0 }, &mut gas)
                 .unwrap(),
             three_p1
         );
@@ -1194,6 +1202,7 @@ mod tests {
     fn test_secp256k1_get_point_from_x_false_yparity() {
         let mut test_syscall_handler = StubSyscallHandler::default();
         let mut test_syscall_handler = &mut test_syscall_handler;
+        let mut gas = u64::MAX;
 
         assert_eq!(
             test_syscall_handler
@@ -1203,7 +1212,7 @@ mod tests {
                         hi: 97179038819393695679,
                     },
                     false,
-                    &mut 10
+                    &mut gas
                 )
                 .unwrap()
                 .unwrap(),
@@ -1225,6 +1234,7 @@ mod tests {
     fn test_secp256k1_get_point_from_x_true_yparity() {
         let mut test_syscall_handler = StubSyscallHandler::default();
         let mut test_syscall_handler = &mut test_syscall_handler;
+        let mut gas = u64::MAX;
 
         assert_eq!(
             test_syscall_handler
@@ -1234,7 +1244,7 @@ mod tests {
                         hi: 97179038819393695679,
                     },
                     true,
-                    &mut 10
+                    &mut gas
                 )
                 .unwrap()
                 .unwrap(),
@@ -1256,9 +1266,10 @@ mod tests {
     fn test_secp256k1_get_point_from_x_none() {
         let mut test_syscall_handler = StubSyscallHandler::default();
         let mut test_syscall_handler = &mut test_syscall_handler;
+        let mut gas = u64::MAX;
 
         assert!(test_syscall_handler
-            .secp256k1_get_point_from_x(U256 { hi: 0, lo: 0 }, true, &mut 10)
+            .secp256k1_get_point_from_x(U256 { hi: 0, lo: 0 }, true, &mut gas)
             .unwrap()
             .is_none());
     }
@@ -1267,6 +1278,7 @@ mod tests {
     fn test_secp256r1_new() {
         let mut test_syscall_handler = StubSyscallHandler::default();
         let mut test_syscall_handler = &mut test_syscall_handler;
+        let mut gas = u64::MAX;
 
         let x = U256 {
             lo: 330631467365974629050427735731901850225,
@@ -1279,7 +1291,7 @@ mod tests {
 
         assert_eq!(
             test_syscall_handler
-                .secp256r1_new(x, y, &mut 10)
+                .secp256r1_new(x, y, &mut gas)
                 .unwrap()
                 .unwrap(),
             Secp256r1Point {
@@ -1294,13 +1306,14 @@ mod tests {
     fn test_secp256r1_new_infinity() {
         let mut test_syscall_handler = StubSyscallHandler::default();
         let mut test_syscall_handler = &mut test_syscall_handler;
+        let mut gas = u64::MAX;
 
         let x = U256 { hi: 0, lo: 0 };
         let y = U256 { hi: 0, lo: 0 };
 
         assert!(
             test_syscall_handler
-                .secp256r1_new(x, y, &mut 10)
+                .secp256r1_new(x, y, &mut gas)
                 .unwrap()
                 .unwrap()
                 .is_infinity
@@ -1311,6 +1324,7 @@ mod tests {
     fn test_secp256r1_add() {
         let mut test_syscall_handler = StubSyscallHandler::default();
         let mut test_syscall_handler = &mut test_syscall_handler;
+        let mut gas = u64::MAX;
 
         let p1 = Secp256r1Point {
             x: U256 {
@@ -1327,7 +1341,9 @@ mod tests {
         let p2 = p1;
 
         // 2 * P1
-        let p3 = test_syscall_handler.secp256r1_add(p1, p2, &mut 10).unwrap();
+        let p3 = test_syscall_handler
+            .secp256r1_add(p1, p2, &mut gas)
+            .unwrap();
 
         let p1_double = Secp256r1Point {
             x: U256 {
@@ -1343,7 +1359,7 @@ mod tests {
         assert_eq!(p3, p1_double);
         assert_eq!(
             test_syscall_handler
-                .secp256r1_mul(p1, U256 { lo: 2, hi: 0 }, &mut 10)
+                .secp256r1_mul(p1, U256 { lo: 2, hi: 0 }, &mut gas)
                 .unwrap(),
             p1_double
         );
@@ -1361,12 +1377,14 @@ mod tests {
             is_infinity: false,
         };
         assert_eq!(
-            test_syscall_handler.secp256r1_add(p1, p3, &mut 10).unwrap(),
+            test_syscall_handler
+                .secp256r1_add(p1, p3, &mut gas)
+                .unwrap(),
             three_p1
         );
         assert_eq!(
             test_syscall_handler
-                .secp256r1_mul(p1, U256 { lo: 3, hi: 0 }, &mut 10)
+                .secp256r1_mul(p1, U256 { lo: 3, hi: 0 }, &mut gas)
                 .unwrap(),
             three_p1
         );
@@ -1376,6 +1394,7 @@ mod tests {
     fn test_secp256r1_get_point_from_x_true_yparity() {
         let mut test_syscall_handler = StubSyscallHandler::default();
         let mut test_syscall_handler = &mut test_syscall_handler;
+        let mut gas = u64::MAX;
 
         let x = U256 {
             lo: 330631467365974629050427735731901850225,
@@ -1389,7 +1408,7 @@ mod tests {
 
         assert_eq!(
             test_syscall_handler
-                .secp256r1_get_point_from_x(x, true, &mut 10)
+                .secp256r1_get_point_from_x(x, true, &mut gas)
                 .unwrap()
                 .unwrap(),
             Secp256r1Point {
@@ -1404,6 +1423,7 @@ mod tests {
     fn test_secp256r1_get_point_from_x_false_yparity() {
         let mut test_syscall_handler = StubSyscallHandler::default();
         let mut test_syscall_handler = &mut test_syscall_handler;
+        let mut gas = u64::MAX;
 
         let x = U256 {
             lo: 330631467365974629050427735731901850225,
@@ -1417,7 +1437,7 @@ mod tests {
 
         assert_eq!(
             test_syscall_handler
-                .secp256r1_get_point_from_x(x, false, &mut 10)
+                .secp256r1_get_point_from_x(x, false, &mut gas)
                 .unwrap()
                 .unwrap(),
             Secp256r1Point {
@@ -1432,11 +1452,12 @@ mod tests {
     fn test_secp256r1_get_point_from_x_none() {
         let mut test_syscall_handler = StubSyscallHandler::default();
         let mut test_syscall_handler = &mut test_syscall_handler;
+        let mut gas = u64::MAX;
 
         let x = U256 { lo: 0, hi: 10 };
 
         assert!(test_syscall_handler
-            .secp256r1_get_point_from_x(x, true, &mut 10)
+            .secp256r1_get_point_from_x(x, true, &mut gas)
             .unwrap()
             .is_none());
     }
@@ -1457,9 +1478,10 @@ mod tests {
 
         let mut test_syscall_handler = StubSyscallHandler::default();
         let mut test_syscall_handler = &mut test_syscall_handler;
+        let mut gas = u64::MAX;
 
         assert_eq!(
-            test_syscall_handler.secp256r1_get_xy(p, &mut 10).unwrap(),
+            test_syscall_handler.secp256r1_get_xy(p, &mut gas).unwrap(),
             (
                 U256 {
                     lo: 97179038819393695679,
