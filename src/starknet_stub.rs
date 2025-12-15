@@ -556,18 +556,20 @@ impl StarknetSyscallHandler for &mut StubSyscallHandler {
         let Some(contract_info) = self.contracts_info.get(&class_hash).cloned() else {
             return Err(vec![Felt::from_bytes_be_slice(b"CLASS_HASH_NOT_DECLARED")]);
         };
-        let Some(_entry_point) = contract_info.externals.get(&function_selector) else {
+        let Some(entry_point) = contract_info.externals.get(&function_selector) else {
             return Err(vec![
                 Felt::from_bytes_be_slice(b"ENTRYPOINT_NOT_FOUND"),
                 Felt::from_bytes_be_slice(b"ENTRYPOINT_FAILED"),
             ]);
         };
 
-        tracing::warn!("unimplemented");
-        Err(vec![
-            Felt::from_bytes_be_slice(b"REVERT REASON"),
-            Felt::from_bytes_be_slice(b"ENTRYPOINT_FAILED"),
-        ])
+        match self.call_entry_point(remaining_gas, entry_point, calldata) {
+            Ok(res) => Ok(res),
+            Err(mut err) => {
+                err.push(Felt::from_bytes_be_slice(b"ENTRYPOINT_FAILED"));
+                Err(err)
+            }
+        }
     }
 
     #[instrument(skip(self))]
