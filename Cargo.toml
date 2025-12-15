@@ -93,7 +93,7 @@ walkdir = "2.5.0"
 # Can't update until https://github.com/magiclen/educe/issues/27.
 educe = "0.5.11"
 # Can't use crates.io dep because of a cycle in the dependency chain.
-cairo-vm = { path = "../cairo-vm/vm" }
+cairo-vm = { git = "https://github.com/lambdaclass/cairo-vm", rev = "742e9ae3de8b55f4a5dc44831f06068712f2f0c5" }
 # Can't use verion > 0.14.7 due to deprecation, as stated in issue https://github.com/fizyk20/generic-array/issues/158
 generic-array = "<=0.14.7"
 
