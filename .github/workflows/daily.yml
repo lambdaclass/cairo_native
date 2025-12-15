@@ -4,10 +4,10 @@ on:
   schedule:
     # At the end of every day
     - cron: "0 0 * * *"
-  pull_request:
+  workflow_dispatch:
 
 env:
-  RANGE_SIZE: 2
+  RANGE_SIZE: 20
 
 jobs:
 
