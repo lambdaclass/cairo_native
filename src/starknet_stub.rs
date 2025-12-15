@@ -33,18 +33,15 @@ use starknet_types_core::{
 };
 use tracing::instrument;
 
-/// 2 ** 251 - 256
-const ADDR_BOUND: NonZeroFelt = NonZeroFelt::from_felt_unchecked(Felt::from_hex_unchecked(
-    "0x7ffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff00",
-));
-
-/// Cairo string of "STARKNET_CONTRACT_ADDRESS"
+/// Max value for a contract address: 2**251 - 256.
+const CONTRACT_ADDRESS_BOUND: NonZeroFelt = NonZeroFelt::from_felt_unchecked(
+    Felt::from_hex_unchecked("0x7ffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff00"),
+);
+/// Cairo string for "STARKNET_CONTRACT_ADDRESS"
 const CONTRACT_ADDRESS_PREFIX: Felt =
     Felt::from_hex_unchecked("0x535441524b4e45545f434f4e54524143545f41444452455353");
 
-/// A (somewhat) usable implementation of the starknet syscall handler trait.
-///
-/// Currently gas is not deducted.
+/// A usable implementation of the starknet syscall handler trait.
 #[derive(Clone, Default, Debug)]
 pub struct StubSyscallHandler {
     /// The Cairo Native executor
@@ -273,32 +270,34 @@ impl StubSyscallHandler {
         entry_point: &FunctionId,
         calldata: &[Felt],
     ) -> Result<Vec<Felt>, Vec<Felt>> {
-        tracing::debug!("invoking");
+        // The cost of the called syscall include `ENTRY_POINT_COST` so we need
+        // to refund it here to avoid double charging.
+        let inner_gas_counter = Some(*gas_counter + ENTRY_POINT_COST as u64);
+        let inner_args = &[Value::Struct {
+            fields: vec![Value::Array(
+                calldata.iter().map(|x| Value::from(*x)).collect_vec(),
+            )],
+            debug_name: None,
+        }];
         let concrete_result = self
             .executor
             .clone()
-            .unwrap()
+            .expect("calling contracts requires executor")
             .invoke_dynamic_with_syscall_handler(
                 entry_point,
-                &[Value::Struct {
-                    fields: vec![Value::Array(
-                        calldata.iter().map(|x| Value::from(*x)).collect_vec(),
-                    )],
-                    debug_name: None,
-                }],
-                // The cost of the called syscall include `ENTRY_POINT_COST` so
-                // we need to refund it here to avoid double charging.
-                Some(*gas_counter + ENTRY_POINT_COST as u64),
+                inner_args,
+                inner_gas_counter,
                 &mut *self,
             )
-            .unwrap();
-        tracing::debug!("invoked");
+            .expect("failed to execute inner contract");
+
         self.builtin_counters += concrete_result.builtin_stats;
         if let Some(remaining_gas) = concrete_result.remaining_gas {
             *gas_counter = remaining_gas;
         }
 
-        let starknet_result = value_to_serialized_result(&concrete_result.return_value).unwrap();
+        let starknet_result = value_to_serialized_result(&concrete_result.return_value)
+            .expect("return value was not a starknet panic result");
 
         match starknet_result {
             RunResultValue::Success(felts) => Ok(felts),
@@ -307,6 +306,8 @@ impl StubSyscallHandler {
     }
 
     /// Replaces the addresses in the context.
+    ///
+    /// Called before `call_entry_point`.
     pub fn open_caller_context(
         &mut self,
         (new_contract_address, new_caller_address): (Felt, Felt),
@@ -321,6 +322,8 @@ impl StubSyscallHandler {
     }
 
     /// Restores the addresses in the context.
+    ///
+    /// Called after `call_entry_point`.
     pub fn close_caller_context(
         &mut self,
         (old_contract_address, old_caller_address): (Felt, Felt),
@@ -330,6 +333,7 @@ impl StubSyscallHandler {
     }
 }
 
+/// Creates a `RunResultValue` from a contract entrypoint result.
 fn value_to_serialized_result(value: &Value) -> Result<RunResultValue, Error> {
     let unexpected_value_error = Err(Error::UnexpectedValue(String::from(
         "PanicResult<(Span<Felt>,)>",
@@ -422,6 +426,7 @@ impl StarknetSyscallHandler for &mut StubSyscallHandler {
     ) -> crate::starknet::SyscallResult<Felt> {
         tracing::debug!("called");
         deduct_gas(remaining_gas, gas_costs::GET_BLOCK_HASH)?;
+
         if let Some(block_hash) = self.block_hash.get(&block_number) {
             Ok(*block_hash)
         } else {
@@ -464,21 +469,6 @@ impl StarknetSyscallHandler for &mut StubSyscallHandler {
         })
     }
 
-    fn get_class_hash_at(
-        &mut self,
-        contract_address: Felt,
-        remaining_gas: &mut u64,
-    ) -> SyscallResult<Felt> {
-        tracing::debug!("called");
-        deduct_gas(remaining_gas, gas_costs::GET_CLASS_HASH_AT)?;
-        let class_hash = self
-            .deployed_contracts
-            .get(&contract_address)
-            .cloned()
-            .unwrap_or_else(Felt::zero);
-        Ok(class_hash)
-    }
-
     #[instrument(skip(self))]
     fn deploy(
         &mut self,
@@ -490,6 +480,7 @@ impl StarknetSyscallHandler for &mut StubSyscallHandler {
     ) -> crate::starknet::SyscallResult<(Felt, Vec<Felt>)> {
         tracing::debug!("called");
         deduct_gas(remaining_gas, gas_costs::DEPLOY)?;
+
         let deployer_address = if deploy_from_zero {
             Felt::zero()
         } else {
@@ -504,7 +495,7 @@ impl StarknetSyscallHandler for &mut StubSyscallHandler {
                 class_hash,
                 constructor_calldata_hash,
             ])
-            .mod_floor(&ADDR_BOUND)
+            .mod_floor(&CONTRACT_ADDRESS_BOUND)
         };
 
         let Some(contract_info) = self.contracts_info.get(&class_hash) else {
@@ -550,6 +541,7 @@ impl StarknetSyscallHandler for &mut StubSyscallHandler {
     ) -> crate::starknet::SyscallResult<()> {
         tracing::debug!("called");
         deduct_gas(remaining_gas, gas_costs::REPLACE_CLASS)?;
+
         if !self.contracts_info.contains_key(&class_hash) {
             return Err(vec![Felt::from_bytes_be_slice(b"CLASS_HASH_NOT_FOUND")]);
         };
@@ -568,6 +560,7 @@ impl StarknetSyscallHandler for &mut StubSyscallHandler {
     ) -> crate::starknet::SyscallResult<Vec<Felt>> {
         tracing::debug!("called");
         deduct_gas(remaining_gas, gas_costs::LIBRARY_CALL)?;
+
         let Some(contract_info) = self.contracts_info.get(&class_hash).cloned() else {
             return Err(vec![Felt::from_bytes_be_slice(b"CLASS_HASH_NOT_DECLARED")]);
         };
@@ -597,6 +590,7 @@ impl StarknetSyscallHandler for &mut StubSyscallHandler {
     ) -> crate::starknet::SyscallResult<Vec<Felt>> {
         tracing::debug!("called");
         deduct_gas(remaining_gas, gas_costs::CALL_CONTRACT)?;
+
         let Some(class_hash) = self.deployed_contracts.get(&address) else {
             return Err(vec![
                 Felt::from_bytes_be_slice(b"CONTRACT_NOT_DEPLOYED"),
@@ -635,6 +629,7 @@ impl StarknetSyscallHandler for &mut StubSyscallHandler {
     ) -> crate::starknet::SyscallResult<Felt> {
         tracing::debug!("called");
         deduct_gas(remaining_gas, gas_costs::STORAGE_READ)?;
+
         if !address_domain.is_zero() {
             // Only address_domain 0 is currently supported.
             return Err(vec![Felt::from_bytes_be_slice(
@@ -660,6 +655,7 @@ impl StarknetSyscallHandler for &mut StubSyscallHandler {
     ) -> crate::starknet::SyscallResult<()> {
         tracing::debug!("called");
         deduct_gas(remaining_gas, gas_costs::STORAGE_WRITE)?;
+
         if !address_domain.is_zero() {
             // Only address_domain 0 is currently supported.
             return Err(vec![Felt::from_bytes_be_slice(
@@ -715,8 +711,10 @@ impl StarknetSyscallHandler for &mut StubSyscallHandler {
     #[instrument(skip(self))]
     fn keccak(&mut self, input: &[u64], gas: &mut u64) -> SyscallResult<U256> {
         tracing::debug!("called");
-        const KECCAK_FULL_RATE_IN_WORDS: usize = 17;
         deduct_gas(gas, gas_costs::KECCAK)?;
+
+        const KECCAK_FULL_RATE_IN_WORDS: usize = 17;
+
         let length = input.len();
         let (_n_rounds, remainder) = num_integer::div_rem(length, KECCAK_FULL_RATE_IN_WORDS);
 
@@ -870,8 +868,7 @@ impl StarknetSyscallHandler for &mut StubSyscallHandler {
         signature: &[Felt],
         remaining_gas: &mut u64,
     ) -> SyscallResult<Vec<Felt>> {
-        tracing::warn!("unimplemented");
-        Ok(vec![])
+        todo!("Implement meta_tx_v0 syscall");
     }
 
     #[cfg(feature = "with-cheatcode")]
@@ -968,7 +965,7 @@ impl StarknetSyscallHandler for &mut StubSyscallHandler {
                     serialized_log
                 })
                 .unwrap_or_default(),
-            _ => todo!("cheatcode: {}", selector),
+            _ => todo!("Implement cheatcode: {}", selector),
         }
     }
 
@@ -986,6 +983,21 @@ impl StarknetSyscallHandler for &mut StubSyscallHandler {
             GenericArray::from_exact_iter(block.iter().flat_map(|x| x.to_be_bytes())).unwrap();
         sha2::compress256(state, &[data_as_bytes]);
         Ok(())
+    }
+
+    fn get_class_hash_at(
+        &mut self,
+        contract_address: Felt,
+        remaining_gas: &mut u64,
+    ) -> SyscallResult<Felt> {
+        tracing::debug!("called");
+        deduct_gas(remaining_gas, gas_costs::GET_CLASS_HASH_AT)?;
+        let class_hash = self
+            .deployed_contracts
+            .get(&contract_address)
+            .cloned()
+            .unwrap_or_else(Felt::zero);
+        Ok(class_hash)
     }
 }
 
