@@ -21,6 +21,7 @@ use ark_ff::{BigInt, PrimeField};
 use cairo_lang_runner::RunResultValue;
 use cairo_lang_sierra::ids::FunctionId;
 use cairo_lang_starknet::contract::ContractInfo;
+use cairo_lang_starknet_classes::casm_contract_class::ENTRY_POINT_COST;
 use cairo_lang_utils::ordered_hash_map::OrderedHashMap;
 use itertools::Itertools;
 use num_bigint::BigUint;
@@ -285,12 +286,17 @@ impl StubSyscallHandler {
                     )],
                     debug_name: None,
                 }],
-                Some(*gas_counter),
+                // The cost of the called syscall include `ENTRY_POINT_COST` so
+                // we need to refund it here to avoid double charging.
+                Some(*gas_counter + ENTRY_POINT_COST as u64),
                 &mut *self,
             )
             .unwrap();
         tracing::debug!("invoked");
         self.builtin_counters += concrete_result.builtin_stats;
+        if let Some(remaining_gas) = concrete_result.remaining_gas {
+            *gas_counter = remaining_gas;
+        }
 
         let starknet_result = value_to_serialized_result(&concrete_result.return_value).unwrap();
 
@@ -415,6 +421,7 @@ impl StarknetSyscallHandler for &mut StubSyscallHandler {
         remaining_gas: &mut u64,
     ) -> crate::starknet::SyscallResult<Felt> {
         tracing::debug!("called");
+        deduct_gas(remaining_gas, gas_costs::GET_BLOCK_HASH)?;
         if let Some(block_hash) = self.block_hash.get(&block_number) {
             Ok(*block_hash)
         } else {
@@ -428,6 +435,7 @@ impl StarknetSyscallHandler for &mut StubSyscallHandler {
         remaining_gas: &mut u64,
     ) -> crate::starknet::SyscallResult<crate::starknet::ExecutionInfo> {
         tracing::debug!("called");
+        deduct_gas(remaining_gas, gas_costs::GET_EXECUTION_INFO)?;
         Ok(self.execution_info.clone())
     }
 
@@ -437,6 +445,7 @@ impl StarknetSyscallHandler for &mut StubSyscallHandler {
         remaining_gas: &mut u64,
     ) -> crate::starknet::SyscallResult<crate::starknet::ExecutionInfoV2> {
         tracing::debug!("called");
+        deduct_gas(remaining_gas, gas_costs::GET_EXECUTION_INFO)?;
         Ok(ExecutionInfoV2 {
             block_info: self.execution_info.block_info,
             tx_info: TxV2Info {
@@ -458,9 +467,10 @@ impl StarknetSyscallHandler for &mut StubSyscallHandler {
     fn get_class_hash_at(
         &mut self,
         contract_address: Felt,
-        _remaining_gas: &mut u64,
+        remaining_gas: &mut u64,
     ) -> SyscallResult<Felt> {
         tracing::debug!("called");
+        deduct_gas(remaining_gas, gas_costs::GET_CLASS_HASH_AT)?;
         let class_hash = self
             .deployed_contracts
             .get(&contract_address)
@@ -479,7 +489,7 @@ impl StarknetSyscallHandler for &mut StubSyscallHandler {
         remaining_gas: &mut u64,
     ) -> crate::starknet::SyscallResult<(Felt, Vec<Felt>)> {
         tracing::debug!("called");
-
+        deduct_gas(remaining_gas, gas_costs::DEPLOY)?;
         let deployer_address = if deploy_from_zero {
             Felt::zero()
         } else {
@@ -539,6 +549,7 @@ impl StarknetSyscallHandler for &mut StubSyscallHandler {
         remaining_gas: &mut u64,
     ) -> crate::starknet::SyscallResult<()> {
         tracing::debug!("called");
+        deduct_gas(remaining_gas, gas_costs::REPLACE_CLASS)?;
         if !self.contracts_info.contains_key(&class_hash) {
             return Err(vec![Felt::from_bytes_be_slice(b"CLASS_HASH_NOT_FOUND")]);
         };
@@ -556,7 +567,7 @@ impl StarknetSyscallHandler for &mut StubSyscallHandler {
         remaining_gas: &mut u64,
     ) -> crate::starknet::SyscallResult<Vec<Felt>> {
         tracing::debug!("called");
-
+        deduct_gas(remaining_gas, gas_costs::LIBRARY_CALL)?;
         let Some(contract_info) = self.contracts_info.get(&class_hash).cloned() else {
             return Err(vec![Felt::from_bytes_be_slice(b"CLASS_HASH_NOT_DECLARED")]);
         };
@@ -585,7 +596,7 @@ impl StarknetSyscallHandler for &mut StubSyscallHandler {
         remaining_gas: &mut u64,
     ) -> crate::starknet::SyscallResult<Vec<Felt>> {
         tracing::debug!("called");
-
+        deduct_gas(remaining_gas, gas_costs::CALL_CONTRACT)?;
         let Some(class_hash) = self.deployed_contracts.get(&address) else {
             return Err(vec![
                 Felt::from_bytes_be_slice(b"CONTRACT_NOT_DEPLOYED"),
@@ -620,9 +631,10 @@ impl StarknetSyscallHandler for &mut StubSyscallHandler {
         &mut self,
         address_domain: u32,
         address: Felt,
-        _remaining_gas: &mut u64,
+        remaining_gas: &mut u64,
     ) -> crate::starknet::SyscallResult<Felt> {
         tracing::debug!("called");
+        deduct_gas(remaining_gas, gas_costs::STORAGE_READ)?;
         if !address_domain.is_zero() {
             // Only address_domain 0 is currently supported.
             return Err(vec![Felt::from_bytes_be_slice(
@@ -647,6 +659,7 @@ impl StarknetSyscallHandler for &mut StubSyscallHandler {
         remaining_gas: &mut u64,
     ) -> crate::starknet::SyscallResult<()> {
         tracing::debug!("called");
+        deduct_gas(remaining_gas, gas_costs::STORAGE_WRITE)?;
         if !address_domain.is_zero() {
             // Only address_domain 0 is currently supported.
             return Err(vec![Felt::from_bytes_be_slice(
@@ -668,6 +681,7 @@ impl StarknetSyscallHandler for &mut StubSyscallHandler {
         remaining_gas: &mut u64,
     ) -> crate::starknet::SyscallResult<()> {
         tracing::debug!("called");
+        deduct_gas(remaining_gas, gas_costs::EMIT_EVENT)?;
         let contract = self.execution_info.contract_address;
         self.logs
             .entry(contract)
@@ -688,6 +702,7 @@ impl StarknetSyscallHandler for &mut StubSyscallHandler {
         remaining_gas: &mut u64,
     ) -> crate::starknet::SyscallResult<()> {
         tracing::debug!("called");
+        deduct_gas(remaining_gas, gas_costs::SEND_MESSAGE_TO_L1)?;
         let contract = self.execution_info.contract_address;
         self.logs
             .entry(contract)
@@ -701,7 +716,7 @@ impl StarknetSyscallHandler for &mut StubSyscallHandler {
     fn keccak(&mut self, input: &[u64], gas: &mut u64) -> SyscallResult<U256> {
         tracing::debug!("called");
         const KECCAK_FULL_RATE_IN_WORDS: usize = 17;
-
+        deduct_gas(gas, gas_costs::KECCAK)?;
         let length = input.len();
         let (_n_rounds, remainder) = num_integer::div_rem(length, KECCAK_FULL_RATE_IN_WORDS);
 
@@ -715,6 +730,7 @@ impl StarknetSyscallHandler for &mut StubSyscallHandler {
 
         let mut state = [0u64; 25];
         for chunk in input.chunks(KECCAK_FULL_RATE_IN_WORDS) {
+            deduct_gas(gas, gas_costs::KECCAK_ROUND_COST)?;
             for (i, val) in chunk.iter().enumerate() {
                 state[i] ^= val;
             }
@@ -732,9 +748,10 @@ impl StarknetSyscallHandler for &mut StubSyscallHandler {
         &mut self,
         x: U256,
         y: U256,
-        _remaining_gas: &mut u64,
+        remaining_gas: &mut u64,
     ) -> SyscallResult<Option<Secp256k1Point>> {
         tracing::debug!("called");
+        deduct_gas(remaining_gas, gas_costs::SECP256K1_NEW)?;
         Secp256Point::new(x, y).map(|op| op.map(|p| p.into()))
     }
 
@@ -743,9 +760,10 @@ impl StarknetSyscallHandler for &mut StubSyscallHandler {
         &mut self,
         p0: Secp256k1Point,
         p1: Secp256k1Point,
-        _remaining_gas: &mut u64,
+        remaining_gas: &mut u64,
     ) -> SyscallResult<Secp256k1Point> {
         tracing::debug!("called");
+        deduct_gas(remaining_gas, gas_costs::SECP256K1_ADD)?;
         Ok(Secp256Point::add(p0.into(), p1.into()).into())
     }
 
@@ -754,9 +772,10 @@ impl StarknetSyscallHandler for &mut StubSyscallHandler {
         &mut self,
         p: Secp256k1Point,
         m: U256,
-        _remaining_gas: &mut u64,
+        remaining_gas: &mut u64,
     ) -> SyscallResult<Secp256k1Point> {
         tracing::debug!("called");
+        deduct_gas(remaining_gas, gas_costs::SECP256K1_MUL)?;
         Ok(Secp256Point::mul(p.into(), m).into())
     }
 
@@ -765,9 +784,10 @@ impl StarknetSyscallHandler for &mut StubSyscallHandler {
         &mut self,
         x: U256,
         y_parity: bool,
-        _remaining_gas: &mut u64,
+        remaining_gas: &mut u64,
     ) -> SyscallResult<Option<Secp256k1Point>> {
         tracing::debug!("called");
+        deduct_gas(remaining_gas, gas_costs::SECP256K1_GET_POINT_FROM_X)?;
         Secp256Point::get_point_from_x(x, y_parity).map(|op| op.map(|p| p.into()))
     }
 
@@ -775,9 +795,10 @@ impl StarknetSyscallHandler for &mut StubSyscallHandler {
     fn secp256k1_get_xy(
         &mut self,
         p: Secp256k1Point,
-        _remaining_gas: &mut u64,
+        remaining_gas: &mut u64,
     ) -> SyscallResult<(U256, U256)> {
         tracing::debug!("called");
+        deduct_gas(remaining_gas, gas_costs::SECP256K1_GET_XY)?;
         Ok((p.x, p.y))
     }
 
@@ -786,9 +807,10 @@ impl StarknetSyscallHandler for &mut StubSyscallHandler {
         &mut self,
         x: U256,
         y: U256,
-        _remaining_gas: &mut u64,
+        remaining_gas: &mut u64,
     ) -> SyscallResult<Option<Secp256r1Point>> {
         tracing::debug!("called");
+        deduct_gas(remaining_gas, gas_costs::SECP256R1_NEW)?;
         Secp256Point::new(x, y).map(|op| op.map(|p| p.into()))
     }
 
@@ -797,9 +819,10 @@ impl StarknetSyscallHandler for &mut StubSyscallHandler {
         &mut self,
         p0: Secp256r1Point,
         p1: Secp256r1Point,
-        _remaining_gas: &mut u64,
+        remaining_gas: &mut u64,
     ) -> SyscallResult<Secp256r1Point> {
         tracing::debug!("called");
+        deduct_gas(remaining_gas, gas_costs::SECP256R1_ADD)?;
         Ok(Secp256Point::add(p0.into(), p1.into()).into())
     }
 
@@ -808,9 +831,10 @@ impl StarknetSyscallHandler for &mut StubSyscallHandler {
         &mut self,
         p: Secp256r1Point,
         m: U256,
-        _remaining_gas: &mut u64,
+        remaining_gas: &mut u64,
     ) -> SyscallResult<Secp256r1Point> {
         tracing::debug!("called");
+        deduct_gas(remaining_gas, gas_costs::SECP256R1_MUL)?;
         Ok(Secp256Point::mul(p.into(), m).into())
     }
 
@@ -819,9 +843,10 @@ impl StarknetSyscallHandler for &mut StubSyscallHandler {
         &mut self,
         x: U256,
         y_parity: bool,
-        _remaining_gas: &mut u64,
+        remaining_gas: &mut u64,
     ) -> SyscallResult<Option<Secp256r1Point>> {
         tracing::debug!("called");
+        deduct_gas(remaining_gas, gas_costs::SECP256R1_GET_POINT_FROM_X)?;
         Secp256Point::get_point_from_x(x, y_parity).map(|op| op.map(|p| p.into()))
     }
 
@@ -829,9 +854,10 @@ impl StarknetSyscallHandler for &mut StubSyscallHandler {
     fn secp256r1_get_xy(
         &mut self,
         p: Secp256r1Point,
-        _remaining_gas: &mut u64,
+        remaining_gas: &mut u64,
     ) -> SyscallResult<(U256, U256)> {
         tracing::debug!("called");
+        deduct_gas(remaining_gas, gas_costs::SECP256R1_GET_XY)?;
         Ok((p.x, p.y))
     }
 
@@ -952,14 +978,62 @@ impl StarknetSyscallHandler for &mut StubSyscallHandler {
         &mut self,
         state: &mut [u32; 8],
         block: &[u32; 16],
-        _remaining_gas: &mut u64,
+        remaining_gas: &mut u64,
     ) -> SyscallResult<()> {
         tracing::debug!("called");
+        deduct_gas(remaining_gas, gas_costs::SHA256_PROCESS_BLOCK)?;
         let data_as_bytes =
             GenericArray::from_exact_iter(block.iter().flat_map(|x| x.to_be_bytes())).unwrap();
         sha2::compress256(state, &[data_as_bytes]);
         Ok(())
     }
+}
+
+pub fn deduct_gas(gas: &mut u64, price: u64) -> Result<(), Vec<Felt>> {
+    if *gas < price {
+        Err(vec![Felt::from_bytes_be_slice(b"Syscall out of gas")])
+    } else {
+        *gas -= price;
+        Ok(())
+    }
+}
+
+/// Gas costs for syscalls.
+///
+/// Taken from cairo-lang-runner syscall handler implementation.
+mod gas_costs {
+    use cairo_lang_starknet_classes::casm_contract_class::ENTRY_POINT_COST;
+
+    const STEP: u64 = 100;
+    const RANGE_CHECK: u64 = 70;
+    const BITWISE: u64 = 594;
+    const ENTRY_POINT: u64 = ENTRY_POINT_COST as u64 + 500 * STEP;
+
+    // Gas cost for each syscall, minus the precharged base amount.
+    pub const CALL_CONTRACT: u64 = 10 * STEP + ENTRY_POINT;
+    pub const DEPLOY: u64 = 200 * STEP + ENTRY_POINT;
+    pub const EMIT_EVENT: u64 = 10 * STEP;
+    pub const GET_BLOCK_HASH: u64 = 50 * STEP;
+    pub const GET_EXECUTION_INFO: u64 = 10 * STEP;
+    pub const GET_CLASS_HASH_AT: u64 = 50 * STEP;
+    pub const KECCAK: u64 = 0;
+    pub const KECCAK_ROUND_COST: u64 = 180000;
+    pub const SHA256_PROCESS_BLOCK: u64 = 1852 * STEP + 65 * RANGE_CHECK + 1115 * BITWISE;
+    pub const LIBRARY_CALL: u64 = CALL_CONTRACT;
+    pub const REPLACE_CLASS: u64 = 50 * STEP;
+    pub const SECP256K1_ADD: u64 = 254 * STEP + 29 * RANGE_CHECK;
+    pub const SECP256K1_GET_POINT_FROM_X: u64 = 260 * STEP + 29 * RANGE_CHECK;
+    pub const SECP256K1_GET_XY: u64 = 24 * STEP + 9 * RANGE_CHECK;
+    pub const SECP256K1_MUL: u64 = 121810 * STEP + 10739 * RANGE_CHECK;
+    pub const SECP256K1_NEW: u64 = 340 * STEP + 36 * RANGE_CHECK;
+    pub const SECP256R1_ADD: u64 = 254 * STEP + 29 * RANGE_CHECK;
+    pub const SECP256R1_GET_POINT_FROM_X: u64 = 260 * STEP + 29 * RANGE_CHECK;
+    pub const SECP256R1_GET_XY: u64 = 24 * STEP + 9 * RANGE_CHECK;
+    pub const SECP256R1_MUL: u64 = 121810 * STEP + 10739 * RANGE_CHECK;
+    pub const SECP256R1_NEW: u64 = 340 * STEP + 36 * RANGE_CHECK;
+    pub const SEND_MESSAGE_TO_L1: u64 = 50 * STEP;
+    pub const STORAGE_READ: u64 = 50 * STEP;
+    pub const STORAGE_WRITE: u64 = 50 * STEP;
 }
 
 #[cfg(test)]
