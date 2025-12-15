@@ -231,12 +231,13 @@ pub fn run_tests(
                     executor: Some(native_executor.clone()),
                     ..Default::default()
                 };
-                let native_result = native_executor.invoke_dynamic_with_syscall_handler(
+                let mut native_result = native_executor.invoke_dynamic_with_syscall_handler(
                     &func.id,
                     &[],
                     initial_gas,
-                    syscall_handler,
+                    &mut *syscall_handler,
                 )?;
+                native_result.builtin_stats += syscall_handler.builtin_counters;
                 let run_result = result_to_runresult(&native_result)?;
 
                 let gas_usage = test

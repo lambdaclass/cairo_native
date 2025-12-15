@@ -8,6 +8,7 @@ use std::{
 
 use crate::{
     error::Error,
+    execution_result::BuiltinStats,
     executor::AotNativeExecutor,
     starknet::{
         ExecutionInfo, ExecutionInfoV2, Secp256k1Point, Secp256r1Point, StarknetSyscallHandler,
@@ -59,6 +60,8 @@ pub struct StubSyscallHandler {
     pub block_hash: HashMap<u64, Felt>,
     /// Mapping from class_hash to contract info.
     pub contracts_info: OrderedHashMap<Felt, ContractInfo>,
+    /// Keep track of inner call builtin usage.
+    pub builtin_counters: BuiltinStats,
 }
 
 /// Event emitted by the emit_event syscall.
@@ -283,10 +286,11 @@ impl StubSyscallHandler {
                     debug_name: None,
                 }],
                 Some(*gas_counter),
-                self,
+                &mut *self,
             )
             .unwrap();
         tracing::debug!("invoked");
+        self.builtin_counters += concrete_result.builtin_stats;
 
         let starknet_result = value_to_serialized_result(&concrete_result.return_value).unwrap();
 

@@ -1,3 +1,5 @@
+use std::ops::{Add, AddAssign};
+
 /// # Execution Result
 ///
 /// This module contains the structures used to interpret the program execution results, either
@@ -169,5 +171,27 @@ impl ContractExecutionResult {
             error_msg,
             builtin_stats: result.builtin_stats,
         })
+    }
+}
+
+impl Add for BuiltinStats {
+    type Output = Self;
+
+    fn add(mut self, rhs: Self) -> Self::Output {
+        self += rhs;
+        self
+    }
+}
+impl AddAssign for BuiltinStats {
+    fn add_assign(&mut self, rhs: Self) {
+        self.range_check += rhs.range_check;
+        self.pedersen += rhs.pedersen;
+        self.bitwise += rhs.bitwise;
+        self.ec_op += rhs.ec_op;
+        self.poseidon += rhs.poseidon;
+        self.segment_arena += rhs.segment_arena;
+        self.range_check96 += rhs.range_check96;
+        self.add_mod += rhs.add_mod;
+        self.mul_mod += rhs.mul_mod;
     }
 }
