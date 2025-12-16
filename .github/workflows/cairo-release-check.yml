@@ -23,7 +23,7 @@ jobs:
       - name: Checkout Native
         uses: actions/checkout@v4
 
-      - uses: ./github/actions/install-linux-deps
+      - uses: ./.github/actions/install-linux-deps
       - name: Setup Rust Env
         uses: dtolnay/rust-toolchain@1.84.1
       - name: Retreive cached dependecies
