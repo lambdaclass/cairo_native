@@ -4,7 +4,7 @@ use cairo_lang_test_plugin::TestsCompilationConfig;
 use cairo_lang_test_runner::TestCompiler;
 use cairo_native_bin_utils::{
     test::{display_tests_summary, filter_test_cases, run_tests},
-    RunArgs, RunMode,
+    RunArgs,
 };
 use clap::Parser;
 use std::path::PathBuf;
@@ -35,9 +35,6 @@ struct Args {
     /// Should we add the starknet plugin to run the tests.
     #[arg(long, default_value_t = false)]
     starknet: bool,
-    /// Run with JIT or AOT (compiled).
-    #[arg(long, value_enum, default_value_t = RunMode::Jit)]
-    run_mode: RunMode,
     /// Optimization level, Valid: 0, 1, 2, 3. Values higher than 3 are considered as 3.
     #[arg(short = 'O', long, default_value_t = 0)]
     opt_level: u8,
@@ -89,7 +86,6 @@ fn main() -> anyhow::Result<()> {
         compiled.metadata.function_set_costs,
         compiled.metadata.contracts_info,
         RunArgs {
-            run_mode: args.run_mode.clone(),
             opt_level: args.opt_level,
             compare_with_vm: args.compare_with_cairo_vm,
         },

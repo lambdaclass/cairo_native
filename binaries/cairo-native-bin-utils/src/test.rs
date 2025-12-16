@@ -1,4 +1,4 @@
-use super::{find_function, format_for_panic, result_to_runresult, RunArgs, RunMode};
+use super::{find_function, format_for_panic, result_to_runresult, RunArgs};
 use anyhow::Context;
 use cairo_lang_runner::{RunResultValue, SierraCasmRunner};
 use cairo_lang_sierra::{extensions::gas::CostTokenType, ids::FunctionId, program::Program};
@@ -14,9 +14,7 @@ use cairo_lang_utils::{
     casts::IntoOrPanic, ordered_hash_map::OrderedHashMap, small_ordered_map::SmallOrderedMap,
 };
 use cairo_native::{
-    context::NativeContext,
-    executor::{AotNativeExecutor, JitNativeExecutor},
-    metadata::gas::GasMetadata,
+    context::NativeContext, executor::AotNativeExecutor, metadata::gas::GasMetadata,
     starknet_stub::StubSyscallHandler,
 };
 use colored::Colorize;
@@ -187,41 +185,10 @@ pub fn run_tests(
     let native_module = native_context
         .compile(&sierra_program, false, Some(Default::default()), None)
         .unwrap();
-    let native_aot_executor = Arc::new(AotNativeExecutor::from_native_module(
+    let native_executor = Arc::new(AotNativeExecutor::from_native_module(
         native_module,
         args.opt_level.into(),
     )?);
-
-    let native_test_executor: Box<dyn Fn(_, _, _, &mut StubSyscallHandler) -> _> =
-        match args.run_mode {
-            RunMode::Aot => {
-                let executor = native_aot_executor.clone();
-                Box::new(move |function_id, args, gas, syscall_handler| {
-                    executor.invoke_dynamic_with_syscall_handler(
-                        function_id,
-                        args,
-                        gas,
-                        syscall_handler,
-                    )
-                })
-            }
-            RunMode::Jit => {
-                // TODO: Allow for reusing the same module, avoiding compiling the same program twice.
-                let native_module = native_context
-                    .compile(&sierra_program, false, Some(Default::default()), None)
-                    .unwrap();
-                let executor =
-                    JitNativeExecutor::from_native_module(native_module, args.opt_level.into())?;
-                Box::new(move |function_id, args, gas, syscall_handler| {
-                    executor.invoke_dynamic_with_syscall_handler(
-                        function_id,
-                        args,
-                        gas,
-                        syscall_handler,
-                    )
-                })
-            }
-        };
 
     let gas_metadata = GasMetadata::new(
         &sierra_program,
@@ -260,15 +227,17 @@ pub fn run_tests(
 
                 let syscall_handler = &mut StubSyscallHandler {
                     contracts_info: contracts_info.clone(),
-                    executor: Some(native_aot_executor.clone()),
+                    executor: Some(native_executor.clone()),
                     ..Default::default()
                 };
 
-                let mut native_result =
-                    native_test_executor(&func.id, &[], initial_gas, syscall_handler)
-                        .with_context(|| {
-                            format!("Failed to run the function `{}`.", name.as_str())
-                        })?;
+                let mut native_result = native_executor.invoke_dynamic_with_syscall_handler(
+                    &func.id,
+                    &[],
+                    initial_gas,
+                    &mut *syscall_handler,
+                )?;
+
                 native_result.builtin_stats += syscall_handler.builtin_counters;
                 let run_result = result_to_runresult(&native_result)?;
 
