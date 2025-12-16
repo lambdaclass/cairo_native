@@ -1148,7 +1148,6 @@ dependencies = [
  "cairo-lang-test-plugin",
  "cairo-lang-utils",
  "cairo-native",
- "clap",
  "colored 2.2.0",
  "itertools 0.14.0",
  "num-traits",
