@@ -1,9 +1,14 @@
 name: Daily Block Run
 
 on:
-  schedule:
-    # At the end of every day
-    - cron: "0 8 * * 1"
+  push:
+    branches: [main]
+  pull_request:
+  merge_group:
+    types: [checks_requested]
+#   schedule:
+#     # At the end of every day
+#     - cron: "0 8 * * 1"
 
 jobs:
   release-tag-check:
@@ -44,4 +49,4 @@ jobs:
           git diff
 
       - name: Run check
-        run: make check 
+        run: make check
