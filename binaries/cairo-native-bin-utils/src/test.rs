@@ -183,7 +183,7 @@ pub fn run_tests(
     // Compile the sierra program into a MLIR module.
     println!("Compiling program.");
     let native_module = native_context
-        .compile(&sierra_program, false, Some(Default::default()), None)
+        .compile(&sierra_program, true, Some(Default::default()), None)
         .unwrap();
 
     let native_executor: Box<dyn Fn(_, _, _, &mut StubSyscallHandler) -> _> = match args.run_mode {
