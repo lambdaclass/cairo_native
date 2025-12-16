@@ -181,14 +181,17 @@ pub fn run_tests(
     let native_context = NativeContext::new();
 
     // Compile the sierra program into a MLIR module.
+    println!("Compiling program.");
     let native_module = native_context
         .compile(&sierra_program, false, Some(Default::default()), None)
         .unwrap();
 
     let native_executor: Box<dyn Fn(_, _, _, &mut StubSyscallHandler) -> _> = match args.run_mode {
         RunMode::Aot => {
+            println!("Loading executor.");
             let executor =
                 AotNativeExecutor::from_native_module(native_module, args.opt_level.into())?;
+            println!("Loaded executor.");
             Box::new(move |function_id, args, gas, syscall_handler| {
                 executor.invoke_dynamic_with_syscall_handler(
                     function_id,
