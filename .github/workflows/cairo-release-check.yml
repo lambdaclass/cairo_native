@@ -1,4 +1,4 @@
-name: Daily Block Run
+name: Weekly Cairo Release Check
 
 on:
   push:
@@ -35,6 +35,8 @@ jobs:
 
       - name: Patch Native Dependencies
         run: |
+          cd cairo_native
+          
           # Retrieve last release tag and process it to make it usable
           last_release=$(curl -s https://api.github.com/repos/starkware-libs/cairo/releases/latest \
               | jq -r .tag_name \
