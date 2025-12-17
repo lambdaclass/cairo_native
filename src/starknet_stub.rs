@@ -1,4 +1,7 @@
-//! A (somewhat) usable implementation of the starknet syscall handler trait.
+//! An usable implementation of the starknet syscall handler trait.
+//!
+//! Based of cairo-lang-runner syscall handler implementation.
+//! - https://github.com/starkware-libs/cairo/blob/v2.14.0/crates/cairo-lang-runner/src/casm_run/mod.rs
 
 use std::{
     collections::{HashMap, VecDeque},
@@ -33,7 +36,7 @@ use starknet_types_core::{
 };
 use tracing::instrument;
 
-/// A usable implementation of the starknet syscall handler trait.
+/// An usable implementation of the starknet syscall handler trait.
 #[derive(Clone, Default, Debug)]
 pub struct StubSyscallHandler {
     /// The Cairo Native executor
