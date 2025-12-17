@@ -12,7 +12,6 @@ members = [
     "binaries/starknet-native-compile",
     "binaries/cairo-native-bin-utils",
 ]
-exclude = ["debug_utils/casm-data-flow"]
 
 [workspace.package]
 version = "0.8.0"
