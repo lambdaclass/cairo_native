@@ -288,7 +288,7 @@ impl StubSyscallHandler {
             *gas_counter = remaining_gas;
         }
 
-        let starknet_result = value_to_serialized_result(&concrete_result.return_value)
+        let starknet_result = read_contract_result(&concrete_result.return_value)
             .expect("return value was not a starknet panic result");
 
         match starknet_result {
@@ -326,7 +326,9 @@ impl StubSyscallHandler {
 }
 
 /// Creates a `RunResultValue` from a contract entrypoint result.
-fn value_to_serialized_result(value: &Value) -> Result<RunResultValue, Error> {
+///
+/// The value should be of type `PanicResult<(Span<Felt>,)>`.
+fn read_contract_result(value: &Value) -> Result<RunResultValue, Error> {
     let unexpected_value_error = Err(Error::UnexpectedValue(String::from(
         "PanicResult<(Span<Felt>,)>",
     )));
