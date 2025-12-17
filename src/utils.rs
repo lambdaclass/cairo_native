@@ -151,7 +151,7 @@ pub fn generate_function_name(
     if is_for_contract_executor {
         Cow::Owned(format!("f{}", function_id.id))
     } else if let Some(name) = function_id.debug_name.as_deref() {
-        // Remove @ from name to avoid linker errors on x86
+        // Remove @ from name to avoid linker errors on Linux
         let name = name.replace("@", "at");
         Cow::Owned(format!("{}(f{})", name, function_id.id))
     } else {
