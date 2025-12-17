@@ -24,6 +24,7 @@ use cairo_lang_sierra::{
     program_registry::ProgramRegistry,
 };
 use cairo_lang_sierra_generator::replace_ids::{DebugReplacer, SierraIdReplacer};
+use cairo_lang_sierra_to_casm::metadata::MetadataComputationConfig;
 use cairo_lang_starknet::{
     compile::compile_contract_in_prepared_db,
     contract::{find_contracts, get_contracts_info},
@@ -42,9 +43,12 @@ use cairo_native::{
     OptLevel, Value,
 };
 use cairo_vm::{
-    hint_processor::cairo_1_hint_processor::hint_processor::Cairo1HintProcessor,
-    types::{builtin_name::BuiltinName, layout_name::LayoutName, relocatable::MaybeRelocatable},
-    vm::runners::cairo_runner::{CairoArg, CairoRunner, RunResources},
+    serde::deserialize_program::{ApTracking, FlowTrackingData, HintParams, ReferenceManager},
+    types::{
+        builtin_name::BuiltinName, layout_name::LayoutName, program::Program as CairoVmProgram,
+        relocatable::MaybeRelocatable,
+    },
+    vm::runners::cairo_runner::{CairoArg, CairoRunner},
 };
 use itertools::Itertools;
 use lambdaworks_math::{
@@ -296,10 +300,41 @@ pub fn run_vm_contract(
         CasmContractClass::from_contract_class(cairo_contract.clone(), false, usize::MAX)
             .expect("failed to compile sierra contract to casm");
 
-    let program = contract
-        .clone()
-        .try_into()
-        .expect("failed to extract program from casm contract");
+    let program = {
+        let data = contract
+            .bytecode
+            .iter()
+            .map(|x| MaybeRelocatable::from(Felt::from(&x.value)))
+            .collect();
+        let hints = contract
+            .hints
+            .iter()
+            .map(|(x, _)| {
+                (
+                    *x,
+                    vec![HintParams {
+                        code: x.to_string(),
+                        accessible_scopes: Vec::new(),
+                        flow_tracking_data: FlowTrackingData {
+                            ap_tracking: ApTracking::default(),
+                            reference_ids: HashMap::new(),
+                        },
+                    }],
+                )
+            })
+            .collect();
+        CairoVmProgram::new(
+            vec![],
+            data,
+            None,
+            hints,
+            ReferenceManager::default(),
+            HashMap::new(),
+            Vec::new(),
+            None,
+        )
+        .unwrap()
+    };
 
     // Initialize runner and builtins
     let mut runner = CairoRunner::new(&program, LayoutName::all_cairo, None, false, false, false)
@@ -373,10 +408,33 @@ pub fn run_vm_contract(
         MaybeRelocatable::from(calldata_end).into(),
     ]);
     let entrypoint_args: Vec<&CairoArg> = entrypoint_args.iter().collect();
+    
+    // Create the HintProcessor without using cairo v-m
+    let program = cairo_contract.extract_sierra_program().unwrap();
+    let sierra_runner = SierraCasmRunner::new(
+        program.clone(),
+        Some(MetadataComputationConfig {
+            function_set_costs: Default::default(),
+            linear_gas_solver: true,
+            linear_ap_change_solver: true,
+            skip_non_linear_solver_comparisons: false,
+            compute_runtime_costs: false,
+        }),
+        Default::default(),
+        None,
+    )
+    .expect("Failed setting up runner");
 
     // Run contract entrypoint
-    let mut hint_processor =
-        Cairo1HintProcessor::new(&contract.hints, RunResources::default(), false);
+    let (mut hint_processor, _) = sierra_runner
+        .prepare_starknet_context(
+            find_entry_point_by_idx(&program, entrypoint.offset).unwrap(),
+            vec![],
+            Default::default(),
+            Default::default(),
+        )
+        .unwrap();
+    // Cairo1HintProcessor::new(&contract.hints, RunResources::default(), false);
     runner
         .run_from_entrypoint(
             entrypoint.offset,
