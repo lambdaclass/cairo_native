@@ -1,20 +1,28 @@
 //! # Gas management libfuncs
 
+use std::net::ToSocketAddrs;
+
 use super::LibfuncHelper;
 use crate::{
     error::{panic::ToNativeAssertError, Error, Result},
-    metadata::{gas::GasCost, runtime_bindings::RuntimeBindingsMeta, MetadataStorage},
+    metadata::{
+        debug_utils::DebugUtils,
+        gas::{GasCost, GasMetadata},
+        runtime_bindings::RuntimeBindingsMeta,
+        MetadataStorage,
+    },
     native_panic,
     utils::BuiltinCosts,
 };
 use cairo_lang_sierra::{
     extensions::{
         core::{CoreLibfunc, CoreType},
-        gas::GasConcreteLibfunc,
+        gas::{CostTokenType, GasConcreteLibfunc},
         lib_func::SignatureOnlyConcreteLibfunc,
     },
     program_registry::ProgramRegistry,
 };
+use cairo_lang_sierra_to_casm::environment::gas_wallet::{self, GasWallet};
 use melior::{
     dialect::{arith::CmpiPredicate, ods},
     helpers::{ArithBlockExt, BuiltinBlockExt, GepIndex, LlvmBlockExt},
@@ -48,10 +56,117 @@ pub fn build<'ctx, 'this>(
         GasConcreteLibfunc::GetBuiltinCosts(info) => {
             build_get_builtin_costs(context, registry, entry, location, helper, metadata, info)
         }
-        GasConcreteLibfunc::GetUnspentGas(_) => {
-            native_panic!("Implement GetUnspentGas libfunc");
+        GasConcreteLibfunc::GetUnspentGas(info) => {
+            build_get_unspent_gas(context, registry, entry, location, helper, metadata, info)
         }
     }
+}
+
+/// Generate MLIR operations for the `get_unspent_gas` libfunc.
+pub fn build_get_unspent_gas<'ctx, 'this>(
+    context: &'ctx Context,
+    _registry: &ProgramRegistry<CoreType, CoreLibfunc>,
+    entry: &'this Block<'ctx>,
+    location: Location<'ctx>,
+    helper: &LibfuncHelper<'ctx, 'this>,
+    metadata: &mut MetadataStorage,
+    _info: &SignatureOnlyConcreteLibfunc,
+) -> Result<()> {
+    let gas_counter = entry.arg(0)?;
+
+    let builtin_ptr = {
+        let runtime = metadata
+            .get_mut::<RuntimeBindingsMeta>()
+            .ok_or(Error::MissingMetadata)?;
+        runtime
+            .get_costs_builtin(context, helper, entry, location)?
+            .result(0)?
+            .into()
+    };
+
+    let gas_wallet = metadata
+        .get_mut::<GasWallet>()
+        .ok_or(Error::MissingMetadata)?;
+
+    let get_token_count = |token: CostTokenType| {
+        if let GasWallet::Value(wallet) = &gas_wallet {
+            wallet.get(&token).copied().unwrap_or_default()
+        } else {
+            0
+        }
+    };
+
+    let const_token_count = entry.const_int_from_type(
+        context,
+        location,
+        get_token_count(CostTokenType::Const),
+        IntegerType::new(context, 64).into(),
+    )?;
+    let mut total_unspent = entry.addi(gas_counter, const_token_count, location)?;
+    for token_type in CostTokenType::iter_precost() {
+        // Calculate the index of the token type in the builtin costs array
+        let token_costs_index = entry.const_int_from_type(
+            context,
+            location,
+            BuiltinCosts::index_for_token_type(token_type)?,
+            IntegerType::new(context, 64).into(),
+        )?;
+
+        // Index the builtin costs array
+        let token_cost_ptr = entry.gep(
+            context,
+            location,
+            builtin_ptr,
+            &[GepIndex::Value(token_costs_index)],
+            IntegerType::new(context, 64).into(),
+        )?;
+        let token_cost = entry.load(
+            context,
+            location,
+            token_cost_ptr,
+            IntegerType::new(context, 64).into(),
+        )?;
+        let token_cost =
+            entry.extui(token_cost, IntegerType::new(context, 128).into(), location)?;
+
+        let token_count = get_token_count(*token_type);
+        let token_count = entry.const_int_from_type(
+            context,
+            location,
+            token_count,
+            IntegerType::new(context, 128).into(),
+        )?;
+
+        let total_cost = entry.muli(token_count, token_cost, location)?;
+        total_unspent = entry.addi(total_cost, total_unspent, location)?;
+    }
+
+    // let gas_cost = metadata
+    //     .get::<GasCost>()
+    //     .to_native_assert_error("withdraw_gas should always have a gas cost")?
+    //     .clone();
+    // let total_gas_cost = build_calculate_gas_cost(context, entry, location, gas_cost, builtin_ptr)?;
+    // let total_gas_cost = entry.addi(total_gas_cost, gas_counter, location)?;
+
+    let result = entry.extui(
+        total_unspent,
+        IntegerType::new(context, 128).into(),
+        location,
+    )?;
+
+    metadata
+        .get_mut::<DebugUtils>()
+        .unwrap()
+        .print_i128(context, helper, entry, result, location)?;
+    metadata.get_mut::<DebugUtils>().unwrap().print_i64(
+        context,
+        helper,
+        entry,
+        gas_counter,
+        location,
+    )?;
+
+    helper.br(entry, 0, &[gas_counter, result], location)
 }
 
 /// Generate MLIR operations for the `get_available_gas` libfunc.
