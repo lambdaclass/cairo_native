@@ -408,7 +408,7 @@ pub fn run_vm_contract(
         MaybeRelocatable::from(calldata_end).into(),
     ]);
     let entrypoint_args: Vec<&CairoArg> = entrypoint_args.iter().collect();
-    
+
     // Create the HintProcessor without using cairo v-m
     let program = cairo_contract.extract_sierra_program().unwrap();
     let sierra_runner = SierraCasmRunner::new(
