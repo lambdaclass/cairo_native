@@ -131,7 +131,7 @@ impl StarknetSyscallHandler for SyscallHandler {
         &mut self,
         _remaining_gas: &mut u64,
     ) -> SyscallResult<cairo_native::starknet::ExecutionInfoV3> {
-        println!("Called `get_execution_info_v2()` from MLIR.");
+        println!("Called `get_execution_info_v3()` from MLIR.");
         Ok(ExecutionInfoV3 {
             block_info: BlockInfo {
                 block_number: 1234,
