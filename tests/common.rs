@@ -300,6 +300,7 @@ pub fn run_vm_contract(
         CasmContractClass::from_contract_class(cairo_contract.clone(), false, usize::MAX)
             .expect("failed to compile sierra contract to casm");
 
+    // Create a program compatible with `CairoRunner`.
     let program = {
         let data = contract
             .bytecode
@@ -409,7 +410,7 @@ pub fn run_vm_contract(
     ]);
     let entrypoint_args: Vec<&CairoArg> = entrypoint_args.iter().collect();
 
-    // Create the HintProcessor without using cairo v-m
+    // Create the HintProcessor without using cairo-vm
     let program = cairo_contract.extract_sierra_program().unwrap();
     let sierra_runner = SierraCasmRunner::new(
         program.clone(),
