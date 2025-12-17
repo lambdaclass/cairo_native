@@ -33,14 +33,6 @@ use starknet_types_core::{
 };
 use tracing::instrument;
 
-/// Max value for a contract address: 2**251 - 256.
-const CONTRACT_ADDRESS_BOUND: NonZeroFelt = NonZeroFelt::from_felt_unchecked(
-    Felt::from_hex_unchecked("0x7ffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff00"),
-);
-/// Cairo string for "STARKNET_CONTRACT_ADDRESS"
-const CONTRACT_ADDRESS_PREFIX: Felt =
-    Felt::from_hex_unchecked("0x535441524b4e45545f434f4e54524143545f41444452455353");
-
 /// A usable implementation of the starknet syscall handler trait.
 #[derive(Clone, Default, Debug)]
 pub struct StubSyscallHandler {
@@ -480,6 +472,15 @@ impl StarknetSyscallHandler for &mut StubSyscallHandler {
     ) -> crate::starknet::SyscallResult<(Felt, Vec<Felt>)> {
         tracing::debug!("called");
         deduct_gas(remaining_gas, gas_costs::DEPLOY)?;
+
+        /// Max value for a contract address: 2**251 - 256.
+        const CONTRACT_ADDRESS_BOUND: NonZeroFelt =
+            NonZeroFelt::from_felt_unchecked(Felt::from_hex_unchecked(
+                "0x7ffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff00",
+            ));
+        /// Cairo string for "STARKNET_CONTRACT_ADDRESS"
+        const CONTRACT_ADDRESS_PREFIX: Felt =
+            Felt::from_hex_unchecked("0x535441524b4e45545f434f4e54524143545f41444452455353");
 
         let deployer_address = if deploy_from_zero {
             Felt::zero()
