@@ -2,7 +2,6 @@
 members = [
     "debug_utils",
     "debug_utils/sierra-emu",
-    # "debug_utils/casm-data-flow",
     "debug_utils/cairo-native-stress",
     "binaries/cairo-native-compile",
     "binaries/cairo-native-dump",
@@ -13,6 +12,7 @@ members = [
     "binaries/starknet-native-compile",
     "binaries/cairo-native-bin-utils",
 ]
+exclude = ["debug_utils/casm-data-flow"]
 
 [workspace.package]
 version = "0.8.0"
