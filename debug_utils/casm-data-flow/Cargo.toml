@@ -5,6 +5,10 @@ edition = "2021"
 license = "Apache-2.0"
 repository = "https://github.com/lambdaclass/cairo_native"
 
+# This empty workspace table is to keep this package out of cairo native's 
+# workspace
+[workspace]
+
 [dependencies]
 bincode = "2.0.1"
 clap = { version = "4.5.23", features = ["derive"] }
