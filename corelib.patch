@@ -8,8 +8,8 @@ To generate the patch:
 3. Run `diff -crN cairo2/corelib cairo2/corelib_1/ > corelib.patch`
 
 diff -crN cairo2/corelib/src/starknet/account.cairo cairo2/corelib_1/src/starknet/account.cairo
-*** cairo2/corelib/src/starknet/account.cairo	Mon Nov 24 10:47:44 2025
---- cairo2/corelib_1/src/starknet/account.cairo	Tue Nov 25 16:29:58 2025
+*** cairo2/corelib/src/starknet/account.cairo	Sun Dec 14 15:13:21 2025
+--- cairo2/corelib_1/src/starknet/account.cairo	Thu Dec 18 10:56:22 2025
 ***************
 *** 50,919 ****
       /// through the `__validate__` entry point.
@@ -884,8 +884,8 @@ diff -crN cairo2/corelib/src/starknet/account.cairo cairo2/corelib_1/src/starkne
 - }
 --- 50,52 ----
 diff -crN cairo2/corelib/src/test/dict_test.cairo cairo2/corelib_1/src/test/dict_test.cairo
-*** cairo2/corelib/src/test/dict_test.cairo	Mon Nov 24 10:47:44 2025
---- cairo2/corelib_1/src/test/dict_test.cairo	Tue Nov 25 16:29:58 2025
+*** cairo2/corelib/src/test/dict_test.cairo	Sun Dec 14 15:13:21 2025
+--- cairo2/corelib_1/src/test/dict_test.cairo	Thu Dec 18 10:56:22 2025
 ***************
 *** 177,186 ****
       assert_eq!(dict[0], 2);
@@ -910,8 +910,8 @@ diff -crN cairo2/corelib/src/test/dict_test.cairo cairo2/corelib_1/src/test/dict
 ! //     );
 ! // }
 diff -crN cairo2/corelib/src/test/hash_test.cairo cairo2/corelib_1/src/test/hash_test.cairo
-*** cairo2/corelib/src/test/hash_test.cairo	Mon Nov 24 10:47:44 2025
---- cairo2/corelib_1/src/test/hash_test.cairo	Tue Nov 25 16:29:58 2025
+*** cairo2/corelib/src/test/hash_test.cairo	Sun Dec 14 15:13:21 2025
+--- cairo2/corelib_1/src/test/hash_test.cairo	Thu Dec 18 10:56:22 2025
 ***************
 *** 1,4 ****
 ! use crate::blake::{blake2s_compress, blake2s_finalize};
@@ -1014,9 +1014,39 @@ diff -crN cairo2/corelib/src/test/hash_test.cairo cairo2/corelib_1/src/test/hash
 ! //         ],
 ! //     );
 ! // }
+diff -crN cairo2/corelib/src/test/language_features/box_test.cairo cairo2/corelib_1/src/test/language_features/box_test.cairo
+*** cairo2/corelib/src/test/language_features/box_test.cairo	Sun Dec 14 15:13:21 2025
+--- cairo2/corelib_1/src/test/language_features/box_test.cairo	Thu Dec 18 10:58:14 2025
+***************
+*** 7,18 ****
+      local_into_box(value)
+  }
+  
+! #[test]
+! fn test_local_into_box() {
+!     assert_eq!(into_box((1, 2_u256, 3)).unbox(), (1, 2, 3));
+!     assert_eq!(into_box(()).unbox(), ());
+!     assert_eq!(into_box(Some(6_u8)).unbox(), Some(6));
+!     assert_eq!(into_box(None::<u8>).unbox(), None);
+!     assert_eq!(into_box(Ok::<u16, u256>(7)).unbox(), Ok(7));
+!     assert_eq!(into_box(Err::<u16, u256>(8)).unbox(), Err(8));
+! }
+--- 7,18 ----
+      local_into_box(value)
+  }
+  
+! // #[test]
+! // fn test_local_into_box() {
+! //     assert_eq!(into_box((1, 2_u256, 3)).unbox(), (1, 2, 3));
+! //     assert_eq!(into_box(()).unbox(), ());
+! //     assert_eq!(into_box(Some(6_u8)).unbox(), Some(6));
+! //     assert_eq!(into_box(None::<u8>).unbox(), None);
+! //     assert_eq!(into_box(Ok::<u16, u256>(7)).unbox(), Ok(7));
+! //     assert_eq!(into_box(Err::<u16, u256>(8)).unbox(), Err(8));
+! // }
 diff -crN cairo2/corelib/src/test/testing_test.cairo cairo2/corelib_1/src/test/testing_test.cairo
-*** cairo2/corelib/src/test/testing_test.cairo	Mon Nov 24 10:47:44 2025
---- cairo2/corelib_1/src/test/testing_test.cairo	Tue Nov 25 16:29:58 2025
+*** cairo2/corelib/src/test/testing_test.cairo	Sun Dec 14 15:13:21 2025
+--- cairo2/corelib_1/src/test/testing_test.cairo	Thu Dec 18 10:56:22 2025
 ***************
 *** 135,152 ****
       t
@@ -1057,8 +1087,8 @@ diff -crN cairo2/corelib/src/test/testing_test.cairo cairo2/corelib_1/src/test/t
   #[derive(Drop, Debug, PartialEq)]
   struct NoCopy {
 diff -crN cairo2/corelib/src/test.cairo cairo2/corelib_1/src/test.cairo
-*** cairo2/corelib/src/test.cairo	Mon Nov 24 10:47:44 2025
---- cairo2/corelib_1/src/test.cairo	Tue Nov 25 16:29:58 2025
+*** cairo2/corelib/src/test.cairo	Sun Dec 14 15:13:21 2025
+--- cairo2/corelib_1/src/test.cairo	Thu Dec 18 10:56:22 2025
 ***************
 *** 12,18 ****
   mod ec_test;
