@@ -53,6 +53,7 @@ use. This can be done by adding `cairo-native = "0.8.0"` to your Cargo.toml
 - Rust 1.78.0 or later, since we make use of the u128
   [abi change](https://blog.rust-lang.org/2024/03/30/i128-layout-update.html).
 - Git
+- Scarb (to run tests)
 
 ### Setup
 > This step applies to all operating systems.
