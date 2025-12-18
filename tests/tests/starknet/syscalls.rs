@@ -3,7 +3,7 @@ use cairo_lang_runner::SierraCasmRunner;
 use cairo_lang_sierra::program::Program;
 use cairo_native::{
     starknet::{
-        BlockInfo, ExecutionInfo, ExecutionInfoV2, Secp256k1Point, Secp256r1Point,
+        BlockInfo, ExecutionInfo, ExecutionInfoV2, ExecutionInfoV3, Secp256k1Point, Secp256r1Point,
         StarknetSyscallHandler, SyscallResult, TxInfo, TxV2Info, U256,
     },
     Value,
@@ -178,6 +178,13 @@ impl StarknetSyscallHandler for SyscallHandler {
             )
             .unwrap(),
         })
+    }
+
+    fn get_execution_info_v3(
+        &mut self,
+        _remaining_gas: &mut u64,
+    ) -> SyscallResult<ExecutionInfoV3> {
+        todo!();
     }
 
     fn deploy(
