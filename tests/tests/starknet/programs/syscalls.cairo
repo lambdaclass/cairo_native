@@ -8,6 +8,7 @@ use starknet::{
 };
 use starknet::syscalls::get_execution_info_syscall;
 use starknet::syscalls::get_execution_info_v2_syscall;
+use starknet::syscalls::get_execution_info_v3_syscall;
 use starknet::syscalls::get_class_hash_at_syscall;
 use core::sha256::{sha256_state_handle_init, sha256_state_handle_digest, SHA256_INITIAL_STATE};
 use core::box::BoxTrait;
@@ -32,6 +33,10 @@ fn get_execution_info() -> SyscallResult<Box<starknet::info::ExecutionInfo>> {
 
 fn get_execution_info_v2() -> SyscallResult<Box<starknet::info::v2::ExecutionInfo>> {
     get_execution_info_v2_syscall()
+}
+
+fn get_execution_info_v3() -> SyscallResult<Box<starknet::info::v3::ExecutionInfo>> {
+    get_execution_info_v3_syscall()
 }
 
 fn deploy() -> SyscallResult<(ContractAddress, Span<felt252>)> {
