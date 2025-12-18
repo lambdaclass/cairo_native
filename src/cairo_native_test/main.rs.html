@@ -87,40 +87,41 @@
 <a href=#87 id=87 data-nosnippet>87</a>        contract_declarations: <span class="prelude-val">None</span>,
 <a href=#88 id=88 data-nosnippet>88</a>        contract_crate_ids: <span class="prelude-val">None</span>,
 <a href=#89 id=89 data-nosnippet>89</a>        executable_crate_ids: <span class="prelude-val">None</span>,
-<a href=#90 id=90 data-nosnippet>90</a>    };
-<a href=#91 id=91 data-nosnippet>91</a>
-<a href=#92 id=92 data-nosnippet>92</a>    <span class="kw">let </span><span class="kw-2">mut </span>diag_reporter = DiagnosticsReporter::stderr().with_crates(<span class="kw-2">&amp;</span>main_crate_inputs);
-<a href=#93 id=93 data-nosnippet>93</a>    <span class="kw">if </span>args.allow_warnings {
-<a href=#94 id=94 data-nosnippet>94</a>        diag_reporter = diag_reporter.allow_warnings();
-<a href=#95 id=95 data-nosnippet>95</a>    }
-<a href=#96 id=96 data-nosnippet>96</a>
-<a href=#97 id=97 data-nosnippet>97</a>    <span class="kw">let </span>build_test_compilation =
-<a href=#98 id=98 data-nosnippet>98</a>        compile_test_prepared_db(<span class="kw-2">&amp;</span>db, test_config, test_crate_ids.clone(), diag_reporter)<span class="question-mark">?</span>;
-<a href=#99 id=99 data-nosnippet>99</a>
-<a href=#100 id=100 data-nosnippet>100</a>    <span class="kw">let </span>(compiled, filtered_out) = filter_test_cases(
-<a href=#101 id=101 data-nosnippet>101</a>        build_test_compilation,
-<a href=#102 id=102 data-nosnippet>102</a>        args.include_ignored,
-<a href=#103 id=103 data-nosnippet>103</a>        args.ignored,
-<a href=#104 id=104 data-nosnippet>104</a>        args.filter.clone(),
-<a href=#105 id=105 data-nosnippet>105</a>    );
-<a href=#106 id=106 data-nosnippet>106</a>
-<a href=#107 id=107 data-nosnippet>107</a>    <span class="kw">let </span>summary = run_tests(
-<a href=#108 id=108 data-nosnippet>108</a>        compiled.metadata.named_tests,
-<a href=#109 id=109 data-nosnippet>109</a>        compiled.sierra_program.program,
-<a href=#110 id=110 data-nosnippet>110</a>        compiled.metadata.function_set_costs,
-<a href=#111 id=111 data-nosnippet>111</a>        compiled.metadata.contracts_info,
-<a href=#112 id=112 data-nosnippet>112</a>        RunArgs {
-<a href=#113 id=113 data-nosnippet>113</a>            run_mode: args.run_mode.clone(),
-<a href=#114 id=114 data-nosnippet>114</a>            opt_level: args.opt_level,
-<a href=#115 id=115 data-nosnippet>115</a>            compare_with_vm: args.compare_with_cairo_vm,
-<a href=#116 id=116 data-nosnippet>116</a>        },
-<a href=#117 id=117 data-nosnippet>117</a>    )<span class="question-mark">?</span>;
-<a href=#118 id=118 data-nosnippet>118</a>
-<a href=#119 id=119 data-nosnippet>119</a>    display_tests_summary(<span class="kw-2">&amp;</span>summary, filtered_out);
-<a href=#120 id=120 data-nosnippet>120</a>
-<a href=#121 id=121 data-nosnippet>121</a>    <span class="kw">if </span>!summary.failed.is_empty() || !summary.mismatch.is_empty() {
-<a href=#122 id=122 data-nosnippet>122</a>        <span class="macro">bail!</span>(<span class="string">"test failed"</span>)
-<a href=#123 id=123 data-nosnippet>123</a>    }
-<a href=#124 id=124 data-nosnippet>124</a>
-<a href=#125 id=125 data-nosnippet>125</a>    <span class="prelude-val">Ok</span>(())
-<a href=#126 id=126 data-nosnippet>126</a>}</code></pre></div></section></main></body></html>
+<a href=#90 id=90 data-nosnippet>90</a>        add_functions_debug_info: <span class="bool-val">false</span>,
+<a href=#91 id=91 data-nosnippet>91</a>    };
+<a href=#92 id=92 data-nosnippet>92</a>
+<a href=#93 id=93 data-nosnippet>93</a>    <span class="kw">let </span><span class="kw-2">mut </span>diag_reporter = DiagnosticsReporter::stderr().with_crates(<span class="kw-2">&amp;</span>main_crate_inputs);
+<a href=#94 id=94 data-nosnippet>94</a>    <span class="kw">if </span>args.allow_warnings {
+<a href=#95 id=95 data-nosnippet>95</a>        diag_reporter = diag_reporter.allow_warnings();
+<a href=#96 id=96 data-nosnippet>96</a>    }
+<a href=#97 id=97 data-nosnippet>97</a>
+<a href=#98 id=98 data-nosnippet>98</a>    <span class="kw">let </span>build_test_compilation =
+<a href=#99 id=99 data-nosnippet>99</a>        compile_test_prepared_db(<span class="kw-2">&amp;</span>db, test_config, test_crate_ids.clone(), diag_reporter)<span class="question-mark">?</span>;
+<a href=#100 id=100 data-nosnippet>100</a>
+<a href=#101 id=101 data-nosnippet>101</a>    <span class="kw">let </span>(compiled, filtered_out) = filter_test_cases(
+<a href=#102 id=102 data-nosnippet>102</a>        build_test_compilation,
+<a href=#103 id=103 data-nosnippet>103</a>        args.include_ignored,
+<a href=#104 id=104 data-nosnippet>104</a>        args.ignored,
+<a href=#105 id=105 data-nosnippet>105</a>        args.filter.clone(),
+<a href=#106 id=106 data-nosnippet>106</a>    );
+<a href=#107 id=107 data-nosnippet>107</a>
+<a href=#108 id=108 data-nosnippet>108</a>    <span class="kw">let </span>summary = run_tests(
+<a href=#109 id=109 data-nosnippet>109</a>        compiled.metadata.named_tests,
+<a href=#110 id=110 data-nosnippet>110</a>        compiled.sierra_program.program,
+<a href=#111 id=111 data-nosnippet>111</a>        compiled.metadata.function_set_costs,
+<a href=#112 id=112 data-nosnippet>112</a>        compiled.metadata.contracts_info,
+<a href=#113 id=113 data-nosnippet>113</a>        RunArgs {
+<a href=#114 id=114 data-nosnippet>114</a>            run_mode: args.run_mode.clone(),
+<a href=#115 id=115 data-nosnippet>115</a>            opt_level: args.opt_level,
+<a href=#116 id=116 data-nosnippet>116</a>            compare_with_vm: args.compare_with_cairo_vm,
+<a href=#117 id=117 data-nosnippet>117</a>        },
+<a href=#118 id=118 data-nosnippet>118</a>    )<span class="question-mark">?</span>;
+<a href=#119 id=119 data-nosnippet>119</a>
+<a href=#120 id=120 data-nosnippet>120</a>    display_tests_summary(<span class="kw-2">&amp;</span>summary, filtered_out);
+<a href=#121 id=121 data-nosnippet>121</a>
+<a href=#122 id=122 data-nosnippet>122</a>    <span class="kw">if </span>!summary.failed.is_empty() || !summary.mismatch.is_empty() {
+<a href=#123 id=123 data-nosnippet>123</a>        <span class="macro">bail!</span>(<span class="string">"test failed"</span>)
+<a href=#124 id=124 data-nosnippet>124</a>    }
+<a href=#125 id=125 data-nosnippet>125</a>
+<a href=#126 id=126 data-nosnippet>126</a>    <span class="prelude-val">Ok</span>(())
+<a href=#127 id=127 data-nosnippet>127</a>}</code></pre></div></section></main></body></html>

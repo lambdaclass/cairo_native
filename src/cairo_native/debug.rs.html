@@ -79,491 +79,494 @@
 <a href=#79 id=79 data-nosnippet>79</a>            BoxConcreteLibfunc::Into(<span class="kw">_</span>) =&gt; <span class="string">"box_into"</span>,
 <a href=#80 id=80 data-nosnippet>80</a>            BoxConcreteLibfunc::Unbox(<span class="kw">_</span>) =&gt; <span class="string">"box_unbox"</span>,
 <a href=#81 id=81 data-nosnippet>81</a>            BoxConcreteLibfunc::ForwardSnapshot(<span class="kw">_</span>) =&gt; <span class="string">"box_forward_snapshot"</span>,
-<a href=#82 id=82 data-nosnippet>82</a>        },
-<a href=#83 id=83 data-nosnippet>83</a>        CoreConcreteLibfunc::Cast(value) =&gt; <span class="kw">match </span>value {
-<a href=#84 id=84 data-nosnippet>84</a>            CastConcreteLibfunc::Downcast(<span class="kw">_</span>) =&gt; <span class="string">"downcast"</span>,
-<a href=#85 id=85 data-nosnippet>85</a>            CastConcreteLibfunc::Upcast(<span class="kw">_</span>) =&gt; <span class="string">"upcast"</span>,
-<a href=#86 id=86 data-nosnippet>86</a>        },
-<a href=#87 id=87 data-nosnippet>87</a>        CoreConcreteLibfunc::Coupon(value) =&gt; <span class="kw">match </span>value {
-<a href=#88 id=88 data-nosnippet>88</a>            CouponConcreteLibfunc::Buy(<span class="kw">_</span>) =&gt; <span class="string">"coupon_buy"</span>,
-<a href=#89 id=89 data-nosnippet>89</a>            CouponConcreteLibfunc::Refund(<span class="kw">_</span>) =&gt; <span class="string">"coupon_refund"</span>,
-<a href=#90 id=90 data-nosnippet>90</a>        },
-<a href=#91 id=91 data-nosnippet>91</a>        CoreConcreteLibfunc::CouponCall(<span class="kw">_</span>) =&gt; <span class="string">"coupon_call"</span>,
-<a href=#92 id=92 data-nosnippet>92</a>        CoreConcreteLibfunc::Drop(<span class="kw">_</span>) =&gt; <span class="string">"drop"</span>,
-<a href=#93 id=93 data-nosnippet>93</a>        CoreConcreteLibfunc::Dup(<span class="kw">_</span>) =&gt; <span class="string">"dup"</span>,
-<a href=#94 id=94 data-nosnippet>94</a>        CoreConcreteLibfunc::Ec(value) =&gt; <span class="kw">match </span>value {
-<a href=#95 id=95 data-nosnippet>95</a>            EcConcreteLibfunc::IsZero(<span class="kw">_</span>) =&gt; <span class="string">"ec_is_zero"</span>,
-<a href=#96 id=96 data-nosnippet>96</a>            EcConcreteLibfunc::Neg(<span class="kw">_</span>) =&gt; <span class="string">"ec_neg"</span>,
-<a href=#97 id=97 data-nosnippet>97</a>            EcConcreteLibfunc::StateAdd(<span class="kw">_</span>) =&gt; <span class="string">"ec_state_add"</span>,
-<a href=#98 id=98 data-nosnippet>98</a>            EcConcreteLibfunc::TryNew(<span class="kw">_</span>) =&gt; <span class="string">"ec_try_new"</span>,
-<a href=#99 id=99 data-nosnippet>99</a>            EcConcreteLibfunc::StateFinalize(<span class="kw">_</span>) =&gt; <span class="string">"ec_state_finalize"</span>,
-<a href=#100 id=100 data-nosnippet>100</a>            EcConcreteLibfunc::StateInit(<span class="kw">_</span>) =&gt; <span class="string">"ec_state_init"</span>,
-<a href=#101 id=101 data-nosnippet>101</a>            EcConcreteLibfunc::StateAddMul(<span class="kw">_</span>) =&gt; <span class="string">"ec_state_add_mul"</span>,
-<a href=#102 id=102 data-nosnippet>102</a>            EcConcreteLibfunc::PointFromX(<span class="kw">_</span>) =&gt; <span class="string">"ec_point_from_x"</span>,
-<a href=#103 id=103 data-nosnippet>103</a>            EcConcreteLibfunc::UnwrapPoint(<span class="kw">_</span>) =&gt; <span class="string">"ec_unwrap_point"</span>,
-<a href=#104 id=104 data-nosnippet>104</a>            EcConcreteLibfunc::Zero(<span class="kw">_</span>) =&gt; <span class="string">"ec_zero"</span>,
-<a href=#105 id=105 data-nosnippet>105</a>        },
-<a href=#106 id=106 data-nosnippet>106</a>        CoreConcreteLibfunc::Felt252(value) =&gt; <span class="kw">match </span>value {
-<a href=#107 id=107 data-nosnippet>107</a>            Felt252Concrete::BinaryOperation(op) =&gt; <span class="kw">match </span>op {
-<a href=#108 id=108 data-nosnippet>108</a>                Felt252BinaryOperationConcrete::WithVar(op) =&gt; <span class="kw">match </span><span class="kw-2">&amp;</span>op.operator {
-<a href=#109 id=109 data-nosnippet>109</a>                    Felt252BinaryOperator::Add =&gt; <span class="string">"felt252_add"</span>,
-<a href=#110 id=110 data-nosnippet>110</a>                    Felt252BinaryOperator::Sub =&gt; <span class="string">"felt252_sub"</span>,
-<a href=#111 id=111 data-nosnippet>111</a>                    Felt252BinaryOperator::Mul =&gt; <span class="string">"felt252_mul"</span>,
-<a href=#112 id=112 data-nosnippet>112</a>                    Felt252BinaryOperator::Div =&gt; <span class="string">"felt252_div"</span>,
-<a href=#113 id=113 data-nosnippet>113</a>                },
-<a href=#114 id=114 data-nosnippet>114</a>                Felt252BinaryOperationConcrete::WithConst(op) =&gt; <span class="kw">match </span><span class="kw-2">&amp;</span>op.operator {
-<a href=#115 id=115 data-nosnippet>115</a>                    Felt252BinaryOperator::Add =&gt; <span class="string">"felt252_const_add"</span>,
-<a href=#116 id=116 data-nosnippet>116</a>                    Felt252BinaryOperator::Sub =&gt; <span class="string">"felt252_const_sub"</span>,
-<a href=#117 id=117 data-nosnippet>117</a>                    Felt252BinaryOperator::Mul =&gt; <span class="string">"felt252_const_mul"</span>,
-<a href=#118 id=118 data-nosnippet>118</a>                    Felt252BinaryOperator::Div =&gt; <span class="string">"felt252_const_div"</span>,
-<a href=#119 id=119 data-nosnippet>119</a>                },
-<a href=#120 id=120 data-nosnippet>120</a>            },
-<a href=#121 id=121 data-nosnippet>121</a>            Felt252Concrete::Const(<span class="kw">_</span>) =&gt; <span class="string">"felt252_const"</span>,
-<a href=#122 id=122 data-nosnippet>122</a>            Felt252Concrete::IsZero(<span class="kw">_</span>) =&gt; <span class="string">"felt252_is_zero"</span>,
-<a href=#123 id=123 data-nosnippet>123</a>        },
-<a href=#124 id=124 data-nosnippet>124</a>        CoreConcreteLibfunc::Const(value) =&gt; <span class="kw">match </span>value {
-<a href=#125 id=125 data-nosnippet>125</a>            ConstConcreteLibfunc::AsBox(<span class="kw">_</span>) =&gt; <span class="string">"const_as_box"</span>,
-<a href=#126 id=126 data-nosnippet>126</a>            ConstConcreteLibfunc::AsImmediate(<span class="kw">_</span>) =&gt; <span class="string">"const_as_immediate"</span>,
-<a href=#127 id=127 data-nosnippet>127</a>        },
-<a href=#128 id=128 data-nosnippet>128</a>        CoreConcreteLibfunc::FunctionCall(<span class="kw">_</span>) =&gt; <span class="string">"function_call"</span>,
-<a href=#129 id=129 data-nosnippet>129</a>        CoreConcreteLibfunc::Gas(value) =&gt; <span class="kw">match </span>value {
-<a href=#130 id=130 data-nosnippet>130</a>            GasConcreteLibfunc::WithdrawGas(<span class="kw">_</span>) =&gt; <span class="string">"withdraw_gas"</span>,
-<a href=#131 id=131 data-nosnippet>131</a>            GasConcreteLibfunc::RedepositGas(<span class="kw">_</span>) =&gt; <span class="string">"redeposit_gas"</span>,
-<a href=#132 id=132 data-nosnippet>132</a>            GasConcreteLibfunc::GetAvailableGas(<span class="kw">_</span>) =&gt; <span class="string">"get_available_gas"</span>,
-<a href=#133 id=133 data-nosnippet>133</a>            GasConcreteLibfunc::BuiltinWithdrawGas(<span class="kw">_</span>) =&gt; <span class="string">"builtin_withdraw_gas"</span>,
-<a href=#134 id=134 data-nosnippet>134</a>            GasConcreteLibfunc::GetBuiltinCosts(<span class="kw">_</span>) =&gt; <span class="string">"get_builtin_costs"</span>,
-<a href=#135 id=135 data-nosnippet>135</a>            GasConcreteLibfunc::GetUnspentGas(<span class="kw">_</span>) =&gt; <span class="string">"get_unspent_gas"</span>,
-<a href=#136 id=136 data-nosnippet>136</a>        },
-<a href=#137 id=137 data-nosnippet>137</a>        CoreConcreteLibfunc::Uint8(value) =&gt; <span class="kw">match </span>value {
-<a href=#138 id=138 data-nosnippet>138</a>            UintConcrete::Const(<span class="kw">_</span>) =&gt; <span class="string">"u8_const"</span>,
-<a href=#139 id=139 data-nosnippet>139</a>            UintConcrete::Operation(op) =&gt; <span class="kw">match </span><span class="kw-2">&amp;</span>op.operator {
-<a href=#140 id=140 data-nosnippet>140</a>                IntOperator::OverflowingAdd =&gt; <span class="string">"u8_overflowing_add"</span>,
-<a href=#141 id=141 data-nosnippet>141</a>                IntOperator::OverflowingSub =&gt; <span class="string">"u8_overflowing_sub"</span>,
-<a href=#142 id=142 data-nosnippet>142</a>            },
-<a href=#143 id=143 data-nosnippet>143</a>            UintConcrete::SquareRoot(<span class="kw">_</span>) =&gt; <span class="string">"u8_sqrt"</span>,
-<a href=#144 id=144 data-nosnippet>144</a>            UintConcrete::Equal(<span class="kw">_</span>) =&gt; <span class="string">"u8_eq"</span>,
-<a href=#145 id=145 data-nosnippet>145</a>            UintConcrete::ToFelt252(<span class="kw">_</span>) =&gt; <span class="string">"u8_to_felt252"</span>,
-<a href=#146 id=146 data-nosnippet>146</a>            UintConcrete::FromFelt252(<span class="kw">_</span>) =&gt; <span class="string">"u8_from_felt252"</span>,
-<a href=#147 id=147 data-nosnippet>147</a>            UintConcrete::IsZero(<span class="kw">_</span>) =&gt; <span class="string">"u8_is_zero"</span>,
-<a href=#148 id=148 data-nosnippet>148</a>            UintConcrete::Divmod(<span class="kw">_</span>) =&gt; <span class="string">"u8_divmod"</span>,
-<a href=#149 id=149 data-nosnippet>149</a>            UintConcrete::WideMul(<span class="kw">_</span>) =&gt; <span class="string">"u8_wide_mul"</span>,
-<a href=#150 id=150 data-nosnippet>150</a>            UintConcrete::Bitwise(<span class="kw">_</span>) =&gt; <span class="string">"u8_bitwise"</span>,
-<a href=#151 id=151 data-nosnippet>151</a>        },
-<a href=#152 id=152 data-nosnippet>152</a>        CoreConcreteLibfunc::Uint16(value) =&gt; <span class="kw">match </span>value {
-<a href=#153 id=153 data-nosnippet>153</a>            UintConcrete::Const(<span class="kw">_</span>) =&gt; <span class="string">"u16_const"</span>,
-<a href=#154 id=154 data-nosnippet>154</a>            UintConcrete::Operation(op) =&gt; <span class="kw">match </span><span class="kw-2">&amp;</span>op.operator {
-<a href=#155 id=155 data-nosnippet>155</a>                IntOperator::OverflowingAdd =&gt; <span class="string">"u16_overflowing_add"</span>,
-<a href=#156 id=156 data-nosnippet>156</a>                IntOperator::OverflowingSub =&gt; <span class="string">"u16_overflowing_sub"</span>,
-<a href=#157 id=157 data-nosnippet>157</a>            },
-<a href=#158 id=158 data-nosnippet>158</a>            UintConcrete::SquareRoot(<span class="kw">_</span>) =&gt; <span class="string">"u16_sqrt"</span>,
-<a href=#159 id=159 data-nosnippet>159</a>            UintConcrete::Equal(<span class="kw">_</span>) =&gt; <span class="string">"u16_eq"</span>,
-<a href=#160 id=160 data-nosnippet>160</a>            UintConcrete::ToFelt252(<span class="kw">_</span>) =&gt; <span class="string">"u16_to_felt252"</span>,
-<a href=#161 id=161 data-nosnippet>161</a>            UintConcrete::FromFelt252(<span class="kw">_</span>) =&gt; <span class="string">"u16_from_felt252"</span>,
-<a href=#162 id=162 data-nosnippet>162</a>            UintConcrete::IsZero(<span class="kw">_</span>) =&gt; <span class="string">"u16_is_zero"</span>,
-<a href=#163 id=163 data-nosnippet>163</a>            UintConcrete::Divmod(<span class="kw">_</span>) =&gt; <span class="string">"u16_divmod"</span>,
-<a href=#164 id=164 data-nosnippet>164</a>            UintConcrete::WideMul(<span class="kw">_</span>) =&gt; <span class="string">"u16_wide_mul"</span>,
-<a href=#165 id=165 data-nosnippet>165</a>            UintConcrete::Bitwise(<span class="kw">_</span>) =&gt; <span class="string">"u16_bitwise"</span>,
-<a href=#166 id=166 data-nosnippet>166</a>        },
-<a href=#167 id=167 data-nosnippet>167</a>        CoreConcreteLibfunc::Uint32(value) =&gt; <span class="kw">match </span>value {
-<a href=#168 id=168 data-nosnippet>168</a>            UintConcrete::Const(<span class="kw">_</span>) =&gt; <span class="string">"u32_const"</span>,
-<a href=#169 id=169 data-nosnippet>169</a>            UintConcrete::Operation(op) =&gt; <span class="kw">match </span><span class="kw-2">&amp;</span>op.operator {
-<a href=#170 id=170 data-nosnippet>170</a>                IntOperator::OverflowingAdd =&gt; <span class="string">"u32_overflowing_add"</span>,
-<a href=#171 id=171 data-nosnippet>171</a>                IntOperator::OverflowingSub =&gt; <span class="string">"u32_overflowing_sub"</span>,
-<a href=#172 id=172 data-nosnippet>172</a>            },
-<a href=#173 id=173 data-nosnippet>173</a>            UintConcrete::SquareRoot(<span class="kw">_</span>) =&gt; <span class="string">"u32_sqrt"</span>,
-<a href=#174 id=174 data-nosnippet>174</a>            UintConcrete::Equal(<span class="kw">_</span>) =&gt; <span class="string">"u32_eq"</span>,
-<a href=#175 id=175 data-nosnippet>175</a>            UintConcrete::ToFelt252(<span class="kw">_</span>) =&gt; <span class="string">"u32_to_felt252"</span>,
-<a href=#176 id=176 data-nosnippet>176</a>            UintConcrete::FromFelt252(<span class="kw">_</span>) =&gt; <span class="string">"u32_from_felt252"</span>,
-<a href=#177 id=177 data-nosnippet>177</a>            UintConcrete::IsZero(<span class="kw">_</span>) =&gt; <span class="string">"u32_is_zero"</span>,
-<a href=#178 id=178 data-nosnippet>178</a>            UintConcrete::Divmod(<span class="kw">_</span>) =&gt; <span class="string">"u32_divmod"</span>,
-<a href=#179 id=179 data-nosnippet>179</a>            UintConcrete::WideMul(<span class="kw">_</span>) =&gt; <span class="string">"u32_wide_mul"</span>,
-<a href=#180 id=180 data-nosnippet>180</a>            UintConcrete::Bitwise(<span class="kw">_</span>) =&gt; <span class="string">"u32_bitwise"</span>,
-<a href=#181 id=181 data-nosnippet>181</a>        },
-<a href=#182 id=182 data-nosnippet>182</a>        CoreConcreteLibfunc::Uint64(value) =&gt; <span class="kw">match </span>value {
-<a href=#183 id=183 data-nosnippet>183</a>            UintConcrete::Const(<span class="kw">_</span>) =&gt; <span class="string">"u64_const"</span>,
-<a href=#184 id=184 data-nosnippet>184</a>            UintConcrete::Operation(op) =&gt; <span class="kw">match </span><span class="kw-2">&amp;</span>op.operator {
-<a href=#185 id=185 data-nosnippet>185</a>                IntOperator::OverflowingAdd =&gt; <span class="string">"u64_overflowing_add"</span>,
-<a href=#186 id=186 data-nosnippet>186</a>                IntOperator::OverflowingSub =&gt; <span class="string">"u64_overflowing_sub"</span>,
-<a href=#187 id=187 data-nosnippet>187</a>            },
-<a href=#188 id=188 data-nosnippet>188</a>            UintConcrete::SquareRoot(<span class="kw">_</span>) =&gt; <span class="string">"u64_sqrt"</span>,
-<a href=#189 id=189 data-nosnippet>189</a>            UintConcrete::Equal(<span class="kw">_</span>) =&gt; <span class="string">"u64_eq"</span>,
-<a href=#190 id=190 data-nosnippet>190</a>            UintConcrete::ToFelt252(<span class="kw">_</span>) =&gt; <span class="string">"u64_to_felt252"</span>,
-<a href=#191 id=191 data-nosnippet>191</a>            UintConcrete::FromFelt252(<span class="kw">_</span>) =&gt; <span class="string">"u64_from_felt252"</span>,
-<a href=#192 id=192 data-nosnippet>192</a>            UintConcrete::IsZero(<span class="kw">_</span>) =&gt; <span class="string">"u64_is_zero"</span>,
-<a href=#193 id=193 data-nosnippet>193</a>            UintConcrete::Divmod(<span class="kw">_</span>) =&gt; <span class="string">"u64_divmod"</span>,
-<a href=#194 id=194 data-nosnippet>194</a>            UintConcrete::WideMul(<span class="kw">_</span>) =&gt; <span class="string">"u64_wide_mul"</span>,
-<a href=#195 id=195 data-nosnippet>195</a>            UintConcrete::Bitwise(<span class="kw">_</span>) =&gt; <span class="string">"u64_bitwise"</span>,
-<a href=#196 id=196 data-nosnippet>196</a>        },
-<a href=#197 id=197 data-nosnippet>197</a>        CoreConcreteLibfunc::Uint128(value) =&gt; <span class="kw">match </span>value {
-<a href=#198 id=198 data-nosnippet>198</a>            Uint128Concrete::Operation(op) =&gt; <span class="kw">match </span><span class="kw-2">&amp;</span>op.operator {
-<a href=#199 id=199 data-nosnippet>199</a>                IntOperator::OverflowingAdd =&gt; <span class="string">"u128_overflowing_add"</span>,
-<a href=#200 id=200 data-nosnippet>200</a>                IntOperator::OverflowingSub =&gt; <span class="string">"u128_overflowing_sub"</span>,
-<a href=#201 id=201 data-nosnippet>201</a>            },
-<a href=#202 id=202 data-nosnippet>202</a>            Uint128Concrete::Divmod(<span class="kw">_</span>) =&gt; <span class="string">"u128_divmod"</span>,
-<a href=#203 id=203 data-nosnippet>203</a>            Uint128Concrete::GuaranteeMul(<span class="kw">_</span>) =&gt; <span class="string">"u128_guarantee_mul"</span>,
-<a href=#204 id=204 data-nosnippet>204</a>            Uint128Concrete::MulGuaranteeVerify(<span class="kw">_</span>) =&gt; <span class="string">"u128_mul_guarantee_verify"</span>,
-<a href=#205 id=205 data-nosnippet>205</a>            Uint128Concrete::Equal(<span class="kw">_</span>) =&gt; <span class="string">"u128_equal"</span>,
-<a href=#206 id=206 data-nosnippet>206</a>            Uint128Concrete::SquareRoot(<span class="kw">_</span>) =&gt; <span class="string">"u128_sqrt"</span>,
-<a href=#207 id=207 data-nosnippet>207</a>            Uint128Concrete::Const(<span class="kw">_</span>) =&gt; <span class="string">"u128_const"</span>,
-<a href=#208 id=208 data-nosnippet>208</a>            Uint128Concrete::FromFelt252(<span class="kw">_</span>) =&gt; <span class="string">"u128_from_felt"</span>,
-<a href=#209 id=209 data-nosnippet>209</a>            Uint128Concrete::ToFelt252(<span class="kw">_</span>) =&gt; <span class="string">"u128_to_felt252"</span>,
-<a href=#210 id=210 data-nosnippet>210</a>            Uint128Concrete::IsZero(<span class="kw">_</span>) =&gt; <span class="string">"u128_is_zero"</span>,
-<a href=#211 id=211 data-nosnippet>211</a>            Uint128Concrete::Bitwise(<span class="kw">_</span>) =&gt; <span class="string">"u128_bitwise"</span>,
-<a href=#212 id=212 data-nosnippet>212</a>            Uint128Concrete::ByteReverse(<span class="kw">_</span>) =&gt; <span class="string">"u128_byte_reverse"</span>,
-<a href=#213 id=213 data-nosnippet>213</a>        },
-<a href=#214 id=214 data-nosnippet>214</a>        CoreConcreteLibfunc::Uint256(value) =&gt; <span class="kw">match </span>value {
-<a href=#215 id=215 data-nosnippet>215</a>            Uint256Concrete::IsZero(<span class="kw">_</span>) =&gt; <span class="string">"u256_is_zero"</span>,
-<a href=#216 id=216 data-nosnippet>216</a>            Uint256Concrete::Divmod(<span class="kw">_</span>) =&gt; <span class="string">"u256_divmod"</span>,
-<a href=#217 id=217 data-nosnippet>217</a>            Uint256Concrete::SquareRoot(<span class="kw">_</span>) =&gt; <span class="string">"u256_sqrt"</span>,
-<a href=#218 id=218 data-nosnippet>218</a>            Uint256Concrete::InvModN(<span class="kw">_</span>) =&gt; <span class="string">"u256_inv_mod_n"</span>,
-<a href=#219 id=219 data-nosnippet>219</a>        },
-<a href=#220 id=220 data-nosnippet>220</a>        CoreConcreteLibfunc::Uint512(value) =&gt; <span class="kw">match </span>value {
-<a href=#221 id=221 data-nosnippet>221</a>            Uint512Concrete::DivModU256(<span class="kw">_</span>) =&gt; <span class="string">"u512_divmod_u256"</span>,
-<a href=#222 id=222 data-nosnippet>222</a>        },
-<a href=#223 id=223 data-nosnippet>223</a>        CoreConcreteLibfunc::Sint8(value) =&gt; <span class="kw">match </span>value {
-<a href=#224 id=224 data-nosnippet>224</a>            SintConcrete::Const(<span class="kw">_</span>) =&gt; <span class="string">"i8_const"</span>,
-<a href=#225 id=225 data-nosnippet>225</a>            SintConcrete::Equal(<span class="kw">_</span>) =&gt; <span class="string">"i8_eq"</span>,
-<a href=#226 id=226 data-nosnippet>226</a>            SintConcrete::ToFelt252(<span class="kw">_</span>) =&gt; <span class="string">"i8_to_felt252"</span>,
-<a href=#227 id=227 data-nosnippet>227</a>            SintConcrete::FromFelt252(<span class="kw">_</span>) =&gt; <span class="string">"i8_from_felt252"</span>,
-<a href=#228 id=228 data-nosnippet>228</a>            SintConcrete::Operation(op) =&gt; <span class="kw">match </span><span class="kw-2">&amp;</span>op.operator {
-<a href=#229 id=229 data-nosnippet>229</a>                IntOperator::OverflowingAdd =&gt; <span class="string">"i8_overflowing_add"</span>,
-<a href=#230 id=230 data-nosnippet>230</a>                IntOperator::OverflowingSub =&gt; <span class="string">"i8_overflowing_sub"</span>,
-<a href=#231 id=231 data-nosnippet>231</a>            },
-<a href=#232 id=232 data-nosnippet>232</a>            SintConcrete::Diff(<span class="kw">_</span>) =&gt; <span class="string">"i8_diff"</span>,
-<a href=#233 id=233 data-nosnippet>233</a>            SintConcrete::WideMul(<span class="kw">_</span>) =&gt; <span class="string">"i8_wide_mul"</span>,
-<a href=#234 id=234 data-nosnippet>234</a>        },
-<a href=#235 id=235 data-nosnippet>235</a>        CoreConcreteLibfunc::Sint16(value) =&gt; <span class="kw">match </span>value {
-<a href=#236 id=236 data-nosnippet>236</a>            SintConcrete::Const(<span class="kw">_</span>) =&gt; <span class="string">"i16_const"</span>,
-<a href=#237 id=237 data-nosnippet>237</a>            SintConcrete::Equal(<span class="kw">_</span>) =&gt; <span class="string">"i16_eq"</span>,
-<a href=#238 id=238 data-nosnippet>238</a>            SintConcrete::ToFelt252(<span class="kw">_</span>) =&gt; <span class="string">"i16_to_felt252"</span>,
-<a href=#239 id=239 data-nosnippet>239</a>            SintConcrete::FromFelt252(<span class="kw">_</span>) =&gt; <span class="string">"i16_from_felt252"</span>,
-<a href=#240 id=240 data-nosnippet>240</a>            SintConcrete::Operation(op) =&gt; <span class="kw">match </span><span class="kw-2">&amp;</span>op.operator {
-<a href=#241 id=241 data-nosnippet>241</a>                IntOperator::OverflowingAdd =&gt; <span class="string">"i16_overflowing_add"</span>,
-<a href=#242 id=242 data-nosnippet>242</a>                IntOperator::OverflowingSub =&gt; <span class="string">"i16_overflowing_sub"</span>,
-<a href=#243 id=243 data-nosnippet>243</a>            },
-<a href=#244 id=244 data-nosnippet>244</a>            SintConcrete::Diff(<span class="kw">_</span>) =&gt; <span class="string">"i16_diff"</span>,
-<a href=#245 id=245 data-nosnippet>245</a>            SintConcrete::WideMul(<span class="kw">_</span>) =&gt; <span class="string">"i16_wide_mul"</span>,
-<a href=#246 id=246 data-nosnippet>246</a>        },
-<a href=#247 id=247 data-nosnippet>247</a>        CoreConcreteLibfunc::Sint32(value) =&gt; <span class="kw">match </span>value {
-<a href=#248 id=248 data-nosnippet>248</a>            SintConcrete::Const(<span class="kw">_</span>) =&gt; <span class="string">"i32_const"</span>,
-<a href=#249 id=249 data-nosnippet>249</a>            SintConcrete::Equal(<span class="kw">_</span>) =&gt; <span class="string">"i32_eq"</span>,
-<a href=#250 id=250 data-nosnippet>250</a>            SintConcrete::ToFelt252(<span class="kw">_</span>) =&gt; <span class="string">"i32_to_felt252"</span>,
-<a href=#251 id=251 data-nosnippet>251</a>            SintConcrete::FromFelt252(<span class="kw">_</span>) =&gt; <span class="string">"i32_from_felt252"</span>,
-<a href=#252 id=252 data-nosnippet>252</a>            SintConcrete::Operation(op) =&gt; <span class="kw">match </span><span class="kw-2">&amp;</span>op.operator {
-<a href=#253 id=253 data-nosnippet>253</a>                IntOperator::OverflowingAdd =&gt; <span class="string">"i32_overflowing_add"</span>,
-<a href=#254 id=254 data-nosnippet>254</a>                IntOperator::OverflowingSub =&gt; <span class="string">"i32_overflowing_sub"</span>,
-<a href=#255 id=255 data-nosnippet>255</a>            },
-<a href=#256 id=256 data-nosnippet>256</a>            SintConcrete::Diff(<span class="kw">_</span>) =&gt; <span class="string">"i32_diff"</span>,
-<a href=#257 id=257 data-nosnippet>257</a>            SintConcrete::WideMul(<span class="kw">_</span>) =&gt; <span class="string">"i32_wide_mul"</span>,
-<a href=#258 id=258 data-nosnippet>258</a>        },
-<a href=#259 id=259 data-nosnippet>259</a>        CoreConcreteLibfunc::Sint64(value) =&gt; <span class="kw">match </span>value {
-<a href=#260 id=260 data-nosnippet>260</a>            SintConcrete::Const(<span class="kw">_</span>) =&gt; <span class="string">"i64_const"</span>,
-<a href=#261 id=261 data-nosnippet>261</a>            SintConcrete::Equal(<span class="kw">_</span>) =&gt; <span class="string">"i64_eq"</span>,
-<a href=#262 id=262 data-nosnippet>262</a>            SintConcrete::ToFelt252(<span class="kw">_</span>) =&gt; <span class="string">"i64_to_felt252"</span>,
-<a href=#263 id=263 data-nosnippet>263</a>            SintConcrete::FromFelt252(<span class="kw">_</span>) =&gt; <span class="string">"i64_from_felt252"</span>,
-<a href=#264 id=264 data-nosnippet>264</a>            SintConcrete::Operation(op) =&gt; <span class="kw">match </span><span class="kw-2">&amp;</span>op.operator {
-<a href=#265 id=265 data-nosnippet>265</a>                IntOperator::OverflowingAdd =&gt; <span class="string">"i64_overflowing_add"</span>,
-<a href=#266 id=266 data-nosnippet>266</a>                IntOperator::OverflowingSub =&gt; <span class="string">"i64_overflowing_sub"</span>,
-<a href=#267 id=267 data-nosnippet>267</a>            },
-<a href=#268 id=268 data-nosnippet>268</a>            SintConcrete::Diff(<span class="kw">_</span>) =&gt; <span class="string">"i64_diff"</span>,
-<a href=#269 id=269 data-nosnippet>269</a>            SintConcrete::WideMul(<span class="kw">_</span>) =&gt; <span class="string">"i64_wide_mul"</span>,
-<a href=#270 id=270 data-nosnippet>270</a>        },
-<a href=#271 id=271 data-nosnippet>271</a>        CoreConcreteLibfunc::Sint128(value) =&gt; <span class="kw">match </span>value {
-<a href=#272 id=272 data-nosnippet>272</a>            Sint128Concrete::Const(<span class="kw">_</span>) =&gt; <span class="string">"i128_const"</span>,
-<a href=#273 id=273 data-nosnippet>273</a>            Sint128Concrete::Equal(<span class="kw">_</span>) =&gt; <span class="string">"i128_eq"</span>,
-<a href=#274 id=274 data-nosnippet>274</a>            Sint128Concrete::ToFelt252(<span class="kw">_</span>) =&gt; <span class="string">"i128_to_felt252"</span>,
-<a href=#275 id=275 data-nosnippet>275</a>            Sint128Concrete::FromFelt252(<span class="kw">_</span>) =&gt; <span class="string">"i128_from_felt252"</span>,
-<a href=#276 id=276 data-nosnippet>276</a>            Sint128Concrete::Operation(op) =&gt; <span class="kw">match </span><span class="kw-2">&amp;</span>op.operator {
-<a href=#277 id=277 data-nosnippet>277</a>                IntOperator::OverflowingAdd =&gt; <span class="string">"i128_overflowing_add"</span>,
-<a href=#278 id=278 data-nosnippet>278</a>                IntOperator::OverflowingSub =&gt; <span class="string">"i128_overflowing_sub"</span>,
-<a href=#279 id=279 data-nosnippet>279</a>            },
-<a href=#280 id=280 data-nosnippet>280</a>            Sint128Concrete::Diff(<span class="kw">_</span>) =&gt; <span class="string">"i128_diff"</span>,
-<a href=#281 id=281 data-nosnippet>281</a>        },
-<a href=#282 id=282 data-nosnippet>282</a>        CoreConcreteLibfunc::Mem(value) =&gt; <span class="kw">match </span>value {
-<a href=#283 id=283 data-nosnippet>283</a>            MemConcreteLibfunc::StoreTemp(<span class="kw">_</span>) =&gt; <span class="string">"store_temp"</span>,
-<a href=#284 id=284 data-nosnippet>284</a>            MemConcreteLibfunc::StoreLocal(<span class="kw">_</span>) =&gt; <span class="string">"store_local"</span>,
-<a href=#285 id=285 data-nosnippet>285</a>            MemConcreteLibfunc::FinalizeLocals(<span class="kw">_</span>) =&gt; <span class="string">"finalize_locals"</span>,
-<a href=#286 id=286 data-nosnippet>286</a>            MemConcreteLibfunc::AllocLocal(<span class="kw">_</span>) =&gt; <span class="string">"alloc_local"</span>,
-<a href=#287 id=287 data-nosnippet>287</a>            MemConcreteLibfunc::Rename(<span class="kw">_</span>) =&gt; <span class="string">"rename"</span>,
-<a href=#288 id=288 data-nosnippet>288</a>        },
-<a href=#289 id=289 data-nosnippet>289</a>        CoreConcreteLibfunc::Nullable(value) =&gt; <span class="kw">match </span>value {
-<a href=#290 id=290 data-nosnippet>290</a>            NullableConcreteLibfunc::Null(<span class="kw">_</span>) =&gt; <span class="string">"nullable_null"</span>,
-<a href=#291 id=291 data-nosnippet>291</a>            NullableConcreteLibfunc::NullableFromBox(<span class="kw">_</span>) =&gt; <span class="string">"nullable_from_box"</span>,
-<a href=#292 id=292 data-nosnippet>292</a>            NullableConcreteLibfunc::MatchNullable(<span class="kw">_</span>) =&gt; <span class="string">"match_nullable"</span>,
-<a href=#293 id=293 data-nosnippet>293</a>            NullableConcreteLibfunc::ForwardSnapshot(<span class="kw">_</span>) =&gt; <span class="string">"nullable_forward_snapshot"</span>,
-<a href=#294 id=294 data-nosnippet>294</a>        },
-<a href=#295 id=295 data-nosnippet>295</a>        CoreConcreteLibfunc::UnwrapNonZero(<span class="kw">_</span>) =&gt; <span class="string">"unwrap_non_zero"</span>,
-<a href=#296 id=296 data-nosnippet>296</a>        CoreConcreteLibfunc::UnconditionalJump(<span class="kw">_</span>) =&gt; <span class="string">"jump"</span>,
-<a href=#297 id=297 data-nosnippet>297</a>        CoreConcreteLibfunc::Enum(value) =&gt; <span class="kw">match </span>value {
-<a href=#298 id=298 data-nosnippet>298</a>            EnumConcreteLibfunc::Init(<span class="kw">_</span>) =&gt; <span class="string">"enum_init"</span>,
-<a href=#299 id=299 data-nosnippet>299</a>            EnumConcreteLibfunc::FromBoundedInt(<span class="kw">_</span>) =&gt; <span class="string">"enum_from_bounded_int"</span>,
-<a href=#300 id=300 data-nosnippet>300</a>            EnumConcreteLibfunc::Match(<span class="kw">_</span>) =&gt; <span class="string">"enum_match"</span>,
-<a href=#301 id=301 data-nosnippet>301</a>            EnumConcreteLibfunc::SnapshotMatch(<span class="kw">_</span>) =&gt; <span class="string">"enum_snapshot_match"</span>,
-<a href=#302 id=302 data-nosnippet>302</a>        },
-<a href=#303 id=303 data-nosnippet>303</a>        CoreConcreteLibfunc::Struct(value) =&gt; <span class="kw">match </span>value {
-<a href=#304 id=304 data-nosnippet>304</a>            StructConcreteLibfunc::Construct(<span class="kw">_</span>) =&gt; <span class="string">"struct_construct"</span>,
-<a href=#305 id=305 data-nosnippet>305</a>            StructConcreteLibfunc::Deconstruct(<span class="kw">_</span>) =&gt; <span class="string">"struct_deconstruct"</span>,
-<a href=#306 id=306 data-nosnippet>306</a>            StructConcreteLibfunc::SnapshotDeconstruct(<span class="kw">_</span>) =&gt; <span class="string">"struct_snapshot_deconstruct"</span>,
-<a href=#307 id=307 data-nosnippet>307</a>            StructConcreteLibfunc::BoxedDeconstruct(<span class="kw">_</span>) =&gt; <span class="string">"struct_boxed_deconstruct"</span>,
-<a href=#308 id=308 data-nosnippet>308</a>        },
-<a href=#309 id=309 data-nosnippet>309</a>        CoreConcreteLibfunc::Felt252Dict(value) =&gt; <span class="kw">match </span>value {
-<a href=#310 id=310 data-nosnippet>310</a>            Felt252DictConcreteLibfunc::New(<span class="kw">_</span>) =&gt; <span class="string">"felt252dict_new"</span>,
-<a href=#311 id=311 data-nosnippet>311</a>            Felt252DictConcreteLibfunc::Squash(<span class="kw">_</span>) =&gt; <span class="string">"felt252dict_squash"</span>,
-<a href=#312 id=312 data-nosnippet>312</a>        },
-<a href=#313 id=313 data-nosnippet>313</a>        CoreConcreteLibfunc::Felt252DictEntry(value) =&gt; <span class="kw">match </span>value {
-<a href=#314 id=314 data-nosnippet>314</a>            Felt252DictEntryConcreteLibfunc::Get(<span class="kw">_</span>) =&gt; <span class="string">"felt252dict_get"</span>,
-<a href=#315 id=315 data-nosnippet>315</a>            Felt252DictEntryConcreteLibfunc::Finalize(<span class="kw">_</span>) =&gt; <span class="string">"felt252dict_finalize"</span>,
-<a href=#316 id=316 data-nosnippet>316</a>        },
-<a href=#317 id=317 data-nosnippet>317</a>        CoreConcreteLibfunc::Felt252SquashedDict(<span class="kw">_</span>) =&gt; <span class="string">"felt252_squashed_dict"</span>,
-<a href=#318 id=318 data-nosnippet>318</a>        CoreConcreteLibfunc::Pedersen(value) =&gt; <span class="kw">match </span>value {
-<a href=#319 id=319 data-nosnippet>319</a>            PedersenConcreteLibfunc::PedersenHash(<span class="kw">_</span>) =&gt; <span class="string">"pedersen_hash"</span>,
-<a href=#320 id=320 data-nosnippet>320</a>        },
-<a href=#321 id=321 data-nosnippet>321</a>        CoreConcreteLibfunc::Poseidon(value) =&gt; <span class="kw">match </span>value {
-<a href=#322 id=322 data-nosnippet>322</a>            PoseidonConcreteLibfunc::HadesPermutation(<span class="kw">_</span>) =&gt; <span class="string">"hades_permutation"</span>,
-<a href=#323 id=323 data-nosnippet>323</a>        },
-<a href=#324 id=324 data-nosnippet>324</a>        CoreConcreteLibfunc::Starknet(value) =&gt; <span class="kw">match </span>value {
-<a href=#325 id=325 data-nosnippet>325</a>            StarknetConcreteLibfunc::CallContract(<span class="kw">_</span>) =&gt; <span class="string">"call_contract"</span>,
-<a href=#326 id=326 data-nosnippet>326</a>            StarknetConcreteLibfunc::ClassHashConst(<span class="kw">_</span>) =&gt; <span class="string">"class_hash_const"</span>,
-<a href=#327 id=327 data-nosnippet>327</a>            StarknetConcreteLibfunc::ClassHashTryFromFelt252(<span class="kw">_</span>) =&gt; <span class="string">"class_hash_try_from_felt252"</span>,
-<a href=#328 id=328 data-nosnippet>328</a>            StarknetConcreteLibfunc::ClassHashToFelt252(<span class="kw">_</span>) =&gt; <span class="string">"class_hash_to_felt252"</span>,
-<a href=#329 id=329 data-nosnippet>329</a>            StarknetConcreteLibfunc::ContractAddressConst(<span class="kw">_</span>) =&gt; <span class="string">"contract_address_const"</span>,
-<a href=#330 id=330 data-nosnippet>330</a>            StarknetConcreteLibfunc::ContractAddressTryFromFelt252(<span class="kw">_</span>) =&gt; {
-<a href=#331 id=331 data-nosnippet>331</a>                <span class="string">"contract_address_try_from_felt252"
-<a href=#332 id=332 data-nosnippet>332</a>            </span>}
-<a href=#333 id=333 data-nosnippet>333</a>            StarknetConcreteLibfunc::ContractAddressToFelt252(<span class="kw">_</span>) =&gt; <span class="string">"contract_address_to_felt252"</span>,
-<a href=#334 id=334 data-nosnippet>334</a>            StarknetConcreteLibfunc::StorageRead(<span class="kw">_</span>) =&gt; <span class="string">"storage_read"</span>,
-<a href=#335 id=335 data-nosnippet>335</a>            StarknetConcreteLibfunc::StorageWrite(<span class="kw">_</span>) =&gt; <span class="string">"storage_write"</span>,
-<a href=#336 id=336 data-nosnippet>336</a>            StarknetConcreteLibfunc::StorageBaseAddressConst(<span class="kw">_</span>) =&gt; <span class="string">"storage_base_address_const"</span>,
-<a href=#337 id=337 data-nosnippet>337</a>            StarknetConcreteLibfunc::StorageBaseAddressFromFelt252(<span class="kw">_</span>) =&gt; {
-<a href=#338 id=338 data-nosnippet>338</a>                <span class="string">"storage_base_address_from_felt252"
-<a href=#339 id=339 data-nosnippet>339</a>            </span>}
-<a href=#340 id=340 data-nosnippet>340</a>            StarknetConcreteLibfunc::StorageAddressFromBase(<span class="kw">_</span>) =&gt; <span class="string">"storage_address_from_base"</span>,
-<a href=#341 id=341 data-nosnippet>341</a>            StarknetConcreteLibfunc::StorageAddressFromBaseAndOffset(<span class="kw">_</span>) =&gt; {
-<a href=#342 id=342 data-nosnippet>342</a>                <span class="string">"storage_address_from_base_and_offset"
-<a href=#343 id=343 data-nosnippet>343</a>            </span>}
-<a href=#344 id=344 data-nosnippet>344</a>            StarknetConcreteLibfunc::StorageAddressToFelt252(<span class="kw">_</span>) =&gt; <span class="string">"storage_address_to_felt252"</span>,
-<a href=#345 id=345 data-nosnippet>345</a>            StarknetConcreteLibfunc::StorageAddressTryFromFelt252(<span class="kw">_</span>) =&gt; {
-<a href=#346 id=346 data-nosnippet>346</a>                <span class="string">"storage_address_try_from_felt252"
-<a href=#347 id=347 data-nosnippet>347</a>            </span>}
-<a href=#348 id=348 data-nosnippet>348</a>            StarknetConcreteLibfunc::EmitEvent(<span class="kw">_</span>) =&gt; <span class="string">"emit_event"</span>,
-<a href=#349 id=349 data-nosnippet>349</a>            StarknetConcreteLibfunc::GetBlockHash(<span class="kw">_</span>) =&gt; <span class="string">"get_block_hash"</span>,
-<a href=#350 id=350 data-nosnippet>350</a>            StarknetConcreteLibfunc::GetExecutionInfo(<span class="kw">_</span>) =&gt; <span class="string">"get_exec_info_v1"</span>,
-<a href=#351 id=351 data-nosnippet>351</a>            StarknetConcreteLibfunc::GetExecutionInfoV2(<span class="kw">_</span>) =&gt; <span class="string">"get_exec_info_v2"</span>,
-<a href=#352 id=352 data-nosnippet>352</a>            StarknetConcreteLibfunc::Deploy(<span class="kw">_</span>) =&gt; <span class="string">"deploy"</span>,
-<a href=#353 id=353 data-nosnippet>353</a>            StarknetConcreteLibfunc::Keccak(<span class="kw">_</span>) =&gt; <span class="string">"keccak"</span>,
-<a href=#354 id=354 data-nosnippet>354</a>            StarknetConcreteLibfunc::LibraryCall(<span class="kw">_</span>) =&gt; <span class="string">"library_call"</span>,
-<a href=#355 id=355 data-nosnippet>355</a>            StarknetConcreteLibfunc::ReplaceClass(<span class="kw">_</span>) =&gt; <span class="string">"replace_class"</span>,
-<a href=#356 id=356 data-nosnippet>356</a>            StarknetConcreteLibfunc::SendMessageToL1(<span class="kw">_</span>) =&gt; <span class="string">"send_message_to_l1"</span>,
-<a href=#357 id=357 data-nosnippet>357</a>            StarknetConcreteLibfunc::Testing(value) =&gt; <span class="kw">match </span>value {
-<a href=#358 id=358 data-nosnippet>358</a>                TestingConcreteLibfunc::Cheatcode(<span class="kw">_</span>) =&gt; <span class="string">"cheatcode"</span>,
-<a href=#359 id=359 data-nosnippet>359</a>            },
-<a href=#360 id=360 data-nosnippet>360</a>            StarknetConcreteLibfunc::Secp256(value) =&gt; <span class="kw">match </span>value {
-<a href=#361 id=361 data-nosnippet>361</a>                Secp256ConcreteLibfunc::K1(value) =&gt; <span class="kw">match </span>value {
-<a href=#362 id=362 data-nosnippet>362</a>                    Secp256OpConcreteLibfunc::New(<span class="kw">_</span>) =&gt; <span class="string">"secp256k1_new"</span>,
-<a href=#363 id=363 data-nosnippet>363</a>                    Secp256OpConcreteLibfunc::Add(<span class="kw">_</span>) =&gt; <span class="string">"secp256k1_add"</span>,
-<a href=#364 id=364 data-nosnippet>364</a>                    Secp256OpConcreteLibfunc::Mul(<span class="kw">_</span>) =&gt; <span class="string">"secp256k1_mul"</span>,
-<a href=#365 id=365 data-nosnippet>365</a>                    Secp256OpConcreteLibfunc::GetPointFromX(<span class="kw">_</span>) =&gt; <span class="string">"secp256k1_get_point_from_x"</span>,
-<a href=#366 id=366 data-nosnippet>366</a>                    Secp256OpConcreteLibfunc::GetXy(<span class="kw">_</span>) =&gt; <span class="string">"secp256k1_get_xy"</span>,
-<a href=#367 id=367 data-nosnippet>367</a>                },
-<a href=#368 id=368 data-nosnippet>368</a>                Secp256ConcreteLibfunc::R1(value) =&gt; <span class="kw">match </span>value {
-<a href=#369 id=369 data-nosnippet>369</a>                    Secp256OpConcreteLibfunc::New(<span class="kw">_</span>) =&gt; <span class="string">"secp256r1_new"</span>,
-<a href=#370 id=370 data-nosnippet>370</a>                    Secp256OpConcreteLibfunc::Add(<span class="kw">_</span>) =&gt; <span class="string">"secp256r1_add"</span>,
-<a href=#371 id=371 data-nosnippet>371</a>                    Secp256OpConcreteLibfunc::Mul(<span class="kw">_</span>) =&gt; <span class="string">"secp256r1_mul"</span>,
-<a href=#372 id=372 data-nosnippet>372</a>                    Secp256OpConcreteLibfunc::GetPointFromX(<span class="kw">_</span>) =&gt; <span class="string">"secp256r1_get_point_from_x"</span>,
-<a href=#373 id=373 data-nosnippet>373</a>                    Secp256OpConcreteLibfunc::GetXy(<span class="kw">_</span>) =&gt; <span class="string">"secp256r1_get_xy"</span>,
-<a href=#374 id=374 data-nosnippet>374</a>                },
-<a href=#375 id=375 data-nosnippet>375</a>            },
-<a href=#376 id=376 data-nosnippet>376</a>            StarknetConcreteLibfunc::Sha256ProcessBlock(<span class="kw">_</span>) =&gt; <span class="string">"sha256_process_block"</span>,
-<a href=#377 id=377 data-nosnippet>377</a>            StarknetConcreteLibfunc::Sha256StateHandleInit(<span class="kw">_</span>) =&gt; <span class="string">"sha256_state_handle_init"</span>,
-<a href=#378 id=378 data-nosnippet>378</a>            StarknetConcreteLibfunc::Sha256StateHandleDigest(<span class="kw">_</span>) =&gt; <span class="string">"sha256_state_handle_digest"</span>,
-<a href=#379 id=379 data-nosnippet>379</a>            StarknetConcreteLibfunc::GetClassHashAt(<span class="kw">_</span>) =&gt; <span class="string">"get_class_hash_at_syscall"</span>,
-<a href=#380 id=380 data-nosnippet>380</a>            StarknetConcreteLibfunc::MetaTxV0(<span class="kw">_</span>) =&gt; <span class="string">"meta_tx_v0"</span>,
-<a href=#381 id=381 data-nosnippet>381</a>        },
-<a href=#382 id=382 data-nosnippet>382</a>        CoreConcreteLibfunc::Debug(value) =&gt; <span class="kw">match </span>value {
-<a href=#383 id=383 data-nosnippet>383</a>            DebugConcreteLibfunc::Print(<span class="kw">_</span>) =&gt; <span class="string">"debug_print"</span>,
+<a href=#82 id=82 data-nosnippet>82</a>            BoxConcreteLibfunc::LocalInto(<span class="kw">_</span>) =&gt; <span class="string">"box_local_into"</span>,
+<a href=#83 id=83 data-nosnippet>83</a>        },
+<a href=#84 id=84 data-nosnippet>84</a>        CoreConcreteLibfunc::Cast(value) =&gt; <span class="kw">match </span>value {
+<a href=#85 id=85 data-nosnippet>85</a>            CastConcreteLibfunc::Downcast(<span class="kw">_</span>) =&gt; <span class="string">"downcast"</span>,
+<a href=#86 id=86 data-nosnippet>86</a>            CastConcreteLibfunc::Upcast(<span class="kw">_</span>) =&gt; <span class="string">"upcast"</span>,
+<a href=#87 id=87 data-nosnippet>87</a>        },
+<a href=#88 id=88 data-nosnippet>88</a>        CoreConcreteLibfunc::Coupon(value) =&gt; <span class="kw">match </span>value {
+<a href=#89 id=89 data-nosnippet>89</a>            CouponConcreteLibfunc::Buy(<span class="kw">_</span>) =&gt; <span class="string">"coupon_buy"</span>,
+<a href=#90 id=90 data-nosnippet>90</a>            CouponConcreteLibfunc::Refund(<span class="kw">_</span>) =&gt; <span class="string">"coupon_refund"</span>,
+<a href=#91 id=91 data-nosnippet>91</a>        },
+<a href=#92 id=92 data-nosnippet>92</a>        CoreConcreteLibfunc::CouponCall(<span class="kw">_</span>) =&gt; <span class="string">"coupon_call"</span>,
+<a href=#93 id=93 data-nosnippet>93</a>        CoreConcreteLibfunc::Drop(<span class="kw">_</span>) =&gt; <span class="string">"drop"</span>,
+<a href=#94 id=94 data-nosnippet>94</a>        CoreConcreteLibfunc::Dup(<span class="kw">_</span>) =&gt; <span class="string">"dup"</span>,
+<a href=#95 id=95 data-nosnippet>95</a>        CoreConcreteLibfunc::Ec(value) =&gt; <span class="kw">match </span>value {
+<a href=#96 id=96 data-nosnippet>96</a>            EcConcreteLibfunc::IsZero(<span class="kw">_</span>) =&gt; <span class="string">"ec_is_zero"</span>,
+<a href=#97 id=97 data-nosnippet>97</a>            EcConcreteLibfunc::Neg(<span class="kw">_</span>) =&gt; <span class="string">"ec_neg"</span>,
+<a href=#98 id=98 data-nosnippet>98</a>            EcConcreteLibfunc::StateAdd(<span class="kw">_</span>) =&gt; <span class="string">"ec_state_add"</span>,
+<a href=#99 id=99 data-nosnippet>99</a>            EcConcreteLibfunc::TryNew(<span class="kw">_</span>) =&gt; <span class="string">"ec_try_new"</span>,
+<a href=#100 id=100 data-nosnippet>100</a>            EcConcreteLibfunc::StateFinalize(<span class="kw">_</span>) =&gt; <span class="string">"ec_state_finalize"</span>,
+<a href=#101 id=101 data-nosnippet>101</a>            EcConcreteLibfunc::StateInit(<span class="kw">_</span>) =&gt; <span class="string">"ec_state_init"</span>,
+<a href=#102 id=102 data-nosnippet>102</a>            EcConcreteLibfunc::StateAddMul(<span class="kw">_</span>) =&gt; <span class="string">"ec_state_add_mul"</span>,
+<a href=#103 id=103 data-nosnippet>103</a>            EcConcreteLibfunc::PointFromX(<span class="kw">_</span>) =&gt; <span class="string">"ec_point_from_x"</span>,
+<a href=#104 id=104 data-nosnippet>104</a>            EcConcreteLibfunc::UnwrapPoint(<span class="kw">_</span>) =&gt; <span class="string">"ec_unwrap_point"</span>,
+<a href=#105 id=105 data-nosnippet>105</a>            EcConcreteLibfunc::Zero(<span class="kw">_</span>) =&gt; <span class="string">"ec_zero"</span>,
+<a href=#106 id=106 data-nosnippet>106</a>            EcConcreteLibfunc::NegNz(<span class="kw">_</span>) =&gt; <span class="string">"ec_neg_nz"</span>,
+<a href=#107 id=107 data-nosnippet>107</a>        },
+<a href=#108 id=108 data-nosnippet>108</a>        CoreConcreteLibfunc::Felt252(value) =&gt; <span class="kw">match </span>value {
+<a href=#109 id=109 data-nosnippet>109</a>            Felt252Concrete::BinaryOperation(op) =&gt; <span class="kw">match </span>op {
+<a href=#110 id=110 data-nosnippet>110</a>                Felt252BinaryOperationConcrete::WithVar(op) =&gt; <span class="kw">match </span><span class="kw-2">&amp;</span>op.operator {
+<a href=#111 id=111 data-nosnippet>111</a>                    Felt252BinaryOperator::Add =&gt; <span class="string">"felt252_add"</span>,
+<a href=#112 id=112 data-nosnippet>112</a>                    Felt252BinaryOperator::Sub =&gt; <span class="string">"felt252_sub"</span>,
+<a href=#113 id=113 data-nosnippet>113</a>                    Felt252BinaryOperator::Mul =&gt; <span class="string">"felt252_mul"</span>,
+<a href=#114 id=114 data-nosnippet>114</a>                    Felt252BinaryOperator::Div =&gt; <span class="string">"felt252_div"</span>,
+<a href=#115 id=115 data-nosnippet>115</a>                },
+<a href=#116 id=116 data-nosnippet>116</a>                Felt252BinaryOperationConcrete::WithConst(op) =&gt; <span class="kw">match </span><span class="kw-2">&amp;</span>op.operator {
+<a href=#117 id=117 data-nosnippet>117</a>                    Felt252BinaryOperator::Add =&gt; <span class="string">"felt252_const_add"</span>,
+<a href=#118 id=118 data-nosnippet>118</a>                    Felt252BinaryOperator::Sub =&gt; <span class="string">"felt252_const_sub"</span>,
+<a href=#119 id=119 data-nosnippet>119</a>                    Felt252BinaryOperator::Mul =&gt; <span class="string">"felt252_const_mul"</span>,
+<a href=#120 id=120 data-nosnippet>120</a>                    Felt252BinaryOperator::Div =&gt; <span class="string">"felt252_const_div"</span>,
+<a href=#121 id=121 data-nosnippet>121</a>                },
+<a href=#122 id=122 data-nosnippet>122</a>            },
+<a href=#123 id=123 data-nosnippet>123</a>            Felt252Concrete::Const(<span class="kw">_</span>) =&gt; <span class="string">"felt252_const"</span>,
+<a href=#124 id=124 data-nosnippet>124</a>            Felt252Concrete::IsZero(<span class="kw">_</span>) =&gt; <span class="string">"felt252_is_zero"</span>,
+<a href=#125 id=125 data-nosnippet>125</a>        },
+<a href=#126 id=126 data-nosnippet>126</a>        CoreConcreteLibfunc::Const(value) =&gt; <span class="kw">match </span>value {
+<a href=#127 id=127 data-nosnippet>127</a>            ConstConcreteLibfunc::AsBox(<span class="kw">_</span>) =&gt; <span class="string">"const_as_box"</span>,
+<a href=#128 id=128 data-nosnippet>128</a>            ConstConcreteLibfunc::AsImmediate(<span class="kw">_</span>) =&gt; <span class="string">"const_as_immediate"</span>,
+<a href=#129 id=129 data-nosnippet>129</a>        },
+<a href=#130 id=130 data-nosnippet>130</a>        CoreConcreteLibfunc::FunctionCall(<span class="kw">_</span>) =&gt; <span class="string">"function_call"</span>,
+<a href=#131 id=131 data-nosnippet>131</a>        CoreConcreteLibfunc::Gas(value) =&gt; <span class="kw">match </span>value {
+<a href=#132 id=132 data-nosnippet>132</a>            GasConcreteLibfunc::WithdrawGas(<span class="kw">_</span>) =&gt; <span class="string">"withdraw_gas"</span>,
+<a href=#133 id=133 data-nosnippet>133</a>            GasConcreteLibfunc::RedepositGas(<span class="kw">_</span>) =&gt; <span class="string">"redeposit_gas"</span>,
+<a href=#134 id=134 data-nosnippet>134</a>            GasConcreteLibfunc::GetAvailableGas(<span class="kw">_</span>) =&gt; <span class="string">"get_available_gas"</span>,
+<a href=#135 id=135 data-nosnippet>135</a>            GasConcreteLibfunc::BuiltinWithdrawGas(<span class="kw">_</span>) =&gt; <span class="string">"builtin_withdraw_gas"</span>,
+<a href=#136 id=136 data-nosnippet>136</a>            GasConcreteLibfunc::GetBuiltinCosts(<span class="kw">_</span>) =&gt; <span class="string">"get_builtin_costs"</span>,
+<a href=#137 id=137 data-nosnippet>137</a>            GasConcreteLibfunc::GetUnspentGas(<span class="kw">_</span>) =&gt; <span class="string">"get_unspent_gas"</span>,
+<a href=#138 id=138 data-nosnippet>138</a>        },
+<a href=#139 id=139 data-nosnippet>139</a>        CoreConcreteLibfunc::Uint8(value) =&gt; <span class="kw">match </span>value {
+<a href=#140 id=140 data-nosnippet>140</a>            UintConcrete::Const(<span class="kw">_</span>) =&gt; <span class="string">"u8_const"</span>,
+<a href=#141 id=141 data-nosnippet>141</a>            UintConcrete::Operation(op) =&gt; <span class="kw">match </span><span class="kw-2">&amp;</span>op.operator {
+<a href=#142 id=142 data-nosnippet>142</a>                IntOperator::OverflowingAdd =&gt; <span class="string">"u8_overflowing_add"</span>,
+<a href=#143 id=143 data-nosnippet>143</a>                IntOperator::OverflowingSub =&gt; <span class="string">"u8_overflowing_sub"</span>,
+<a href=#144 id=144 data-nosnippet>144</a>            },
+<a href=#145 id=145 data-nosnippet>145</a>            UintConcrete::SquareRoot(<span class="kw">_</span>) =&gt; <span class="string">"u8_sqrt"</span>,
+<a href=#146 id=146 data-nosnippet>146</a>            UintConcrete::Equal(<span class="kw">_</span>) =&gt; <span class="string">"u8_eq"</span>,
+<a href=#147 id=147 data-nosnippet>147</a>            UintConcrete::ToFelt252(<span class="kw">_</span>) =&gt; <span class="string">"u8_to_felt252"</span>,
+<a href=#148 id=148 data-nosnippet>148</a>            UintConcrete::FromFelt252(<span class="kw">_</span>) =&gt; <span class="string">"u8_from_felt252"</span>,
+<a href=#149 id=149 data-nosnippet>149</a>            UintConcrete::IsZero(<span class="kw">_</span>) =&gt; <span class="string">"u8_is_zero"</span>,
+<a href=#150 id=150 data-nosnippet>150</a>            UintConcrete::Divmod(<span class="kw">_</span>) =&gt; <span class="string">"u8_divmod"</span>,
+<a href=#151 id=151 data-nosnippet>151</a>            UintConcrete::WideMul(<span class="kw">_</span>) =&gt; <span class="string">"u8_wide_mul"</span>,
+<a href=#152 id=152 data-nosnippet>152</a>            UintConcrete::Bitwise(<span class="kw">_</span>) =&gt; <span class="string">"u8_bitwise"</span>,
+<a href=#153 id=153 data-nosnippet>153</a>        },
+<a href=#154 id=154 data-nosnippet>154</a>        CoreConcreteLibfunc::Uint16(value) =&gt; <span class="kw">match </span>value {
+<a href=#155 id=155 data-nosnippet>155</a>            UintConcrete::Const(<span class="kw">_</span>) =&gt; <span class="string">"u16_const"</span>,
+<a href=#156 id=156 data-nosnippet>156</a>            UintConcrete::Operation(op) =&gt; <span class="kw">match </span><span class="kw-2">&amp;</span>op.operator {
+<a href=#157 id=157 data-nosnippet>157</a>                IntOperator::OverflowingAdd =&gt; <span class="string">"u16_overflowing_add"</span>,
+<a href=#158 id=158 data-nosnippet>158</a>                IntOperator::OverflowingSub =&gt; <span class="string">"u16_overflowing_sub"</span>,
+<a href=#159 id=159 data-nosnippet>159</a>            },
+<a href=#160 id=160 data-nosnippet>160</a>            UintConcrete::SquareRoot(<span class="kw">_</span>) =&gt; <span class="string">"u16_sqrt"</span>,
+<a href=#161 id=161 data-nosnippet>161</a>            UintConcrete::Equal(<span class="kw">_</span>) =&gt; <span class="string">"u16_eq"</span>,
+<a href=#162 id=162 data-nosnippet>162</a>            UintConcrete::ToFelt252(<span class="kw">_</span>) =&gt; <span class="string">"u16_to_felt252"</span>,
+<a href=#163 id=163 data-nosnippet>163</a>            UintConcrete::FromFelt252(<span class="kw">_</span>) =&gt; <span class="string">"u16_from_felt252"</span>,
+<a href=#164 id=164 data-nosnippet>164</a>            UintConcrete::IsZero(<span class="kw">_</span>) =&gt; <span class="string">"u16_is_zero"</span>,
+<a href=#165 id=165 data-nosnippet>165</a>            UintConcrete::Divmod(<span class="kw">_</span>) =&gt; <span class="string">"u16_divmod"</span>,
+<a href=#166 id=166 data-nosnippet>166</a>            UintConcrete::WideMul(<span class="kw">_</span>) =&gt; <span class="string">"u16_wide_mul"</span>,
+<a href=#167 id=167 data-nosnippet>167</a>            UintConcrete::Bitwise(<span class="kw">_</span>) =&gt; <span class="string">"u16_bitwise"</span>,
+<a href=#168 id=168 data-nosnippet>168</a>        },
+<a href=#169 id=169 data-nosnippet>169</a>        CoreConcreteLibfunc::Uint32(value) =&gt; <span class="kw">match </span>value {
+<a href=#170 id=170 data-nosnippet>170</a>            UintConcrete::Const(<span class="kw">_</span>) =&gt; <span class="string">"u32_const"</span>,
+<a href=#171 id=171 data-nosnippet>171</a>            UintConcrete::Operation(op) =&gt; <span class="kw">match </span><span class="kw-2">&amp;</span>op.operator {
+<a href=#172 id=172 data-nosnippet>172</a>                IntOperator::OverflowingAdd =&gt; <span class="string">"u32_overflowing_add"</span>,
+<a href=#173 id=173 data-nosnippet>173</a>                IntOperator::OverflowingSub =&gt; <span class="string">"u32_overflowing_sub"</span>,
+<a href=#174 id=174 data-nosnippet>174</a>            },
+<a href=#175 id=175 data-nosnippet>175</a>            UintConcrete::SquareRoot(<span class="kw">_</span>) =&gt; <span class="string">"u32_sqrt"</span>,
+<a href=#176 id=176 data-nosnippet>176</a>            UintConcrete::Equal(<span class="kw">_</span>) =&gt; <span class="string">"u32_eq"</span>,
+<a href=#177 id=177 data-nosnippet>177</a>            UintConcrete::ToFelt252(<span class="kw">_</span>) =&gt; <span class="string">"u32_to_felt252"</span>,
+<a href=#178 id=178 data-nosnippet>178</a>            UintConcrete::FromFelt252(<span class="kw">_</span>) =&gt; <span class="string">"u32_from_felt252"</span>,
+<a href=#179 id=179 data-nosnippet>179</a>            UintConcrete::IsZero(<span class="kw">_</span>) =&gt; <span class="string">"u32_is_zero"</span>,
+<a href=#180 id=180 data-nosnippet>180</a>            UintConcrete::Divmod(<span class="kw">_</span>) =&gt; <span class="string">"u32_divmod"</span>,
+<a href=#181 id=181 data-nosnippet>181</a>            UintConcrete::WideMul(<span class="kw">_</span>) =&gt; <span class="string">"u32_wide_mul"</span>,
+<a href=#182 id=182 data-nosnippet>182</a>            UintConcrete::Bitwise(<span class="kw">_</span>) =&gt; <span class="string">"u32_bitwise"</span>,
+<a href=#183 id=183 data-nosnippet>183</a>        },
+<a href=#184 id=184 data-nosnippet>184</a>        CoreConcreteLibfunc::Uint64(value) =&gt; <span class="kw">match </span>value {
+<a href=#185 id=185 data-nosnippet>185</a>            UintConcrete::Const(<span class="kw">_</span>) =&gt; <span class="string">"u64_const"</span>,
+<a href=#186 id=186 data-nosnippet>186</a>            UintConcrete::Operation(op) =&gt; <span class="kw">match </span><span class="kw-2">&amp;</span>op.operator {
+<a href=#187 id=187 data-nosnippet>187</a>                IntOperator::OverflowingAdd =&gt; <span class="string">"u64_overflowing_add"</span>,
+<a href=#188 id=188 data-nosnippet>188</a>                IntOperator::OverflowingSub =&gt; <span class="string">"u64_overflowing_sub"</span>,
+<a href=#189 id=189 data-nosnippet>189</a>            },
+<a href=#190 id=190 data-nosnippet>190</a>            UintConcrete::SquareRoot(<span class="kw">_</span>) =&gt; <span class="string">"u64_sqrt"</span>,
+<a href=#191 id=191 data-nosnippet>191</a>            UintConcrete::Equal(<span class="kw">_</span>) =&gt; <span class="string">"u64_eq"</span>,
+<a href=#192 id=192 data-nosnippet>192</a>            UintConcrete::ToFelt252(<span class="kw">_</span>) =&gt; <span class="string">"u64_to_felt252"</span>,
+<a href=#193 id=193 data-nosnippet>193</a>            UintConcrete::FromFelt252(<span class="kw">_</span>) =&gt; <span class="string">"u64_from_felt252"</span>,
+<a href=#194 id=194 data-nosnippet>194</a>            UintConcrete::IsZero(<span class="kw">_</span>) =&gt; <span class="string">"u64_is_zero"</span>,
+<a href=#195 id=195 data-nosnippet>195</a>            UintConcrete::Divmod(<span class="kw">_</span>) =&gt; <span class="string">"u64_divmod"</span>,
+<a href=#196 id=196 data-nosnippet>196</a>            UintConcrete::WideMul(<span class="kw">_</span>) =&gt; <span class="string">"u64_wide_mul"</span>,
+<a href=#197 id=197 data-nosnippet>197</a>            UintConcrete::Bitwise(<span class="kw">_</span>) =&gt; <span class="string">"u64_bitwise"</span>,
+<a href=#198 id=198 data-nosnippet>198</a>        },
+<a href=#199 id=199 data-nosnippet>199</a>        CoreConcreteLibfunc::Uint128(value) =&gt; <span class="kw">match </span>value {
+<a href=#200 id=200 data-nosnippet>200</a>            Uint128Concrete::Operation(op) =&gt; <span class="kw">match </span><span class="kw-2">&amp;</span>op.operator {
+<a href=#201 id=201 data-nosnippet>201</a>                IntOperator::OverflowingAdd =&gt; <span class="string">"u128_overflowing_add"</span>,
+<a href=#202 id=202 data-nosnippet>202</a>                IntOperator::OverflowingSub =&gt; <span class="string">"u128_overflowing_sub"</span>,
+<a href=#203 id=203 data-nosnippet>203</a>            },
+<a href=#204 id=204 data-nosnippet>204</a>            Uint128Concrete::Divmod(<span class="kw">_</span>) =&gt; <span class="string">"u128_divmod"</span>,
+<a href=#205 id=205 data-nosnippet>205</a>            Uint128Concrete::GuaranteeMul(<span class="kw">_</span>) =&gt; <span class="string">"u128_guarantee_mul"</span>,
+<a href=#206 id=206 data-nosnippet>206</a>            Uint128Concrete::MulGuaranteeVerify(<span class="kw">_</span>) =&gt; <span class="string">"u128_mul_guarantee_verify"</span>,
+<a href=#207 id=207 data-nosnippet>207</a>            Uint128Concrete::Equal(<span class="kw">_</span>) =&gt; <span class="string">"u128_equal"</span>,
+<a href=#208 id=208 data-nosnippet>208</a>            Uint128Concrete::SquareRoot(<span class="kw">_</span>) =&gt; <span class="string">"u128_sqrt"</span>,
+<a href=#209 id=209 data-nosnippet>209</a>            Uint128Concrete::Const(<span class="kw">_</span>) =&gt; <span class="string">"u128_const"</span>,
+<a href=#210 id=210 data-nosnippet>210</a>            Uint128Concrete::FromFelt252(<span class="kw">_</span>) =&gt; <span class="string">"u128_from_felt"</span>,
+<a href=#211 id=211 data-nosnippet>211</a>            Uint128Concrete::ToFelt252(<span class="kw">_</span>) =&gt; <span class="string">"u128_to_felt252"</span>,
+<a href=#212 id=212 data-nosnippet>212</a>            Uint128Concrete::IsZero(<span class="kw">_</span>) =&gt; <span class="string">"u128_is_zero"</span>,
+<a href=#213 id=213 data-nosnippet>213</a>            Uint128Concrete::Bitwise(<span class="kw">_</span>) =&gt; <span class="string">"u128_bitwise"</span>,
+<a href=#214 id=214 data-nosnippet>214</a>            Uint128Concrete::ByteReverse(<span class="kw">_</span>) =&gt; <span class="string">"u128_byte_reverse"</span>,
+<a href=#215 id=215 data-nosnippet>215</a>        },
+<a href=#216 id=216 data-nosnippet>216</a>        CoreConcreteLibfunc::Uint256(value) =&gt; <span class="kw">match </span>value {
+<a href=#217 id=217 data-nosnippet>217</a>            Uint256Concrete::IsZero(<span class="kw">_</span>) =&gt; <span class="string">"u256_is_zero"</span>,
+<a href=#218 id=218 data-nosnippet>218</a>            Uint256Concrete::Divmod(<span class="kw">_</span>) =&gt; <span class="string">"u256_divmod"</span>,
+<a href=#219 id=219 data-nosnippet>219</a>            Uint256Concrete::SquareRoot(<span class="kw">_</span>) =&gt; <span class="string">"u256_sqrt"</span>,
+<a href=#220 id=220 data-nosnippet>220</a>            Uint256Concrete::InvModN(<span class="kw">_</span>) =&gt; <span class="string">"u256_inv_mod_n"</span>,
+<a href=#221 id=221 data-nosnippet>221</a>        },
+<a href=#222 id=222 data-nosnippet>222</a>        CoreConcreteLibfunc::Uint512(value) =&gt; <span class="kw">match </span>value {
+<a href=#223 id=223 data-nosnippet>223</a>            Uint512Concrete::DivModU256(<span class="kw">_</span>) =&gt; <span class="string">"u512_divmod_u256"</span>,
+<a href=#224 id=224 data-nosnippet>224</a>        },
+<a href=#225 id=225 data-nosnippet>225</a>        CoreConcreteLibfunc::Sint8(value) =&gt; <span class="kw">match </span>value {
+<a href=#226 id=226 data-nosnippet>226</a>            SintConcrete::Const(<span class="kw">_</span>) =&gt; <span class="string">"i8_const"</span>,
+<a href=#227 id=227 data-nosnippet>227</a>            SintConcrete::Equal(<span class="kw">_</span>) =&gt; <span class="string">"i8_eq"</span>,
+<a href=#228 id=228 data-nosnippet>228</a>            SintConcrete::ToFelt252(<span class="kw">_</span>) =&gt; <span class="string">"i8_to_felt252"</span>,
+<a href=#229 id=229 data-nosnippet>229</a>            SintConcrete::FromFelt252(<span class="kw">_</span>) =&gt; <span class="string">"i8_from_felt252"</span>,
+<a href=#230 id=230 data-nosnippet>230</a>            SintConcrete::Operation(op) =&gt; <span class="kw">match </span><span class="kw-2">&amp;</span>op.operator {
+<a href=#231 id=231 data-nosnippet>231</a>                IntOperator::OverflowingAdd =&gt; <span class="string">"i8_overflowing_add"</span>,
+<a href=#232 id=232 data-nosnippet>232</a>                IntOperator::OverflowingSub =&gt; <span class="string">"i8_overflowing_sub"</span>,
+<a href=#233 id=233 data-nosnippet>233</a>            },
+<a href=#234 id=234 data-nosnippet>234</a>            SintConcrete::Diff(<span class="kw">_</span>) =&gt; <span class="string">"i8_diff"</span>,
+<a href=#235 id=235 data-nosnippet>235</a>            SintConcrete::WideMul(<span class="kw">_</span>) =&gt; <span class="string">"i8_wide_mul"</span>,
+<a href=#236 id=236 data-nosnippet>236</a>        },
+<a href=#237 id=237 data-nosnippet>237</a>        CoreConcreteLibfunc::Sint16(value) =&gt; <span class="kw">match </span>value {
+<a href=#238 id=238 data-nosnippet>238</a>            SintConcrete::Const(<span class="kw">_</span>) =&gt; <span class="string">"i16_const"</span>,
+<a href=#239 id=239 data-nosnippet>239</a>            SintConcrete::Equal(<span class="kw">_</span>) =&gt; <span class="string">"i16_eq"</span>,
+<a href=#240 id=240 data-nosnippet>240</a>            SintConcrete::ToFelt252(<span class="kw">_</span>) =&gt; <span class="string">"i16_to_felt252"</span>,
+<a href=#241 id=241 data-nosnippet>241</a>            SintConcrete::FromFelt252(<span class="kw">_</span>) =&gt; <span class="string">"i16_from_felt252"</span>,
+<a href=#242 id=242 data-nosnippet>242</a>            SintConcrete::Operation(op) =&gt; <span class="kw">match </span><span class="kw-2">&amp;</span>op.operator {
+<a href=#243 id=243 data-nosnippet>243</a>                IntOperator::OverflowingAdd =&gt; <span class="string">"i16_overflowing_add"</span>,
+<a href=#244 id=244 data-nosnippet>244</a>                IntOperator::OverflowingSub =&gt; <span class="string">"i16_overflowing_sub"</span>,
+<a href=#245 id=245 data-nosnippet>245</a>            },
+<a href=#246 id=246 data-nosnippet>246</a>            SintConcrete::Diff(<span class="kw">_</span>) =&gt; <span class="string">"i16_diff"</span>,
+<a href=#247 id=247 data-nosnippet>247</a>            SintConcrete::WideMul(<span class="kw">_</span>) =&gt; <span class="string">"i16_wide_mul"</span>,
+<a href=#248 id=248 data-nosnippet>248</a>        },
+<a href=#249 id=249 data-nosnippet>249</a>        CoreConcreteLibfunc::Sint32(value) =&gt; <span class="kw">match </span>value {
+<a href=#250 id=250 data-nosnippet>250</a>            SintConcrete::Const(<span class="kw">_</span>) =&gt; <span class="string">"i32_const"</span>,
+<a href=#251 id=251 data-nosnippet>251</a>            SintConcrete::Equal(<span class="kw">_</span>) =&gt; <span class="string">"i32_eq"</span>,
+<a href=#252 id=252 data-nosnippet>252</a>            SintConcrete::ToFelt252(<span class="kw">_</span>) =&gt; <span class="string">"i32_to_felt252"</span>,
+<a href=#253 id=253 data-nosnippet>253</a>            SintConcrete::FromFelt252(<span class="kw">_</span>) =&gt; <span class="string">"i32_from_felt252"</span>,
+<a href=#254 id=254 data-nosnippet>254</a>            SintConcrete::Operation(op) =&gt; <span class="kw">match </span><span class="kw-2">&amp;</span>op.operator {
+<a href=#255 id=255 data-nosnippet>255</a>                IntOperator::OverflowingAdd =&gt; <span class="string">"i32_overflowing_add"</span>,
+<a href=#256 id=256 data-nosnippet>256</a>                IntOperator::OverflowingSub =&gt; <span class="string">"i32_overflowing_sub"</span>,
+<a href=#257 id=257 data-nosnippet>257</a>            },
+<a href=#258 id=258 data-nosnippet>258</a>            SintConcrete::Diff(<span class="kw">_</span>) =&gt; <span class="string">"i32_diff"</span>,
+<a href=#259 id=259 data-nosnippet>259</a>            SintConcrete::WideMul(<span class="kw">_</span>) =&gt; <span class="string">"i32_wide_mul"</span>,
+<a href=#260 id=260 data-nosnippet>260</a>        },
+<a href=#261 id=261 data-nosnippet>261</a>        CoreConcreteLibfunc::Sint64(value) =&gt; <span class="kw">match </span>value {
+<a href=#262 id=262 data-nosnippet>262</a>            SintConcrete::Const(<span class="kw">_</span>) =&gt; <span class="string">"i64_const"</span>,
+<a href=#263 id=263 data-nosnippet>263</a>            SintConcrete::Equal(<span class="kw">_</span>) =&gt; <span class="string">"i64_eq"</span>,
+<a href=#264 id=264 data-nosnippet>264</a>            SintConcrete::ToFelt252(<span class="kw">_</span>) =&gt; <span class="string">"i64_to_felt252"</span>,
+<a href=#265 id=265 data-nosnippet>265</a>            SintConcrete::FromFelt252(<span class="kw">_</span>) =&gt; <span class="string">"i64_from_felt252"</span>,
+<a href=#266 id=266 data-nosnippet>266</a>            SintConcrete::Operation(op) =&gt; <span class="kw">match </span><span class="kw-2">&amp;</span>op.operator {
+<a href=#267 id=267 data-nosnippet>267</a>                IntOperator::OverflowingAdd =&gt; <span class="string">"i64_overflowing_add"</span>,
+<a href=#268 id=268 data-nosnippet>268</a>                IntOperator::OverflowingSub =&gt; <span class="string">"i64_overflowing_sub"</span>,
+<a href=#269 id=269 data-nosnippet>269</a>            },
+<a href=#270 id=270 data-nosnippet>270</a>            SintConcrete::Diff(<span class="kw">_</span>) =&gt; <span class="string">"i64_diff"</span>,
+<a href=#271 id=271 data-nosnippet>271</a>            SintConcrete::WideMul(<span class="kw">_</span>) =&gt; <span class="string">"i64_wide_mul"</span>,
+<a href=#272 id=272 data-nosnippet>272</a>        },
+<a href=#273 id=273 data-nosnippet>273</a>        CoreConcreteLibfunc::Sint128(value) =&gt; <span class="kw">match </span>value {
+<a href=#274 id=274 data-nosnippet>274</a>            Sint128Concrete::Const(<span class="kw">_</span>) =&gt; <span class="string">"i128_const"</span>,
+<a href=#275 id=275 data-nosnippet>275</a>            Sint128Concrete::Equal(<span class="kw">_</span>) =&gt; <span class="string">"i128_eq"</span>,
+<a href=#276 id=276 data-nosnippet>276</a>            Sint128Concrete::ToFelt252(<span class="kw">_</span>) =&gt; <span class="string">"i128_to_felt252"</span>,
+<a href=#277 id=277 data-nosnippet>277</a>            Sint128Concrete::FromFelt252(<span class="kw">_</span>) =&gt; <span class="string">"i128_from_felt252"</span>,
+<a href=#278 id=278 data-nosnippet>278</a>            Sint128Concrete::Operation(op) =&gt; <span class="kw">match </span><span class="kw-2">&amp;</span>op.operator {
+<a href=#279 id=279 data-nosnippet>279</a>                IntOperator::OverflowingAdd =&gt; <span class="string">"i128_overflowing_add"</span>,
+<a href=#280 id=280 data-nosnippet>280</a>                IntOperator::OverflowingSub =&gt; <span class="string">"i128_overflowing_sub"</span>,
+<a href=#281 id=281 data-nosnippet>281</a>            },
+<a href=#282 id=282 data-nosnippet>282</a>            Sint128Concrete::Diff(<span class="kw">_</span>) =&gt; <span class="string">"i128_diff"</span>,
+<a href=#283 id=283 data-nosnippet>283</a>        },
+<a href=#284 id=284 data-nosnippet>284</a>        CoreConcreteLibfunc::Mem(value) =&gt; <span class="kw">match </span>value {
+<a href=#285 id=285 data-nosnippet>285</a>            MemConcreteLibfunc::StoreTemp(<span class="kw">_</span>) =&gt; <span class="string">"store_temp"</span>,
+<a href=#286 id=286 data-nosnippet>286</a>            MemConcreteLibfunc::StoreLocal(<span class="kw">_</span>) =&gt; <span class="string">"store_local"</span>,
+<a href=#287 id=287 data-nosnippet>287</a>            MemConcreteLibfunc::FinalizeLocals(<span class="kw">_</span>) =&gt; <span class="string">"finalize_locals"</span>,
+<a href=#288 id=288 data-nosnippet>288</a>            MemConcreteLibfunc::AllocLocal(<span class="kw">_</span>) =&gt; <span class="string">"alloc_local"</span>,
+<a href=#289 id=289 data-nosnippet>289</a>            MemConcreteLibfunc::Rename(<span class="kw">_</span>) =&gt; <span class="string">"rename"</span>,
+<a href=#290 id=290 data-nosnippet>290</a>        },
+<a href=#291 id=291 data-nosnippet>291</a>        CoreConcreteLibfunc::Nullable(value) =&gt; <span class="kw">match </span>value {
+<a href=#292 id=292 data-nosnippet>292</a>            NullableConcreteLibfunc::Null(<span class="kw">_</span>) =&gt; <span class="string">"nullable_null"</span>,
+<a href=#293 id=293 data-nosnippet>293</a>            NullableConcreteLibfunc::NullableFromBox(<span class="kw">_</span>) =&gt; <span class="string">"nullable_from_box"</span>,
+<a href=#294 id=294 data-nosnippet>294</a>            NullableConcreteLibfunc::MatchNullable(<span class="kw">_</span>) =&gt; <span class="string">"match_nullable"</span>,
+<a href=#295 id=295 data-nosnippet>295</a>            NullableConcreteLibfunc::ForwardSnapshot(<span class="kw">_</span>) =&gt; <span class="string">"nullable_forward_snapshot"</span>,
+<a href=#296 id=296 data-nosnippet>296</a>        },
+<a href=#297 id=297 data-nosnippet>297</a>        CoreConcreteLibfunc::UnwrapNonZero(<span class="kw">_</span>) =&gt; <span class="string">"unwrap_non_zero"</span>,
+<a href=#298 id=298 data-nosnippet>298</a>        CoreConcreteLibfunc::UnconditionalJump(<span class="kw">_</span>) =&gt; <span class="string">"jump"</span>,
+<a href=#299 id=299 data-nosnippet>299</a>        CoreConcreteLibfunc::Enum(value) =&gt; <span class="kw">match </span>value {
+<a href=#300 id=300 data-nosnippet>300</a>            EnumConcreteLibfunc::Init(<span class="kw">_</span>) =&gt; <span class="string">"enum_init"</span>,
+<a href=#301 id=301 data-nosnippet>301</a>            EnumConcreteLibfunc::FromBoundedInt(<span class="kw">_</span>) =&gt; <span class="string">"enum_from_bounded_int"</span>,
+<a href=#302 id=302 data-nosnippet>302</a>            EnumConcreteLibfunc::Match(<span class="kw">_</span>) =&gt; <span class="string">"enum_match"</span>,
+<a href=#303 id=303 data-nosnippet>303</a>            EnumConcreteLibfunc::SnapshotMatch(<span class="kw">_</span>) =&gt; <span class="string">"enum_snapshot_match"</span>,
+<a href=#304 id=304 data-nosnippet>304</a>        },
+<a href=#305 id=305 data-nosnippet>305</a>        CoreConcreteLibfunc::Struct(value) =&gt; <span class="kw">match </span>value {
+<a href=#306 id=306 data-nosnippet>306</a>            StructConcreteLibfunc::Construct(<span class="kw">_</span>) =&gt; <span class="string">"struct_construct"</span>,
+<a href=#307 id=307 data-nosnippet>307</a>            StructConcreteLibfunc::Deconstruct(<span class="kw">_</span>) =&gt; <span class="string">"struct_deconstruct"</span>,
+<a href=#308 id=308 data-nosnippet>308</a>            StructConcreteLibfunc::SnapshotDeconstruct(<span class="kw">_</span>) =&gt; <span class="string">"struct_snapshot_deconstruct"</span>,
+<a href=#309 id=309 data-nosnippet>309</a>            StructConcreteLibfunc::BoxedDeconstruct(<span class="kw">_</span>) =&gt; <span class="string">"struct_boxed_deconstruct"</span>,
+<a href=#310 id=310 data-nosnippet>310</a>        },
+<a href=#311 id=311 data-nosnippet>311</a>        CoreConcreteLibfunc::Felt252Dict(value) =&gt; <span class="kw">match </span>value {
+<a href=#312 id=312 data-nosnippet>312</a>            Felt252DictConcreteLibfunc::New(<span class="kw">_</span>) =&gt; <span class="string">"felt252dict_new"</span>,
+<a href=#313 id=313 data-nosnippet>313</a>            Felt252DictConcreteLibfunc::Squash(<span class="kw">_</span>) =&gt; <span class="string">"felt252dict_squash"</span>,
+<a href=#314 id=314 data-nosnippet>314</a>        },
+<a href=#315 id=315 data-nosnippet>315</a>        CoreConcreteLibfunc::Felt252DictEntry(value) =&gt; <span class="kw">match </span>value {
+<a href=#316 id=316 data-nosnippet>316</a>            Felt252DictEntryConcreteLibfunc::Get(<span class="kw">_</span>) =&gt; <span class="string">"felt252dict_get"</span>,
+<a href=#317 id=317 data-nosnippet>317</a>            Felt252DictEntryConcreteLibfunc::Finalize(<span class="kw">_</span>) =&gt; <span class="string">"felt252dict_finalize"</span>,
+<a href=#318 id=318 data-nosnippet>318</a>        },
+<a href=#319 id=319 data-nosnippet>319</a>        CoreConcreteLibfunc::Felt252SquashedDict(<span class="kw">_</span>) =&gt; <span class="string">"felt252_squashed_dict"</span>,
+<a href=#320 id=320 data-nosnippet>320</a>        CoreConcreteLibfunc::Pedersen(value) =&gt; <span class="kw">match </span>value {
+<a href=#321 id=321 data-nosnippet>321</a>            PedersenConcreteLibfunc::PedersenHash(<span class="kw">_</span>) =&gt; <span class="string">"pedersen_hash"</span>,
+<a href=#322 id=322 data-nosnippet>322</a>        },
+<a href=#323 id=323 data-nosnippet>323</a>        CoreConcreteLibfunc::Poseidon(value) =&gt; <span class="kw">match </span>value {
+<a href=#324 id=324 data-nosnippet>324</a>            PoseidonConcreteLibfunc::HadesPermutation(<span class="kw">_</span>) =&gt; <span class="string">"hades_permutation"</span>,
+<a href=#325 id=325 data-nosnippet>325</a>        },
+<a href=#326 id=326 data-nosnippet>326</a>        CoreConcreteLibfunc::Starknet(value) =&gt; <span class="kw">match </span>value {
+<a href=#327 id=327 data-nosnippet>327</a>            StarknetConcreteLibfunc::CallContract(<span class="kw">_</span>) =&gt; <span class="string">"call_contract"</span>,
+<a href=#328 id=328 data-nosnippet>328</a>            StarknetConcreteLibfunc::ClassHashConst(<span class="kw">_</span>) =&gt; <span class="string">"class_hash_const"</span>,
+<a href=#329 id=329 data-nosnippet>329</a>            StarknetConcreteLibfunc::ClassHashTryFromFelt252(<span class="kw">_</span>) =&gt; <span class="string">"class_hash_try_from_felt252"</span>,
+<a href=#330 id=330 data-nosnippet>330</a>            StarknetConcreteLibfunc::ClassHashToFelt252(<span class="kw">_</span>) =&gt; <span class="string">"class_hash_to_felt252"</span>,
+<a href=#331 id=331 data-nosnippet>331</a>            StarknetConcreteLibfunc::ContractAddressConst(<span class="kw">_</span>) =&gt; <span class="string">"contract_address_const"</span>,
+<a href=#332 id=332 data-nosnippet>332</a>            StarknetConcreteLibfunc::ContractAddressTryFromFelt252(<span class="kw">_</span>) =&gt; {
+<a href=#333 id=333 data-nosnippet>333</a>                <span class="string">"contract_address_try_from_felt252"
+<a href=#334 id=334 data-nosnippet>334</a>            </span>}
+<a href=#335 id=335 data-nosnippet>335</a>            StarknetConcreteLibfunc::ContractAddressToFelt252(<span class="kw">_</span>) =&gt; <span class="string">"contract_address_to_felt252"</span>,
+<a href=#336 id=336 data-nosnippet>336</a>            StarknetConcreteLibfunc::StorageRead(<span class="kw">_</span>) =&gt; <span class="string">"storage_read"</span>,
+<a href=#337 id=337 data-nosnippet>337</a>            StarknetConcreteLibfunc::StorageWrite(<span class="kw">_</span>) =&gt; <span class="string">"storage_write"</span>,
+<a href=#338 id=338 data-nosnippet>338</a>            StarknetConcreteLibfunc::StorageBaseAddressConst(<span class="kw">_</span>) =&gt; <span class="string">"storage_base_address_const"</span>,
+<a href=#339 id=339 data-nosnippet>339</a>            StarknetConcreteLibfunc::StorageBaseAddressFromFelt252(<span class="kw">_</span>) =&gt; {
+<a href=#340 id=340 data-nosnippet>340</a>                <span class="string">"storage_base_address_from_felt252"
+<a href=#341 id=341 data-nosnippet>341</a>            </span>}
+<a href=#342 id=342 data-nosnippet>342</a>            StarknetConcreteLibfunc::StorageAddressFromBase(<span class="kw">_</span>) =&gt; <span class="string">"storage_address_from_base"</span>,
+<a href=#343 id=343 data-nosnippet>343</a>            StarknetConcreteLibfunc::StorageAddressFromBaseAndOffset(<span class="kw">_</span>) =&gt; {
+<a href=#344 id=344 data-nosnippet>344</a>                <span class="string">"storage_address_from_base_and_offset"
+<a href=#345 id=345 data-nosnippet>345</a>            </span>}
+<a href=#346 id=346 data-nosnippet>346</a>            StarknetConcreteLibfunc::StorageAddressToFelt252(<span class="kw">_</span>) =&gt; <span class="string">"storage_address_to_felt252"</span>,
+<a href=#347 id=347 data-nosnippet>347</a>            StarknetConcreteLibfunc::StorageAddressTryFromFelt252(<span class="kw">_</span>) =&gt; {
+<a href=#348 id=348 data-nosnippet>348</a>                <span class="string">"storage_address_try_from_felt252"
+<a href=#349 id=349 data-nosnippet>349</a>            </span>}
+<a href=#350 id=350 data-nosnippet>350</a>            StarknetConcreteLibfunc::EmitEvent(<span class="kw">_</span>) =&gt; <span class="string">"emit_event"</span>,
+<a href=#351 id=351 data-nosnippet>351</a>            StarknetConcreteLibfunc::GetBlockHash(<span class="kw">_</span>) =&gt; <span class="string">"get_block_hash"</span>,
+<a href=#352 id=352 data-nosnippet>352</a>            StarknetConcreteLibfunc::GetExecutionInfo(<span class="kw">_</span>) =&gt; <span class="string">"get_exec_info_v1"</span>,
+<a href=#353 id=353 data-nosnippet>353</a>            StarknetConcreteLibfunc::GetExecutionInfoV2(<span class="kw">_</span>) =&gt; <span class="string">"get_exec_info_v2"</span>,
+<a href=#354 id=354 data-nosnippet>354</a>            StarknetConcreteLibfunc::GetExecutionInfoV3(<span class="kw">_</span>) =&gt; <span class="string">"get_exec_info_v3"</span>,
+<a href=#355 id=355 data-nosnippet>355</a>            StarknetConcreteLibfunc::Deploy(<span class="kw">_</span>) =&gt; <span class="string">"deploy"</span>,
+<a href=#356 id=356 data-nosnippet>356</a>            StarknetConcreteLibfunc::Keccak(<span class="kw">_</span>) =&gt; <span class="string">"keccak"</span>,
+<a href=#357 id=357 data-nosnippet>357</a>            StarknetConcreteLibfunc::LibraryCall(<span class="kw">_</span>) =&gt; <span class="string">"library_call"</span>,
+<a href=#358 id=358 data-nosnippet>358</a>            StarknetConcreteLibfunc::ReplaceClass(<span class="kw">_</span>) =&gt; <span class="string">"replace_class"</span>,
+<a href=#359 id=359 data-nosnippet>359</a>            StarknetConcreteLibfunc::SendMessageToL1(<span class="kw">_</span>) =&gt; <span class="string">"send_message_to_l1"</span>,
+<a href=#360 id=360 data-nosnippet>360</a>            StarknetConcreteLibfunc::Testing(value) =&gt; <span class="kw">match </span>value {
+<a href=#361 id=361 data-nosnippet>361</a>                TestingConcreteLibfunc::Cheatcode(<span class="kw">_</span>) =&gt; <span class="string">"cheatcode"</span>,
+<a href=#362 id=362 data-nosnippet>362</a>            },
+<a href=#363 id=363 data-nosnippet>363</a>            StarknetConcreteLibfunc::Secp256(value) =&gt; <span class="kw">match </span>value {
+<a href=#364 id=364 data-nosnippet>364</a>                Secp256ConcreteLibfunc::K1(value) =&gt; <span class="kw">match </span>value {
+<a href=#365 id=365 data-nosnippet>365</a>                    Secp256OpConcreteLibfunc::New(<span class="kw">_</span>) =&gt; <span class="string">"secp256k1_new"</span>,
+<a href=#366 id=366 data-nosnippet>366</a>                    Secp256OpConcreteLibfunc::Add(<span class="kw">_</span>) =&gt; <span class="string">"secp256k1_add"</span>,
+<a href=#367 id=367 data-nosnippet>367</a>                    Secp256OpConcreteLibfunc::Mul(<span class="kw">_</span>) =&gt; <span class="string">"secp256k1_mul"</span>,
+<a href=#368 id=368 data-nosnippet>368</a>                    Secp256OpConcreteLibfunc::GetPointFromX(<span class="kw">_</span>) =&gt; <span class="string">"secp256k1_get_point_from_x"</span>,
+<a href=#369 id=369 data-nosnippet>369</a>                    Secp256OpConcreteLibfunc::GetXy(<span class="kw">_</span>) =&gt; <span class="string">"secp256k1_get_xy"</span>,
+<a href=#370 id=370 data-nosnippet>370</a>                },
+<a href=#371 id=371 data-nosnippet>371</a>                Secp256ConcreteLibfunc::R1(value) =&gt; <span class="kw">match </span>value {
+<a href=#372 id=372 data-nosnippet>372</a>                    Secp256OpConcreteLibfunc::New(<span class="kw">_</span>) =&gt; <span class="string">"secp256r1_new"</span>,
+<a href=#373 id=373 data-nosnippet>373</a>                    Secp256OpConcreteLibfunc::Add(<span class="kw">_</span>) =&gt; <span class="string">"secp256r1_add"</span>,
+<a href=#374 id=374 data-nosnippet>374</a>                    Secp256OpConcreteLibfunc::Mul(<span class="kw">_</span>) =&gt; <span class="string">"secp256r1_mul"</span>,
+<a href=#375 id=375 data-nosnippet>375</a>                    Secp256OpConcreteLibfunc::GetPointFromX(<span class="kw">_</span>) =&gt; <span class="string">"secp256r1_get_point_from_x"</span>,
+<a href=#376 id=376 data-nosnippet>376</a>                    Secp256OpConcreteLibfunc::GetXy(<span class="kw">_</span>) =&gt; <span class="string">"secp256r1_get_xy"</span>,
+<a href=#377 id=377 data-nosnippet>377</a>                },
+<a href=#378 id=378 data-nosnippet>378</a>            },
+<a href=#379 id=379 data-nosnippet>379</a>            StarknetConcreteLibfunc::Sha256ProcessBlock(<span class="kw">_</span>) =&gt; <span class="string">"sha256_process_block"</span>,
+<a href=#380 id=380 data-nosnippet>380</a>            StarknetConcreteLibfunc::Sha256StateHandleInit(<span class="kw">_</span>) =&gt; <span class="string">"sha256_state_handle_init"</span>,
+<a href=#381 id=381 data-nosnippet>381</a>            StarknetConcreteLibfunc::Sha256StateHandleDigest(<span class="kw">_</span>) =&gt; <span class="string">"sha256_state_handle_digest"</span>,
+<a href=#382 id=382 data-nosnippet>382</a>            StarknetConcreteLibfunc::GetClassHashAt(<span class="kw">_</span>) =&gt; <span class="string">"get_class_hash_at_syscall"</span>,
+<a href=#383 id=383 data-nosnippet>383</a>            StarknetConcreteLibfunc::MetaTxV0(<span class="kw">_</span>) =&gt; <span class="string">"meta_tx_v0"</span>,
 <a href=#384 id=384 data-nosnippet>384</a>        },
-<a href=#385 id=385 data-nosnippet>385</a>        CoreConcreteLibfunc::Trace(<span class="kw">_</span>) =&gt; <span class="string">"trace"</span>,
-<a href=#386 id=386 data-nosnippet>386</a>        CoreConcreteLibfunc::SnapshotTake(<span class="kw">_</span>) =&gt; <span class="string">"snapshot_take"</span>,
-<a href=#387 id=387 data-nosnippet>387</a>        CoreConcreteLibfunc::Bytes31(value) =&gt; <span class="kw">match </span>value {
-<a href=#388 id=388 data-nosnippet>388</a>            Bytes31ConcreteLibfunc::Const(<span class="kw">_</span>) =&gt; <span class="string">"bytes31_const"</span>,
-<a href=#389 id=389 data-nosnippet>389</a>            Bytes31ConcreteLibfunc::ToFelt252(<span class="kw">_</span>) =&gt; <span class="string">"bytes31_to_felt252"</span>,
-<a href=#390 id=390 data-nosnippet>390</a>            Bytes31ConcreteLibfunc::TryFromFelt252(<span class="kw">_</span>) =&gt; <span class="string">"bytes31_try_from_felt252"</span>,
-<a href=#391 id=391 data-nosnippet>391</a>        },
-<a href=#392 id=392 data-nosnippet>392</a>        CoreConcreteLibfunc::Circuit(selector) =&gt; <span class="kw">match </span>selector {
-<a href=#393 id=393 data-nosnippet>393</a>            CircuitConcreteLibfunc::AddInput(<span class="kw">_</span>) =&gt; <span class="string">"circuit_add_input"</span>,
-<a href=#394 id=394 data-nosnippet>394</a>            CircuitConcreteLibfunc::Eval(<span class="kw">_</span>) =&gt; <span class="string">"circuit_eval"</span>,
-<a href=#395 id=395 data-nosnippet>395</a>            CircuitConcreteLibfunc::GetDescriptor(<span class="kw">_</span>) =&gt; <span class="string">"circuit_get_descriptor"</span>,
-<a href=#396 id=396 data-nosnippet>396</a>            CircuitConcreteLibfunc::InitCircuitData(<span class="kw">_</span>) =&gt; <span class="string">"circuit_init_circuit_data"</span>,
-<a href=#397 id=397 data-nosnippet>397</a>            CircuitConcreteLibfunc::GetOutput(<span class="kw">_</span>) =&gt; <span class="string">"circuit_get_output"</span>,
-<a href=#398 id=398 data-nosnippet>398</a>            CircuitConcreteLibfunc::TryIntoCircuitModulus(<span class="kw">_</span>) =&gt; <span class="string">"circuit_try_into_circuit_modulus"</span>,
-<a href=#399 id=399 data-nosnippet>399</a>            CircuitConcreteLibfunc::FailureGuaranteeVerify(<span class="kw">_</span>) =&gt; <span class="string">"circuit_failure_guarantee_verify"</span>,
-<a href=#400 id=400 data-nosnippet>400</a>            CircuitConcreteLibfunc::IntoU96Guarantee(<span class="kw">_</span>) =&gt; <span class="string">"circuit_into_u96_guarantee"</span>,
-<a href=#401 id=401 data-nosnippet>401</a>            CircuitConcreteLibfunc::U96GuaranteeVerify(<span class="kw">_</span>) =&gt; <span class="string">"circuit_u96_guarantee_verify"</span>,
-<a href=#402 id=402 data-nosnippet>402</a>            CircuitConcreteLibfunc::U96LimbsLessThanGuaranteeVerify(<span class="kw">_</span>) =&gt; {
-<a href=#403 id=403 data-nosnippet>403</a>                <span class="string">"circuit_u96_limbs_less_than_guarantee_verify"
-<a href=#404 id=404 data-nosnippet>404</a>            </span>}
-<a href=#405 id=405 data-nosnippet>405</a>            CircuitConcreteLibfunc::U96SingleLimbLessThanGuaranteeVerify(<span class="kw">_</span>) =&gt; {
-<a href=#406 id=406 data-nosnippet>406</a>                <span class="string">"circuit_u96_single_limb_less_than_guarantee_verify"
+<a href=#385 id=385 data-nosnippet>385</a>        CoreConcreteLibfunc::Debug(value) =&gt; <span class="kw">match </span>value {
+<a href=#386 id=386 data-nosnippet>386</a>            DebugConcreteLibfunc::Print(<span class="kw">_</span>) =&gt; <span class="string">"debug_print"</span>,
+<a href=#387 id=387 data-nosnippet>387</a>        },
+<a href=#388 id=388 data-nosnippet>388</a>        CoreConcreteLibfunc::Trace(<span class="kw">_</span>) =&gt; <span class="string">"trace"</span>,
+<a href=#389 id=389 data-nosnippet>389</a>        CoreConcreteLibfunc::SnapshotTake(<span class="kw">_</span>) =&gt; <span class="string">"snapshot_take"</span>,
+<a href=#390 id=390 data-nosnippet>390</a>        CoreConcreteLibfunc::Bytes31(value) =&gt; <span class="kw">match </span>value {
+<a href=#391 id=391 data-nosnippet>391</a>            Bytes31ConcreteLibfunc::Const(<span class="kw">_</span>) =&gt; <span class="string">"bytes31_const"</span>,
+<a href=#392 id=392 data-nosnippet>392</a>            Bytes31ConcreteLibfunc::ToFelt252(<span class="kw">_</span>) =&gt; <span class="string">"bytes31_to_felt252"</span>,
+<a href=#393 id=393 data-nosnippet>393</a>            Bytes31ConcreteLibfunc::TryFromFelt252(<span class="kw">_</span>) =&gt; <span class="string">"bytes31_try_from_felt252"</span>,
+<a href=#394 id=394 data-nosnippet>394</a>        },
+<a href=#395 id=395 data-nosnippet>395</a>        CoreConcreteLibfunc::Circuit(selector) =&gt; <span class="kw">match </span>selector {
+<a href=#396 id=396 data-nosnippet>396</a>            CircuitConcreteLibfunc::AddInput(<span class="kw">_</span>) =&gt; <span class="string">"circuit_add_input"</span>,
+<a href=#397 id=397 data-nosnippet>397</a>            CircuitConcreteLibfunc::Eval(<span class="kw">_</span>) =&gt; <span class="string">"circuit_eval"</span>,
+<a href=#398 id=398 data-nosnippet>398</a>            CircuitConcreteLibfunc::GetDescriptor(<span class="kw">_</span>) =&gt; <span class="string">"circuit_get_descriptor"</span>,
+<a href=#399 id=399 data-nosnippet>399</a>            CircuitConcreteLibfunc::InitCircuitData(<span class="kw">_</span>) =&gt; <span class="string">"circuit_init_circuit_data"</span>,
+<a href=#400 id=400 data-nosnippet>400</a>            CircuitConcreteLibfunc::GetOutput(<span class="kw">_</span>) =&gt; <span class="string">"circuit_get_output"</span>,
+<a href=#401 id=401 data-nosnippet>401</a>            CircuitConcreteLibfunc::TryIntoCircuitModulus(<span class="kw">_</span>) =&gt; <span class="string">"circuit_try_into_circuit_modulus"</span>,
+<a href=#402 id=402 data-nosnippet>402</a>            CircuitConcreteLibfunc::FailureGuaranteeVerify(<span class="kw">_</span>) =&gt; <span class="string">"circuit_failure_guarantee_verify"</span>,
+<a href=#403 id=403 data-nosnippet>403</a>            CircuitConcreteLibfunc::IntoU96Guarantee(<span class="kw">_</span>) =&gt; <span class="string">"circuit_into_u96_guarantee"</span>,
+<a href=#404 id=404 data-nosnippet>404</a>            CircuitConcreteLibfunc::U96GuaranteeVerify(<span class="kw">_</span>) =&gt; <span class="string">"circuit_u96_guarantee_verify"</span>,
+<a href=#405 id=405 data-nosnippet>405</a>            CircuitConcreteLibfunc::U96LimbsLessThanGuaranteeVerify(<span class="kw">_</span>) =&gt; {
+<a href=#406 id=406 data-nosnippet>406</a>                <span class="string">"circuit_u96_limbs_less_than_guarantee_verify"
 <a href=#407 id=407 data-nosnippet>407</a>            </span>}
-<a href=#408 id=408 data-nosnippet>408</a>        },
-<a href=#409 id=409 data-nosnippet>409</a>        CoreConcreteLibfunc::BoundedInt(selector) =&gt; <span class="kw">match </span>selector {
-<a href=#410 id=410 data-nosnippet>410</a>            BoundedIntConcreteLibfunc::Add(<span class="kw">_</span>) =&gt; <span class="string">"bounded_int_add"</span>,
-<a href=#411 id=411 data-nosnippet>411</a>            BoundedIntConcreteLibfunc::Sub(<span class="kw">_</span>) =&gt; <span class="string">"bounded_int_sub"</span>,
-<a href=#412 id=412 data-nosnippet>412</a>            BoundedIntConcreteLibfunc::Mul(<span class="kw">_</span>) =&gt; <span class="string">"bounded_int_mul"</span>,
-<a href=#413 id=413 data-nosnippet>413</a>            BoundedIntConcreteLibfunc::DivRem(<span class="kw">_</span>) =&gt; <span class="string">"bounded_int_div_rem"</span>,
-<a href=#414 id=414 data-nosnippet>414</a>            BoundedIntConcreteLibfunc::Constrain(<span class="kw">_</span>) =&gt; <span class="string">"bounded_int_constrain"</span>,
-<a href=#415 id=415 data-nosnippet>415</a>            BoundedIntConcreteLibfunc::IsZero(<span class="kw">_</span>) =&gt; <span class="string">"bounded_int_is_zero"</span>,
-<a href=#416 id=416 data-nosnippet>416</a>            BoundedIntConcreteLibfunc::WrapNonZero(<span class="kw">_</span>) =&gt; <span class="string">"bounded_int_wrap_non_zero"</span>,
-<a href=#417 id=417 data-nosnippet>417</a>            BoundedIntConcreteLibfunc::TrimMin(<span class="kw">_</span>) =&gt; <span class="string">"bounded_int_trim_min"</span>,
-<a href=#418 id=418 data-nosnippet>418</a>            BoundedIntConcreteLibfunc::TrimMax(<span class="kw">_</span>) =&gt; <span class="string">"bounded_int_trim_max"</span>,
-<a href=#419 id=419 data-nosnippet>419</a>        },
-<a href=#420 id=420 data-nosnippet>420</a>        CoreConcreteLibfunc::IntRange(selector) =&gt; <span class="kw">match </span>selector {
-<a href=#421 id=421 data-nosnippet>421</a>            IntRangeConcreteLibfunc::TryNew(<span class="kw">_</span>) =&gt; <span class="string">"int_range_try_new"</span>,
-<a href=#422 id=422 data-nosnippet>422</a>            IntRangeConcreteLibfunc::PopFront(<span class="kw">_</span>) =&gt; <span class="string">"int_range_pop_front"</span>,
-<a href=#423 id=423 data-nosnippet>423</a>        },
-<a href=#424 id=424 data-nosnippet>424</a>        CoreConcreteLibfunc::Blake(<span class="kw">_</span>) =&gt; <span class="string">"blake"</span>,
-<a href=#425 id=425 data-nosnippet>425</a>        CoreConcreteLibfunc::QM31(<span class="kw">_</span>) =&gt; <span class="string">"qm31"</span>,
-<a href=#426 id=426 data-nosnippet>426</a>        CoreConcreteLibfunc::UnsafePanic(<span class="kw">_</span>) =&gt; <span class="string">"unsafe_panic"</span>,
-<a href=#427 id=427 data-nosnippet>427</a>        CoreConcreteLibfunc::DummyFunctionCall(<span class="kw">_</span>) =&gt; <span class="string">"dummy_function_call"</span>,
-<a href=#428 id=428 data-nosnippet>428</a>        CoreConcreteLibfunc::GasReserve(selector) =&gt; <span class="kw">match </span>selector {
-<a href=#429 id=429 data-nosnippet>429</a>            GasReserveConcreteLibfunc::Create(<span class="kw">_</span>) =&gt; <span class="string">"gas_reserve_create"</span>,
-<a href=#430 id=430 data-nosnippet>430</a>            GasReserveConcreteLibfunc::Utilize(<span class="kw">_</span>) =&gt; <span class="string">"gas_reserve_utilize"</span>,
-<a href=#431 id=431 data-nosnippet>431</a>        },
-<a href=#432 id=432 data-nosnippet>432</a>    }
-<a href=#433 id=433 data-nosnippet>433</a>}
-<a href=#434 id=434 data-nosnippet>434</a>
-<a href=#435 id=435 data-nosnippet>435</a><span class="kw">pub fn </span>generic_type_to_name(
-<a href=#436 id=436 data-nosnippet>436</a>    registry: <span class="kw-2">&amp;</span>ProgramRegistry&lt;CoreType, CoreLibfunc&gt;,
-<a href=#437 id=437 data-nosnippet>437</a>    name: <span class="kw-2">&amp;</span>str,
-<a href=#438 id=438 data-nosnippet>438</a>    args: <span class="kw-2">&amp;</span>[ConcreteTypeId],
-<a href=#439 id=439 data-nosnippet>439</a>) -&gt; String {
-<a href=#440 id=440 data-nosnippet>440</a>    <span class="macro">format!</span>(
-<a href=#441 id=441 data-nosnippet>441</a>        <span class="string">"{}&lt;{}&gt;"</span>,
-<a href=#442 id=442 data-nosnippet>442</a>        name,
-<a href=#443 id=443 data-nosnippet>443</a>        args.iter()
-<a href=#444 id=444 data-nosnippet>444</a>            .map(|field_type| {
-<a href=#445 id=445 data-nosnippet>445</a>                registry
-<a href=#446 id=446 data-nosnippet>446</a>                    .get_type(field_type)
-<a href=#447 id=447 data-nosnippet>447</a>                    .expect(<span class="string">"failed to find type in registry"</span>)
-<a href=#448 id=448 data-nosnippet>448</a>            })
-<a href=#449 id=449 data-nosnippet>449</a>            .map(|field_type| type_to_name(registry, field_type))
-<a href=#450 id=450 data-nosnippet>450</a>            .join(<span class="string">","</span>)
-<a href=#451 id=451 data-nosnippet>451</a>    )
-<a href=#452 id=452 data-nosnippet>452</a>}
-<a href=#453 id=453 data-nosnippet>453</a>
-<a href=#454 id=454 data-nosnippet>454</a><span class="kw">pub fn </span>type_to_name(
-<a href=#455 id=455 data-nosnippet>455</a>    registry: <span class="kw-2">&amp;</span>ProgramRegistry&lt;CoreType, CoreLibfunc&gt;,
-<a href=#456 id=456 data-nosnippet>456</a>    ty: <span class="kw-2">&amp;</span>CoreTypeConcrete,
-<a href=#457 id=457 data-nosnippet>457</a>) -&gt; String {
-<a href=#458 id=458 data-nosnippet>458</a>    <span class="kw">match </span>ty {
-<a href=#459 id=459 data-nosnippet>459</a>        CoreTypeConcrete::Struct(info) =&gt; generic_type_to_name(registry, <span class="string">"struct"</span>, <span class="kw-2">&amp;</span>info.members),
-<a href=#460 id=460 data-nosnippet>460</a>        CoreTypeConcrete::Enum(info) =&gt; generic_type_to_name(registry, <span class="string">"enum"</span>, <span class="kw-2">&amp;</span>info.variants),
-<a href=#461 id=461 data-nosnippet>461</a>        CoreTypeConcrete::BoundedInt(info) =&gt; {
-<a href=#462 id=462 data-nosnippet>462</a>            <span class="macro">format!</span>(<span class="string">"bounded_int&lt;{},{}&gt;"</span>, info.range.lower, info.range.upper)
-<a href=#463 id=463 data-nosnippet>463</a>        }
-<a href=#464 id=464 data-nosnippet>464</a>        CoreTypeConcrete::Array(info) =&gt; {
-<a href=#465 id=465 data-nosnippet>465</a>            generic_type_to_name(registry, <span class="string">"array"</span>, std::slice::from_ref(<span class="kw-2">&amp;</span>info.ty))
+<a href=#408 id=408 data-nosnippet>408</a>            CircuitConcreteLibfunc::U96SingleLimbLessThanGuaranteeVerify(<span class="kw">_</span>) =&gt; {
+<a href=#409 id=409 data-nosnippet>409</a>                <span class="string">"circuit_u96_single_limb_less_than_guarantee_verify"
+<a href=#410 id=410 data-nosnippet>410</a>            </span>}
+<a href=#411 id=411 data-nosnippet>411</a>        },
+<a href=#412 id=412 data-nosnippet>412</a>        CoreConcreteLibfunc::BoundedInt(selector) =&gt; <span class="kw">match </span>selector {
+<a href=#413 id=413 data-nosnippet>413</a>            BoundedIntConcreteLibfunc::Add(<span class="kw">_</span>) =&gt; <span class="string">"bounded_int_add"</span>,
+<a href=#414 id=414 data-nosnippet>414</a>            BoundedIntConcreteLibfunc::Sub(<span class="kw">_</span>) =&gt; <span class="string">"bounded_int_sub"</span>,
+<a href=#415 id=415 data-nosnippet>415</a>            BoundedIntConcreteLibfunc::Mul(<span class="kw">_</span>) =&gt; <span class="string">"bounded_int_mul"</span>,
+<a href=#416 id=416 data-nosnippet>416</a>            BoundedIntConcreteLibfunc::DivRem(<span class="kw">_</span>) =&gt; <span class="string">"bounded_int_div_rem"</span>,
+<a href=#417 id=417 data-nosnippet>417</a>            BoundedIntConcreteLibfunc::Constrain(<span class="kw">_</span>) =&gt; <span class="string">"bounded_int_constrain"</span>,
+<a href=#418 id=418 data-nosnippet>418</a>            BoundedIntConcreteLibfunc::IsZero(<span class="kw">_</span>) =&gt; <span class="string">"bounded_int_is_zero"</span>,
+<a href=#419 id=419 data-nosnippet>419</a>            BoundedIntConcreteLibfunc::WrapNonZero(<span class="kw">_</span>) =&gt; <span class="string">"bounded_int_wrap_non_zero"</span>,
+<a href=#420 id=420 data-nosnippet>420</a>            BoundedIntConcreteLibfunc::TrimMin(<span class="kw">_</span>) =&gt; <span class="string">"bounded_int_trim_min"</span>,
+<a href=#421 id=421 data-nosnippet>421</a>            BoundedIntConcreteLibfunc::TrimMax(<span class="kw">_</span>) =&gt; <span class="string">"bounded_int_trim_max"</span>,
+<a href=#422 id=422 data-nosnippet>422</a>        },
+<a href=#423 id=423 data-nosnippet>423</a>        CoreConcreteLibfunc::IntRange(selector) =&gt; <span class="kw">match </span>selector {
+<a href=#424 id=424 data-nosnippet>424</a>            IntRangeConcreteLibfunc::TryNew(<span class="kw">_</span>) =&gt; <span class="string">"int_range_try_new"</span>,
+<a href=#425 id=425 data-nosnippet>425</a>            IntRangeConcreteLibfunc::PopFront(<span class="kw">_</span>) =&gt; <span class="string">"int_range_pop_front"</span>,
+<a href=#426 id=426 data-nosnippet>426</a>        },
+<a href=#427 id=427 data-nosnippet>427</a>        CoreConcreteLibfunc::Blake(<span class="kw">_</span>) =&gt; <span class="string">"blake"</span>,
+<a href=#428 id=428 data-nosnippet>428</a>        CoreConcreteLibfunc::QM31(<span class="kw">_</span>) =&gt; <span class="string">"qm31"</span>,
+<a href=#429 id=429 data-nosnippet>429</a>        CoreConcreteLibfunc::UnsafePanic(<span class="kw">_</span>) =&gt; <span class="string">"unsafe_panic"</span>,
+<a href=#430 id=430 data-nosnippet>430</a>        CoreConcreteLibfunc::DummyFunctionCall(<span class="kw">_</span>) =&gt; <span class="string">"dummy_function_call"</span>,
+<a href=#431 id=431 data-nosnippet>431</a>        CoreConcreteLibfunc::GasReserve(selector) =&gt; <span class="kw">match </span>selector {
+<a href=#432 id=432 data-nosnippet>432</a>            GasReserveConcreteLibfunc::Create(<span class="kw">_</span>) =&gt; <span class="string">"gas_reserve_create"</span>,
+<a href=#433 id=433 data-nosnippet>433</a>            GasReserveConcreteLibfunc::Utilize(<span class="kw">_</span>) =&gt; <span class="string">"gas_reserve_utilize"</span>,
+<a href=#434 id=434 data-nosnippet>434</a>        },
+<a href=#435 id=435 data-nosnippet>435</a>    }
+<a href=#436 id=436 data-nosnippet>436</a>}
+<a href=#437 id=437 data-nosnippet>437</a>
+<a href=#438 id=438 data-nosnippet>438</a><span class="kw">pub fn </span>generic_type_to_name(
+<a href=#439 id=439 data-nosnippet>439</a>    registry: <span class="kw-2">&amp;</span>ProgramRegistry&lt;CoreType, CoreLibfunc&gt;,
+<a href=#440 id=440 data-nosnippet>440</a>    name: <span class="kw-2">&amp;</span>str,
+<a href=#441 id=441 data-nosnippet>441</a>    args: <span class="kw-2">&amp;</span>[ConcreteTypeId],
+<a href=#442 id=442 data-nosnippet>442</a>) -&gt; String {
+<a href=#443 id=443 data-nosnippet>443</a>    <span class="macro">format!</span>(
+<a href=#444 id=444 data-nosnippet>444</a>        <span class="string">"{}&lt;{}&gt;"</span>,
+<a href=#445 id=445 data-nosnippet>445</a>        name,
+<a href=#446 id=446 data-nosnippet>446</a>        args.iter()
+<a href=#447 id=447 data-nosnippet>447</a>            .map(|field_type| {
+<a href=#448 id=448 data-nosnippet>448</a>                registry
+<a href=#449 id=449 data-nosnippet>449</a>                    .get_type(field_type)
+<a href=#450 id=450 data-nosnippet>450</a>                    .expect(<span class="string">"failed to find type in registry"</span>)
+<a href=#451 id=451 data-nosnippet>451</a>            })
+<a href=#452 id=452 data-nosnippet>452</a>            .map(|field_type| type_to_name(registry, field_type))
+<a href=#453 id=453 data-nosnippet>453</a>            .join(<span class="string">","</span>)
+<a href=#454 id=454 data-nosnippet>454</a>    )
+<a href=#455 id=455 data-nosnippet>455</a>}
+<a href=#456 id=456 data-nosnippet>456</a>
+<a href=#457 id=457 data-nosnippet>457</a><span class="kw">pub fn </span>type_to_name(
+<a href=#458 id=458 data-nosnippet>458</a>    registry: <span class="kw-2">&amp;</span>ProgramRegistry&lt;CoreType, CoreLibfunc&gt;,
+<a href=#459 id=459 data-nosnippet>459</a>    ty: <span class="kw-2">&amp;</span>CoreTypeConcrete,
+<a href=#460 id=460 data-nosnippet>460</a>) -&gt; String {
+<a href=#461 id=461 data-nosnippet>461</a>    <span class="kw">match </span>ty {
+<a href=#462 id=462 data-nosnippet>462</a>        CoreTypeConcrete::Struct(info) =&gt; generic_type_to_name(registry, <span class="string">"struct"</span>, <span class="kw-2">&amp;</span>info.members),
+<a href=#463 id=463 data-nosnippet>463</a>        CoreTypeConcrete::Enum(info) =&gt; generic_type_to_name(registry, <span class="string">"enum"</span>, <span class="kw-2">&amp;</span>info.variants),
+<a href=#464 id=464 data-nosnippet>464</a>        CoreTypeConcrete::BoundedInt(info) =&gt; {
+<a href=#465 id=465 data-nosnippet>465</a>            <span class="macro">format!</span>(<span class="string">"bounded_int&lt;{},{}&gt;"</span>, info.range.lower, info.range.upper)
 <a href=#466 id=466 data-nosnippet>466</a>        }
-<a href=#467 id=467 data-nosnippet>467</a>        CoreTypeConcrete::Snapshot(info) =&gt; {
-<a href=#468 id=468 data-nosnippet>468</a>            generic_type_to_name(registry, <span class="string">"snapshot"</span>, std::slice::from_ref(<span class="kw-2">&amp;</span>info.ty))
+<a href=#467 id=467 data-nosnippet>467</a>        CoreTypeConcrete::Array(info) =&gt; {
+<a href=#468 id=468 data-nosnippet>468</a>            generic_type_to_name(registry, <span class="string">"array"</span>, std::slice::from_ref(<span class="kw-2">&amp;</span>info.ty))
 <a href=#469 id=469 data-nosnippet>469</a>        }
-<a href=#470 id=470 data-nosnippet>470</a>        CoreTypeConcrete::Span(info) =&gt; {
-<a href=#471 id=471 data-nosnippet>471</a>            generic_type_to_name(registry, <span class="string">"span"</span>, std::slice::from_ref(<span class="kw-2">&amp;</span>info.ty))
+<a href=#470 id=470 data-nosnippet>470</a>        CoreTypeConcrete::Snapshot(info) =&gt; {
+<a href=#471 id=471 data-nosnippet>471</a>            generic_type_to_name(registry, <span class="string">"snapshot"</span>, std::slice::from_ref(<span class="kw-2">&amp;</span>info.ty))
 <a href=#472 id=472 data-nosnippet>472</a>        }
-<a href=#473 id=473 data-nosnippet>473</a>        CoreTypeConcrete::Felt252Dict(info) =&gt; {
-<a href=#474 id=474 data-nosnippet>474</a>            generic_type_to_name(registry, <span class="string">"felt252_dict"</span>, std::slice::from_ref(<span class="kw-2">&amp;</span>info.ty))
+<a href=#473 id=473 data-nosnippet>473</a>        CoreTypeConcrete::Span(info) =&gt; {
+<a href=#474 id=474 data-nosnippet>474</a>            generic_type_to_name(registry, <span class="string">"span"</span>, std::slice::from_ref(<span class="kw-2">&amp;</span>info.ty))
 <a href=#475 id=475 data-nosnippet>475</a>        }
-<a href=#476 id=476 data-nosnippet>476</a>        CoreTypeConcrete::Felt252DictEntry(info) =&gt; generic_type_to_name(
-<a href=#477 id=477 data-nosnippet>477</a>            registry,
-<a href=#478 id=478 data-nosnippet>478</a>            <span class="string">"felt252_dict_entry"</span>,
-<a href=#479 id=479 data-nosnippet>479</a>            std::slice::from_ref(<span class="kw-2">&amp;</span>info.ty),
-<a href=#480 id=480 data-nosnippet>480</a>        ),
-<a href=#481 id=481 data-nosnippet>481</a>        CoreTypeConcrete::SquashedFelt252Dict(info) =&gt; generic_type_to_name(
-<a href=#482 id=482 data-nosnippet>482</a>            registry,
-<a href=#483 id=483 data-nosnippet>483</a>            <span class="string">"squashed_felt252_dict"</span>,
-<a href=#484 id=484 data-nosnippet>484</a>            std::slice::from_ref(<span class="kw-2">&amp;</span>info.ty),
-<a href=#485 id=485 data-nosnippet>485</a>        ),
-<a href=#486 id=486 data-nosnippet>486</a>        CoreTypeConcrete::NonZero(info) =&gt; {
-<a href=#487 id=487 data-nosnippet>487</a>            generic_type_to_name(registry, <span class="string">"non_zero"</span>, std::slice::from_ref(<span class="kw-2">&amp;</span>info.ty))
-<a href=#488 id=488 data-nosnippet>488</a>        }
-<a href=#489 id=489 data-nosnippet>489</a>        CoreTypeConcrete::Box(info) =&gt; {
-<a href=#490 id=490 data-nosnippet>490</a>            generic_type_to_name(registry, <span class="string">"box"</span>, std::slice::from_ref(<span class="kw-2">&amp;</span>info.ty))
+<a href=#476 id=476 data-nosnippet>476</a>        CoreTypeConcrete::Felt252Dict(info) =&gt; {
+<a href=#477 id=477 data-nosnippet>477</a>            generic_type_to_name(registry, <span class="string">"felt252_dict"</span>, std::slice::from_ref(<span class="kw-2">&amp;</span>info.ty))
+<a href=#478 id=478 data-nosnippet>478</a>        }
+<a href=#479 id=479 data-nosnippet>479</a>        CoreTypeConcrete::Felt252DictEntry(info) =&gt; generic_type_to_name(
+<a href=#480 id=480 data-nosnippet>480</a>            registry,
+<a href=#481 id=481 data-nosnippet>481</a>            <span class="string">"felt252_dict_entry"</span>,
+<a href=#482 id=482 data-nosnippet>482</a>            std::slice::from_ref(<span class="kw-2">&amp;</span>info.ty),
+<a href=#483 id=483 data-nosnippet>483</a>        ),
+<a href=#484 id=484 data-nosnippet>484</a>        CoreTypeConcrete::SquashedFelt252Dict(info) =&gt; generic_type_to_name(
+<a href=#485 id=485 data-nosnippet>485</a>            registry,
+<a href=#486 id=486 data-nosnippet>486</a>            <span class="string">"squashed_felt252_dict"</span>,
+<a href=#487 id=487 data-nosnippet>487</a>            std::slice::from_ref(<span class="kw-2">&amp;</span>info.ty),
+<a href=#488 id=488 data-nosnippet>488</a>        ),
+<a href=#489 id=489 data-nosnippet>489</a>        CoreTypeConcrete::NonZero(info) =&gt; {
+<a href=#490 id=490 data-nosnippet>490</a>            generic_type_to_name(registry, <span class="string">"non_zero"</span>, std::slice::from_ref(<span class="kw-2">&amp;</span>info.ty))
 <a href=#491 id=491 data-nosnippet>491</a>        }
-<a href=#492 id=492 data-nosnippet>492</a>        CoreTypeConcrete::Uninitialized(info) =&gt; {
-<a href=#493 id=493 data-nosnippet>493</a>            generic_type_to_name(registry, <span class="string">"uninitialized"</span>, std::slice::from_ref(<span class="kw-2">&amp;</span>info.ty))
+<a href=#492 id=492 data-nosnippet>492</a>        CoreTypeConcrete::Box(info) =&gt; {
+<a href=#493 id=493 data-nosnippet>493</a>            generic_type_to_name(registry, <span class="string">"box"</span>, std::slice::from_ref(<span class="kw-2">&amp;</span>info.ty))
 <a href=#494 id=494 data-nosnippet>494</a>        }
-<a href=#495 id=495 data-nosnippet>495</a>        CoreTypeConcrete::Nullable(info) =&gt; {
-<a href=#496 id=496 data-nosnippet>496</a>            generic_type_to_name(registry, <span class="string">"nullable"</span>, std::slice::from_ref(<span class="kw-2">&amp;</span>info.ty))
+<a href=#495 id=495 data-nosnippet>495</a>        CoreTypeConcrete::Uninitialized(info) =&gt; {
+<a href=#496 id=496 data-nosnippet>496</a>            generic_type_to_name(registry, <span class="string">"uninitialized"</span>, std::slice::from_ref(<span class="kw-2">&amp;</span>info.ty))
 <a href=#497 id=497 data-nosnippet>497</a>        }
-<a href=#498 id=498 data-nosnippet>498</a>        CoreTypeConcrete::Const(info) =&gt; {
-<a href=#499 id=499 data-nosnippet>499</a>            generic_type_to_name(registry, <span class="string">"const"</span>, std::slice::from_ref(<span class="kw-2">&amp;</span>info.inner_ty))
+<a href=#498 id=498 data-nosnippet>498</a>        CoreTypeConcrete::Nullable(info) =&gt; {
+<a href=#499 id=499 data-nosnippet>499</a>            generic_type_to_name(registry, <span class="string">"nullable"</span>, std::slice::from_ref(<span class="kw-2">&amp;</span>info.ty))
 <a href=#500 id=500 data-nosnippet>500</a>        }
-<a href=#501 id=501 data-nosnippet>501</a>        CoreTypeConcrete::IntRange(info) =&gt; {
-<a href=#502 id=502 data-nosnippet>502</a>            generic_type_to_name(registry, <span class="string">"int_range"</span>, std::slice::from_ref(<span class="kw-2">&amp;</span>info.ty))
+<a href=#501 id=501 data-nosnippet>501</a>        CoreTypeConcrete::Const(info) =&gt; {
+<a href=#502 id=502 data-nosnippet>502</a>            generic_type_to_name(registry, <span class="string">"const"</span>, std::slice::from_ref(<span class="kw-2">&amp;</span>info.inner_ty))
 <a href=#503 id=503 data-nosnippet>503</a>        }
-<a href=#504 id=504 data-nosnippet>504</a>        CoreTypeConcrete::Starknet(selector) =&gt; <span class="kw">match </span>selector {
-<a href=#505 id=505 data-nosnippet>505</a>            StarknetTypeConcrete::ClassHash(<span class="kw">_</span>) =&gt; String::from(<span class="string">"class_hash"</span>),
-<a href=#506 id=506 data-nosnippet>506</a>            StarknetTypeConcrete::ContractAddress(<span class="kw">_</span>) =&gt; String::from(<span class="string">"contract_address"</span>),
-<a href=#507 id=507 data-nosnippet>507</a>            StarknetTypeConcrete::StorageBaseAddress(<span class="kw">_</span>) =&gt; String::from(<span class="string">"storage_base_address"</span>),
-<a href=#508 id=508 data-nosnippet>508</a>            StarknetTypeConcrete::StorageAddress(<span class="kw">_</span>) =&gt; String::from(<span class="string">"storage_address"</span>),
-<a href=#509 id=509 data-nosnippet>509</a>            StarknetTypeConcrete::System(<span class="kw">_</span>) =&gt; String::from(<span class="string">"system"</span>),
-<a href=#510 id=510 data-nosnippet>510</a>            StarknetTypeConcrete::Secp256Point(<span class="kw">_</span>) =&gt; String::from(<span class="string">"secp256_point"</span>),
-<a href=#511 id=511 data-nosnippet>511</a>            StarknetTypeConcrete::Sha256StateHandle(<span class="kw">_</span>) =&gt; String::from(<span class="string">"sha256_state_handle"</span>),
-<a href=#512 id=512 data-nosnippet>512</a>        },
-<a href=#513 id=513 data-nosnippet>513</a>        CoreTypeConcrete::Circuit(selector) =&gt; <span class="kw">match </span>selector {
-<a href=#514 id=514 data-nosnippet>514</a>            CircuitTypeConcrete::AddMod(<span class="kw">_</span>) =&gt; String::from(<span class="string">"add_mod"</span>),
-<a href=#515 id=515 data-nosnippet>515</a>            CircuitTypeConcrete::MulMod(<span class="kw">_</span>) =&gt; String::from(<span class="string">"mul_mod"</span>),
-<a href=#516 id=516 data-nosnippet>516</a>            CircuitTypeConcrete::AddModGate(<span class="kw">_</span>) =&gt; String::from(<span class="string">"add_mod_gate"</span>),
-<a href=#517 id=517 data-nosnippet>517</a>            CircuitTypeConcrete::Circuit(<span class="kw">_</span>) =&gt; String::from(<span class="string">"circuit"</span>),
-<a href=#518 id=518 data-nosnippet>518</a>            CircuitTypeConcrete::CircuitData(<span class="kw">_</span>) =&gt; String::from(<span class="string">"circuit_data"</span>),
-<a href=#519 id=519 data-nosnippet>519</a>            CircuitTypeConcrete::CircuitOutputs(<span class="kw">_</span>) =&gt; String::from(<span class="string">"circuit_outputs"</span>),
-<a href=#520 id=520 data-nosnippet>520</a>            CircuitTypeConcrete::CircuitPartialOutputs(<span class="kw">_</span>) =&gt; {
-<a href=#521 id=521 data-nosnippet>521</a>                String::from(<span class="string">"circuit_partial_outputs"</span>)
-<a href=#522 id=522 data-nosnippet>522</a>            }
-<a href=#523 id=523 data-nosnippet>523</a>            CircuitTypeConcrete::CircuitDescriptor(<span class="kw">_</span>) =&gt; String::from(<span class="string">"circuit_descriptor"</span>),
-<a href=#524 id=524 data-nosnippet>524</a>            CircuitTypeConcrete::CircuitFailureGuarantee(<span class="kw">_</span>) =&gt; {
-<a href=#525 id=525 data-nosnippet>525</a>                String::from(<span class="string">"circuit_failure_guarantee"</span>)
-<a href=#526 id=526 data-nosnippet>526</a>            }
-<a href=#527 id=527 data-nosnippet>527</a>            CircuitTypeConcrete::CircuitInput(<span class="kw">_</span>) =&gt; String::from(<span class="string">"circuit_input"</span>),
-<a href=#528 id=528 data-nosnippet>528</a>            CircuitTypeConcrete::CircuitInputAccumulator(<span class="kw">_</span>) =&gt; {
-<a href=#529 id=529 data-nosnippet>529</a>                String::from(<span class="string">"circuit_input_accumulator"</span>)
-<a href=#530 id=530 data-nosnippet>530</a>            }
-<a href=#531 id=531 data-nosnippet>531</a>            CircuitTypeConcrete::CircuitModulus(<span class="kw">_</span>) =&gt; String::from(<span class="string">"circuit_modulus"</span>),
-<a href=#532 id=532 data-nosnippet>532</a>            CircuitTypeConcrete::InverseGate(<span class="kw">_</span>) =&gt; String::from(<span class="string">"inverse_gate"</span>),
-<a href=#533 id=533 data-nosnippet>533</a>            CircuitTypeConcrete::MulModGate(<span class="kw">_</span>) =&gt; String::from(<span class="string">"mul_mod_gate"</span>),
-<a href=#534 id=534 data-nosnippet>534</a>            CircuitTypeConcrete::SubModGate(<span class="kw">_</span>) =&gt; String::from(<span class="string">"sub_mod_gate"</span>),
-<a href=#535 id=535 data-nosnippet>535</a>            CircuitTypeConcrete::U96Guarantee(<span class="kw">_</span>) =&gt; String::from(<span class="string">"u96_guarantee"</span>),
-<a href=#536 id=536 data-nosnippet>536</a>            CircuitTypeConcrete::U96LimbsLessThanGuarantee(<span class="kw">_</span>) =&gt; {
-<a href=#537 id=537 data-nosnippet>537</a>                String::from(<span class="string">"u96_limbs_less_than_guarantee"</span>)
-<a href=#538 id=538 data-nosnippet>538</a>            }
-<a href=#539 id=539 data-nosnippet>539</a>        },
-<a href=#540 id=540 data-nosnippet>540</a>        CoreTypeConcrete::Felt252(<span class="kw">_</span>) =&gt; String::from(<span class="string">"felt252"</span>),
-<a href=#541 id=541 data-nosnippet>541</a>        CoreTypeConcrete::QM31(<span class="kw">_</span>) =&gt; String::from(<span class="string">"qm31"</span>),
-<a href=#542 id=542 data-nosnippet>542</a>        CoreTypeConcrete::Uint8(<span class="kw">_</span>) =&gt; String::from(<span class="string">"uint8"</span>),
-<a href=#543 id=543 data-nosnippet>543</a>        CoreTypeConcrete::Uint16(<span class="kw">_</span>) =&gt; String::from(<span class="string">"uint16"</span>),
-<a href=#544 id=544 data-nosnippet>544</a>        CoreTypeConcrete::Uint32(<span class="kw">_</span>) =&gt; String::from(<span class="string">"uint32"</span>),
-<a href=#545 id=545 data-nosnippet>545</a>        CoreTypeConcrete::Uint64(<span class="kw">_</span>) =&gt; String::from(<span class="string">"uint64"</span>),
-<a href=#546 id=546 data-nosnippet>546</a>        CoreTypeConcrete::Uint128(<span class="kw">_</span>) =&gt; String::from(<span class="string">"uint128"</span>),
-<a href=#547 id=547 data-nosnippet>547</a>        CoreTypeConcrete::Sint8(<span class="kw">_</span>) =&gt; String::from(<span class="string">"sint8"</span>),
-<a href=#548 id=548 data-nosnippet>548</a>        CoreTypeConcrete::Sint16(<span class="kw">_</span>) =&gt; String::from(<span class="string">"sint16"</span>),
-<a href=#549 id=549 data-nosnippet>549</a>        CoreTypeConcrete::Sint32(<span class="kw">_</span>) =&gt; String::from(<span class="string">"sint32"</span>),
-<a href=#550 id=550 data-nosnippet>550</a>        CoreTypeConcrete::Sint64(<span class="kw">_</span>) =&gt; String::from(<span class="string">"sint64"</span>),
-<a href=#551 id=551 data-nosnippet>551</a>        CoreTypeConcrete::Sint128(<span class="kw">_</span>) =&gt; String::from(<span class="string">"sint128"</span>),
-<a href=#552 id=552 data-nosnippet>552</a>        CoreTypeConcrete::Uint128MulGuarantee(<span class="kw">_</span>) =&gt; String::from(<span class="string">"uint128_mul_guarantee"</span>),
-<a href=#553 id=553 data-nosnippet>553</a>        CoreTypeConcrete::Bytes31(<span class="kw">_</span>) =&gt; String::from(<span class="string">"bytes31"</span>),
-<a href=#554 id=554 data-nosnippet>554</a>        CoreTypeConcrete::GasBuiltin(<span class="kw">_</span>) =&gt; String::from(<span class="string">"gas_builtin"</span>),
-<a href=#555 id=555 data-nosnippet>555</a>        CoreTypeConcrete::RangeCheck(<span class="kw">_</span>) =&gt; String::from(<span class="string">"range_check"</span>),
-<a href=#556 id=556 data-nosnippet>556</a>        CoreTypeConcrete::Bitwise(<span class="kw">_</span>) =&gt; String::from(<span class="string">"bitwise"</span>),
-<a href=#557 id=557 data-nosnippet>557</a>        CoreTypeConcrete::Pedersen(<span class="kw">_</span>) =&gt; String::from(<span class="string">"pedersen"</span>),
-<a href=#558 id=558 data-nosnippet>558</a>        CoreTypeConcrete::Poseidon(<span class="kw">_</span>) =&gt; String::from(<span class="string">"poseidon"</span>),
-<a href=#559 id=559 data-nosnippet>559</a>        CoreTypeConcrete::SegmentArena(<span class="kw">_</span>) =&gt; String::from(<span class="string">"segment_arena"</span>),
-<a href=#560 id=560 data-nosnippet>560</a>        CoreTypeConcrete::RangeCheck96(<span class="kw">_</span>) =&gt; String::from(<span class="string">"range_check96"</span>),
-<a href=#561 id=561 data-nosnippet>561</a>        CoreTypeConcrete::BuiltinCosts(<span class="kw">_</span>) =&gt; String::from(<span class="string">"builtin_costs"</span>),
-<a href=#562 id=562 data-nosnippet>562</a>        CoreTypeConcrete::Coupon(<span class="kw">_</span>) =&gt; String::from(<span class="string">"coupon"</span>),
-<a href=#563 id=563 data-nosnippet>563</a>        CoreTypeConcrete::Blake(<span class="kw">_</span>) =&gt; String::from(<span class="string">"blake"</span>),
-<a href=#564 id=564 data-nosnippet>564</a>        CoreTypeConcrete::EcOp(<span class="kw">_</span>) =&gt; String::from(<span class="string">"ec_op"</span>),
-<a href=#565 id=565 data-nosnippet>565</a>        CoreTypeConcrete::EcPoint(<span class="kw">_</span>) =&gt; String::from(<span class="string">"ec_point"</span>),
-<a href=#566 id=566 data-nosnippet>566</a>        CoreTypeConcrete::EcState(<span class="kw">_</span>) =&gt; String::from(<span class="string">"ec_state"</span>),
-<a href=#567 id=567 data-nosnippet>567</a>        CoreTypeConcrete::GasReserve(<span class="kw">_</span>) =&gt; String::from(<span class="string">"gas_reserve"</span>),
-<a href=#568 id=568 data-nosnippet>568</a>    }
-<a href=#569 id=569 data-nosnippet>569</a>}</code></pre></div></section></main></body></html>
+<a href=#504 id=504 data-nosnippet>504</a>        CoreTypeConcrete::IntRange(info) =&gt; {
+<a href=#505 id=505 data-nosnippet>505</a>            generic_type_to_name(registry, <span class="string">"int_range"</span>, std::slice::from_ref(<span class="kw-2">&amp;</span>info.ty))
+<a href=#506 id=506 data-nosnippet>506</a>        }
+<a href=#507 id=507 data-nosnippet>507</a>        CoreTypeConcrete::Starknet(selector) =&gt; <span class="kw">match </span>selector {
+<a href=#508 id=508 data-nosnippet>508</a>            StarknetTypeConcrete::ClassHash(<span class="kw">_</span>) =&gt; String::from(<span class="string">"class_hash"</span>),
+<a href=#509 id=509 data-nosnippet>509</a>            StarknetTypeConcrete::ContractAddress(<span class="kw">_</span>) =&gt; String::from(<span class="string">"contract_address"</span>),
+<a href=#510 id=510 data-nosnippet>510</a>            StarknetTypeConcrete::StorageBaseAddress(<span class="kw">_</span>) =&gt; String::from(<span class="string">"storage_base_address"</span>),
+<a href=#511 id=511 data-nosnippet>511</a>            StarknetTypeConcrete::StorageAddress(<span class="kw">_</span>) =&gt; String::from(<span class="string">"storage_address"</span>),
+<a href=#512 id=512 data-nosnippet>512</a>            StarknetTypeConcrete::System(<span class="kw">_</span>) =&gt; String::from(<span class="string">"system"</span>),
+<a href=#513 id=513 data-nosnippet>513</a>            StarknetTypeConcrete::Secp256Point(<span class="kw">_</span>) =&gt; String::from(<span class="string">"secp256_point"</span>),
+<a href=#514 id=514 data-nosnippet>514</a>            StarknetTypeConcrete::Sha256StateHandle(<span class="kw">_</span>) =&gt; String::from(<span class="string">"sha256_state_handle"</span>),
+<a href=#515 id=515 data-nosnippet>515</a>        },
+<a href=#516 id=516 data-nosnippet>516</a>        CoreTypeConcrete::Circuit(selector) =&gt; <span class="kw">match </span>selector {
+<a href=#517 id=517 data-nosnippet>517</a>            CircuitTypeConcrete::AddMod(<span class="kw">_</span>) =&gt; String::from(<span class="string">"add_mod"</span>),
+<a href=#518 id=518 data-nosnippet>518</a>            CircuitTypeConcrete::MulMod(<span class="kw">_</span>) =&gt; String::from(<span class="string">"mul_mod"</span>),
+<a href=#519 id=519 data-nosnippet>519</a>            CircuitTypeConcrete::AddModGate(<span class="kw">_</span>) =&gt; String::from(<span class="string">"add_mod_gate"</span>),
+<a href=#520 id=520 data-nosnippet>520</a>            CircuitTypeConcrete::Circuit(<span class="kw">_</span>) =&gt; String::from(<span class="string">"circuit"</span>),
+<a href=#521 id=521 data-nosnippet>521</a>            CircuitTypeConcrete::CircuitData(<span class="kw">_</span>) =&gt; String::from(<span class="string">"circuit_data"</span>),
+<a href=#522 id=522 data-nosnippet>522</a>            CircuitTypeConcrete::CircuitOutputs(<span class="kw">_</span>) =&gt; String::from(<span class="string">"circuit_outputs"</span>),
+<a href=#523 id=523 data-nosnippet>523</a>            CircuitTypeConcrete::CircuitPartialOutputs(<span class="kw">_</span>) =&gt; {
+<a href=#524 id=524 data-nosnippet>524</a>                String::from(<span class="string">"circuit_partial_outputs"</span>)
+<a href=#525 id=525 data-nosnippet>525</a>            }
+<a href=#526 id=526 data-nosnippet>526</a>            CircuitTypeConcrete::CircuitDescriptor(<span class="kw">_</span>) =&gt; String::from(<span class="string">"circuit_descriptor"</span>),
+<a href=#527 id=527 data-nosnippet>527</a>            CircuitTypeConcrete::CircuitFailureGuarantee(<span class="kw">_</span>) =&gt; {
+<a href=#528 id=528 data-nosnippet>528</a>                String::from(<span class="string">"circuit_failure_guarantee"</span>)
+<a href=#529 id=529 data-nosnippet>529</a>            }
+<a href=#530 id=530 data-nosnippet>530</a>            CircuitTypeConcrete::CircuitInput(<span class="kw">_</span>) =&gt; String::from(<span class="string">"circuit_input"</span>),
+<a href=#531 id=531 data-nosnippet>531</a>            CircuitTypeConcrete::CircuitInputAccumulator(<span class="kw">_</span>) =&gt; {
+<a href=#532 id=532 data-nosnippet>532</a>                String::from(<span class="string">"circuit_input_accumulator"</span>)
+<a href=#533 id=533 data-nosnippet>533</a>            }
+<a href=#534 id=534 data-nosnippet>534</a>            CircuitTypeConcrete::CircuitModulus(<span class="kw">_</span>) =&gt; String::from(<span class="string">"circuit_modulus"</span>),
+<a href=#535 id=535 data-nosnippet>535</a>            CircuitTypeConcrete::InverseGate(<span class="kw">_</span>) =&gt; String::from(<span class="string">"inverse_gate"</span>),
+<a href=#536 id=536 data-nosnippet>536</a>            CircuitTypeConcrete::MulModGate(<span class="kw">_</span>) =&gt; String::from(<span class="string">"mul_mod_gate"</span>),
+<a href=#537 id=537 data-nosnippet>537</a>            CircuitTypeConcrete::SubModGate(<span class="kw">_</span>) =&gt; String::from(<span class="string">"sub_mod_gate"</span>),
+<a href=#538 id=538 data-nosnippet>538</a>            CircuitTypeConcrete::U96Guarantee(<span class="kw">_</span>) =&gt; String::from(<span class="string">"u96_guarantee"</span>),
+<a href=#539 id=539 data-nosnippet>539</a>            CircuitTypeConcrete::U96LimbsLessThanGuarantee(<span class="kw">_</span>) =&gt; {
+<a href=#540 id=540 data-nosnippet>540</a>                String::from(<span class="string">"u96_limbs_less_than_guarantee"</span>)
+<a href=#541 id=541 data-nosnippet>541</a>            }
+<a href=#542 id=542 data-nosnippet>542</a>        },
+<a href=#543 id=543 data-nosnippet>543</a>        CoreTypeConcrete::Felt252(<span class="kw">_</span>) =&gt; String::from(<span class="string">"felt252"</span>),
+<a href=#544 id=544 data-nosnippet>544</a>        CoreTypeConcrete::QM31(<span class="kw">_</span>) =&gt; String::from(<span class="string">"qm31"</span>),
+<a href=#545 id=545 data-nosnippet>545</a>        CoreTypeConcrete::Uint8(<span class="kw">_</span>) =&gt; String::from(<span class="string">"uint8"</span>),
+<a href=#546 id=546 data-nosnippet>546</a>        CoreTypeConcrete::Uint16(<span class="kw">_</span>) =&gt; String::from(<span class="string">"uint16"</span>),
+<a href=#547 id=547 data-nosnippet>547</a>        CoreTypeConcrete::Uint32(<span class="kw">_</span>) =&gt; String::from(<span class="string">"uint32"</span>),
+<a href=#548 id=548 data-nosnippet>548</a>        CoreTypeConcrete::Uint64(<span class="kw">_</span>) =&gt; String::from(<span class="string">"uint64"</span>),
+<a href=#549 id=549 data-nosnippet>549</a>        CoreTypeConcrete::Uint128(<span class="kw">_</span>) =&gt; String::from(<span class="string">"uint128"</span>),
+<a href=#550 id=550 data-nosnippet>550</a>        CoreTypeConcrete::Sint8(<span class="kw">_</span>) =&gt; String::from(<span class="string">"sint8"</span>),
+<a href=#551 id=551 data-nosnippet>551</a>        CoreTypeConcrete::Sint16(<span class="kw">_</span>) =&gt; String::from(<span class="string">"sint16"</span>),
+<a href=#552 id=552 data-nosnippet>552</a>        CoreTypeConcrete::Sint32(<span class="kw">_</span>) =&gt; String::from(<span class="string">"sint32"</span>),
+<a href=#553 id=553 data-nosnippet>553</a>        CoreTypeConcrete::Sint64(<span class="kw">_</span>) =&gt; String::from(<span class="string">"sint64"</span>),
+<a href=#554 id=554 data-nosnippet>554</a>        CoreTypeConcrete::Sint128(<span class="kw">_</span>) =&gt; String::from(<span class="string">"sint128"</span>),
+<a href=#555 id=555 data-nosnippet>555</a>        CoreTypeConcrete::Uint128MulGuarantee(<span class="kw">_</span>) =&gt; String::from(<span class="string">"uint128_mul_guarantee"</span>),
+<a href=#556 id=556 data-nosnippet>556</a>        CoreTypeConcrete::Bytes31(<span class="kw">_</span>) =&gt; String::from(<span class="string">"bytes31"</span>),
+<a href=#557 id=557 data-nosnippet>557</a>        CoreTypeConcrete::GasBuiltin(<span class="kw">_</span>) =&gt; String::from(<span class="string">"gas_builtin"</span>),
+<a href=#558 id=558 data-nosnippet>558</a>        CoreTypeConcrete::RangeCheck(<span class="kw">_</span>) =&gt; String::from(<span class="string">"range_check"</span>),
+<a href=#559 id=559 data-nosnippet>559</a>        CoreTypeConcrete::Bitwise(<span class="kw">_</span>) =&gt; String::from(<span class="string">"bitwise"</span>),
+<a href=#560 id=560 data-nosnippet>560</a>        CoreTypeConcrete::Pedersen(<span class="kw">_</span>) =&gt; String::from(<span class="string">"pedersen"</span>),
+<a href=#561 id=561 data-nosnippet>561</a>        CoreTypeConcrete::Poseidon(<span class="kw">_</span>) =&gt; String::from(<span class="string">"poseidon"</span>),
+<a href=#562 id=562 data-nosnippet>562</a>        CoreTypeConcrete::SegmentArena(<span class="kw">_</span>) =&gt; String::from(<span class="string">"segment_arena"</span>),
+<a href=#563 id=563 data-nosnippet>563</a>        CoreTypeConcrete::RangeCheck96(<span class="kw">_</span>) =&gt; String::from(<span class="string">"range_check96"</span>),
+<a href=#564 id=564 data-nosnippet>564</a>        CoreTypeConcrete::BuiltinCosts(<span class="kw">_</span>) =&gt; String::from(<span class="string">"builtin_costs"</span>),
+<a href=#565 id=565 data-nosnippet>565</a>        CoreTypeConcrete::Coupon(<span class="kw">_</span>) =&gt; String::from(<span class="string">"coupon"</span>),
+<a href=#566 id=566 data-nosnippet>566</a>        CoreTypeConcrete::Blake(<span class="kw">_</span>) =&gt; String::from(<span class="string">"blake"</span>),
+<a href=#567 id=567 data-nosnippet>567</a>        CoreTypeConcrete::EcOp(<span class="kw">_</span>) =&gt; String::from(<span class="string">"ec_op"</span>),
+<a href=#568 id=568 data-nosnippet>568</a>        CoreTypeConcrete::EcPoint(<span class="kw">_</span>) =&gt; String::from(<span class="string">"ec_point"</span>),
+<a href=#569 id=569 data-nosnippet>569</a>        CoreTypeConcrete::EcState(<span class="kw">_</span>) =&gt; String::from(<span class="string">"ec_state"</span>),
+<a href=#570 id=570 data-nosnippet>570</a>        CoreTypeConcrete::GasReserve(<span class="kw">_</span>) =&gt; String::from(<span class="string">"gas_reserve"</span>),
+<a href=#571 id=571 data-nosnippet>571</a>    }
+<a href=#572 id=572 data-nosnippet>572</a>}</code></pre></div></section></main></body></html>
