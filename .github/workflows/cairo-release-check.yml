@@ -1,14 +1,9 @@
 name: Weekly Cairo Release Check
 
 on:
-  push:
-    branches: [main]
-  pull_request:
-  merge_group:
-    types: [checks_requested]
-#   schedule:
-#     # At the end of every day
-#     - cron: "0 8 * * 1"
+  schedule:
+    # At the end of every day
+    - cron: "0 8 * * 1"
 
 jobs:
   release-tag-check:
@@ -35,7 +30,8 @@ jobs:
           last_release=$(curl -s https://api.github.com/repos/starkware-libs/cairo/releases/latest \
               | jq -r .tag_name \
               | cut -c 2-
-          )
+          ) 
+          echo "CAIRO_LAST_RELEASE=${last_release}" | tee -a $GITHUB_ENV
 
           # Updates cairo-lang dependency to the last release
           name='cairo-lang-[[:alnum:]-]+'
@@ -47,3 +43,12 @@ jobs:
 
       - name: Run check
         run: make check
+
+      - name: Create Issue
+        if: ${{ failure() }}
+        uses: JasonEtco/create-an-issue@v2
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          COMMIT_SHA: ${{ github.sha }}
+        with:
+          filename: .github/ISSUE_TEMPLATE/_failure.md
