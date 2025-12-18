@@ -51,4 +51,4 @@ jobs:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           COMMIT_SHA: ${{ github.sha }}
         with:
-          filename: .github/ISSUE_TEMPLATE/_failure.md
+          filename: .github/ISSUE_TEMPLATE/cairo-release-check.md
