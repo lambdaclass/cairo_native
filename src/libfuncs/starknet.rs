@@ -5,6 +5,7 @@ use crate::{
     error::{Error, Result},
     ffi::get_struct_field_type_at,
     metadata::{drop_overrides::DropOverridesMeta, MetadataStorage},
+    native_panic,
     starknet::handler::StarknetSyscallHandlerCallbacks,
     utils::{get_integer_layout, ProgramRegistryExt, PRIME},
 };
@@ -152,6 +153,9 @@ pub fn build<'ctx, 'this>(
             crate::native_panic!(
                 "feature 'with-cheatcode' is required to compile with cheatcode syscall"
             )
+        }
+        StarknetConcreteLibfunc::GetExecutionInfoV3(_) => {
+            native_panic!("implement get_exec_info_v3")
         }
     }
 }

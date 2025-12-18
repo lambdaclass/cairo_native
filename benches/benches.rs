@@ -84,7 +84,7 @@ fn compare(c: &mut Criterion, path: impl AsRef<Path>) {
 }
 
 fn criterion_benchmark(c: &mut Criterion) {
-    compare(c, "programs/benches/heavy_circuit.cairo");
+    // compare(c, "programs/benches/heavy_circuit.cairo");
     compare(c, "programs/benches/dict_snapshot.cairo");
     compare(c, "programs/benches/dict_insert.cairo");
     compare(c, "programs/benches/factorial_2M.cairo");

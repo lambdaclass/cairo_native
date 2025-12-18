@@ -32,7 +32,7 @@ jobs:
         with:
           repository: lambdaclass/starknet-replay
           path: starknet-replay
-          ref: d19cefe42fc8739f43dc8d6bf039c7ad7a6b9d44
+          ref: 30020b2865e40be1e6802cb41e189ed44ac2f0c2
 
       # We need native to use the linux deps ci action
       - name: Checkout Native
@@ -45,7 +45,7 @@ jobs:
           repository: lambdaclass/sequencer
           path: sequencer
           # branch main-v0.14.1
-          ref: a8b02584891d84052c2e22e3a233024fc4fada51
+          ref: 29b213259a5cf4910ea11a05f549dfd5531fc128
       
       - name: Restore RPC Calls
         id: restore-rpc-calls
