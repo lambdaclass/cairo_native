@@ -1257,7 +1257,7 @@ pub(crate) mod handler {
             ptr: &mut T,
             gas: &mut u64,
         ) {
-            let result = ptr.get_execution_info_v2(gas);
+            let result = ptr.get_execution_info_v3(gas);
 
             *result_ptr = match result {
                 Ok(x) => SyscallResultAbi {
@@ -1330,6 +1330,13 @@ pub(crate) mod handler {
                             );
                             tx_info_ptr.as_mut().account_contract_address =
                                 Felt252Abi(x.tx_info.account_contract_address.to_bytes_le());
+                            tx_info_ptr.as_mut().proof_facts = Self::alloc_mlir_array(
+                                &x.tx_info
+                                    .proof_facts
+                                    .into_iter()
+                                    .map(|x| Felt252Abi(x.to_bytes_le()))
+                                    .collect::<Vec<_>>(),
+                            );
 
                             execution_info_ptr.as_mut().block_info = block_info_ptr;
                             execution_info_ptr.as_mut().tx_info = tx_info_ptr;
