@@ -1908,7 +1908,10 @@ fn test_circuit_add_ec_points_g2() {
     .unwrap();
 }
 
+// NOTE: Since Cairo 2.14.0-dev.1, the BIG_CIRCUIT program takes forever to
+// compile to Sierra. Enable this test once fixed.
 #[test]
+#[ignore]
 fn test_circuit_clear_cofactor_bls12_381() {
     let program = &BIG_CIRCUIT;
 

@@ -129,6 +129,7 @@ pub fn eval(
         },
         StarknetConcreteLibfunc::GetClassHashAt(info) => eval_get_class_hash_at(registry, info, args, syscall_handler),
         StarknetConcreteLibfunc::MetaTxV0(info) => eval_meta_tx_v0(registry, info, args, syscall_handler),
+        StarknetConcreteLibfunc::GetExecutionInfoV3(_) => todo!(),
     }
 }
 
