@@ -307,6 +307,14 @@ impl StarknetSyscallHandler for &mut StubSyscallHandler {
     }
 
     #[instrument(skip(self))]
+    fn get_execution_info_v3(
+        &mut self,
+        remaining_gas: &mut u64,
+    ) -> crate::starknet::SyscallResult<crate::starknet::ExecutionInfoV3> {
+        todo!();
+    }
+
+    #[instrument(skip(self))]
     fn deploy(
         &mut self,
         class_hash: Felt,
