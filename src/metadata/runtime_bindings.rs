@@ -1005,7 +1005,7 @@ fn build_egcd_function<'ctx>(
     let gcd = end_block.arg(0)?;
     let inverse = end_block.arg(1)?;
 
-    // EGDC sometimes returns a negative number for the inverse,
+    // EGCD sometimes returns a negative number for the inverse,
     // in such cases we must simply wrap it around back into [0, MODULUS)
     // this suffices because |inv_i| <= divfloor(MODULUS,2)
     let zero = end_block.const_int_from_type(context, location, 0, integer_type)?;
