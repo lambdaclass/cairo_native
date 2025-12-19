@@ -89,7 +89,7 @@ jobs:
         id: restore-rpc-calls
         uses: actions/cache/restore@v4.2.0
         with:
-          path: cache
+          path: starknet-replay/cache
           key: rpc-calls-cache
 
       # Install dependencies
@@ -199,5 +199,5 @@ jobs:
       - name: Save RPC calls
         uses: actions/cache/save@v4.2.0
         with:
-          path: cache
+          path: starknet-replay/cache
           key: rpc-calls-cache
