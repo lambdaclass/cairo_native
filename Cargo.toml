@@ -92,7 +92,7 @@ walkdir = "2.5.0"
 
 # Can't update until https://github.com/magiclen/educe/issues/27.
 educe = "0.5.11"
-# Using git dependencies as doing otherwise might might incompatibilities with
+# Using git dependencies since doing it otherwise might rise incompatibilities with
 # cairo-lang versions.
 cairo-vm = { git = "https://github.com/lambdaclass/cairo-vm", rev = "a87e9e6a2cc4b759ae30a9c1a08efabf78ca4c17" }
 # Can't use verion > 0.14.7 due to deprecation, as stated in issue https://github.com/fizyk20/generic-array/issues/158
