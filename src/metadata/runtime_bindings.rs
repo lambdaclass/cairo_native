@@ -867,12 +867,6 @@ pub fn setup_runtime(find_symbol_ptr: impl Fn(&str) -> Option<*mut c_void>) {
 /// (gcd) of two integers `a` and `b`, as well as the Bézout coefficients `x`
 /// and `y` such that `ax + by = gcd(a,b)`. If `gcd(a,b) = 1`, then `x` is the
 /// modular multiplicative inverse of `a` modulo `b`.
-///
-/// This function declares a MLIR function that given two numbers a and b, returns a MLIR struct with gcd(a, b)
-/// and the bezout coefficient x. The declaration is done in the body of the module.
-///
-/// The primary use of this function is to find the modular multiplicative inverse of a value. To so, it is expected
-/// the a represents the value to be inverted and b the modulus of the field field.
 fn build_egcd_function<'ctx>(
     module: &Module,
     context: &'ctx Context,
