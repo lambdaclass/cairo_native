@@ -31,7 +31,7 @@ use std::{
 };
 use thiserror::Error;
 
-pub mod blake_utils;
+pub(crate) mod blake_utils;
 pub mod mem_tracing;
 mod program_registry_ext;
 mod range_ext;
