@@ -100,7 +100,6 @@ jobs:
           workspaces: starknet-replay
 
       - name: Run with VM
-        # if: steps.restore-rpc-calls.outputs.cache-hit != true
         run: |
           BLOCK_START=${{ matrix.block }}
           BLOCK_END=$(($BLOCK_START + $RANGE_SIZE - 1))
@@ -113,13 +112,20 @@ jobs:
         with:
           name: dump-${{matrix.block}}-vm
           path: starknet-replay/state_dumps/vm
-
-      - name: Save RPC Calls
-        uses: actions/cache/save@v4.2.0
+      
+      - name: Upload RPC calls
         if: steps.restore-rpc-calls.outputs.cache-hit != true
+        uses: actions/upload-artifact@v4
         with:
+          name: rpc-${{matrix.block}}-vm
           path: starknet-replay/cache
-          key: ${{ steps.restore-rpc-calls.outputs.cache-primary-key }}
+
+      # - name: Save RPC Calls
+      #   uses: actions/cache/save@v4.2.0
+      #   if: steps.restore-rpc-calls.outputs.cache-hit != true
+      #   with:
+      #     path: starknet-replay/cache
+      #     key: ${{ steps.restore-rpc-calls.outputs.cache-primary-key }}
   
   merge-dumps:
     needs: [run]
@@ -128,6 +134,26 @@ jobs:
       run:
         shell: bash
     steps:
+
+      # Check if we have the RPC calls from a previous run in the cache.
+      # If so, then we delete that entry so we can save the RPC calls
+      # from the new run with the same key.
+      - name: Restore RPC calls
+        id: rpc-restore
+        uses: actions/cache/restore@v4.2.0
+        with:
+          path: starknet-replay/cache
+          key: rpc-calls
+      - name: Delete RPC calls
+        if: ${{ steps.rpc-restore.outputs.cache-hit }}
+        run: gh cache delete rpc-calls
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          GH_REPO: ${{ github.repository }}
+      - name: Delete local RPC calls
+        if: ${{ steps.rpc-restore.outputs.cache-hit }}
+        run: rm -rf starknet-replay/cache
+
 
       # Check if we have state-dumps from a previous run in the cache.
       # If so, then we delete that entry so we can save the state-dumps
@@ -155,9 +181,21 @@ jobs:
           path: state_dumps/vm
           merge-multiple: true
         continue-on-error: true
+      - name: Download RPC calls
+        uses: actions/download-artifact@v4
+        with:
+          pattern: rpc-*-vm
+          path: starknet-replay/cache
+          merge-multiple: true
+        continue-on-error: true
       
       - name: Save dumps
         uses: actions/cache/save@v4.2.0
         with:
           path: state_dumps/vm
           key: dumps-vm
+      - name: Save RPC calls
+        use: actions/cache/save@v4.2.0
+        with:
+          path: starknet-replay/cache
+          key: rpc-calls-cache

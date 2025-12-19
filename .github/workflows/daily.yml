@@ -131,6 +131,12 @@ jobs:
 
           git diff
 
+      - name: Restore RPC calls
+        uses: actions/cache/restore@v4.2.0
+        with:
+          path: starknet_replay/cache
+          key: rpc-calls-cache
+
       - name: Run with Native
         run: |
           BLOCK_START=${{ matrix.block }}
