@@ -2,7 +2,7 @@ name: Weekly Cairo Release Check
 
 on:
   schedule:
-    # At the end of every day
+    # Run all Mondays at 08:00.
     - cron: "0 8 * * 1"
 
 jobs:
