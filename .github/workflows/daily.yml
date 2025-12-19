@@ -25,11 +25,25 @@ jobs:
           path: cairo_native
 
       - name: Restore blocks list
+        id: cache-restore
         uses: actions/cache/restore@v4.2.0
         with:
           path: ./blocks.txt
           key: blocks-list
-          fail-on-cache-miss: true # If the block list is not on the cache, we should run the vm-replay workflow
+          fail-on-cache-miss: true
+      - name: Prepare env vars
+        if: ${{ steps.cache-restore.outputs.cache-hit != 'true' }}
+        run: |
+          REPO_URL="${{ github.server_url }}/${{ github.repository }}"
+          echo "WORKFLOW_URL=$REPO_URL/actions/runs/${{ github.run_id }}" | tee -a $GITHUB_ENV
+      - name: Create cache related issue
+        if: ${{ failure() && steps.cache-restore.outcome == 'failure' }}
+        uses: JasonEtco/create-an-issue@v2
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          COMMIT_SHA: ${{ github.sha }}
+        with:
+          filename: .github/ISSUE_TEMPLATE/daily_cache_failure.md
 
       - name: Parse blocks file
         id: parse-blocks
@@ -160,6 +174,7 @@ jobs:
         continue-on-error: true
 
       - name: Compare states
+        id: comapare-dumps
         run: python ./scripts/cmp_state_dumps.py | tee output
 
       - name: Upload Compare Results
@@ -179,7 +194,7 @@ jobs:
           echo "COMPARISON_RESULT=$REPO_URL/actions/runs/${{ github.run_id }}/artifacts/${{ steps.upload_compare_results.outputs.artifact-id }}" | tee -a $GITHUB_ENV
 
       - name: Create Issue
-        if: ${{ failure() }}
+        if: ${{ failure() && steps.comapare-dumps.outcome == 'failure'  }}
         uses: JasonEtco/create-an-issue@v2
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
