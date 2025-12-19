@@ -1,13 +1,12 @@
 name: VM Block Run
 
 on: 
-  # workflow_dispatch:
-  #   inputs:
-  #     blocks:
-  #       type: string
-  #       description: Comma separated block numbers (e.g "10,50,70")
-  #       required: true
-  # pull_request:
+  workflow_dispatch:
+    inputs:
+      blocks:
+        type: string
+        description: Comma separated block numbers (e.g "10,50,70")
+        required: true
 
 env:
   RANGE_SIZE: 2
@@ -41,12 +40,11 @@ jobs:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           GH_REPO: ${{ github.repository }}
 
-      - name: Parse blocks file
+      - name: Parse blocks
         id: parse-blocks
         run: |
-          content=`cat ./cairo_native/.github/replay-blocks.txt`
-          echo "blocks_list=$(jq 'split(",")' -Rc <(echo $content))" >> $GITHUB_OUTPUT
-          echo "$content" > ./blocks.txt
+          echo "blocks_list=$(jq 'split(",")' -Rc <(echo ${{ github.event.inputs.blocks }}))" >> $GITHUB_OUTPUT
+          echo "${{ github.event.inputs.blocks }}" > ./blocks.txt
       
       - name: Save blocks list
         uses: actions/cache/save@v4.2.0
