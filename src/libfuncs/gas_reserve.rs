@@ -143,21 +143,23 @@ mod test {
             assert_eq!(value, Box::new(Value::Uint128(100)))
         }
 
-        let amount = 100;
-        let result = run_program(&program, "run_test_2", &[Value::Uint128(amount)]).return_value;
+        let gas_amount = 100;
+        let result =
+            run_program(&program, "run_test_2", &[Value::Uint128(gas_amount)]).return_value;
         if let Value::Enum { tag, value, .. } = result {
             if let Value::Struct { fields, .. } = *value {
                 assert_eq!(tag, 0);
-                assert_eq!(fields[0], Value::Uint128(amount));
+                assert_eq!(fields[0], Value::Uint128(gas_amount));
             }
         }
 
-        let amount = 700;
-        let result = run_program(&program, "run_test_2", &[Value::Uint128(amount)]).return_value;
+        let gas_amount = 700;
+        let result =
+            run_program(&program, "run_test_2", &[Value::Uint128(gas_amount)]).return_value;
         if let Value::Enum { tag, value, .. } = result {
             if let Value::Struct { fields, .. } = *value {
                 assert_eq!(tag, 0);
-                assert_eq!(fields[0], Value::Uint128(amount));
+                assert_eq!(fields[0], Value::Uint128(gas_amount));
             }
         }
     }
@@ -177,8 +179,8 @@ mod test {
             }
         );
 
-        let gas_quant = 10;
-        let result = run_program(&program, "run_test", &[Value::Uint128(gas_quant)]).return_value;
+        let gas_amount = 10;
+        let result = run_program(&program, "run_test", &[Value::Uint128(gas_amount)]).return_value;
         if let Value::Enum { tag, value, .. } = result {
             if let Value::Struct { fields, .. } = *value {
                 assert_eq!(tag, 0);
@@ -186,8 +188,8 @@ mod test {
             }
         }
 
-        let gas_quant = 1000;
-        let result = run_program(&program, "run_test", &[Value::Uint128(gas_quant)]).return_value;
+        let gas_amount = 1000;
+        let result = run_program(&program, "run_test", &[Value::Uint128(gas_amount)]).return_value;
         if let Value::Enum { tag, value, .. } = result {
             if let Value::Struct { fields, .. } = *value {
                 assert_eq!(tag, 0);
