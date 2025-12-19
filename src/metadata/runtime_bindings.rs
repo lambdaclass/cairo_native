@@ -1033,12 +1033,7 @@ fn build_egcd_function<'ctx>(
             llvm::r#type::r#struct(context, &[integer_type, integer_type], false),
             location,
         ))?;
-        let results = end_block.insert_values(
-            context,
-            location,
-            results,
-            &[gcd, inverse],
-        )?;
+        let results = end_block.insert_values(context, location, results, &[gcd, inverse])?;
         end_block.append_operation(llvm::r#return(Some(results), location));
     }
 
