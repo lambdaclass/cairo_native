@@ -64,6 +64,7 @@ fn main() -> anyhow::Result<()> {
             starknet: args.starknet,
             add_statements_functions: false,
             add_statements_code_locations: false,
+            add_functions_debug_info: false,
             contract_declarations: None,
             contract_crate_ids: None,
             executable_crate_ids: None,
