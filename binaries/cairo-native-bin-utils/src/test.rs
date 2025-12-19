@@ -3,13 +3,16 @@ use anyhow::Context;
 use cairo_lang_runner::{RunResultValue, SierraCasmRunner};
 use cairo_lang_sierra::{extensions::gas::CostTokenType, ids::FunctionId, program::Program};
 use cairo_lang_sierra_to_casm::metadata::MetadataComputationConfig;
+use cairo_lang_sierra_type_size::ProgramRegistryInfo;
 use cairo_lang_starknet::contract::ContractInfo;
 use cairo_lang_test_plugin::{
     test_config::{PanicExpectation, TestExpectation},
     TestConfig,
 };
 use cairo_lang_test_plugin::{TestCompilation, TestCompilationMetadata};
-use cairo_lang_utils::{casts::IntoOrPanic, ordered_hash_map::OrderedHashMap};
+use cairo_lang_utils::{
+    casts::IntoOrPanic, ordered_hash_map::OrderedHashMap, small_ordered_map::SmallOrderedMap,
+};
 use cairo_native::{
     context::NativeContext,
     executor::{AotNativeExecutor, JitNativeExecutor},
@@ -151,7 +154,7 @@ pub fn display_tests_summary(summary: &TestsSummary, filtered_out: usize) {
 pub fn run_tests(
     named_tests: Vec<(String, TestConfig)>,
     sierra_program: Program,
-    function_set_costs: OrderedHashMap<FunctionId, OrderedHashMap<CostTokenType, i32>>,
+    function_set_costs: OrderedHashMap<FunctionId, SmallOrderedMap<CostTokenType, i32>>,
     contracts_info: OrderedHashMap<Felt, ContractInfo>,
     args: RunArgs,
 ) -> anyhow::Result<TestsSummary> {
@@ -211,6 +214,7 @@ pub fn run_tests(
 
     let gas_metadata = GasMetadata::new(
         &sierra_program,
+        &ProgramRegistryInfo::new(&sierra_program)?,
         Some(MetadataComputationConfig {
             function_set_costs,
             linear_ap_change_solver: true,

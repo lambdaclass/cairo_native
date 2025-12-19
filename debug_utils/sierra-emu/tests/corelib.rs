@@ -7,7 +7,7 @@ use cairo_lang_compiler::{
 };
 use cairo_lang_filesystem::{
     cfg::{Cfg, CfgSet},
-    ids::CrateId,
+    ids::CrateInput,
 };
 use cairo_lang_runner::{casm_run::format_for_panic, RunResultValue};
 use cairo_lang_sierra_generator::replace_ids::replace_sierra_ids_in_program;
@@ -46,10 +46,10 @@ fn test_corelib() {
         b.build().unwrap()
     };
 
-    let main_crate_ids = setup_project(db, &compiler_path).unwrap();
+    let main_crate_inputs = setup_project(db, &compiler_path).unwrap();
 
     let db = db.snapshot();
-    let test_crate_ids = main_crate_ids.clone();
+    let test_crate_ids = main_crate_inputs.clone();
     let test_config = TestsCompilationConfig {
         starknet: false,
         add_statements_functions: false,
@@ -57,15 +57,17 @@ fn test_corelib() {
         contract_declarations: None,
         contract_crate_ids: None,
         executable_crate_ids: None,
+        add_functions_debug_info: false,
     };
 
-    let diag_reporter = DiagnosticsReporter::stderr().with_crates(&main_crate_ids);
+    let diag_reporter = DiagnosticsReporter::stderr().with_crates(&main_crate_inputs);
 
     let filtered_tests = vec![
         "core::test::dict_test::test_array_from_squash_dict",
         "core::test::hash_test::test_blake2s",
         "core::test::testing_test::test_get_unspent_gas",
         "core::test::qm31_test::",
+        "core::test::secp256k1_test::test_verify_eth_signature_invalid_signature",
     ];
 
     let compiled = compile_tests(
@@ -236,15 +238,15 @@ fn display_results(results: &[TestStatus]) {
     }
 }
 
-fn compile_tests(
-    db: &RootDatabase,
-    test_config: TestsCompilationConfig,
-    test_crate_ids: Vec<CrateId>,
+fn compile_tests<'a>(
+    db: &'a RootDatabase,
+    test_config: TestsCompilationConfig<'a>,
+    test_crate_inputs: Vec<CrateInput>,
     diag_reporter: DiagnosticsReporter<'_>,
     with_filtered_tests: Option<&[&str]>,
-) -> TestCompilation {
+) -> TestCompilation<'a> {
     let mut compiled =
-        compile_test_prepared_db(db, test_config, test_crate_ids.clone(), diag_reporter).unwrap();
+        compile_test_prepared_db(db, test_config, test_crate_inputs, diag_reporter).unwrap();
     // replace ids to have debug_names
     compiled.sierra_program.program =
         replace_sierra_ids_in_program(db, &compiled.sierra_program.program);

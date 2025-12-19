@@ -5,6 +5,7 @@ edition.workspace = true
 [dependencies]
 cairo-lang-compiler.workspace = true
 cairo-lang-defs.workspace = true
+cairo-lang-filesystem.workspace = true
 cairo-lang-semantic.workspace = true
 cairo-lang-sierra.workspace = true
 cairo-lang-starknet.workspace = true
