@@ -2,10 +2,12 @@ use anyhow::Context;
 use cairo_lang_compiler::{
     compile_prepared_db, db::RootDatabase, project::setup_project, CompilerConfig,
 };
+use cairo_lang_filesystem::ids::CrateInput;
 use cairo_lang_runner::short_string::as_cairo_short_string;
 #[cfg(feature = "with-libfunc-profiling")]
 use cairo_lang_sierra::ids::ConcreteLibfuncId;
 use cairo_lang_sierra_to_casm::metadata::MetadataComputationConfig;
+use cairo_lang_sierra_type_size::ProgramRegistryInfo;
 #[cfg(feature = "with-libfunc-profiling")]
 use cairo_native::metadata::profiler::LibfuncProfileData;
 use cairo_native::{
@@ -77,7 +79,11 @@ fn main() -> anyhow::Result<()> {
     let args = Args::parse();
 
     let mut db = RootDatabase::builder().detect_corelib().build()?;
-    let main_crate_ids = setup_project(&mut db, &args.path)?;
+    let main_crate_ids = {
+        let main_crate_inputs =
+            setup_project(&mut db, &args.path).expect("failed to setup project");
+        CrateInput::into_crate_ids(&db, main_crate_inputs)
+    };
 
     let sierra_program = compile_prepared_db(
         &db,
@@ -184,8 +190,12 @@ fn main() -> anyhow::Result<()> {
             .insert(0, ProfilerImpl::new());
     }
 
-    let gas_metadata =
-        GasMetadata::new(&sierra_program, Some(MetadataComputationConfig::default())).unwrap();
+    let gas_metadata = GasMetadata::new(
+        &sierra_program,
+        &ProgramRegistryInfo::new(&sierra_program)?,
+        Some(MetadataComputationConfig::default()),
+    )
+    .unwrap();
 
     let func = find_function(&sierra_program, "::main")?;
 

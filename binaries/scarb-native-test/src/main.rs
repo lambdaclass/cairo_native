@@ -166,7 +166,7 @@ impl TargetGroupDeduplicator {
 fn deserialize_test_compilation(
     target_dir: &Path,
     name: String,
-) -> anyhow::Result<TestCompilation> {
+) -> anyhow::Result<TestCompilation<'_>> {
     let file_path = target_dir.join(format!("{}.test.json", name));
     let test_comp_metadata = serde_json::from_str::<TestCompilationMetadata>(
         &fs::read_to_string(file_path.clone())
