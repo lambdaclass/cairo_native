@@ -9,7 +9,7 @@ on:
         required: true
 
 env:
-  RANGE_SIZE: 2
+  RANGE_SIZE: 20
 
 jobs:
 
