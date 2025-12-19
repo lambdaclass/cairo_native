@@ -132,39 +132,33 @@ fn build_dup<'ctx>(
             location,
         )?)?;
 
-        match DupOverridesMeta::is_overriden(metadata, &info.ty) {
-            true => {
-                let value = block_realloc.load(context, location, src_value, inner_ty)?;
-                let values = DupOverridesMeta::invoke_override(
+        if DupOverridesMeta::is_overriden(metadata, &info.ty) {
+            let value = block_realloc.load(context, location, src_value, inner_ty)?;
+            let values = DupOverridesMeta::invoke_override(
+                context,
+                registry,
+                module,
+                &block_realloc,
+                &block_realloc,
+                location,
+                metadata,
+                &info.ty,
+                value,
+            )?;
+            block_realloc.store(context, location, src_value, values.0)?;
+            block_realloc.store(context, location, dst_value, values.1)?;
+        } else {
+            block_realloc.append_operation(
+                ods::llvm::intr_memcpy_inline(
                     context,
-                    registry,
-                    module,
-                    &block_realloc,
-                    &block_realloc,
+                    dst_value,
+                    src_value,
+                    IntegerAttribute::new(IntegerType::new(context, 64).into(), inner_len as i64),
+                    IntegerAttribute::new(IntegerType::new(context, 1).into(), 0),
                     location,
-                    metadata,
-                    &info.ty,
-                    value,
-                )?;
-                block_realloc.store(context, location, src_value, values.0)?;
-                block_realloc.store(context, location, dst_value, values.1)?;
-            }
-            _ => {
-                block_realloc.append_operation(
-                    ods::llvm::intr_memcpy_inline(
-                        context,
-                        dst_value,
-                        src_value,
-                        IntegerAttribute::new(
-                            IntegerType::new(context, 64).into(),
-                            inner_len as i64,
-                        ),
-                        IntegerAttribute::new(IntegerType::new(context, 1).into(), 0),
-                        location,
-                    )
-                    .into(),
-                );
-            }
+                )
+                .into(),
+            );
         }
 
         block_realloc.append_operation(cf::br(&block_finish, &[dst_value], location));

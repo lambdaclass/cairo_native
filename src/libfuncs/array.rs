@@ -388,30 +388,29 @@ pub fn build_tuple_from_span<'ctx, 'this>(
                 let region = Region::new();
                 let block = region.append_block(Block::new(&[]));
 
-                match DupOverridesMeta::is_overriden(metadata, &info.ty) {
-                    true => {
-                        let src_ptr = array_data_start_ptr;
-                        let dst_ptr = value;
+                if DupOverridesMeta::is_overriden(metadata, &info.ty) {
+                    let src_ptr = array_data_start_ptr;
+                    let dst_ptr = value;
 
-                        let value = block.load(context, location, src_ptr, tuple_ty)?;
+                    let value = block.load(context, location, src_ptr, tuple_ty)?;
 
-                        // Invoke the tuple's clone mechanism, which will take care of copying or
-                        // cloning each item in the array.
-                        let values = DupOverridesMeta::invoke_override(
-                            context,
-                            registry,
-                            helper,
-                            helper.init_block(),
-                            &block,
-                            location,
-                            metadata,
-                            &info.ty,
-                            value,
-                        )?;
-                        block.store(context, location, src_ptr, values.0)?;
-                        block.store(context, location, dst_ptr, values.1)?;
-                    }
-                    _ => block.memcpy(context, location, array_data_start_ptr, value, value_size),
+                    // Invoke the tuple's clone mechanism, which will take care of copying or
+                    // cloning each item in the array.
+                    let values = DupOverridesMeta::invoke_override(
+                        context,
+                        registry,
+                        helper,
+                        helper.init_block(),
+                        &block,
+                        location,
+                        metadata,
+                        &info.ty,
+                        value,
+                    )?;
+                    block.store(context, location, src_ptr, values.0)?;
+                    block.store(context, location, dst_ptr, values.1)?;
+                } else {
+                    block.memcpy(context, location, array_data_start_ptr, value, value_size)
                 }
 
                 // Drop the original array (by decreasing its reference counter).
@@ -909,45 +908,44 @@ fn build_pop<'ctx, 'this, const CONSUME: bool, const REVERSE: bool>(
         )?)?;
 
         // Clone popped items.
-        match DupOverridesMeta::is_overriden(metadata, elem_ty) {
-            true => {
-                for i in 0..extract_len {
-                    let source_ptr = valid_block.gep(
-                        context,
-                        location,
-                        source_ptr,
-                        &[GepIndex::Const(
-                            (elem_layout.pad_to_align().size() * i) as i32,
-                        )],
-                        IntegerType::new(context, 8).into(),
-                    )?;
-                    let target_ptr = valid_block.gep(
-                        context,
-                        location,
-                        target_ptr,
-                        &[GepIndex::Const(
-                            (elem_layout.pad_to_align().size() * i) as i32,
-                        )],
-                        IntegerType::new(context, 8).into(),
-                    )?;
+        if DupOverridesMeta::is_overriden(metadata, elem_ty) {
+            for i in 0..extract_len {
+                let source_ptr = valid_block.gep(
+                    context,
+                    location,
+                    source_ptr,
+                    &[GepIndex::Const(
+                        (elem_layout.pad_to_align().size() * i) as i32,
+                    )],
+                    IntegerType::new(context, 8).into(),
+                )?;
+                let target_ptr = valid_block.gep(
+                    context,
+                    location,
+                    target_ptr,
+                    &[GepIndex::Const(
+                        (elem_layout.pad_to_align().size() * i) as i32,
+                    )],
+                    IntegerType::new(context, 8).into(),
+                )?;
 
-                    let value = valid_block.load(context, location, source_ptr, elem_type)?;
-                    let values = DupOverridesMeta::invoke_override(
-                        context,
-                        registry,
-                        helper,
-                        helper.init_block(),
-                        valid_block,
-                        location,
-                        metadata,
-                        elem_ty,
-                        value,
-                    )?;
-                    valid_block.store(context, location, source_ptr, values.0)?;
-                    valid_block.store(context, location, target_ptr, values.1)?;
-                }
+                let value = valid_block.load(context, location, source_ptr, elem_type)?;
+                let values = DupOverridesMeta::invoke_override(
+                    context,
+                    registry,
+                    helper,
+                    helper.init_block(),
+                    valid_block,
+                    location,
+                    metadata,
+                    elem_ty,
+                    value,
+                )?;
+                valid_block.store(context, location, source_ptr, values.0)?;
+                valid_block.store(context, location, target_ptr, values.1)?;
             }
-            _ => valid_block.memcpy(context, location, source_ptr, target_ptr, target_size),
+        } else {
+            valid_block.memcpy(context, location, source_ptr, target_ptr, target_size)
         }
 
         branch_values.push(array_obj);
@@ -1064,24 +1062,23 @@ pub fn build_get<'ctx, 'this>(
         )?)?;
 
         // Clone the output data.
-        match DupOverridesMeta::is_overriden(metadata, &info.ty) {
-            true => {
-                let value = valid_block.load(context, location, source_ptr, elem_ty)?;
-                let values = DupOverridesMeta::invoke_override(
-                    context,
-                    registry,
-                    helper,
-                    helper.init_block(),
-                    valid_block,
-                    location,
-                    metadata,
-                    &info.ty,
-                    value,
-                )?;
-                valid_block.store(context, location, source_ptr, values.0)?;
-                valid_block.store(context, location, target_ptr, values.1)?;
-            }
-            _ => valid_block.memcpy(context, location, source_ptr, target_ptr, elem_stride),
+        if DupOverridesMeta::is_overriden(metadata, &info.ty) {
+            let value = valid_block.load(context, location, source_ptr, elem_ty)?;
+            let values = DupOverridesMeta::invoke_override(
+                context,
+                registry,
+                helper,
+                helper.init_block(),
+                valid_block,
+                location,
+                metadata,
+                &info.ty,
+                value,
+            )?;
+            valid_block.store(context, location, source_ptr, values.0)?;
+            valid_block.store(context, location, target_ptr, values.1)?;
+        } else {
+            valid_block.memcpy(context, location, source_ptr, target_ptr, elem_stride)
         }
 
         // Drop the input array.

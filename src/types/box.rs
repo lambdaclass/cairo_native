@@ -112,28 +112,25 @@ fn build_dup<'ctx>(
         location,
     )?)?;
 
-    match DupOverridesMeta::is_overriden(metadata, &info.ty) {
-        true => {
-            let value = entry.load(context, location, src_value, inner_ty)?;
-            let values = DupOverridesMeta::invoke_override(
-                context, registry, module, &entry, &entry, location, metadata, &info.ty, value,
-            )?;
-            entry.store(context, location, src_value, values.0)?;
-            entry.store(context, location, dst_value, values.1)?;
-        }
-        _ => {
-            entry.append_operation(
-                ods::llvm::intr_memcpy_inline(
-                    context,
-                    dst_value,
-                    src_value,
-                    IntegerAttribute::new(IntegerType::new(context, 64).into(), inner_len as i64),
-                    IntegerAttribute::new(IntegerType::new(context, 1).into(), 0),
-                    location,
-                )
-                .into(),
-            );
-        }
+    if DupOverridesMeta::is_overriden(metadata, &info.ty) {
+        let value = entry.load(context, location, src_value, inner_ty)?;
+        let values = DupOverridesMeta::invoke_override(
+            context, registry, module, &entry, &entry, location, metadata, &info.ty, value,
+        )?;
+        entry.store(context, location, src_value, values.0)?;
+        entry.store(context, location, dst_value, values.1)?;
+    } else {
+        entry.append_operation(
+            ods::llvm::intr_memcpy_inline(
+                context,
+                dst_value,
+                src_value,
+                IntegerAttribute::new(IntegerType::new(context, 64).into(), inner_len as i64),
+                IntegerAttribute::new(IntegerType::new(context, 1).into(), 0),
+                location,
+            )
+            .into(),
+        );
     }
 
     entry.append_operation(func::r#return(&[src_value, dst_value], location));
