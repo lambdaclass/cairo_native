@@ -152,7 +152,7 @@ pub fn build_binary_operation<'ctx, 'this>(
                     "Unable to get the RuntimeBindingsMeta from MetadataStorage",
                 )?;
 
-            let prime = entry.const_int_from_type(context, location, PRIME.clone(), i512)?;
+            let prime = entry.const_int_from_type(context, location, PRIME.clone(), felt252_ty)?;
             let lhs = entry.extui(lhs, i512, location)?;
             let rhs = entry.extui(rhs, i512, location)?;
 
