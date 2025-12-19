@@ -128,7 +128,7 @@ jobs:
       - name: Restore RPC calls
         uses: actions/cache/restore@v4.2.0
         with:
-          path: starknet_replay/cache
+          path: starknet-replay/cache
           key: rpc-calls-cache
 
       - name: Run with Native
