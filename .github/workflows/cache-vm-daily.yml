@@ -197,7 +197,7 @@ jobs:
           path: state_dumps/vm
           key: dumps-vm
       - name: Save RPC calls
-        use: actions/cache/save@v4.2.0
+        uses: actions/cache/save@v4.2.0
         with:
           path: starknet-replay/cache
           key: rpc-calls-cache
