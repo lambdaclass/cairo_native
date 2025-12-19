@@ -238,9 +238,9 @@
 <a href=#238 id=238 data-nosnippet>238</a>                StarknetTypeConcrete::Sha256StateHandle(<span class="kw">_</span>) =&gt; <span class="macro">matches!</span>(<span class="self">self</span>, <span class="self">Self</span>::Struct { .. }),
 <a href=#239 id=239 data-nosnippet>239</a>            },
 <a href=#240 id=240 data-nosnippet>240</a>            CoreTypeConcrete::IntRange(<span class="kw">_</span>) =&gt; <span class="macro">matches!</span>(<span class="self">self</span>, <span class="self">Self</span>::IntRange { .. }),
-<a href=#241 id=241 data-nosnippet>241</a>            CoreTypeConcrete::Blake(<span class="kw">_</span>) =&gt; <span class="macro">todo!</span>(),
-<a href=#242 id=242 data-nosnippet>242</a>            CoreTypeConcrete::QM31(<span class="kw">_</span>) =&gt; <span class="macro">todo!</span>(),
-<a href=#243 id=243 data-nosnippet>243</a>            CoreTypeConcrete::GasReserve(<span class="kw">_</span>) =&gt; <span class="macro">todo!</span>(),
+<a href=#241 id=241 data-nosnippet>241</a>            CoreTypeConcrete::GasReserve(<span class="kw">_</span>) =&gt; <span class="macro">matches!</span>(<span class="self">self</span>, <span class="self">Self</span>::U128(<span class="kw">_</span>)),
+<a href=#242 id=242 data-nosnippet>242</a>            CoreTypeConcrete::Blake(<span class="kw">_</span>) =&gt; <span class="macro">todo!</span>(),
+<a href=#243 id=243 data-nosnippet>243</a>            CoreTypeConcrete::QM31(<span class="kw">_</span>) =&gt; <span class="macro">todo!</span>(),
 <a href=#244 id=244 data-nosnippet>244</a>        };
 <a href=#245 id=245 data-nosnippet>245</a>
 <a href=#246 id=246 data-nosnippet>246</a>        <span class="kw">if </span>!res {
