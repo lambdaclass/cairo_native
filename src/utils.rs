@@ -151,10 +151,22 @@ pub fn generate_function_name(
     if is_for_contract_executor {
         Cow::Owned(format!("f{}", function_id.id))
     } else if let Some(name) = function_id.debug_name.as_deref() {
-        Cow::Owned(format!("{}(f{})", name, function_id.id))
+        Cow::Owned(format!("{}(f{})", mangle_name(name), function_id.id))
     } else {
         Cow::Owned(format!("f{}", function_id.id))
     }
+}
+
+/// Mangles the given function name to ensure safe compilation.
+///
+/// The compiler generates debug names with symbols that are not compatible in
+/// all environments. For example, the GNU linker `ld` doesn't support symbol
+/// symbols with the `@` character.
+///
+/// TODO(#1507): Improve the name mangling algorithm to ensure that name
+/// collisions are imposible.
+pub fn mangle_name(name: &str) -> String {
+    name.replace("@", "at")
 }
 
 /// Decode an UTF-8 error message replacing invalid bytes with their hexadecimal representation, as
