@@ -1,12 +1,11 @@
 use self::args::CmdArgs;
-use cairo_lang_sierra::ProgramParser;
+use cairo_lang_compiler::{
+    compile_prepared_db, db::RootDatabase, project::setup_project, CompilerConfig,
+};
+use cairo_lang_filesystem::ids::CrateInput;
 use clap::Parser;
 use sierra_emu::run_program;
-use std::{
-    fs::{self, File},
-    io::stdout,
-    sync::Arc,
-};
+use std::{fs::File, io::stdout};
 use tracing::{info, Level};
 use tracing_subscriber::{EnvFilter, FmtSubscriber};
 
@@ -22,19 +21,26 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
             .finish(),
     )?;
 
-    info!("Loading the Sierra program from disk.");
-    let source_code = fs::read_to_string(args.program)?;
+    let mut db = RootDatabase::builder().detect_corelib().build()?;
+    let main_crate_ids = {
+        let main_crate_inputs =
+            setup_project(&mut db, &args.program).expect("failed to setup project");
+        CrateInput::into_crate_ids(&db, main_crate_inputs)
+    };
 
-    info!("Parsing the Sierra program.");
-    let program = Arc::new(
-        ProgramParser::new()
-            .parse(&source_code)
-            .map_err(|e| e.to_string())?,
-    );
+    let program = compile_prepared_db(
+        &db,
+        main_crate_ids,
+        CompilerConfig {
+            replace_ids: true,
+            ..Default::default()
+        },
+    )?
+    .program;
 
     info!("Running the program.");
     let trace = run_program(
-        program,
+        program.into(),
         args.entry_point,
         args.args,
         args.available_gas.unwrap_or_default(),
@@ -53,6 +59,7 @@ mod test {
     use std::path::Path;
 
     use cairo_lang_compiler::CompilerConfig;
+    use cairo_lang_lowering::utils::InliningStrategy;
     use cairo_lang_starknet::compile::compile_path;
     use cairo_lang_starknet_classes::contract_class::version_id_from_serialized_sierra_program;
     use sierra_emu::{starknet::StubSyscallHandler, ContractExecutionResult, VirtualMachine};
@@ -68,6 +75,7 @@ mod test {
                 replace_ids: true,
                 ..Default::default()
             },
+            InliningStrategy::Default,
         )
         .unwrap();
 
@@ -115,6 +123,7 @@ mod test {
                 replace_ids: true,
                 ..Default::default()
             },
+            InliningStrategy::Default,
         )
         .unwrap();
 

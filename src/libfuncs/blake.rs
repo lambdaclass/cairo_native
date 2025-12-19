@@ -92,7 +92,7 @@ fn build_blake_operation<'ctx, 'this>(
 
 #[cfg(test)]
 mod tests {
-    use crate::{load_cairo, utils::testing::run_program, jit_struct, Value};
+    use crate::{jit_struct, load_cairo, utils::testing::run_program, Value};
 
     // This test is taken from the Blake2s-256 implementeation RFC-7693, Appendix B.
     // https://www.rfc-editor.org/rfc/rfc7693#appendix-B.
