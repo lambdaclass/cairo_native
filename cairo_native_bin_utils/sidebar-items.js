@@ -1,1 +1,1 @@
-window.SIDEBAR_ITEMS = {"enum":["RunMode"],"fn":["find_function","format_for_panic","result_to_runresult"],"mod":["test"],"struct":["RunArgs"]};
+window.SIDEBAR_ITEMS = {"fn":["find_function","format_for_panic","result_to_runresult"],"mod":["test"],"struct":["RunArgs"]};
