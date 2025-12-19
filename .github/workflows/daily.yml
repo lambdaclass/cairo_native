@@ -63,7 +63,7 @@ jobs:
     strategy:
       max-parallel: 25
       matrix:
-        block: ${{ fromJson(needs.setup.outputs.blocks) }}
+        block: ${{ fromJson(needs.setup.outputs.blocks_list) }}
       fail-fast: false
     defaults:
       run:
