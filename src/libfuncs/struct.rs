@@ -1,10 +1,9 @@
 //! # Struct-related libfuncs
 
-use std::alloc::Layout;
-
 use super::LibfuncHelper;
 use crate::{
     error::Result,
+    libfuncs::r#box::{into_box, unbox},
     metadata::{realloc_bindings::ReallocBindingsMeta, MetadataStorage},
     native_panic,
     types::TypeBuilder,
@@ -22,12 +21,9 @@ use cairo_lang_sierra::{
 };
 use itertools::Itertools;
 use melior::{
-    dialect::{
-        llvm::{self, r#type::pointer, LoadStoreOptions},
-        ods,
-    },
-    helpers::{ArithBlockExt, BuiltinBlockExt, LlvmBlockExt},
-    ir::{attribute::IntegerAttribute, r#type::IntegerType, Block, BlockLike, Location, Value},
+    dialect::llvm::{self},
+    helpers::{BuiltinBlockExt, LlvmBlockExt},
+    ir::{Block, BlockLike, Location, Value},
     Context,
 };
 
@@ -158,65 +154,6 @@ pub fn build_deconstruct<'ctx, 'this>(
     helper.br(entry, 0, &fields, location)
 }
 
-// Gets the value that is inside a `Box`
-fn unbox_container<'ctx, 'this>(
-    context: &'ctx Context,
-    registry: &ProgramRegistry<CoreType, CoreLibfunc>,
-    entry: &'this Block<'ctx>,
-    location: Location<'ctx>,
-    helper: &LibfuncHelper<'ctx, 'this>,
-    metadata: &mut MetadataStorage,
-    info: &ConcreteStructBoxedDeconstructLibfunc,
-) -> Result<Value<'ctx, 'this>> {
-    let boxed_container_ty_id = &info.param_signatures()[0].ty;
-
-    let (container_ty, container_layout) =
-        if let CoreTypeConcrete::Box(box_info) = registry.get_type(boxed_container_ty_id)? {
-            registry.build_type_with_layout(context, helper, metadata, &box_info.ty)?
-        } else {
-            native_panic!("Should receive a boxed Struct");
-        };
-
-    let value = entry
-        .append_operation(llvm::load(
-            context,
-            entry.arg(0)?,
-            container_ty,
-            location,
-            LoadStoreOptions::new().align(Some(IntegerAttribute::new(
-                IntegerType::new(context, 64).into(),
-                container_layout.align() as i64,
-            ))),
-        ))
-        .result(0)?
-        .into();
-
-    Ok(value)
-}
-
-/// Receives a value (representing a member of a struct) and inserts it into a box
-fn box_member<'ctx, 'this>(
-    context: &'ctx Context,
-    entry: &'this Block<'ctx>,
-    location: Location<'ctx>,
-    member: Value<'ctx, 'this>,
-    member_layout: Layout,
-) -> Result<Value<'ctx, 'this>> {
-    let len = entry.const_int(context, location, member_layout.pad_to_align().size(), 64)?;
-    let ptr = entry
-        .append_operation(ods::llvm::mlir_zero(context, pointer(context, 0), location).into())
-        .result(0)?
-        .into();
-    let ptr = entry
-        .append_operation(ReallocBindingsMeta::realloc(context, ptr, len, location)?)
-        .result(0)?
-        .into();
-
-    entry.store(context, location, ptr, member)?;
-
-    Ok(ptr)
-}
-
 /// Generate MLIR operations for the `struct_boxed_deconstruct` libfunc.
 ///
 /// Receives a `Struct` inside a `Box` and returns a tuple containing each member
@@ -246,7 +183,18 @@ pub fn build_boxed_deconstruct<'ctx, 'this>(
     metadata.get_or_insert_with(|| ReallocBindingsMeta::new(context, helper));
 
     // Unbox the container
-    let container = unbox_container(context, registry, entry, location, helper, metadata, info)?;
+    let CoreTypeConcrete::Box(box_info) = registry.get_type(&info.param_signatures()[0].ty)? else {
+        native_panic!("Should receibe a Box type as argument");
+    };
+    let container = unbox(
+        context,
+        registry,
+        entry,
+        location,
+        helper,
+        metadata,
+        &box_info.ty,
+    )?;
 
     let mut fields = Vec::<Value>::with_capacity(info.members.len());
     for (i, member_type_id) in info.members.iter().enumerate() {
@@ -257,13 +205,10 @@ pub fn build_boxed_deconstruct<'ctx, 'this>(
         let (_, member_layout) =
             registry.build_type_with_layout(context, helper, metadata, member_type_id)?;
         // Box the member
-        let member = box_member(context, entry, location, member, member_layout)?;
+        let member = into_box(context, entry, location, member, member_layout)?;
 
         fields.push(member);
     }
-
-    // Free the boxed container
-    entry.append_operation(ReallocBindingsMeta::free(context, entry.arg(0)?, location)?);
 
     helper.br(entry, 0, &fields, location)
 }
