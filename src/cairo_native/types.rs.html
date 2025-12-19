@@ -821,246 +821,232 @@
 <a href=#821 id=821 data-nosnippet>821</a>            CoreTypeConcrete::RangeCheck(<span class="kw">_</span>) =&gt; <span class="bool-val">false</span>,
 <a href=#822 id=822 data-nosnippet>822</a>            CoreTypeConcrete::RangeCheck96(<span class="kw">_</span>) =&gt; <span class="bool-val">false</span>,
 <a href=#823 id=823 data-nosnippet>823</a>            CoreTypeConcrete::Uninitialized(<span class="kw">_</span>) =&gt; <span class="bool-val">false</span>,
-<a href=#824 id=824 data-nosnippet>824</a>            CoreTypeConcrete::Enum(info) =&gt; {
-<a href=#825 id=825 data-nosnippet>825</a>                <span class="comment">// Enums are memory-allocated if either:
-<a href=#826 id=826 data-nosnippet>826</a>                //   - Has only variant which is memory-allocated.
-<a href=#827 id=827 data-nosnippet>827</a>                //   - Has more than one variants, at least one of them being non-ZST.
-<a href=#828 id=828 data-nosnippet>828</a>                </span><span class="kw">match </span>info.variants.len() {
-<a href=#829 id=829 data-nosnippet>829</a>                    <span class="number">0 </span>=&gt; <span class="bool-val">false</span>,
-<a href=#830 id=830 data-nosnippet>830</a>                    <span class="number">1 </span>=&gt; registry
-<a href=#831 id=831 data-nosnippet>831</a>                        .get_type(<span class="kw-2">&amp;</span>info.variants[<span class="number">0</span>])<span class="question-mark">?
-<a href=#832 id=832 data-nosnippet>832</a>                        </span>.is_memory_allocated(registry)<span class="question-mark">?</span>,
-<a href=#833 id=833 data-nosnippet>833</a>                    <span class="kw">_ </span>=&gt; {
-<a href=#834 id=834 data-nosnippet>834</a>                        <span class="kw">let </span><span class="kw-2">mut </span>is_memory_allocated = <span class="bool-val">false</span>;
-<a href=#835 id=835 data-nosnippet>835</a>                        <span class="kw">for </span>variant <span class="kw">in </span><span class="kw-2">&amp;</span>info.variants {
-<a href=#836 id=836 data-nosnippet>836</a>                            <span class="kw">if </span>!registry.get_type(variant)<span class="question-mark">?</span>.is_zst(registry)<span class="question-mark">? </span>{
-<a href=#837 id=837 data-nosnippet>837</a>                                is_memory_allocated = <span class="bool-val">true</span>;
-<a href=#838 id=838 data-nosnippet>838</a>                                <span class="kw">break</span>;
-<a href=#839 id=839 data-nosnippet>839</a>                            }
-<a href=#840 id=840 data-nosnippet>840</a>                        }
-<a href=#841 id=841 data-nosnippet>841</a>                        is_memory_allocated
-<a href=#842 id=842 data-nosnippet>842</a>                    }
-<a href=#843 id=843 data-nosnippet>843</a>                }
-<a href=#844 id=844 data-nosnippet>844</a>            }
-<a href=#845 id=845 data-nosnippet>845</a>            CoreTypeConcrete::Struct(info) =&gt; {
-<a href=#846 id=846 data-nosnippet>846</a>                <span class="kw">let </span><span class="kw-2">mut </span>is_memory_allocated = <span class="bool-val">false</span>;
-<a href=#847 id=847 data-nosnippet>847</a>                <span class="kw">for </span>member <span class="kw">in </span><span class="kw-2">&amp;</span>info.members {
-<a href=#848 id=848 data-nosnippet>848</a>                    <span class="kw">if </span>registry.get_type(member)<span class="question-mark">?</span>.is_memory_allocated(registry)<span class="question-mark">? </span>{
-<a href=#849 id=849 data-nosnippet>849</a>                        is_memory_allocated = <span class="bool-val">true</span>;
-<a href=#850 id=850 data-nosnippet>850</a>                        <span class="kw">break</span>;
-<a href=#851 id=851 data-nosnippet>851</a>                    }
-<a href=#852 id=852 data-nosnippet>852</a>                }
-<a href=#853 id=853 data-nosnippet>853</a>                is_memory_allocated
-<a href=#854 id=854 data-nosnippet>854</a>            }
-<a href=#855 id=855 data-nosnippet>855</a>            CoreTypeConcrete::Felt252Dict(<span class="kw">_</span>) =&gt; <span class="bool-val">false</span>,
-<a href=#856 id=856 data-nosnippet>856</a>            CoreTypeConcrete::Felt252DictEntry(<span class="kw">_</span>) =&gt; <span class="bool-val">false</span>,
-<a href=#857 id=857 data-nosnippet>857</a>            CoreTypeConcrete::SquashedFelt252Dict(<span class="kw">_</span>) =&gt; <span class="bool-val">false</span>,
-<a href=#858 id=858 data-nosnippet>858</a>            CoreTypeConcrete::Pedersen(<span class="kw">_</span>) =&gt; <span class="bool-val">false</span>,
-<a href=#859 id=859 data-nosnippet>859</a>            CoreTypeConcrete::Poseidon(<span class="kw">_</span>) =&gt; <span class="bool-val">false</span>,
-<a href=#860 id=860 data-nosnippet>860</a>            CoreTypeConcrete::Span(<span class="kw">_</span>) =&gt; <span class="bool-val">false</span>,
-<a href=#861 id=861 data-nosnippet>861</a>            CoreTypeConcrete::Starknet(<span class="kw">_</span>) =&gt; <span class="bool-val">false</span>,
-<a href=#862 id=862 data-nosnippet>862</a>            CoreTypeConcrete::SegmentArena(<span class="kw">_</span>) =&gt; <span class="bool-val">false</span>,
-<a href=#863 id=863 data-nosnippet>863</a>            CoreTypeConcrete::Snapshot(info) =&gt; {
-<a href=#864 id=864 data-nosnippet>864</a>                registry.get_type(<span class="kw-2">&amp;</span>info.ty)<span class="question-mark">?</span>.is_memory_allocated(registry)<span class="question-mark">?
-<a href=#865 id=865 data-nosnippet>865</a>            </span>}
-<a href=#866 id=866 data-nosnippet>866</a>            CoreTypeConcrete::Bytes31(<span class="kw">_</span>) =&gt; <span class="bool-val">false</span>,
-<a href=#867 id=867 data-nosnippet>867</a>
-<a href=#868 id=868 data-nosnippet>868</a>            CoreTypeConcrete::BoundedInt(<span class="kw">_</span>) =&gt; <span class="bool-val">false</span>,
-<a href=#869 id=869 data-nosnippet>869</a>            CoreTypeConcrete::Const(info) =&gt; registry
-<a href=#870 id=870 data-nosnippet>870</a>                .get_type(<span class="kw-2">&amp;</span>info.inner_ty)<span class="question-mark">?
-<a href=#871 id=871 data-nosnippet>871</a>                </span>.is_memory_allocated(registry)<span class="question-mark">?</span>,
-<a href=#872 id=872 data-nosnippet>872</a>            CoreTypeConcrete::Coupon(<span class="kw">_</span>) =&gt; <span class="bool-val">false</span>,
-<a href=#873 id=873 data-nosnippet>873</a>            CoreTypeConcrete::Circuit(<span class="kw">_</span>) =&gt; <span class="bool-val">false</span>,
-<a href=#874 id=874 data-nosnippet>874</a>            CoreTypeConcrete::QM31(<span class="kw">_</span>) =&gt; <span class="macro">native_panic!</span>(<span class="string">"Implement is_memory_allocated for QM31"</span>),
-<a href=#875 id=875 data-nosnippet>875</a>            CoreTypeConcrete::GasReserve(<span class="kw">_</span>) =&gt; {
-<a href=#876 id=876 data-nosnippet>876</a>                <span class="macro">native_panic!</span>(<span class="string">"Implement is_memory_allocated for GasReserve"</span>)
-<a href=#877 id=877 data-nosnippet>877</a>            }
-<a href=#878 id=878 data-nosnippet>878</a>        })
-<a href=#879 id=879 data-nosnippet>879</a>    }
+<a href=#824 id=824 data-nosnippet>824</a>            CoreTypeConcrete::Enum(info) =&gt; <span class="kw">match </span>info.variants.len() {
+<a href=#825 id=825 data-nosnippet>825</a>                <span class="number">0 </span>=&gt; <span class="bool-val">false</span>,
+<a href=#826 id=826 data-nosnippet>826</a>                <span class="number">1 </span>=&gt; registry
+<a href=#827 id=827 data-nosnippet>827</a>                    .get_type(<span class="kw-2">&amp;</span>info.variants[<span class="number">0</span>])<span class="question-mark">?
+<a href=#828 id=828 data-nosnippet>828</a>                    </span>.is_memory_allocated(registry)<span class="question-mark">?</span>,
+<a href=#829 id=829 data-nosnippet>829</a>                <span class="kw">_ </span>=&gt; <span class="bool-val">true</span>,
+<a href=#830 id=830 data-nosnippet>830</a>            },
+<a href=#831 id=831 data-nosnippet>831</a>            CoreTypeConcrete::Struct(info) =&gt; {
+<a href=#832 id=832 data-nosnippet>832</a>                <span class="kw">let </span><span class="kw-2">mut </span>is_memory_allocated = <span class="bool-val">false</span>;
+<a href=#833 id=833 data-nosnippet>833</a>                <span class="kw">for </span>member <span class="kw">in </span><span class="kw-2">&amp;</span>info.members {
+<a href=#834 id=834 data-nosnippet>834</a>                    <span class="kw">if </span>registry.get_type(member)<span class="question-mark">?</span>.is_memory_allocated(registry)<span class="question-mark">? </span>{
+<a href=#835 id=835 data-nosnippet>835</a>                        is_memory_allocated = <span class="bool-val">true</span>;
+<a href=#836 id=836 data-nosnippet>836</a>                        <span class="kw">break</span>;
+<a href=#837 id=837 data-nosnippet>837</a>                    }
+<a href=#838 id=838 data-nosnippet>838</a>                }
+<a href=#839 id=839 data-nosnippet>839</a>                is_memory_allocated
+<a href=#840 id=840 data-nosnippet>840</a>            }
+<a href=#841 id=841 data-nosnippet>841</a>            CoreTypeConcrete::Felt252Dict(<span class="kw">_</span>) =&gt; <span class="bool-val">false</span>,
+<a href=#842 id=842 data-nosnippet>842</a>            CoreTypeConcrete::Felt252DictEntry(<span class="kw">_</span>) =&gt; <span class="bool-val">false</span>,
+<a href=#843 id=843 data-nosnippet>843</a>            CoreTypeConcrete::SquashedFelt252Dict(<span class="kw">_</span>) =&gt; <span class="bool-val">false</span>,
+<a href=#844 id=844 data-nosnippet>844</a>            CoreTypeConcrete::Pedersen(<span class="kw">_</span>) =&gt; <span class="bool-val">false</span>,
+<a href=#845 id=845 data-nosnippet>845</a>            CoreTypeConcrete::Poseidon(<span class="kw">_</span>) =&gt; <span class="bool-val">false</span>,
+<a href=#846 id=846 data-nosnippet>846</a>            CoreTypeConcrete::Span(<span class="kw">_</span>) =&gt; <span class="bool-val">false</span>,
+<a href=#847 id=847 data-nosnippet>847</a>            CoreTypeConcrete::Starknet(<span class="kw">_</span>) =&gt; <span class="bool-val">false</span>,
+<a href=#848 id=848 data-nosnippet>848</a>            CoreTypeConcrete::SegmentArena(<span class="kw">_</span>) =&gt; <span class="bool-val">false</span>,
+<a href=#849 id=849 data-nosnippet>849</a>            CoreTypeConcrete::Snapshot(info) =&gt; {
+<a href=#850 id=850 data-nosnippet>850</a>                registry.get_type(<span class="kw-2">&amp;</span>info.ty)<span class="question-mark">?</span>.is_memory_allocated(registry)<span class="question-mark">?
+<a href=#851 id=851 data-nosnippet>851</a>            </span>}
+<a href=#852 id=852 data-nosnippet>852</a>            CoreTypeConcrete::Bytes31(<span class="kw">_</span>) =&gt; <span class="bool-val">false</span>,
+<a href=#853 id=853 data-nosnippet>853</a>
+<a href=#854 id=854 data-nosnippet>854</a>            CoreTypeConcrete::BoundedInt(<span class="kw">_</span>) =&gt; <span class="bool-val">false</span>,
+<a href=#855 id=855 data-nosnippet>855</a>            CoreTypeConcrete::Const(info) =&gt; registry
+<a href=#856 id=856 data-nosnippet>856</a>                .get_type(<span class="kw-2">&amp;</span>info.inner_ty)<span class="question-mark">?
+<a href=#857 id=857 data-nosnippet>857</a>                </span>.is_memory_allocated(registry)<span class="question-mark">?</span>,
+<a href=#858 id=858 data-nosnippet>858</a>            CoreTypeConcrete::Coupon(<span class="kw">_</span>) =&gt; <span class="bool-val">false</span>,
+<a href=#859 id=859 data-nosnippet>859</a>            CoreTypeConcrete::Circuit(<span class="kw">_</span>) =&gt; <span class="bool-val">false</span>,
+<a href=#860 id=860 data-nosnippet>860</a>            CoreTypeConcrete::QM31(<span class="kw">_</span>) =&gt; <span class="macro">native_panic!</span>(<span class="string">"Implement is_memory_allocated for QM31"</span>),
+<a href=#861 id=861 data-nosnippet>861</a>            CoreTypeConcrete::GasReserve(<span class="kw">_</span>) =&gt; {
+<a href=#862 id=862 data-nosnippet>862</a>                <span class="macro">native_panic!</span>(<span class="string">"Implement is_memory_allocated for GasReserve"</span>)
+<a href=#863 id=863 data-nosnippet>863</a>            }
+<a href=#864 id=864 data-nosnippet>864</a>        })
+<a href=#865 id=865 data-nosnippet>865</a>    }
+<a href=#866 id=866 data-nosnippet>866</a>
+<a href=#867 id=867 data-nosnippet>867</a>    <span class="kw">fn </span>integer_range(
+<a href=#868 id=868 data-nosnippet>868</a>        <span class="kw-2">&amp;</span><span class="self">self</span>,
+<a href=#869 id=869 data-nosnippet>869</a>        registry: <span class="kw-2">&amp;</span>ProgramRegistry&lt;CoreType, CoreLibfunc&gt;,
+<a href=#870 id=870 data-nosnippet>870</a>    ) -&gt; <span class="prelude-ty">Result</span>&lt;Range, <span class="self">Self</span>::Error&gt; {
+<a href=#871 id=871 data-nosnippet>871</a>        <span class="kw">fn </span>range_of&lt;T&gt;() -&gt; Range
+<a href=#872 id=872 data-nosnippet>872</a>        <span class="kw">where
+<a href=#873 id=873 data-nosnippet>873</a>            </span>T: Bounded + Into&lt;BigInt&gt;,
+<a href=#874 id=874 data-nosnippet>874</a>        {
+<a href=#875 id=875 data-nosnippet>875</a>            Range {
+<a href=#876 id=876 data-nosnippet>876</a>                lower: T::min_value().into(),
+<a href=#877 id=877 data-nosnippet>877</a>                upper: T::max_value().into() + BigInt::one(),
+<a href=#878 id=878 data-nosnippet>878</a>            }
+<a href=#879 id=879 data-nosnippet>879</a>        }
 <a href=#880 id=880 data-nosnippet>880</a>
-<a href=#881 id=881 data-nosnippet>881</a>    <span class="kw">fn </span>integer_range(
-<a href=#882 id=882 data-nosnippet>882</a>        <span class="kw-2">&amp;</span><span class="self">self</span>,
-<a href=#883 id=883 data-nosnippet>883</a>        registry: <span class="kw-2">&amp;</span>ProgramRegistry&lt;CoreType, CoreLibfunc&gt;,
-<a href=#884 id=884 data-nosnippet>884</a>    ) -&gt; <span class="prelude-ty">Result</span>&lt;Range, <span class="self">Self</span>::Error&gt; {
-<a href=#885 id=885 data-nosnippet>885</a>        <span class="kw">fn </span>range_of&lt;T&gt;() -&gt; Range
-<a href=#886 id=886 data-nosnippet>886</a>        <span class="kw">where
-<a href=#887 id=887 data-nosnippet>887</a>            </span>T: Bounded + Into&lt;BigInt&gt;,
-<a href=#888 id=888 data-nosnippet>888</a>        {
-<a href=#889 id=889 data-nosnippet>889</a>            Range {
-<a href=#890 id=890 data-nosnippet>890</a>                lower: T::min_value().into(),
-<a href=#891 id=891 data-nosnippet>891</a>                upper: T::max_value().into() + BigInt::one(),
-<a href=#892 id=892 data-nosnippet>892</a>            }
-<a href=#893 id=893 data-nosnippet>893</a>        }
-<a href=#894 id=894 data-nosnippet>894</a>
-<a href=#895 id=895 data-nosnippet>895</a>        <span class="prelude-val">Ok</span>(<span class="kw">match </span><span class="self">self </span>{
-<a href=#896 id=896 data-nosnippet>896</a>            <span class="self">Self</span>::Uint8(<span class="kw">_</span>) =&gt; range_of::&lt;u8&gt;(),
-<a href=#897 id=897 data-nosnippet>897</a>            <span class="self">Self</span>::Uint16(<span class="kw">_</span>) =&gt; range_of::&lt;u16&gt;(),
-<a href=#898 id=898 data-nosnippet>898</a>            <span class="self">Self</span>::Uint32(<span class="kw">_</span>) =&gt; range_of::&lt;u32&gt;(),
-<a href=#899 id=899 data-nosnippet>899</a>            <span class="self">Self</span>::Uint64(<span class="kw">_</span>) =&gt; range_of::&lt;u64&gt;(),
-<a href=#900 id=900 data-nosnippet>900</a>            <span class="self">Self</span>::Uint128(<span class="kw">_</span>) =&gt; range_of::&lt;u128&gt;(),
-<a href=#901 id=901 data-nosnippet>901</a>            <span class="self">Self</span>::Felt252(<span class="kw">_</span>) =&gt; Range {
-<a href=#902 id=902 data-nosnippet>902</a>                lower: BigInt::ZERO,
-<a href=#903 id=903 data-nosnippet>903</a>                upper: BigInt::from_biguint(Sign::Plus, PRIME.clone()),
-<a href=#904 id=904 data-nosnippet>904</a>            },
-<a href=#905 id=905 data-nosnippet>905</a>            <span class="self">Self</span>::Sint8(<span class="kw">_</span>) =&gt; range_of::&lt;i8&gt;(),
-<a href=#906 id=906 data-nosnippet>906</a>            <span class="self">Self</span>::Sint16(<span class="kw">_</span>) =&gt; range_of::&lt;i16&gt;(),
-<a href=#907 id=907 data-nosnippet>907</a>            <span class="self">Self</span>::Sint32(<span class="kw">_</span>) =&gt; range_of::&lt;i32&gt;(),
-<a href=#908 id=908 data-nosnippet>908</a>            <span class="self">Self</span>::Sint64(<span class="kw">_</span>) =&gt; range_of::&lt;i64&gt;(),
-<a href=#909 id=909 data-nosnippet>909</a>            <span class="self">Self</span>::Sint128(<span class="kw">_</span>) =&gt; range_of::&lt;i128&gt;(),
-<a href=#910 id=910 data-nosnippet>910</a>
-<a href=#911 id=911 data-nosnippet>911</a>            <span class="self">Self</span>::BoundedInt(info) =&gt; info.range.clone(),
-<a href=#912 id=912 data-nosnippet>912</a>            <span class="self">Self</span>::Bytes31(<span class="kw">_</span>) =&gt; Range {
-<a href=#913 id=913 data-nosnippet>913</a>                lower: BigInt::ZERO,
-<a href=#914 id=914 data-nosnippet>914</a>                upper: BigInt::one() &lt;&lt; <span class="number">248</span>,
-<a href=#915 id=915 data-nosnippet>915</a>            },
-<a href=#916 id=916 data-nosnippet>916</a>            <span class="self">Self</span>::Const(info) =&gt; registry.get_type(<span class="kw-2">&amp;</span>info.inner_ty)<span class="question-mark">?</span>.integer_range(registry)<span class="question-mark">?</span>,
-<a href=#917 id=917 data-nosnippet>917</a>            <span class="self">Self</span>::NonZero(info) =&gt; registry.get_type(<span class="kw-2">&amp;</span>info.ty)<span class="question-mark">?</span>.integer_range(registry)<span class="question-mark">?</span>,
+<a href=#881 id=881 data-nosnippet>881</a>        <span class="prelude-val">Ok</span>(<span class="kw">match </span><span class="self">self </span>{
+<a href=#882 id=882 data-nosnippet>882</a>            <span class="self">Self</span>::Uint8(<span class="kw">_</span>) =&gt; range_of::&lt;u8&gt;(),
+<a href=#883 id=883 data-nosnippet>883</a>            <span class="self">Self</span>::Uint16(<span class="kw">_</span>) =&gt; range_of::&lt;u16&gt;(),
+<a href=#884 id=884 data-nosnippet>884</a>            <span class="self">Self</span>::Uint32(<span class="kw">_</span>) =&gt; range_of::&lt;u32&gt;(),
+<a href=#885 id=885 data-nosnippet>885</a>            <span class="self">Self</span>::Uint64(<span class="kw">_</span>) =&gt; range_of::&lt;u64&gt;(),
+<a href=#886 id=886 data-nosnippet>886</a>            <span class="self">Self</span>::Uint128(<span class="kw">_</span>) =&gt; range_of::&lt;u128&gt;(),
+<a href=#887 id=887 data-nosnippet>887</a>            <span class="self">Self</span>::Felt252(<span class="kw">_</span>) =&gt; Range {
+<a href=#888 id=888 data-nosnippet>888</a>                lower: BigInt::ZERO,
+<a href=#889 id=889 data-nosnippet>889</a>                upper: BigInt::from_biguint(Sign::Plus, PRIME.clone()),
+<a href=#890 id=890 data-nosnippet>890</a>            },
+<a href=#891 id=891 data-nosnippet>891</a>            <span class="self">Self</span>::Sint8(<span class="kw">_</span>) =&gt; range_of::&lt;i8&gt;(),
+<a href=#892 id=892 data-nosnippet>892</a>            <span class="self">Self</span>::Sint16(<span class="kw">_</span>) =&gt; range_of::&lt;i16&gt;(),
+<a href=#893 id=893 data-nosnippet>893</a>            <span class="self">Self</span>::Sint32(<span class="kw">_</span>) =&gt; range_of::&lt;i32&gt;(),
+<a href=#894 id=894 data-nosnippet>894</a>            <span class="self">Self</span>::Sint64(<span class="kw">_</span>) =&gt; range_of::&lt;i64&gt;(),
+<a href=#895 id=895 data-nosnippet>895</a>            <span class="self">Self</span>::Sint128(<span class="kw">_</span>) =&gt; range_of::&lt;i128&gt;(),
+<a href=#896 id=896 data-nosnippet>896</a>
+<a href=#897 id=897 data-nosnippet>897</a>            <span class="self">Self</span>::BoundedInt(info) =&gt; info.range.clone(),
+<a href=#898 id=898 data-nosnippet>898</a>            <span class="self">Self</span>::Bytes31(<span class="kw">_</span>) =&gt; Range {
+<a href=#899 id=899 data-nosnippet>899</a>                lower: BigInt::ZERO,
+<a href=#900 id=900 data-nosnippet>900</a>                upper: BigInt::one() &lt;&lt; <span class="number">248</span>,
+<a href=#901 id=901 data-nosnippet>901</a>            },
+<a href=#902 id=902 data-nosnippet>902</a>            <span class="self">Self</span>::Const(info) =&gt; registry.get_type(<span class="kw-2">&amp;</span>info.inner_ty)<span class="question-mark">?</span>.integer_range(registry)<span class="question-mark">?</span>,
+<a href=#903 id=903 data-nosnippet>903</a>            <span class="self">Self</span>::NonZero(info) =&gt; registry.get_type(<span class="kw-2">&amp;</span>info.ty)<span class="question-mark">?</span>.integer_range(registry)<span class="question-mark">?</span>,
+<a href=#904 id=904 data-nosnippet>904</a>
+<a href=#905 id=905 data-nosnippet>905</a>            <span class="kw">_ </span>=&gt; <span class="kw">return </span><span class="prelude-val">Err</span>(<span class="kw">crate</span>::error::Error::IntegerLikeTypeExpected),
+<a href=#906 id=906 data-nosnippet>906</a>        })
+<a href=#907 id=907 data-nosnippet>907</a>    }
+<a href=#908 id=908 data-nosnippet>908</a>
+<a href=#909 id=909 data-nosnippet>909</a>    <span class="kw">fn </span>is_bounded_int(
+<a href=#910 id=910 data-nosnippet>910</a>        <span class="kw-2">&amp;</span><span class="self">self</span>,
+<a href=#911 id=911 data-nosnippet>911</a>        registry: <span class="kw-2">&amp;</span>ProgramRegistry&lt;CoreType, CoreLibfunc&gt;,
+<a href=#912 id=912 data-nosnippet>912</a>    ) -&gt; <span class="prelude-ty">Result</span>&lt;bool, <span class="self">Self</span>::Error&gt; {
+<a href=#913 id=913 data-nosnippet>913</a>        <span class="prelude-val">Ok</span>(<span class="kw">match </span><span class="self">self </span>{
+<a href=#914 id=914 data-nosnippet>914</a>            CoreTypeConcrete::BoundedInt(<span class="kw">_</span>) =&gt; <span class="bool-val">true</span>,
+<a href=#915 id=915 data-nosnippet>915</a>            CoreTypeConcrete::NonZero(info) =&gt; {
+<a href=#916 id=916 data-nosnippet>916</a>                registry.get_type(<span class="kw-2">&amp;</span>info.ty)<span class="question-mark">?</span>.is_bounded_int(registry)<span class="question-mark">?
+<a href=#917 id=917 data-nosnippet>917</a>            </span>}
 <a href=#918 id=918 data-nosnippet>918</a>
-<a href=#919 id=919 data-nosnippet>919</a>            <span class="kw">_ </span>=&gt; <span class="kw">return </span><span class="prelude-val">Err</span>(<span class="kw">crate</span>::error::Error::IntegerLikeTypeExpected),
+<a href=#919 id=919 data-nosnippet>919</a>            <span class="kw">_ </span>=&gt; <span class="bool-val">false</span>,
 <a href=#920 id=920 data-nosnippet>920</a>        })
 <a href=#921 id=921 data-nosnippet>921</a>    }
 <a href=#922 id=922 data-nosnippet>922</a>
-<a href=#923 id=923 data-nosnippet>923</a>    <span class="kw">fn </span>is_bounded_int(
+<a href=#923 id=923 data-nosnippet>923</a>    <span class="kw">fn </span>is_felt252(
 <a href=#924 id=924 data-nosnippet>924</a>        <span class="kw-2">&amp;</span><span class="self">self</span>,
 <a href=#925 id=925 data-nosnippet>925</a>        registry: <span class="kw-2">&amp;</span>ProgramRegistry&lt;CoreType, CoreLibfunc&gt;,
 <a href=#926 id=926 data-nosnippet>926</a>    ) -&gt; <span class="prelude-ty">Result</span>&lt;bool, <span class="self">Self</span>::Error&gt; {
 <a href=#927 id=927 data-nosnippet>927</a>        <span class="prelude-val">Ok</span>(<span class="kw">match </span><span class="self">self </span>{
-<a href=#928 id=928 data-nosnippet>928</a>            CoreTypeConcrete::BoundedInt(<span class="kw">_</span>) =&gt; <span class="bool-val">true</span>,
-<a href=#929 id=929 data-nosnippet>929</a>            CoreTypeConcrete::NonZero(info) =&gt; {
-<a href=#930 id=930 data-nosnippet>930</a>                registry.get_type(<span class="kw-2">&amp;</span>info.ty)<span class="question-mark">?</span>.is_bounded_int(registry)<span class="question-mark">?
-<a href=#931 id=931 data-nosnippet>931</a>            </span>}
-<a href=#932 id=932 data-nosnippet>932</a>
-<a href=#933 id=933 data-nosnippet>933</a>            <span class="kw">_ </span>=&gt; <span class="bool-val">false</span>,
-<a href=#934 id=934 data-nosnippet>934</a>        })
-<a href=#935 id=935 data-nosnippet>935</a>    }
-<a href=#936 id=936 data-nosnippet>936</a>
-<a href=#937 id=937 data-nosnippet>937</a>    <span class="kw">fn </span>is_felt252(
-<a href=#938 id=938 data-nosnippet>938</a>        <span class="kw-2">&amp;</span><span class="self">self</span>,
-<a href=#939 id=939 data-nosnippet>939</a>        registry: <span class="kw-2">&amp;</span>ProgramRegistry&lt;CoreType, CoreLibfunc&gt;,
-<a href=#940 id=940 data-nosnippet>940</a>    ) -&gt; <span class="prelude-ty">Result</span>&lt;bool, <span class="self">Self</span>::Error&gt; {
-<a href=#941 id=941 data-nosnippet>941</a>        <span class="prelude-val">Ok</span>(<span class="kw">match </span><span class="self">self </span>{
-<a href=#942 id=942 data-nosnippet>942</a>            CoreTypeConcrete::Felt252(<span class="kw">_</span>) =&gt; <span class="bool-val">true</span>,
-<a href=#943 id=943 data-nosnippet>943</a>            CoreTypeConcrete::NonZero(info) =&gt; registry.get_type(<span class="kw-2">&amp;</span>info.ty)<span class="question-mark">?</span>.is_felt252(registry)<span class="question-mark">?</span>,
-<a href=#944 id=944 data-nosnippet>944</a>
-<a href=#945 id=945 data-nosnippet>945</a>            <span class="kw">_ </span>=&gt; <span class="bool-val">false</span>,
-<a href=#946 id=946 data-nosnippet>946</a>        })
-<a href=#947 id=947 data-nosnippet>947</a>    }
-<a href=#948 id=948 data-nosnippet>948</a>
-<a href=#949 id=949 data-nosnippet>949</a>    <span class="kw">fn </span>variants(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; <span class="prelude-ty">Option</span>&lt;<span class="kw-2">&amp;</span>[ConcreteTypeId]&gt; {
-<a href=#950 id=950 data-nosnippet>950</a>        <span class="kw">match </span><span class="self">self </span>{
-<a href=#951 id=951 data-nosnippet>951</a>            <span class="self">Self</span>::Enum(info) =&gt; <span class="prelude-val">Some</span>(<span class="kw-2">&amp;</span>info.variants),
-<a href=#952 id=952 data-nosnippet>952</a>            <span class="kw">_ </span>=&gt; <span class="prelude-val">None</span>,
-<a href=#953 id=953 data-nosnippet>953</a>        }
-<a href=#954 id=954 data-nosnippet>954</a>    }
+<a href=#928 id=928 data-nosnippet>928</a>            CoreTypeConcrete::Felt252(<span class="kw">_</span>) =&gt; <span class="bool-val">true</span>,
+<a href=#929 id=929 data-nosnippet>929</a>            CoreTypeConcrete::NonZero(info) =&gt; registry.get_type(<span class="kw-2">&amp;</span>info.ty)<span class="question-mark">?</span>.is_felt252(registry)<span class="question-mark">?</span>,
+<a href=#930 id=930 data-nosnippet>930</a>
+<a href=#931 id=931 data-nosnippet>931</a>            <span class="kw">_ </span>=&gt; <span class="bool-val">false</span>,
+<a href=#932 id=932 data-nosnippet>932</a>        })
+<a href=#933 id=933 data-nosnippet>933</a>    }
+<a href=#934 id=934 data-nosnippet>934</a>
+<a href=#935 id=935 data-nosnippet>935</a>    <span class="kw">fn </span>variants(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; <span class="prelude-ty">Option</span>&lt;<span class="kw-2">&amp;</span>[ConcreteTypeId]&gt; {
+<a href=#936 id=936 data-nosnippet>936</a>        <span class="kw">match </span><span class="self">self </span>{
+<a href=#937 id=937 data-nosnippet>937</a>            <span class="self">Self</span>::Enum(info) =&gt; <span class="prelude-val">Some</span>(<span class="kw-2">&amp;</span>info.variants),
+<a href=#938 id=938 data-nosnippet>938</a>            <span class="kw">_ </span>=&gt; <span class="prelude-val">None</span>,
+<a href=#939 id=939 data-nosnippet>939</a>        }
+<a href=#940 id=940 data-nosnippet>940</a>    }
+<a href=#941 id=941 data-nosnippet>941</a>
+<a href=#942 id=942 data-nosnippet>942</a>    <span class="kw">fn </span>build_default&lt;<span class="lifetime">'ctx</span>, <span class="lifetime">'this</span>&gt;(
+<a href=#943 id=943 data-nosnippet>943</a>        <span class="kw-2">&amp;</span><span class="self">self</span>,
+<a href=#944 id=944 data-nosnippet>944</a>        context: <span class="kw-2">&amp;</span><span class="lifetime">'ctx </span>Context,
+<a href=#945 id=945 data-nosnippet>945</a>        _registry: <span class="kw-2">&amp;</span>ProgramRegistry&lt;CoreType, CoreLibfunc&gt;,
+<a href=#946 id=946 data-nosnippet>946</a>        entry: <span class="kw-2">&amp;</span><span class="lifetime">'this </span>Block&lt;<span class="lifetime">'ctx</span>&gt;,
+<a href=#947 id=947 data-nosnippet>947</a>        location: Location&lt;<span class="lifetime">'ctx</span>&gt;,
+<a href=#948 id=948 data-nosnippet>948</a>        _helper: <span class="kw-2">&amp;</span>LibfuncHelper&lt;<span class="lifetime">'ctx</span>, <span class="lifetime">'this</span>&gt;,
+<a href=#949 id=949 data-nosnippet>949</a>        _metadata: <span class="kw-2">&amp;mut </span>MetadataStorage,
+<a href=#950 id=950 data-nosnippet>950</a>        _self_ty: <span class="kw-2">&amp;</span>ConcreteTypeId,
+<a href=#951 id=951 data-nosnippet>951</a>    ) -&gt; <span class="prelude-ty">Result</span>&lt;Value&lt;<span class="lifetime">'ctx</span>, <span class="lifetime">'this</span>&gt;, <span class="self">Self</span>::Error&gt; {
+<a href=#952 id=952 data-nosnippet>952</a>        <span class="kw">static </span>BOOL_USER_TYPE_ID: OnceLock&lt;UserTypeId&gt; = OnceLock::new();
+<a href=#953 id=953 data-nosnippet>953</a>        <span class="kw">let </span>bool_user_type_id =
+<a href=#954 id=954 data-nosnippet>954</a>            BOOL_USER_TYPE_ID.get_or_init(|| UserTypeId::from_string(<span class="string">"core::bool"</span>));
 <a href=#955 id=955 data-nosnippet>955</a>
-<a href=#956 id=956 data-nosnippet>956</a>    <span class="kw">fn </span>build_default&lt;<span class="lifetime">'ctx</span>, <span class="lifetime">'this</span>&gt;(
-<a href=#957 id=957 data-nosnippet>957</a>        <span class="kw-2">&amp;</span><span class="self">self</span>,
-<a href=#958 id=958 data-nosnippet>958</a>        context: <span class="kw-2">&amp;</span><span class="lifetime">'ctx </span>Context,
-<a href=#959 id=959 data-nosnippet>959</a>        _registry: <span class="kw-2">&amp;</span>ProgramRegistry&lt;CoreType, CoreLibfunc&gt;,
-<a href=#960 id=960 data-nosnippet>960</a>        entry: <span class="kw-2">&amp;</span><span class="lifetime">'this </span>Block&lt;<span class="lifetime">'ctx</span>&gt;,
-<a href=#961 id=961 data-nosnippet>961</a>        location: Location&lt;<span class="lifetime">'ctx</span>&gt;,
-<a href=#962 id=962 data-nosnippet>962</a>        _helper: <span class="kw-2">&amp;</span>LibfuncHelper&lt;<span class="lifetime">'ctx</span>, <span class="lifetime">'this</span>&gt;,
-<a href=#963 id=963 data-nosnippet>963</a>        _metadata: <span class="kw-2">&amp;mut </span>MetadataStorage,
-<a href=#964 id=964 data-nosnippet>964</a>        _self_ty: <span class="kw-2">&amp;</span>ConcreteTypeId,
-<a href=#965 id=965 data-nosnippet>965</a>    ) -&gt; <span class="prelude-ty">Result</span>&lt;Value&lt;<span class="lifetime">'ctx</span>, <span class="lifetime">'this</span>&gt;, <span class="self">Self</span>::Error&gt; {
-<a href=#966 id=966 data-nosnippet>966</a>        <span class="kw">static </span>BOOL_USER_TYPE_ID: OnceLock&lt;UserTypeId&gt; = OnceLock::new();
-<a href=#967 id=967 data-nosnippet>967</a>        <span class="kw">let </span>bool_user_type_id =
-<a href=#968 id=968 data-nosnippet>968</a>            BOOL_USER_TYPE_ID.get_or_init(|| UserTypeId::from_string(<span class="string">"core::bool"</span>));
-<a href=#969 id=969 data-nosnippet>969</a>
-<a href=#970 id=970 data-nosnippet>970</a>        <span class="prelude-val">Ok</span>(<span class="kw">match </span><span class="self">self </span>{
-<a href=#971 id=971 data-nosnippet>971</a>            <span class="self">Self</span>::Enum(info) =&gt; <span class="kw">match </span><span class="kw-2">&amp;</span>info.info.long_id.generic_args[<span class="number">0</span>] {
-<a href=#972 id=972 data-nosnippet>972</a>                GenericArg::UserType(id) <span class="kw">if </span>id == bool_user_type_id =&gt; {
-<a href=#973 id=973 data-nosnippet>973</a>                    <span class="kw">let </span>tag = entry.const_int(context, location, <span class="number">0</span>, <span class="number">1</span>)<span class="question-mark">?</span>;
-<a href=#974 id=974 data-nosnippet>974</a>
-<a href=#975 id=975 data-nosnippet>975</a>                    <span class="kw">let </span>value = entry.append_op_result(llvm::undef(
-<a href=#976 id=976 data-nosnippet>976</a>                        llvm::r#type::r#struct(
-<a href=#977 id=977 data-nosnippet>977</a>                            context,
-<a href=#978 id=978 data-nosnippet>978</a>                            <span class="kw-2">&amp;</span>[
-<a href=#979 id=979 data-nosnippet>979</a>                                IntegerType::new(context, <span class="number">1</span>).into(),
-<a href=#980 id=980 data-nosnippet>980</a>                                llvm::r#type::array(IntegerType::new(context, <span class="number">8</span>).into(), <span class="number">0</span>),
-<a href=#981 id=981 data-nosnippet>981</a>                            ],
-<a href=#982 id=982 data-nosnippet>982</a>                            <span class="bool-val">false</span>,
-<a href=#983 id=983 data-nosnippet>983</a>                        ),
-<a href=#984 id=984 data-nosnippet>984</a>                        location,
-<a href=#985 id=985 data-nosnippet>985</a>                    ))<span class="question-mark">?</span>;
-<a href=#986 id=986 data-nosnippet>986</a>
-<a href=#987 id=987 data-nosnippet>987</a>                    entry.insert_value(context, location, value, tag, <span class="number">0</span>)<span class="question-mark">?
-<a href=#988 id=988 data-nosnippet>988</a>                </span>}
-<a href=#989 id=989 data-nosnippet>989</a>                <span class="kw">_ </span>=&gt; <span class="macro">native_panic!</span>(<span class="string">"unsupported dict value type"</span>),
-<a href=#990 id=990 data-nosnippet>990</a>            },
-<a href=#991 id=991 data-nosnippet>991</a>            <span class="self">Self</span>::Felt252(<span class="kw">_</span>) =&gt; entry.const_int(context, location, <span class="number">0</span>, <span class="number">252</span>)<span class="question-mark">?</span>,
-<a href=#992 id=992 data-nosnippet>992</a>            <span class="self">Self</span>::Nullable(<span class="kw">_</span>) =&gt; {
-<a href=#993 id=993 data-nosnippet>993</a>                entry.append_op_result(llvm::zero(llvm::r#type::pointer(context, <span class="number">0</span>), location))<span class="question-mark">?
-<a href=#994 id=994 data-nosnippet>994</a>            </span>}
-<a href=#995 id=995 data-nosnippet>995</a>            <span class="self">Self</span>::Uint8(<span class="kw">_</span>) =&gt; entry.const_int(context, location, <span class="number">0</span>, <span class="number">8</span>)<span class="question-mark">?</span>,
-<a href=#996 id=996 data-nosnippet>996</a>            <span class="self">Self</span>::Uint16(<span class="kw">_</span>) =&gt; entry.const_int(context, location, <span class="number">0</span>, <span class="number">16</span>)<span class="question-mark">?</span>,
-<a href=#997 id=997 data-nosnippet>997</a>            <span class="self">Self</span>::Uint32(<span class="kw">_</span>) =&gt; entry.const_int(context, location, <span class="number">0</span>, <span class="number">32</span>)<span class="question-mark">?</span>,
-<a href=#998 id=998 data-nosnippet>998</a>            <span class="self">Self</span>::Uint64(<span class="kw">_</span>) =&gt; entry.const_int(context, location, <span class="number">0</span>, <span class="number">64</span>)<span class="question-mark">?</span>,
-<a href=#999 id=999 data-nosnippet>999</a>            <span class="self">Self</span>::Uint128(<span class="kw">_</span>) =&gt; entry.const_int(context, location, <span class="number">0</span>, <span class="number">128</span>)<span class="question-mark">?</span>,
-<a href=#1000 id=1000 data-nosnippet>1000</a>            <span class="kw">_ </span>=&gt; <span class="macro">native_panic!</span>(<span class="string">"unsupported dict value type"</span>),
-<a href=#1001 id=1001 data-nosnippet>1001</a>        })
-<a href=#1002 id=1002 data-nosnippet>1002</a>    }
-<a href=#1003 id=1003 data-nosnippet>1003</a>}
-<a href=#1004 id=1004 data-nosnippet>1004</a>
-<a href=#1005 id=1005 data-nosnippet>1005</a><span class="attr">#[derive(Clone, Debug, Eq, Hash, PartialEq)]
-<a href=#1006 id=1006 data-nosnippet>1006</a></span><span class="kw">pub struct </span>WithSelf&lt;<span class="lifetime">'a</span>, T&gt; {
-<a href=#1007 id=1007 data-nosnippet>1007</a>    self_ty: <span class="kw-2">&amp;</span><span class="lifetime">'a </span>ConcreteTypeId,
-<a href=#1008 id=1008 data-nosnippet>1008</a>    inner: <span class="kw-2">&amp;</span><span class="lifetime">'a </span>T,
-<a href=#1009 id=1009 data-nosnippet>1009</a>}
-<a href=#1010 id=1010 data-nosnippet>1010</a>
-<a href=#1011 id=1011 data-nosnippet>1011</a><span class="kw">impl</span>&lt;<span class="lifetime">'a</span>, T&gt; WithSelf&lt;<span class="lifetime">'a</span>, T&gt; {
-<a href=#1012 id=1012 data-nosnippet>1012</a>    <span class="kw">pub const fn </span>new(self_ty: <span class="kw-2">&amp;</span><span class="lifetime">'a </span>ConcreteTypeId, inner: <span class="kw-2">&amp;</span><span class="lifetime">'a </span>T) -&gt; <span class="self">Self </span>{
-<a href=#1013 id=1013 data-nosnippet>1013</a>        <span class="self">Self </span>{ self_ty, inner }
-<a href=#1014 id=1014 data-nosnippet>1014</a>    }
+<a href=#956 id=956 data-nosnippet>956</a>        <span class="prelude-val">Ok</span>(<span class="kw">match </span><span class="self">self </span>{
+<a href=#957 id=957 data-nosnippet>957</a>            <span class="self">Self</span>::Enum(info) =&gt; <span class="kw">match </span><span class="kw-2">&amp;</span>info.info.long_id.generic_args[<span class="number">0</span>] {
+<a href=#958 id=958 data-nosnippet>958</a>                GenericArg::UserType(id) <span class="kw">if </span>id == bool_user_type_id =&gt; {
+<a href=#959 id=959 data-nosnippet>959</a>                    <span class="kw">let </span>tag = entry.const_int(context, location, <span class="number">0</span>, <span class="number">1</span>)<span class="question-mark">?</span>;
+<a href=#960 id=960 data-nosnippet>960</a>
+<a href=#961 id=961 data-nosnippet>961</a>                    <span class="kw">let </span>value = entry.append_op_result(llvm::undef(
+<a href=#962 id=962 data-nosnippet>962</a>                        llvm::r#type::r#struct(
+<a href=#963 id=963 data-nosnippet>963</a>                            context,
+<a href=#964 id=964 data-nosnippet>964</a>                            <span class="kw-2">&amp;</span>[
+<a href=#965 id=965 data-nosnippet>965</a>                                IntegerType::new(context, <span class="number">1</span>).into(),
+<a href=#966 id=966 data-nosnippet>966</a>                                llvm::r#type::array(IntegerType::new(context, <span class="number">8</span>).into(), <span class="number">0</span>),
+<a href=#967 id=967 data-nosnippet>967</a>                            ],
+<a href=#968 id=968 data-nosnippet>968</a>                            <span class="bool-val">false</span>,
+<a href=#969 id=969 data-nosnippet>969</a>                        ),
+<a href=#970 id=970 data-nosnippet>970</a>                        location,
+<a href=#971 id=971 data-nosnippet>971</a>                    ))<span class="question-mark">?</span>;
+<a href=#972 id=972 data-nosnippet>972</a>
+<a href=#973 id=973 data-nosnippet>973</a>                    entry.insert_value(context, location, value, tag, <span class="number">0</span>)<span class="question-mark">?
+<a href=#974 id=974 data-nosnippet>974</a>                </span>}
+<a href=#975 id=975 data-nosnippet>975</a>                <span class="kw">_ </span>=&gt; <span class="macro">native_panic!</span>(<span class="string">"unsupported dict value type"</span>),
+<a href=#976 id=976 data-nosnippet>976</a>            },
+<a href=#977 id=977 data-nosnippet>977</a>            <span class="self">Self</span>::Felt252(<span class="kw">_</span>) =&gt; entry.const_int(context, location, <span class="number">0</span>, <span class="number">252</span>)<span class="question-mark">?</span>,
+<a href=#978 id=978 data-nosnippet>978</a>            <span class="self">Self</span>::Nullable(<span class="kw">_</span>) =&gt; {
+<a href=#979 id=979 data-nosnippet>979</a>                entry.append_op_result(llvm::zero(llvm::r#type::pointer(context, <span class="number">0</span>), location))<span class="question-mark">?
+<a href=#980 id=980 data-nosnippet>980</a>            </span>}
+<a href=#981 id=981 data-nosnippet>981</a>            <span class="self">Self</span>::Uint8(<span class="kw">_</span>) =&gt; entry.const_int(context, location, <span class="number">0</span>, <span class="number">8</span>)<span class="question-mark">?</span>,
+<a href=#982 id=982 data-nosnippet>982</a>            <span class="self">Self</span>::Uint16(<span class="kw">_</span>) =&gt; entry.const_int(context, location, <span class="number">0</span>, <span class="number">16</span>)<span class="question-mark">?</span>,
+<a href=#983 id=983 data-nosnippet>983</a>            <span class="self">Self</span>::Uint32(<span class="kw">_</span>) =&gt; entry.const_int(context, location, <span class="number">0</span>, <span class="number">32</span>)<span class="question-mark">?</span>,
+<a href=#984 id=984 data-nosnippet>984</a>            <span class="self">Self</span>::Uint64(<span class="kw">_</span>) =&gt; entry.const_int(context, location, <span class="number">0</span>, <span class="number">64</span>)<span class="question-mark">?</span>,
+<a href=#985 id=985 data-nosnippet>985</a>            <span class="self">Self</span>::Uint128(<span class="kw">_</span>) =&gt; entry.const_int(context, location, <span class="number">0</span>, <span class="number">128</span>)<span class="question-mark">?</span>,
+<a href=#986 id=986 data-nosnippet>986</a>            <span class="kw">_ </span>=&gt; <span class="macro">native_panic!</span>(<span class="string">"unsupported dict value type"</span>),
+<a href=#987 id=987 data-nosnippet>987</a>        })
+<a href=#988 id=988 data-nosnippet>988</a>    }
+<a href=#989 id=989 data-nosnippet>989</a>}
+<a href=#990 id=990 data-nosnippet>990</a>
+<a href=#991 id=991 data-nosnippet>991</a><span class="attr">#[derive(Clone, Debug, Eq, Hash, PartialEq)]
+<a href=#992 id=992 data-nosnippet>992</a></span><span class="kw">pub struct </span>WithSelf&lt;<span class="lifetime">'a</span>, T&gt; {
+<a href=#993 id=993 data-nosnippet>993</a>    self_ty: <span class="kw-2">&amp;</span><span class="lifetime">'a </span>ConcreteTypeId,
+<a href=#994 id=994 data-nosnippet>994</a>    inner: <span class="kw-2">&amp;</span><span class="lifetime">'a </span>T,
+<a href=#995 id=995 data-nosnippet>995</a>}
+<a href=#996 id=996 data-nosnippet>996</a>
+<a href=#997 id=997 data-nosnippet>997</a><span class="kw">impl</span>&lt;<span class="lifetime">'a</span>, T&gt; WithSelf&lt;<span class="lifetime">'a</span>, T&gt; {
+<a href=#998 id=998 data-nosnippet>998</a>    <span class="kw">pub const fn </span>new(self_ty: <span class="kw-2">&amp;</span><span class="lifetime">'a </span>ConcreteTypeId, inner: <span class="kw-2">&amp;</span><span class="lifetime">'a </span>T) -&gt; <span class="self">Self </span>{
+<a href=#999 id=999 data-nosnippet>999</a>        <span class="self">Self </span>{ self_ty, inner }
+<a href=#1000 id=1000 data-nosnippet>1000</a>    }
+<a href=#1001 id=1001 data-nosnippet>1001</a>
+<a href=#1002 id=1002 data-nosnippet>1002</a>    <span class="kw">pub const fn </span>self_ty(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; <span class="kw-2">&amp;</span>ConcreteTypeId {
+<a href=#1003 id=1003 data-nosnippet>1003</a>        <span class="self">self</span>.self_ty
+<a href=#1004 id=1004 data-nosnippet>1004</a>    }
+<a href=#1005 id=1005 data-nosnippet>1005</a>}
+<a href=#1006 id=1006 data-nosnippet>1006</a>
+<a href=#1007 id=1007 data-nosnippet>1007</a><span class="kw">impl</span>&lt;T&gt; AsRef&lt;T&gt; <span class="kw">for </span>WithSelf&lt;<span class="lifetime">'_</span>, T&gt; {
+<a href=#1008 id=1008 data-nosnippet>1008</a>    <span class="kw">fn </span>as_ref(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; <span class="kw-2">&amp;</span>T {
+<a href=#1009 id=1009 data-nosnippet>1009</a>        <span class="self">self</span>.inner
+<a href=#1010 id=1010 data-nosnippet>1010</a>    }
+<a href=#1011 id=1011 data-nosnippet>1011</a>}
+<a href=#1012 id=1012 data-nosnippet>1012</a>
+<a href=#1013 id=1013 data-nosnippet>1013</a><span class="kw">impl</span>&lt;T&gt; Deref <span class="kw">for </span>WithSelf&lt;<span class="lifetime">'_</span>, T&gt; {
+<a href=#1014 id=1014 data-nosnippet>1014</a>    <span class="kw">type </span>Target = T;
 <a href=#1015 id=1015 data-nosnippet>1015</a>
-<a href=#1016 id=1016 data-nosnippet>1016</a>    <span class="kw">pub const fn </span>self_ty(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; <span class="kw-2">&amp;</span>ConcreteTypeId {
-<a href=#1017 id=1017 data-nosnippet>1017</a>        <span class="self">self</span>.self_ty
+<a href=#1016 id=1016 data-nosnippet>1016</a>    <span class="kw">fn </span>deref(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; <span class="kw-2">&amp;</span>T {
+<a href=#1017 id=1017 data-nosnippet>1017</a>        <span class="self">self</span>.inner
 <a href=#1018 id=1018 data-nosnippet>1018</a>    }
 <a href=#1019 id=1019 data-nosnippet>1019</a>}
 <a href=#1020 id=1020 data-nosnippet>1020</a>
-<a href=#1021 id=1021 data-nosnippet>1021</a><span class="kw">impl</span>&lt;T&gt; AsRef&lt;T&gt; <span class="kw">for </span>WithSelf&lt;<span class="lifetime">'_</span>, T&gt; {
-<a href=#1022 id=1022 data-nosnippet>1022</a>    <span class="kw">fn </span>as_ref(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; <span class="kw-2">&amp;</span>T {
-<a href=#1023 id=1023 data-nosnippet>1023</a>        <span class="self">self</span>.inner
-<a href=#1024 id=1024 data-nosnippet>1024</a>    }
-<a href=#1025 id=1025 data-nosnippet>1025</a>}
-<a href=#1026 id=1026 data-nosnippet>1026</a>
-<a href=#1027 id=1027 data-nosnippet>1027</a><span class="kw">impl</span>&lt;T&gt; Deref <span class="kw">for </span>WithSelf&lt;<span class="lifetime">'_</span>, T&gt; {
-<a href=#1028 id=1028 data-nosnippet>1028</a>    <span class="kw">type </span>Target = T;
+<a href=#1021 id=1021 data-nosnippet>1021</a><span class="attr">#[cfg(test)]
+<a href=#1022 id=1022 data-nosnippet>1022</a></span><span class="kw">mod </span>test {
+<a href=#1023 id=1023 data-nosnippet>1023</a>    <span class="kw">use </span><span class="kw">super</span>::TypeBuilder;
+<a href=#1024 id=1024 data-nosnippet>1024</a>    <span class="kw">use </span><span class="kw">crate</span>::load_cairo;
+<a href=#1025 id=1025 data-nosnippet>1025</a>    <span class="kw">use </span>cairo_lang_sierra::{
+<a href=#1026 id=1026 data-nosnippet>1026</a>        extensions::core::{CoreLibfunc, CoreType},
+<a href=#1027 id=1027 data-nosnippet>1027</a>        program_registry::ProgramRegistry,
+<a href=#1028 id=1028 data-nosnippet>1028</a>    };
 <a href=#1029 id=1029 data-nosnippet>1029</a>
-<a href=#1030 id=1030 data-nosnippet>1030</a>    <span class="kw">fn </span>deref(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; <span class="kw-2">&amp;</span>T {
-<a href=#1031 id=1031 data-nosnippet>1031</a>        <span class="self">self</span>.inner
-<a href=#1032 id=1032 data-nosnippet>1032</a>    }
-<a href=#1033 id=1033 data-nosnippet>1033</a>}
-<a href=#1034 id=1034 data-nosnippet>1034</a>
-<a href=#1035 id=1035 data-nosnippet>1035</a><span class="attr">#[cfg(test)]
-<a href=#1036 id=1036 data-nosnippet>1036</a></span><span class="kw">mod </span>test {
-<a href=#1037 id=1037 data-nosnippet>1037</a>    <span class="kw">use </span><span class="kw">super</span>::TypeBuilder;
-<a href=#1038 id=1038 data-nosnippet>1038</a>    <span class="kw">use </span><span class="kw">crate</span>::load_cairo;
-<a href=#1039 id=1039 data-nosnippet>1039</a>    <span class="kw">use </span>cairo_lang_sierra::{
-<a href=#1040 id=1040 data-nosnippet>1040</a>        extensions::core::{CoreLibfunc, CoreType},
-<a href=#1041 id=1041 data-nosnippet>1041</a>        program_registry::ProgramRegistry,
-<a href=#1042 id=1042 data-nosnippet>1042</a>    };
-<a href=#1043 id=1043 data-nosnippet>1043</a>
-<a href=#1044 id=1044 data-nosnippet>1044</a>    <span class="attr">#[test]
-<a href=#1045 id=1045 data-nosnippet>1045</a>    </span><span class="kw">fn </span>ensure_padded_layouts() {
-<a href=#1046 id=1046 data-nosnippet>1046</a>        <span class="kw">let </span>(<span class="kw">_</span>, program) = <span class="macro">load_cairo!</span> {
-<a href=#1047 id=1047 data-nosnippet>1047</a>            <span class="attr">#[derive(Drop)]
-<a href=#1048 id=1048 data-nosnippet>1048</a>            </span><span class="kw">struct </span>A {}
-<a href=#1049 id=1049 data-nosnippet>1049</a>            <span class="attr">#[derive(Drop)]
-<a href=#1050 id=1050 data-nosnippet>1050</a>            </span><span class="kw">struct </span>B { a: u8 }
-<a href=#1051 id=1051 data-nosnippet>1051</a>            <span class="attr">#[derive(Drop)]
-<a href=#1052 id=1052 data-nosnippet>1052</a>            </span><span class="kw">struct </span>C { a: u8, b: u16 }
-<a href=#1053 id=1053 data-nosnippet>1053</a>            <span class="attr">#[derive(Drop)]
-<a href=#1054 id=1054 data-nosnippet>1054</a>            </span><span class="kw">struct </span>D { a: u16, b: u8 }
-<a href=#1055 id=1055 data-nosnippet>1055</a>
-<a href=#1056 id=1056 data-nosnippet>1056</a>            <span class="kw">fn </span>main(a: A, b: B, c: C, d: D) {}
-<a href=#1057 id=1057 data-nosnippet>1057</a>        };
-<a href=#1058 id=1058 data-nosnippet>1058</a>
-<a href=#1059 id=1059 data-nosnippet>1059</a>        <span class="kw">let </span>registry = ProgramRegistry::&lt;CoreType, CoreLibfunc&gt;::new(<span class="kw-2">&amp;</span>program).unwrap();
-<a href=#1060 id=1060 data-nosnippet>1060</a>        <span class="kw">for </span>ty <span class="kw">in </span><span class="kw-2">&amp;</span>program.type_declarations {
-<a href=#1061 id=1061 data-nosnippet>1061</a>            <span class="kw">let </span>ty = registry.get_type(<span class="kw-2">&amp;</span>ty.id).unwrap();
-<a href=#1062 id=1062 data-nosnippet>1062</a>            <span class="kw">let </span>layout = ty.layout(<span class="kw-2">&amp;</span>registry).unwrap();
-<a href=#1063 id=1063 data-nosnippet>1063</a>            <span class="macro">assert_eq!</span>(layout, layout.pad_to_align());
-<a href=#1064 id=1064 data-nosnippet>1064</a>        }
-<a href=#1065 id=1065 data-nosnippet>1065</a>    }
-<a href=#1066 id=1066 data-nosnippet>1066</a>}</code></pre></div></section></main></body></html>
+<a href=#1030 id=1030 data-nosnippet>1030</a>    <span class="attr">#[test]
+<a href=#1031 id=1031 data-nosnippet>1031</a>    </span><span class="kw">fn </span>ensure_padded_layouts() {
+<a href=#1032 id=1032 data-nosnippet>1032</a>        <span class="kw">let </span>(<span class="kw">_</span>, program) = <span class="macro">load_cairo!</span> {
+<a href=#1033 id=1033 data-nosnippet>1033</a>            <span class="attr">#[derive(Drop)]
+<a href=#1034 id=1034 data-nosnippet>1034</a>            </span><span class="kw">struct </span>A {}
+<a href=#1035 id=1035 data-nosnippet>1035</a>            <span class="attr">#[derive(Drop)]
+<a href=#1036 id=1036 data-nosnippet>1036</a>            </span><span class="kw">struct </span>B { a: u8 }
+<a href=#1037 id=1037 data-nosnippet>1037</a>            <span class="attr">#[derive(Drop)]
+<a href=#1038 id=1038 data-nosnippet>1038</a>            </span><span class="kw">struct </span>C { a: u8, b: u16 }
+<a href=#1039 id=1039 data-nosnippet>1039</a>            <span class="attr">#[derive(Drop)]
+<a href=#1040 id=1040 data-nosnippet>1040</a>            </span><span class="kw">struct </span>D { a: u16, b: u8 }
+<a href=#1041 id=1041 data-nosnippet>1041</a>
+<a href=#1042 id=1042 data-nosnippet>1042</a>            <span class="kw">fn </span>main(a: A, b: B, c: C, d: D) {}
+<a href=#1043 id=1043 data-nosnippet>1043</a>        };
+<a href=#1044 id=1044 data-nosnippet>1044</a>
+<a href=#1045 id=1045 data-nosnippet>1045</a>        <span class="kw">let </span>registry = ProgramRegistry::&lt;CoreType, CoreLibfunc&gt;::new(<span class="kw-2">&amp;</span>program).unwrap();
+<a href=#1046 id=1046 data-nosnippet>1046</a>        <span class="kw">for </span>ty <span class="kw">in </span><span class="kw-2">&amp;</span>program.type_declarations {
+<a href=#1047 id=1047 data-nosnippet>1047</a>            <span class="kw">let </span>ty = registry.get_type(<span class="kw-2">&amp;</span>ty.id).unwrap();
+<a href=#1048 id=1048 data-nosnippet>1048</a>            <span class="kw">let </span>layout = ty.layout(<span class="kw-2">&amp;</span>registry).unwrap();
+<a href=#1049 id=1049 data-nosnippet>1049</a>            <span class="macro">assert_eq!</span>(layout, layout.pad_to_align());
+<a href=#1050 id=1050 data-nosnippet>1050</a>        }
+<a href=#1051 id=1051 data-nosnippet>1051</a>    }
+<a href=#1052 id=1052 data-nosnippet>1052</a>}</code></pre></div></section></main></body></html>

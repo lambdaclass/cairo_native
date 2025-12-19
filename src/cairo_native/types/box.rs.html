@@ -112,60 +112,57 @@
 <a href=#112 id=112 data-nosnippet>112</a>        location,
 <a href=#113 id=113 data-nosnippet>113</a>    )<span class="question-mark">?</span>)<span class="question-mark">?</span>;
 <a href=#114 id=114 data-nosnippet>114</a>
-<a href=#115 id=115 data-nosnippet>115</a>    <span class="kw">match </span>metadata.get::&lt;DupOverridesMeta&gt;() {
-<a href=#116 id=116 data-nosnippet>116</a>        <span class="prelude-val">Some</span>(dup_override_meta) <span class="kw">if </span>dup_override_meta.is_overriden(<span class="kw-2">&amp;</span>info.ty) =&gt; {
-<a href=#117 id=117 data-nosnippet>117</a>            <span class="kw">let </span>value = entry.load(context, location, src_value, inner_ty)<span class="question-mark">?</span>;
-<a href=#118 id=118 data-nosnippet>118</a>            <span class="kw">let </span>values =
-<a href=#119 id=119 data-nosnippet>119</a>                dup_override_meta.invoke_override(context, <span class="kw-2">&amp;</span>entry, location, <span class="kw-2">&amp;</span>info.ty, value)<span class="question-mark">?</span>;
-<a href=#120 id=120 data-nosnippet>120</a>            entry.store(context, location, src_value, values.<span class="number">0</span>)<span class="question-mark">?</span>;
-<a href=#121 id=121 data-nosnippet>121</a>            entry.store(context, location, dst_value, values.<span class="number">1</span>)<span class="question-mark">?</span>;
-<a href=#122 id=122 data-nosnippet>122</a>        }
-<a href=#123 id=123 data-nosnippet>123</a>        <span class="kw">_ </span>=&gt; {
-<a href=#124 id=124 data-nosnippet>124</a>            entry.append_operation(
-<a href=#125 id=125 data-nosnippet>125</a>                ods::llvm::intr_memcpy_inline(
-<a href=#126 id=126 data-nosnippet>126</a>                    context,
-<a href=#127 id=127 data-nosnippet>127</a>                    dst_value,
-<a href=#128 id=128 data-nosnippet>128</a>                    src_value,
-<a href=#129 id=129 data-nosnippet>129</a>                    IntegerAttribute::new(IntegerType::new(context, <span class="number">64</span>).into(), inner_len <span class="kw">as </span>i64),
-<a href=#130 id=130 data-nosnippet>130</a>                    IntegerAttribute::new(IntegerType::new(context, <span class="number">1</span>).into(), <span class="number">0</span>),
-<a href=#131 id=131 data-nosnippet>131</a>                    location,
-<a href=#132 id=132 data-nosnippet>132</a>                )
-<a href=#133 id=133 data-nosnippet>133</a>                .into(),
-<a href=#134 id=134 data-nosnippet>134</a>            );
-<a href=#135 id=135 data-nosnippet>135</a>        }
-<a href=#136 id=136 data-nosnippet>136</a>    }
-<a href=#137 id=137 data-nosnippet>137</a>
-<a href=#138 id=138 data-nosnippet>138</a>    entry.append_operation(func::r#return(<span class="kw-2">&amp;</span>[src_value, dst_value], location));
-<a href=#139 id=139 data-nosnippet>139</a>    <span class="prelude-val">Ok</span>(region)
-<a href=#140 id=140 data-nosnippet>140</a>}
-<a href=#141 id=141 data-nosnippet>141</a>
-<a href=#142 id=142 data-nosnippet>142</a><span class="kw">fn </span>build_drop&lt;<span class="lifetime">'ctx</span>&gt;(
-<a href=#143 id=143 data-nosnippet>143</a>    context: <span class="kw-2">&amp;</span><span class="lifetime">'ctx </span>Context,
-<a href=#144 id=144 data-nosnippet>144</a>    module: <span class="kw-2">&amp;</span>Module&lt;<span class="lifetime">'ctx</span>&gt;,
-<a href=#145 id=145 data-nosnippet>145</a>    registry: <span class="kw-2">&amp;</span>ProgramRegistry&lt;CoreType, CoreLibfunc&gt;,
-<a href=#146 id=146 data-nosnippet>146</a>    metadata: <span class="kw-2">&amp;mut </span>MetadataStorage,
-<a href=#147 id=147 data-nosnippet>147</a>    info: <span class="kw-2">&amp;</span>WithSelf&lt;InfoAndTypeConcreteType&gt;,
-<a href=#148 id=148 data-nosnippet>148</a>) -&gt; <span class="prelude-ty">Result</span>&lt;Region&lt;<span class="lifetime">'ctx</span>&gt;&gt; {
-<a href=#149 id=149 data-nosnippet>149</a>    <span class="kw">let </span>location = Location::unknown(context);
-<a href=#150 id=150 data-nosnippet>150</a>    <span class="kw">if </span>metadata.get::&lt;ReallocBindingsMeta&gt;().is_none() {
-<a href=#151 id=151 data-nosnippet>151</a>        metadata.insert(ReallocBindingsMeta::new(context, module));
-<a href=#152 id=152 data-nosnippet>152</a>    }
+<a href=#115 id=115 data-nosnippet>115</a>    <span class="kw">if </span>DupOverridesMeta::is_overriden(metadata, <span class="kw-2">&amp;</span>info.ty) {
+<a href=#116 id=116 data-nosnippet>116</a>        <span class="kw">let </span>value = entry.load(context, location, src_value, inner_ty)<span class="question-mark">?</span>;
+<a href=#117 id=117 data-nosnippet>117</a>        <span class="kw">let </span>values = DupOverridesMeta::invoke_override(
+<a href=#118 id=118 data-nosnippet>118</a>            context, registry, module, <span class="kw-2">&amp;</span>entry, <span class="kw-2">&amp;</span>entry, location, metadata, <span class="kw-2">&amp;</span>info.ty, value,
+<a href=#119 id=119 data-nosnippet>119</a>        )<span class="question-mark">?</span>;
+<a href=#120 id=120 data-nosnippet>120</a>        entry.store(context, location, src_value, values.<span class="number">0</span>)<span class="question-mark">?</span>;
+<a href=#121 id=121 data-nosnippet>121</a>        entry.store(context, location, dst_value, values.<span class="number">1</span>)<span class="question-mark">?</span>;
+<a href=#122 id=122 data-nosnippet>122</a>    } <span class="kw">else </span>{
+<a href=#123 id=123 data-nosnippet>123</a>        entry.append_operation(
+<a href=#124 id=124 data-nosnippet>124</a>            ods::llvm::intr_memcpy_inline(
+<a href=#125 id=125 data-nosnippet>125</a>                context,
+<a href=#126 id=126 data-nosnippet>126</a>                dst_value,
+<a href=#127 id=127 data-nosnippet>127</a>                src_value,
+<a href=#128 id=128 data-nosnippet>128</a>                IntegerAttribute::new(IntegerType::new(context, <span class="number">64</span>).into(), inner_len <span class="kw">as </span>i64),
+<a href=#129 id=129 data-nosnippet>129</a>                IntegerAttribute::new(IntegerType::new(context, <span class="number">1</span>).into(), <span class="number">0</span>),
+<a href=#130 id=130 data-nosnippet>130</a>                location,
+<a href=#131 id=131 data-nosnippet>131</a>            )
+<a href=#132 id=132 data-nosnippet>132</a>            .into(),
+<a href=#133 id=133 data-nosnippet>133</a>        );
+<a href=#134 id=134 data-nosnippet>134</a>    }
+<a href=#135 id=135 data-nosnippet>135</a>
+<a href=#136 id=136 data-nosnippet>136</a>    entry.append_operation(func::r#return(<span class="kw-2">&amp;</span>[src_value, dst_value], location));
+<a href=#137 id=137 data-nosnippet>137</a>    <span class="prelude-val">Ok</span>(region)
+<a href=#138 id=138 data-nosnippet>138</a>}
+<a href=#139 id=139 data-nosnippet>139</a>
+<a href=#140 id=140 data-nosnippet>140</a><span class="kw">fn </span>build_drop&lt;<span class="lifetime">'ctx</span>&gt;(
+<a href=#141 id=141 data-nosnippet>141</a>    context: <span class="kw-2">&amp;</span><span class="lifetime">'ctx </span>Context,
+<a href=#142 id=142 data-nosnippet>142</a>    module: <span class="kw-2">&amp;</span>Module&lt;<span class="lifetime">'ctx</span>&gt;,
+<a href=#143 id=143 data-nosnippet>143</a>    registry: <span class="kw-2">&amp;</span>ProgramRegistry&lt;CoreType, CoreLibfunc&gt;,
+<a href=#144 id=144 data-nosnippet>144</a>    metadata: <span class="kw-2">&amp;mut </span>MetadataStorage,
+<a href=#145 id=145 data-nosnippet>145</a>    info: <span class="kw-2">&amp;</span>WithSelf&lt;InfoAndTypeConcreteType&gt;,
+<a href=#146 id=146 data-nosnippet>146</a>) -&gt; <span class="prelude-ty">Result</span>&lt;Region&lt;<span class="lifetime">'ctx</span>&gt;&gt; {
+<a href=#147 id=147 data-nosnippet>147</a>    <span class="kw">let </span>location = Location::unknown(context);
+<a href=#148 id=148 data-nosnippet>148</a>    <span class="kw">if </span>metadata.get::&lt;ReallocBindingsMeta&gt;().is_none() {
+<a href=#149 id=149 data-nosnippet>149</a>        metadata.insert(ReallocBindingsMeta::new(context, module));
+<a href=#150 id=150 data-nosnippet>150</a>    }
+<a href=#151 id=151 data-nosnippet>151</a>
+<a href=#152 id=152 data-nosnippet>152</a>    <span class="kw">let </span>inner_ty = registry.build_type(context, module, metadata, <span class="kw-2">&amp;</span>info.ty)<span class="question-mark">?</span>;
 <a href=#153 id=153 data-nosnippet>153</a>
-<a href=#154 id=154 data-nosnippet>154</a>    <span class="kw">let </span>inner_ty = registry.build_type(context, module, metadata, <span class="kw-2">&amp;</span>info.ty)<span class="question-mark">?</span>;
-<a href=#155 id=155 data-nosnippet>155</a>
-<a href=#156 id=156 data-nosnippet>156</a>    <span class="kw">let </span>region = Region::new();
-<a href=#157 id=157 data-nosnippet>157</a>    <span class="kw">let </span>entry = region.append_block(Block::new(<span class="kw-2">&amp;</span>[(llvm::r#type::pointer(context, <span class="number">0</span>), location)]));
-<a href=#158 id=158 data-nosnippet>158</a>
-<a href=#159 id=159 data-nosnippet>159</a>    <span class="kw">let </span>value = entry.arg(<span class="number">0</span>)<span class="question-mark">?</span>;
-<a href=#160 id=160 data-nosnippet>160</a>    <span class="kw">match </span>metadata.get::&lt;DropOverridesMeta&gt;() {
-<a href=#161 id=161 data-nosnippet>161</a>        <span class="prelude-val">Some</span>(drop_override_meta) <span class="kw">if </span>drop_override_meta.is_overriden(<span class="kw-2">&amp;</span>info.ty) =&gt; {
-<a href=#162 id=162 data-nosnippet>162</a>            <span class="kw">let </span>value = entry.load(context, location, value, inner_ty)<span class="question-mark">?</span>;
-<a href=#163 id=163 data-nosnippet>163</a>            drop_override_meta.invoke_override(context, <span class="kw-2">&amp;</span>entry, location, <span class="kw-2">&amp;</span>info.ty, value)<span class="question-mark">?</span>;
-<a href=#164 id=164 data-nosnippet>164</a>        }
-<a href=#165 id=165 data-nosnippet>165</a>        <span class="kw">_ </span>=&gt; {}
-<a href=#166 id=166 data-nosnippet>166</a>    }
-<a href=#167 id=167 data-nosnippet>167</a>
-<a href=#168 id=168 data-nosnippet>168</a>    entry.append_operation(ReallocBindingsMeta::free(context, value, location)<span class="question-mark">?</span>);
-<a href=#169 id=169 data-nosnippet>169</a>    entry.append_operation(func::r#return(<span class="kw-2">&amp;</span>[], location));
-<a href=#170 id=170 data-nosnippet>170</a>    <span class="prelude-val">Ok</span>(region)
-<a href=#171 id=171 data-nosnippet>171</a>}</code></pre></div></section></main></body></html>
+<a href=#154 id=154 data-nosnippet>154</a>    <span class="kw">let </span>region = Region::new();
+<a href=#155 id=155 data-nosnippet>155</a>    <span class="kw">let </span>entry = region.append_block(Block::new(<span class="kw-2">&amp;</span>[(llvm::r#type::pointer(context, <span class="number">0</span>), location)]));
+<a href=#156 id=156 data-nosnippet>156</a>
+<a href=#157 id=157 data-nosnippet>157</a>    <span class="kw">let </span>value = entry.arg(<span class="number">0</span>)<span class="question-mark">?</span>;
+<a href=#158 id=158 data-nosnippet>158</a>    <span class="kw">if </span>DropOverridesMeta::is_overriden(metadata, <span class="kw-2">&amp;</span>info.ty) {
+<a href=#159 id=159 data-nosnippet>159</a>        <span class="kw">let </span>value = entry.load(context, location, value, inner_ty)<span class="question-mark">?</span>;
+<a href=#160 id=160 data-nosnippet>160</a>        DropOverridesMeta::invoke_override(
+<a href=#161 id=161 data-nosnippet>161</a>            context, registry, module, <span class="kw-2">&amp;</span>entry, <span class="kw-2">&amp;</span>entry, location, metadata, <span class="kw-2">&amp;</span>info.ty, value,
+<a href=#162 id=162 data-nosnippet>162</a>        )<span class="question-mark">?</span>;
+<a href=#163 id=163 data-nosnippet>163</a>    }
+<a href=#164 id=164 data-nosnippet>164</a>
+<a href=#165 id=165 data-nosnippet>165</a>    entry.append_operation(ReallocBindingsMeta::free(context, value, location)<span class="question-mark">?</span>);
+<a href=#166 id=166 data-nosnippet>166</a>    entry.append_operation(func::r#return(<span class="kw-2">&amp;</span>[], location));
+<a href=#167 id=167 data-nosnippet>167</a>    <span class="prelude-val">Ok</span>(region)
+<a href=#168 id=168 data-nosnippet>168</a>}</code></pre></div></section></main></body></html>
