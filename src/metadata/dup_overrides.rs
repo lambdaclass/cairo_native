@@ -94,6 +94,12 @@ impl DupOverridesMeta {
 
                 let signature_ty = if is_memory_allocated { ptr_ty } else { ty };
 
+                // For memory allocated types, the generated function receives
+                // a pointer as argument. However, the user provided callback
+                // generates a region that receives a concrete value as
+                // argument. To workaround this, we insert a block at the start
+                // of the region that dereferences the pointer, and jumps to the
+                // user provided implementation.
                 if is_memory_allocated {
                     let entry_block = region.first_block().unwrap();
                     let pre_entry_block =
@@ -170,7 +176,12 @@ impl DupOverridesMeta {
             let sierra_ty = registry.get_type(id)?;
             let is_memory_allocated = sierra_ty.is_memory_allocated(registry)?;
 
+            // From memory allocated types, the dup function receives a pointer
+            // as argument, so we need to alloc the given value onto the stack
+            // and pass a pointer to it instead.
             let value = if is_memory_allocated {
+                // The init_block is guaranteed to not be executed multiple
+                // times on tail-recursive functions.
                 let value_ptr = init_block.alloca1(
                     context,
                     location,
