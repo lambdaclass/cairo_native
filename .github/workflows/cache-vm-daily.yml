@@ -7,7 +7,7 @@ on:
   #       type: string
   #       description: Comma separated block numbers (e.g "10,50,70")
   #       required: true
-  # pull_request:
+  pull_request:
 
 env:
   RANGE_SIZE: 2
@@ -199,5 +199,5 @@ jobs:
       - name: Save RPC calls
         uses: actions/cache/save@v4.2.0
         with:
-          path: starknet-replay/cache
+          path: cache
           key: rpc-calls-cache
