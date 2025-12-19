@@ -89,8 +89,8 @@ jobs:
         id: restore-rpc-calls
         uses: actions/cache/restore@v4.2.0
         with:
-          path: starknet-replay/cache
-          key: cache-${{matrix.block}}
+          path: cache
+          key: rpc-calls-cache
 
       # Install dependencies
       - uses: ./cairo_native/.github/actions/install-linux-deps
