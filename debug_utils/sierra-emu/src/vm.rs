@@ -497,7 +497,7 @@ fn eval<'a>(
         CoreConcreteLibfunc::Felt252DictEntry(selector) => {
             self::felt252_dict_entry::eval(registry, selector, args)
         }
-        CoreConcreteLibfunc::FunctionCall(info) => {
+        CoreConcreteLibfunc::DummyFunctionCall(info) | CoreConcreteLibfunc::FunctionCall(info) => {
             self::function_call::eval_function_call(registry, info, args)
         }
         CoreConcreteLibfunc::CouponCall(info) => {
@@ -539,7 +539,6 @@ fn eval<'a>(
         CoreConcreteLibfunc::Felt252SquashedDict(_) => todo!(),
         CoreConcreteLibfunc::Trace(_) => todo!(),
         CoreConcreteLibfunc::UnsafePanic(_) => todo!(),
-        CoreConcreteLibfunc::DummyFunctionCall(_) => todo!(),
         CoreConcreteLibfunc::GasReserve(_) => todo!(),
     }
 }

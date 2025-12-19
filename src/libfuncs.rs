@@ -182,7 +182,7 @@ impl LibfuncBuilder for CoreConcreteLibfunc {
             Self::Felt252DictEntry(selector) => self::felt252_dict_entry::build(
                 context, registry, entry, location, helper, metadata, selector,
             ),
-            Self::FunctionCall(info) => self::function_call::build(
+            Self::DummyFunctionCall(info) | Self::FunctionCall(info) => self::function_call::build(
                 context, registry, entry, location, helper, metadata, info,
             ),
             Self::Gas(selector) => self::gas::build(
@@ -258,7 +258,6 @@ impl LibfuncBuilder for CoreConcreteLibfunc {
             Self::QM31(_) => native_panic!("Implement QM31 libfunc"),
             Self::UnsafePanic(_) => native_panic!("Implement unsafe_panic libfunc"),
             Self::GasReserve(_) => native_panic!("Implement gas_reserve libfunc"),
-            Self::DummyFunctionCall(_) => native_panic!("Implement dummy_function_call libfunc"),
         }
     }
 
