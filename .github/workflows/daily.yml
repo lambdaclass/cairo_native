@@ -5,7 +5,7 @@ on:
     # At the end of every day
     - cron: "0 0 * * *"
   workflow_dispatch:
-  # pull_request:
+  pull_request:
 
 env:
   RANGE_SIZE: 2

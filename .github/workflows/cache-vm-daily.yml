@@ -7,7 +7,7 @@ on:
   #       type: string
   #       description: Comma separated block numbers (e.g "10,50,70")
   #       required: true
-  pull_request:
+  # pull_request:
 
 env:
   RANGE_SIZE: 2
