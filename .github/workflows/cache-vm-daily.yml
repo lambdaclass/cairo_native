@@ -145,10 +145,10 @@ jobs:
         uses: actions/cache/restore@v4.2.0
         with:
           path: starknet-replay/cache
-          key: rpc-calls
+          key: rpc-calls-cache
       - name: Delete RPC calls
         if: ${{ steps.rpc-restore.outputs.cache-hit }}
-        run: gh cache delete rpc-calls
+        run: gh cache delete rpc-calls-cache
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           GH_REPO: ${{ github.repository }}
