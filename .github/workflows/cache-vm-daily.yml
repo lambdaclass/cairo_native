@@ -7,9 +7,10 @@ on:
         type: string
         description: Comma separated block numbers (e.g "10,50,70")
         required: true
+  pull_request:
 
 env:
-  RANGE_SIZE: 20
+  RANGE_SIZE: 2
 
 jobs:
 
@@ -43,8 +44,9 @@ jobs:
       - name: Parse blocks file
         id: parse-blocks
         run: |
-          echo "blocks_list=$(jq 'split(",")' -Rc <(echo ${{ github.event.inputs.blocks }}))" >> $GITHUB_OUTPUT
-          echo "${{ github.event.inputs.blocks }}" > ./blocks.txt
+          content=`cat ./cairo_native/.github/replay-blocks.txt`
+          echo "blocks_list=$(jq 'split(",")' -Rc <(echo $content))" >> $GITHUB_OUTPUT
+          echo "$content" > ./blocks.txt
       
       - name: Save blocks list
         uses: actions/cache/save@v4.2.0
