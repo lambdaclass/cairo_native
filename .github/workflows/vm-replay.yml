@@ -131,7 +131,7 @@ jobs:
 
       # Check if we have state-dumps from a previous run in the cache.
       # If so, then we delete that entry so we can save the state-dumps
-      # from the new run with the same key
+      # from the new run with the same key.
       - name: Restore VM dumps
         id: cache-restore
         uses: actions/cache/restore@v4.2.0
@@ -144,6 +144,9 @@ jobs:
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           GH_REPO: ${{ github.repository }}
+      - name: Delete local VM dumps
+        if: ${{ steps.cache-restore.outputs.cache-hit }}
+        run: rm -rf state_dumps/vm
 
       - name: Download dumps
         uses: actions/download-artifact@v4
