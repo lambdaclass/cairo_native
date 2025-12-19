@@ -1,6 +1,7 @@
 use std::{path::Path, sync::Arc};
 
 use cairo_lang_compiler::{compile_cairo_project_at_path, CompilerConfig};
+use cairo_lang_lowering::utils::InliningStrategy;
 use cairo_lang_sierra::program::{GenFunction, Program, StatementIdx};
 use sierra_emu::{starknet::StubSyscallHandler, ProgramTrace, VirtualMachine};
 
@@ -14,6 +15,7 @@ fn run_syscall(func_name: &str) -> ProgramTrace {
                 replace_ids: true,
                 ..Default::default()
             },
+            InliningStrategy::Default,
         )
         .unwrap(),
     );

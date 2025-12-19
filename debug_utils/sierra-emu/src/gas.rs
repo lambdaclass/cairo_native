@@ -12,6 +12,7 @@ use cairo_lang_sierra_to_casm::metadata::{
     calc_metadata, calc_metadata_ap_change_only, Metadata as CairoGasMetadata,
     MetadataComputationConfig, MetadataError as CairoGasMetadataError,
 };
+use cairo_lang_sierra_type_size::ProgramRegistryInfo;
 use cairo_lang_utils::casts::IntoOrPanic;
 use serde::Serialize;
 
@@ -100,12 +101,15 @@ impl Debug for GasMetadata {
 impl GasMetadata {
     pub fn new(
         sierra_program: &Program,
+        sierra_program_info: &ProgramRegistryInfo,
         config: Option<MetadataComputationConfig>,
     ) -> Result<GasMetadata, GasMetadataError> {
         let metadata = if let Some(metadata_config) = config {
-            calc_metadata(sierra_program, metadata_config).map_err(GasMetadataError::from)?
+            calc_metadata(sierra_program, sierra_program_info, metadata_config)
+                .map_err(GasMetadataError::from)?
         } else {
-            calc_metadata_ap_change_only(sierra_program).map_err(GasMetadataError::from)?
+            calc_metadata_ap_change_only(sierra_program, sierra_program_info)
+                .map_err(GasMetadataError::from)?
         };
 
         Ok(Self(metadata))

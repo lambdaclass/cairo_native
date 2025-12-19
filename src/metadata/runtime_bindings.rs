@@ -221,7 +221,7 @@ impl RuntimeBindingsMeta {
     where
         'c: 'a,
     {
-        let integer_type = IntegerType::new(context, 512).into();
+        let integer_type = IntegerType::new(context, 252).into();
         let func_symbol = RuntimeBinding::U252ExtendedEuclideanAlgorithm.symbol();
         if self
             .active_map
@@ -262,7 +262,7 @@ impl RuntimeBindingsMeta {
     where
         'c: 'a,
     {
-        let integer_type = IntegerType::new(context, 768).into();
+        let integer_type = IntegerType::new(context, 384).into();
         let func_symbol = RuntimeBinding::U384ExtendedEuclideanAlgorithm.symbol();
         if self
             .active_map
@@ -861,10 +861,12 @@ pub fn setup_runtime(find_symbol_ptr: impl Fn(&str) -> Option<*mut c_void>) {
     }
 }
 
-/// The extended euclidean algorithm calculates the greatest common divisor (gcd) of two integers a and b,
-/// as well as the bezout coefficients x and y such that ax+by=gcd(a,b)
-/// if gcd(a,b) = 1, then x is the modular multiplicative inverse of a modulo b.
-/// See https://en.wikipedia.org/wiki/Extended_Euclidean_algorithm
+/// Build the extended euclidean algorithm MLIR function.
+///
+/// The extended euclidean algorithm calculates the greatest common divisor
+/// (gcd) of two integers `a` and `b`, as well as the Bézout coefficients `x`
+/// and `y` such that `ax + by = gcd(a,b)`. If `gcd(a,b) = 1`, then `x` is the
+/// modular multiplicative inverse of `a` modulo `b`.
 ///
 /// This function declares a MLIR function that given two numbers a and b, returns a MLIR struct with gcd(a, b)
 /// and the bezout coefficient x. The declaration is done in the body of the module.
@@ -878,77 +880,133 @@ fn build_egcd_function<'ctx>(
     func_symbol: &str,
     integer_type: Type,
 ) -> Result<()> {
+    // Pseudocode for calculating the EGCD of two integers `a` and `b`.
+    // https://en.wikipedia.org/wiki/Extended_Euclidean_algorithm#Pseudocode.
+    //
+    // ```
+    // (old_r, new_r) := (a, b)
+    // (old_s, new_s) := (1, 0)
+    //
+    // while new_r != 0 do
+    //     quotient := old_r / new_r
+    //     (old_r, new_r) := (new_r, old_r − quotient * new_r)
+    //     (old_s, new_s) := (new_s, old_s − quotient * new_s)
+    //
+    // old_s is equal to Bézout coefficient X
+    // old_r is equal to GCD
+    // ```
+    //
+    // Note that when `b > a`, the first iteration inverts the values. Our
+    // implementation does it manually as we already know that `b > a`.
+    //
+    // The core idea of the method is that `gcd(a,b) = gcd(a,b-a)`, and that
+    // `gcd(a,b) = gcd(b,a)`. As an optimization, we can actually substract `a`
+    // from `b` as many times as possible, so `gcd(a,b) = gcd(b%a,a)`.
+    //
+    // Take, for example, `a=21` and `b=54`:
+    //
+    //   gcd(21, 54)
+    // = gcd(12, 21)
+    // = gcd(9, 12)
+    // = gcd(3, 9)
+    // = gcd(0, 3)
+    // = 3
+    //
+    // Thus, the algorithm works by calculating a series of remainders `r` which
+    // starts with b,a,... being `r[i]` the remainder of dividing `r[i-2]` by
+    // `r[i-1]`. At each step, `r[i]` can be calculated as:
+    //
+    // r[i] = r[i-2] - r[i-1] * quotient
+    //
+    // The GCD will be the last non-zero remainder.
+    //
+    // [54; 21; 12; 9; 3; 0]
+    //                 ^
+    //
+    // See Dr. Katherine Stange's Youtube video for a better explanation on how
+    // this works: https://www.youtube.com/watch?v=Jwf6ncRmhPg.
+    //
+    // The extended algorithm also obtains the Bézout coefficients
+    // by calculating a series of coefficients `s`. See Dr. Katherine
+    // Stange's Youtube video for a better explanation on how this works:
+    // https://www.youtube.com/watch?v=IwRtISxAHY4.
+
+    // Define entry block for function. Receives arguments `a` and `b`.
     let region = Region::new();
-
     let entry_block = region.append_block(Block::new(&[
-        (integer_type, location),
-        (integer_type, location),
+        (integer_type, location), // a
+        (integer_type, location), // b
     ]));
+
+    // Define loop block for function. Each iteration last two values from each series.
     let loop_block = region.append_block(Block::new(&[
-        (integer_type, location),
-        (integer_type, location),
-        (integer_type, location),
-        (integer_type, location),
+        (integer_type, location), // old_r
+        (integer_type, location), // new_r
+        (integer_type, location), // old_s
+        (integer_type, location), // new_s
     ]));
+
+    // Define end block for function.
     let end_block = region.append_block(Block::new(&[
-        (integer_type, location),
-        (integer_type, location),
+        (integer_type, location), // old_r
+        (integer_type, location), // old_s
     ]));
 
+    let modulus = entry_block.arg(1)?;
     let rhs = entry_block.arg(0)?;
-    let prime_modulus = entry_block.arg(1)?;
-    // The egcd algorithm works by calculating a series of remainders `rem`, being each `rem_i` the remainder of dividing `rem_{i-1}` with `rem_{i-2}`
-    // For the initial setup, rem_0 = b, rem_1 = a.
-    // This order is chosen because if we reverse them, then the first iteration will just swap them
-    let remainder = rhs;
-    let prev_remainder = prime_modulus;
 
-    // Similarly we'll calculate another series which starts 0,1,... and from which we
-    // will retrieve the modular inverse of a
-    let prev_inverse = entry_block.const_int_from_type(context, location, 0, integer_type)?;
-    let inverse = entry_block.const_int_from_type(context, location, 1, integer_type)?;
-
+    // Jump to loop block from entry block, with initial values.
+    // - old_r = b
+    // - new_r = a
+    // - old_s = 0
+    // - new_s = 1
     entry_block.append_operation(cf::br(
         &loop_block,
-        &[prev_remainder, remainder, prev_inverse, inverse],
+        &[
+            rhs,
+            modulus,
+            entry_block.const_int_from_type(context, location, 0, integer_type)?,
+            entry_block.const_int_from_type(context, location, 1, integer_type)?,
+        ],
         location,
     ));
 
-    // -- Loop body --
-    // Arguments are rem_(i-1), rem, inv_(i-1), inv
-    let prev_remainder = loop_block.arg(0)?;
-    let remainder = loop_block.arg(1)?;
-    let prev_inverse = loop_block.arg(2)?;
-    let inverse = loop_block.arg(3)?;
+    // LOOP BLOCK
+    {
+        let old_r = loop_block.arg(0)?;
+        let new_r = loop_block.arg(1)?;
+        let old_s = loop_block.arg(2)?;
+        let new_s = loop_block.arg(3)?;
 
-    // First calculate q = rem_(i-1)/rem_i, rounded down
-    let quotient =
-        loop_block.append_op_result(arith::divui(prev_remainder, remainder, location))?;
+        // First calculate quotient of old_r/new_r.
+        let quotient = loop_block.append_op_result(arith::divui(old_r, new_r, location))?;
 
-    // Then rem_(i+1) = rem_(i-1) - q * rem_i, and inv_(i+1) = inv_(i-1) - q * inv_i
-    let rem_times_quo = loop_block.muli(remainder, quotient, location)?;
-    let inv_times_quo = loop_block.muli(inverse, quotient, location)?;
-    let next_remainder =
-        loop_block.append_op_result(arith::subi(prev_remainder, rem_times_quo, location))?;
-    let next_inverse =
-        loop_block.append_op_result(arith::subi(prev_inverse, inv_times_quo, location))?;
+        // Multiply quotient by new_r and new_s.
+        let quotient_by_new_r = loop_block.muli(quotient, new_r, location)?;
+        let quotient_by_new_s = loop_block.muli(quotient, new_s, location)?;
 
-    // Check if rem_(i+1) is 0
-    // If true, then:
-    // - rem_i is the gcd of a and b
-    // - inv_i is the bezout coefficient x
-    let zero = loop_block.const_int_from_type(context, location, 0, integer_type)?;
-    let next_remainder_eq_zero =
-        loop_block.cmpi(context, CmpiPredicate::Eq, next_remainder, zero, location)?;
-    loop_block.append_operation(cf::cond_br(
-        context,
-        next_remainder_eq_zero,
-        &end_block,
-        &loop_block,
-        &[remainder, inverse],
-        &[remainder, next_remainder, inverse, next_inverse],
-        location,
-    ));
+        // Calculate new values for next iteration.
+        // - next_new_r := old_r − quotient * new_r
+        // - next_new_s := old_s − quotient * new_s
+        let next_new_r =
+            loop_block.append_op_result(arith::subi(old_r, quotient_by_new_r, location))?;
+        let next_new_s =
+            loop_block.append_op_result(arith::subi(old_s, quotient_by_new_s, location))?;
+
+        // Jump to end block if next_new_r is zero.
+        let zero = loop_block.const_int_from_type(context, location, 0, integer_type)?;
+        let next_new_r_is_zero =
+            loop_block.cmpi(context, CmpiPredicate::Eq, next_new_r, zero, location)?;
+        loop_block.append_operation(cf::cond_br(
+            context,
+            next_new_r_is_zero,
+            &end_block,
+            &loop_block,
+            &[new_r, new_s],
+            &[new_r, next_new_r, new_s, next_new_s],
+            location,
+        ));
+    }
 
     let gcd = end_block.arg(0)?;
     let inverse = end_block.arg(1)?;
@@ -967,7 +1025,7 @@ fn build_egcd_function<'ctx>(
         ))
         .result(0)?
         .into();
-    let wrapped_inverse = end_block.addi(inverse, prime_modulus, location)?;
+    let wrapped_inverse = end_block.addi(inverse, modulus, location)?;
     let inverse = end_block.append_op_result(arith::select(
         is_negative,
         wrapped_inverse,
@@ -975,13 +1033,20 @@ fn build_egcd_function<'ctx>(
         location,
     ))?;
 
-    // Create the struct that will contain the results
-    let results = end_block.append_op_result(llvm::undef(
-        llvm::r#type::r#struct(context, &[integer_type, integer_type], false),
-        location,
-    ))?;
-    let results = end_block.insert_values(context, location, results, &[gcd, inverse])?;
-    end_block.append_operation(llvm::r#return(Some(results), location));
+    // END BLOCK
+    {
+        let results = end_block.append_op_result(llvm::undef(
+            llvm::r#type::r#struct(context, &[integer_type, integer_type], false),
+            location,
+        ))?;
+        let results = end_block.insert_values(
+            context,
+            location,
+            results,
+            &[gcd, inverse],
+        )?;
+        end_block.append_operation(llvm::r#return(Some(results), location));
+    }
 
     let func_name = StringAttribute::new(context, func_symbol);
     module.body().append_operation(llvm::func(

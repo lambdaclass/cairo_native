@@ -76,10 +76,10 @@ fn main() -> anyhow::Result<()> {
         b.build()?
     };
 
-    let main_crate_ids = setup_project(db, &args.path)?;
+    let main_crate_inputs = setup_project(db, &args.path)?;
 
     let db = db.snapshot();
-    let test_crate_ids = main_crate_ids.clone();
+    let test_crate_ids = main_crate_inputs.clone();
     let test_config = TestsCompilationConfig {
         starknet: args.starknet,
         add_statements_functions: false,
@@ -87,9 +87,10 @@ fn main() -> anyhow::Result<()> {
         contract_declarations: None,
         contract_crate_ids: None,
         executable_crate_ids: None,
+        add_functions_debug_info: false,
     };
 
-    let mut diag_reporter = DiagnosticsReporter::stderr().with_crates(&main_crate_ids);
+    let mut diag_reporter = DiagnosticsReporter::stderr().with_crates(&main_crate_inputs);
     if args.allow_warnings {
         diag_reporter = diag_reporter.allow_warnings();
     }

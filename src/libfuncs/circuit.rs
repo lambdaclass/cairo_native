@@ -595,11 +595,6 @@ fn build_gate_evaluation<'ctx, 'this>(
                 }
                 // INV: lhs = 1 / rhs
                 (None, Some(rhs_value), Some(_)) => {
-                    // Extend to avoid overflow
-                    let u768_type = IntegerType::new(context, 768).into();
-                    let rhs_value = block.extui(rhs_value, u768_type, location)?;
-                    let circuit_modulus_u768 = block.extui(circuit_modulus, u768_type, location)?;
-
                     // Apply egcd to find gcd and inverse
                     let euclidean_result = runtime_bindings_meta
                         .u384_extended_euclidean_algorithm(
@@ -608,16 +603,16 @@ fn build_gate_evaluation<'ctx, 'this>(
                             block,
                             location,
                             rhs_value,
-                            circuit_modulus_u768,
+                            circuit_modulus,
                         )?;
                     // Extract the values from the result struct
                     let gcd =
-                        block.extract_value(context, location, euclidean_result, u768_type, 0)?;
+                        block.extract_value(context, location, euclidean_result, u384_type, 0)?;
                     let inverse =
-                        block.extract_value(context, location, euclidean_result, u768_type, 1)?;
+                        block.extract_value(context, location, euclidean_result, u384_type, 1)?;
 
                     // if the gcd is not 1, then fail (a and b are not coprimes)
-                    let one = block.const_int_from_type(context, location, 1, u768_type)?;
+                    let one = block.const_int_from_type(context, location, 1, u384_type)?;
                     let gate_offset_idx_value = block.const_int_from_type(
                         context,
                         location,

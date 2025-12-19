@@ -2,7 +2,8 @@
 
 use super::LibfuncHelper;
 use crate::{
-    error::Result, metadata::MetadataStorage, types::TypeBuilder, utils::ProgramRegistryExt,
+    error::Result, metadata::MetadataStorage, native_panic, types::TypeBuilder,
+    utils::ProgramRegistryExt,
 };
 use cairo_lang_sierra::{
     extensions::{
@@ -39,6 +40,9 @@ pub fn build<'ctx, 'this>(
         StructConcreteLibfunc::Deconstruct(info)
         | StructConcreteLibfunc::SnapshotDeconstruct(info) => {
             build_deconstruct(context, registry, entry, location, helper, metadata, info)
+        }
+        StructConcreteLibfunc::BoxedDeconstruct(_info) => {
+            native_panic!("implement struct_boxed_deconstruct")
         }
     }
 }

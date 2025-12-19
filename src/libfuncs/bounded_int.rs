@@ -55,7 +55,7 @@ pub fn build<'ctx, 'this>(
             build_mul(context, registry, entry, location, helper, metadata, info)
         }
         BoundedIntConcreteLibfunc::DivRem(info) => {
-            build_divrem(context, registry, entry, location, helper, metadata, info)
+            build_div_rem(context, registry, entry, location, helper, metadata, info)
         }
         BoundedIntConcreteLibfunc::Constrain(info) => {
             build_constrain(context, registry, entry, location, helper, metadata, info)
@@ -73,6 +73,22 @@ pub fn build<'ctx, 'this>(
 }
 
 /// Generate MLIR operations for the `bounded_int_add` libfunc.
+///
+/// # Cairo Signature
+///
+/// ```cairo
+/// extern fn bounded_int_add<Lhs, Rhs, impl H: AddHelper<Lhs, Rhs>>(
+///    lhs: Lhs, rhs: Rhs,
+/// ) -> H::Result nopanic;
+/// ```
+///
+/// A number X as a `BoundedInt` is internally represented as an offset Xd from the lower bound Xo.
+/// So X = Xo + Xd.
+///
+/// Since we want to get C = A + B, we can translate this to
+/// Co + Cd = Ao + Ad + Bo + Bd. Where Ao, Bo and Co represent the lower bound
+/// of the ranges in the `BoundedInt` and Ad, Bd and Cd represent the offsets. Since
+/// we also know that Co = Ao + Bo we can simplify the equation to Cd = Ad + Bd.
 #[allow(clippy::too_many_arguments)]
 fn build_add<'ctx, 'this>(
     context: &'ctx Context,
@@ -86,7 +102,7 @@ fn build_add<'ctx, 'this>(
     let lhs_value = entry.arg(0)?;
     let rhs_value = entry.arg(1)?;
 
-    // Extract the ranges for the operands and the result type.
+    // Extract the ranges for the operands.
     let lhs_ty = registry.get_type(&info.signature.param_signatures[0].ty)?;
     let rhs_ty = registry.get_type(&info.signature.param_signatures[1].ty)?;
 
@@ -96,6 +112,7 @@ fn build_add<'ctx, 'this>(
         .get_type(&info.signature.branch_signatures[0].vars[0].ty)?
         .integer_range(registry)?;
 
+    // Extract the bit width.
     let lhs_width = if lhs_ty.is_bounded_int(registry)? {
         lhs_range.offset_bit_width()
     } else {
@@ -106,31 +123,14 @@ fn build_add<'ctx, 'this>(
     } else {
         rhs_range.zero_based_bit_width()
     };
+    let dst_width = dst_range.offset_bit_width();
 
-    // Calculate the computation range.
-    let compute_range = Range {
-        lower: (&lhs_range.lower)
-            .min(&rhs_range.lower)
-            .min(&dst_range.lower)
-            .clone(),
-        upper: (&lhs_range.upper)
-            .max(&rhs_range.upper)
-            .max(&dst_range.upper)
-            .clone(),
-    };
-    let compute_ty = IntegerType::new(context, compute_range.offset_bit_width()).into();
+    // Get the compute type so we can do the addition without problems
+    let compute_width = lhs_width.max(rhs_width) + 1;
+    let compute_ty = IntegerType::new(context, compute_width).into();
 
-    // Zero-extend operands into the computation range.
-    native_assert!(
-        compute_range.offset_bit_width() >= lhs_width,
-        "the lhs_range bit_width must be less or equal than the compute_range"
-    );
-    native_assert!(
-        compute_range.offset_bit_width() >= rhs_width,
-        "the rhs_range bit_width must be less or equal than the compute_range"
-    );
-
-    let lhs_value = if compute_range.offset_bit_width() > lhs_width {
+    // Get the operands on the same number of bits so we can operate with them
+    let lhs_value = if compute_width > lhs_width {
         if lhs_range.lower.sign() != Sign::Minus || lhs_ty.is_bounded_int(registry)? {
             entry.extui(lhs_value, compute_ty, location)?
         } else {
@@ -139,7 +139,7 @@ fn build_add<'ctx, 'this>(
     } else {
         lhs_value
     };
-    let rhs_value = if compute_range.offset_bit_width() > rhs_width {
+    let rhs_value = if compute_width > rhs_width {
         if rhs_range.lower.sign() != Sign::Minus || rhs_ty.is_bounded_int(registry)? {
             entry.extui(rhs_value, compute_ty, location)?
         } else {
@@ -149,47 +149,18 @@ fn build_add<'ctx, 'this>(
         rhs_value
     };
 
-    // Offset the operands so that they are compatible.
-    let lhs_offset = if lhs_ty.is_bounded_int(registry)? {
-        &lhs_range.lower - &compute_range.lower
-    } else {
-        lhs_range.lower
-    };
-    let lhs_value = if lhs_offset != BigInt::ZERO {
-        let lhs_offset = entry.const_int_from_type(context, location, lhs_offset, compute_ty)?;
-        entry.addi(lhs_value, lhs_offset, location)?
-    } else {
-        lhs_value
-    };
-
-    let rhs_offset = if rhs_ty.is_bounded_int(registry)? {
-        &rhs_range.lower - &compute_range.lower
-    } else {
-        rhs_range.lower
-    };
-    let rhs_value = if rhs_offset != BigInt::ZERO {
-        let rhs_offset = entry.const_int_from_type(context, location, rhs_offset, compute_ty)?;
-        entry.addi(rhs_value, rhs_offset, location)?
-    } else {
-        rhs_value
-    };
-
-    // Compute the operation.
+    // Addition and get the result value on the desired range
     let res_value = entry.addi(lhs_value, rhs_value, location)?;
-
-    // Offset and truncate the result to the output type.
-    let res_offset = &dst_range.lower - &compute_range.lower;
-    let res_value = if res_offset != BigInt::ZERO {
-        let res_offset = entry.const_int_from_type(context, location, res_offset, compute_ty)?;
-        entry.append_op_result(arith::subi(res_value, res_offset, location))?
-    } else {
-        res_value
-    };
-
-    let res_value = if dst_range.offset_bit_width() < compute_range.offset_bit_width() {
+    let res_value = if compute_width > dst_width {
         entry.trunci(
             res_value,
-            IntegerType::new(context, dst_range.offset_bit_width()).into(),
+            IntegerType::new(context, dst_width).into(),
+            location,
+        )?
+    } else if compute_width < dst_width {
+        entry.extui(
+            res_value,
+            IntegerType::new(context, dst_width).into(),
             location,
         )?
     } else {
@@ -200,6 +171,20 @@ fn build_add<'ctx, 'this>(
 }
 
 /// Generate MLIR operations for the `bounded_int_sub` libfunc.
+///
+/// # Cairo Signature
+/// ```cairo
+/// extern fn bounded_int_sub<Lhs, Rhs, impl H: SubHelper<Lhs, Rhs>>(
+///    lhs: Lhs, rhs: Rhs,
+/// ) -> H::Result nopanic;
+/// ```
+///
+/// A number X as a `BoundedInt` is internally represented as an offset Xd from the lower bound Xo.
+/// So X = Xo + Xd.
+///
+/// Since we want to get C = A - B, we can translate this to
+/// Co + Cd = (Ao + Ad) - (Bo + Bd). Where Ao, Bo and Co represent the lower bound
+/// of the ranges in the `BoundedInt` and Ad, Bd and Cd represent the offsets.
 #[allow(clippy::too_many_arguments)]
 fn build_sub<'ctx, 'this>(
     context: &'ctx Context,
@@ -213,7 +198,7 @@ fn build_sub<'ctx, 'this>(
     let lhs_value = entry.arg(0)?;
     let rhs_value = entry.arg(1)?;
 
-    // Extract the ranges for the operands and the result type.
+    // Extract the ranges for the operands.
     let lhs_ty = registry.get_type(&info.signature.param_signatures[0].ty)?;
     let rhs_ty = registry.get_type(&info.signature.param_signatures[1].ty)?;
 
@@ -223,6 +208,7 @@ fn build_sub<'ctx, 'this>(
         .get_type(&info.signature.branch_signatures[0].vars[0].ty)?
         .integer_range(registry)?;
 
+    // Extract the bit width.
     let lhs_width = if lhs_ty.is_bounded_int(registry)? {
         lhs_range.offset_bit_width()
     } else {
@@ -233,31 +219,17 @@ fn build_sub<'ctx, 'this>(
     } else {
         rhs_range.zero_based_bit_width()
     };
+    let dst_width = dst_range.offset_bit_width();
 
-    // Calculate the computation range.
-    let compute_range = Range {
-        lower: (&lhs_range.lower)
-            .min(&rhs_range.lower)
-            .min(&dst_range.lower)
-            .clone(),
-        upper: (&lhs_range.upper)
-            .max(&rhs_range.upper)
-            .max(&dst_range.upper)
-            .clone(),
-    };
-    let compute_ty = IntegerType::new(context, compute_range.offset_bit_width()).into();
+    // Get the compute type so we can do the subtraction without problems
+    let compile_time_val = lhs_range.lower.clone() - rhs_range.lower.clone() - dst_range.lower;
+    let compile_time_val_width = u32::try_from(compile_time_val.bits())?;
 
-    // Zero-extend operands into the computation range.
-    native_assert!(
-        compute_range.offset_bit_width() >= lhs_width,
-        "the lhs_range bit_width must be less or equal than the compute_range"
-    );
-    native_assert!(
-        compute_range.offset_bit_width() >= rhs_width,
-        "the rhs_range bit_width must be less or equal than the compute_range"
-    );
+    let compute_width = lhs_width.max(rhs_width).max(compile_time_val_width) + 1;
+    let compute_ty = IntegerType::new(context, compute_width).into();
 
-    let lhs_value = if compute_range.offset_bit_width() > lhs_width {
+    // Get the operands on the same number of bits so we can operate with them
+    let lhs_value = if compute_width > lhs_width {
         if lhs_range.lower.sign() != Sign::Minus || lhs_ty.is_bounded_int(registry)? {
             entry.extui(lhs_value, compute_ty, location)?
         } else {
@@ -266,7 +238,7 @@ fn build_sub<'ctx, 'this>(
     } else {
         lhs_value
     };
-    let rhs_value = if compute_range.offset_bit_width() > rhs_width {
+    let rhs_value = if compute_width > rhs_width {
         if rhs_range.lower.sign() != Sign::Minus || rhs_ty.is_bounded_int(registry)? {
             entry.extui(rhs_value, compute_ty, location)?
         } else {
@@ -276,47 +248,23 @@ fn build_sub<'ctx, 'this>(
         rhs_value
     };
 
-    // Offset the operands so that they are compatible.
-    let lhs_offset = if lhs_ty.is_bounded_int(registry)? {
-        &lhs_range.lower - &compute_range.lower
-    } else {
-        lhs_range.lower
-    };
-    let lhs_value = if lhs_offset != BigInt::ZERO {
-        let lhs_offset = entry.const_int_from_type(context, location, lhs_offset, compute_ty)?;
-        entry.addi(lhs_value, lhs_offset, location)?
-    } else {
-        lhs_value
-    };
-
-    let rhs_offset = if rhs_ty.is_bounded_int(registry)? {
-        &rhs_range.lower - &compute_range.lower
-    } else {
-        rhs_range.lower
-    };
-    let rhs_value = if rhs_offset != BigInt::ZERO {
-        let rhs_offset = entry.const_int_from_type(context, location, rhs_offset, compute_ty)?;
-        entry.addi(rhs_value, rhs_offset, location)?
-    } else {
-        rhs_value
-    };
-
-    // Compute the operation.
-    let res_value = entry.append_op_result(arith::subi(lhs_value, rhs_value, location))?;
-
-    // Offset and truncate the result to the output type.
-    let res_offset = dst_range.lower.clone();
-    let res_value = if res_offset != BigInt::ZERO {
-        let res_offset = entry.const_int_from_type(context, location, res_offset, compute_ty)?;
-        entry.append_op_result(arith::subi(res_value, res_offset, location))?
-    } else {
-        res_value
-    };
-
-    let res_value = if dst_range.offset_bit_width() < compute_range.offset_bit_width() {
+    let compile_time_val =
+        entry.const_int_from_type(context, location, compile_time_val, compute_ty)?;
+    // First we do -> intermediate_res = Ad - Bd
+    let res_value = entry.subi(lhs_value, rhs_value, location)?;
+    // Then we do -> intermediate_res += (Ao - Bo - Co)
+    let res_value = entry.addi(res_value, compile_time_val, location)?;
+    // Get the result value on the desired range
+    let res_value = if compute_width > dst_width {
         entry.trunci(
             res_value,
-            IntegerType::new(context, dst_range.offset_bit_width()).into(),
+            IntegerType::new(context, dst_width).into(),
+            location,
+        )?
+    } else if compute_width < dst_width {
+        entry.extui(
+            res_value,
+            IntegerType::new(context, dst_width).into(),
             location,
         )?
     } else {
@@ -424,7 +372,7 @@ fn build_mul<'ctx, 'this>(
     let res_value = entry.muli(lhs_value, rhs_value, location)?;
 
     // Offset and truncate the result to the output type.
-    let res_offset = (&dst_range.lower).max(&compute_range.lower).clone();
+    let res_offset = dst_range.lower.clone();
     let res_value = if res_offset != BigInt::ZERO {
         let res_offset = entry.const_int_from_type(context, location, res_offset, compute_ty)?;
         entry.append_op_result(arith::subi(res_value, res_offset, location))?
@@ -445,9 +393,20 @@ fn build_mul<'ctx, 'this>(
     helper.br(entry, 0, &[res_value], location)
 }
 
-/// Generate MLIR operations for the `bounded_int_divrem` libfunc.
-/// Libfunc for dividing two non negative BoundedInts and getting the quotient and remainder.
-fn build_divrem<'ctx, 'this>(
+/// Builds the `bounded_int_div_rem` libfunc, which divides a non negative
+/// integer by a positive integer (non zero), returning the quotient and
+/// the remainder as bounded ints.
+///
+/// # Signature
+///
+/// ```cairo
+/// extern fn bounded_int_div_rem<Lhs, Rhs, impl H: DivRemHelper<Lhs, Rhs>>(
+///     lhs: Lhs, rhs: NonZero<Rhs>,
+/// ) -> (H::DivT, H::RemT) implicits(RangeCheck) nopanic;
+/// ```
+///
+/// The input arguments can be both regular integers or bounded ints.
+fn build_div_rem<'ctx, 'this>(
     context: &'ctx Context,
     registry: &ProgramRegistry<CoreType, CoreLibfunc>,
     entry: &'this Block<'ctx>,
@@ -491,17 +450,8 @@ fn build_divrem<'ctx, 'this>(
 
     // Calculate the computation range.
     let compute_range = Range {
-        lower: (&lhs_range.lower)
-            .min(&rhs_range.lower)
-            .min(&div_range.lower)
-            .min(&rem_range.lower)
-            .min(&BigInt::ZERO)
-            .clone(),
-        upper: (&lhs_range.upper)
-            .max(&rhs_range.upper)
-            .max(&div_range.upper)
-            .max(&rem_range.upper)
-            .clone(),
+        lower: BigInt::ZERO,
+        upper: (&lhs_range.upper).max(&rhs_range.upper).clone(),
     };
     let compute_ty = IntegerType::new(context, compute_range.zero_based_bit_width()).into();
 
@@ -554,23 +504,21 @@ fn build_divrem<'ctx, 'this>(
     let div_value = entry.append_op_result(arith::divui(lhs_value, rhs_value, location))?;
     let rem_value = entry.append_op_result(arith::remui(lhs_value, rhs_value, location))?;
 
-    // Offset and truncate the result to the output type.
-    let div_offset = (&div_range.lower).max(&compute_range.lower).clone();
-    let rem_offset = (&rem_range.lower).max(&compute_range.lower).clone();
-
-    let div_value = if div_offset != BigInt::ZERO {
-        let div_offset = entry.const_int_from_type(context, location, div_offset, compute_ty)?;
+    // Offset result to the output type.
+    let div_value = if div_range.lower.clone() != BigInt::ZERO {
+        let div_offset =
+            entry.const_int_from_type(context, location, div_range.lower.clone(), compute_ty)?;
         entry.append_op_result(arith::subi(div_value, div_offset, location))?
     } else {
         div_value
     };
-    let rem_value = if rem_offset != BigInt::ZERO {
-        let rem_offset = entry.const_int_from_type(context, location, rem_offset, compute_ty)?;
-        entry.append_op_result(arith::subi(rem_value, rem_offset, location))?
-    } else {
-        rem_value
-    };
 
+    native_assert!(
+        rem_range.lower == BigInt::ZERO,
+        "The remainder range lower bound should be zero"
+    );
+
+    // Truncate to the output type
     let div_value = if div_range.offset_bit_width() < compute_range.zero_based_bit_width() {
         entry.trunci(
             div_value,
@@ -648,19 +596,24 @@ fn build_constrain<'ctx, 'this>(
         .get_type(&info.branch_signatures()[1].vars[1].ty)?
         .integer_range(registry)?;
 
-    let boundary =
-        entry.const_int_from_type(context, location, info.boundary.clone(), src_value.r#type())?;
-    let is_lower = entry.cmpi(
-        context,
-        if src_range.lower.sign() == Sign::Minus {
-            CmpiPredicate::Slt
-        } else {
+    let boundary = if src_ty.is_bounded_int(registry)? {
+        entry.const_int_from_type(
+            context,
+            location,
+            info.boundary.clone() - src_range.lower.clone(),
+            src_value.r#type(),
+        )?
+    } else {
+        entry.const_int_from_type(context, location, info.boundary.clone(), src_value.r#type())?
+    };
+
+    let cmpi_predicate =
+        if src_ty.is_bounded_int(registry)? || src_range.lower.sign() != Sign::Minus {
             CmpiPredicate::Ult
-        },
-        src_value,
-        boundary,
-        location,
-    )?;
+        } else {
+            CmpiPredicate::Slt
+        };
+    let is_lower = entry.cmpi(context, cmpi_predicate, src_value, boundary, location)?;
 
     let lower_block = helper.append_block(Block::new(&[]));
     let upper_block = helper.append_block(Block::new(&[]));
@@ -746,35 +699,52 @@ fn build_trim<'ctx, 'this>(
     entry: &'this Block<'ctx>,
     location: Location<'ctx>,
     helper: &LibfuncHelper<'ctx, 'this>,
-    _metadata: &mut MetadataStorage,
+    metadata: &mut MetadataStorage,
     info: &BoundedIntTrimConcreteLibfunc,
 ) -> Result<()> {
     let value: Value = entry.arg(0)?;
-    let trimmed_value = entry.const_int_from_type(
-        context,
-        location,
-        info.trimmed_value.clone(),
-        value.r#type(),
-    )?;
-    let trim_type = registry.get_type(&info.param_signatures()[0].ty)?;
-    let is_invalid = entry.cmpi(context, CmpiPredicate::Eq, value, trimmed_value, location)?;
-    let int_range = trim_type.integer_range(registry)?;
 
-    // There is no need to truncate the value type since we're only receiving power-of-two integers
-    // and constraining their range a single value from either the lower or upper limit. However,
-    // since we're returning a `BoundedInt` we need to offset its internal representation
-    // accordingly.
-    let value = if info.trimmed_value == BigInt::ZERO || int_range.lower < BigInt::ZERO {
-        let offset = entry.const_int_from_type(
+    let src_ty = registry.get_type(&info.param_signatures()[0].ty)?;
+    let dst_ty = registry.get_type(&info.branch_signatures()[1].vars[0].ty)?;
+
+    let trimmed_value = if src_ty.is_bounded_int(registry)? {
+        entry.const_int_from_type(
             context,
             location,
-            &info.trimmed_value + 1,
+            info.trimmed_value.clone() - src_ty.integer_range(registry)?.lower,
             value.r#type(),
-        )?;
-        entry.append_op_result(arith::subi(value, offset, location))?
+        )?
     } else {
-        value
+        entry.const_int_from_type(
+            context,
+            location,
+            info.trimmed_value.clone(),
+            value.r#type(),
+        )?
     };
+    let is_invalid = entry.cmpi(context, CmpiPredicate::Eq, value, trimmed_value, location)?;
+
+    let offset = if src_ty.is_bounded_int(registry)? {
+        dst_ty.integer_range(registry)?.lower - src_ty.integer_range(registry)?.lower
+    } else {
+        dst_ty.integer_range(registry)?.lower
+    };
+    let value = entry.append_op_result(arith::subi(
+        value,
+        entry.const_int_from_type(context, location, offset, value.r#type())?,
+        location,
+    ))?;
+    let value = entry.trunci(
+        value,
+        dst_ty.build(
+            context,
+            helper,
+            registry,
+            metadata,
+            &info.branch_signatures()[1].vars[0].ty,
+        )?,
+        location,
+    )?;
 
     helper.cond_br(
         context,
@@ -806,7 +776,13 @@ fn build_is_zero<'ctx, 'this>(
         "value can never be zero"
     );
 
-    let k0 = entry.const_int_from_type(context, location, 0, src_value.r#type())?;
+    let k0 = if src_ty.is_bounded_int(registry)? {
+        // We can do the substraction since the lower bound of the bounded int will
+        // always be less or equal than 0.
+        entry.const_int_from_type(context, location, 0 - src_range.lower, src_value.r#type())?
+    } else {
+        entry.const_int_from_type(context, location, 0, src_value.r#type())?
+    };
     let src_is_zero = entry.cmpi(context, CmpiPredicate::Eq, src_value, k0, location)?;
 
     helper.cond_br(
@@ -851,142 +827,900 @@ fn build_wrap_non_zero<'ctx, 'this>(
 
 #[cfg(test)]
 mod test {
+    use cairo_lang_sierra::program::Program;
     use cairo_vm::Felt252;
+    use lazy_static::lazy_static;
+    use test_case::test_case;
 
     use crate::{
-        context::NativeContext, execution_result::ExecutionResult, executor::JitNativeExecutor,
-        load_cairo, OptLevel, Value,
+        jit_enum, jit_panic_byte_array, jit_struct, load_cairo,
+        utils::testing::{run_program, run_program_assert_output},
+        Value,
     };
 
-    #[test]
-    fn test_trim_some_pos_i8() {
-        let (_, program) = load_cairo!(
+    lazy_static! {
+        static ref TEST_MUL_PROGRAM: (String, Program) = load_cairo! {
+                        #[feature("bounded-int-utils")]
+            use core::internal::bounded_int::{self, BoundedInt, MulHelper, mul, UnitInt};
+
+            impl MulHelperBI_m128x127_BI_m128x127 of MulHelper<BoundedInt<-128, 127>, BoundedInt<-128, 127>> {
+                type Result = BoundedInt<-16256, 16384>;
+            }
+
+            impl MulHelperBI_0x128_BI_0x128 of MulHelper<BoundedInt<0, 128>, BoundedInt<0, 128>> {
+                type Result = BoundedInt<0, 16384>;
+            }
+
+            impl MulHelperBI_1x31_BI_1x1 of MulHelper<BoundedInt<1, 31>, BoundedInt<1, 1>> {
+                type Result = BoundedInt<1, 31>;
+            }
+
+            impl MulHelperBI_m1x31_BI_m1xm1 of MulHelper<BoundedInt<-1, 31>, BoundedInt<-1, -1>> {
+                type Result = BoundedInt<-31, 1>;
+            }
+
+            impl MulHelperBI_31x31_BI_1x1 of MulHelper<BoundedInt<31, 31>, BoundedInt<1, 1>> {
+                type Result = BoundedInt<31, 31>;
+            }
+
+            impl MulHelperBI_m10x0_BI_0x100 of MulHelper<BoundedInt<-100, 0>, BoundedInt<0, 100>> {
+                type Result = BoundedInt<-10000, 0>;
+            }
+
+            impl MulHelperBI_1x1_BI_1x1 of MulHelper<BoundedInt<1, 1>, BoundedInt<1, 1>> {
+                type Result = BoundedInt<1, 1>;
+            }
+
+            impl MulHelperBI_m5x5_UI_2 of MulHelper<BoundedInt<-5, 5>, UnitInt<2>> {
+                type Result = BoundedInt<-10, 10>;
+            }
+
+            fn bi_m128x127_times_bi_m128x127(a: felt252, b: felt252) -> BoundedInt<-16256, 16384> {
+                let a: BoundedInt<-128, 127> = a.try_into().unwrap();
+                let b: BoundedInt<-128, 127> = b.try_into().unwrap();
+
+                mul(a,b)
+            }
+
+            fn bi_0x128_times_bi_0x128(a: felt252, b: felt252) -> BoundedInt<0, 16384> {
+                let a: BoundedInt<0, 128> = a.try_into().unwrap();
+                let b: BoundedInt<0, 128> = b.try_into().unwrap();
+
+                mul(a,b)
+            }
+
+            fn bi_1x31_times_bi_1x1(a: felt252, b: felt252) -> BoundedInt<1, 31> {
+                let a: BoundedInt<1, 31> = a.try_into().unwrap();
+                let b: BoundedInt<1, 1> = b.try_into().unwrap();
+
+                mul(a,b)
+            }
+
+            fn bi_m1x31_times_bi_m1xm1(a: felt252, b: felt252) -> BoundedInt<-31, 1> {
+                let a: BoundedInt<-1, 31> = a.try_into().unwrap();
+                let b: BoundedInt<-1, -1> = b.try_into().unwrap();
+
+                mul(a,b)
+            }
+
+            fn bi_31x31_times_bi_1x1(a: felt252, b: felt252) -> BoundedInt<31, 31> {
+                let a: BoundedInt<31, 31> = a.try_into().unwrap();
+                let b: BoundedInt<1, 1> = b.try_into().unwrap();
+
+                mul(a,b)
+            }
+
+            fn bi_m100x0_times_bi_0x100(a: felt252, b: felt252) -> BoundedInt<-10000, 0> {
+                let a: BoundedInt<-100, 0> = a.try_into().unwrap();
+                let b: BoundedInt<0, 100> = b.try_into().unwrap();
+
+                mul(a,b)
+            }
+
+            fn bi_1x1_times_bi_1x1(a: felt252, b: felt252) -> BoundedInt<1, 1> {
+                let a: BoundedInt<1, 1> = a.try_into().unwrap();
+                let b: BoundedInt<1, 1> = b.try_into().unwrap();
+
+                mul(a,b)
+            }
+
+            fn bi_m5x5_times_ui_2(a: felt252, b: felt252) -> BoundedInt<-10, 10> {
+                let a: BoundedInt<-5, 5> = a.try_into().unwrap();
+                let b: UnitInt<2> = b.try_into().unwrap();
+
+                mul(a,b)
+            }
+        };
+    }
+
+    #[test_case("bi_m128x127_times_bi_m128x127", -128, -128, 16384)]
+    #[test_case("bi_0x128_times_bi_0x128", 126, 128, 16128)]
+    #[test_case("bi_1x31_times_bi_1x1", 31, 1, 31)]
+    #[test_case("bi_m1x31_times_bi_m1xm1", 31, -1, -31)]
+    #[test_case("bi_31x31_times_bi_1x1", 31, 1, 31)]
+    #[test_case("bi_m100x0_times_bi_0x100", -100, 100, -10000)]
+    #[test_case("bi_1x1_times_bi_1x1", 1, 1, 1)]
+    #[test_case("bi_m5x5_times_ui_2", -3, 2, -6)]
+    fn test_mul(entry_point: &str, lhs: i32, rhs: i32, expected_result: i32) {
+        let result = run_program(
+            &TEST_MUL_PROGRAM,
+            entry_point,
+            &[
+                Value::Felt252(Felt252::from(lhs)),
+                Value::Felt252(Felt252::from(rhs)),
+            ],
+        )
+        .return_value;
+        if let Value::Enum { value, .. } = result {
+            if let Value::Struct { fields, .. } = *value {
+                assert!(
+                    matches!(fields[0], Value::BoundedInt { value, .. } if value == Felt252::from(expected_result))
+                )
+            } else {
+                panic!("Test returned an unexpected value");
+            }
+        } else {
+            panic!("Test didn't return an enum as expected");
+        }
+    }
+
+    lazy_static! {
+        static ref TEST_TRIM_PROGRAM: (String, Program) = load_cairo! {
             #[feature("bounded-int-utils")]
-            use core::internal::bounded_int::{self, BoundedInt};
+            use core::internal::bounded_int::{self, BoundedInt, trim_min, trim_max, TrimMinHelper, TrimMaxHelper};
             use core::internal::OptionRev;
 
-            fn main() -> BoundedInt<-128, 126> {
-                let num = match bounded_int::trim_max::<i8>(1) {
-                    OptionRev::Some(n) => n,
-                    OptionRev::None => 0,
+
+            fn test_i8_min(a: felt252) {
+                let a_int: i8 = a.try_into().unwrap();
+                match trim_min::<i8>(a_int) {
+                    OptionRev::Some(v) => assert!(v == a.try_into().unwrap(), "invariant"),
+                    OptionRev::None => panic!("boundary"),
                 };
-
-                num
             }
-        );
-        let ctx = NativeContext::new();
-        let module = ctx.compile(&program, false, None, None).unwrap();
-        let executor = JitNativeExecutor::from_native_module(module, OptLevel::Default).unwrap();
-        let ExecutionResult {
-            remaining_gas: _,
-            return_value,
-            builtin_stats: _,
-        } = executor
-            .invoke_dynamic(&program.funcs[0].id, &[], None)
-            .unwrap();
+            fn test_i8_max(a: felt252) {
+                let a_int: i8 = a.try_into().unwrap();
+                match trim_max::<i8>(a_int) {
+                    OptionRev::Some(v) => assert!(v == a.try_into().unwrap(), "invariant"),
+                    OptionRev::None => panic!("boundary"),
+                };
+            }
 
-        let Value::BoundedInt { value, range: _ } = return_value else {
-            panic!();
+            fn test_u8_min(a: felt252) {
+                let a_int: u8 = a.try_into().unwrap();
+                match trim_min::<u8>(a_int) {
+                    OptionRev::Some(v) => assert!(v == a.try_into().unwrap(), "invariant"),
+                    OptionRev::None => panic!("boundary"),
+                };
+            }
+            fn test_u8_max(a: felt252) {
+                let a_int: u8 = a.try_into().unwrap();
+                match trim_max::<u8>(a_int) {
+                    OptionRev::Some(v) => assert!(v == a.try_into().unwrap(), "invariant"),
+                    OptionRev::None => panic!("boundary"),
+                };
+            }
+
+            impl MinHelper_0_100 of TrimMinHelper<BoundedInt<0, 100>> {
+                type Target = BoundedInt<1, 100>;
+            }
+            fn test_0_100_min(a: felt252) {
+                let a_int: BoundedInt<0, 100> = a.try_into().unwrap();
+                match trim_min::<BoundedInt<0, 100>>(a_int) {
+                    OptionRev::Some(v) => assert!(v == a.try_into().unwrap(), "invariant"),
+                    OptionRev::None => panic!("boundary"),
+                };
+            }
+
+            impl MaxHelper_0_100 of TrimMaxHelper<BoundedInt<0, 100>> {
+                type Target = BoundedInt<0, 99>;
+            }
+            fn test_0_100_max(a: felt252) {
+                let a_int: BoundedInt<0, 100> = a.try_into().unwrap();
+                match trim_max::<BoundedInt<0, 100>>(a_int) {
+                    OptionRev::Some(v) => assert!(v == a.try_into().unwrap(), "invariant"),
+                    OptionRev::None => panic!("boundary"),
+                };
+            }
+
+            impl MinHelper_10_100 of TrimMinHelper<BoundedInt<10, 100>> {
+                type Target = BoundedInt<11, 100>;
+            }
+            fn test_10_100_min(a: felt252) {
+                let a_int: BoundedInt<10, 100> = a.try_into().unwrap();
+                match trim_min::<BoundedInt<10, 100>>(a_int) {
+                    OptionRev::Some(v) => assert!(v == a.try_into().unwrap(), "invariant"),
+                    OptionRev::None => panic!("boundary"),
+                };
+            }
+
+            impl MaxHelper_10_100 of TrimMaxHelper<BoundedInt<10, 100>> {
+                type Target = BoundedInt<10, 99>;
+            }
+            fn test_10_100_max(a: felt252) {
+                let a_int: BoundedInt<10, 100> = a.try_into().unwrap();
+                match trim_max::<BoundedInt<10, 100>>(a_int) {
+                    OptionRev::Some(v) => assert!(v == a.try_into().unwrap(), "invariant"),
+                    OptionRev::None => panic!("boundary"),
+                };
+            }
+
+            impl MinHelper_m100_0 of TrimMinHelper<BoundedInt<-100, 0>> {
+                type Target = BoundedInt<-99, 0>;
+            }
+            fn test_m100_0_min(a: felt252) {
+                let a_int: BoundedInt<-100, 0> = a.try_into().unwrap();
+                match trim_min::<BoundedInt<-100, 0>>(a_int) {
+                    OptionRev::Some(v) => assert!(v == a.try_into().unwrap(), "invariant"),
+                    OptionRev::None => panic!("boundary"),
+                };
+            }
+
+            impl MaxHelper_m100_0 of TrimMaxHelper<BoundedInt<-100, 0>> {
+                type Target = BoundedInt<-100, -1>;
+            }
+            fn test_m100_0_max(a: felt252) {
+                let a_int: BoundedInt<-100, 0> = a.try_into().unwrap();
+                match trim_max::<BoundedInt<-100, 0>>(a_int) {
+                    OptionRev::Some(v) => assert!(v == a.try_into().unwrap(), "invariant"),
+                    OptionRev::None => panic!("boundary"),
+                };
+            }
+
+            impl MinHelper_m100_m10 of TrimMinHelper<BoundedInt<-100, -10>> {
+                type Target = BoundedInt<-99, -10>;
+            }
+            fn test_m100_m10_min(a: felt252) {
+                let a_int: BoundedInt<-100, -10> = a.try_into().unwrap();
+                match trim_min::<BoundedInt<-100, -10>>(a_int) {
+                    OptionRev::Some(v) => assert!(v == a.try_into().unwrap(), "invariant"),
+                    OptionRev::None => panic!("boundary"),
+                };
+            }
+
+            impl MaxHelper_m100_m10 of TrimMaxHelper<BoundedInt<-100, -10>> {
+                type Target = BoundedInt<-100, -11>;
+            }
+            fn test_m100_m10_max(a: felt252) {
+                let a_int: BoundedInt<-100, -10> = a.try_into().unwrap();
+                match trim_max::<BoundedInt<-100, -10>>(a_int) {
+                    OptionRev::Some(v) => assert!(v == a.try_into().unwrap(), "invariant"),
+                    OptionRev::None => panic!("boundary"),
+                };
+            }
+
+            impl MinHelper_m100_100 of TrimMinHelper<BoundedInt<-100, 100>> {
+                type Target = BoundedInt<-99, 100>;
+            }
+            fn test_m100_100_min(a: felt252) {
+                let a_int: BoundedInt<-100, 100> = a.try_into().unwrap();
+                match trim_min::<BoundedInt<-100, 100>>(a_int) {
+                    OptionRev::Some(v) => assert!(v == a.try_into().unwrap(), "invariant"),
+                    OptionRev::None => panic!("boundary"),
+                };
+            }
+
+            impl MaxHelper_m100_100 of TrimMaxHelper<BoundedInt<-100, 100>> {
+                type Target = BoundedInt<-100, 99>;
+            }
+            fn test_m100_100_max(a: felt252) {
+                let a_int: BoundedInt<-100, 100> = a.try_into().unwrap();
+                match trim_max::<BoundedInt<-100, 100>>(a_int) {
+                    OptionRev::Some(v) => assert!(v == a.try_into().unwrap(), "invariant"),
+                    OptionRev::None => panic!("boundary"),
+                };
+            }
+
+            impl MinHelper_0_8 of TrimMinHelper<BoundedInt<0, 8>> {
+                type Target = BoundedInt<1, 8>;
+            }
+            fn test_0_8_min(a: felt252) {
+                let a_int: BoundedInt<0, 8> = a.try_into().unwrap();
+                match trim_min::<BoundedInt<0, 8>>(a_int) {
+                    OptionRev::Some(v) => assert!(v == a.try_into().unwrap(), "invariant"),
+                    OptionRev::None => panic!("boundary"),
+                };
+            }
+            impl MaxHelper_0_8 of TrimMaxHelper<BoundedInt<0, 8>> {
+                type Target = BoundedInt<0, 7>;
+            }
+            fn test_0_8_max(a: felt252) {
+                let a_int: BoundedInt<0, 8> = a.try_into().unwrap();
+                match trim_max::<BoundedInt<0, 8>>(a_int) {
+                    OptionRev::Some(v) => assert!(v == a.try_into().unwrap(), "invariant"),
+                    OptionRev::None => panic!("boundary"),
+                };
+            }
         };
-        assert_eq!(value, Felt252::from(1_u8));
+        static ref TEST_SUB_PROGRAM: (String, Program) = load_cairo! {
+            #[feature("bounded-int-utils")]
+            use core::internal::bounded_int::{BoundedInt, sub, SubHelper};
+
+            impl SubHelperBI_1x1_BI_1x5 of SubHelper<BoundedInt<1, 1>, BoundedInt<1, 5>> {
+                type Result = BoundedInt<-4, 0>;
+            }
+
+            fn bi_1x1_minus_bi_1x5(
+                a: felt252,
+                b: felt252,
+            ) -> BoundedInt<-4, 0> {
+                let a: BoundedInt<1, 1> = a.try_into().unwrap();
+                let b: BoundedInt<1, 5> = b.try_into().unwrap();
+                return sub(a, b);
+            }
+
+            impl SubHelperBI_1x1_BI_1x1 of SubHelper<BoundedInt<1, 1>, BoundedInt<1, 1>> {
+                type Result = BoundedInt<0, 0>;
+            }
+
+            fn bi_1x1_minus_bi_1x1(
+                a: felt252,
+                b: felt252,
+            ) -> BoundedInt<0, 0> {
+                let a: BoundedInt<1, 1> = a.try_into().unwrap();
+                let b: BoundedInt<1, 1> = b.try_into().unwrap();
+                return sub(a, b);
+            }
+
+            impl SubHelperBI_m3xm3_BI_m3xm3 of SubHelper<BoundedInt<-3, -3>, BoundedInt<-3, -3>> {
+                type Result = BoundedInt<0, 0>;
+            }
+
+            fn bi_m3xm3_minus_bi_m3xm3(
+                a: felt252,
+                b: felt252,
+            ) -> BoundedInt<0, 0> {
+                let a: BoundedInt<-3, -3> = a.try_into().unwrap();
+                let b: BoundedInt<-3, -3> = b.try_into().unwrap();
+                return sub(a, b);
+            }
+
+            impl SubHelperBI_m6xm3_BI_1x3 of SubHelper<BoundedInt<-6, -3>, BoundedInt<1, 3>> {
+                type Result = BoundedInt<-9, -4>;
+            }
+
+            fn bi_m6xm3_minus_bi_1x3(
+                a: felt252,
+                b: felt252,
+            ) -> BoundedInt<-9, -4> {
+                let a: BoundedInt<-6, -3> = a.try_into().unwrap();
+                let b: BoundedInt<1, 3> = b.try_into().unwrap();
+                return sub(a, b);
+            }
+
+            impl SubHelperBI_m6xm2_BI_m20xm10 of SubHelper<BoundedInt<-6, -2>, BoundedInt<-20, -10>> {
+                type Result = BoundedInt<4, 18>;
+            }
+
+            fn bi_m6xm2_minus_bi_m20xm10(
+                a: felt252,
+                b: felt252,
+            ) -> BoundedInt<4, 18> {
+                let a: BoundedInt<-6, -2> = a.try_into().unwrap();
+                let b: BoundedInt<-20, -10> = b.try_into().unwrap();
+                return sub(a, b);
+            }
+        };
+        static ref TEST_ADD_PROGRAM: (String, Program) = load_cairo! {
+            #[feature("bounded-int-utils")]
+            use core::internal::bounded_int::{BoundedInt, add, AddHelper, UnitInt};
+
+            impl AddHelperBI_1x31_BI_1x1 of AddHelper<BoundedInt<1, 31>, BoundedInt<1, 1>> {
+                type Result = BoundedInt<2, 32>;
+            }
+
+            fn bi_1x31_plus_bi_1x1(
+                a: felt252,
+                b: felt252,
+            ) -> BoundedInt<2, 32> {
+                let a: BoundedInt<1, 31> = a.try_into().unwrap();
+                let b: BoundedInt<1, 1> = b.try_into().unwrap();
+                return add(a, b);
+            }
+
+            impl AddHelperBI_1x31_BI_m1xm1 of AddHelper<BoundedInt<1, 31>, BoundedInt<-1, -1>> {
+                type Result = BoundedInt<0, 30>;
+            }
+
+            fn bi_1x31_plus_bi_m1xm1(
+                a: felt252,
+                b: felt252,
+            ) -> BoundedInt<0, 30> {
+                let a: BoundedInt<1, 31> = a.try_into().unwrap();
+                let b: BoundedInt<-1, -1> = b.try_into().unwrap();
+                return add(a, b);
+            }
+
+            impl AddHelperBI_0x30_BI_0x10 of AddHelper<BoundedInt<0, 30>, BoundedInt<0, 10>> {
+                type Result = BoundedInt<0, 40>;
+            }
+
+            fn bi_0x30_plus_bi_0x10(
+                a: felt252,
+                b: felt252,
+            ) -> BoundedInt<0, 40> {
+                let a: BoundedInt<0, 30> = a.try_into().unwrap();
+                let b: BoundedInt<0, 10> = b.try_into().unwrap();
+                return add(a, b);
+            }
+
+            impl AddHelperBI_m20xm15_BI_0x10 of AddHelper<BoundedInt<-20, -15>, BoundedInt<0, 10>> {
+                type Result = BoundedInt<-20, -5>;
+            }
+
+            fn bi_m20xm15_plus_bi_0x10(
+                a: felt252,
+                b: felt252,
+            ) -> BoundedInt<-20, -5> {
+                let a: BoundedInt<-20, -15> = a.try_into().unwrap();
+                let b: BoundedInt<0, 10> = b.try_into().unwrap();
+                return add(a, b);
+            }
+
+            impl AddHelperBI_m5xm5_BI_m5xm5 of AddHelper<BoundedInt<-5, -5>, BoundedInt<-5, -5>> {
+                type Result = BoundedInt<-10, -10>;
+            }
+
+            fn bi_m5xm5_plus_bi_m5xm5(
+                a: felt252,
+                b: felt252,
+            ) -> BoundedInt<-10, -10> {
+                let a: BoundedInt<-5, -5> = a.try_into().unwrap();
+                let b: BoundedInt<-5, -5> = b.try_into().unwrap();
+                return add(a, b);
+            }
+
+            impl AddHelperBI_m5xm5_UI_m1 of AddHelper<BoundedInt<-5, -5>, UnitInt<-1>> {
+                type Result = BoundedInt<-6, -6>;
+            }
+
+            fn bi_m5xm5_plus_ui_m1(
+                a: felt252,
+                b: felt252,
+            ) -> BoundedInt<-6, -6> {
+                let a: BoundedInt<-5, -5> = a.try_into().unwrap();
+                let b: UnitInt<-1> = b.try_into().unwrap();
+                return add(a, b);
+            }
+
+            impl AddHelperUI_1_BI_m5xm5 of AddHelper<UnitInt<1>, BoundedInt<-5, -5>> {
+                type Result = BoundedInt<-4, -4>;
+            }
+
+            fn ui_m1_plus_bi_m5xm5(
+                a: felt252,
+                b: felt252,
+            ) -> BoundedInt<-4, -4> {
+                let a: UnitInt<1> = a.try_into().unwrap();
+                let b: BoundedInt<-5, -5> = b.try_into().unwrap();
+                return add(a, b);
+            }
+        };
+        static ref TEST_CONSTRAIN_PROGRAM: (String, Program) = load_cairo! {
+            #[feature("bounded-int-utils")]
+            use core::internal::bounded_int::{self, BoundedInt, ConstrainHelper, constrain};
+
+            fn constrain_bi_m128_127_lt_0(a: felt252) -> BoundedInt<-128, -1> {
+                let a: i8 = a.try_into().unwrap();
+                match constrain::<i8, 0>(a) {
+                    Ok(lt0) => lt0,
+                    Err(_gt0) => panic!(),
+                }
+            }
+
+            fn constrain_bi_m128_127_gt_0(a: felt252) -> BoundedInt<0, 127> {
+                let a: i8 = a.try_into().unwrap();
+                match constrain::<i8, 0>(a) {
+                    Ok(_lt0) => panic!(),
+                    Err(gt0) => gt0,
+                }
+            }
+
+            impl ConstrainTest1 of ConstrainHelper<BoundedInt<0, 15>, 5> {
+                type LowT = BoundedInt<0, 4>;
+                type HighT = BoundedInt<5, 15>;
+            }
+
+            fn constrain_bi_0_15_lt_5(a: felt252) -> BoundedInt<0, 4> {
+                let a_bi: BoundedInt<0, 15> = a.try_into().unwrap();
+                match constrain::<_, 5>(a_bi) {
+                    Ok(lt) => lt,
+                    Err(_gt) => panic!(),
+                }
+            }
+
+            fn constrain_bi_0_15_gt_5(a: felt252) -> BoundedInt<5, 15> {
+                let a_bi: BoundedInt<0, 15> = a.try_into().unwrap();
+                match constrain::<_, 5>(a_bi) {
+                    Ok(_lt) => panic!(),
+                    Err(gt) => gt,
+                }
+            }
+
+            impl ConstrainTest2 of ConstrainHelper<BoundedInt<-10, 10>, 0> {
+                type LowT = BoundedInt<-10, -1>;
+                type HighT = BoundedInt<0, 10>;
+            }
+
+            fn constrain_bi_m10_10_lt_0(a: felt252) -> BoundedInt<-10, -1> {
+                let a_bi: BoundedInt<-10, 10> = a.try_into().unwrap();
+                match constrain::<_, 0>(a_bi) {
+                    Ok(lt0) => lt0,
+                    Err(_gt0) => panic!(),
+                }
+            }
+
+            fn constrain_bi_m10_10_gt_0(a: felt252) -> BoundedInt<0, 10> {
+                let a_bi: BoundedInt<-10, 10> = a.try_into().unwrap();
+                match constrain::<_, 0>(a_bi) {
+                    Ok(_lt0) => panic!(),
+                    Err(gt0) => gt0,
+                }
+            }
+
+            impl ConstrainTest3 of ConstrainHelper<BoundedInt<1, 61>, 31> {
+                type LowT = BoundedInt<1, 30>;
+                type HighT = BoundedInt<31, 61>;
+            }
+
+            fn constrain_bi_1_61_lt_31(a: felt252) -> BoundedInt<1, 30> {
+                let a_bi: BoundedInt<1, 61> = a.try_into().unwrap();
+                match constrain::<_, 31>(a_bi) {
+                    Ok(lt) => lt,
+                    Err(_gt) => panic!(),
+                }
+            }
+
+            fn constrain_bi_1_61_gt_31(a: felt252) -> BoundedInt<31, 61> {
+                let a_bi: BoundedInt<1, 61> = a.try_into().unwrap();
+                match constrain::<_, 31>(a_bi) {
+                    Ok(_lt) => panic!(),
+                    Err(gt) => gt,
+                }
+            }
+
+            impl ConstrainTest4 of ConstrainHelper<BoundedInt<-200, -100>, -150> {
+                type LowT = BoundedInt<-200, -151>;
+                type HighT = BoundedInt<-150, -100>;
+            }
+
+            fn constrain_bi_m200_m100_lt_m150(a: felt252) -> BoundedInt<-200, -151> {
+                let a_bi: BoundedInt<-200, -100> = a.try_into().unwrap();
+                match constrain::<_, -150>(a_bi) {
+                    Ok(lt) => lt,
+                    Err(_gt) => panic!(),
+                }
+            }
+
+            fn constrain_bi_m200_m100_gt_m150(a: felt252) -> BoundedInt<-150, -100> {
+                let a_bi: BoundedInt<-200, -100> = a.try_into().unwrap();
+                match constrain::<_, -150>(a_bi) {
+                    Ok(_lt) => panic!(),
+                    Err(gt) => gt,
+                }
+            }
+
+            impl ConstrainTest5 of ConstrainHelper<BoundedInt<30, 100>, 100> {
+                type LowT = BoundedInt<30, 99>;
+                type HighT = BoundedInt<100, 100>;
+            }
+
+            fn constrain_bi_30_100_gt_100(a: felt252) -> BoundedInt<100, 100> {
+                let a_bi: BoundedInt<30, 100> = a.try_into().unwrap();
+                match constrain::<_, 100>(a_bi) {
+                    Ok(_lt) => panic!(),
+                    Err(gt) => gt,
+                }
+            }
+
+            impl ConstrainTest6 of ConstrainHelper<BoundedInt<-30, 31>, 0> {
+                type LowT = BoundedInt<-30, -1>;
+                type HighT = BoundedInt<0, 31>;
+            }
+
+            fn constrain_bi_m30_31_lt_0(a: felt252) -> BoundedInt<-30, -1> {
+                let a_bi: BoundedInt<-30, 31> = a.try_into().unwrap();
+                match constrain::<_, 0>(a_bi) {
+                    Ok(lt0) => lt0,
+                    Err(_gt0) => panic!(),
+                }
+            }
+
+            fn constrain_bi_m30_31_gt_0(a: felt252) -> BoundedInt<0, 31> {
+                let a_bi: BoundedInt<-30, 31> = a.try_into().unwrap();
+                match constrain::<_, 0>(a_bi) {
+                    Ok(_lt0) => panic!(),
+                    Err(gt0) => gt0,
+                }
+            }
+        };
+        static ref TEST_DIV_REM_PROGRAM: (String, Program) = load_cairo! {
+            #[feature("bounded-int-utils")]
+            use core::internal::bounded_int::{self, BoundedInt, div_rem, DivRemHelper};
+            use core::internal::OptionRev;
+            extern fn bounded_int_wrap_non_zero<T>(v: T) -> NonZero<T> nopanic;
+
+
+            impl Helper_u8_u8 of DivRemHelper<u8, u8> {
+                type DivT = BoundedInt<0, 255>;
+                type RemT = BoundedInt<0, 254>;
+            }
+            fn test_u8(a: felt252, b: felt252) -> (felt252, felt252) {
+                let a_int: u8 = a.try_into().unwrap();
+                let b_int: u8 = b.try_into().unwrap();
+                let b_nz: NonZero<u8> = b_int.try_into().unwrap();
+                let (q, r) = div_rem(a_int, b_nz);
+                return (q.into(), r.into());
+            }
+
+            impl Helper_10_100_10_40 of DivRemHelper<BoundedInt<10, 100>, BoundedInt<10, 40>> {
+                type DivT = BoundedInt<0, 10>;
+                type RemT = BoundedInt<0, 39>;
+            }
+            fn test_10_100_10_40(a: felt252, b: felt252) -> (felt252, felt252) {
+                let a_int: BoundedInt<10, 100> = a.try_into().unwrap();
+                let b_int: BoundedInt<10, 40> = b.try_into().unwrap();
+                let (q, r) = div_rem(a_int, bounded_int_wrap_non_zero(b_int));
+                return (q.into(), r.into());
+            }
+
+            impl Helper_50_100_20_40 of DivRemHelper<BoundedInt<50, 100>, BoundedInt<20, 40>> {
+                type DivT = BoundedInt<1, 5>;
+                type RemT = BoundedInt<0, 39>;
+            }
+            fn test_50_100_20_40(a: felt252, b: felt252) -> (felt252, felt252) {
+                let a_int: BoundedInt<50, 100> = a.try_into().unwrap();
+                let b_int: BoundedInt<20, 40> = b.try_into().unwrap();
+                let (q, r) = div_rem(a_int, bounded_int_wrap_non_zero(b_int));
+                return (q.into(), r.into());
+            }
+        };
+    }
+
+    // test trim_min on i8
+    #[test_case("test_i8_min", 0, None)]
+    #[test_case("test_i8_min", 20, None)]
+    #[test_case("test_i8_min", 127, None)]
+    #[test_case("test_i8_min", -21, None)]
+    #[test_case("test_i8_min", -128, Some("boundary"))]
+    // test trim_max on i8
+    #[test_case("test_i8_max", 0, None)]
+    #[test_case("test_i8_max", 20, None)]
+    #[test_case("test_i8_max", 127, Some("boundary"))]
+    #[test_case("test_i8_max", -21, None)]
+    #[test_case("test_i8_max", -128, None)]
+    // test trim_min on u8
+    #[test_case("test_u8_min", 0, Some("boundary"))]
+    #[test_case("test_u8_min", 20, None)]
+    #[test_case("test_u8_min", 255, None)]
+    // test trim_max on u8
+    #[test_case("test_u8_max", 20, None)]
+    #[test_case("test_u8_max", 0, None)]
+    #[test_case("test_u8_max", 255, Some("boundary"))]
+    // test trim_min on BoundedInt<0, 100>
+    #[test_case("test_0_100_min", 0, Some("boundary"))]
+    #[test_case("test_0_100_min", 10, None)]
+    #[test_case("test_0_100_min", 100, None)]
+    // test trim_max on BoundedInt<0, 100>
+    #[test_case("test_0_100_max", 0, None)]
+    #[test_case("test_0_100_max", 10, None)]
+    #[test_case("test_0_100_max", 100, Some("boundary"))]
+    // test trim_min on BoundedInt<10, 100>
+    #[test_case("test_10_100_min", 10, Some("boundary"))]
+    #[test_case("test_10_100_min", 20, None)]
+    #[test_case("test_10_100_min", 100, None)]
+    // test trim_max on BoundedInt<10, 100>
+    #[test_case("test_10_100_max", 10, None)]
+    #[test_case("test_10_100_max", 20, None)]
+    #[test_case("test_10_100_max", 100, Some("boundary"))]
+    // test trim_min on BoundedInt<-100, 0>
+    #[test_case("test_m100_0_min", 0, None)]
+    #[test_case("test_m100_0_min", -10, None)]
+    #[test_case("test_m100_0_min", -100, Some("boundary"))]
+    // test trim_max on BoundedInt<-100, 0>
+    #[test_case("test_m100_0_max", 0, Some("boundary"))]
+    #[test_case("test_m100_0_max", -10, None)]
+    #[test_case("test_m100_0_max", -100, None)]
+    // test trim_min on BoundedInt<-100, -10>
+    #[test_case("test_m100_m10_min", -10, None)]
+    #[test_case("test_m100_m10_min", -50, None)]
+    #[test_case("test_m100_m10_min", -100, Some("boundary"))]
+    // test trim_max on BoundedInt<-100, -10>
+    #[test_case("test_m100_m10_max", -10, Some("boundary"))]
+    #[test_case("test_m100_m10_max", -50, None)]
+    #[test_case("test_m100_m10_max", -100, None)]
+    // test trim_min on BoundedInt<-100, 100>
+    #[test_case("test_m100_100_min", -100, Some("boundary"))]
+    #[test_case("test_m100_100_min", -51, None)]
+    #[test_case("test_m100_100_min", 0, None)]
+    #[test_case("test_m100_100_min", 50, None)]
+    #[test_case("test_m100_100_min", 100, None)]
+    // test trim_max on BoundedInt<-100, 100>
+    #[test_case("test_m100_100_max", -100, None)]
+    #[test_case("test_m100_100_max", -51, None)]
+    #[test_case("test_m100_100_max", 0, None)]
+    #[test_case("test_m100_100_max", 50, None)]
+    #[test_case("test_m100_100_max", 100, Some("boundary"))]
+    // test trim_min on BoundedInt<0, 8>
+    #[test_case("test_0_8_min", 0, Some("boundary"))]
+    #[test_case("test_0_8_min", 4, None)]
+    #[test_case("test_0_8_min", 8, None)]
+    // test trim_max on BoundedInt<0, 8>
+    #[test_case("test_0_8_max", 0, None)]
+    #[test_case("test_0_8_max", 4, None)]
+    #[test_case("test_0_8_max", 8, Some("boundary"))]
+    fn test_trim(entry_point: &str, argument: i32, expected_error: Option<&str>) {
+        let arguments = &[Felt252::from(argument).into()];
+        let expected_result = match expected_error {
+            Some(error_message) => jit_panic_byte_array!(error_message),
+            None => jit_enum!(0, jit_struct!(jit_struct!())),
+        };
+        run_program_assert_output(&TEST_TRIM_PROGRAM, entry_point, arguments, expected_result);
+    }
+
+    #[test_case("bi_1x1_minus_bi_1x5", 1, 5, -4)]
+    #[test_case("bi_1x1_minus_bi_1x1", 1, 1, 0)]
+    #[test_case("bi_m3xm3_minus_bi_m3xm3", -3, -3, 0)]
+    #[test_case("bi_m6xm3_minus_bi_1x3", -6, 3, -9)]
+    #[test_case("bi_m6xm2_minus_bi_m20xm10", -2, -20, 18)]
+    fn test_sub(entry_point: &str, lhs: i32, rhs: i32, expected_result: i32) {
+        let result = run_program(
+            &TEST_SUB_PROGRAM,
+            entry_point,
+            &[
+                Value::Felt252(Felt252::from(lhs)),
+                Value::Felt252(Felt252::from(rhs)),
+            ],
+        )
+        .return_value;
+        if let Value::Enum { value, .. } = result {
+            if let Value::Struct { fields, .. } = *value {
+                assert!(
+                    matches!(fields[0], Value::BoundedInt { value, .. } if value == Felt252::from(expected_result))
+                )
+            } else {
+                panic!("Test returned an unexpected value");
+            }
+        } else {
+            panic!("Test didn't return an enum as expected");
+        }
+    }
+
+    #[test_case("bi_1x31_plus_bi_1x1", 31, 1, 32)]
+    #[test_case("bi_1x31_plus_bi_m1xm1", 31, -1, 30)]
+    #[test_case("bi_0x30_plus_bi_0x10", 30, 10, 40)]
+    #[test_case("bi_m20xm15_plus_bi_0x10", -15, 10, -5)]
+    #[test_case("bi_m20xm15_plus_bi_0x10", -20, 10, -10)]
+    #[test_case("bi_m5xm5_plus_bi_m5xm5", -5, -5, -10)]
+    #[test_case("bi_m5xm5_plus_ui_m1", -5, -1, -6)]
+    #[test_case("ui_m1_plus_bi_m5xm5", 1, -5, -4)]
+    fn test_add(entry_point: &str, lhs: i32, rhs: i32, expected_result: i32) {
+        let result = run_program(
+            &TEST_ADD_PROGRAM,
+            entry_point,
+            &[
+                Value::Felt252(Felt252::from(lhs)),
+                Value::Felt252(Felt252::from(rhs)),
+            ],
+        )
+        .return_value;
+
+        if let Value::Enum { value, .. } = result {
+            if let Value::Struct { fields, .. } = *value {
+                assert!(
+                    matches!(fields[0], Value::BoundedInt { value, .. } if value == Felt252::from(expected_result))
+                )
+            } else {
+                panic!("Test returned an unexpected value");
+            }
+        } else {
+            panic!("Test didn't return an enum as expected");
+        }
+    }
+
+    fn assert_bool_output(result: Value, expected_tag: usize) {
+        if let Value::Enum { tag, value, .. } = result {
+            assert_eq!(tag, 0);
+            if let Value::Struct { fields, .. } = *value {
+                if let Value::Enum { tag, .. } = fields[0] {
+                    assert_eq!(tag, expected_tag)
+                }
+            }
+        }
     }
 
     #[test]
-    fn test_trim_some_neg_i8() {
-        let (_, program) = load_cairo!(
+    fn test_is_zero() {
+        let program = load_cairo! {
             #[feature("bounded-int-utils")]
-            use core::internal::bounded_int::{self, BoundedInt};
-            use core::internal::OptionRev;
+            use core::internal::bounded_int::{self, BoundedInt, is_zero};
+            use core::zeroable::IsZeroResult;
 
-            fn main() -> BoundedInt<-127, 127> {
-                let num = match bounded_int::trim_min::<i8>(1) {
-                    OptionRev::Some(n) => n,
-                    OptionRev::None => 1,
-                };
-
-                num
+            fn run_test_1(a: felt252) -> bool {
+                let bi: BoundedInt<0, 5> = a.try_into().unwrap();
+                match is_zero(bi) {
+                    IsZeroResult::Zero => true,
+                    IsZeroResult::NonZero(_) => false,
+                }
             }
-        );
-        let ctx = NativeContext::new();
-        let module = ctx.compile(&program, false, None, None).unwrap();
-        let executor = JitNativeExecutor::from_native_module(module, OptLevel::Default).unwrap();
-        let ExecutionResult {
-            remaining_gas: _,
-            return_value,
-            builtin_stats: _,
-        } = executor
-            .invoke_dynamic(&program.funcs[0].id, &[], None)
-            .unwrap();
 
-        let Value::BoundedInt { value, range: _ } = return_value else {
-            panic!();
+            fn run_test_2(a: felt252) -> bool {
+                let bi: BoundedInt<-5, 5> = a.try_into().unwrap();
+                match is_zero(bi) {
+                    IsZeroResult::Zero => true,
+                    IsZeroResult::NonZero(_) => false,
+                }
+            }
         };
-        assert_eq!(value, Felt252::from(1_u8));
+
+        let result =
+            run_program(&program, "run_test_1", &[Value::Felt252(Felt252::from(0))]).return_value;
+        assert_bool_output(result, 1);
+
+        let result =
+            run_program(&program, "run_test_1", &[Value::Felt252(Felt252::from(5))]).return_value;
+        assert_bool_output(result, 0);
+
+        let result =
+            run_program(&program, "run_test_2", &[Value::Felt252(Felt252::from(0))]).return_value;
+        assert_bool_output(result, 1);
+
+        let result =
+            run_program(&program, "run_test_2", &[Value::Felt252(Felt252::from(-5))]).return_value;
+        assert_bool_output(result, 0);
     }
 
-    #[test]
-    fn test_trim_some_u32() {
-        let (_, program) = load_cairo!(
-            #[feature("bounded-int-utils")]
-            use core::internal::bounded_int::{self, BoundedInt};
-            use core::internal::OptionRev;
-
-            fn main() -> BoundedInt<0, 4294967294> {
-                let num = match bounded_int::trim_max::<u32>(0xfffffffe) {
-                    OptionRev::Some(n) => n,
-                    OptionRev::None => 0,
-                };
-
-                num
+    #[test_case("constrain_bi_m128_127_lt_0", -1, -1)]
+    #[test_case("constrain_bi_m128_127_gt_0", 1, 1)]
+    #[test_case("constrain_bi_m128_127_gt_0", 0, 0)]
+    #[test_case("constrain_bi_0_15_lt_5", 0, 0)]
+    #[test_case("constrain_bi_0_15_gt_5", 15, 15)]
+    #[test_case("constrain_bi_m10_10_lt_0", -5, -5)]
+    #[test_case("constrain_bi_m10_10_gt_0", 5, 5)]
+    #[test_case("constrain_bi_1_61_lt_31", 30, 30)]
+    #[test_case("constrain_bi_1_61_gt_31", 31, 31)]
+    #[test_case("constrain_bi_m200_m100_lt_m150", -200, -200)]
+    #[test_case("constrain_bi_m200_m100_gt_m150", -150, -150)]
+    #[test_case("constrain_bi_30_100_gt_100", 100, 100)]
+    #[test_case("constrain_bi_m30_31_lt_0", -5, -5)]
+    #[test_case("constrain_bi_m30_31_gt_0", 5, 5)]
+    fn test_constrain(entry_point: &str, input: i32, expected_result: i32) {
+        let result = run_program(
+            &TEST_CONSTRAIN_PROGRAM,
+            entry_point,
+            &[Value::Felt252(Felt252::from(input))],
+        )
+        .return_value;
+        if let Value::Enum { value, .. } = result {
+            if let Value::Struct { fields, .. } = *value {
+                assert!(
+                    matches!(fields[0], Value::BoundedInt { value, .. } if value == Felt252::from(expected_result))
+                )
+            } else {
+                panic!("Test returned an unexpected value");
             }
-        );
-        let ctx = NativeContext::new();
-        let module = ctx.compile(&program, false, None, None).unwrap();
-        let executor = JitNativeExecutor::from_native_module(module, OptLevel::Default).unwrap();
-        let ExecutionResult {
-            remaining_gas: _,
-            return_value,
-            builtin_stats: _,
-        } = executor
-            .invoke_dynamic(&program.funcs[0].id, &[], None)
-            .unwrap();
-
-        let Value::BoundedInt { value, range: _ } = return_value else {
-            panic!();
-        };
-        assert_eq!(value, Felt252::from(0xfffffffe_u32));
+        } else {
+            panic!("Test didn't return an enum as expected");
+        }
     }
 
-    #[test]
-    fn test_trim_none() {
-        let (_, program) = load_cairo!(
-            #[feature("bounded-int-utils")]
-            use core::internal::bounded_int::{self, BoundedInt};
-            use core::internal::OptionRev;
-
-            fn main() -> BoundedInt<-32767, 32767> {
-                let num = match bounded_int::trim_min::<i16>(-0x8000) {
-                    OptionRev::Some(n) => n,
-                    OptionRev::None => 0,
-                };
-
-                num
-            }
+    #[test_case("test_u8", 100, 30, 3, 10)]
+    #[test_case("test_10_100_10_40", 100, 30, 3, 10)]
+    #[test_case("test_50_100_20_40", 100, 30, 3, 10)]
+    fn test_div_rem(entry_point: &str, a: i32, b: i32, expected_q: u32, expected_r: u32) {
+        let arguments = &[Felt252::from(a).into(), Felt252::from(b).into()];
+        let expected_result = jit_enum!(
+            0,
+            jit_struct!(jit_struct!(
+                Felt252::from(expected_q).into(),
+                Felt252::from(expected_r).into(),
+            ))
         );
-        let ctx = NativeContext::new();
-        let module = ctx.compile(&program, false, None, None).unwrap();
-        let executor = JitNativeExecutor::from_native_module(module, OptLevel::Default).unwrap();
-        let ExecutionResult {
-            remaining_gas: _,
-            return_value,
-            builtin_stats: _,
-        } = executor
-            .invoke_dynamic(&program.funcs[0].id, &[], None)
-            .unwrap();
-
-        let Value::BoundedInt { value, range: _ } = return_value else {
-            panic!();
-        };
-        assert_eq!(value, Felt252::from(0));
+        run_program_assert_output(
+            &TEST_DIV_REM_PROGRAM,
+            entry_point,
+            arguments,
+            expected_result,
+        );
     }
 }
