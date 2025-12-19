@@ -1082,7 +1082,7 @@ dependencies = [
  "cairo-lang-starknet",
  "cairo-lang-starknet-classes",
  "cairo-lang-utils",
- "cairo-vm 3.0.0 (git+https://github.com/lambdaclass/cairo-vm?rev=e1a87f9909be388f96c60a4755fd75c8cc5ff934)",
+ "cairo-vm 3.0.0 (git+https://github.com/lambdaclass/cairo-vm?rev=a87e9e6a2cc4b759ae30a9c1a08efabf78ca4c17)",
  "criterion",
  "educe 0.5.11",
  "itertools 0.14.0",
@@ -1253,7 +1253,7 @@ dependencies = [
 [[package]]
 name = "cairo-vm"
 version = "3.0.0"
-source = "git+https://github.com/lambdaclass/cairo-vm?rev=e1a87f9909be388f96c60a4755fd75c8cc5ff934#e1a87f9909be388f96c60a4755fd75c8cc5ff934"
+source = "git+https://github.com/lambdaclass/cairo-vm?rev=a87e9e6a2cc4b759ae30a9c1a08efabf78ca4c17#a87e9e6a2cc4b759ae30a9c1a08efabf78ca4c17"
 dependencies = [
  "anyhow",
  "ark-ff 0.4.2",
@@ -1310,7 +1310,7 @@ dependencies = [
  "cairo-lang-casm",
  "cairo-lang-starknet-classes",
  "cairo-lang-utils",
- "cairo-vm 3.0.0 (git+https://github.com/lambdaclass/cairo-vm?rev=e1a87f9909be388f96c60a4755fd75c8cc5ff934)",
+ "cairo-vm 3.0.0 (git+https://github.com/lambdaclass/cairo-vm?rev=a87e9e6a2cc4b759ae30a9c1a08efabf78ca4c17)",
  "clap",
  "serde_json",
  "starknet-types-core",
