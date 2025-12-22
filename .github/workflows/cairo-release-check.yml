@@ -1,14 +1,9 @@
 name: Weekly Cairo Release Check
 
 on:
-  push:
-    branches: [main]
-  pull_request:
-  merge_group:
-    types: [checks_requested]
-  # schedule:
-  #   # Run all Mondays at 08:00.
-  #   - cron: "0 8 * * 1"
+  schedule:
+    # Run all Mondays at 08:00.
+    - cron: "0 8 * * 1"
 
 jobs:
   release-tag-check:
@@ -25,7 +20,7 @@ jobs:
 
       - uses: ./.github/actions/install-linux-deps
       - name: Setup Rust Env
-        uses: dtolnay/rust-toolchain@1.84.1
+        uses: dtolnay/rust-toolchain@1.89.0
       - name: Retreive cached dependecies
         uses: Swatinem/rust-cache@v2
 
@@ -46,8 +41,8 @@ jobs:
 
           git diff
 
-      - name: Run check
-        run: make check
+      - name: Run Cairo Tests
+        run: make test-cairo
 
       - name: Create Issue
         if: ${{ failure() }}
