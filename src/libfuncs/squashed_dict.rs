@@ -5,13 +5,11 @@ use crate::{
         realloc_bindings::ReallocBindingsMeta, runtime_bindings::RuntimeBindingsMeta,
         MetadataStorage,
     },
-    native_panic,
-    types::array::calc_data_prefix_offset,
     utils::ProgramRegistryExt,
 };
 use cairo_lang_sierra::{
     extensions::{
-        core::{CoreLibfunc, CoreType, CoreTypeConcrete},
+        core::{CoreLibfunc, CoreType},
         lib_func::SignatureAndTypeConcreteLibfunc,
         squashed_felt252_dict::SquashedFelt252DictConcreteLibfunc,
         ConcreteLibfunc,
@@ -28,7 +26,6 @@ use melior::{
     },
     Context,
 };
-use std::alloc::Layout;
 
 /// Select and call the correct libfunc builder function from the selector.
 pub fn build<'ctx, 'this>(
@@ -45,23 +42,6 @@ pub fn build<'ctx, 'this>(
             build_into_entries(context, registry, entry, location, helper, metadata, info)
         }
     }
-}
-
-/// Get the layout of the tuple (felt252, T, T)
-fn get_inner_type_layout<'ctx, 'this>(
-    context: &'ctx Context,
-    registry: &ProgramRegistry<CoreType, CoreLibfunc>,
-    helper: &LibfuncHelper<'ctx, 'this>,
-    metadata: &mut MetadataStorage,
-    info: &SignatureAndTypeConcreteLibfunc,
-) -> Result<Layout> {
-    let array_ty = registry.get_type(&info.signature.branch_signatures[0].vars[0].ty)?;
-    let CoreTypeConcrete::Array(info) = array_ty else {
-        native_panic!("Received wrong type");
-    };
-    let (_, elem_layout) = registry.build_type_with_layout(context, helper, metadata, &info.ty)?;
-
-    Ok(elem_layout)
 }
 
 /// Generate MLIR operations for the `squashed_felt252_dict_entries` libfunc.
@@ -96,9 +76,6 @@ pub fn build_into_entries<'ctx, 'this>(
     let dict_ptr = entry.arg(0)?;
 
     // Get the size for the array (prefix + data)
-    let tuple_layout = get_inner_type_layout(context, registry, helper, metadata, info)?;
-    let data_prefix_size = calc_data_prefix_offset(tuple_layout);
-    let data_prefix_size_value = entry.const_int(context, location, data_prefix_size, 64)?;
     let (array_ty, array_layout) = registry.build_type_with_layout(
         context,
         helper,
@@ -129,15 +106,7 @@ pub fn build_into_entries<'ctx, 'this>(
     metadata
         .get_mut::<RuntimeBindingsMeta>()
         .ok_or(Error::MissingMetadata)?
-        .dict_into_entries(
-            context,
-            helper,
-            entry,
-            dict_ptr,
-            data_prefix_size_value,
-            array_ptr,
-            location,
-        )?;
+        .dict_into_entries(context, helper, entry, dict_ptr, array_ptr, location)?;
 
     // Extract the array from the pointer
     let ptr_ty = llvm::r#type::pointer(context, 0);

@@ -732,7 +732,6 @@ impl RuntimeBindingsMeta {
         helper: &LibfuncHelper<'c, 'a>,
         block: &'a Block<'c>,
         dict_ptr: Value<'c, 'a>,
-        data_prefix_offset: Value<'c, 'a>,
         array_ptr: Value<'c, 'a>,
         location: Location<'c>,
     ) -> Result<OperationRef<'c, 'a>>
@@ -750,7 +749,7 @@ impl RuntimeBindingsMeta {
         Ok(block.append_operation(
             OperationBuilder::new("llvm.call", location)
                 .add_operands(&[function])
-                .add_operands(&[dict_ptr, data_prefix_offset, array_ptr])
+                .add_operands(&[dict_ptr, array_ptr])
                 .build()?,
         ))
     }
