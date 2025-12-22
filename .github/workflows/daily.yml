@@ -184,19 +184,19 @@ jobs:
           name: output-result
           path: output
 
-      # - name: Prepare env vars
-      #   if: ${{ always() }}
-      #   run: |
-      #     # Save workflow url
-      #     REPO_URL="${{ github.server_url }}/${{ github.repository }}"
-      #     echo "WORKFLOW_URL=$REPO_URL/actions/runs/${{ github.run_id }}" | tee -a $GITHUB_ENV
-      #     echo "COMPARISON_RESULT=$REPO_URL/actions/runs/${{ github.run_id }}/artifacts/${{ steps.upload_compare_results.outputs.artifact-id }}" | tee -a $GITHUB_ENV
+      - name: Prepare env vars
+        if: ${{ always() }}
+        run: |
+          # Save workflow url
+          REPO_URL="${{ github.server_url }}/${{ github.repository }}"
+          echo "WORKFLOW_URL=$REPO_URL/actions/runs/${{ github.run_id }}" | tee -a $GITHUB_ENV
+          echo "COMPARISON_RESULT=$REPO_URL/actions/runs/${{ github.run_id }}/artifacts/${{ steps.upload_compare_results.outputs.artifact-id }}" | tee -a $GITHUB_ENV
 
-      # - name: Create Issue
-      #   if: ${{ failure() && steps.comapare-dumps.outcome == 'failure'  }}
-      #   uses: JasonEtco/create-an-issue@v2
-      #   env:
-      #     GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-      #     COMMIT_SHA: ${{ github.sha }}
-      #   with:
-      #     filename: .github/ISSUE_TEMPLATE/daily_failure.md
+      - name: Create Issue
+        if: ${{ failure() && steps.comapare-dumps.outcome == 'failure'  }}
+        uses: JasonEtco/create-an-issue@v2
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          COMMIT_SHA: ${{ github.sha }}
+        with:
+          filename: .github/ISSUE_TEMPLATE/daily_failure.md
