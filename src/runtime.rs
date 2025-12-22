@@ -299,14 +299,6 @@ pub unsafe extern "C" fn cairo_native__dict_get(
     is_present as c_int
 }
 
-pub unsafe extern "C" fn cairo_native__dict_len(dict_ptr: *const FeltDict) -> u64 {
-    let dict_rc = Rc::from_raw(dict_ptr);
-    let dict_len = dict_rc.mappings.len() as u64;
-    forget(dict_rc); // TODO: Should we forget it?
-
-    dict_len
-}
-
 /// Creates an array (Array<(felt252, T, T)>) by iterating the dictionary.
 unsafe fn create_mlir_array(
     dict: &mut FeltDict,
