@@ -1,7 +1,7 @@
 #![allow(non_snake_case)]
 
 use crate::{
-    starknet::ArrayAbi,
+    starknet::{ArrayAbi, Felt252Abi},
     utils::{libc_malloc, BuiltinCosts},
 };
 use cairo_lang_sierra_gas::core_libfunc_cost::{
@@ -300,11 +300,7 @@ pub unsafe extern "C" fn cairo_native__dict_get(
 }
 
 /// Creates an array (Array<(felt252, T, T)>) by iterating the dictionary.
-unsafe fn create_mlir_array(
-    dict: &mut FeltDict,
-    data_prefix_offset: u64,
-    tuple_stride: u64,
-) -> ArrayAbi<c_void> {
+unsafe fn create_mlir_array(dict: &mut FeltDict, data_prefix_offset: u64) -> ArrayAbi<c_void> {
     let len = dict.mappings.len();
     if len == 0 {
         return ArrayAbi {
@@ -315,9 +311,18 @@ unsafe fn create_mlir_array(
         };
     }
 
+    let tuple_stride = Layout::new::<Felt252Abi>()
+        .extend(dict.layout)
+        .expect("Should be posible to extend Felt252Abi layout")
+        .0
+        .extend(dict.layout)
+        .expect("Should be able to extend with the last tuple element")
+        .0
+        .pad_to_align()
+        .size();
+
     // Pointer to the space in memory with enough memory to hold the entire array
-    let ptr =
-        libc_malloc(((tuple_stride * dict.mappings.len() as u64) + data_prefix_offset) as usize);
+    let ptr = libc_malloc(tuple_stride * dict.mappings.len() + data_prefix_offset as usize);
 
     // Store the reference counter
     ptr.cast::<u32>().write(1);
@@ -373,7 +378,6 @@ unsafe fn create_mlir_array(
 pub unsafe extern "C" fn cairo_native__dict_into_entries(
     dict_ptr: *const FeltDict,
     data_prefix_offset: u64,
-    tuple_stride: u64,
     array_ptr: *mut ArrayAbi<c_void>,
 ) {
     let dict_rc = Rc::from_raw(dict_ptr);
@@ -386,7 +390,7 @@ pub unsafe extern "C" fn cairo_native__dict_into_entries(
         .as_mut()
         .expect("rc inner pointer should never be null");
 
-    let arr = create_mlir_array(dict, data_prefix_offset, tuple_stride);
+    let arr = create_mlir_array(dict, data_prefix_offset);
 
     *array_ptr = arr;
     forget(dict_rc);

@@ -98,12 +98,6 @@ pub fn build_into_entries<'ctx, 'this>(
     // Get the size for the array (prefix + data)
     let tuple_layout = get_inner_type_layout(context, registry, helper, metadata, info)?;
     let data_prefix_size = calc_data_prefix_offset(tuple_layout);
-    let tuple_stride = entry.const_int_from_type(
-        context,
-        location,
-        tuple_layout.pad_to_align().size(),
-        IntegerType::new(context, 64).into(),
-    )?;
     let data_prefix_size_value = entry.const_int(context, location, data_prefix_size, 64)?;
     let (array_ty, array_layout) = registry.build_type_with_layout(
         context,
@@ -141,7 +135,6 @@ pub fn build_into_entries<'ctx, 'this>(
             entry,
             dict_ptr,
             data_prefix_size_value,
-            tuple_stride,
             array_ptr,
             location,
         )?;
