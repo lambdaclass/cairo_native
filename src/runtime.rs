@@ -321,7 +321,7 @@ unsafe fn create_mlir_array(
 
     // Store the reference counter
     ptr.cast::<u32>().write(1);
-    // Store the max lenght
+    // Store the max length
     ptr.byte_add(size_of::<u32>())
         .cast::<u32>()
         .write(len as u32);
