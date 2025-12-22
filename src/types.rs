@@ -669,7 +669,7 @@ impl TypeBuilder for CoreTypeConcrete {
                 let type_info = registry.get_type(&info.ty)?;
                 type_info.is_zst(registry)?
             }
-            CoreTypeConcrete::Blake(_info) => native_panic!("Implement is_zst for Blake type"),
+            CoreTypeConcrete::Blake(_) => native_panic!("Implement is_zst for Blake type"),
             CoreTypeConcrete::QM31(_info) => native_panic!("Implement is_zst for QM31 type"),
         })
     }
@@ -796,9 +796,6 @@ impl TypeBuilder for CoreTypeConcrete {
         // arguments.
         Ok(match self {
             CoreTypeConcrete::IntRange(_) => false,
-            CoreTypeConcrete::Blake(_info) => {
-                native_panic!("Implement is_memory_allocated for Blake type")
-            }
             CoreTypeConcrete::Array(_) => false,
             CoreTypeConcrete::Bitwise(_) => false,
             CoreTypeConcrete::Box(_) => false,
@@ -861,6 +858,9 @@ impl TypeBuilder for CoreTypeConcrete {
             CoreTypeConcrete::Coupon(_) => false,
             CoreTypeConcrete::Circuit(_) => false,
             CoreTypeConcrete::GasReserve(_) => false,
+            CoreTypeConcrete::Blake(_) => {
+                native_panic!("Implement is_memory_allocated for Blake type")
+            }
             CoreTypeConcrete::QM31(_) => native_panic!("Implement is_memory_allocated for QM31"),
         })
     }
