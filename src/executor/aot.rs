@@ -285,9 +285,9 @@ mod tests {
         // The second function in the program is `get_block_hash`.
         let entrypoint_function_id = &program.funcs.get(1).expect("should have a function").id;
 
-        let mut syscall_handler = &mut StubSyscallHandler::default();
-
-        let expected_value = syscall_handler.get_block_hash(1, &mut 0).unwrap();
+        let syscall_handler = &mut StubSyscallHandler::default();
+        let expected_value = Felt::from(123);
+        syscall_handler.block_hash.insert(1, expected_value);
 
         let result = executor
             .invoke_dynamic_with_syscall_handler(
