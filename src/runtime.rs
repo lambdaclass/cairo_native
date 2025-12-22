@@ -371,7 +371,7 @@ unsafe fn create_mlir_array(
 
 /// Fills each of the tuples in the array with the corresponding content.
 ///
-/// Receives a pointer to the dictionary and a pointer to a space in memmory with the enough space
+/// Receives a pointer to the dictionary and a pointer to a space in memory with the enough space
 /// to store an array of the form Array<(felt252, T, T)> that has N tuples, where N is the quantity
 /// of elements in the dictionary. The dictionary is iterated and for each element, a tuple is filled with the key
 /// and the value. To fill the tuples, the 'tuple_stride' is used to move the pointer and get the
