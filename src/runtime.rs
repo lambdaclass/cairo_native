@@ -327,7 +327,7 @@ unsafe fn create_mlir_array(
         .write(len as u32);
     // Move the pointer past the prefix (reference counter and max length) into where the data
     // will be stored
-    let ptr = ptr.byte_add(data_prefix_offset as usize);
+    let ptr = ptr.byte_add(data_prefix_offset);
 
     // Get the stride for the inner types of the tuple
     let key_size = Layout::new::<[u8; 32]>().pad_to_align().size();
@@ -335,7 +335,7 @@ unsafe fn create_mlir_array(
 
     for (key, elem_index) in &dict.mappings {
         // Move the ptr to the offset of the tuple we want to modify
-        let key_ptr = ptr.byte_add(tuple_stride as usize * elem_index) as *mut [u8; 32];
+        let key_ptr = ptr.byte_add(tuple_stride * elem_index) as *mut [u8; 32];
 
         // Save the key and move to the offset of the 'first_value'
         *key_ptr = *key;
