@@ -153,8 +153,6 @@ pub fn build_binary_operation<'ctx, 'this>(
                 )?;
 
             let prime = entry.const_int_from_type(context, location, PRIME.clone(), felt252_ty)?;
-            let lhs = entry.extui(lhs, i512, location)?;
-            let rhs = entry.extui(rhs, i512, location)?;
 
             // Find 1 / rhs.
             let euclidean_result = runtime_bindings_meta.u252_extended_euclidean_algorithm(
@@ -166,7 +164,8 @@ pub fn build_binary_operation<'ctx, 'this>(
                 prime,
             )?;
 
-            let inverse = entry.extract_value(context, location, euclidean_result, i512, 1)?;
+            let inverse =
+                entry.extract_value(context, location, euclidean_result, felt252_ty, 1)?;
 
             // Peform lhs * (1 / rhs)
             let result = entry.muli(lhs, inverse, location)?;
@@ -175,15 +174,7 @@ pub fn build_binary_operation<'ctx, 'this>(
             let is_out_of_range =
                 entry.cmpi(context, CmpiPredicate::Uge, result, prime, location)?;
 
-            let result = entry.append_op_result(arith::select(
-                is_out_of_range,
-                result_mod,
-                result,
-                location,
-            ))?;
-            let result = entry.trunci(result, felt252_ty, location)?;
-
-            return helper.br(entry, 0, &[result], location);
+            entry.append_op_result(arith::select(is_out_of_range, result_mod, result, location))?
         }
     };
 

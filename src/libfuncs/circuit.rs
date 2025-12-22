@@ -636,9 +636,6 @@ fn build_gate_evaluation<'ctx, 'this>(
                     ));
                     block = has_inverse_block;
 
-                    // Truncate back
-                    let inverse = block.trunci(inverse, u384_type, location)?;
-
                     gates[gate_offset.lhs] = Some(inverse);
                 }
                 // The imposibility to solve this mul gate offset would render the circuit unsolvable

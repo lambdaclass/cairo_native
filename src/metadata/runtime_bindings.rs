@@ -946,8 +946,8 @@ fn build_egcd_function<'ctx>(
         (integer_type, location), // old_s
     ]));
 
-    let modulus = entry_block.arg(1)?;
-    let rhs = entry_block.arg(0)?;
+    let a = entry_block.arg(0)?;
+    let modulus = entry_block.arg(1)?; // b
 
     // Jump to loop block from entry block, with initial values.
     // - old_r = b
@@ -957,8 +957,8 @@ fn build_egcd_function<'ctx>(
     entry_block.append_operation(cf::br(
         &loop_block,
         &[
-            rhs,
             modulus,
+            a,
             entry_block.const_int_from_type(context, location, 0, integer_type)?,
             entry_block.const_int_from_type(context, location, 1, integer_type)?,
         ],
@@ -1002,33 +1002,34 @@ fn build_egcd_function<'ctx>(
         ));
     }
 
-    let gcd = end_block.arg(0)?;
-    let inverse = end_block.arg(1)?;
-
-    // EGCD sometimes returns a negative number for the inverse,
-    // in such cases we must simply wrap it around back into [0, MODULUS)
-    // this suffices because |inv_i| <= divfloor(MODULUS,2)
-    let zero = end_block.const_int_from_type(context, location, 0, integer_type)?;
-    let is_negative = end_block
-        .append_operation(arith::cmpi(
-            context,
-            CmpiPredicate::Slt,
-            inverse,
-            zero,
-            location,
-        ))
-        .result(0)?
-        .into();
-    let wrapped_inverse = end_block.addi(inverse, modulus, location)?;
-    let inverse = end_block.append_op_result(arith::select(
-        is_negative,
-        wrapped_inverse,
-        inverse,
-        location,
-    ))?;
-
+    
     // END BLOCK
     {
+        let gcd = end_block.arg(0)?;
+        let inverse = end_block.arg(1)?;
+        
+        // EGCD sometimes returns a negative number for the inverse,
+        // in such cases we must simply wrap it around back into [0, MODULUS)
+        // this suffices because |inv_i| <= divfloor(MODULUS,2)
+        let zero = end_block.const_int_from_type(context, location, 0, integer_type)?;
+        let is_negative = end_block
+            .append_operation(arith::cmpi(
+                context,
+                CmpiPredicate::Slt,
+                inverse,
+                zero,
+                location,
+            ))
+            .result(0)?
+            .into();
+        let wrapped_inverse = end_block.addi(inverse, modulus, location)?;
+        let inverse = end_block.append_op_result(arith::select(
+            is_negative,
+            wrapped_inverse,
+            inverse,
+            location,
+        ))?;
+
         let results = end_block.append_op_result(llvm::undef(
             llvm::r#type::r#struct(context, &[integer_type, integer_type], false),
             location,
