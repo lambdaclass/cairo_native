@@ -19,9 +19,13 @@ use cairo_lang_sierra::{
     program_registry::ProgramRegistry,
 };
 use melior::{
-    dialect::llvm,
+    dialect::llvm::{self, alloca, AllocaOptions},
     helpers::{ArithBlockExt, BuiltinBlockExt, LlvmBlockExt},
-    ir::{r#type::IntegerType, Block, BlockLike, Location},
+    ir::{
+        attribute::{IntegerAttribute, TypeAttribute},
+        r#type::IntegerType,
+        Block, Location,
+    },
     Context,
 };
 use std::alloc::Layout;
@@ -101,7 +105,7 @@ pub fn build_into_entries<'ctx, 'this>(
         IntegerType::new(context, 64).into(),
     )?;
     let data_prefix_size_value = entry.const_int(context, location, data_prefix_size, 64)?;
-    let (_, array_layout) = registry.build_type_with_layout(
+    let (array_ty, array_layout) = registry.build_type_with_layout(
         context,
         helper,
         metadata,
@@ -114,14 +118,18 @@ pub fn build_into_entries<'ctx, 'this>(
         IntegerType::new(context, 64).into(),
     )?;
     // Create the pointer and alloc the necessary memory
-    let ptr_ty = llvm::r#type::pointer(context, 0);
-    let nullptr = entry.append_op_result(llvm::zero(ptr_ty, location))?;
-    let array_ptr = entry.append_op_result(ReallocBindingsMeta::realloc(
+    let array_ptr = entry.append_op_result(alloca(
         context,
-        nullptr,
         realloc_len,
+        llvm::r#type::pointer(context, 0),
         location,
-    )?)?;
+        AllocaOptions::new()
+            .align(Some(IntegerAttribute::new(
+                IntegerType::new(context, 64).into(),
+                array_layout.pad_to_align().size().try_into()?,
+            )))
+            .elem_type(Some(TypeAttribute::new(array_ty))),
+    ))?;
 
     // Runtime function that creates the array with its content
     metadata
@@ -143,9 +151,6 @@ pub fn build_into_entries<'ctx, 'this>(
     let len_ty = IntegerType::new(context, 32).into();
     let arr_ty = llvm::r#type::r#struct(context, &[ptr_ty, len_ty, len_ty, len_ty], false);
     let entries_array = entry.load(context, location, array_ptr, arr_ty)?;
-
-    // Free the pointer where the array was stored
-    entry.append_operation(ReallocBindingsMeta::free(context, array_ptr, location)?);
 
     helper.br(entry, 0, &[entries_array], location)
 }
