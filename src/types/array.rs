@@ -16,7 +16,7 @@
 //!
 //! The pointer to the allocation (which is **not the data**) contains:
 //!   1. Reference counter.
-//!   2. Padding.
+//!   2. Array capacity.
 //!   3. Array data. Its address is the pointer to the data stored in the type.
 //!
 //! [^1]: When capacity is zero, this field is not guaranteed to be valid.

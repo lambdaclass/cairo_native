@@ -361,16 +361,15 @@ unsafe fn create_mlir_array(
 
 /// Fills each of the tuples in the array with the corresponding content.
 ///
-/// Receives a pointer to the dictionary and a pointer to a space in memory with the enough space
-/// to store an array of the form Array<(felt252, T, T)> that has N tuples, where N is the quantity
-/// of elements in the dictionary. The dictionary is iterated and for each element, a tuple is filled with the key
+/// Receives a pointer to the dictionary and moves its entries into the given uninitialized array of
+/// (felt252, T, T) tuples.  The dictionary is iterated and for each element, a tuple is filled with the key
 /// and the value. To fill the tuples, the 'tuple_stride' is used to move the pointer and get the
 /// necessary offset.
 ///
 /// # Caveats
 ///
 /// Each tuple has the form (felt252, T, T) = (key, first_value, last_value). 'last_value' is represents
-/// the value of the element in the dictionary and 'first_value' is always 0.
+/// the value of the element in the dictionary and 'first_value' is always the zero-value of T.
 pub unsafe extern "C" fn cairo_native__dict_into_entries(
     dict_ptr: *const FeltDict,
     data_prefix_offset: u64,
