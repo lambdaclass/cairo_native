@@ -409,9 +409,9 @@ pub fn build_drop<'ctx>(
 /// Returns the size of the prefix in an array. This prefix contains 2
 /// integers:
 /// - Reference counter: the number of references to the allocation.
-/// - Max length: The number of elements present in the allocation (not necessarily the length
-///   array/span being accessed, but the whole allocation). It is used to know how many elements
-///   to drop when freeing the allocation.
+/// - Capacity: The capacity of the allocation (not necessarily the length
+///   of the array/span being accessed) It is used to know how many elements to
+///   drop when freeing the allocation.
 pub fn calc_data_prefix_offset(layout: Layout) -> usize {
     get_integer_layout(32)
         .extend(get_integer_layout(32))
