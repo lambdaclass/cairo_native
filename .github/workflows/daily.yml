@@ -31,19 +31,19 @@ jobs:
           path: ./blocks.txt
           key: blocks-list
           fail-on-cache-miss: true
-      # - name: Prepare env vars
-      #   if: ${{ steps.cache-restore.outputs.cache-hit != 'true' }}
-      #   run: |
-      #     REPO_URL="${{ github.server_url }}/${{ github.repository }}"
-      #     echo "WORKFLOW_URL=$REPO_URL/actions/runs/${{ github.run_id }}" | tee -a $GITHUB_ENV
-      # - name: Create cache related issue
-      #   if: ${{ failure() && steps.cache-restore.outcome == 'failure' }}
-      #   uses: JasonEtco/create-an-issue@v2
-      #   env:
-      #     GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-      #     COMMIT_SHA: ${{ github.sha }}
-      #   with:
-      #     filename: .github/ISSUE_TEMPLATE/daily_cache_failure.md
+      - name: Prepare env vars
+        if: ${{ steps.cache-restore.outputs.cache-hit != 'true' }}
+        run: |
+          REPO_URL="${{ github.server_url }}/${{ github.repository }}"
+          echo "WORKFLOW_URL=$REPO_URL/actions/runs/${{ github.run_id }}" | tee -a $GITHUB_ENV
+      - name: Create cache related issue
+        if: ${{ failure() && steps.cache-restore.outcome == 'failure' }}
+        uses: JasonEtco/create-an-issue@v2
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          COMMIT_SHA: ${{ github.sha }}
+        with:
+          filename: .github/ISSUE_TEMPLATE/daily_cache_failure.md
 
       - name: Parse blocks file
         id: parse-blocks
