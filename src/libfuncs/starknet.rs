@@ -2956,17 +2956,17 @@ pub fn build_sha256_process_block_syscall<'ctx, 'this>(
         metadata,
         &info.signature.param_signatures[3].ty,
     )?;
-    metadata
-        .get::<DropOverridesMeta>()
-        .ok_or(Error::MissingMetadata)?
-        .invoke_override(
-            context,
-            entry,
-            location,
-            &info.signature.param_signatures[3].ty,
-            sha256_current_block_ptr,
-        )?;
-
+    DropOverridesMeta::invoke_override(
+        context,
+        registry,
+        helper,
+        helper.init_block(),
+        entry,
+        location,
+        metadata,
+        &info.signature.param_signatures[3].ty,
+        sha256_current_block_ptr,
+    )?;
     let result_tag = entry.load(context, location, result_ptr, result_tag_ty)?;
 
     let payload_ok = {

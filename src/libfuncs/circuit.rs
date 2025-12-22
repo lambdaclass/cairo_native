@@ -344,15 +344,17 @@ fn build_eval<'ctx, 'this>(
     // Ok case
     {
         // We drop circuit_data, as its consumed by this libfunc.
-        if let Some(drop_overrides_meta) = metadata.get::<DropOverridesMeta>() {
-            drop_overrides_meta.invoke_override(
-                context,
-                ok_block,
-                location,
-                &info.signature.param_signatures[3].ty,
-                circuit_data,
-            )?;
-        }
+        DropOverridesMeta::invoke_override(
+            context,
+            registry,
+            helper,
+            helper.init_block(),
+            ok_block,
+            location,
+            metadata,
+            &info.signature.param_signatures[3].ty,
+            circuit_data,
+        )?;
 
         // Increase the mul mod builtin pointer by the number of evaluated gates.
         // If the evaluation succedes, then we assume that every gate was evaluated.
@@ -416,15 +418,17 @@ fn build_eval<'ctx, 'this>(
     // Error case
     {
         // We drop circuit_data, as its consumed by this libfunc.
-        if let Some(drop_overrides_meta) = metadata.get::<DropOverridesMeta>() {
-            drop_overrides_meta.invoke_override(
-                context,
-                err_block,
-                location,
-                &info.signature.param_signatures[3].ty,
-                circuit_data,
-            )?;
-        }
+        DropOverridesMeta::invoke_override(
+            context,
+            registry,
+            helper,
+            helper.init_block(),
+            err_block,
+            location,
+            metadata,
+            &info.signature.param_signatures[3].ty,
+            circuit_data,
+        )?;
 
         // We only consider mul gates evaluated before failure
         // Increase the mul mod builtin pointer by the number of evaluated gates.
@@ -875,15 +879,17 @@ fn build_get_output<'ctx, 'this>(
     // calling it multiple times involves duplicating the circuit outputs
     // each time. This could be fixed by implementing a reference counter,
     // like we do with regular arrays.
-    if let Some(drop_overrides_meta) = metadata.get::<DropOverridesMeta>() {
-        drop_overrides_meta.invoke_override(
-            context,
-            entry,
-            location,
-            &info.signature.param_signatures[0].ty,
-            outputs,
-        )?;
-    }
+    DropOverridesMeta::invoke_override(
+        context,
+        registry,
+        helper,
+        helper.init_block(),
+        entry,
+        location,
+        metadata,
+        &info.signature.param_signatures[0].ty,
+        outputs,
+    )?;
 
     helper.br(entry, 0, &[output_struct, guarantee], location)?;
 
