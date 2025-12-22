@@ -46,7 +46,7 @@ enum RuntimeBinding {
     DictDup,
     GetCostsBuiltin,
     DebugPrint,
-    U512ExtendedEuclideanAlgorithm,
+    U252ExtendedEuclideanAlgorithm,
     U384ExtendedEuclideanAlgorithm,
     CircuitArithOperation,
     #[cfg(feature = "with-cheatcode")]
@@ -73,8 +73,8 @@ impl RuntimeBinding {
             RuntimeBinding::DictDrop => "cairo_native__dict_drop",
             RuntimeBinding::DictDup => "cairo_native__dict_dup",
             RuntimeBinding::GetCostsBuiltin => "cairo_native__get_costs_builtin",
-            RuntimeBinding::U512ExtendedEuclideanAlgorithm => {
-                "cairo_native__u512_extended_euclidean_algorithm"
+            RuntimeBinding::U252ExtendedEuclideanAlgorithm => {
+                "cairo_native__u252_extended_euclidean_algorithm"
             }
             RuntimeBinding::U384ExtendedEuclideanAlgorithm => {
                 "cairo_native__u384_extended_euclidean_algorithm"
@@ -128,7 +128,7 @@ impl RuntimeBinding {
             RuntimeBinding::GetCostsBuiltin => {
                 crate::runtime::cairo_native__get_costs_builtin as *const ()
             }
-            RuntimeBinding::U512ExtendedEuclideanAlgorithm
+            RuntimeBinding::U252ExtendedEuclideanAlgorithm
             | RuntimeBinding::U384ExtendedEuclideanAlgorithm => return None,
             RuntimeBinding::CircuitArithOperation => return None,
             #[cfg(feature = "with-cheatcode")]
@@ -209,7 +209,7 @@ impl RuntimeBindingsMeta {
     /// greatest common divisor of `a` and `b` and the second element is the bezout coefficient x.
     ///
     /// This implementation is only for felt252, which uses u252 integers.
-    pub fn u512_extended_euclidean_algorithm<'c, 'a>(
+    pub fn u252_extended_euclidean_algorithm<'c, 'a>(
         &mut self,
         context: &'c Context,
         module: &Module,
@@ -221,11 +221,11 @@ impl RuntimeBindingsMeta {
     where
         'c: 'a,
     {
-        let integer_type = IntegerType::new(context, 512).into();
-        let func_symbol = RuntimeBinding::U512ExtendedEuclideanAlgorithm.symbol();
+        let integer_type = IntegerType::new(context, 252).into();
+        let func_symbol = RuntimeBinding::U252ExtendedEuclideanAlgorithm.symbol();
         if self
             .active_map
-            .insert(RuntimeBinding::U512ExtendedEuclideanAlgorithm)
+            .insert(RuntimeBinding::U252ExtendedEuclideanAlgorithm)
         {
             build_egcd_function(module, context, location, func_symbol, integer_type)?;
         }
@@ -1032,12 +1032,7 @@ fn build_egcd_function<'ctx>(
             llvm::r#type::r#struct(context, &[integer_type, integer_type], false),
             location,
         ))?;
-        let results = end_block.insert_values(
-            context,
-            location,
-            results,
-            &[gcd, inverse],
-        )?;
+        let results = end_block.insert_values(context, location, results, &[gcd, inverse])?;
         end_block.append_operation(llvm::r#return(Some(results), location));
     }
 

@@ -151,13 +151,11 @@ pub fn build_binary_operation<'ctx, 'this>(
                 .to_native_assert_error(
                     "Unable to get the RuntimeBindingsMeta from MetadataStorage",
                 )?;
-            
-            let lhs = entry.extui(lhs, i512, location)?;
-            let rhs = entry.extui(rhs, i512, location)?;
-            let prime = entry.const_int_from_type(context, location, PRIME.clone(), i512)?;
+
+            let prime = entry.const_int_from_type(context, location, PRIME.clone(), felt252_ty)?;
 
             // Find 1 / rhs.
-            let euclidean_result = runtime_bindings_meta.u512_extended_euclidean_algorithm(
+            let euclidean_result = runtime_bindings_meta.u252_extended_euclidean_algorithm(
                 context,
                 helper.module,
                 entry,
@@ -166,17 +164,26 @@ pub fn build_binary_operation<'ctx, 'this>(
                 prime,
             )?;
 
-            let inverse =
-                entry.extract_value(context, location, euclidean_result, i512, 1)?;
+            let prime = entry.const_int_from_type(context, location, PRIME.clone(), i512)?;
+            let inverse = {
+                let inverse =
+                    entry.extract_value(context, location, euclidean_result, felt252_ty, 1)?;
+                entry.extui(inverse, i512, location)?
+            };
 
             // Peform lhs * (1 / rhs)
+            let lhs = entry.extui(lhs, i512, location)?;
             let result = entry.muli(lhs, inverse, location)?;
             // Apply modulo and convert result to felt252
             let result_mod = entry.append_op_result(arith::remui(result, prime, location))?;
             let is_out_of_range =
                 entry.cmpi(context, CmpiPredicate::Uge, result, prime, location)?;
-
-            let result = entry.append_op_result(arith::select(is_out_of_range, result_mod, result, location))?;
+            let result = entry.append_op_result(arith::select(
+                is_out_of_range,
+                result_mod,
+                result,
+                location,
+            ))?;
 
             entry.trunci(result, felt252_ty, location)?
         }
