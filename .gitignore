@@ -38,3 +38,4 @@ cairo-native-stress-logs.jsonl
  
 .DS_Store
 bench_starknet_compilation_data
+cairo
