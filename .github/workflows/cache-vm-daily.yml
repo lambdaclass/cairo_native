@@ -119,13 +119,6 @@ jobs:
         with:
           name: rpc-${{matrix.block}}-vm
           path: starknet-replay/cache
-
-      # - name: Save RPC Calls
-      #   uses: actions/cache/save@v4.2.0
-      #   if: steps.restore-rpc-calls.outputs.cache-hit != true
-      #   with:
-      #     path: starknet-replay/cache
-      #     key: ${{ steps.restore-rpc-calls.outputs.cache-primary-key }}
   
   merge-dumps:
     needs: [run]
