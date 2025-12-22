@@ -306,58 +306,56 @@ unsafe fn create_mlir_array(
     tuple_stride: u64,
 ) -> ArrayAbi<c_void> {
     let len = dict.mappings.len();
-    match len {
-        0 => ArrayAbi {
+    if len == 0 {
+        return ArrayAbi {
             ptr: null_mut(),
             since: 0,
             until: 0,
             capacity: 0,
-        },
-        _ => {
-            // Pointer to the space in memory with enough memory to hold the entire array
-            let ptr = libc_malloc(
-                ((tuple_stride * dict.mappings.len() as u64) + data_prefix_offset) as usize,
-            );
+        };
+    }
 
-            // Store the reference counter
-            ptr.cast::<u32>().write(1);
-            // Store the max lenght
-            ptr.byte_add(size_of::<u32>())
-                .cast::<u32>()
-                .write(len as u32);
-            // Move the pointer past the prefix (reference counter and max length) into where the data
-            // will be stored
-            let ptr = ptr.byte_add(data_prefix_offset as usize);
+    // Pointer to the space in memory with enough memory to hold the entire array
+    let ptr =
+        libc_malloc(((tuple_stride * dict.mappings.len() as u64) + data_prefix_offset) as usize);
 
-            // Get the stride for the inner types of the tuple
-            let key_size = Layout::new::<[u8; 32]>().pad_to_align().size();
-            let generic_ty_size = dict.layout.pad_to_align().size();
+    // Store the reference counter
+    ptr.cast::<u32>().write(1);
+    // Store the max lenght
+    ptr.byte_add(size_of::<u32>())
+        .cast::<u32>()
+        .write(len as u32);
+    // Move the pointer past the prefix (reference counter and max length) into where the data
+    // will be stored
+    let ptr = ptr.byte_add(data_prefix_offset as usize);
 
-            for (key, elem_index) in &dict.mappings {
-                // Move the ptr to the offset of the tuple we want to modify
-                let key_ptr = ptr.byte_add(tuple_stride as usize * elem_index) as *mut [u8; 32];
+    // Get the stride for the inner types of the tuple
+    let key_size = Layout::new::<[u8; 32]>().pad_to_align().size();
+    let generic_ty_size = dict.layout.pad_to_align().size();
 
-                // Save the key and move to the offset of the 'first_value'
-                *key_ptr = *key;
-                let first_val_ptr = key_ptr.byte_add(key_size) as *mut u8;
-                first_val_ptr.write_bytes(0, generic_ty_size);
+    for (key, elem_index) in &dict.mappings {
+        // Move the ptr to the offset of the tuple we want to modify
+        let key_ptr = ptr.byte_add(tuple_stride as usize * elem_index) as *mut [u8; 32];
 
-                // Get the element, move to the offset of the 'last_value' and save the element in that address
-                let element = dict.elements.byte_add(generic_ty_size * elem_index) as *mut u8;
-                let last_val_ptr = first_val_ptr.byte_add(generic_ty_size);
-                std::ptr::copy_nonoverlapping(element, last_val_ptr, generic_ty_size);
-            }
+        // Save the key and move to the offset of the 'first_value'
+        *key_ptr = *key;
+        let first_val_ptr = key_ptr.byte_add(key_size) as *mut u8;
+        first_val_ptr.write_bytes(0, generic_ty_size);
 
-            let ptr_ptr = libc_malloc(size_of::<*mut ()>()).cast::<*mut c_void>();
-            ptr_ptr.write(ptr);
+        // Get the element, move to the offset of the 'last_value' and save the element in that address
+        let element = dict.elements.byte_add(generic_ty_size * elem_index) as *mut u8;
+        let last_val_ptr = first_val_ptr.byte_add(generic_ty_size);
+        std::ptr::copy_nonoverlapping(element, last_val_ptr, generic_ty_size);
+    }
 
-            ArrayAbi {
-                ptr: ptr_ptr,
-                since: 0,
-                until: len as u32,
-                capacity: len as u32,
-            }
-        }
+    let ptr_ptr = libc_malloc(size_of::<*mut ()>()).cast::<*mut c_void>();
+    ptr_ptr.write(ptr);
+
+    ArrayAbi {
+        ptr: ptr_ptr,
+        since: 0,
+        until: len as u32,
+        capacity: len as u32,
     }
 }
 
