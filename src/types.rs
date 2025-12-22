@@ -46,6 +46,7 @@ mod felt252;
 mod felt252_dict;
 mod felt252_dict_entry;
 mod gas_builtin;
+mod gas_reserve;
 mod int_range;
 mod non_zero;
 mod nullable;
@@ -465,9 +466,15 @@ impl TypeBuilder for CoreTypeConcrete {
                 metadata,
                 WithSelf::new(self_ty, info),
             ),
+            CoreTypeConcrete::GasReserve(info) => self::gas_reserve::build(
+                context,
+                module,
+                registry,
+                metadata,
+                WithSelf::new(self_ty, info),
+            ),
             Self::Blake(_) => native_panic!("Build Blake type"),
             CoreTypeConcrete::QM31(_) => native_panic!("Build QM31 type"),
-            CoreTypeConcrete::GasReserve(_) => native_panic!("Build GasReserve type"),
         }
     }
 
@@ -574,10 +581,9 @@ impl TypeBuilder for CoreTypeConcrete {
             CoreTypeConcrete::Circuit(info) => circuit::is_complex(info),
 
             CoreTypeConcrete::IntRange(_info) => false,
-
-            CoreTypeConcrete::Blake(_) => native_panic!("Implement is_complex for Blake type"),
+            CoreTypeConcrete::GasReserve(_info) => false,
+            CoreTypeConcrete::Blake(_info) => native_panic!("Implement is_complex for Blake type"),
             CoreTypeConcrete::QM31(_info) => native_panic!("Implement is_complex for QM31 type"),
-            CoreTypeConcrete::GasReserve(_info) => native_panic!("Implement is_complex for GasReserve type"),
         })
     }
 
@@ -651,6 +657,7 @@ impl TypeBuilder for CoreTypeConcrete {
             }
 
             CoreTypeConcrete::BoundedInt(_) => false,
+            CoreTypeConcrete::GasReserve(_info) => false,
             CoreTypeConcrete::Const(info) => {
                 let type_info = registry.get_type(&info.inner_ty)?;
                 type_info.is_zst(registry)?
@@ -664,9 +671,6 @@ impl TypeBuilder for CoreTypeConcrete {
             }
             CoreTypeConcrete::Blake(_) => native_panic!("Implement is_zst for Blake type"),
             CoreTypeConcrete::QM31(_info) => native_panic!("Implement is_zst for QM31 type"),
-            CoreTypeConcrete::GasReserve(_info) => {
-                native_panic!("Implement is_zst for GasReserve type")
-            }
         })
     }
 
@@ -765,6 +769,7 @@ impl TypeBuilder for CoreTypeConcrete {
             CoreTypeConcrete::Sint128(_) => get_integer_layout(128),
             CoreTypeConcrete::Bytes31(_) => get_integer_layout(248),
             CoreTypeConcrete::BoundedInt(info) => get_integer_layout(info.range.offset_bit_width()),
+            CoreTypeConcrete::GasReserve(_info) => get_integer_layout(128),
 
             CoreTypeConcrete::Const(const_type) => {
                 registry.get_type(&const_type.inner_ty)?.layout(registry)?
@@ -779,9 +784,6 @@ impl TypeBuilder for CoreTypeConcrete {
             }
             CoreTypeConcrete::Blake(_info) => native_panic!("Implement layout for Blake type"),
             CoreTypeConcrete::QM31(_info) => native_panic!("Implement layout for QM31 type"),
-            CoreTypeConcrete::GasReserve(_info) => {
-                native_panic!("Implement layout for GasReserve type")
-            }
         }
         .pad_to_align())
     }
@@ -819,27 +821,13 @@ impl TypeBuilder for CoreTypeConcrete {
             CoreTypeConcrete::RangeCheck(_) => false,
             CoreTypeConcrete::RangeCheck96(_) => false,
             CoreTypeConcrete::Uninitialized(_) => false,
-            CoreTypeConcrete::Enum(info) => {
-                // Enums are memory-allocated if either:
-                //   - Has only variant which is memory-allocated.
-                //   - Has more than one variants, at least one of them being non-ZST.
-                match info.variants.len() {
-                    0 => false,
-                    1 => registry
-                        .get_type(&info.variants[0])?
-                        .is_memory_allocated(registry)?,
-                    _ => {
-                        let mut is_memory_allocated = false;
-                        for variant in &info.variants {
-                            if !registry.get_type(variant)?.is_zst(registry)? {
-                                is_memory_allocated = true;
-                                break;
-                            }
-                        }
-                        is_memory_allocated
-                    }
-                }
-            }
+            CoreTypeConcrete::Enum(info) => match info.variants.len() {
+                0 => false,
+                1 => registry
+                    .get_type(&info.variants[0])?
+                    .is_memory_allocated(registry)?,
+                _ => true,
+            },
             CoreTypeConcrete::Struct(info) => {
                 let mut is_memory_allocated = false;
                 for member in &info.members {
@@ -869,13 +857,11 @@ impl TypeBuilder for CoreTypeConcrete {
                 .is_memory_allocated(registry)?,
             CoreTypeConcrete::Coupon(_) => false,
             CoreTypeConcrete::Circuit(_) => false,
+            CoreTypeConcrete::GasReserve(_) => false,
             CoreTypeConcrete::Blake(_) => {
                 native_panic!("Implement is_memory_allocated for Blake type")
             }
             CoreTypeConcrete::QM31(_) => native_panic!("Implement is_memory_allocated for QM31"),
-            CoreTypeConcrete::GasReserve(_) => {
-                native_panic!("Implement is_memory_allocated for GasReserve")
-            }
         })
     }
 
