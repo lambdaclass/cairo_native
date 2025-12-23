@@ -83,13 +83,6 @@ jobs:
           repository: lambdaclass/starknet-replay
           path: starknet-replay
 
-      - name: Restore RPC Calls
-        id: restore-rpc-calls
-        uses: actions/cache/restore@v4.2.0
-        with:
-          path: starknet-replay/cache
-          key: rpc-calls-cache
-
       # Install dependencies
       - uses: ./cairo_native/.github/actions/install-linux-deps
       - name: Setup rust env
@@ -128,25 +121,12 @@ jobs:
         shell: bash
     steps:
 
-      # Check if we have the RPC calls from a previous run in the cache.
-      # If so, then we delete that entry so we can save the RPC calls
-      # from the new run with the same key.
-      - name: Restore RPC calls
-        id: rpc-restore
-        uses: actions/cache/restore@v4.2.0
-        with:
-          path: starknet-replay/cache
-          key: rpc-calls-cache
       - name: Delete RPC calls
-        if: ${{ steps.rpc-restore.outputs.cache-hit }}
+        if: ${{ always() }}
         run: gh cache delete rpc-calls-cache
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           GH_REPO: ${{ github.repository }}
-      - name: Delete local RPC calls
-        if: ${{ steps.rpc-restore.outputs.cache-hit }}
-        run: rm -rf starknet-replay/cache
-
       - name: Delete VM dumps
         if: ${{ always() }}
         run: gh cache delete dumps-vm
@@ -163,6 +143,7 @@ jobs:
           merge-multiple: true
         continue-on-error: true
       - name: Download RPC calls
+        if: ${{ always() }}
         uses: actions/download-artifact@v4
         with:
           pattern: rpc-*-vm
@@ -177,6 +158,7 @@ jobs:
           path: state_dumps/vm
           key: dumps-vm
       - name: Save RPC calls
+        if: ${{ always() }}
         uses: actions/cache/save@v4.2.0
         with:
           path: starknet-replay/cache
