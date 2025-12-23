@@ -1,8 +1,8 @@
 # Environment detection.
 
 UNAME := $(shell uname)
-SCARB_VERSION = 2.14.0
-CAIRO_2_VERSION = 2.14.1-dev.1
+SCARB_VERSION = 2.15.0
+CAIRO_2_VERSION = 2.15.0
 
 # Usage is the default target for newcomers running `make`.
 .PHONY: usage
