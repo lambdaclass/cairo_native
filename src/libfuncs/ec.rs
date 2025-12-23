@@ -6,7 +6,6 @@ use crate::{
     execution_result::EC_OP_BUILTIN_SIZE,
     libfuncs::increment_builtin_counter_conditionally_by,
     metadata::{runtime_bindings::RuntimeBindingsMeta, MetadataStorage},
-    native_panic,
     utils::{get_integer_layout, ProgramRegistryExt, PRIME},
 };
 use cairo_lang_sierra::{
@@ -69,7 +68,9 @@ pub fn build<'ctx, 'this>(
         EcConcreteLibfunc::Zero(info) => {
             build_zero(context, registry, entry, location, helper, metadata, info)
         }
-        EcConcreteLibfunc::NegNz(_) => native_panic!("implement ec_neg_nz"),
+        EcConcreteLibfunc::NegNz(info) => {
+            build_neg_nz(context, registry, entry, location, helper, metadata, info)
+        }
     }
 }
 
@@ -137,6 +138,31 @@ pub fn build_neg<'ctx, 'this>(
             .build()?,
     )?;
 
+    let result = entry.insert_value(context, location, entry.arg(0)?, y_neg, 1)?;
+
+    helper.br(entry, 0, &[result], location)
+}
+
+/// Generate MLIR operations for the `ec_neg_nz` libfunc.
+pub fn build_neg_nz<'ctx, 'this>(
+    context: &'ctx Context,
+    _registry: &ProgramRegistry<CoreType, CoreLibfunc>,
+    entry: &'this Block<'ctx>,
+    location: Location<'ctx>,
+    helper: &LibfuncHelper<'ctx, 'this>,
+    _metadata: &mut MetadataStorage,
+    _info: &SignatureOnlyConcreteLibfunc,
+) -> Result<()> {
+    let y = entry.extract_value(
+        context,
+        location,
+        entry.arg(0)?,
+        IntegerType::new(context, 252).into(),
+        1,
+    )?;
+
+    let k_prime = entry.const_int(context, location, PRIME.clone(), 252)?;
+    let y_neg = entry.append_op_result(arith::subi(k_prime, y, location))?;
     let result = entry.insert_value(context, location, entry.arg(0)?, y_neg, 1)?;
 
     helper.br(entry, 0, &[result], location)
@@ -533,6 +559,13 @@ mod test {
                 ec_neg(point)
             }
         };
+        static ref EC_NEG_NZ: (String, Program) = load_cairo! {
+            use core::ec::{ec_neg_nz, NonZeroEcPoint};
+
+            fn run_test(x: NonZeroEcPoint) -> NonZeroEcPoint {
+                ec_neg_nz(x)
+            }
+        };
         static ref EC_POINT_FROM_X_NZ: (String, Program) = load_cairo! {
             use core::ec::{ec_point_from_x_nz, EcPoint};
             use core::zeroable::NonZero;
@@ -620,6 +653,21 @@ mod test {
         let r = |x, y| run_program(&EC_NEG, "run_test", &[Value::EcPoint(x, y)]).return_value;
 
         assert_eq!(r(0.into(), 0.into()), Value::EcPoint(0.into(), 0.into()));
+        assert_eq!(
+            r(0.into(), 1.into()),
+            Value::EcPoint(0.into(), Felt::from(-1))
+        );
+        assert_eq!(r(1.into(), 0.into()), Value::EcPoint(1.into(), 0.into()));
+        assert_eq!(
+            r(1.into(), 1.into()),
+            Value::EcPoint(1.into(), Felt::from(-1))
+        );
+    }
+
+    #[test]
+    fn ec_neg_nz() {
+        let r = |x, y| run_program(&EC_NEG_NZ, "run_test", &[Value::EcPoint(x, y)]).return_value;
+
         assert_eq!(
             r(0.into(), 1.into()),
             Value::EcPoint(0.into(), Felt::from(-1))
