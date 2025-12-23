@@ -1,9 +1,13 @@
 name: Weekly Cairo Release Check
 
 on:
-  schedule:
-    # Run all Mondays at 08:00.
-    - cron: "0 8 * * 1"
+  pull_request:
+    branches: [main]
+  merge_group:
+    types: [checks_requested]
+  # schedule:
+  #   # Run all Mondays at 08:00.
+  #   - cron: "0 8 * * 1"
 
 jobs:
   release-tag-check:
@@ -40,9 +44,21 @@ jobs:
           sed -i'' -r "s/^($name) = $version/\1 = \"~$last_release\"/" Cargo.toml
 
           git diff
+      
+      - name: Patch Corelib Version Installer
+        run: |
+          last_release=${{ env.CAIRO_LAST_RELEASE }}
+          version='([[:alnum:]~-]|\.)+'
+
+          # Chage corelib's version to install
+          sed -i'' -r "s/CAIRO_2_VERSION = $version/CAIRO_2_VERSION = $last_release/" Makefile
+
+          git diff
 
       - name: Run Cairo Tests
-        run: make test-cairo
+        run: | 
+          make deps
+          make test-cairo
 
       - name: Create Issue
         if: ${{ failure() }}
