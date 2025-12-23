@@ -1,0 +1,66 @@
+name: Weekly Cairo Release Check
+
+on:
+  schedule:
+    # Run all Mondays at 08:00.
+    - cron: "0 8 * * 1"
+
+jobs:
+  release-tag-check:
+    name: Check Last Cairo Release
+    runs-on: ubuntu-latest
+    env:
+      LLVM_SYS_191_PREFIX: /usr/lib/llvm-19/
+      MLIR_SYS_190_PREFIX: /usr/lib/llvm-19/
+      TABLEGEN_190_PREFIX: /usr/lib/llvm-19/
+
+    steps:
+      - name: Checkout Native
+        uses: actions/checkout@v4
+
+      - uses: ./.github/actions/install-linux-deps
+      - name: Setup Rust Env
+        uses: dtolnay/rust-toolchain@1.89.0
+      - name: Retreive cached dependecies
+        uses: Swatinem/rust-cache@v2
+
+      - name: Patch Native Dependencies
+        run: |
+          # Retrieve last release tag and process it to make it usable
+          last_release=$(curl -s https://api.github.com/repos/starkware-libs/cairo/releases/latest \
+              | jq -r .tag_name \
+              | cut -c 2-
+          ) 
+          echo "CAIRO_LAST_RELEASE=${last_release}" | tee -a $GITHUB_ENV
+
+          # Updates cairo-lang dependency to the last release
+          name='cairo-lang-[[:alnum:]-]+'
+          version='"([[:alnum:]~-]|\.)+"'
+          
+          sed -i'' -r "s/^($name) = $version/\1 = \"~$last_release\"/" Cargo.toml
+
+          git diff
+      
+      - name: Patch Corelib Version Installer
+        run: |
+          last_release=${{ env.CAIRO_LAST_RELEASE }}
+          version='([[:alnum:]~-]|\.)+'
+
+          # Chage corelib's version to install
+          sed -i'' -r "s/CAIRO_2_VERSION = $version/CAIRO_2_VERSION = $last_release/" Makefile
+
+          git diff
+
+      - name: Run Cairo Tests
+        run: | 
+          make deps
+          make test-cairo
+
+      - name: Create Issue
+        if: ${{ failure() }}
+        uses: JasonEtco/create-an-issue@v2
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          COMMIT_SHA: ${{ github.sha }}
+        with:
+          filename: .github/ISSUE_TEMPLATE/cairo-release-check.md
