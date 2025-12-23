@@ -6,7 +6,6 @@ use super::LibfuncHelper;
 use crate::{
     error::Result,
     metadata::{realloc_bindings::ReallocBindingsMeta, MetadataStorage},
-    native_panic,
     types::TypeBuilder,
 };
 use cairo_lang_sierra::{
@@ -39,7 +38,7 @@ pub fn build<'ctx, 'this>(
     selector: &BoxConcreteLibfunc,
 ) -> Result<()> {
     match selector {
-        BoxConcreteLibfunc::Into(info) => {
+        BoxConcreteLibfunc::Into(info) | BoxConcreteLibfunc::LocalInto(info) => {
             build_into_box(context, registry, entry, location, helper, metadata, info)
         }
         BoxConcreteLibfunc::Unbox(info) => {
@@ -54,7 +53,6 @@ pub fn build<'ctx, 'this>(
             metadata,
             &info.signature.param_signatures,
         ),
-        BoxConcreteLibfunc::LocalInto(_) => native_panic!("implement box_local_into"),
     }
 }
 
