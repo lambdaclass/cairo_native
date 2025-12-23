@@ -67,7 +67,6 @@ fn test_corelib() {
         "core::test::hash_test::test_blake2s",
         "core::test::testing_test::test_get_unspent_gas",
         "core::test::qm31_test::",
-        "core::test::secp256k1_test::test_verify_eth_signature_invalid_signature",
     ];
 
     let compiled = compile_tests(

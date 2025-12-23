@@ -23,6 +23,7 @@
 use super::MetadataStorage;
 use crate::{
     error::{Error, Result},
+    types::TypeBuilder,
     utils::ProgramRegistryExt,
 };
 use cairo_lang_sierra::{
@@ -31,7 +32,8 @@ use cairo_lang_sierra::{
     program_registry::ProgramRegistry,
 };
 use melior::{
-    dialect::func,
+    dialect::{cf, func, llvm},
+    helpers::{BuiltinBlockExt, LlvmBlockExt},
     ir::{
         attribute::{FlatSymbolRefAttribute, StringAttribute, TypeAttribute},
         r#type::FunctionType,
@@ -82,11 +84,37 @@ impl DropOverridesMeta {
 
         match f(metadata)? {
             Some(region) => {
+                let location = Location::unknown(context);
+
                 let ty = registry.build_type(context, module, metadata, id)?;
+                let ptr_ty = llvm::r#type::pointer(context, 0);
+
+                let sierra_ty = registry.get_type(id)?;
+                let is_memory_allocated = sierra_ty.is_memory_allocated(registry)?;
+
+                let signature_ty = if is_memory_allocated { ptr_ty } else { ty };
+
+                // For memory allocated types, the generated function receives
+                // a pointer as argument. However, the user provided callback
+                // generates a region that receives a concrete value as
+                // argument. To workaround this, we insert a block at the start
+                // of the region that dereferences the pointer, and jumps to the
+                // user provided implementation.
+                if is_memory_allocated {
+                    let entry_block = region.first_block().unwrap();
+                    let pre_entry_block =
+                        region.insert_block_before(entry_block, Block::new(&[(ptr_ty, location)]));
+                    pre_entry_block.append_operation(cf::br(
+                        &entry_block,
+                        &[pre_entry_block.load(context, location, pre_entry_block.arg(0)?, ty)?],
+                        location,
+                    ));
+                }
+
                 module.body().append_operation(func::func(
                     context,
                     StringAttribute::new(context, &format!("drop${}", id.id)),
-                    TypeAttribute::new(FunctionType::new(context, &[ty], &[]).into()),
+                    TypeAttribute::new(FunctionType::new(context, &[signature_ty], &[]).into()),
                     region,
                     &[
                         (
@@ -120,21 +148,50 @@ impl DropOverridesMeta {
     }
 
     /// Returns whether a type has a registered drop implementation.
-    pub(crate) fn is_overriden(&self, id: &ConcreteTypeId) -> bool {
-        self.overriden_types.contains(id)
+    pub(crate) fn is_overriden(metadata: &mut MetadataStorage, id: &ConcreteTypeId) -> bool {
+        metadata
+            .get_or_insert_with(Self::default)
+            .overriden_types
+            .contains(id)
     }
 
     /// Generates code to invoke a drop implementation for a type, or does nothing if no
     /// implementation was registered.
+    #[allow(clippy::too_many_arguments)]
     pub(crate) fn invoke_override<'ctx, 'this>(
-        &self,
         context: &'ctx Context,
+        registry: &ProgramRegistry<CoreType, CoreLibfunc>,
+        module: &Module<'ctx>,
+        init_block: &'this Block<'ctx>,
         block: &'this Block<'ctx>,
         location: Location<'ctx>,
+        metadata: &mut MetadataStorage,
         id: &ConcreteTypeId,
         value: Value<'ctx, 'this>,
     ) -> Result<()> {
-        if self.overriden_types.contains(id) {
+        if Self::is_overriden(metadata, id) {
+            let ty = registry.build_type(context, module, metadata, id)?;
+            let sierra_ty = registry.get_type(id)?;
+            let is_memory_allocated = sierra_ty.is_memory_allocated(registry)?;
+
+            // From memory allocated types, the drop function receives a pointer
+            // as argument, so we need to alloc the given value onto the stack
+            // and pass a pointer to it instead.
+            let value = if is_memory_allocated {
+                // The init_block is guaranteed to not be executed multiple
+                // times on tail-recursive functions.
+                let value_ptr = init_block.alloca1(
+                    context,
+                    location,
+                    ty,
+                    sierra_ty.layout(registry)?.align(),
+                )?;
+                block.store(context, location, value_ptr, value)?;
+                value_ptr
+            } else {
+                value
+            };
+
             block.append_operation(func::call(
                 context,
                 FlatSymbolRefAttribute::new(context, &format!("drop${}", id.id)),
