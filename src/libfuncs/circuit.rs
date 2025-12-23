@@ -600,14 +600,15 @@ fn build_gate_evaluation<'ctx, 'this>(
                 // INV: lhs = 1 / rhs
                 (None, Some(rhs_value), Some(_)) => {
                     // Apply egcd to find gcd and inverse
-                    let euclidean_result = runtime_bindings_meta.extended_euclidean_algorithm(
-                        context,
-                        helper.module,
-                        block,
-                        location,
-                        rhs_value,
-                        circuit_modulus,
-                    )?;
+                    let euclidean_result = runtime_bindings_meta
+                        .u384_extended_euclidean_algorithm(
+                            context,
+                            helper.module,
+                            block,
+                            location,
+                            rhs_value,
+                            circuit_modulus,
+                        )?;
                     // Extract the values from the result struct
                     let gcd =
                         block.extract_value(context, location, euclidean_result, u384_type, 0)?;
@@ -634,26 +635,6 @@ fn build_gate_evaluation<'ctx, 'this>(
                         location,
                     ));
                     block = has_inverse_block;
-
-                    // if the inverse is negative, then add modulus
-                    let zero = block.const_int_from_type(context, location, 0, u384_type)?;
-                    let is_negative = block
-                        .append_operation(arith::cmpi(
-                            context,
-                            CmpiPredicate::Slt,
-                            inverse,
-                            zero,
-                            location,
-                        ))
-                        .result(0)?
-                        .into();
-                    let wrapped_inverse = block.addi(inverse, circuit_modulus, location)?;
-                    let inverse = block.append_op_result(arith::select(
-                        is_negative,
-                        wrapped_inverse,
-                        inverse,
-                        location,
-                    ))?;
 
                     gates[gate_offset.lhs] = Some(inverse);
                 }
