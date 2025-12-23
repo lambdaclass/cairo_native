@@ -31,8 +31,11 @@ cairo-*.tar
 *.mlir
 /*.info
 .aot-cache
+**/*.proptest-regressions
 
 *.ipynb
 cairo-native-stress-logs.jsonl
  
 .DS_Store
+bench_starknet_compilation_data
+cairo

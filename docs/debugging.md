@@ -20,7 +20,7 @@ export NATIVE_DEBUG_DUMP=1
 
 To debug with LLDB (or another debugger), we must compile the binary with the `with-debug-utils` feature.
 ```bash
-cargo build --bin cairo-native-run --features with-debug-utils
+cargo build --package cairo-native-run --features with-debug-utils
 ```
 
 Then, we can add the a debugger breakpoint trap. To add it at a given sierra statement, we can set the following env var:

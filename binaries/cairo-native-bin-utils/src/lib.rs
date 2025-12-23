@@ -1,4 +1,3 @@
-#![cfg(feature = "build-cli")]
 #![allow(dead_code)]
 
 use anyhow::bail;
@@ -9,23 +8,15 @@ use cairo_native::{
     starknet::{Secp256k1Point, Secp256r1Point},
     Value,
 };
-use clap::ValueEnum;
 use itertools::Itertools;
 use starknet_types_core::felt::Felt;
 use std::vec::IntoIter;
 
 pub mod test;
 
-pub(super) struct RunArgs {
-    pub run_mode: RunMode,
+pub struct RunArgs {
     pub opt_level: u8,
     pub compare_with_vm: bool,
-}
-
-#[derive(Clone, Debug, ValueEnum)]
-pub enum RunMode {
-    Aot,
-    Jit,
 }
 
 /// Find the function ending with `name_suffix` in the program.

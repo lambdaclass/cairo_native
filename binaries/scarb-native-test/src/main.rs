@@ -1,16 +1,14 @@
 use anyhow::Context;
 use cairo_lang_sierra::program::VersionedProgram;
 use cairo_lang_test_plugin::{TestCompilation, TestCompilationMetadata};
+use cairo_native_bin_utils::{
+    test::{display_tests_summary, filter_test_cases, find_testable_targets, run_tests},
+    RunArgs,
+};
 use clap::{Parser, ValueEnum};
 use scarb_metadata::{Metadata, MetadataCommand, ScarbCommand};
 use scarb_ui::args::PackagesFilter;
 use std::{collections::HashSet, env, fs, path::Path};
-use utils::{
-    test::{display_tests_summary, filter_test_cases, find_testable_targets, run_tests},
-    RunArgs, RunMode,
-};
-
-mod utils;
 
 /// Compiles all packages from a Scarb project matching `packages_filter` and
 /// runs all functions marked with `#[test]`. Exits with 1 if the compilation
@@ -32,9 +30,6 @@ struct Args {
     /// Choose test kind to run.
     #[arg(short, long)]
     test_kind: Option<TestKind>,
-    /// Run with JIT or AOT (compiled).
-    #[arg(long, value_enum, default_value_t = RunMode::Jit)]
-    run_mode: RunMode,
     /// Optimization level, Valid: 0, 1, 2, 3. Values higher than 3 are considered as 3.
     #[arg(short = 'O', long, default_value_t = 0)]
     opt_level: u8,
@@ -140,7 +135,6 @@ fn main() -> anyhow::Result<()> {
                 compiled.metadata.function_set_costs,
                 compiled.metadata.contracts_info,
                 RunArgs {
-                    run_mode: args.run_mode.clone(),
                     opt_level: args.opt_level,
                     compare_with_vm: args.compare_with_cairo_vm,
                 },
@@ -168,7 +162,7 @@ impl TargetGroupDeduplicator {
 fn deserialize_test_compilation(
     target_dir: &Path,
     name: String,
-) -> anyhow::Result<TestCompilation> {
+) -> anyhow::Result<TestCompilation<'_>> {
     let file_path = target_dir.join(format!("{}.test.json", name));
     let test_comp_metadata = serde_json::from_str::<TestCompilationMetadata>(
         &fs::read_to_string(file_path.clone())

@@ -283,7 +283,7 @@ pub fn build_calculate_gas_cost<'c, 'b>(
 
 #[cfg(test)]
 mod test {
-    use crate::utils::test::{load_cairo, run_program};
+    use crate::{load_cairo, utils::testing::run_program};
 
     #[test]
     fn run_withdraw_gas() {
@@ -313,6 +313,6 @@ mod test {
         );
 
         let result = run_program(&program, "run_test", &[]);
-        assert_eq!(result.remaining_gas, Some(18446744073709545165));
+        assert_eq!(result.remaining_gas, Some(18446744073709545465));
     }
 }

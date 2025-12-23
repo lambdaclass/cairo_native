@@ -98,8 +98,7 @@ impl AotNativeExecutor {
     ) -> Result<ExecutionResult, Error> {
         let available_gas = self
             .gas_metadata
-            .get_initial_available_gas(function_id, gas)
-            .map_err(crate::error::Error::GasMetadataError)?;
+            .get_initial_available_gas(function_id, gas)?;
 
         super::invoke_dynamic(
             &self.registry,
@@ -121,8 +120,7 @@ impl AotNativeExecutor {
     ) -> Result<ExecutionResult, Error> {
         let available_gas = self
             .gas_metadata
-            .get_initial_available_gas(function_id, gas)
-            .map_err(crate::error::Error::GasMetadataError)?;
+            .get_initial_available_gas(function_id, gas)?;
 
         super::invoke_dynamic(
             &self.registry,
@@ -144,8 +142,7 @@ impl AotNativeExecutor {
     ) -> Result<ContractExecutionResult, Error> {
         let available_gas = self
             .gas_metadata
-            .get_initial_available_gas(function_id, gas)
-            .map_err(crate::error::Error::GasMetadataError)?;
+            .get_initial_available_gas(function_id, gas)?;
 
         ContractExecutionResult::from_execution_result(super::invoke_dynamic(
             &self.registry,
@@ -208,7 +205,7 @@ mod tests {
     use crate::{
         context::NativeContext,
         starknet_stub::StubSyscallHandler,
-        utils::test::{load_cairo, load_starknet},
+        {load_cairo, load_starknet},
     };
     use cairo_lang_sierra::program::Program;
     use rstest::*;
@@ -288,9 +285,9 @@ mod tests {
         // The second function in the program is `get_block_hash`.
         let entrypoint_function_id = &program.funcs.get(1).expect("should have a function").id;
 
-        let mut syscall_handler = &mut StubSyscallHandler::default();
-
-        let expected_value = syscall_handler.get_block_hash(1, &mut 0).unwrap();
+        let syscall_handler = &mut StubSyscallHandler::default();
+        let expected_value = Felt::from(123);
+        syscall_handler.block_hash.insert(1, expected_value);
 
         let result = executor
             .invoke_dynamic_with_syscall_handler(

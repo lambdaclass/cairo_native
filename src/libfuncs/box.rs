@@ -6,6 +6,7 @@ use super::LibfuncHelper;
 use crate::{
     error::Result,
     metadata::{realloc_bindings::ReallocBindingsMeta, MetadataStorage},
+    native_panic,
     types::TypeBuilder,
 };
 use cairo_lang_sierra::{
@@ -53,6 +54,7 @@ pub fn build<'ctx, 'this>(
             metadata,
             &info.signature.param_signatures,
         ),
+        BoxConcreteLibfunc::LocalInto(_) => native_panic!("implement box_local_into"),
     }
 }
 
@@ -151,10 +153,7 @@ pub fn build_unbox<'ctx, 'this>(
 
 #[cfg(test)]
 mod test {
-    use crate::{
-        utils::test::{load_cairo, run_program_assert_output},
-        values::Value,
-    };
+    use crate::{load_cairo, utils::testing::run_program_assert_output, values::Value};
 
     #[test]
     fn run_box_unbox() {

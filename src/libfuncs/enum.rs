@@ -183,6 +183,18 @@ pub fn build_enum_value<'ctx, 'this>(
 }
 
 /// Generate MLIR operations for the `enum_from_bounded_int` libfunc.
+///
+/// # Constraints
+///
+/// - The target `Enum` must contain the same number of empty variants as the number
+///   of possible values in the `BoundedInt` range.
+/// - The range of the `BoundedInt` must start from **0**.
+///
+/// # Signature
+///
+/// ```cairo
+/// fn enum_from_bounded_int<T, U>(index: U) -> T nopanic
+/// ```
 pub fn build_from_bounded_int<'ctx, 'this>(
     context: &'ctx Context,
     registry: &ProgramRegistry<CoreType, CoreLibfunc>,
@@ -203,11 +215,6 @@ pub fn build_from_bounded_int<'ctx, 'this>(
         )?
         .try_into()?;
     let enum_type = registry.get_type(&info.branch_signatures()[0].vars[0].ty)?;
-    // we assume its never memory allocated since its always an enum with only a tag
-    native_assert!(
-        !enum_type.is_memory_allocated(registry)?,
-        "an enum with only a tag should not be allocated in memory"
-    );
 
     let enum_ty = enum_type.build(
         context,
@@ -544,8 +551,8 @@ pub fn build_snapshot_match<'ctx, 'this>(
 #[cfg(test)]
 mod test {
     use crate::{
-        context::NativeContext,
-        utils::test::{jit_enum, jit_struct, load_cairo, run_program_assert_output},
+        context::NativeContext, jit_enum, jit_struct, load_cairo,
+        utils::testing::run_program_assert_output, Value,
     };
     use cairo_lang_sierra::program::Program;
     use lazy_static::lazy_static;
@@ -646,5 +653,79 @@ mod test {
         native_context
             .compile(&program, false, Some(Default::default()), None)
             .unwrap();
+    }
+
+    #[test]
+    fn create_enum_from_bounded_int() {
+        let program = load_cairo! {
+            #[feature("bounded-int-utils")]
+            use core::internal::bounded_int::BoundedInt;
+            mod b0x4 {
+                #[feature("bounded-int-utils")]
+                use core::internal::bounded_int::BoundedInt;
+                pub extern fn enum_from_bounded_int<T>(index: BoundedInt<0, 4>) -> T nopanic;
+
+                // This wrapper is required so that the compiler won't assume extern `enum_from_bounded_int` is a
+                // branch function. Without it, the program does not compile.
+                fn wrapper<T>(index: BoundedInt<0, 4>) -> T {
+                    enum_from_bounded_int(index)
+                }
+            }
+
+            mod b0x0 {
+                #[feature("bounded-int-utils")]
+                use core::internal::bounded_int::BoundedInt;
+                pub extern fn enum_from_bounded_int<T>(index: BoundedInt<0, 0>) -> T nopanic;
+
+                // This wrapper is required so that the compiler won't assume extern `enum_from_bounded_int` is a
+                // branch function. Without it, the program does not compile.
+                fn wrapper<T>(index: BoundedInt<0, 0>) -> T {
+                    enum_from_bounded_int(index)
+                }
+            }
+
+            enum Enum1 {
+                Zero
+            }
+
+            enum Enum5 {
+                Zero,
+                One,
+                Two,
+                Three,
+                Four
+            }
+
+            fn test_1_variants(input: felt252) -> Enum1 {
+                let bi: BoundedInt<0, 0> = input.try_into().unwrap();
+                b0x0::wrapper(bi)
+            }
+
+            fn test_5_variants(input: felt252) -> Enum5 {
+                let bi: BoundedInt<0, 4> = input.try_into().unwrap();
+                b0x4::wrapper(bi)
+            }
+        };
+
+        run_program_assert_output(
+            &program,
+            "test_1_variants",
+            &[Value::Felt252(0.into())],
+            jit_enum!(0, jit_struct!(jit_enum!(0, jit_struct!()))),
+        );
+
+        run_program_assert_output(
+            &program,
+            "test_5_variants",
+            &[Value::Felt252(0.into())],
+            jit_enum!(0, jit_struct!(jit_enum!(0, jit_struct!()))),
+        );
+
+        run_program_assert_output(
+            &program,
+            "test_5_variants",
+            &[Value::Felt252(4.into())],
+            jit_enum!(0, jit_struct!(jit_enum!(4, jit_struct!()))),
+        );
     }
 }

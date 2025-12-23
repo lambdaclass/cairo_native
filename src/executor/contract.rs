@@ -73,6 +73,7 @@ use cairo_lang_starknet_classes::contract_class::ContractEntryPoints;
 use cairo_lang_starknet_classes::{
     casm_contract_class::ENTRY_POINT_COST, compiler_version::VersionId,
 };
+use cairo_lang_utils::small_ordered_map::SmallOrderedMap;
 use educe::Educe;
 use itertools::{chain, Itertools};
 use libloading::Library;
@@ -228,7 +229,7 @@ impl AotContractExecutor {
                 .map(|x| {
                     (
                         FunctionId::new(x.function_idx as u64),
-                        [(CostTokenType::Const, ENTRY_POINT_COST)].into(),
+                        SmallOrderedMap::from_iter([(CostTokenType::Const, ENTRY_POINT_COST)]),
                     )
                 })
                 .collect(),
@@ -303,7 +304,12 @@ impl AotContractExecutor {
                         let libfunc = registry.get_libfunc(&gen_invocation.libfunc_id)?;
                         if let CoreConcreteLibfunc::FunctionCall(function_call_libfunc) = libfunc {
                             let func_id = function_call_libfunc.function.id.id;
-                            let func_entry = stats.sierra_func_stats.get_mut(&func_id).unwrap();
+                            let func_entry = stats
+                                .sierra_func_stats
+                                .get_mut(&func_id)
+                                .to_native_assert_error(&format!(
+                                    "Function ID {func_id}, should be present in the stats"
+                                ))?;
                             func_entry.times_called += 1;
                         }
                     }
@@ -809,7 +815,7 @@ impl Drop for LockFile {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::{starknet_stub::StubSyscallHandler, utils::test::load_starknet_contract};
+    use crate::{load_starknet_contract, starknet_stub::StubSyscallHandler};
     use cairo_lang_starknet_classes::contract_class::{
         version_id_from_serialized_sierra_program, ContractClass,
     };

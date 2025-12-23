@@ -132,35 +132,33 @@ fn build_dup<'ctx>(
             location,
         )?)?;
 
-        match metadata.get::<DupOverridesMeta>() {
-            Some(dup_override_meta) if dup_override_meta.is_overriden(&info.ty) => {
-                let value = block_realloc.load(context, location, src_value, inner_ty)?;
-                let values = dup_override_meta.invoke_override(
+        if DupOverridesMeta::is_overriden(metadata, &info.ty) {
+            let value = block_realloc.load(context, location, src_value, inner_ty)?;
+            let values = DupOverridesMeta::invoke_override(
+                context,
+                registry,
+                module,
+                &block_realloc,
+                &block_realloc,
+                location,
+                metadata,
+                &info.ty,
+                value,
+            )?;
+            block_realloc.store(context, location, src_value, values.0)?;
+            block_realloc.store(context, location, dst_value, values.1)?;
+        } else {
+            block_realloc.append_operation(
+                ods::llvm::intr_memcpy_inline(
                     context,
-                    &block_realloc,
+                    dst_value,
+                    src_value,
+                    IntegerAttribute::new(IntegerType::new(context, 64).into(), inner_len as i64),
+                    IntegerAttribute::new(IntegerType::new(context, 1).into(), 0),
                     location,
-                    &info.ty,
-                    value,
-                )?;
-                block_realloc.store(context, location, src_value, values.0)?;
-                block_realloc.store(context, location, dst_value, values.1)?;
-            }
-            _ => {
-                block_realloc.append_operation(
-                    ods::llvm::intr_memcpy_inline(
-                        context,
-                        dst_value,
-                        src_value,
-                        IntegerAttribute::new(
-                            IntegerType::new(context, 64).into(),
-                            inner_len as i64,
-                        ),
-                        IntegerAttribute::new(IntegerType::new(context, 1).into(), 0),
-                        location,
-                    )
-                    .into(),
-                );
-            }
+                )
+                .into(),
+            );
         }
 
         block_realloc.append_operation(cf::br(&block_finish, &[dst_value], location));
@@ -217,18 +215,19 @@ fn build_drop<'ctx>(
     ));
 
     {
-        match metadata.get::<DropOverridesMeta>() {
-            Some(drop_override_meta) if drop_override_meta.is_overriden(&info.ty) => {
-                let value = block_free.load(context, location, value, inner_ty)?;
-                drop_override_meta.invoke_override(
-                    context,
-                    &block_free,
-                    location,
-                    &info.ty,
-                    value,
-                )?;
-            }
-            _ => {}
+        if DropOverridesMeta::is_overriden(metadata, &info.ty) {
+            let value = block_free.load(context, location, value, inner_ty)?;
+            DropOverridesMeta::invoke_override(
+                context,
+                registry,
+                module,
+                &block_free,
+                &block_free,
+                location,
+                metadata,
+                &info.ty,
+                value,
+            )?;
         }
 
         block_free.append_operation(ReallocBindingsMeta::free(context, value, location)?);
@@ -241,10 +240,7 @@ fn build_drop<'ctx>(
 
 #[cfg(test)]
 mod test {
-    use crate::{
-        utils::test::{jit_enum, jit_struct, load_cairo, run_program},
-        values::Value,
-    };
+    use crate::{jit_enum, jit_struct, load_cairo, utils::testing::run_program, values::Value};
     use pretty_assertions_sorted::assert_eq;
 
     #[test]

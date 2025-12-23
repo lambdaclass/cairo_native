@@ -1,0 +1,16 @@
+[package]
+name = "cairo-native-dump"
+edition.workspace = true
+
+[dependencies]
+cairo-lang-compiler.workspace = true
+cairo-lang-defs.workspace = true
+cairo-lang-filesystem.workspace = true
+cairo-lang-semantic.workspace = true
+cairo-lang-sierra.workspace = true
+cairo-lang-starknet.workspace = true
+cairo-native.workspace = true
+clap = { workspace = true, features = ["derive"]}
+melior.workspace = true
+tracing-subscriber.workspace = true
+tracing.workspace = true

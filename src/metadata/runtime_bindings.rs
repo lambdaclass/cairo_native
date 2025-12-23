@@ -7,14 +7,19 @@ use crate::{
     error::{Error, Result},
     libfuncs::LibfuncHelper,
 };
+use itertools::Itertools;
 use melior::{
-    dialect::{llvm, ods},
+    dialect::{
+        arith::{self, CmpiPredicate},
+        cf, llvm, ods,
+    },
     helpers::{ArithBlockExt, BuiltinBlockExt, LlvmBlockExt},
     ir::{
         attribute::{FlatSymbolRefAttribute, StringAttribute, TypeAttribute},
         operation::OperationBuilder,
         r#type::IntegerType,
-        Attribute, Block, BlockLike, Location, Module, OperationRef, Region, Value,
+        Attribute, Block, BlockLike, Identifier, Location, Module, OperationRef, Region, Type,
+        Value,
     },
     Context,
 };
@@ -41,6 +46,8 @@ enum RuntimeBinding {
     DictDup,
     GetCostsBuiltin,
     DebugPrint,
+    ExtendedEuclideanAlgorithm,
+    CircuitArithOperation,
     #[cfg(feature = "with-cheatcode")]
     VtableCheatcode,
 }
@@ -65,13 +72,23 @@ impl RuntimeBinding {
             RuntimeBinding::DictDrop => "cairo_native__dict_drop",
             RuntimeBinding::DictDup => "cairo_native__dict_dup",
             RuntimeBinding::GetCostsBuiltin => "cairo_native__get_costs_builtin",
+            RuntimeBinding::ExtendedEuclideanAlgorithm => {
+                "cairo_native__extended_euclidean_algorithm"
+            }
+            RuntimeBinding::CircuitArithOperation => "cairo_native__circuit_arith_operation",
             #[cfg(feature = "with-cheatcode")]
             RuntimeBinding::VtableCheatcode => "cairo_native__vtable_cheatcode",
         }
     }
 
-    const fn function_ptr(self) -> *const () {
-        match self {
+    /// Returns an `Option` with a function pointer depending on how the binding is implemented.
+    ///
+    /// - For external bindings (implemented in Rust), it returns `Some`, containing
+    ///   a pointer to the corresponding Rust function
+    /// - For internal bindings (implemented in MLIR), it returns `None`, since those
+    ///   functions are defined within MLIR and invoked by name
+    const fn function_ptr(self) -> Option<*const ()> {
+        let function_ptr = match self {
             RuntimeBinding::DebugPrint => {
                 crate::runtime::cairo_native__libfunc__debug__print as *const ()
             }
@@ -107,12 +124,25 @@ impl RuntimeBinding {
             RuntimeBinding::GetCostsBuiltin => {
                 crate::runtime::cairo_native__get_costs_builtin as *const ()
             }
+            RuntimeBinding::ExtendedEuclideanAlgorithm => return None,
+            RuntimeBinding::CircuitArithOperation => return None,
             #[cfg(feature = "with-cheatcode")]
             RuntimeBinding::VtableCheatcode => {
                 crate::starknet::cairo_native__vtable_cheatcode as *const ()
             }
-        }
+        };
+        Some(function_ptr)
     }
+}
+
+// This enum is used when performing circuit arithmetic operations.
+// Inversion is not included because it is handled separately.
+#[repr(u8)]
+#[derive(Clone, Copy)]
+pub enum CircuitArithOperationType {
+    Add,
+    Sub,
+    Mul,
 }
 
 /// Runtime library bindings metadata.
@@ -164,6 +194,98 @@ impl RuntimeBindingsMeta {
             location,
             global_address,
             llvm::r#type::pointer(context, 0),
+        )?)
+    }
+
+    /// Build if necessary the extended euclidean algorithm used in circuit inverse gates.
+    ///
+    /// After checking, calls the MLIR function with arguments `a` and `b` which are the initial remainders
+    /// used in the algorithm and returns a `Value` containing a struct where the first element is the
+    /// greatest common divisor of `a` and `b` and the second element is the bezout coefficient x.
+    pub fn extended_euclidean_algorithm<'c, 'a>(
+        &mut self,
+        context: &'c Context,
+        module: &Module,
+        block: &'a Block<'c>,
+        location: Location<'c>,
+        a: Value<'c, '_>,
+        b: Value<'c, '_>,
+    ) -> Result<Value<'c, 'a>>
+    where
+        'c: 'a,
+    {
+        let func_symbol = RuntimeBinding::ExtendedEuclideanAlgorithm.symbol();
+        if self
+            .active_map
+            .insert(RuntimeBinding::ExtendedEuclideanAlgorithm)
+        {
+            build_egcd_function(module, context, location, func_symbol)?;
+        }
+        let integer_type: Type = IntegerType::new(context, 384).into();
+        // The struct returned by the function that contains both of the results
+        let return_type = llvm::r#type::r#struct(context, &[integer_type, integer_type], false);
+        Ok(block
+            .append_operation(
+                OperationBuilder::new("llvm.call", location)
+                    .add_attributes(&[(
+                        Identifier::new(context, "callee"),
+                        FlatSymbolRefAttribute::new(context, func_symbol).into(),
+                    )])
+                    .add_operands(&[a, b])
+                    .add_results(&[return_type])
+                    .build()?,
+            )
+            .result(0)?
+            .into())
+    }
+
+    /// Builds, if necessary, the circuit operation function, used to perform
+    /// circuit arithmetic operations.
+    ///
+    /// ## Operands
+    /// - `op`: an enum telling which arithmetic operation to perform.
+    /// - `lhs_value`: u384 operand.
+    /// - `rhs_value`: u384 operand.
+    /// - `circuit_modulus`: u384 circuit modulus.
+    ///
+    /// This function only handles addition, substraction and multiplication
+    /// operations. The inversion operation was excluded as it is already handled
+    /// by the [`extended_euclidean_algorithm`]
+    #[allow(clippy::too_many_arguments)]
+    pub fn circuit_arith_operation<'c, 'a>(
+        &mut self,
+        context: &'c Context,
+        module: &Module,
+        block: &'a Block<'c>,
+        location: Location<'c>,
+        op_type: CircuitArithOperationType,
+        lhs_value: Value<'c, '_>,
+        rhs_value: Value<'c, '_>,
+        circuit_modulus: Value<'c, '_>,
+    ) -> Result<Value<'c, 'a>>
+    where
+        'c: 'a,
+    {
+        let func_symbol = RuntimeBinding::CircuitArithOperation.symbol();
+        if self
+            .active_map
+            .insert(RuntimeBinding::CircuitArithOperation)
+        {
+            build_circuit_arith_operation(context, module, location, func_symbol)?;
+        }
+
+        let op_tag = block.const_int(context, location, op_type as u8, 2)?;
+        let return_type = IntegerType::new(context, 384).into();
+
+        Ok(block.append_op_result(
+            OperationBuilder::new("llvm.call", location)
+                .add_attributes(&[(
+                    Identifier::new(context, "callee"),
+                    FlatSymbolRefAttribute::new(context, func_symbol).into(),
+                )])
+                .add_operands(&[op_tag, lhs_value, rhs_value, circuit_modulus])
+                .add_results(&[return_type])
+                .build()?,
         )?)
     }
 
@@ -682,7 +804,337 @@ pub fn setup_runtime(find_symbol_ptr: impl Fn(&str) -> Option<*mut c_void>) {
     ] {
         if let Some(global) = find_symbol_ptr(binding.symbol()) {
             let global = global.cast::<*const ()>();
-            unsafe { *global = binding.function_ptr() };
+            unsafe {
+                if let Some(function_ptr) = binding.function_ptr() {
+                    *global = function_ptr;
+                };
+            }
         }
     }
+}
+
+/// Build the extended euclidean algorithm MLIR function.
+///
+/// The extended euclidean algorithm calculates the greatest common divisor
+/// (gcd) of two integers `a` and `b`, as well as the Bézout coefficients `x`
+/// and `y` such that `ax + by = gcd(a,b)`. If `gcd(a,b) = 1`, then `x` is the
+/// modular multiplicative inverse of `a` modulo `b`.
+///
+/// This function declares a MLIR function that given two 384 bit integers `a`
+/// and `b`, returns a MLIR struct with `gcd(a,b)` and the Bézout coefficient
+/// `x`. The declaration is done in the body of the module.
+fn build_egcd_function<'ctx>(
+    module: &Module,
+    context: &'ctx Context,
+    location: Location<'ctx>,
+    func_symbol: &str,
+) -> Result<()> {
+    let integer_width = 384;
+    let integer_type = IntegerType::new(context, integer_width).into();
+
+    // Pseudocode for calculating the EGCD of two integers `a` and `b`.
+    // https://en.wikipedia.org/wiki/Extended_Euclidean_algorithm#Pseudocode.
+    //
+    // ```
+    // (old_r, new_r) := (a, b)
+    // (old_s, new_s) := (1, 0)
+    //
+    // while new_r != 0 do
+    //     quotient := old_r / new_r
+    //     (old_r, new_r) := (new_r, old_r − quotient * new_r)
+    //     (old_s, new_s) := (new_s, old_s − quotient * new_s)
+    //
+    // old_s is equal to Bézout coefficient X
+    // old_r is equal to GCD
+    // ```
+    //
+    // Note that when `b > a`, the first iteration inverts the values. Our
+    // implementation does it manually as we already know that `b > a`.
+    //
+    // The core idea of the method is that `gcd(a,b) = gcd(a,b-a)`, and that
+    // `gcd(a,b) = gcd(b,a)`. As an optimization, we can actually substract `a`
+    // from `b` as many times as possible, so `gcd(a,b) = gcd(b%a,a)`.
+    //
+    // Take, for example, `a=21` and `b=54`:
+    //
+    //   gcd(21, 54)
+    // = gcd(12, 21)
+    // = gcd(9, 12)
+    // = gcd(3, 9)
+    // = gcd(0, 3)
+    // = 3
+    //
+    // Thus, the algorithm works by calculating a series of remainders `r` which
+    // starts with b,a,... being `r[i]` the remainder of dividing `r[i-2]` by
+    // `r[i-1]`. At each step, `r[i]` can be calculated as:
+    //
+    // r[i] = r[i-2] - r[i-1] * quotient
+    //
+    // The GCD will be the last non-zero remainder.
+    //
+    // [54; 21; 12; 9; 3; 0]
+    //                 ^
+    //
+    // See Dr. Katherine Stange's Youtube video for a better explanation on how
+    // this works: https://www.youtube.com/watch?v=Jwf6ncRmhPg.
+    //
+    // The extended algorithm also obtains the Bézout coefficients
+    // by calculating a series of coefficients `s`. See Dr. Katherine
+    // Stange's Youtube video for a better explanation on how this works:
+    // https://www.youtube.com/watch?v=IwRtISxAHY4.
+
+    // Define entry block for function. Receives arguments `a` and `b`.
+    let region = Region::new();
+    let entry_block = region.append_block(Block::new(&[
+        (integer_type, location), // a
+        (integer_type, location), // b
+    ]));
+
+    // Define loop block for function. Each iteration last two values from each series.
+    let loop_block = region.append_block(Block::new(&[
+        (integer_type, location), // old_r
+        (integer_type, location), // new_r
+        (integer_type, location), // old_s
+        (integer_type, location), // new_s
+    ]));
+
+    // Define end block for function.
+    let end_block = region.append_block(Block::new(&[
+        (integer_type, location), // old_r
+        (integer_type, location), // old_s
+    ]));
+
+    // Jump to loop block from entry block, with initial values.
+    // - old_r = b
+    // - new_r = a
+    // - old_s = 0
+    // - new_s = 1
+    entry_block.append_operation(cf::br(
+        &loop_block,
+        &[
+            entry_block.arg(1)?,
+            entry_block.arg(0)?,
+            entry_block.const_int_from_type(context, location, 0, integer_type)?,
+            entry_block.const_int_from_type(context, location, 1, integer_type)?,
+        ],
+        location,
+    ));
+
+    // LOOP BLOCK
+    {
+        let old_r = loop_block.arg(0)?;
+        let new_r = loop_block.arg(1)?;
+        let old_s = loop_block.arg(2)?;
+        let new_s = loop_block.arg(3)?;
+
+        // First calculate quotient of old_r/new_r.
+        let quotient = loop_block.append_op_result(arith::divui(old_r, new_r, location))?;
+
+        // Multiply quotient by new_r and new_s.
+        let quotient_by_new_r = loop_block.muli(quotient, new_r, location)?;
+        let quotient_by_new_s = loop_block.muli(quotient, new_s, location)?;
+
+        // Calculate new values for next iteration.
+        // - next_new_r := old_r − quotient * new_r
+        // - next_new_s := old_s − quotient * new_s
+        let next_new_r =
+            loop_block.append_op_result(arith::subi(old_r, quotient_by_new_r, location))?;
+        let next_new_s =
+            loop_block.append_op_result(arith::subi(old_s, quotient_by_new_s, location))?;
+
+        // Jump to end block if next_new_r is zero.
+        let zero = loop_block.const_int_from_type(context, location, 0, integer_type)?;
+        let next_new_r_is_zero =
+            loop_block.cmpi(context, CmpiPredicate::Eq, next_new_r, zero, location)?;
+        loop_block.append_operation(cf::cond_br(
+            context,
+            next_new_r_is_zero,
+            &end_block,
+            &loop_block,
+            &[new_r, new_s],
+            &[new_r, next_new_r, new_s, next_new_s],
+            location,
+        ));
+    }
+
+    // END BLOCK
+    {
+        let results = end_block.append_op_result(llvm::undef(
+            llvm::r#type::r#struct(context, &[integer_type, integer_type], false),
+            location,
+        ))?;
+        let results = end_block.insert_values(
+            context,
+            location,
+            results,
+            &[end_block.arg(0)?, end_block.arg(1)?],
+        )?;
+        end_block.append_operation(llvm::r#return(Some(results), location));
+    }
+
+    let func_name = StringAttribute::new(context, func_symbol);
+    module.body().append_operation(llvm::func(
+        context,
+        func_name,
+        TypeAttribute::new(llvm::r#type::function(
+            llvm::r#type::r#struct(context, &[integer_type, integer_type], false),
+            &[integer_type, integer_type],
+            false,
+        )),
+        region,
+        &[(
+            Identifier::new(context, "no_inline"), // Adding this attribute significantly improves compilation
+            Attribute::unit(context),
+        )],
+        location,
+    ));
+
+    Ok(())
+}
+
+/// Builds function for circuit arithmetic operations.
+///
+/// It builds an mlir function to perform most circuit's arithmetic operations
+/// with the exception of the inversion since it is handled separately. This
+/// allows us to reduce the amount of inlined operations in the mlir generated,
+/// significantly reducing the compilation time of circuits.
+///
+/// Disclaimer: This function could've been split in three functions, each being
+/// responsible of one circuit operation, improving maintainability. It would
+/// also avoid having to use a `match` in runtime to select the operation to
+/// perform, since its known at compile time. However, it was decided not to go
+/// with this approach since it would make compilation time about a 10
+/// percent slower in circuit-heavy contracts.
+fn build_circuit_arith_operation<'ctx>(
+    context: &'ctx Context,
+    module: &Module,
+    location: Location<'ctx>,
+    func_symbol: &str,
+) -> Result<()> {
+    let func_name = StringAttribute::new(context, func_symbol);
+    let u2_ty = IntegerType::new(context, 2).into();
+    let u384_ty: Type = IntegerType::new(context, 384).into();
+    let u385_ty: Type = IntegerType::new(context, 385).into();
+    let u768_ty = IntegerType::new(context, 768).into();
+
+    let region = Region::new();
+    let entry_block = region.append_block(Block::new(&[
+        (u2_ty, location),
+        (u384_ty, location),
+        (u384_ty, location),
+        (u384_ty, location),
+    ]));
+
+    let op_tag = entry_block.arg(0)?;
+    let lhs = entry_block.arg(1)?;
+    let rhs = entry_block.arg(2)?;
+    let modulus = entry_block.arg(3)?;
+
+    let ops = [
+        CircuitArithOperationType::Add,
+        CircuitArithOperationType::Sub,
+        CircuitArithOperationType::Mul,
+    ];
+    let op_blocks = ops
+        .into_iter()
+        .map(|op| (op, Block::new(&[])))
+        .collect_vec();
+    let default_block = region.append_block(Block::new(&[]));
+    let cases_values = ops.iter().map(|&op| op as i64).collect_vec();
+
+    // Default block. This should be unreachable as the op_tag is not defined by the user.
+    {
+        // Arithmetic operations' tag go from 0 to 2 (add, sub, mul)
+        default_block.append_operation(llvm::unreachable(location));
+    }
+
+    // Switch cases' operation blocks.
+    for (tag, block) in op_blocks.iter() {
+        let result = match tag {
+            // result = lhs_value + rhs_value
+            CircuitArithOperationType::Add => {
+                // We need to extend the operands to avoid overflows while
+                // operating. Since we are performing an addition, we need
+                // at least a bit width of 384 + 1.
+                let lhs = block.extui(lhs, u385_ty, location)?;
+                let rhs = block.extui(rhs, u385_ty, location)?;
+                let modulus = block.extui(modulus, u385_ty, location)?;
+
+                let result = block.addi(lhs, rhs, location)?;
+
+                // result % circuit_modulus
+                block.append_op_result(arith::remui(result, modulus, location))?
+            }
+            // result = output_value + circuit_modulus - rhs_value
+            CircuitArithOperationType::Sub => {
+                // We need to extend the operands to avoid overflows while
+                // operating. Since we are performing a subtraction, we
+                // need at least a bit width of 384 + 1.
+                let lhs = block.extui(lhs, u385_ty, location)?;
+                let rhs = block.extui(rhs, u385_ty, location)?;
+                let modulus = block.extui(modulus, u385_ty, location)?;
+
+                let partial_result = block.addi(lhs, modulus, location)?;
+                let result = block.subi(partial_result, rhs, location)?;
+
+                // result % circuit_modulus
+                block.append_op_result(arith::remui(result, modulus, location))?
+            }
+            // result = lhs_value * rhs_value
+            CircuitArithOperationType::Mul => {
+                // We need to extend the operands to avoid overflows while
+                // operating. Since we are performing a multiplication, we need at least a bit width
+                // of 284 * 2.
+                let lhs = block.extui(lhs, u768_ty, location)?;
+                let rhs = block.extui(rhs, u768_ty, location)?;
+                let modulus = block.extui(modulus, u768_ty, location)?;
+
+                let result = block.muli(lhs, rhs, location)?;
+
+                // result % circuit_modulus
+                block.append_op_result(arith::remui(result, modulus, location))?
+            }
+        };
+
+        // Truncate back
+        let result = block.trunci(result, u384_ty, location)?;
+
+        block.append_operation(llvm::r#return(Some(result), location));
+    }
+
+    entry_block.append_operation(cf::switch(
+        context,
+        &cases_values,
+        op_tag,
+        u2_ty,
+        (&default_block, &[]),
+        &op_blocks
+            .iter()
+            .map(|(_, block)| (block, [].as_slice()))
+            .collect::<Vec<_>>(),
+        location,
+    )?);
+
+    // We need to append the cases to the region.
+    for (_, block) in op_blocks.into_iter() {
+        region.append_block(block);
+    }
+
+    module.body().append_operation(llvm::func(
+        context,
+        func_name,
+        TypeAttribute::new(llvm::r#type::function(
+            u384_ty,
+            &[u2_ty, u384_ty, u384_ty, u384_ty],
+            false,
+        )),
+        region,
+        &[(
+            Identifier::new(context, "no_inline"),
+            Attribute::unit(context),
+        )],
+        location,
+    ));
+
+    Ok(())
 }

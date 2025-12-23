@@ -4,11 +4,14 @@
 
 use super::{increment_builtin_counter_by, LibfuncHelper};
 use crate::{
-    error::{Result, SierraAssertError},
+    error::{panic::ToNativeAssertError, Result, SierraAssertError},
     execution_result::{ADD_MOD_BUILTIN_SIZE, MUL_MOD_BUILTIN_SIZE, RANGE_CHECK96_BUILTIN_SIZE},
     libfuncs::r#struct::build_struct_value,
     metadata::{
-        drop_overrides::DropOverridesMeta, realloc_bindings::ReallocBindingsMeta, MetadataStorage,
+        drop_overrides::DropOverridesMeta,
+        realloc_bindings::ReallocBindingsMeta,
+        runtime_bindings::{CircuitArithOperationType, RuntimeBindingsMeta},
+        MetadataStorage,
     },
     native_panic,
     types::{circuit::build_u384_struct_type, TypeBuilder},
@@ -32,7 +35,7 @@ use melior::{
         cf, llvm,
     },
     helpers::{ArithBlockExt, BuiltinBlockExt, GepIndex, LlvmBlockExt},
-    ir::{r#type::IntegerType, Block, BlockLike, Location, Type, Value, ValueLike},
+    ir::{r#type::IntegerType, Block, BlockLike, Location, Type, Value},
     Context,
 };
 use num_traits::Signed;
@@ -332,6 +335,7 @@ fn build_eval<'ctx, 'this>(
         entry,
         location,
         helper,
+        metadata,
         circuit_info,
         circuit_data,
         circuit_modulus,
@@ -340,15 +344,17 @@ fn build_eval<'ctx, 'this>(
     // Ok case
     {
         // We drop circuit_data, as its consumed by this libfunc.
-        if let Some(drop_overrides_meta) = metadata.get::<DropOverridesMeta>() {
-            drop_overrides_meta.invoke_override(
-                context,
-                ok_block,
-                location,
-                &info.signature.param_signatures[3].ty,
-                circuit_data,
-            )?;
-        }
+        DropOverridesMeta::invoke_override(
+            context,
+            registry,
+            helper,
+            helper.init_block(),
+            ok_block,
+            location,
+            metadata,
+            &info.signature.param_signatures[3].ty,
+            circuit_data,
+        )?;
 
         // Increase the mul mod builtin pointer by the number of evaluated gates.
         // If the evaluation succedes, then we assume that every gate was evaluated.
@@ -412,15 +418,17 @@ fn build_eval<'ctx, 'this>(
     // Error case
     {
         // We drop circuit_data, as its consumed by this libfunc.
-        if let Some(drop_overrides_meta) = metadata.get::<DropOverridesMeta>() {
-            drop_overrides_meta.invoke_override(
-                context,
-                err_block,
-                location,
-                &info.signature.param_signatures[3].ty,
-                circuit_data,
-            )?;
-        }
+        DropOverridesMeta::invoke_override(
+            context,
+            registry,
+            helper,
+            helper.init_block(),
+            err_block,
+            location,
+            metadata,
+            &info.signature.param_signatures[3].ty,
+            circuit_data,
+        )?;
 
         // We only consider mul gates evaluated before failure
         // Increase the mul mod builtin pointer by the number of evaluated gates.
@@ -475,15 +483,21 @@ fn build_eval<'ctx, 'this>(
 ///
 /// The original Cairo hint evaluates all gates, even in case of failure.
 /// This implementation exits on first error, as there is no need for the partial outputs yet.
+#[allow(clippy::too_many_arguments)]
 fn build_gate_evaluation<'ctx, 'this>(
     context: &'this Context,
     mut block: &'this Block<'ctx>,
     location: Location<'ctx>,
     helper: &LibfuncHelper<'ctx, 'this>,
+    metadata: &mut MetadataStorage,
     circuit_info: &circuit::CircuitInfo,
     circuit_data: Value<'ctx, 'ctx>,
     circuit_modulus: Value<'ctx, 'ctx>,
 ) -> Result<([&'this Block<'ctx>; 2], Vec<Value<'ctx, 'ctx>>)> {
+    let runtime_bindings_meta = metadata
+        .get_mut::<RuntimeBindingsMeta>()
+        .to_native_assert_error("Unable to get the RuntimeBindingsMeta from MetadataStorage")?;
+
     // Each gate is represented as a MLIR value, and identified by an offset in the gate vector.
     // - `None` implies that the gate value *has not* been compiled yet.
     // - `Some` implies that the gate values *has* already been compiled, and therefore can be safely used.
@@ -493,8 +507,9 @@ fn build_gate_evaluation<'ctx, 'this>(
     // The first gate always has a value of 1. It is implicity referred by some gate offsets.
     gates[0] = Some(block.const_int(context, location, 1, 384)?);
 
-    // The input gates are also known at the start. We take them from the `circuit_data` array.
     let u384_type = IntegerType::new(context, 384).into();
+
+    // The input gates are also known at the start. We take them from the `circuit_data` array.
     for i in 0..circuit_info.n_inputs {
         let value_ptr = block.gep(
             context,
@@ -527,57 +542,30 @@ fn build_gate_evaluation<'ctx, 'this>(
             match (lhs_value, rhs_value, output_value) {
                 // ADD: lhs + rhs = out
                 (Some(lhs_value), Some(rhs_value), None) => {
-                    // Extend to avoid overflow
-                    let lhs_value = block.extui(
+                    let value = runtime_bindings_meta.circuit_arith_operation(
+                        context,
+                        helper.module,
+                        block,
+                        location,
+                        CircuitArithOperationType::Add,
                         lhs_value,
-                        IntegerType::new(context, 384 + 1).into(),
-                        location,
-                    )?;
-                    let rhs_value = block.extui(
                         rhs_value,
-                        IntegerType::new(context, 384 + 1).into(),
-                        location,
-                    )?;
-                    let circuit_modulus = block.extui(
                         circuit_modulus,
-                        IntegerType::new(context, 384 + 1).into(),
-                        location,
                     )?;
-                    // value = (lhs_value + rhs_value) % circuit_modulus
-                    let value = block.addi(lhs_value, rhs_value, location)?;
-                    let value =
-                        block.append_op_result(arith::remui(value, circuit_modulus, location))?;
-                    // Truncate back
-                    let value =
-                        block.trunci(value, IntegerType::new(context, 384).into(), location)?;
                     gates[gate_offset.output] = Some(value);
                 }
                 // SUB: lhs = out - rhs
                 (None, Some(rhs_value), Some(output_value)) => {
-                    // Extend to avoid overflow
-                    let rhs_value = block.extui(
-                        rhs_value,
-                        IntegerType::new(context, 384 + 1).into(),
+                    let value = runtime_bindings_meta.circuit_arith_operation(
+                        context,
+                        helper.module,
+                        block,
                         location,
-                    )?;
-                    let output_value = block.extui(
+                        CircuitArithOperationType::Sub,
                         output_value,
-                        IntegerType::new(context, 384 + 1).into(),
-                        location,
-                    )?;
-                    let circuit_modulus = block.extui(
+                        rhs_value,
                         circuit_modulus,
-                        IntegerType::new(context, 384 + 1).into(),
-                        location,
                     )?;
-                    // value = (output_value + circuit_modulus - rhs_value) % circuit_modulus
-                    let value = block.addi(output_value, circuit_modulus, location)?;
-                    let value = block.append_op_result(arith::subi(value, rhs_value, location))?;
-                    let value =
-                        block.append_op_result(arith::remui(value, circuit_modulus, location))?;
-                    // Truncate back
-                    let value =
-                        block.trunci(value, IntegerType::new(context, 384).into(), location)?;
                     gates[gate_offset.lhs] = Some(value);
                 }
                 // We can't solve this add gate yet, so we break from the loop
@@ -597,61 +585,37 @@ fn build_gate_evaluation<'ctx, 'this>(
             match (lhs_value, rhs_value, output_value) {
                 // MUL: lhs * rhs = out
                 (Some(lhs_value), Some(rhs_value), None) => {
-                    // Extend to avoid overflow
-                    let lhs_value = block.extui(
+                    let value = runtime_bindings_meta.circuit_arith_operation(
+                        context,
+                        helper.module,
+                        block,
+                        location,
+                        CircuitArithOperationType::Mul,
                         lhs_value,
-                        IntegerType::new(context, 384 * 2).into(),
-                        location,
-                    )?;
-                    let rhs_value = block.extui(
                         rhs_value,
-                        IntegerType::new(context, 384 * 2).into(),
-                        location,
-                    )?;
-                    let circuit_modulus = block.extui(
                         circuit_modulus,
-                        IntegerType::new(context, 384 * 2).into(),
-                        location,
                     )?;
-                    // value = (lhs_value * rhs_value) % circuit_modulus
-                    let value = block.muli(lhs_value, rhs_value, location)?;
-                    let value =
-                        block.append_op_result(arith::remui(value, circuit_modulus, location))?;
-                    // Truncate back
-                    let value =
-                        block.trunci(value, IntegerType::new(context, 384).into(), location)?;
                     gates[gate_offset.output] = Some(value)
                 }
                 // INV: lhs = 1 / rhs
                 (None, Some(rhs_value), Some(_)) => {
-                    // Extend to avoid overflow
-                    let rhs_value = block.extui(
-                        rhs_value,
-                        IntegerType::new(context, 384 * 2).into(),
-                        location,
-                    )?;
-                    let circuit_modulus = block.extui(
-                        circuit_modulus,
-                        IntegerType::new(context, 384 * 2).into(),
-                        location,
-                    )?;
-                    let integer_type = rhs_value.r#type();
-
                     // Apply egcd to find gcd and inverse
-                    let egcd_result_block = build_euclidean_algorithm(
+                    let euclidean_result = runtime_bindings_meta.extended_euclidean_algorithm(
                         context,
+                        helper.module,
                         block,
                         location,
-                        helper,
                         rhs_value,
                         circuit_modulus,
                     )?;
-                    let gcd = egcd_result_block.arg(0)?;
-                    let inverse = egcd_result_block.arg(1)?;
-                    block = egcd_result_block;
+                    // Extract the values from the result struct
+                    let gcd =
+                        block.extract_value(context, location, euclidean_result, u384_type, 0)?;
+                    let inverse =
+                        block.extract_value(context, location, euclidean_result, u384_type, 1)?;
 
                     // if the gcd is not 1, then fail (a and b are not coprimes)
-                    let one = block.const_int_from_type(context, location, 1, integer_type)?;
+                    let one = block.const_int_from_type(context, location, 1, u384_type)?;
                     let gate_offset_idx_value = block.const_int_from_type(
                         context,
                         location,
@@ -672,7 +636,7 @@ fn build_gate_evaluation<'ctx, 'this>(
                     block = has_inverse_block;
 
                     // if the inverse is negative, then add modulus
-                    let zero = block.const_int_from_type(context, location, 0, integer_type)?;
+                    let zero = block.const_int_from_type(context, location, 0, u384_type)?;
                     let is_negative = block
                         .append_operation(arith::cmpi(
                             context,
@@ -690,10 +654,6 @@ fn build_gate_evaluation<'ctx, 'this>(
                         inverse,
                         location,
                     ))?;
-
-                    // Truncate back
-                    let inverse =
-                        block.trunci(inverse, IntegerType::new(context, 384).into(), location)?;
 
                     gates[gate_offset.lhs] = Some(inverse);
                 }
@@ -935,15 +895,17 @@ fn build_get_output<'ctx, 'this>(
     // calling it multiple times involves duplicating the circuit outputs
     // each time. This could be fixed by implementing a reference counter,
     // like we do with regular arrays.
-    if let Some(drop_overrides_meta) = metadata.get::<DropOverridesMeta>() {
-        drop_overrides_meta.invoke_override(
-            context,
-            entry,
-            location,
-            &info.signature.param_signatures[0].ty,
-            outputs,
-        )?;
-    }
+    DropOverridesMeta::invoke_override(
+        context,
+        registry,
+        helper,
+        helper.init_block(),
+        entry,
+        location,
+        metadata,
+        &info.signature.param_signatures[0].ty,
+        outputs,
+    )?;
 
     helper.br(entry, 0, &[output_struct, guarantee], location)?;
 
@@ -1035,87 +997,6 @@ fn u384_integer_to_struct<'a>(
         struct_value,
         &[limb1, limb2, limb3, limb4],
     )?)
-}
-
-/// The extended euclidean algorithm calculates the greatest common divisor (gcd) of two integers a and b,
-/// as well as the bezout coefficients x and y such that ax+by=gcd(a,b)
-/// if gcd(a,b) = 1, then x is the modular multiplicative inverse of a modulo b.
-/// See https://en.wikipedia.org/wiki/Extended_Euclidean_algorithm
-///
-/// Given two numbers a, b. It returns a block with gcd(a, b) and the bezout coefficient x.
-fn build_euclidean_algorithm<'ctx, 'this>(
-    context: &'ctx Context,
-    block: &'ctx Block<'ctx>,
-    location: Location<'ctx>,
-    helper: &LibfuncHelper<'ctx, 'this>,
-    a: Value<'ctx, 'ctx>,
-    b: Value<'ctx, 'ctx>,
-) -> Result<&'this Block<'ctx>> {
-    let integer_type = a.r#type();
-
-    let loop_block = helper.append_block(Block::new(&[
-        (integer_type, location),
-        (integer_type, location),
-        (integer_type, location),
-        (integer_type, location),
-    ]));
-    let end_block = helper.append_block(Block::new(&[
-        (integer_type, location),
-        (integer_type, location),
-    ]));
-
-    // The algorithm egcd works by calculating a series of remainders, each the remainder of dividing the previous two
-    // For the initial setup, r0 = b, r1 = a
-    // This order is chosen because if we reverse them, then the first iteration will just swap them
-    let prev_remainder = b;
-    let remainder = a;
-    // Similarly we'll calculate another series which starts 0,1,... and from which we will retrieve the modular inverse of a
-    let prev_inverse = block.const_int_from_type(context, location, 0, integer_type)?;
-    let inverse = block.const_int_from_type(context, location, 1, integer_type)?;
-    block.append_operation(cf::br(
-        loop_block,
-        &[prev_remainder, remainder, prev_inverse, inverse],
-        location,
-    ));
-
-    // -- Loop body --
-    // Arguments are rem_(i-1), rem, inv_(i-1), inv
-    let prev_remainder = loop_block.arg(0)?;
-    let remainder = loop_block.arg(1)?;
-    let prev_inverse = loop_block.arg(2)?;
-    let inverse = loop_block.arg(3)?;
-
-    // First calculate q = rem_(i-1)/rem_i, rounded down
-    let quotient =
-        loop_block.append_op_result(arith::divui(prev_remainder, remainder, location))?;
-
-    // Then r_(i+1) = r_(i-1) - q * r_i, and inv_(i+1) = inv_(i-1) - q * inv_i
-    let rem_times_quo = loop_block.muli(remainder, quotient, location)?;
-    let inv_times_quo = loop_block.muli(inverse, quotient, location)?;
-    let next_remainder =
-        loop_block.append_op_result(arith::subi(prev_remainder, rem_times_quo, location))?;
-    let next_inverse =
-        loop_block.append_op_result(arith::subi(prev_inverse, inv_times_quo, location))?;
-
-    // Check if r_(i+1) is 0
-    // If true, then:
-    // - r_i is the gcd of a and b
-    // - inv_i is the bezout coefficient x
-
-    let zero = loop_block.const_int_from_type(context, location, 0, integer_type)?;
-    let next_remainder_eq_zero =
-        loop_block.cmpi(context, CmpiPredicate::Eq, next_remainder, zero, location)?;
-    loop_block.append_operation(cf::cond_br(
-        context,
-        next_remainder_eq_zero,
-        end_block,
-        loop_block,
-        &[remainder, inverse],
-        &[remainder, next_remainder, inverse, next_inverse],
-        location,
-    ));
-
-    Ok(end_block)
 }
 
 /// Extracts values from indexes `from` - `to` (exclusive) and builds a new value of type `result_type`
@@ -1227,12 +1108,9 @@ fn build_u96_guarantee_verify<'ctx, 'this>(
 
 #[cfg(test)]
 mod test {
-
     use crate::{
-        utils::{
-            felt252_str,
-            test::{jit_enum, jit_panic, jit_struct, load_cairo, run_program_assert_output},
-        },
+        jit_enum, jit_panic, jit_struct, load_cairo,
+        utils::{felt252_str, testing::run_program_assert_output},
         values::Value,
     };
     use cairo_lang_sierra::extensions::utils::Range;

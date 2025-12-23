@@ -54,6 +54,13 @@ impl StarknetSyscallHandler for &mut SyscallHandler {
         unimplemented!()
     }
 
+    fn get_execution_info_v3(
+        &mut self,
+        _remaining_gas: &mut u64,
+    ) -> SyscallResult<cairo_native::starknet::ExecutionInfoV3> {
+        unimplemented!()
+    }
+
     fn deploy(
         &mut self,
         _class_hash: Felt,

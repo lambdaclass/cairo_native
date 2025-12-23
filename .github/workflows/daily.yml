@@ -98,13 +98,13 @@ jobs:
         with:
           repository: lambdaclass/sequencer
           path: sequencer
-          ref: main-v0.14.0
+          ref: main-v0.14.1
 
       - name: Restore RPC Calls
         id: restore-rpc-calls
         uses: actions/cache/restore@v4.2.0
         with:
-          path: starknet-replay/rpc_cache
+          path: starknet-replay/cache
           key: cache-${{matrix.block}}-${{ github.run_id }}
           restore-keys: |
             cache-${{matrix.block}}
@@ -168,7 +168,7 @@ jobs:
         uses: actions/cache/save@v4.2.0
         if: ${{ always() && matrix.runner == 'vm' }}
         with:
-          path: starknet-replay/rpc_cache
+          path: starknet-replay/cache
           key: ${{ steps.restore-rpc-calls.outputs.cache-primary-key }}
 
   compare:

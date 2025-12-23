@@ -79,8 +79,8 @@ jobs:
             <!-- thiscommentistofindthisformatcomment -->
           edit-mode: replace
 
-  # Check for unnecessary dependencies.
-  udeps:
+  unused-deps:
+    name: No unused dependencies
     runs-on: ubuntu-24.04
     env:
       MLIR_SYS_190_PREFIX: /usr/lib/llvm-19/
@@ -172,10 +172,6 @@ jobs:
       - name: Rust `$PATH` workaround.
         run: echo "$HOME/.cargo/bin" >> $GITHUB_PATH
       - uses: Homebrew/actions/setup-homebrew@master
-      - name: Install scarb
-        uses: software-mansion/setup-scarb@v1
-        with:
-          scarb-version: "2.11.2"
       - name: Install deps
         run: make deps
       - name: Run tests
@@ -240,21 +236,17 @@ jobs:
         uses: taiki-e/install-action@v2
         with:
           tool: cargo-nextest,cargo-llvm-cov
-      - name: Install scarb
-        uses: software-mansion/setup-scarb@v1
-        with:
-          scarb-version: "2.11.2"
       - name: Install deps
         run: make deps
       - name: Build alexandria
         run: make check-llvm && make needs-cairo2 && make build-alexandria
 
       - name: Run tests and generate coverage partition ${{ matrix.partition }}
-        run: cargo llvm-cov nextest --verbose --features=scarb --lcov --output-path ${{ matrix.output }} --partition count:${{ matrix.partition }}/4
+        run: cargo llvm-cov nextest --verbose --lcov --output-path ${{ matrix.output }} --partition count:${{ matrix.partition }}/4
 
       - name: test and generate coverage corelib
         if: ${{ matrix.partition == '1' }}
-        run: cargo llvm-cov nextest --verbose --features=scarb --lcov --output-path lcov-test.info run --bin cairo-native-test -- corelib
+        run: cargo llvm-cov run --verbose --lcov --output-path lcov-test.info --package cairo-native-test -- corelib
 
       - name: save coverage data with corelib
         if: ${{ matrix.partition == '1' }}

@@ -1,19 +1,20 @@
-use super::{find_function, format_for_panic, result_to_runresult, RunArgs, RunMode};
+use super::{find_function, format_for_panic, result_to_runresult, RunArgs};
 use anyhow::Context;
 use cairo_lang_runner::{RunResultValue, SierraCasmRunner};
 use cairo_lang_sierra::{extensions::gas::CostTokenType, ids::FunctionId, program::Program};
 use cairo_lang_sierra_to_casm::metadata::MetadataComputationConfig;
+use cairo_lang_sierra_type_size::ProgramRegistryInfo;
 use cairo_lang_starknet::contract::ContractInfo;
 use cairo_lang_test_plugin::{
     test_config::{PanicExpectation, TestExpectation},
     TestConfig,
 };
 use cairo_lang_test_plugin::{TestCompilation, TestCompilationMetadata};
-use cairo_lang_utils::{casts::IntoOrPanic, ordered_hash_map::OrderedHashMap};
+use cairo_lang_utils::{
+    casts::IntoOrPanic, ordered_hash_map::OrderedHashMap, small_ordered_map::SmallOrderedMap,
+};
 use cairo_native::{
-    context::NativeContext,
-    executor::{AotNativeExecutor, JitNativeExecutor},
-    metadata::gas::GasMetadata,
+    context::NativeContext, executor::AotNativeExecutor, metadata::gas::GasMetadata,
     starknet_stub::StubSyscallHandler,
 };
 use colored::Colorize;
@@ -22,7 +23,10 @@ use num_traits::ToPrimitive;
 #[cfg(feature = "scarb")]
 use scarb_metadata::{PackageMetadata, TargetMetadata};
 use starknet_types_core::felt::Felt;
-use std::{collections::HashMap, sync::Mutex};
+use std::{
+    collections::HashMap,
+    sync::{Arc, Mutex},
+};
 
 /// Summary data of the ran tests.
 pub struct TestsSummary {
@@ -151,7 +155,7 @@ pub fn display_tests_summary(summary: &TestsSummary, filtered_out: usize) {
 pub fn run_tests(
     named_tests: Vec<(String, TestConfig)>,
     sierra_program: Program,
-    function_set_costs: OrderedHashMap<FunctionId, OrderedHashMap<CostTokenType, i32>>,
+    function_set_costs: OrderedHashMap<FunctionId, SmallOrderedMap<CostTokenType, i32>>,
     contracts_info: OrderedHashMap<Felt, ContractInfo>,
     args: RunArgs,
 ) -> anyhow::Result<TestsSummary> {
@@ -166,7 +170,7 @@ pub fn run_tests(
                     skip_non_linear_solver_comparisons: false,
                     compute_runtime_costs: false,
                 }),
-                contracts_info,
+                contracts_info.clone(),
                 None,
             )
             .with_context(|| "Failed setting up runner.")?,
@@ -181,36 +185,14 @@ pub fn run_tests(
     let native_module = native_context
         .compile(&sierra_program, false, Some(Default::default()), None)
         .unwrap();
-
-    let native_executor: Box<dyn Fn(_, _, _, &mut StubSyscallHandler) -> _> = match args.run_mode {
-        RunMode::Aot => {
-            let executor =
-                AotNativeExecutor::from_native_module(native_module, args.opt_level.into())?;
-            Box::new(move |function_id, args, gas, syscall_handler| {
-                executor.invoke_dynamic_with_syscall_handler(
-                    function_id,
-                    args,
-                    gas,
-                    syscall_handler,
-                )
-            })
-        }
-        RunMode::Jit => {
-            let executor =
-                JitNativeExecutor::from_native_module(native_module, args.opt_level.into())?;
-            Box::new(move |function_id, args, gas, syscall_handler| {
-                executor.invoke_dynamic_with_syscall_handler(
-                    function_id,
-                    args,
-                    gas,
-                    syscall_handler,
-                )
-            })
-        }
-    };
+    let native_executor = Arc::new(AotNativeExecutor::from_native_module(
+        native_module,
+        args.opt_level.into(),
+    )?);
 
     let gas_metadata = GasMetadata::new(
         &sierra_program,
+        &ProgramRegistryInfo::new(&sierra_program)?,
         Some(MetadataComputationConfig {
             function_set_costs,
             linear_ap_change_solver: true,
@@ -243,13 +225,20 @@ pub fn run_tests(
 
                 let initial_gas = test.available_gas.map(|x| x.try_into().unwrap());
 
-                let native_result = native_executor(
+                let syscall_handler = &mut StubSyscallHandler {
+                    contracts_info: contracts_info.clone(),
+                    executor: Some(native_executor.clone()),
+                    ..Default::default()
+                };
+
+                let mut native_result = native_executor.invoke_dynamic_with_syscall_handler(
                     &func.id,
                     &[],
                     initial_gas,
-                    &mut StubSyscallHandler::default(),
-                )
-                .with_context(|| format!("Failed to run the function `{}`.", name.as_str()))?;
+                    &mut *syscall_handler,
+                )?;
+
+                native_result.builtin_stats += syscall_handler.builtin_counters;
                 let run_result = result_to_runresult(&native_result)?;
 
                 let gas_usage = test
@@ -259,6 +248,7 @@ pub fn run_tests(
                     .or_else(|| {
                         gas_metadata
                             .initial_required_gas(&func.id)
+                            .unwrap()
                             .map(|gas| gas.try_into().unwrap())
                     });
 

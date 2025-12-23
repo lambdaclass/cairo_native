@@ -5,7 +5,6 @@ use crate::{
     error::Result as NativeResult, metadata::MetadataStorage, native_panic, types::TypeBuilder,
     OptLevel,
 };
-use cairo_lang_compiler::CompilerConfig;
 use cairo_lang_runner::token_gas_cost;
 use cairo_lang_sierra::{
     extensions::{
@@ -24,12 +23,11 @@ use melior::{
 use num_bigint::{BigInt, BigUint, Sign};
 use serde::{Deserialize, Serialize};
 use starknet_types_core::felt::Felt;
-use std::sync::{Arc, LazyLock};
+use std::sync::LazyLock;
 use std::{
     alloc::Layout,
     borrow::Cow,
     fmt::{self, Display},
-    path::Path,
 };
 use thiserror::Error;
 
@@ -39,6 +37,7 @@ mod range_ext;
 #[cfg(feature = "with-segfault-catcher")]
 pub mod safe_runner;
 pub mod sierra_gen;
+pub mod testing;
 pub mod trace_dump;
 pub mod walk_ir;
 
@@ -152,10 +151,22 @@ pub fn generate_function_name(
     if is_for_contract_executor {
         Cow::Owned(format!("f{}", function_id.id))
     } else if let Some(name) = function_id.debug_name.as_deref() {
-        Cow::Owned(format!("{}(f{})", name, function_id.id))
+        Cow::Owned(format!("{}(f{})", mangle_name(name), function_id.id))
     } else {
         Cow::Owned(format!("f{}", function_id.id))
     }
+}
+
+/// Mangles the given function name to ensure safe compilation.
+///
+/// The compiler generates debug names with symbols that are not compatible in
+/// all environments. For example, the GNU linker `ld` doesn't support symbol
+/// symbols with the `@` character.
+///
+/// TODO(#1507): Improve the name mangling algorithm to ensure that name
+/// collisions are imposible.
+pub fn mangle_name(name: &str) -> String {
+    name.replace("@", "at")
 }
 
 /// Decode an UTF-8 error message replacing invalid bytes with their hexadecimal representation, as
@@ -200,34 +211,6 @@ pub fn get_integer_layout(width: u32) -> Layout {
         Layout::from_size_align((width as usize).next_multiple_of(8) >> 3, 16)
             .expect("layout size rounded up to the next multiple of 16 should never be greater than ISIZE::MAX")
     }
-}
-
-/// Compile a cairo program found at the given path to sierra.
-pub fn cairo_to_sierra(program: &Path) -> crate::error::Result<Arc<Program>> {
-    if program
-        .extension()
-        .map(|x| {
-            x.to_ascii_lowercase()
-                .to_string_lossy()
-                .eq_ignore_ascii_case("cairo")
-        })
-        .unwrap_or(false)
-    {
-        cairo_lang_compiler::compile_cairo_project_at_path(
-            program,
-            CompilerConfig {
-                replace_ids: true,
-                ..Default::default()
-            },
-        )
-        .map_err(|err| crate::error::Error::ProgramParser(err.to_string()))
-    } else {
-        let source = std::fs::read_to_string(program)?;
-        cairo_lang_sierra::ProgramParser::new()
-            .parse(&source)
-            .map_err(|err| crate::error::Error::ProgramParser(err.to_string()))
-    }
-    .map(Arc::new)
 }
 
 /// Returns the given entry point if present.
@@ -438,217 +421,22 @@ pub fn get_types_total_size(
 }
 
 #[cfg(test)]
-pub mod test {
-    use crate::{
-        context::NativeContext, execution_result::ExecutionResult, executor::JitNativeExecutor,
-        starknet_stub::StubSyscallHandler, utils::*, values::Value,
+mod tests {
+    use std::{
+        fmt::{self, Formatter},
+        io::Write,
+        path::Path,
     };
-    use cairo_lang_compiler::{
-        compile_prepared_db, db::RootDatabase, diagnostics::DiagnosticsReporter,
-        project::setup_project, CompilerConfig,
+
+    use super::Felt;
+    use crate::utils::{
+        debug_with, felt252_short_str, felt252_str, find_entry_point, find_entry_point_by_idx,
+        find_function_id, generate_function_name, get_integer_layout, testing::cairo_to_sierra,
     };
-    use cairo_lang_filesystem::db::init_dev_corelib;
     use cairo_lang_sierra::{
         ids::FunctionId,
-        program::Program,
-        program::{FunctionSignature, GenFunction, StatementIdx},
+        program::{FunctionSignature, GenFunction, Program, StatementIdx},
     };
-    use cairo_lang_starknet::{compile::compile_contract_in_prepared_db, starknet_plugin_suite};
-    use cairo_lang_starknet_classes::contract_class::ContractClass;
-    use pretty_assertions_sorted::assert_eq;
-    use std::io::Write;
-    use std::{env::var, fmt::Formatter, fs, path::Path};
-
-    macro_rules! load_cairo {
-        ( $( $program:tt )+ ) => {
-            $crate::utils::test::load_cairo_str(stringify!($($program)+))
-        };
-    }
-    macro_rules! load_starknet {
-        ( $( $program:tt )+ ) => {
-            $crate::utils::test::load_starknet_str(stringify!($($program)+))
-        };
-    }
-    macro_rules! load_starknet_contract {
-        ( $( $program:tt )+ ) => {
-            $crate::utils::test::load_starknet_contract_str(stringify!($($program)+))
-        };
-    }
-    pub(crate) use load_cairo;
-    pub(crate) use load_starknet;
-    pub(crate) use load_starknet_contract;
-
-    // Helper macros for faster testing.
-    macro_rules! jit_struct {
-        ($($y:expr),* $(,)? ) => {
-            crate::values::Value::Struct {
-                fields: vec![$($y), *],
-                debug_name: None
-            }
-        };
-    }
-    macro_rules! jit_enum {
-        ( $tag:expr, $value:expr ) => {
-            crate::values::Value::Enum {
-                tag: $tag,
-                value: Box::new($value),
-                debug_name: None,
-            }
-        };
-    }
-    macro_rules! jit_dict {
-        ( $($key:expr $(=>)+ $value:expr),* $(,)? ) => {
-            crate::values::Value::Felt252Dict {
-                value: {
-                    let mut map = std::collections::HashMap::new();
-                    $(map.insert($key.into(), $value.into());)*
-                    map
-                },
-                debug_name: None,
-            }
-        };
-    }
-    macro_rules! jit_panic {
-        ( $($value:expr)? ) => {
-            crate::utils::test::jit_enum!(1, crate::utils::test::jit_struct!(
-                crate::utils::test::jit_struct!(),
-                [$($value), *].into()
-            ))
-        };
-    }
-    pub(crate) use jit_dict;
-    pub(crate) use jit_enum;
-    pub(crate) use jit_panic;
-    pub(crate) use jit_struct;
-
-    pub(crate) fn load_cairo_str(program_str: &str) -> (String, Program) {
-        compile_program(program_str, RootDatabase::default())
-    }
-
-    pub(crate) fn load_starknet_str(program_str: &str) -> (String, Program) {
-        compile_program(
-            program_str,
-            RootDatabase::builder()
-                .with_default_plugin_suite(starknet_plugin_suite())
-                .build()
-                .unwrap(),
-        )
-    }
-
-    pub(crate) fn load_starknet_contract_str(program_str: &str) -> (String, ContractClass) {
-        compile_contract(
-            program_str,
-            RootDatabase::builder()
-                .with_default_plugin_suite(starknet_plugin_suite())
-                .build()
-                .unwrap(),
-        )
-    }
-
-    pub(crate) fn compile_contract(
-        program_str: &str,
-        mut db: RootDatabase,
-    ) -> (String, ContractClass) {
-        let mut program_file = tempfile::Builder::new()
-            .prefix("test_")
-            .suffix(".cairo")
-            .tempfile()
-            .unwrap();
-        fs::write(&mut program_file, program_str).unwrap();
-
-        init_dev_corelib(
-            &mut db,
-            Path::new(&var("CARGO_MANIFEST_DIR").unwrap()).join("corelib/src"),
-        );
-        let main_crate_ids = setup_project(&mut db, program_file.path()).unwrap();
-        let contract = compile_contract_in_prepared_db(
-            &db,
-            None,
-            main_crate_ids,
-            CompilerConfig {
-                diagnostics_reporter: DiagnosticsReporter::stderr(),
-                replace_ids: true,
-                ..Default::default()
-            },
-        )
-        .unwrap();
-
-        let module_name = program_file.path().with_extension("");
-        let module_name = module_name.file_name().unwrap().to_str().unwrap();
-        (module_name.to_string(), contract)
-    }
-
-    pub(crate) fn compile_program(program_str: &str, mut db: RootDatabase) -> (String, Program) {
-        let mut program_file = tempfile::Builder::new()
-            .prefix("test_")
-            .suffix(".cairo")
-            .tempfile()
-            .unwrap();
-        fs::write(&mut program_file, program_str).unwrap();
-
-        init_dev_corelib(
-            &mut db,
-            Path::new(&var("CARGO_MANIFEST_DIR").unwrap()).join("corelib/src"),
-        );
-        let main_crate_ids = setup_project(&mut db, program_file.path()).unwrap();
-        let sierra_program_with_dbg = compile_prepared_db(
-            &db,
-            main_crate_ids,
-            CompilerConfig {
-                diagnostics_reporter: DiagnosticsReporter::stderr(),
-                replace_ids: true,
-                ..Default::default()
-            },
-        )
-        .unwrap();
-
-        let module_name = program_file.path().with_extension("");
-        let module_name = module_name.file_name().unwrap().to_str().unwrap();
-        (module_name.to_string(), sierra_program_with_dbg.program)
-    }
-
-    pub fn run_program(
-        program: &(String, Program),
-        entry_point: &str,
-        args: &[Value],
-    ) -> ExecutionResult {
-        let entry_point = format!("{0}::{0}::{1}", program.0, entry_point);
-        let program = &program.1;
-
-        let entry_point_id = &program
-            .funcs
-            .iter()
-            .find(|x| x.id.debug_name.as_deref() == Some(&entry_point))
-            .expect("Test program entry point not found.")
-            .id;
-
-        let context = NativeContext::new();
-
-        let module = context
-            .compile(program, false, Some(Default::default()), None)
-            .expect("Could not compile test program to MLIR.");
-
-        let executor = JitNativeExecutor::from_native_module(module, OptLevel::Less).unwrap();
-        executor
-            .invoke_dynamic_with_syscall_handler(
-                entry_point_id,
-                args,
-                Some(u64::MAX),
-                &mut StubSyscallHandler::default(),
-            )
-            .unwrap()
-    }
-
-    #[track_caller]
-    pub fn run_program_assert_output(
-        program: &(String, Program),
-        entry_point: &str,
-        args: &[Value],
-        output: Value,
-    ) {
-        let result = run_program(program, entry_point, args);
-        assert_eq!(result.return_value, output);
-    }
 
     // ==============================
     // == TESTS: get_integer_layout

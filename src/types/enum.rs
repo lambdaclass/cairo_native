@@ -29,111 +29,23 @@
 //! | 32769 to 65536     | `i16`             | `u16`               |
 //! | 65537 to 131072    | `i17`             | `u32`               |
 //!
-//! In Rust, the number of bits and bytes required can be obtained using the following formula:
+//! In Rust, the number of bits and bytes required can be obtained using the following formula,
+//! where `n` is the number of bits required, and `m` is the number of bytes required, and
+//! `v` is the number of variants.
 //!
-//! <math xmlns="http://www.w3.org/1998/Math/MathML" display="block">
-//!  <semantics>
-//!   <mtable>
-//!    <mtr>
-//!     <mtd>
-//!      <mrow>
-//!       <msub>
-//!        <mi>n</mi>
-//!        <mi mathvariant="italic">bits</mi>
-//!       </msub>
-//!       <mo stretchy="false">=</mo>
-//!       <mrow>
-//!        <mo fence="true" form="prefix" stretchy="true">{</mo>
-//!        <mrow>
-//!         <mtable>
-//!          <mtr>
-//!           <mtd>
-//!            <mn>0</mn>
-//!           </mtd>
-//!           <mtd>
-//!            <mtext>if</mtext>
-//!           </mtd>
-//!           <mtd>
-//!            <mrow>
-//!             <msub>
-//!              <mi>n</mi>
-//!              <mi mathvariant="italic">variants</mi>
-//!             </msub>
-//!             <mo stretchy="false">=</mo>
-//!             <mn>0</mn>
-//!            </mrow>
-//!           </mtd>
-//!          </mtr>
-//!          <mtr>
-//!           <mtd>
-//!            <mrow>
-//!             <mo fence="true" form="prefix" stretchy="true">⌈</mo>
-//!             <mrow>
-//!              <mrow>
-//!               <msub>
-//!                <mi>log</mi>
-//!                <mn>2</mn>
-//!               </msub>
-//!               <msub>
-//!                <mi>n</mi>
-//!                <mi mathvariant="italic">variants</mi>
-//!               </msub>
-//!              </mrow>
-//!             </mrow>
-//!             <mo fence="true" form="postfix" stretchy="true">⌉</mo>
-//!            </mrow>
-//!           </mtd>
-//!           <mtd>
-//!            <mtext>if</mtext>
-//!           </mtd>
-//!           <mtd>
-//!            <mrow>
-//!             <msub>
-//!              <mi>n</mi>
-//!              <mi mathvariant="italic">variants</mi>
-//!             </msub>
-//!             <mo stretchy="false">≠</mo>
-//!             <mn>0</mn>
-//!            </mrow>
-//!           </mtd>
-//!          </mtr>
-//!         </mtable>
-//!        </mrow>
-//!       </mrow>
-//!      </mrow>
-//!     </mtd>
-//!    </mtr>
-//!    <mtr>
-//!     <mtd>
-//!      <mrow>
-//!       <msub>
-//!        <mi>n</mi>
-//!        <mi mathvariant="italic">bytes</mi>
-//!       </msub>
-//!       <mo stretchy="false">=</mo>
-//!       <mrow>
-//!        <mo fence="true" form="prefix" stretchy="true">⌈</mo>
-//!        <mrow>
-//!         <mfrac>
-//!          <msub>
-//!           <mi>n</mi>
-//!           <mi mathvariant="italic">bits</mi>
-//!          </msub>
-//!          <mn>8</mn>
-//!         </mfrac>
-//!        </mrow>
-//!        <mo fence="true" form="postfix" stretchy="true">⌉</mo>
-//!       </mrow>
-//!      </mrow>
-//!     </mtd>
-//!    </mtr>
-//!   </mtable>
-//!  </semantics>
-//! </math>
+//! ```math
+//! n = { 0         if v == 0
+//!     { ⌈log₂(v)⌉ if v != 0
+//!
+//! m = ⌈n/8⌉
+//! ```
 //!
 //! The payload will then be appended to the discriminant after applying its alignment rules. This
-//! will cause unused space between the tag and the payload in most cases. As an example, the
-//! following enum will have the layouts described in the table below.
+//! will cause unused space between the tag and the payload in most cases.
+//!
+//! ## Example
+//!
+//! As an example, the following enum will have the layouts described in the table below.
 //!
 //! ```cairo
 //! enum MyEnum {
@@ -145,239 +57,48 @@
 //! }
 //! ```
 //!
-//! <table>
-//!     <thead>
-//!         <tr>
-//!             <th colspan="6"><code>MyEnum::U8</code></th>
-//!         </tr>
-//!         <tr>
-//!             <th>Index</th>
-//!             <th>Type</th>
-//!             <th>ABI (in Rust types)</th>
-//!             <th>Alignment</th>
-//!             <th>Size</th>
-//!             <th>Description</th>
-//!         </tr>
-//!     </thead>
-//!     <tbody>
-//!         <tr>
-//!             <td>0</td>
-//!             <td><code>i3</code></td>
-//!             <td><code>u8</code></td>
-//!             <td>1</td>
-//!             <td>1</td>
-//!             <td>Discriminant.</td>
-//!         </tr>
-//!         <tr>
-//!             <td>1</td>
-//!             <td><code>i8</code></td>
-//!             <td><code>u8</code></td>
-//!             <td>1</td>
-//!             <td>1</td>
-//!             <td>Payload.</td>
-//!         </tr>
-//!         <tr>
-//!             <td>N/A</td>
-//!             <td>N/A</td>
-//!             <td><code>[u8; 38]</code></td>
-//!             <td>1</td>
-//!             <td>38</td>
-//!             <td>Padding.</td>
-//!         </tr>
-//!     </tbody>
-//! </table>
+//! ### MyEnum::U8
 //!
-//! <table>
-//!     <thead>
-//!         <tr>
-//!             <th colspan="6"><code>MyEnum::U16</code></th>
-//!         </tr>
-//!         <tr>
-//!             <th>Index</th>
-//!             <th>Type</th>
-//!             <th>ABI (in Rust types)</th>
-//!             <th>Alignment</th>
-//!             <th>Size</th>
-//!             <th>Description</th>
-//!         </tr>
-//!     </thead>
-//!     <tbody>
-//!         <tr>
-//!             <td>0</td>
-//!             <td><code>i3</code></td>
-//!             <td><code>u8</code></td>
-//!             <td>1</td>
-//!             <td>1</td>
-//!             <td>Discriminant.</td>
-//!         </tr>
-//!         <tr>
-//!             <td>N/A</td>
-//!             <td>N/A</td>
-//!             <td><code>[u8; 1]</code></td>
-//!             <td>1</td>
-//!             <td>1</td>
-//!             <td>Padding.</td>
-//!         </tr>
-//!         <tr>
-//!             <td>1</td>
-//!             <td><code>i16</code></td>
-//!             <td><code>u16</code></td>
-//!             <td>2</td>
-//!             <td>2</td>
-//!             <td>Payload.</td>
-//!         </tr>
-//!         <tr>
-//!             <td>N/A</td>
-//!             <td>N/A</td>
-//!             <td><code>[u8; 36]</code></td>
-//!             <td>1</td>
-//!             <td>36</td>
-//!             <td>Padding.</td>
-//!         </tr>
-//!     </tbody>
-//! </table>
+//! | Index | Type  | ABI (in Rust types) | Alignment | Size | Description   |
+//! | ----- | ----- | ------------------- | --------- | ---- | ------------- |
+//! |   0   | `i3`  | `u8`                |         1 |    1 | Discriminant. |
+//! |   1   | `i8`  | `u8`                |         1 |    1 | Payload.      |
+//! |  N/A  | N/A   | `[u8; 38]`          |         1 |   38 | Padding.      |
 //!
-//! <table>
-//!     <thead>
-//!         <tr>
-//!             <th colspan="6"><code>MyEnum::U32</code></th>
-//!         </tr>
-//!         <tr>
-//!             <th>Index</th>
-//!             <th>Type</th>
-//!             <th>ABI (in Rust types)</th>
-//!             <th>Alignment</th>
-//!             <th>Size</th>
-//!             <th>Description</th>
-//!         </tr>
-//!     </thead>
-//!     <tbody>
-//!         <tr>
-//!             <td>0</td>
-//!             <td><code>i3</code></td>
-//!             <td><code>u8</code></td>
-//!             <td>1</td>
-//!             <td>1</td>
-//!             <td>Discriminant.</td>
-//!         </tr>
-//!         <tr>
-//!             <td>N/A</td>
-//!             <td>N/A</td>
-//!             <td><code>[u8; 3]</code></td>
-//!             <td>1</td>
-//!             <td>3</td>
-//!             <td>Padding.</td>
-//!         </tr>
-//!         <tr>
-//!             <td>1</td>
-//!             <td><code>i32</code></td>
-//!             <td><code>u32</code></td>
-//!             <td>4</td>
-//!             <td>4</td>
-//!             <td>Payload.</td>
-//!         </tr>
-//!         <tr>
-//!             <td>N/A</td>
-//!             <td>N/A</td>
-//!             <td><code>[u8; 32]</code></td>
-//!             <td>1</td>
-//!             <td>32</td>
-//!             <td>Padding.</td>
-//!         </tr>
-//!     </tbody>
-//! </table>
+//! ### MyEnum::U16
 //!
-//! <table>
-//!     <thead>
-//!         <tr>
-//!             <th colspan="6"><code>MyEnum::U64</code></th>
-//!         </tr>
-//!         <tr>
-//!             <th>Index</th>
-//!             <th>Type</th>
-//!             <th>ABI (in Rust types)</th>
-//!             <th>Alignment</th>
-//!             <th>Size</th>
-//!             <th>Description</th>
-//!         </tr>
-//!     </thead>
-//!     <tbody>
-//!         <tr>
-//!             <td>0</td>
-//!             <td><code>i3</code></td>
-//!             <td><code>u8</code></td>
-//!             <td>1</td>
-//!             <td>1</td>
-//!             <td>Discriminant.</td>
-//!         </tr>
-//!         <tr>
-//!             <td>N/A</td>
-//!             <td>N/A</td>
-//!             <td><code>[u8; 7]</code></td>
-//!             <td>1</td>
-//!             <td>7</td>
-//!             <td>Padding.</td>
-//!         </tr>
-//!         <tr>
-//!             <td>1</td>
-//!             <td><code>i64</code></td>
-//!             <td><code>u64</code></td>
-//!             <td>8</td>
-//!             <td>8</td>
-//!             <td>Payload.</td>
-//!         </tr>
-//!         <tr>
-//!             <td>N/A</td>
-//!             <td>N/A</td>
-//!             <td><code>[u8; 24]</code></td>
-//!             <td>1</td>
-//!             <td>24</td>
-//!             <td>Padding.</td>
-//!         </tr>
-//!     </tbody>
-//! </table>
+//! | Index | Type  | ABI (in Rust types) | Alignment | Size | Description   |
+//! | ----- | ----- | ------------------- | --------- | ---- | ------------- |
+//! |   0   | `i3`  | `u8`                |         1 |    1 | Discriminant. |
+//! |  N/A  | N/A   | `[u8; 1]`           |         1 |    1 | Padding.      |
+//! |   1   | `i16` | `u16`               |         2 |    2 | Payload.      |
+//! |  N/A  | N/A   | `[u8; 36]`          |         1 |   36 | Padding.      |
 //!
-//! <table>
-//!     <thead>
-//!         <tr>
-//!             <th colspan="6"><code>MyEnum</code></th>
-//!         </tr>
-//!         <tr>
-//!             <th>Index</th>
-//!             <th>Type</th>
-//!             <th>ABI (in Rust types)</th>
-//!             <th>Alignment</th>
-//!             <th>Size</th>
-//!             <th>Description</th>
-//!         </tr>
-//!     </thead>
-//!     <tbody>
-//!         <tr>
-//!             <td>0</td>
-//!             <td><code>i3</code></td>
-//!             <td><code>u8</code></td>
-//!             <td>1</td>
-//!             <td>1</td>
-//!             <td>Discriminant.</td>
-//!         </tr>
-//!         <tr>
-//!             <td>N/A</td>
-//!             <td>N/A</td>
-//!             <td><code>[u8; 7]</code></td>
-//!             <td>1</td>
-//!             <td>7</td>
-//!             <td>Padding.</td>
-//!         </tr>
-//!         <tr>
-//!             <td>1</td>
-//!             <td><code>i252</code></td>
-//!             <td><code>[u64; 4]</code></td>
-//!             <td>8</td>
-//!             <td>32</td>
-//!             <td>Payload.</td>
-//!         </tr>
-//!     </tbody>
-//! </table>
+//! ### MyEnum::U32
+//!
+//! | Index | Type  | ABI (in Rust types) | Alignment | Size | Description   |
+//! | ----- | ----- | ------------------- | --------- | ---- | ------------- |
+//! |   0   | `i3`  | `u8`                |         1 |    1 | Discriminant. |
+//! |  N/A  | N/A   | `[u8; 3]`           |         1 |    3 | Padding.      |
+//! |   1   | `i32` | `u32`               |         4 |    4 | Payload.      |
+//! |  N/A  | N/A   | `[u8; 32]`          |         1 |   32 | Padding.      |
+//!
+//! ### MyEnum::U64
+//!
+//! | Index | Type  | ABI (in Rust types) | Alignment | Size | Description   |
+//! | ----- | ----- | ------------------- | --------- | ---- | ------------- |
+//! |   0   | `i3`  | `u8`                |         1 |    1 | Discriminant. |
+//! |  N/A  | N/A   | `[u8; 7]`           |         1 |    7 | Padding.      |
+//! |   1   | `i64` | `u64`               |         8 |    8 | Payload.      |
+//! |  N/A  | N/A   | `[u8; 24]`          |         1 |   24 | Padding.      |
+//!
+//! ### MyEnum::Felt
+//!
+//! | Index | Type   | ABI (in Rust types) | Alignment | Size | Description   |
+//! | ----- | ------ | ------------------- | --------- | ---- | ------------- |
+//! |   0   | `i3`   | `u8`                |         1 |    1 | Discriminant. |
+//! |  N/A  | N/A    | `[u8; 7]`           |         1 |    7 | Padding.      |
+//! |   1   | `i252` | `[u64; 4]`          |         8 |   32 | Payload.      |
 //!
 //! As seen above, while the discriminant is always at the same offset, the payloads don't necessary
 //! have the same offset between all variants. It depends on the payload's alignment.
@@ -386,24 +107,25 @@
 //! payload to keep everything consistent and the padding will have its own index, shifting every
 //! index below it by one. However all that's been ignored for documenting purposes.
 //!
-//! An MLIR type cannot be an enumeration (it doesn't exist), therefore a variant or a buffer has to
-//! be used. Using a buffer as a dummy payload has been discarded because it doesn't keep the enum's
-//! alignment information. To keep that info, the first variant with the biggest alignment is used
-//! as the default payload.
+//! An MLIR type cannot be an enumeration (it doesn't exist). We cannot use the type of the largest
+//! variant either. This is because the payload of different variants could start at different offsets,
+//! so the padding of the largest variant could be part of the payload of a smaller variant. As an
+//! optimization, LLVM does not copy the value of the padding, which implies that some data is lost.
 //!
-//! Using the info stated above, we can infer that the example enum will have the following type by
-//! default:
+//! Instead, we represent enums as an opaque structure that contains an integer and a byte array.
+//! The integer is used to ensure that the alignment information is not lost, as we use an integer
+//! with the same alignment as the variant with biggest alignment.
 //!
-//! | Index | Type  | ABI (in Rust types) | Alignment | Size | Description   |
-//! | ----- | ----- | ------------------- | --------- | ---- | ------------- |
-//! |   0   | `i3`  | `u8`                |         1 |    1 | Discriminant. |
-//! |  N/A  | N/A   | `[u8; 7]`           |         1 |    7 | Padding.      |
-//! |   1   | `i64` | `u64`               |         8 |    8 | Payload.      |
-//! |  N/A  | N/A   | `[u8; 24]`          |         1 |   24 | Padding.      |
+//! | Index | Type       | ABI (in Rust types) | Alignment | Size | Description       |
+//! | ----- | ---------- | ------------------- | --------- | ---- | ----------------- |
+//! |   0   | `i64`      | `u64`               |         8 |    8 | Forces alignment. |
+//! |   1   | `[u8; 32]` | `[u8; 32]`          |         1 |   32 | Remaining data.   |
+//!
+//! This data type can then be reinterpreted safely into any of the concrete variants.
 
 use super::{TypeBuilder, WithSelf};
 use crate::{
-    error::{Error, Result},
+    error::Result,
     metadata::{
         drop_overrides::DropOverridesMeta, dup_overrides::DupOverridesMeta, MetadataStorage,
     },
@@ -450,16 +172,10 @@ pub fn build<'ctx>(
         metadata,
         info.self_ty(),
         |metadata| {
-            // The following unwrap is unreachable because `register_with` will always insert it
-            // before calling this closure.
             let mut needs_override = false;
             for variant in &info.variants {
                 registry.build_type(context, module, metadata, variant)?;
-                if metadata
-                    .get::<DupOverridesMeta>()
-                    .ok_or(Error::MissingMetadata)?
-                    .is_overriden(variant)
-                {
+                if DupOverridesMeta::is_overriden(metadata, variant) {
                     needs_override = true;
                     break;
                 }
@@ -482,11 +198,8 @@ pub fn build<'ctx>(
             let mut needs_override = false;
             for variant in &info.variants {
                 registry.build_type(context, module, metadata, variant)?;
-                if metadata
-                    .get::<DropOverridesMeta>()
-                    .ok_or(Error::MissingMetadata)?
-                    .is_overriden(variant)
-                {
+
+                if DropOverridesMeta::is_overriden(metadata, variant) {
                     needs_override = true;
                     break;
                 }
@@ -570,12 +283,17 @@ fn build_dup<'ctx>(
     match variant_tys.len() {
         0 => native_panic!("attempt to clone a zero-variant enum"),
         1 => {
-            // The following unwrap is unreachable because the registration logic will always insert
-            // it.
-            let values = metadata
-                .get::<DupOverridesMeta>()
-                .ok_or(Error::MissingMetadata)?
-                .invoke_override(context, &entry, location, &info.variants[0], entry.arg(0)?)?;
+            let values = DupOverridesMeta::invoke_override(
+                context,
+                registry,
+                module,
+                &entry,
+                &entry,
+                location,
+                metadata,
+                &info.variants[0],
+                entry.arg(0)?,
+            )?;
 
             entry.append_operation(func::r#return(&[values.0, values.1], location));
         }
@@ -600,12 +318,10 @@ fn build_dup<'ctx>(
                     )?;
                     let value = block.extract_value(context, location, container, variant_ty, 1)?;
 
-                    // The following unwrap is unreachable because the registration logic will
-                    // always insert it.
-                    let values = metadata
-                        .get::<DupOverridesMeta>()
-                        .ok_or(Error::MissingMetadata)?
-                        .invoke_override(context, block, location, variant_id, value)?;
+                    let values = DupOverridesMeta::invoke_override(
+                        context, registry, module, block, block, location, metadata, variant_id,
+                        value,
+                    )?;
 
                     let value = block.insert_value(context, location, container, values.0, 1)?;
                     block.store(context, location, ptr, value)?;
@@ -668,12 +384,17 @@ fn build_drop<'ctx>(
     match variant_tys.len() {
         0 => native_panic!("attempt to drop a zero-variant enum"),
         1 => {
-            // The following unwrap is unreachable because the registration logic will always insert
-            // it.
-            metadata
-                .get::<DropOverridesMeta>()
-                .ok_or(Error::MissingMetadata)?
-                .invoke_override(context, &entry, location, &info.variants[0], entry.arg(0)?)?;
+            DropOverridesMeta::invoke_override(
+                context,
+                registry,
+                module,
+                &entry,
+                &entry,
+                location,
+                metadata,
+                &info.variants[0],
+                entry.arg(0)?,
+            )?;
 
             entry.append_operation(func::r#return(&[], location));
         }
@@ -698,12 +419,10 @@ fn build_drop<'ctx>(
                     )?;
                     let value = block.extract_value(context, location, container, variant_ty, 1)?;
 
-                    // The following unwrap is unreachable because the registration logic will
-                    // always insert it.
-                    metadata
-                        .get::<DropOverridesMeta>()
-                        .ok_or(Error::MissingMetadata)?
-                        .invoke_override(context, block, location, variant_id, value)?;
+                    DropOverridesMeta::invoke_override(
+                        context, registry, module, block, block, location, metadata, variant_id,
+                        value,
+                    )?;
 
                     block.append_operation(func::r#return(&[], location));
                 }
@@ -795,7 +514,7 @@ pub fn get_type_for_variants<'ctx>(
 
 #[cfg(test)]
 mod test {
-    use crate::{metadata::MetadataStorage, types::TypeBuilder, utils::test::load_cairo};
+    use crate::{load_cairo, metadata::MetadataStorage, types::TypeBuilder};
     use cairo_lang_sierra::{
         extensions::core::{CoreLibfunc, CoreType},
         program_registry::ProgramRegistry,

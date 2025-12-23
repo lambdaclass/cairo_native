@@ -183,8 +183,13 @@ mod Contract {{
         .expect("failed to create temporary file for cairo test program");
     fs::write(&mut program_file, program_str).expect("failed to write cairo test file");
 
-    let contract_class = compile_path(program_file.path(), None, Default::default())
-        .expect("failed to compile cairo contract");
+    let contract_class = compile_path(
+        program_file.path(),
+        None,
+        Default::default(),
+        Default::default(),
+    )
+    .expect("failed to compile cairo contract");
 
     let program = contract_class
         .extract_sierra_program()
