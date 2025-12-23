@@ -2,7 +2,7 @@
 
 use super::LibfuncHelper;
 use crate::{
-    error::{panic::ToNativeAssertError, Error, Result, SierraAssertError},
+    error::{Error, Result, SierraAssertError},
     metadata::{
         drop_overrides::DropOverridesMeta, dup_overrides::DupOverridesMeta,
         realloc_bindings::ReallocBindingsMeta, MetadataStorage,
@@ -388,34 +388,43 @@ pub fn build_tuple_from_span<'ctx, 'this>(
                 let region = Region::new();
                 let block = region.append_block(Block::new(&[]));
 
-                match metadata.get::<DupOverridesMeta>() {
-                    Some(dup_overrides_meta) if dup_overrides_meta.is_overriden(&info.ty) => {
-                        let src_ptr = array_data_start_ptr;
-                        let dst_ptr = value;
+                if DupOverridesMeta::is_overriden(metadata, &info.ty) {
+                    let src_ptr = array_data_start_ptr;
+                    let dst_ptr = value;
 
-                        let value = block.load(context, location, src_ptr, tuple_ty)?;
+                    let value = block.load(context, location, src_ptr, tuple_ty)?;
 
-                        // Invoke the tuple's clone mechanism, which will take care of copying or
-                        // cloning each item in the array.
-                        let values = dup_overrides_meta
-                            .invoke_override(context, &block, location, &info.ty, value)?;
-                        block.store(context, location, src_ptr, values.0)?;
-                        block.store(context, location, dst_ptr, values.1)?;
-                    }
-                    _ => block.memcpy(context, location, array_data_start_ptr, value, value_size),
+                    // Invoke the tuple's clone mechanism, which will take care of copying or
+                    // cloning each item in the array.
+                    let values = DupOverridesMeta::invoke_override(
+                        context,
+                        registry,
+                        helper,
+                        helper.init_block(),
+                        &block,
+                        location,
+                        metadata,
+                        &info.ty,
+                        value,
+                    )?;
+                    block.store(context, location, src_ptr, values.0)?;
+                    block.store(context, location, dst_ptr, values.1)?;
+                } else {
+                    block.memcpy(context, location, array_data_start_ptr, value, value_size)
                 }
 
                 // Drop the original array (by decreasing its reference counter).
-                metadata
-                    .get::<DropOverridesMeta>()
-                    .to_native_assert_error("array always has a drop implementation")?
-                    .invoke_override(
-                        context,
-                        &block,
-                        location,
-                        &info.signature.param_signatures[0].ty,
-                        entry.argument(0)?.into(),
-                    )?;
+                DropOverridesMeta::invoke_override(
+                    context,
+                    registry,
+                    helper,
+                    helper.init_block(),
+                    &block,
+                    location,
+                    metadata,
+                    &info.signature.param_signatures[0].ty,
+                    entry.argument(0)?.into(),
+                )?;
 
                 block.append_operation(scf::r#yield(&[], location));
                 region
@@ -461,16 +470,17 @@ pub fn build_tuple_from_span<'ctx, 'this>(
 
     {
         // When there's a length mismatch, just consume (drop) the array.
-        metadata
-            .get::<DropOverridesMeta>()
-            .ok_or(Error::MissingMetadata)?
-            .invoke_override(
-                context,
-                error_block,
-                location,
-                &info.signature.param_signatures[0].ty,
-                entry.argument(0)?.into(),
-            )?;
+        DropOverridesMeta::invoke_override(
+            context,
+            registry,
+            helper,
+            helper.init_block(),
+            error_block,
+            location,
+            metadata,
+            &info.signature.param_signatures[0].ty,
+            entry.argument(0)?.into(),
+        )?;
 
         helper.br(error_block, 1, &[], location)
     }
@@ -898,41 +908,44 @@ fn build_pop<'ctx, 'this, const CONSUME: bool, const REVERSE: bool>(
         )?)?;
 
         // Clone popped items.
-        match metadata.get::<DupOverridesMeta>() {
-            Some(dup_overrides_meta) if dup_overrides_meta.is_overriden(elem_ty) => {
-                for i in 0..extract_len {
-                    let source_ptr = valid_block.gep(
-                        context,
-                        location,
-                        source_ptr,
-                        &[GepIndex::Const(
-                            (elem_layout.pad_to_align().size() * i) as i32,
-                        )],
-                        IntegerType::new(context, 8).into(),
-                    )?;
-                    let target_ptr = valid_block.gep(
-                        context,
-                        location,
-                        target_ptr,
-                        &[GepIndex::Const(
-                            (elem_layout.pad_to_align().size() * i) as i32,
-                        )],
-                        IntegerType::new(context, 8).into(),
-                    )?;
+        if DupOverridesMeta::is_overriden(metadata, elem_ty) {
+            for i in 0..extract_len {
+                let source_ptr = valid_block.gep(
+                    context,
+                    location,
+                    source_ptr,
+                    &[GepIndex::Const(
+                        (elem_layout.pad_to_align().size() * i) as i32,
+                    )],
+                    IntegerType::new(context, 8).into(),
+                )?;
+                let target_ptr = valid_block.gep(
+                    context,
+                    location,
+                    target_ptr,
+                    &[GepIndex::Const(
+                        (elem_layout.pad_to_align().size() * i) as i32,
+                    )],
+                    IntegerType::new(context, 8).into(),
+                )?;
 
-                    let value = valid_block.load(context, location, source_ptr, elem_type)?;
-                    let values = dup_overrides_meta.invoke_override(
-                        context,
-                        valid_block,
-                        location,
-                        elem_ty,
-                        value,
-                    )?;
-                    valid_block.store(context, location, source_ptr, values.0)?;
-                    valid_block.store(context, location, target_ptr, values.1)?;
-                }
+                let value = valid_block.load(context, location, source_ptr, elem_type)?;
+                let values = DupOverridesMeta::invoke_override(
+                    context,
+                    registry,
+                    helper,
+                    helper.init_block(),
+                    valid_block,
+                    location,
+                    metadata,
+                    elem_ty,
+                    value,
+                )?;
+                valid_block.store(context, location, source_ptr, values.0)?;
+                valid_block.store(context, location, target_ptr, values.1)?;
             }
-            _ => valid_block.memcpy(context, location, source_ptr, target_ptr, target_size),
+        } else {
+            valid_block.memcpy(context, location, source_ptr, target_ptr, target_size)
         }
 
         branch_values.push(array_obj);
@@ -944,10 +957,17 @@ fn build_pop<'ctx, 'this, const CONSUME: bool, const REVERSE: bool>(
         let mut branch_values = branch_values.clone();
 
         if CONSUME {
-            metadata
-                .get::<DropOverridesMeta>()
-                .to_native_assert_error("drop overrides meta should exist")?
-                .invoke_override(context, error_block, location, self_ty, array_obj)?;
+            DropOverridesMeta::invoke_override(
+                context,
+                registry,
+                helper,
+                helper.init_block(),
+                error_block,
+                location,
+                metadata,
+                self_ty,
+                array_obj,
+            )?;
         } else {
             branch_values.push(array_obj);
         }
@@ -1042,48 +1062,53 @@ pub fn build_get<'ctx, 'this>(
         )?)?;
 
         // Clone the output data.
-        match metadata.get::<DupOverridesMeta>() {
-            Some(dup_overrides_meta) if dup_overrides_meta.is_overriden(&info.ty) => {
-                let value = valid_block.load(context, location, source_ptr, elem_ty)?;
-                let values = dup_overrides_meta.invoke_override(
-                    context,
-                    valid_block,
-                    location,
-                    &info.ty,
-                    value,
-                )?;
-                valid_block.store(context, location, source_ptr, values.0)?;
-                valid_block.store(context, location, target_ptr, values.1)?;
-            }
-            _ => valid_block.memcpy(context, location, source_ptr, target_ptr, elem_stride),
+        if DupOverridesMeta::is_overriden(metadata, &info.ty) {
+            let value = valid_block.load(context, location, source_ptr, elem_ty)?;
+            let values = DupOverridesMeta::invoke_override(
+                context,
+                registry,
+                helper,
+                helper.init_block(),
+                valid_block,
+                location,
+                metadata,
+                &info.ty,
+                value,
+            )?;
+            valid_block.store(context, location, source_ptr, values.0)?;
+            valid_block.store(context, location, target_ptr, values.1)?;
+        } else {
+            valid_block.memcpy(context, location, source_ptr, target_ptr, elem_stride)
         }
 
         // Drop the input array.
-        metadata
-            .get::<DropOverridesMeta>()
-            .to_native_assert_error("drop overrides metadata should be available")?
-            .invoke_override(
-                context,
-                valid_block,
-                location,
-                &info.signature.param_signatures[1].ty,
-                entry.argument(1)?.into(),
-            )?;
+        DropOverridesMeta::invoke_override(
+            context,
+            registry,
+            helper,
+            helper.init_block(),
+            valid_block,
+            location,
+            metadata,
+            &info.signature.param_signatures[1].ty,
+            entry.argument(1)?.into(),
+        )?;
 
         helper.br(valid_block, 0, &[range_check, target_ptr], location)?;
     }
 
     {
-        metadata
-            .get::<DropOverridesMeta>()
-            .to_native_assert_error("drop overrides meta should exist")?
-            .invoke_override(
-                context,
-                error_block,
-                location,
-                &info.signature.param_signatures[1].ty,
-                entry.argument(1)?.into(),
-            )?;
+        DropOverridesMeta::invoke_override(
+            context,
+            registry,
+            helper,
+            helper.init_block(),
+            error_block,
+            location,
+            metadata,
+            &info.signature.param_signatures[1].ty,
+            entry.argument(1)?.into(),
+        )?;
 
         helper.br(error_block, 1, &[range_check], location)?;
     }
@@ -1094,7 +1119,7 @@ pub fn build_get<'ctx, 'this>(
 /// Generate MLIR operations for the `array_slice` libfunc.
 pub fn build_slice<'ctx, 'this>(
     context: &'ctx Context,
-    _registry: &ProgramRegistry<CoreType, CoreLibfunc>,
+    registry: &ProgramRegistry<CoreType, CoreLibfunc>,
     entry: &'this Block<'ctx>,
     location: Location<'ctx>,
     helper: &LibfuncHelper<'ctx, 'this>,
@@ -1155,16 +1180,17 @@ pub fn build_slice<'ctx, 'this>(
     }
 
     {
-        metadata
-            .get::<DropOverridesMeta>()
-            .ok_or(Error::MissingMetadata)?
-            .invoke_override(
-                context,
-                error_block,
-                location,
-                &info.signature.param_signatures[1].ty,
-                array_obj,
-            )?;
+        DropOverridesMeta::invoke_override(
+            context,
+            registry,
+            helper,
+            helper.init_block(),
+            error_block,
+            location,
+            metadata,
+            &info.signature.param_signatures[1].ty,
+            array_obj,
+        )?;
 
         helper.br(error_block, 1, &[range_check], location)?;
     }
@@ -1175,7 +1201,7 @@ pub fn build_slice<'ctx, 'this>(
 /// Generate MLIR operations for the `array_len` libfunc.
 pub fn build_len<'ctx, 'this>(
     context: &'ctx Context,
-    _registry: &ProgramRegistry<CoreType, CoreLibfunc>,
+    registry: &ProgramRegistry<CoreType, CoreLibfunc>,
     entry: &'this Block<'ctx>,
     location: Location<'ctx>,
     helper: &LibfuncHelper<'ctx, 'this>,
@@ -1190,16 +1216,17 @@ pub fn build_len<'ctx, 'this>(
 
     let array_len = entry.append_op_result(arith::subi(array_end, array_start, location))?;
 
-    metadata
-        .get::<DropOverridesMeta>()
-        .to_native_assert_error("drop overrides meta should exist")?
-        .invoke_override(
-            context,
-            entry,
-            location,
-            &info.signature.param_signatures[0].ty,
-            entry.argument(0)?.into(),
-        )?;
+    DropOverridesMeta::invoke_override(
+        context,
+        registry,
+        helper,
+        helper.init_block(),
+        entry,
+        location,
+        metadata,
+        &info.signature.param_signatures[0].ty,
+        entry.argument(0)?.into(),
+    )?;
 
     helper.br(entry, 0, &[array_len], location)
 }
