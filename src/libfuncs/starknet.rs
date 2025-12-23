@@ -555,7 +555,7 @@ pub fn build_storage_write<'ctx, 'this>(
         address_arg_ptr,
         value_arg_ptr,
     ];
-    let (result_tag, payload_ok, payload_err) = execute_syscall(
+    let (result_tag, _, payload_err) = execute_syscall(
         context,
         registry,
         entry,
@@ -581,10 +581,7 @@ pub fn build_storage_write<'ctx, 'this>(
         [1, 0],
         [
             &[remaining_gas, entry.arg(1)?, payload_err],
-            // This syscall returns `()` if there was no error. We still need
-            // to return something in this case, so the data hold by `payload_ok`
-            // is should not be used.
-            &[remaining_gas, entry.arg(1)?, payload_ok],
+            &[remaining_gas, entry.arg(1)?],
         ],
         location,
     )
@@ -799,7 +796,7 @@ pub fn build_emit_event<'ctx, 'this>(
     let fn_ptr = entry.load(context, location, fn_ptr, llvm::r#type::pointer(context, 0))?;
 
     let mut args = vec![ptr, gas_builtin_ptr, keys_arg_ptr, data_arg_ptr];
-    let (result_tag, payload_ok, payload_err) = execute_syscall(
+    let (result_tag, _, payload_err) = execute_syscall(
         context,
         registry,
         entry,
@@ -825,10 +822,7 @@ pub fn build_emit_event<'ctx, 'this>(
         [1, 0],
         [
             &[remaining_gas, entry.arg(1)?, payload_err],
-            // This syscall returns `()` if there was no error. We still need
-            // to return something in this case, so the data hold by payload_ok
-            // is should not be used.
-            &[remaining_gas, entry.arg(1)?, payload_ok],
+            &[remaining_gas, entry.arg(1)?],
         ],
         location,
     )
@@ -1849,7 +1843,7 @@ pub fn build_replace_class<'ctx, 'this>(
     let fn_ptr = entry.load(context, location, fn_ptr, llvm::r#type::pointer(context, 0))?;
 
     let mut args = vec![ptr, gas_builtin_ptr, class_hash_arg_ptr];
-    let (result_tag, payload_ok, payload_err) = execute_syscall(
+    let (result_tag, _, payload_err) = execute_syscall(
         context,
         registry,
         entry,
@@ -1875,10 +1869,7 @@ pub fn build_replace_class<'ctx, 'this>(
         [1, 0],
         [
             &[remaining_gas, entry.arg(1)?, payload_err],
-            // This syscall returns `()` if there was no error. We still need
-            // to return something in this case, so the data hold by payload_ok
-            // is should not be used.
-            &[remaining_gas, entry.arg(1)?, payload_ok],
+            &[remaining_gas, entry.arg(1)?],
         ],
         location,
     )
@@ -1956,7 +1947,7 @@ pub fn build_send_message_to_l1<'ctx, 'this>(
     let fn_ptr = entry.load(context, location, fn_ptr, llvm::r#type::pointer(context, 0))?;
 
     let mut args = vec![ptr, gas_builtin_ptr, to_address_arg_ptr, payload_arg_ptr];
-    let (result_tag, payload_ok, payload_err) = execute_syscall(
+    let (result_tag, _, payload_err) = execute_syscall(
         context,
         registry,
         entry,
@@ -1982,10 +1973,7 @@ pub fn build_send_message_to_l1<'ctx, 'this>(
         [1, 0],
         [
             &[remaining_gas, entry.arg(1)?, payload_err],
-            // This syscall returns `()` if there was no error. We still need
-            // to return something in this case, so the data hold by payload_ok
-            // is should not be used.
-            &[remaining_gas, entry.arg(1)?, payload_ok],
+            &[remaining_gas, entry.arg(1)?],
         ],
         location,
     )
