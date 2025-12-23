@@ -164,6 +164,10 @@ pub fn build_binary_operation<'ctx, 'this>(
                 prime,
             )?;
 
+            // Here we omit checking if inverse is actually the inverse,
+            // satisfying gcd(a,b) == 1, because we are using a prime as the
+            // modulus. This ensures that for any value of a, included in the
+            // field, gcd(a,b) == 1.
             let prime = entry.const_int_from_type(context, location, PRIME.clone(), i512)?;
             let inverse = {
                 let inverse =

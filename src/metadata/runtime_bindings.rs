@@ -870,7 +870,9 @@ pub fn setup_runtime(find_symbol_ptr: impl Fn(&str) -> Option<*mut c_void>) {
 ///
 /// This function declares a MLIR function that given integers `a`
 /// and `b`, returns a MLIR struct with `gcd(a,b)` and the Bézout coefficient
-/// `x`. The declaration is done in the body of the module.
+/// `x`. This is not a pure implementation of the extended euclidean algorithm,
+/// the Bézout coefficient `x` is calculated such that x modulo b. The
+/// declaration is done in the body of the module.
 fn build_egcd_function<'ctx>(
     module: &Module,
     context: &'ctx Context,
@@ -1008,27 +1010,29 @@ fn build_egcd_function<'ctx>(
     // END BLOCK
     {
         let gcd = end_block.arg(0)?;
-        let inverse = end_block.arg(1)?;
+        let beuzout_coeff = end_block.arg(1)?;
 
-        // EGCD sometimes returns a negative number for the inverse,
-        // in such cases we must simply wrap it around back into [0, MODULUS)
-        // this suffices because |inv_i| <= divfloor(MODULUS,2)
+        // A pure implementation of EGCD would return the gcd and Bézout
+        // coefficient as they are now. However, since we want to return the
+        // Bézout coefficient modulo b, we still need to check if it is
+        // negative. In such case, we must simply wrap it around back into
+        // [0, MODULUS) this suffices because |inv_i| <= divfloor(MODULUS,2).
         let zero = end_block.const_int_from_type(context, location, 0, integer_type)?;
         let is_negative = end_block
             .append_operation(arith::cmpi(
                 context,
                 CmpiPredicate::Slt,
-                inverse,
+                beuzout_coeff,
                 zero,
                 location,
             ))
             .result(0)?
             .into();
-        let wrapped_inverse = end_block.addi(inverse, modulus, location)?;
-        let inverse = end_block.append_op_result(arith::select(
+        let wrapped_beuzout_coeff = end_block.addi(beuzout_coeff, modulus, location)?;
+        let beuzout_coeff = end_block.append_op_result(arith::select(
             is_negative,
-            wrapped_inverse,
-            inverse,
+            wrapped_beuzout_coeff,
+            beuzout_coeff,
             location,
         ))?;
 
@@ -1036,7 +1040,7 @@ fn build_egcd_function<'ctx>(
             llvm::r#type::r#struct(context, &[integer_type, integer_type], false),
             location,
         ))?;
-        let results = end_block.insert_values(context, location, results, &[gcd, inverse])?;
+        let results = end_block.insert_values(context, location, results, &[gcd, beuzout_coeff])?;
         end_block.append_operation(llvm::r#return(Some(results), location));
     }
 
