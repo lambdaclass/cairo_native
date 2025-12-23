@@ -345,7 +345,7 @@ unsafe fn create_mlir_array(
         // Get the element, move to the offset of the 'last_value' and save the element in that address
         let element = dict.elements.byte_add(generic_ty_size * elem_index) as *mut u8;
         let last_val_ptr = first_val_ptr.byte_add(generic_ty_size);
-        std::ptr::copy_nonoverlapping(element, last_val_ptr, generic_ty_size);
+        std::ptr::swap_nonoverlapping(element, last_val_ptr, generic_ty_size);
     }
 
     let ptr_ptr = libc_malloc(size_of::<*mut ()>()).cast::<*mut c_void>();
@@ -396,7 +396,12 @@ pub unsafe extern "C" fn cairo_native__dict_into_entries(
     let arr = create_mlir_array(dict, data_prefix_offset, tuple_layout.pad_to_align().size());
 
     *array_ptr = arr;
-    forget(dict_rc);
+
+    // This libfunc consumes the dictionary, so we need to drop it.
+    // But since we are moving the elements to the array, we set the
+    // drop_fn to None so it doesn't try to apply that function on undefined memory.
+    dict.drop_fn = None;
+    drop(dict_rc);
 }
 
 /// Simulates the felt252_dict_squash libfunc.
