@@ -147,27 +147,15 @@ jobs:
         if: ${{ steps.rpc-restore.outputs.cache-hit }}
         run: rm -rf starknet-replay/cache
 
-
-      # Check if we have state-dumps from a previous run in the cache.
-      # If so, then we delete that entry so we can save the state-dumps
-      # from the new run with the same key.
-      - name: Restore VM dumps
-        id: cache-restore
-        uses: actions/cache/restore@v4.2.0
-        with:
-          path: state_dumps/vm
-          key: dumps-vm
       - name: Delete VM dumps
-        if: ${{ steps.cache-restore.outputs.cache-hit }}
+        if: ${{ always() }}
         run: gh cache delete dumps-vm
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           GH_REPO: ${{ github.repository }}
-      - name: Delete local VM dumps
-        if: ${{ steps.cache-restore.outputs.cache-hit }}
-        run: rm -rf state_dumps/vm
 
       - name: Download dumps
+        if: ${{ always() }}
         uses: actions/download-artifact@v4
         with:
           pattern: dump-*-vm
@@ -183,6 +171,7 @@ jobs:
         continue-on-error: true
       
       - name: Save dumps
+        if: ${{ always() }}
         uses: actions/cache/save@v4.2.0
         with:
           path: state_dumps/vm
