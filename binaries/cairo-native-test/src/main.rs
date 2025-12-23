@@ -1,15 +1,10 @@
 use anyhow::bail;
-use cairo_lang_compiler::{
-    db::RootDatabase,
-    diagnostics::DiagnosticsReporter,
-    project::{check_compiler_path, setup_project},
-};
-use cairo_lang_filesystem::cfg::{Cfg, CfgSet};
-use cairo_lang_starknet::starknet_plugin_suite;
-use cairo_lang_test_plugin::{compile_test_prepared_db, test_plugin_suite, TestsCompilationConfig};
+use cairo_lang_compiler::project::check_compiler_path;
+use cairo_lang_test_plugin::TestsCompilationConfig;
+use cairo_lang_test_runner::TestCompiler;
 use cairo_native_bin_utils::{
     test::{display_tests_summary, filter_test_cases, run_tests},
-    RunArgs, RunMode,
+    RunArgs,
 };
 use clap::Parser;
 use std::path::PathBuf;
@@ -40,9 +35,6 @@ struct Args {
     /// Should we add the starknet plugin to run the tests.
     #[arg(long, default_value_t = false)]
     starknet: bool,
-    /// Run with JIT or AOT (compiled).
-    #[arg(long, value_enum, default_value_t = RunMode::Jit)]
-    run_mode: RunMode,
     /// Optimization level, Valid: 0, 1, 2, 3. Values higher than 3 are considered as 3.
     #[arg(short = 'O', long, default_value_t = 0)]
     opt_level: u8,
@@ -64,38 +56,22 @@ fn main() -> anyhow::Result<()> {
 
     check_compiler_path(args.single_file, &args.path)?;
 
-    let db = &mut {
-        let mut b = RootDatabase::builder();
-        b.detect_corelib();
-        b.with_cfg(CfgSet::from_iter([Cfg::name("test")]));
-        b.with_default_plugin_suite(test_plugin_suite());
-        if args.starknet {
-            b.with_default_plugin_suite(starknet_plugin_suite());
-        }
+    let compiler = TestCompiler::try_new(
+        &args.path,
+        args.allow_warnings,
+        true,
+        TestsCompilationConfig {
+            starknet: args.starknet,
+            add_statements_functions: false,
+            add_statements_code_locations: false,
+            add_functions_debug_info: false,
+            contract_declarations: None,
+            contract_crate_ids: None,
+            executable_crate_ids: None,
+        },
+    )?;
 
-        b.build()?
-    };
-
-    let main_crate_inputs = setup_project(db, &args.path)?;
-
-    let db = db.snapshot();
-    let test_crate_ids = main_crate_inputs.clone();
-    let test_config = TestsCompilationConfig {
-        starknet: args.starknet,
-        add_statements_functions: false,
-        add_statements_code_locations: false,
-        contract_declarations: None,
-        contract_crate_ids: None,
-        executable_crate_ids: None,
-    };
-
-    let mut diag_reporter = DiagnosticsReporter::stderr().with_crates(&main_crate_inputs);
-    if args.allow_warnings {
-        diag_reporter = diag_reporter.allow_warnings();
-    }
-
-    let build_test_compilation =
-        compile_test_prepared_db(&db, test_config, test_crate_ids.clone(), diag_reporter)?;
+    let build_test_compilation = compiler.build()?;
 
     let (compiled, filtered_out) = filter_test_cases(
         build_test_compilation,
@@ -110,7 +86,6 @@ fn main() -> anyhow::Result<()> {
         compiled.metadata.function_set_costs,
         compiled.metadata.contracts_info,
         RunArgs {
-            run_mode: args.run_mode.clone(),
             opt_level: args.opt_level,
             compare_with_vm: args.compare_with_cairo_vm,
         },

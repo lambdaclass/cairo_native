@@ -41,15 +41,17 @@ pub fn build<'ctx, 'this>(
         &info.signature.param_signatures[0].ty,
     )?;
 
-    if let Some(drop_overrides_meta) = metadata.get::<DropOverridesMeta>() {
-        drop_overrides_meta.invoke_override(
-            context,
-            entry,
-            location,
-            &info.signature.param_signatures[0].ty,
-            entry.arg(0)?,
-        )?;
-    }
+    DropOverridesMeta::invoke_override(
+        context,
+        registry,
+        helper,
+        helper.init_block(),
+        entry,
+        location,
+        metadata,
+        &info.signature.param_signatures[0].ty,
+        entry.arg(0)?,
+    )?;
 
     helper.br(entry, 0, &[], location)
 }

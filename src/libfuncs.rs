@@ -63,6 +63,7 @@ mod felt252_dict;
 mod felt252_dict_entry;
 mod function_call;
 mod gas;
+mod gas_reserve;
 mod int;
 mod int_range;
 mod mem;
@@ -256,9 +257,11 @@ impl LibfuncBuilder for CoreConcreteLibfunc {
                 metadata,
                 &info.signature.param_signatures,
             ),
+            Self::GasReserve(selector) => self::gas_reserve::build(
+                context, registry, entry, location, helper, metadata, selector,
+            ),
             Self::QM31(_) => native_panic!("Implement QM31 libfunc"),
             Self::UnsafePanic(_) => native_panic!("Implement unsafe_panic libfunc"),
-            Self::GasReserve(_) => native_panic!("Implement gas_reserve libfunc"),
             Self::DummyFunctionCall(_) => native_panic!("Implement dummy_function_call libfunc"),
         }
     }

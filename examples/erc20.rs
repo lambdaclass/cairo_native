@@ -85,6 +85,14 @@ impl StarknetSyscallHandler for SyscallHandler {
         })
     }
 
+    fn get_execution_info_v3(
+        &mut self,
+        _remaining_gas: &mut u64,
+    ) -> SyscallResult<cairo_native::starknet::ExecutionInfoV3> {
+        println!("Called `get_execution_info_v3()` from MLIR.");
+        todo!();
+    }
+
     fn deploy(
         &mut self,
         class_hash: Felt,

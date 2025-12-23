@@ -129,6 +129,7 @@ pub fn eval(
         },
         StarknetConcreteLibfunc::GetClassHashAt(info) => eval_get_class_hash_at(registry, info, args, syscall_handler),
         StarknetConcreteLibfunc::MetaTxV0(info) => eval_meta_tx_v0(registry, info, args, syscall_handler),
+        StarknetConcreteLibfunc::GetExecutionInfoV3(_) => todo!(),
     }
 }
 
@@ -173,7 +174,7 @@ fn eval_secp256_new(
                 None => Value::Enum {
                     self_ty: enum_ty.clone(),
                     index: 1,
-                    payload: Box::new(Value::Unit),
+                    payload: Box::new(Value::Struct(vec![])),
                 },
             };
 
@@ -327,7 +328,7 @@ fn eval_secp256_get_point_from_x(
                 None => Value::Enum {
                     self_ty: enum_ty.clone(),
                     index: 1,
-                    payload: Box::new(Value::Unit),
+                    payload: Box::new(Value::Struct(vec![])),
                 },
             };
 
