@@ -26,14 +26,14 @@ jobs:
 
       - name: Patch Native Dependencies
         run: |
-          # Retrieve last release tag and process it to make it usable
+          # Retrieve last release tag and process it to make it usable.
           last_release=$(curl -s https://api.github.com/repos/starkware-libs/cairo/releases/latest \
               | jq -r .tag_name \
               | cut -c 2-
           ) 
           echo "CAIRO_LAST_RELEASE=${last_release}" | tee -a $GITHUB_ENV
 
-          # Updates cairo-lang dependency to the last release
+          # Updates cairo-lang dependency with the last release.
           name='cairo-lang-[[:alnum:]-]+'
           version='"([[:alnum:]~-]|\.)+"'
           
@@ -41,12 +41,12 @@ jobs:
 
           git diff
       
-      - name: Patch Corelib Version Installer
+      - name: Patch Corelib's Version Installer
         run: |
           last_release=${{ env.CAIRO_LAST_RELEASE }}
           version='([[:alnum:]~-]|\.)+'
 
-          # Chage corelib's version to install
+          # Change which corelib's version to install.
           sed -i'' -r "s/CAIRO_2_VERSION = $version/CAIRO_2_VERSION = $last_release/" Makefile
 
           git diff
