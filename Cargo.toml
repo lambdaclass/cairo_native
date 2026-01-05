@@ -45,6 +45,7 @@ cairo-lang-sierra-type-size = "~2.14.1-dev.1"
 cairo-lang-starknet = "~2.14.1-dev.1"
 cairo-lang-starknet-classes = "~2.14.1-dev.1"
 cairo-lang-test-plugin = "~2.14.1-dev.1"
+cairo-lang-test-runner = "~2.14.1-dev.1"
 cairo-lang-utils = "~2.14.1-dev.1"
 cairo-native-bin-utils.path = "binaries/cairo-native-bin-utils"
 cairo-native = { path = ".", version = "0.9.0-rc.0" }
@@ -119,7 +120,7 @@ with-mem-tracing = []
 with-libfunc-profiling = []
 with-segfault-catcher = []
 with-trace-dump = ["dep:sierra-emu"]
-testing = ["dep:cairo-lang-compiler", "dep:cairo-lang-starknet", "dep:cairo-lang-filesystem"]
+testing = ["dep:cairo-lang-compiler", "dep:cairo-lang-filesystem"]
 
 [dependencies]
 aquamarine.workspace = true
@@ -127,7 +128,7 @@ bumpalo.workspace = true
 cairo-lang-compiler = { workspace = true, optional = true }
 cairo-lang-filesystem = { workspace = true, optional = true }
 cairo-lang-lowering.workspace = true
-cairo-lang-starknet = { workspace = true, optional = true }
+cairo-lang-starknet.workspace = true
 cairo-lang-runner.workspace = true
 cairo-lang-sierra.workspace = true
 cairo-lang-sierra-type-size.workspace = true
@@ -178,7 +179,6 @@ cairo-lang-compiler.workspace = true
 cairo-lang-filesystem.workspace = true
 cairo-lang-runner.workspace = true
 cairo-lang-sierra-generator.workspace = true
-cairo-lang-starknet.workspace = true
 criterion = { workspace = true, features = ["html_reports"] }
 lambdaworks-math.workspace = true
 pretty_assertions_sorted.workspace = true
