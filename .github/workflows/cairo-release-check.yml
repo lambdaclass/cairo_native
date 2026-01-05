@@ -56,6 +56,11 @@ jobs:
           make deps
           make test-cairo
 
+      - name: Prepare Env vars.
+        if: ${{ failure() }}
+        run: |
+          echo "WORKFLOW_URL=$REPO_URL/actions/runs/${{ github.run_id }}" | tee -a $GITHUB_ENV
+
       - name: Create Issue
         if: ${{ failure() }}
         uses: JasonEtco/create-an-issue@v2
