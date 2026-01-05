@@ -1016,7 +1016,8 @@ fn build_egcd_function<'ctx>(
         // coefficient as they are now. However, since we want to return the
         // Bézout coefficient modulo b, we still need to check if it is
         // negative. In such case, we must simply wrap it around back into
-        // [0, MODULUS) this suffices because |inv_i| <= divfloor(MODULUS,2).
+        // [0, MODULUS). This is fine because, in such case,
+        // |beuzout_coeff| <= divfloor(MODULUS,2).
         let zero = end_block.const_int_from_type(context, location, 0, integer_type)?;
         let is_negative = end_block
             .append_operation(arith::cmpi(
