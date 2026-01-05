@@ -870,9 +870,9 @@ pub fn setup_runtime(find_symbol_ptr: impl Fn(&str) -> Option<*mut c_void>) {
 ///
 /// This function declares a MLIR function that given integers `a`
 /// and `b`, returns a MLIR struct with `gcd(a,b)` and the Bézout coefficient
-/// `x`. This is not a pure implementation of the extended euclidean algorithm,
-/// the Bézout coefficient `x` is calculated such that x modulo b. The
-/// declaration is done in the body of the module.
+/// `x`. Tipically, the EGCD algorithm returns the Bézout coefficient as is.
+/// However, because we actually want to calculate the inverse of a modulo b,
+/// we wrap the x coefficient around b if negative (x % b).
 fn build_egcd_function<'ctx>(
     module: &Module,
     context: &'ctx Context,
