@@ -2177,8 +2177,8 @@ pub fn build_get_class_hash_at<'ctx, 'this>(
 ///
 /// The `args` vector should **only** hold syscall's arguments in the order
 /// stated by its signature. This function is in charge of creating the return
-/// pointer in which the syscall will store the result. So, the `args` vector
-/// **should not** hold it.
+/// pointer in which the syscall will store the result. Due to this, the `args` 
+/// vector **must not** hold the return pointer.
 ///
 /// ## Return Types
 ///
