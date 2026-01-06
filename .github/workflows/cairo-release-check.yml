@@ -31,7 +31,7 @@ jobs:
               | jq -r .tag_name \
               | cut -c 2-
           )
-          current_release=$(grep -E "CAIRO_2_VERSION = $version" Makefile | awk '{print $3}')
+          current_release=$(grep -r "CAIRO_2_VERSION = $version" Makefile | awk '{print $3}')
           
           echo "CAIRO_LAST_RELEASE=${last_release}" | tee -a $GITHUB_ENV
           echo "CAIRO_CURRENT_RELEASE=${current_release}" | tee -a $GITHUB_ENV
@@ -67,12 +67,12 @@ jobs:
           make test-cairo
 
       - name: Prepare Env vars.
-        if: ${{ echo -e "${env.CAIRO_LAST_RELEASE}\n${env.CAIRO_CURRENT_RELEASE}" | sort -Vr | head -n1)" = ${env.CAIRO_LAST_RELEASE} && failure() }}
+        if: ${{ failure() }}
         run: |
           echo "WORKFLOW_URL=$REPO_URL/actions/runs/${{ github.run_id }}" | tee -a $GITHUB_ENV
 
       - name: Create Issue
-        if: ${{ echo -e "${env.CAIRO_LAST_RELEASE}\n${env.CAIRO_CURRENT_RELEASE}" | sort -Vr | head -n1)" = ${env.CAIRO_LAST_RELEASE} && failure() }}
+        if: ${{ failure() }}
         uses: JasonEtco/create-an-issue@v2
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
