@@ -29,7 +29,7 @@ jobs:
       - name: Retreive cached dependecies
         uses: Swatinem/rust-cache@v2
 
-      - name: Retreive Versions
+      - name: Retreive Versions and Check Latest
         run: |
           version="([[:alnum:]~-]|\.)+"
           last_release=$(curl -s https://api.github.com/repos/starkware-libs/cairo/releases/latest \
@@ -37,12 +37,19 @@ jobs:
               | cut -c 2-
           )
           current_release=$(grep -r "CAIRO_2_VERSION = $version" Makefile | awk '{print $3}')
+
+          # Check if the current release used by Cairo Native is the latest with respect to semver.
+          if ["$current_release" = "$(echo "$current_release\n$current_release" | sort -Vr | head -n1)"]; then
+            echo "IS_LATEST=false" | tee -a $GITHUB_ENV
+          else
+            echo "IS_LATEST=true" | tee -a $GITHUB_ENV
+          fi
           
           echo "CAIRO_LAST_RELEASE=${last_release}" | tee -a $GITHUB_ENV
           echo "CAIRO_CURRENT_RELEASE=${current_release}" | tee -a $GITHUB_ENV
 
       - name: Patch Native Dependencies
-        if: ${{ echo -e "${env.CAIRO_LAST_RELEASE}\n${env.CAIRO_CURRENT_RELEASE}" | sort -Vr | head -n1)" = "${env.CAIRO_LAST_RELEASE}" }}
+        if: ${{ env.is_latest == 'true' }}
         run: |
           last_release=${{ env.CAIRO_LAST_RELEASE }}
 
@@ -55,7 +62,7 @@ jobs:
           git diff
       
       - name: Patch Corelib's Version Installer
-        if: ${{ echo -e "${env.CAIRO_LAST_RELEASE}\n${env.CAIRO_CURRENT_RELEASE}" | sort -Vr | head -n1)" = ${env.CAIRO_LAST_RELEASE} }}
+        if: ${{ env.is_latest == 'true' }}
         run: |
           last_release=${{ env.CAIRO_LAST_RELEASE }}
           version='([[:alnum:]~-]|\.)+'
@@ -66,7 +73,7 @@ jobs:
           git diff
 
       - name: Run Cairo Tests
-        if: ${{ echo -e "${env.CAIRO_LAST_RELEASE}\n${env.CAIRO_CURRENT_RELEASE}" | sort -Vr | head -n1)" = ${env.CAIRO_LAST_RELEASE} }}
+        if: ${{ env.is_latest == 'true' }}
         run: | 
           make deps
           make test-cairo
