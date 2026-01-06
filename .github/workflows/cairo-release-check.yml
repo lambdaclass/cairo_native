@@ -36,7 +36,7 @@ jobs:
               | jq -r .tag_name \
               | cut -c 2-
           )
-          current_release=$(grep -r "CAIRO_2_VERSION = $version" Makefile | awk '{print $3}')
+          current_release=$(grep -E "CAIRO_2_VERSION = $version" Makefile | awk '{print $3}')
 
           # Check if the current release used by Cairo Native is the latest with respect to semver.
           if ["$current_release" = "$(echo "$current_release\n$current_release" | sort -Vr | head -n1)"]; then
@@ -49,7 +49,7 @@ jobs:
           echo "CAIRO_CURRENT_RELEASE=${current_release}" | tee -a $GITHUB_ENV
 
       - name: Patch Native Dependencies
-        if: ${{ env.is_latest == 'true' }}
+        if: ${{ env.IS_LATEST == 'true' }}
         run: |
           last_release=${{ env.CAIRO_LAST_RELEASE }}
 
@@ -62,7 +62,7 @@ jobs:
           git diff
       
       - name: Patch Corelib's Version Installer
-        if: ${{ env.is_latest == 'true' }}
+        if: ${{ env.IS_LATEST == 'true' }}
         run: |
           last_release=${{ env.CAIRO_LAST_RELEASE }}
           version='([[:alnum:]~-]|\.)+'
@@ -73,7 +73,7 @@ jobs:
           git diff
 
       - name: Run Cairo Tests
-        if: ${{ env.is_latest == 'true' }}
+        if: ${{ env.IS_LATEST == 'true' }}
         run: | 
           make deps
           make test-cairo
