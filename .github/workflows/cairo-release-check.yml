@@ -1,14 +1,9 @@
 name: Weekly Cairo Release Check
 
 on:
-  push:
-    branches: [main]
-  pull_request:
-  merge_group:
-    types: [checks_requested]
-  # schedule:
-  #   # Run all Mondays at 08:00.
-  #   - cron: "0 8 * * 1"
+  schedule:
+    # Run all Mondays at 08:00.
+    - cron: "0 8 * * 1"
 
 jobs:
   release-tag-check:
