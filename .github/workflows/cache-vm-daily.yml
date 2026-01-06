@@ -1,0 +1,165 @@
+name: VM Block Run
+
+on: 
+  workflow_dispatch:
+    inputs:
+      blocks:
+        type: string
+        description: Comma separated block numbers (e.g "10,50,70")
+        required: true
+
+env:
+  RANGE_SIZE: 20
+
+jobs:
+
+  # Gets the blocks to execute and saves them on the cache so it can
+  # be used by the 'daily' workflow
+  setup:
+    runs-on: ubuntu-latest
+    outputs:
+      blocks: ${{ steps.parse-blocks.outputs.blocks_list }}
+    steps:
+
+      - name: Checkout Native
+        uses: actions/checkout@v4
+        with:
+          path: cairo_native
+
+      - name: Restore blocks list
+        id: cache-restore
+        uses: actions/cache/restore@v4.2.0
+        with:
+          path: ./blocks.txt
+          key: blocks-list
+
+      - name: Delete blocks cache entry
+        if: ${{ steps.cache-restore.outputs.cache-hit }}
+        run: gh cache delete blocks-list
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          GH_REPO: ${{ github.repository }}
+
+      - name: Parse blocks
+        id: parse-blocks
+        run: |
+          echo "blocks_list=$(jq 'split(",")' -Rc <(echo ${{ github.event.inputs.blocks }}))" >> $GITHUB_OUTPUT
+          echo "${{ github.event.inputs.blocks }}" > ./blocks.txt
+      
+      - name: Save blocks list
+        uses: actions/cache/save@v4.2.0
+        with:
+          path: ./blocks.txt
+          key: blocks-list
+
+  run:
+    needs: setup
+    runs-on: ubuntu-latest
+    env:
+      LLVM_SYS_191_PREFIX: /usr/lib/llvm-19/
+      MLIR_SYS_190_PREFIX: /usr/lib/llvm-19/
+      TABLEGEN_190_PREFIX: /usr/lib/llvm-19/
+      RPC_ENDPOINT_TESTNET: ${{ secrets.RPC_ENDPOINT_TESTNET }}
+      RPC_ENDPOINT_MAINNET: ${{ secrets.RPC_ENDPOINT_MAINNET }}
+    strategy:
+      max-parallel: 25
+      matrix:
+        block: ${{ fromJson(needs.setup.outputs.blocks) }}
+      fail-fast: false
+    defaults:
+      run:
+        shell: bash
+        working-directory: ./starknet-replay
+
+    steps:
+      - name: Checkout Native
+        uses: actions/checkout@v4
+        with:
+          path: cairo_native
+      # We checkout replay as it's the main repository for this workflow
+      - name: Checkout Replay
+        uses: actions/checkout@v4
+        with:
+          repository: lambdaclass/starknet-replay
+          path: starknet-replay
+
+      # Install dependencies
+      - uses: ./cairo_native/.github/actions/install-linux-deps
+      - name: Setup rust env
+        uses: dtolnay/rust-toolchain@1.89.0
+      - name: Retreive cached dependecies
+        uses: Swatinem/rust-cache@v2
+        with:
+          workspaces: starknet-replay
+
+      - name: Run with VM
+        run: |
+          BLOCK_START=${{ matrix.block }}
+          BLOCK_END=$(($BLOCK_START + $RANGE_SIZE - 1))
+          cargo run --release --bin replay --features state_dump,only_cairo_vm block-range $BLOCK_START $BLOCK_END mainnet
+
+      # We always upload the dump, even if the job fails
+      - name: Upload dumps
+        uses: actions/upload-artifact@v4
+        if: steps.restore-rpc-calls.outputs.cache-hit != true
+        with:
+          name: dump-${{matrix.block}}-vm
+          path: starknet-replay/state_dumps/vm
+      
+      - name: Upload RPC calls
+        if: steps.restore-rpc-calls.outputs.cache-hit != true
+        uses: actions/upload-artifact@v4
+        with:
+          name: rpc-${{matrix.block}}-vm
+          path: starknet-replay/cache
+  
+  merge-dumps:
+    needs: [run]
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        shell: bash
+    steps:
+
+      - name: Delete RPC calls
+        if: ${{ always() }}
+        run: gh cache delete rpc-calls-cache
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          GH_REPO: ${{ github.repository }}
+      - name: Delete VM dumps
+        if: ${{ always() }}
+        run: gh cache delete dumps-vm
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          GH_REPO: ${{ github.repository }}
+
+      - name: Download dumps
+        if: ${{ always() }}
+        uses: actions/download-artifact@v4
+        with:
+          pattern: dump-*-vm
+          path: state_dumps/vm
+          merge-multiple: true
+        continue-on-error: true
+      - name: Download RPC calls
+        if: ${{ always() }}
+        uses: actions/download-artifact@v4
+        with:
+          pattern: rpc-*-vm
+          path: starknet-replay/cache
+          merge-multiple: true
+        continue-on-error: true
+      
+      - name: Save dumps
+        if: ${{ always() }}
+        uses: actions/cache/save@v4.2.0
+        with:
+          path: state_dumps/vm
+          key: dumps-vm
+      - name: Save RPC calls
+        if: ${{ always() }}
+        uses: actions/cache/save@v4.2.0
+        with:
+          path: starknet-replay/cache
+          key: rpc-calls-cache

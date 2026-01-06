@@ -4,12 +4,55 @@ on:
   schedule:
     # At the end of every day
     - cron: "0 0 * * *"
+  workflow_dispatch:
 
 env:
   RANGE_SIZE: 20
 
 jobs:
+
+  # Gets the file with the blocks to execute, parses it and
+  # outputs it so it can be used as a matrix in the next job
+  setup:
+    runs-on: ubuntu-latest
+    outputs:
+      blocks: ${{ steps.parse-blocks.outputs.blocks_list }}
+    steps:
+
+      - name: Checkout Native
+        uses: actions/checkout@v4
+        with:
+          path: cairo_native
+
+      - name: Restore blocks list
+        id: cache-restore
+        uses: actions/cache/restore@v4.2.0
+        with:
+          path: ./blocks.txt
+          key: blocks-list
+          fail-on-cache-miss: true
+      - name: Prepare env vars
+        if: ${{ steps.cache-restore.outputs.cache-hit != 'true' }}
+        run: |
+          REPO_URL="${{ github.server_url }}/${{ github.repository }}"
+          echo "WORKFLOW_URL=$REPO_URL/actions/runs/${{ github.run_id }}" | tee -a $GITHUB_ENV
+      - name: Create cache related issue
+        if: ${{ failure() && steps.cache-restore.outcome == 'failure' }}
+        uses: JasonEtco/create-an-issue@v2
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          COMMIT_SHA: ${{ github.sha }}
+        with:
+          filename: .github/ISSUE_TEMPLATE/daily_cache_failure.md
+
+      - name: Parse blocks file
+        id: parse-blocks
+        run: |
+          content=`cat ./blocks.txt`
+          echo "blocks_list=$(jq 'split(",")' -Rc <(echo $content))" >> $GITHUB_OUTPUT
+
   run:
+    needs: setup
     runs-on: ubuntu-latest
     env:
       LLVM_SYS_191_PREFIX: /usr/lib/llvm-19/
@@ -20,60 +63,7 @@ jobs:
     strategy:
       max-parallel: 25
       matrix:
-        block:
-          - 740000
-          - 741000
-          - 742000
-          - 743000
-          - 744000
-          - 745000
-          - 746000
-          - 747000
-          - 748000
-          - 749000
-          - 800000
-          - 800050
-          - 800100
-          - 800150
-          - 800200
-          - 800250
-          - 800300
-          - 800350
-          - 800400
-          - 800450
-          - 900000
-          - 900100
-          - 900200
-          - 900300
-          - 900400
-          - 900500
-          - 900600
-          - 900700
-          - 900800
-          - 900900
-          - 1000400
-          - 1000500
-          - 1002000
-          - 1003000
-          - 1004000
-          - 1005000
-          - 1006000
-          - 1007000
-          - 1008000
-          - 1009000
-          - 1100400
-          - 1100500
-          - 1102000
-          - 1103000
-          - 1104000
-          - 1105000
-          - 1106000
-          - 1107000
-          - 1108000
-          - 1109000
-        runner:
-          - native
-          - vm
+        block: ${{ fromJson(needs.setup.outputs.blocks_list) }}
       fail-fast: false
     defaults:
       run:
@@ -99,15 +89,6 @@ jobs:
           repository: lambdaclass/sequencer
           path: sequencer
           ref: main-v0.14.1
-
-      - name: Restore RPC Calls
-        id: restore-rpc-calls
-        uses: actions/cache/restore@v4.2.0
-        with:
-          path: starknet-replay/cache
-          key: cache-${{matrix.block}}-${{ github.run_id }}
-          restore-keys: |
-            cache-${{matrix.block}}
 
       # Install dependencies
       - uses: ./cairo_native/.github/actions/install-linux-deps
@@ -143,33 +124,25 @@ jobs:
 
           git diff
 
+      - name: Restore RPC calls
+        uses: actions/cache/restore@v4.2.0
+        with:
+          path: starknet-replay/cache
+          key: rpc-calls-cache
+
       - name: Run with Native
-        if: ${{ matrix.runner == 'native' }}
         run: |
           BLOCK_START=${{ matrix.block }}
           BLOCK_END=$(($BLOCK_START + $RANGE_SIZE - 1))
           cargo run --release --bin replay --features state_dump block-range $BLOCK_START $BLOCK_END mainnet
-      - name: Run with VM
-        if: ${{ matrix.runner == 'vm' }}
-        run: |
-          BLOCK_START=${{ matrix.block }}
-          BLOCK_END=$(($BLOCK_START + $RANGE_SIZE - 1))
-          cargo run --release --bin replay --features state_dump,only_cairo_vm block-range $BLOCK_START $BLOCK_END mainnet
 
       # We always upload the dump, even if the job fails
       - name: Upload dumps
         uses: actions/upload-artifact@v4
         if: ${{ always() }}
         with:
-          name: dump-${{matrix.block}}-${{matrix.runner}}
-          path: starknet-replay/state_dumps/${{matrix.runner}}
-
-      - name: Save RPC Calls
-        uses: actions/cache/save@v4.2.0
-        if: ${{ always() && matrix.runner == 'vm' }}
-        with:
-          path: starknet-replay/cache
-          key: ${{ steps.restore-rpc-calls.outputs.cache-primary-key }}
+          name: dump-${{matrix.block}}-native
+          path: starknet-replay/state_dumps/native
 
   compare:
     needs: [run]
@@ -190,15 +163,17 @@ jobs:
           path: state_dumps/native
           merge-multiple: true
         continue-on-error: true
+      # Since they were created in another workflow, we get them
+      # from the cache instead of getting them as artifacts.
       - name: Fetch VM dumps
-        uses: actions/download-artifact@v4
+        uses: actions/cache/restore@v4.2.0
         with:
-          pattern: dump-*-vm
           path: state_dumps/vm
-          merge-multiple: true
+          key: dumps-vm
         continue-on-error: true
 
       - name: Compare states
+        id: compare-dumps
         run: python ./scripts/cmp_state_dumps.py | tee output
 
       - name: Upload Compare Results
@@ -218,7 +193,7 @@ jobs:
           echo "COMPARISON_RESULT=$REPO_URL/actions/runs/${{ github.run_id }}/artifacts/${{ steps.upload_compare_results.outputs.artifact-id }}" | tee -a $GITHUB_ENV
 
       - name: Create Issue
-        if: ${{ failure() }}
+        if: ${{ failure() && steps.compare-dumps.outcome == 'failure'  }}
         uses: JasonEtco/create-an-issue@v2
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
