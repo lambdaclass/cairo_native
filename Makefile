@@ -111,7 +111,7 @@ stress-test: check-llvm
 
 .PHONY: stress-plot
 stress-plot:
-	python3 src/bin/cairo-native-stress/plotter.py cairo-native-stress-logs.jsonl
+	python3 debug_utils/cairo-native-stress/plotter.py cairo-native-stress-logs.jsonl
 
 .PHONY: stress-clean
 stress-clean:
