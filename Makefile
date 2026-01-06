@@ -14,6 +14,7 @@ usage: check-llvm needs-cairo2
 	@echo "    build-dev:    Builds cairo-native under a development-optimized profile."
 	@echo "    check:        Checks format and lints."
 	@echo "    test:         Runs all tests."
+	@echo "    test-cairo:   Runs all Cairo tests."
 	@echo "    proptest:     Runs property tests."
 	@echo "    coverage:     Runs all tests and computes test coverage."
 	@echo "    doc:          Builds documentation."
