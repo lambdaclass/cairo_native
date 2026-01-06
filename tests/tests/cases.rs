@@ -208,8 +208,5 @@ fn test_contract_cases(program_path: &str, args: &[u128]) {
 
     let vm_output = run_vm_contract(&contract, &entrypoint.selector, &args);
 
-    dbg!(&native_output);
-    dbg!(&vm_output);
-
     assert_eq_sorted!(vm_output, native_output);
 }
