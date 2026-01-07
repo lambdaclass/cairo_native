@@ -201,7 +201,7 @@ cairo-tests:
 	cd cairo                                                          ; \
 	git init                                                          ; \
 	git remote add origin https://github.com/starkware-libs/cairo.git ; \
-	git fetch origin v2.14.0                                          ; \
+	git fetch origin v$(CAIRO_2_VERSION)                              ; \
 	git checkout FETCH_HEAD                                           ; \
 	git sparse-checkout set --no-cone                                   \
 	  tests/bug_samples/                                                \
