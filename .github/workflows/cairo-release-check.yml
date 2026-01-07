@@ -5,11 +5,6 @@ on:
     # Run all Mondays at 08:00.
     - cron: "0 8 * * 1"
   workflow_dispatch:
-  push:
-    branches: [main]
-  pull_request:
-  merge_group:
-    types: [checks_requested]
 
 jobs:
   release-tag-check:
