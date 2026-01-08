@@ -1,4 +1,4 @@
-<!DOCTYPE html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1.0"><meta name="generator" content="rustdoc"><meta name="description" content="⚡ Cairo Native ⚡"><title>cairo_native - Rust</title><script>if(window.location.protocol!=="file:")document.head.insertAdjacentHTML("beforeend","SourceSerif4-Regular-6b053e98.ttf.woff2,FiraSans-Italic-81dc35de.woff2,FiraSans-Regular-0fe48ade.woff2,FiraSans-MediumItalic-ccf7e434.woff2,FiraSans-Medium-e1aa3f0a.woff2,SourceCodePro-Regular-8badfe75.ttf.woff2,SourceCodePro-Semibold-aa29a496.ttf.woff2".split(",").map(f=>`<link rel="preload" as="font" type="font/woff2" crossorigin href="../static.files/${f}">`).join(""))</script><link rel="stylesheet" href="../static.files/normalize-9960930a.css"><link rel="stylesheet" href="../static.files/rustdoc-84e720fa.css"><meta name="rustdoc-vars" data-root-path="../" data-static-root-path="../static.files/" data-current-crate="cairo_native" data-themes="" data-resource-suffix="" data-rustdoc-version="1.89.0 (29483883e 2025-08-04)" data-channel="1.89.0" data-search-js="search-92309212.js" data-settings-js="settings-5514c975.js" ><script src="../static.files/storage-4e99c027.js"></script><script defer src="../crates.js"></script><script defer src="../static.files/main-fd3af306.js"></script><noscript><link rel="stylesheet" href="../static.files/noscript-32bb7600.css"></noscript><link rel="alternate icon" type="image/png" href="../static.files/favicon-32x32-6580c154.png"><link rel="icon" type="image/svg+xml" href="../static.files/favicon-044be391.svg"></head><body class="rustdoc mod crate"><!--[if lte IE 11]><div class="warning">This old browser is unsupported and will most likely display funky things.</div><![endif]--><nav class="mobile-topbar"><button class="sidebar-menu-toggle" title="show sidebar"></button></nav><nav class="sidebar"><div class="sidebar-crate"><h2><a href="../cairo_native/index.html">cairo_<wbr>native</a><span class="version">0.9.0-rc.0</span></h2></div><div class="sidebar-elems"><ul class="block"><li><a id="all-types" href="all.html">All Items</a></li></ul><section id="rustdoc-toc"><h3><a href="#">Sections</a></h3><ul class="block top-toc"><li><a href="#-cairo-native-" title="⚡ Cairo Native ⚡">⚡ Cairo Native ⚡</a></li><li><a href="#disclaimer" title="Disclaimer">Disclaimer</a></li><li><a href="#getting-started" title="Getting Started">Getting Started</a><ul><li><a href="#dependencies" title="Dependencies">Dependencies</a></li><li><a href="#setup" title="Setup">Setup</a></li><li><a href="#make-targets" title="Make targets:">Make targets:</a></li></ul></li><li><a href="#included-tools" title="Included Tools">Included Tools</a><ul><li><a href="#cairo-native-compile" title="`cairo-native-compile`"><code>cairo-native-compile</code></a></li><li><a href="#cairo-native-dump" title="`cairo-native-dump`"><code>cairo-native-dump</code></a></li><li><a href="#cairo-native-run" title="`cairo-native-run`"><code>cairo-native-run</code></a></li><li><a href="#cairo-native-test" title="`cairo-native-test`"><code>cairo-native-test</code></a></li><li><a href="#cairo-native-stress" title="`cairo-native-stress`"><code>cairo-native-stress</code></a></li><li><a href="#scarb-native-dump" title="`scarb-native-dump`"><code>scarb-native-dump</code></a></li><li><a href="#scarb-native-test" title="`scarb-native-test`"><code>scarb-native-test</code></a></li></ul></li><li><a href="#benchmarking" title="Benchmarking">Benchmarking</a><ul><li><a href="#requirements" title="Requirements">Requirements</a></li></ul></li><li><a href="#license" title="License">License</a></li></ul><h3><a href="#modules">Crate Items</a></h3><ul class="block"><li><a href="#modules" title="Modules">Modules</a></li><li><a href="#macros" title="Macros">Macros</a></li><li><a href="#structs" title="Structs">Structs</a></li><li><a href="#enums" title="Enums">Enums</a></li><li><a href="#functions" title="Functions">Functions</a></li></ul></section><div id="rustdoc-modnav"></div></div></nav><div class="sidebar-resizer" title="Drag to resize sidebar"></div><main><div class="width-limiter"><rustdoc-search></rustdoc-search><section id="main-content" class="content"><div class="main-heading"><h1>Crate <span>cairo_native</span><button id="copy-path" title="Copy item path to clipboard">Copy item path</button></h1><rustdoc-toolbar></rustdoc-toolbar><span class="sub-heading"><a class="src" href="../src/cairo_native/lib.rs.html#1-37">Source</a> </span></div><details class="toggle top-doc" open><summary class="hideme"><span>Expand description</span></summary><div class="docblock"><div align="center">
+<!DOCTYPE html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1.0"><meta name="generator" content="rustdoc"><meta name="description" content="⚡ Cairo Native ⚡"><title>cairo_native - Rust</title><script>if(window.location.protocol!=="file:")document.head.insertAdjacentHTML("beforeend","SourceSerif4-Regular-6b053e98.ttf.woff2,FiraSans-Italic-81dc35de.woff2,FiraSans-Regular-0fe48ade.woff2,FiraSans-MediumItalic-ccf7e434.woff2,FiraSans-Medium-e1aa3f0a.woff2,SourceCodePro-Regular-8badfe75.ttf.woff2,SourceCodePro-Semibold-aa29a496.ttf.woff2".split(",").map(f=>`<link rel="preload" as="font" type="font/woff2" crossorigin href="../static.files/${f}">`).join(""))</script><link rel="stylesheet" href="../static.files/normalize-9960930a.css"><link rel="stylesheet" href="../static.files/rustdoc-84e720fa.css"><meta name="rustdoc-vars" data-root-path="../" data-static-root-path="../static.files/" data-current-crate="cairo_native" data-themes="" data-resource-suffix="" data-rustdoc-version="1.89.0 (29483883e 2025-08-04)" data-channel="1.89.0" data-search-js="search-92309212.js" data-settings-js="settings-5514c975.js" ><script src="../static.files/storage-4e99c027.js"></script><script defer src="../crates.js"></script><script defer src="../static.files/main-fd3af306.js"></script><noscript><link rel="stylesheet" href="../static.files/noscript-32bb7600.css"></noscript><link rel="alternate icon" type="image/png" href="../static.files/favicon-32x32-6580c154.png"><link rel="icon" type="image/svg+xml" href="../static.files/favicon-044be391.svg"></head><body class="rustdoc mod crate"><!--[if lte IE 11]><div class="warning">This old browser is unsupported and will most likely display funky things.</div><![endif]--><nav class="mobile-topbar"><button class="sidebar-menu-toggle" title="show sidebar"></button></nav><nav class="sidebar"><div class="sidebar-crate"><h2><a href="../cairo_native/index.html">cairo_<wbr>native</a><span class="version">0.9.0-rc.0</span></h2></div><div class="sidebar-elems"><ul class="block"><li><a id="all-types" href="all.html">All Items</a></li></ul><section id="rustdoc-toc"><h3><a href="#">Sections</a></h3><ul class="block top-toc"><li><a href="#-cairo-native-" title="⚡ Cairo Native ⚡">⚡ Cairo Native ⚡</a></li><li><a href="#table-of-contents" title="Table of Contents">Table of Contents</a></li><li><a href="#disclaimer" title="Disclaimer">Disclaimer</a></li><li><a href="#getting-started" title="Getting Started">Getting Started</a><ul><li><a href="#dependencies" title="Dependencies">Dependencies</a></li><li><a href="#setup" title="Setup">Setup</a></li><li><a href="#make-targets" title="Make Targets">Make Targets</a></li></ul></li><li><a href="#included-tools" title="Included Tools">Included Tools</a><ul><li><a href="#cairo-native-compile" title="`cairo-native-compile`"><code>cairo-native-compile</code></a></li><li><a href="#cairo-native-dump" title="`cairo-native-dump`"><code>cairo-native-dump</code></a></li><li><a href="#cairo-native-run" title="`cairo-native-run`"><code>cairo-native-run</code></a></li><li><a href="#cairo-native-test" title="`cairo-native-test`"><code>cairo-native-test</code></a></li><li><a href="#cairo-native-stress" title="`cairo-native-stress`"><code>cairo-native-stress</code></a></li><li><a href="#scarb-native-dump" title="`scarb-native-dump`"><code>scarb-native-dump</code></a></li><li><a href="#scarb-native-test" title="`scarb-native-test`"><code>scarb-native-test</code></a></li></ul></li><li><a href="#benchmarking" title="Benchmarking">Benchmarking</a><ul><li><a href="#requirements" title="Requirements">Requirements</a></li></ul></li><li><a href="#license" title="License">License</a></li></ul><h3><a href="#modules">Crate Items</a></h3><ul class="block"><li><a href="#modules" title="Modules">Modules</a></li><li><a href="#macros" title="Macros">Macros</a></li><li><a href="#structs" title="Structs">Structs</a></li><li><a href="#enums" title="Enums">Enums</a></li><li><a href="#functions" title="Functions">Functions</a></li></ul></section><div id="rustdoc-modnav"></div></div></nav><div class="sidebar-resizer" title="Drag to resize sidebar"></div><main><div class="width-limiter"><rustdoc-search></rustdoc-search><section id="main-content" class="content"><div class="main-heading"><h1>Crate <span>cairo_native</span><button id="copy-path" title="Copy item path to clipboard">Copy item path</button></h1><rustdoc-toolbar></rustdoc-toolbar><span class="sub-heading"><a class="src" href="../src/cairo_native/lib.rs.html#1-37">Source</a> </span></div><details class="toggle top-doc" open><summary class="hideme"><span>Expand description</span></summary><div class="docblock"><div align="center">
 <h4 id="-cairo-native-"><a class="doc-anchor" href="#-cairo-native-">§</a>⚡ Cairo Native ⚡</h4>
 <p>A compiler to convert Cairo’s intermediate representation “Sierra” code <br>
 to machine code via MLIR and LLVM.</p>
@@ -11,21 +11,33 @@ to machine code via MLIR and LLVM.</p>
 <a href="#-contributing"><img src="https://img.shields.io/static/v1?color=orange&amp;label=PRs&amp;style=flat&amp;message=welcome" alt="pr-welcome" /></a>
 <a href="https://crates.io/crates/cairo-native"><img src="https://img.shields.io/crates/v/cairo_native" alt="Crates.io Version" /></a></p>
 </div>
+<h3 id="table-of-contents"><a class="doc-anchor" href="#table-of-contents">§</a>Table of Contents</h3>
 <ul>
-<li><a href="#getting-started">Getting Started</a></li>
-<li><a href="#included-tools">Included Tools</a>
+<li><a href="#disclaimer">Disclaimer</a></li>
+<li><a href="#getting-started">Getting Started</a>
 <ul>
-<li><a href="#scripts">Scripts</a></li>
-<li><a href="#cairo-native-compile">cairo-native-compile</a></li>
-<li><a href="#cairo-native-dump">cairo-native-dump</a></li>
-<li><a href="#cairo-native-run">cairo-native-run</a></li>
-<li><a href="#cairo-native-test">cairo-native-test</a></li>
-<li><a href="#cairo-native-stress">cairo-native-stress</a></li>
-<li><a href="#scarb-native-dump">scarb-native-dump</a></li>
-<li><a href="#scarb-native-test">scarb-native-test</a></li>
+<li><a href="#dependencies">Dependencies</a></li>
+<li><a href="#setup">Setup</a></li>
+<li><a href="#make-targets">Make Targets</a></li>
 </ul>
 </li>
-<li><a href="#benchmarking">Benchmarking</a></li>
+<li><a href="#included-tools">Included Tools</a>
+<ul>
+<li><a href="#cairo-native-compile"><code>cairo-native-compile</code></a></li>
+<li><a href="#cairo-native-dump"><code>cairo-native-dump</code></a></li>
+<li><a href="#cairo-native-run"><code>cairo-native-run</code></a></li>
+<li><a href="#cairo-native-test"><code>cairo-native-test</code></a></li>
+<li><a href="#cairo-native-stress"><code>cairo-native-stress</code></a></li>
+<li><a href="#scarb-native-dump"><code>scarb-native-dump</code></a></li>
+<li><a href="#scarb-native-test"><code>scarb-native-test</code></a></li>
+</ul>
+</li>
+<li><a href="#benchmarking">Benchmarking</a>
+<ul>
+<li><a href="#requirements">Requirements</a></li>
+</ul>
+</li>
+<li><a href="#license">License</a></li>
 </ul>
 <p>For in-depth documentation, see the <a href="docs/index.html" title="mod cairo_native::docs">developer documentation</a>.</p>
 <h3 id="disclaimer"><a class="doc-anchor" href="#disclaimer">§</a>Disclaimer</h3>
@@ -51,7 +63,7 @@ on macOS you can use brew</li>
 <div class="example-wrap"><pre class="language-bash"><code>make deps</code></pre></div><h5 id="linux"><a class="doc-anchor" href="#linux">§</a>Linux</h5>
 <p>Since Linux distributions change widely, you need to install LLVM 19 via your
 package manager, compile it or check if the current release has a Linux binary.</p>
-<p>If you are on Debian/Ubuntu, check out the repository https://apt.llvm.org/
+<p>If you are on Debian/Ubuntu, check out the repository https://apt.llvm.org/.
 Then you can install with:</p>
 <div class="example-wrap"><pre class="language-bash"><code>sudo apt-get install llvm-19 llvm-19-dev llvm-19-runtime clang-19 clang-tools-19 lld-19 libpolly-19-dev libmlir-19-dev mlir-19-tools</code></pre></div>
 <p>If you decide to build from source, here are some indications:</p>
@@ -103,7 +115,7 @@ the needed environment variables.</p>
 <p>if you are on MacOs, you’ll need to add this extra line:</p>
 <div class="example-wrap"><pre class="language-json"><code>&quot;LIBRARY_PATH&quot;: &quot;/opt/homebrew/lib&quot;,</code></pre></div>
 <p>Without this additional config, rust-analyzer won’t be able to work properly</p>
-<h4 id="make-targets"><a class="doc-anchor" href="#make-targets">§</a>Make targets:</h4>
+<h4 id="make-targets"><a class="doc-anchor" href="#make-targets">§</a>Make Targets</h4>
 <p>Running <code>make</code> by itself will check whether the required LLVM installation and
 corelib is found, and then list available targets.</p>
 <div class="example-wrap"><pre class="language-bash"><code>% make
@@ -127,8 +139,8 @@ Usage:
     stress-test   Runs a command which runs stress tests.
     stress-plot   Plots the results of the stress test command.
     stress-clean  Clean the cache of AOT compiled code of the stress test command.</code></pre></div><h3 id="included-tools"><a class="doc-anchor" href="#included-tools">§</a>Included Tools</h3>
-<p>Aside from the compilation and execution engine library, Cairo Native includes
-a few command-line tools to aid development, and some useful scripts.</p>
+<p>Aside from the compilation and execution engine library, Cairo Native includes a
+few command-line tools to aid development, and some useful scripts.</p>
 <p>These are:</p>
 <ul>
 <li>The contents of the <code>/scripts/</code> folder</li>
@@ -165,10 +177,10 @@ Options:
   -o, --output &lt;OUTPUT&gt;  [default: -]
       --starknet         Compile a starknet contract
   -h, --help             Print help</code></pre></div><h4 id="cairo-native-run"><a class="doc-anchor" href="#cairo-native-run">§</a><code>cairo-native-run</code></h4>
-<p>This tool allows to run programs using the JIT engine, like the <code>cairo-run</code>
-tool, the parameters can only be felt values.</p>
-<p>Example: <code>echo '1' | cairo-native-run 'program.cairo' 'program::program::main' --inputs - --outputs -</code></p>
-<div class="example-wrap"><pre class="language-bash"><code>Exits with 1 if the compilation or run fails, otherwise 0.
+<p>This tool allows to run programs using cairo-native, similar to the <code>cairo-run</code>
+tool.</p>
+<p>For example, the following calculates factorial of 1000.</p>
+<div class="example-wrap"><pre class="language-bash"><code>cairo-native-run -- -s programs/recursion.cairo --available-gas 10000000</code></pre></div><div class="example-wrap"><pre class="language-bash"><code>Exits with 1 if the compilation or run fails, otherwise 0.
 
 Usage: cairo-native-run [OPTIONS] &lt;PATH&gt;
 
@@ -185,7 +197,8 @@ Options:
   -V, --version                        Print version</code></pre></div><h4 id="cairo-native-test"><a class="doc-anchor" href="#cairo-native-test">§</a><code>cairo-native-test</code></h4>
 <p>This tool mimics the <code>cairo-test</code>
 <a href="https://github.com/starkware-libs/cairo/tree/main/crates/cairo-lang-test-runner">tool</a>
-and is identical to it in interface, the only feature it doesn’t have is the profiler.</p>
+and is identical to it in interface. The only feature it doesn’t have is the
+profiler.</p>
 <div class="example-wrap"><pre class="language-bash"><code>Compiles a Cairo project and runs all the functions marked as `#[test]`.
 Exits with 1 if the compilation or run fails, otherwise 0.
 
@@ -201,36 +214,25 @@ Options:
       --include-ignored        Should we run ignored tests as well
       --ignored                Should we run only the ignored tests
       --starknet               Should we add the starknet plugin to run the tests
-      --run-mode &lt;RUN_MODE&gt;    Run with JIT or AOT (compiled) [default: jit] [possible values: aot, jit]
   -O, --opt-level &lt;OPT_LEVEL&gt;  Optimization level, Valid: 0, 1, 2, 3. Values higher than 3 are considered as 3 [default: 0]
+      --compare-with-cairo-vm  Compares test result with Cairo VM
   -h, --help                   Print help
   -V, --version                Print version</code></pre></div>
-<p>For single files, you can use the <code>-s, --single-file</code> option.</p>
-<p>For a project, it needs to have a <code>cairo_project.toml</code> specifying the
-<code>crate_roots</code>. You can find an example under the <code>cairo-tests/</code> folder, which
-is a cairo project that works with this tool.</p>
-<div class="example-wrap"><pre class="language-bash"><code>cairo-native-test -s myfile.cairo
-
-cairo-native-test ./cairo-tests/</code></pre></div>
-<p>This will run all the tests (functions marked with the <code>#[test]</code> attribute).</p>
-<h4 id="cairo-native-stress"><a class="doc-anchor" href="#cairo-native-stress">§</a><code>cairo-native-stress</code></h4>
+<p>For single files, you can use the <code>-s, --single-file</code> option. For a project, it
+needs to have a <code>cairo_project.toml</code> specifying the <code>crate_roots</code>.</p>
+<p>For example, the following tests the corelib.</p>
+<div class="example-wrap"><pre class="language-bash"><code>cairo-native-test ./corelib/</code></pre></div><h4 id="cairo-native-stress"><a class="doc-anchor" href="#cairo-native-stress">§</a><code>cairo-native-stress</code></h4>
 <p>This tool runs a stress test on Cairo Native.</p>
 <div class="example-wrap"><pre class="language-bash"><code>A stress tester for Cairo Native
-
-It compiles Sierra programs with Cairo Native, caches, and executes them with AOT runner. The compiled dynamic libraries are stored in `AOT_CACHE_DIR` relative to the current working directory.
 
 Usage: cairo-native-stress [OPTIONS] &lt;ROUNDS&gt;
 
 Arguments:
-  &lt;ROUNDS&gt;
-          Amount of rounds to execute
+  &lt;ROUNDS&gt;  Amount of rounds to execute
 
 Options:
-  -o, --output &lt;OUTPUT&gt;
-          Output file for JSON formatted logs
-
-  -h, --help
-          Print help (see a summary with &#39;-h&#39;)</code></pre></div>
+  -o, --output &lt;OUTPUT&gt;  Output file for JSON formatted logs
+  -h, --help             Print help (see more with &#39;--help&#39;)</code></pre></div>
 <p>To quickly run a stress test and save logs as json, run:</p>
 <div class="example-wrap"><pre class="language-bash"><code>make stress-test</code></pre></div>
 <p>This takes a lot of time to finish (it will probably crash first), you can kill
@@ -239,14 +241,17 @@ the program at any time.</p>
 <div class="example-wrap"><pre class="language-bash"><code>make stress-plot</code></pre></div>
 <p>To clear the cache directory, run:</p>
 <div class="example-wrap"><pre class="language-bash"><code>make stress-clean</code></pre></div><h4 id="scarb-native-dump"><a class="doc-anchor" href="#scarb-native-dump">§</a><code>scarb-native-dump</code></h4>
-<p>This tool mimics the <code>scarb build</code> <a href="https://github.com/software-mansion/scarb/tree/main/extensions/scarb-cairo-test">command</a>.
-You can download it on our <a href="https://github.com/lambdaclass/cairo_native/releases">releases</a> page.</p>
-<p>This tool should be run at the directory where a <code>Scarb.toml</code> file is and it will
-behave like <code>scarb build</code>, leaving the MLIR files under the <code>target/</code> folder
-besides the generated JSON sierra files.</p>
-<h4 id="scarb-native-test"><a class="doc-anchor" href="#scarb-native-test">§</a><code>scarb-native-test</code></h4>
-<p>This tool mimics the <code>scarb test</code> <a href="https://github.com/software-mansion/scarb/tree/main/extensions/scarb-cairo-test">command</a>.
-You can download it on our <a href="https://github.com/lambdaclass/cairo_native/releases">releases</a> page.</p>
+<p>This tool mimics the <code>scarb build</code>
+<a href="https://github.com/software-mansion/scarb/tree/main/extensions/scarb-cairo-test">command</a>.</p>
+<p>This tool should be run at the directory where a <code>Scarb.toml</code> file is and it
+will behave like <code>scarb build</code>, leaving the MLIR files under the <code>target/</code>
+folder besides the generated JSON sierra files.</p>
+<p>For example, the following compiles the alexandria project:</p>
+<div class="example-wrap"><pre class="language-bash"><code>cd tests/alexandria
+scarb-native-dump
+file target/dev/alexandria.mlir</code></pre></div><h4 id="scarb-native-test"><a class="doc-anchor" href="#scarb-native-test">§</a><code>scarb-native-test</code></h4>
+<p>This tool mimics the <code>scarb test</code>
+<a href="https://github.com/software-mansion/scarb/tree/main/extensions/scarb-cairo-test">command</a>.</p>
 <div class="example-wrap"><pre class="language-bash"><code>Compiles all packages from a Scarb project matching `packages_filter` and
 runs all functions marked with `#[test]`. Exits with 1 if the compilation
 or run fails, otherwise 0.
@@ -259,27 +264,22 @@ Options:
   -f, --filter &lt;FILTER&gt;        Run only tests whose name contain FILTER [default: ]
       --include-ignored        Run ignored and not ignored tests
       --ignored                Run only ignored tests
-      --run-mode &lt;RUN_MODE&gt;    Run with JIT or AOT (compiled) [default: jit] [possible values: aot, jit]
+  -t, --test-kind &lt;TEST_KIND&gt;  Choose test kind to run [possible values: unit, integration, all]
   -O, --opt-level &lt;OPT_LEVEL&gt;  Optimization level, Valid: 0, 1, 2, 3. Values higher than 3 are considered as 3 [default: 0]
+      --compare-with-cairo-vm  Compares test result with Cairo VM
   -h, --help                   Print help
   -V, --version                Print version</code></pre></div><h3 id="benchmarking"><a class="doc-anchor" href="#benchmarking">§</a>Benchmarking</h3><h4 id="requirements"><a class="doc-anchor" href="#requirements">§</a>Requirements</h4>
+<p>In addition to the general requirements, you need:</p>
 <ul>
 <li><a href="https://github.com/sharkdp/hyperfine">hyperfine</a>: <code>cargo install hyperfine</code></li>
-<li><a href="https://github.com/starkware-libs/cairo">cairo 2.12.3</a></li>
-<li>Cairo Corelibs</li>
-<li>LLVM 19 with MLIR</li>
 </ul>
-<p>You need to setup some environment variables:</p>
-<div class="example-wrap"><pre class="language-bash"><code>$MLIR_SYS_190_PREFIX=/path/to/llvm19  # Required for non-standard LLVM install locations.
-$LLVM_SYS_191_PREFIX=/path/to/llvm19  # Required for non-standard LLVM install locations.
-$TABLEGEN_190_PREFIX=/path/to/llvm19  # Required for non-standard LLVM install locations.</code></pre></div>
 <p>You can then run the <code>bench</code> makefile target:</p>
 <div class="example-wrap"><pre class="language-bash"><code>make bench</code></pre></div>
-<p>The <code>bench</code> target will run the <code>./scripts/bench-hyperfine.sh</code> script.
-This script runs hyperfine commands to compare the execution time of programs in the <code>./programs/benches/</code> folder.
-Each program is compiled and executed via the execution engine with the <code>cairo-native-run</code> command and via the cairo-vm with the <code>cairo-run</code> command provided by the <code>cairo</code> codebase.
-The <code>cairo-run</code> command should be available in the <code>$PATH</code> and ideally compiled with <code>cargo build --release</code>.
-If you want the benchmarks to run using a specific build, or the <code>cairo-run</code> commands conflicts with something (e.g. the cairo-svg package binaries in macos) then the command to run <code>cairo-run</code> with a full path can be specified with the <code>$CAIRO_RUN</code> environment variable.</p>
+<p>The <code>bench</code> target will run the <code>./scripts/bench-hyperfine.sh</code> script. This
+script runs hyperfine commands to compare the execution time of programs in
+the <code>./programs/benches/</code> folder. Each program is compiled and executed via the
+execution engine with the <code>cairo-native-run</code> command and via the cairo-vm with
+the <code>cairo-run</code> command provided by the <code>deps</code> Makefile target.</p>
 <h3 id="license"><a class="doc-anchor" href="#license">§</a>License</h3>
 <p>This project is dual-licensed under Apache 2.0 and MIT. You may choose either license.</p>
 <p>See <a href="/LICENSE">Apache 2.0 License</a> or <a href="/LICENSE-MIT">MIT License</a> for more information.</p>
