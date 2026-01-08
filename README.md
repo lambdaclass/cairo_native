@@ -55,7 +55,7 @@ use. This can be done by adding `cairo-native = "0.9.0-rc.0"` to your Cargo.toml
 
 ### Dependencies
 
-- Linux or MacOS (aarch64 included) only for now
+- Linux or macOS (aarch64 included) only for now
 - LLVM 19 with MLIR: On debian you can use [apt.llvm.org](https://apt.llvm.org/),
   on macOS you can use brew
 - Rust 1.78.0 or later, since we make use of the u128
