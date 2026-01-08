@@ -203,9 +203,8 @@ impl AotNativeExecutor {
 mod tests {
     use super::*;
     use crate::{
-        context::NativeContext,
-        starknet_stub::StubSyscallHandler,
-        {load_cairo, load_starknet},
+        context::NativeContext, load_cairo, starknet_stub::StubSyscallHandler,
+        utils::testing::load_contract,
     };
     use cairo_lang_sierra::program::Program;
     use rstest::*;
@@ -228,26 +227,9 @@ mod tests {
 
     #[fixture]
     fn starknet_program() -> Program {
-        let (_, program) = load_starknet! {
-            #[starknet::interface]
-            trait ISimpleStorage<TContractState> {
-                fn get(self: @TContractState) -> u128;
-            }
-
-            #[starknet::contract]
-            mod contract {
-                #[storage]
-                struct Storage {}
-
-                #[abi(embed_v0)]
-                impl ISimpleStorageImpl of super::ISimpleStorage<ContractState> {
-                    fn get(self: @ContractState) -> u128 {
-                        42
-                    }
-                }
-            }
-        };
-        program
+        load_contract("simple_storage_42")
+            .extract_sierra_program()
+            .unwrap()
     }
 
     #[rstest]
@@ -320,6 +302,8 @@ mod tests {
             .compile(&starknet_program, false, Some(Default::default()), None)
             .expect("failed to compile context");
         let executor = AotNativeExecutor::from_native_module(module, optlevel).unwrap();
+
+        dbg!(&starknet_program.funcs);
 
         let entrypoint_function_id = &starknet_program
             .funcs
