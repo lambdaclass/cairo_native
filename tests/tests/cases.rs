@@ -1,8 +1,5 @@
-use crate::common::{
-    compare_inputless_program, load_cairo_contract_path, run_native_starknet_contract,
-    run_vm_contract,
-};
-use cairo_native::starknet::DummySyscallHandler;
+use crate::common::{compare_inputless_program, run_native_starknet_contract, run_vm_contract};
+use cairo_native::{starknet::DummySyscallHandler, utils::testing::load_contract};
 use itertools::Itertools;
 use pretty_assertions_sorted::assert_eq_sorted;
 use test_case::test_case;
@@ -152,36 +149,37 @@ fn test_program_cases(program_path: &str) {
 
 // Contracts copied from the cairo-vm
 // https://github.com/lambdaclass/cairo-vm/tree/main/cairo_programs/cairo-1-contracts
-#[test_case("tests/cases/cairo_vm/contracts/alloc_segment.cairo", &[])]
-#[test_case("tests/cases/cairo_vm/contracts/assert_le_find_small_arcs.cairo", &[])]
-#[test_case("tests/cases/cairo_vm/contracts/dict_test.cairo", &[])]
-#[test_case("tests/cases/cairo_vm/contracts/divmod.cairo", &[100, 10])]
-#[test_case("tests/cases/cairo_vm/contracts/factorial.cairo", &[10])]
-#[test_case("tests/cases/cairo_vm/contracts/felt252_dict_entry_init.cairo", &[])]
-#[test_case("tests/cases/cairo_vm/contracts/felt252_dict_entry_update.cairo", &[])]
-#[test_case("tests/cases/cairo_vm/contracts/felt_252_dict.cairo", &[])]
-#[test_case("tests/cases/cairo_vm/contracts/fib.cairo", &[10, 10, 10])]
-#[test_case("tests/cases/cairo_vm/contracts/get_segment_arena_index.cairo", &[])]
-#[test_case("tests/cases/cairo_vm/contracts/init_squash_data.cairo", &[10])]
-#[test_case("tests/cases/cairo_vm/contracts/linear_split.cairo", &[10])]
-#[test_case("tests/cases/cairo_vm/contracts/should_skip_squash_loop.cairo", &[])]
-#[test_case("tests/cases/cairo_vm/contracts/test_less_than.cairo", &[10])]
-#[test_case("tests/cases/cairo_vm/contracts/u128_sqrt.cairo", &[100])]
-#[test_case("tests/cases/cairo_vm/contracts/u16_sqrt.cairo", &[100])]
-#[test_case("tests/cases/cairo_vm/contracts/u256_sqrt.cairo", &[100])]
-#[test_case("tests/cases/cairo_vm/contracts/u32_sqrt.cairo", &[100])]
-#[test_case("tests/cases/cairo_vm/contracts/u64_sqrt.cairo", &[100])]
-#[test_case("tests/cases/cairo_vm/contracts/u8_sqrt.cairo", &[100])]
-#[test_case("tests/cases/cairo_vm/contracts/uint512_div_mod.cairo", &[])]
-#[test_case("tests/cases/cairo_vm/contracts/widemul128.cairo", &[100, 100])]
-#[test_case("tests/cases/cairo_vm/contracts/field_sqrt.cairo", &[])]
-#[test_case("tests/cases/cairo_vm/contracts/random_ec_point.cairo", &[])]
-#[test_case("tests/cases/cairo_vm/contracts/alloc_constant_size.cairo", &[10, 10, 10])]
-#[test_case("tests/cases/cairo_vm/contracts/heavy_blake2s.cairo", &[])]
-fn test_contract_cases(program_path: &str, args: &[u128]) {
+#[test_case("cairo_vm/alloc_segment", &[])]
+#[test_case("cairo_vm/assert_le_find_small_arcs", &[])]
+#[test_case("cairo_vm/dict_test", &[])]
+#[test_case("cairo_vm/divmod", &[100, 10])]
+#[test_case("cairo_vm/factorial", &[10])]
+#[test_case("cairo_vm/felt252_dict_entry_init", &[])]
+#[test_case("cairo_vm/felt252_dict_entry_update", &[])]
+#[test_case("cairo_vm/felt_252_dict", &[])]
+#[test_case("cairo_vm/fib", &[10, 10, 10])]
+#[test_case("cairo_vm/get_segment_arena_index", &[])]
+#[test_case("cairo_vm/init_squash_data", &[10])]
+#[test_case("cairo_vm/linear_split", &[10])]
+#[test_case("cairo_vm/should_skip_squash_loop", &[])]
+#[test_case("cairo_vm/test_less_than", &[10])]
+#[test_case("cairo_vm/u128_sqrt", &[100])]
+#[test_case("cairo_vm/u16_sqrt", &[100])]
+#[test_case("cairo_vm/u256_sqrt", &[100])]
+#[test_case("cairo_vm/u32_sqrt", &[100])]
+#[test_case("cairo_vm/u64_sqrt", &[100])]
+#[test_case("cairo_vm/u8_sqrt", &[100])]
+#[test_case("cairo_vm/uint512_div_mod", &[])]
+#[test_case("cairo_vm/widemul128", &[100, 100])]
+#[test_case("cairo_vm/field_sqrt", &[])]
+#[test_case("cairo_vm/random_ec_point", &[])]
+#[test_case("cairo_vm/alloc_constant_size", &[10, 10, 10])]
+#[test_case("cairo_vm/heavy_blake2s", &[])]
+fn test_contract_cases(name: &str, args: &[u128]) {
     let args = args.iter().map(|&arg| arg.into()).collect_vec();
 
-    let contract = load_cairo_contract_path(program_path);
+    let contract = load_contract(name);
+
     let entrypoint = contract
         .entry_points_by_type
         .external
