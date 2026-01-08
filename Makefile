@@ -61,29 +61,27 @@ check: check-llvm
 	cargo clippy --workspace --all-targets --all-features -- -D warnings
 
 .PHONY: test
-test: check-llvm needs-cairo2 build-alexandria
+test: check-llvm build-alexandria
 	cargo test --profile ci --features=with-cheatcode,with-debug-utils,testing
 
 .PHONY: test-cairo
-test-cairo: check-llvm needs-cairo2
-	cargo run --profile ci --package cairo-native-test -- -O2 --compare-with-cairo-vm corelib
-	cargo run --profile ci --package cairo-native-test -- -O2 --compare-with-cairo-vm cairo/tests/bug_samples/ --starknet
-	cargo run --profile ci --package cairo-native-test -- -O2 --compare-with-cairo-vm cairo/crates/cairo-lang-starknet/cairo_level_tests/ --starknet
+test-cairo: check-llvm
+	bash ./test_utils/test_cairo.sh
 
 .PHONY: proptest
-proptest: check-llvm needs-cairo2
+proptest: check-llvm
 	cargo test --profile ci --features=with-cheatcode,with-debug-utils,testing proptest
 
 .PHONY: test-cli
-test-ci: check-llvm needs-cairo2 build-alexandria
+test-ci: check-llvm build-alexandria
 	cargo test --profile ci --features=with-cheatcode,with-debug-utils,testing
 
 .PHONY: proptest-cli
-proptest-ci: check-llvm needs-cairo2
+proptest-ci: check-llvm
 	cargo test --profile ci --features=with-cheatcode,with-debug-utils,testing proptest
 
 .PHONY: coverage
-coverage: check-llvm needs-cairo2 build-alexandria
+coverage: check-llvm build-alexandria
 	cargo llvm-cov --verbose --profile ci --features=with-cheatcode,with-debug-utils,testing --workspace --lcov --output-path lcov.info
 	cargo llvm-cov --verbose --profile ci --features=with-cheatcode,with-debug-utils,testing --lcov --output-path lcov-test.info run --package cairo-native-test -- corelib
 
@@ -102,7 +100,7 @@ bench: needs-cairo2
 	./scripts/bench-hyperfine.sh
 
 .PHONY: bench-ci
-bench-ci: check-llvm needs-cairo2
+bench-ci: check-llvm
 	cargo criterion --features=with-cheatcode,with-debug-utils
 
 .PHONY: stress-test
@@ -126,16 +124,13 @@ clean: stress-clean
 	cargo clean
 
 .PHONY: deps
-deps: cairo-tests
+deps:
 ifeq ($(UNAME), Linux)
 deps: build-cairo-2-compiler install-scarb
 endif
 ifeq ($(UNAME), Darwin)
 deps: deps-macos
 endif
-	-rm -rf corelib
-	-ln -s cairo2/corelib corelib
-	patch -p0 -E < corelib.patch
 
 .PHONY: deps-macos
 deps-macos: build-cairo-2-compiler-macos install-scarb-macos
@@ -193,16 +188,3 @@ install-scarb-macos:
 .PHONY: build-alexandria
 build-alexandria:
 	cd tests/alexandria; scarb build
-
-.PHONY: cairo-tests
-cairo-tests:
-	rm -rf cairo
-	mkdir cairo
-	cd cairo                                                          ; \
-	git init                                                          ; \
-	git remote add origin https://github.com/starkware-libs/cairo.git ; \
-	git fetch origin v2.14.0                                          ; \
-	git checkout FETCH_HEAD                                           ; \
-	git sparse-checkout set --no-cone                                   \
-	  tests/bug_samples/                                                \
-	  crates/cairo-lang-starknet/cairo_level_tests/

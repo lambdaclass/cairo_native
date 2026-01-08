@@ -1242,6 +1242,17 @@ dependencies = [
 ]
 
 [[package]]
+name = "cairo-native-test-2"
+version = "0.0.0"
+dependencies = [
+ "anyhow",
+ "cairo-lang-test-plugin",
+ "cairo-native-bin-utils",
+ "clap",
+ "serde_json",
+]
+
+[[package]]
 name = "cairo-vm"
 version = "3.0.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -3916,6 +3927,20 @@ dependencies = [
  "quote",
  "syn 2.0.111",
  "test-case-core",
+]
+
+[[package]]
+name = "test-utils"
+version = "0.9.0-rc.0"
+dependencies = [
+ "cairo-lang-compiler",
+ "cairo-lang-filesystem",
+ "cairo-lang-sierra",
+ "cairo-lang-starknet",
+ "cairo-lang-test-plugin",
+ "cairo-lang-test-runner",
+ "clap",
+ "serde_json",
 ]
 
 [[package]]
