@@ -119,7 +119,7 @@ fn fib() {
     let program = {
         let versioned_program = load_program("fibonacci");
         let program = versioned_program.into_v1().unwrap().program;
-
+        let module_name = "fibonacci".to_string();
         let runner = SierraCasmRunner::new(
             program.clone(),
             Some(Default::default()),
@@ -127,8 +127,7 @@ fn fib() {
             None,
         )
         .unwrap();
-
-        ("fibonacci".to_string(), program, runner)
+        (module_name, program, runner)
     };
 
     let result_vm = run_vm_program(
