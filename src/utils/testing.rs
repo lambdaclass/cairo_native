@@ -312,3 +312,14 @@ pub fn load_contract(name: &str) -> ContractClass {
     .unwrap();
     serde_json::from_str(&sierra_str).unwrap()
 }
+
+pub fn load_scarb_project(name: &str) -> Program {
+    let sierra_str = fs::read_to_string(format!(
+        "{}/test_data_artifacts/scarb/{}/{}.sierra.json",
+        env!("CARGO_MANIFEST_DIR"),
+        name,
+        name
+    ))
+    .unwrap();
+    serde_json::from_str(&sierra_str).unwrap()
+}

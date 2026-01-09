@@ -238,8 +238,6 @@ jobs:
           tool: cargo-nextest,cargo-llvm-cov
       - name: Install deps
         run: make deps
-      - name: Build alexandria
-        run: make check-llvm && make needs-cairo2 && make build-alexandria
 
       - name: Run tests and generate coverage partition ${{ matrix.partition }}
         run: cargo llvm-cov nextest --verbose --lcov --output-path ${{ matrix.output }} --partition count:${{ matrix.partition }}/4

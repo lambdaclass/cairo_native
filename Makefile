@@ -61,7 +61,7 @@ check: check-llvm
 	cargo clippy --workspace --all-targets --all-features -- -D warnings
 
 .PHONY: test
-test: check-llvm build-alexandria
+test: check-llvm
 	cargo test --profile ci --features=with-cheatcode,with-debug-utils,testing
 
 .PHONY: test-cairo
@@ -73,7 +73,7 @@ proptest: check-llvm
 	cargo test --profile ci --features=with-cheatcode,with-debug-utils,testing proptest
 
 .PHONY: test-cli
-test-ci: check-llvm build-alexandria
+test-ci: check-llvm
 	cargo test --profile ci --features=with-cheatcode,with-debug-utils,testing
 
 .PHONY: proptest-cli
@@ -81,7 +81,7 @@ proptest-ci: check-llvm
 	cargo test --profile ci --features=with-cheatcode,with-debug-utils,testing proptest
 
 .PHONY: coverage
-coverage: check-llvm build-alexandria
+coverage: check-llvm
 	cargo llvm-cov --verbose --profile ci --features=with-cheatcode,with-debug-utils,testing --workspace --lcov --output-path lcov.info
 	cargo llvm-cov --verbose --profile ci --features=with-cheatcode,with-debug-utils,testing --lcov --output-path lcov-test.info run --package cairo-native-test -- corelib
 
@@ -185,7 +185,3 @@ install-scarb-macos:
 	sed 's/fish_completion_block/fish_completions_block/g' | \
 	sed 's/zsh_completion_block/zsh_completions_block/g' | \
 	sh -s -- --version $(SCARB_VERSION)
-
-.PHONY: build-alexandria
-build-alexandria:
-	cd tests/alexandria; scarb build
