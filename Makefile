@@ -6,7 +6,7 @@ CAIRO_2_VERSION = 2.14.1-dev.1
 
 # Usage is the default target for newcomers running `make`.
 .PHONY: usage
-usage: check-llvm needs-cairo2
+usage: check-llvm check-corelib check-cairo2
 	@echo "Usage:"
 	@echo "    deps:         Installs the necesary dependencies."
 	@echo "    build:        Builds the cairo-native library and binaries in release mode."
@@ -36,12 +36,13 @@ ifndef TABLEGEN_190_PREFIX
 endif
 	@echo "LLVM is correctly set at $(MLIR_SYS_190_PREFIX)."
 
-.PHONY: needs-cairo2
-needs-cairo2:
-ifeq ($(wildcard ./cairo2/.),)
-	$(error You are missing the Starknet Cairo 1 compiler, please run 'make deps' to install the necessary dependencies.)
-endif
+.PHONY: check-corelib
+check-corelib:
 	./scripts/check-corelib-version.sh $(CAIRO_2_VERSION)
+
+.PHONY: check-cairo2
+check-cairo2:
+	./scripts/check-cairo2-version.sh $(CAIRO_2_VERSION)
 
 .PHONY: build
 build: check-llvm
@@ -94,7 +95,7 @@ doc-open: check-llvm
 	cargo doc --all-features --no-deps --workspace --open
 
 .PHONY: bench
-bench: needs-cairo2
+bench: check-llvm check-cairo2
 	cargo b --release --package cairo-native-run
 	cargo b --release --package cairo-native-compile
 	./scripts/bench-hyperfine.sh
@@ -185,3 +186,7 @@ install-scarb-macos:
 	sed 's/fish_completion_block/fish_completions_block/g' | \
 	sed 's/zsh_completion_block/zsh_completions_block/g' | \
 	sh -s -- --version $(SCARB_VERSION)
+
+.PHONY: pull-external-projects
+pull-external-projects:
+	python3 ./test_utils/pull_external_projects.py v${CAIRO_2_VERSION}
