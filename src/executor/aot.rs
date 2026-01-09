@@ -303,8 +303,6 @@ mod tests {
             .expect("failed to compile context");
         let executor = AotNativeExecutor::from_native_module(module, optlevel).unwrap();
 
-        dbg!(&starknet_program.funcs);
-
         let entrypoint_function_id = &starknet_program
             .funcs
             .iter()
