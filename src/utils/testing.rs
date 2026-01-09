@@ -13,22 +13,13 @@ use starknet_types_core::felt::Felt;
 use std::{fs, path::Path, sync::Arc};
 
 use crate::{
-    context::NativeContext,
-    execution_result::{ContractExecutionResult, ExecutionResult},
-    executor::{AotContractExecutor, AotNativeExecutor, JitNativeExecutor},
-    starknet::StarknetSyscallHandler,
-    starknet_stub::StubSyscallHandler,
-    utils::*,
-    values::Value,
+    context::NativeContext, execution_result::ExecutionResult, executor::JitNativeExecutor,
+    starknet_stub::StubSyscallHandler, utils::*, values::Value,
 };
 use cairo_lang_compiler::{
     compile_prepared_db, db::RootDatabase, diagnostics::DiagnosticsReporter, project::setup_project,
 };
-use cairo_lang_starknet_classes::{
-    casm_contract_class::ENTRY_POINT_COST,
-    contract_class::{version_id_from_serialized_sierra_program, ContractClass},
-    keccak::starknet_keccak,
-};
+use cairo_lang_starknet_classes::contract_class::ContractClass;
 use std::env::var;
 
 #[macro_export]
@@ -320,83 +311,4 @@ pub fn load_contract(name: &str) -> ContractClass {
     ))
     .unwrap();
     serde_json::from_str(&sierra_str).unwrap()
-}
-
-pub fn run_with_native(
-    versioned_program: VersionedProgram,
-    function: &str,
-    arguments: &[Value],
-    gas: Option<u64>,
-    syscall_handler: Option<impl StarknetSyscallHandler>,
-) -> ExecutionResult {
-    let program_artifact = match versioned_program {
-        VersionedProgram::V1 {
-            version: _,
-            program,
-        } => program,
-    };
-
-    let context = NativeContext::new();
-    let module = context
-        .compile(
-            &program_artifact.program,
-            false,
-            Some(Default::default()),
-            None,
-        )
-        .unwrap();
-    let executor = AotNativeExecutor::from_native_module(module, OptLevel::Aggressive).unwrap();
-
-    let function_id = &program_artifact
-        .program
-        .funcs
-        .iter()
-        .find(|x| x.id.debug_name.as_deref() == Some(function))
-        .unwrap()
-        .id;
-
-    let gas = Some(gas.unwrap_or(u64::MAX));
-
-    match syscall_handler {
-        Some(syscall_handler) => executor
-            .invoke_dynamic_with_syscall_handler(function_id, arguments, gas, syscall_handler)
-            .unwrap(),
-        None => executor
-            .invoke_dynamic(function_id, arguments, gas)
-            .unwrap(),
-    }
-}
-
-pub fn run_contract_with_native(
-    contract_class: ContractClass,
-    function: &str,
-    arguments: &[Felt],
-    gas: Option<u64>,
-    syscall_handler: impl StarknetSyscallHandler,
-) -> ContractExecutionResult {
-    let program = contract_class.extract_sierra_program().unwrap();
-    let (sierra_version, _) =
-        version_id_from_serialized_sierra_program(&contract_class.sierra_program).unwrap();
-
-    let executor = AotContractExecutor::new(
-        &program,
-        &contract_class.entry_points_by_type,
-        sierra_version,
-        OptLevel::Aggressive,
-        None,
-    )
-    .unwrap();
-
-    // Substract ENTRY_POINT_COST so gas matches.
-    let gas = gas.unwrap_or(u64::MAX) - ENTRY_POINT_COST as u64;
-
-    executor
-        .run(
-            starknet_keccak(function.as_bytes()).into(),
-            arguments,
-            gas,
-            None,
-            syscall_handler,
-        )
-        .unwrap()
 }
