@@ -1,3 +1,2 @@
 docs/*.js linguist-generated
 Cargo.lock linguist-generated
-test_data_artifacts/** filter=lfs diff=lfs merge=lfs -text
