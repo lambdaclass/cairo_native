@@ -1,10 +1,6 @@
 name: Weekly Cairo Release Check
 
 on:
-  pull_request:
-    branches: [main]
-  merge_group:
-    types: [checks_requested]
   schedule:
     # Run all Mondays at 08:00.
     - cron: "0 8 * * 1"
@@ -31,8 +27,10 @@ jobs:
       - name: Retreive cached dependecies
         uses: Swatinem/rust-cache@v2
 
-      - name: Install versort
+      - name: Add Python
         uses: actions/setup-python@v6
+        with:
+          python-version: '3.14'
       - run: pipx install versort
 
       - name: Retreive Versions and Check Latest
