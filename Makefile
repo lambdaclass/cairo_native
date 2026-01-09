@@ -131,6 +131,7 @@ endif
 ifeq ($(UNAME), Darwin)
 deps: deps-macos
 endif
+	python ./test_utils/compile_test_data.py
 
 .PHONY: deps-macos
 deps-macos: build-cairo-2-compiler-macos install-scarb-macos
