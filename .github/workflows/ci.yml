@@ -114,6 +114,8 @@ jobs:
       RUST_LOG: cairo_native=debug,cairo_native_test=debug
     steps:
       - uses: actions/checkout@v4
+        with:
+          lfs: 'true'
       - name: check and free hdd space left
         run: |
           echo "Listing 20 largest packages"
@@ -165,6 +167,8 @@ jobs:
       RUST_LOG: cairo_native=debug,cairo_native_test=debug
     steps:
       - uses: actions/checkout@v4
+        with:
+          lfs: 'true'
       - name: Rustup toolchain install
         uses: dtolnay/rust-toolchain@1.84.1
         with:
@@ -201,6 +205,8 @@ jobs:
       RUST_LOG: cairo_native=debug
     steps:
       - uses: actions/checkout@v4
+        with:
+          lfs: 'true'
       - name: check and free hdd space left
         run: |
           echo "Listing 20 largest packages"
