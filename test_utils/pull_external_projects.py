@@ -4,6 +4,11 @@ import sys
 import shutil
 import os
 
+if len(sys.argv) < 2:
+    print("Expected Cairo revision as first argument")
+    exit(1)
+revision = sys.argv[1]
+
 with tempfile.TemporaryDirectory() as root:
     subprocess.run(
         [
@@ -11,7 +16,7 @@ with tempfile.TemporaryDirectory() as root:
             "clone",
             "git@github.com:starkware-libs/cairo",
             "--revision",
-            "v2.14.1-dev.1",
+            revision,
             root,
         ],
         check=True,
