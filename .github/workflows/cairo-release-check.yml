@@ -1,6 +1,10 @@
 name: Weekly Cairo Release Check
 
 on:
+  pull_request:
+    branches: [main]
+  merge_group:
+    types: [checks_requested]
   schedule:
     # Run all Mondays at 08:00.
     - cron: "0 8 * * 1"
@@ -20,10 +24,16 @@ jobs:
         uses: actions/checkout@v4
 
       - uses: ./.github/actions/install-linux-deps
+      
       - name: Setup Rust Env
         uses: dtolnay/rust-toolchain@1.89.0
+
       - name: Retreive cached dependecies
         uses: Swatinem/rust-cache@v2
+
+      - name: Install versort
+        uses: actions/setup-python@v6
+      - run: pipx install versort
 
       - name: Retreive Versions and Check Latest
         run: |
@@ -31,9 +41,10 @@ jobs:
 
           # Get the latest cairo release. Compares all releases and check which 
           # is the greatest in semver terms.
+         
           latest_release=$(curl -s https://api.github.com/repos/starkware-libs/cairo/releases \
             | jq -r 'map(.tag_name) | map(.[1:]) | join("\n")' \
-            | sort -Vr \
+            | versort --stdin semver --reverse \
             | head -n1
           )
           current_release=$(grep -E "CAIRO_2_VERSION = $version" Makefile | awk '{print $3}')
