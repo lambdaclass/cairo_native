@@ -398,7 +398,6 @@ pub unsafe extern "C" fn cairo_native__dict_into_entries(
     // But since we are moving the elements to the array, we set the
     // drop_fn to None so it doesn't try to apply that function on undefined memory.
     dict.drop_fn = None;
-    drop(dict_rc);
 }
 
 /// Simulates the felt252_dict_squash libfunc.
