@@ -4,8 +4,7 @@ use cairo_lang_runner::{Arg, SierraCasmRunner};
 use cairo_lang_sierra::program::Program;
 use cairo_native::starknet::DummySyscallHandler;
 use cairo_native::utils::felt252_str;
-use cairo_native::utils::testing::load_program;
-use cairo_native::Value;
+use cairo_native::{include_program, Value};
 use lazy_static::lazy_static;
 use proptest::prelude::*;
 use starknet_types_core::felt::Felt;
@@ -117,7 +116,7 @@ lazy_static! {
 #[test]
 fn fib() {
     let program = {
-        let versioned_program = load_program("fibonacci");
+        let versioned_program = include_program!("test_data_artifacts/programs/fibonacci.sierra.json");
         let program = versioned_program.into_v1().unwrap().program;
         let module_name = "fibonacci".to_string();
         let runner = SierraCasmRunner::new(

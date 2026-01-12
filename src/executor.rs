@@ -690,8 +690,8 @@ fn parse_result(
 mod tests {
     use super::*;
     use crate::{
-        context::NativeContext, load_cairo, starknet_stub::StubSyscallHandler,
-        utils::testing::load_contract, OptLevel,
+        context::NativeContext, load_cairo, include_contract, starknet_stub::StubSyscallHandler,
+        OptLevel,
     };
     use cairo_lang_sierra::program::Program;
     use rstest::*;
@@ -715,7 +715,7 @@ mod tests {
 
     #[fixture]
     fn starknet_program() -> Program {
-        load_contract("simple_storage_42")
+        include_contract!("test_data_artifacts/contracts/simple_storage_42.contract.json")
             .extract_sierra_program()
             .unwrap()
     }

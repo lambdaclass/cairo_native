@@ -815,10 +815,10 @@ impl Drop for LockFile {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::{starknet_stub::StubSyscallHandler, utils::testing::load_contract};
-    use cairo_lang_starknet_classes::contract_class::{
-        version_id_from_serialized_sierra_program, ContractClass,
-    };
+    use crate::include_contract;
+    use crate::starknet_stub::StubSyscallHandler;
+    use cairo_lang_starknet_classes::contract_class::version_id_from_serialized_sierra_program;
+    use cairo_lang_starknet_classes::contract_class::ContractClass;
     use rayon::iter::ParallelBridge;
     use rstest::*;
 
@@ -826,17 +826,17 @@ mod tests {
 
     #[fixture]
     fn starknet_program() -> ContractClass {
-        load_contract("simple_storage_dup")
+        include_contract!("test_data_artifacts/contracts/simple_storage_dup.contract.json")
     }
 
     #[fixture]
     fn starknet_program_factorial() -> ContractClass {
-        load_contract("simple_storage_factorial")
+        include_contract!("test_data_artifacts/contracts/simple_storage_factorial.contract.json")
     }
 
     #[fixture]
     fn starknet_program_empty() -> ContractClass {
-        load_contract("simple_storage_empty")
+        include_contract!("test_data_artifacts/contracts/simple_storage_empty.contract.json")
     }
 
     #[rstest]
