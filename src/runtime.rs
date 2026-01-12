@@ -301,7 +301,7 @@ pub unsafe extern "C" fn cairo_native__dict_get(
 }
 
 /// Creates an array (Array<(felt252, T, T)>) by iterating the dictionary.
-unsafe fn create_mlir_array(
+unsafe fn create_dict_entries_array(
     dict: &mut FeltDict,
     data_prefix_offset: usize,
     tuple_stride: usize,
@@ -393,7 +393,8 @@ pub unsafe extern "C" fn cairo_native__dict_into_entries(
         .0;
     let data_prefix_offset = calc_data_prefix_offset(tuple_layout);
 
-    let arr = create_mlir_array(dict, data_prefix_offset, tuple_layout.pad_to_align().size());
+    let arr =
+        create_dict_entries_array(dict, data_prefix_offset, tuple_layout.pad_to_align().size());
 
     *array_ptr = arr;
 
