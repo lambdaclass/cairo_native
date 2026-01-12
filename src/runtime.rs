@@ -370,8 +370,7 @@ unsafe fn create_dict_entries_array(dict: &mut FeltDict) -> ArrayAbi<c_void> {
 ///
 /// Receives a pointer to the dictionary and moves its entries into the given uninitialized array of
 /// (felt252, T, T) tuples.  The dictionary is iterated and for each element, a tuple is filled with the key
-/// and the value. To fill the tuples, the 'tuple_stride' is used to move the pointer and get the
-/// necessary offset.
+/// and the value.
 ///
 /// # Caveats
 ///
