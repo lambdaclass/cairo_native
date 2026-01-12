@@ -393,9 +393,9 @@ pub unsafe extern "C" fn cairo_native__dict_into_entries(
     let arr = create_dict_entries_array(dict);
     *array_ptr = arr;
 
-    // This libfunc consumes the dictionary, so we need to drop it.
-    // But since we are moving the elements to the array, we set the
-    // drop_fn to None so it doesn't try to apply that function on undefined memory.
+    // This function moves ownership of the elements from the dictionary
+    // to the returned array, so to avoid double-dropping the elements
+    // when the dictionary itself is dropped, we unset the drop function.
     dict.drop_fn = None;
 }
 
