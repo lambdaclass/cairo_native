@@ -49,6 +49,7 @@ enum RuntimeBinding {
     GetCostsBuiltin,
     BlakeCompress,
     DebugPrint,
+    U31ExtendedEuclideanAlgorithm,
     U252ExtendedEuclideanAlgorithm,
     U384ExtendedEuclideanAlgorithm,
     CircuitArithOperation,
@@ -81,6 +82,9 @@ impl RuntimeBinding {
             RuntimeBinding::DictDup => "cairo_native__dict_dup",
             RuntimeBinding::GetCostsBuiltin => "cairo_native__get_costs_builtin",
             RuntimeBinding::BlakeCompress => "cairo_native__libfunc__blake_compress",
+            RuntimeBinding::U31ExtendedEuclideanAlgorithm => {
+                "cairo_native__u31_extended_euclidean_algorithm"
+            }
             RuntimeBinding::U252ExtendedEuclideanAlgorithm => {
                 "cairo_native__u252_extended_euclidean_algorithm"
             }
@@ -155,7 +159,8 @@ impl RuntimeBinding {
             RuntimeBinding::BlakeCompress => {
                 crate::runtime::cairo_native__libfunc__blake_compress as *const ()
             }
-            RuntimeBinding::U252ExtendedEuclideanAlgorithm
+            RuntimeBinding::U31ExtendedEuclideanAlgorithm
+            | RuntimeBinding::U252ExtendedEuclideanAlgorithm
             | RuntimeBinding::U384ExtendedEuclideanAlgorithm => return None,
             RuntimeBinding::CircuitArithOperation => return None,
             #[cfg(feature = "with-cheatcode")]
@@ -227,6 +232,50 @@ impl RuntimeBindingsMeta {
             global_address,
             llvm::r#type::pointer(context, 0),
         )?)
+    }
+
+    /// Build if necessary the extended euclidean algorithm used in circuit inverse gates.
+    ///
+    /// After checking, calls the MLIR function with arguments `a` and `b` which are the initial remainders
+    /// used in the algorithm and returns a `Value` containing a struct where the first element is the
+    /// greatest common divisor of `a` and `b` and the second element is the bezout coefficient x.
+    ///
+    /// This implementation is only for felt252, which uses u31 integers.
+    pub fn u31_extended_euclidean_algorithm<'c, 'a>(
+        &mut self,
+        context: &'c Context,
+        module: &Module,
+        block: &'a Block<'c>,
+        location: Location<'c>,
+        a: Value<'c, '_>,
+        b: Value<'c, '_>,
+    ) -> Result<Value<'c, 'a>>
+    where
+        'c: 'a,
+    {
+        let integer_type = IntegerType::new(context, 31).into();
+        let func_symbol = RuntimeBinding::U31ExtendedEuclideanAlgorithm.symbol();
+        if self
+            .active_map
+            .insert(RuntimeBinding::U31ExtendedEuclideanAlgorithm)
+        {
+            build_egcd_function(module, context, location, func_symbol, integer_type)?;
+        }
+        // The struct returned by the function that contains both of the results
+        let return_type = llvm::r#type::r#struct(context, &[integer_type, integer_type], false);
+        Ok(block
+            .append_operation(
+                OperationBuilder::new("llvm.call", location)
+                    .add_attributes(&[(
+                        Identifier::new(context, "callee"),
+                        FlatSymbolRefAttribute::new(context, func_symbol).into(),
+                    )])
+                    .add_operands(&[a, b])
+                    .add_results(&[return_type])
+                    .build()?,
+            )
+            .result(0)?
+            .into())
     }
 
     /// Build if necessary the extended euclidean algorithm used in circuit inverse gates.
