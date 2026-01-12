@@ -14,6 +14,7 @@ usage: check-llvm check-corelib check-cairo2
 	@echo "    build-dev:    Builds cairo-native under a development-optimized profile."
 	@echo "    check:        Checks format and lints."
 	@echo "    test:         Runs all tests."
+	@echo "    test-cairo:   Runs all Cairo tests."
 	@echo "    proptest:     Runs property tests."
 	@echo "    coverage:     Runs all tests and computes test coverage."
 	@echo "    doc:          Builds documentation."
@@ -110,7 +111,7 @@ stress-test: check-llvm
 
 .PHONY: stress-plot
 stress-plot:
-	python3 src/bin/cairo-native-stress/plotter.py cairo-native-stress-logs.jsonl
+	python3 debug_utils/cairo-native-stress/plotter.py cairo-native-stress-logs.jsonl
 
 .PHONY: stress-clean
 stress-clean:
