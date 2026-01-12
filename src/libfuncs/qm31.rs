@@ -360,7 +360,7 @@ fn m31_div<'ctx, 'this>(
     // satisfying gcd(a,b) == 1, because we are using a prime as the
     // modulus. This ensures that for any value of a, included in the
     // field, gcd(a,b) == 1.
-    let prime = entry.const_int_from_type(context, location, M31_PRIME.clone(), i64)?;
+    let prime = entry.const_int_from_type(context, location, M31_PRIME, i64)?;
     let inverse = {
         let inverse = entry.extract_value(context, location, euclidean_result, i31, 1)?;
         entry.extui(inverse, i64, location)?
