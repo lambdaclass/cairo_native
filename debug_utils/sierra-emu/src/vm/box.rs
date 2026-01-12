@@ -16,10 +16,11 @@ pub fn eval(
     args: Vec<Value>,
 ) -> EvalAction {
     match selector {
-        BoxConcreteLibfunc::Into(info) => eval_into_box(registry, info, args),
+        BoxConcreteLibfunc::Into(info) | BoxConcreteLibfunc::LocalInto(info) => {
+            eval_into_box(registry, info, args)
+        }
         BoxConcreteLibfunc::Unbox(info) => eval_unbox(registry, info, args),
         BoxConcreteLibfunc::ForwardSnapshot(info) => eval_forward_snapshot(registry, info, args),
-        BoxConcreteLibfunc::LocalInto(_) => todo!(),
     }
 }
 
