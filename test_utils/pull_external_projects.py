@@ -6,7 +6,7 @@ import os
 
 if len(sys.argv) < 2:
     print("Expected Cairo revision as first argument")
-    exit(1)
+    sys.exit(1)
 revision = sys.argv[1]
 
 with tempfile.TemporaryDirectory() as root:
