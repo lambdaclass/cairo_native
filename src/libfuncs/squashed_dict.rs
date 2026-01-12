@@ -109,10 +109,7 @@ pub fn build_into_entries<'ctx, 'this>(
         .dict_into_entries(context, helper, entry, dict_ptr, array_ptr, location)?;
 
     // Extract the array from the pointer
-    let ptr_ty = llvm::r#type::pointer(context, 0);
-    let len_ty = IntegerType::new(context, 32).into();
-    let arr_ty = llvm::r#type::r#struct(context, &[ptr_ty, len_ty, len_ty, len_ty], false);
-    let entries_array = entry.load(context, location, array_ptr, arr_ty)?;
+    let entries_array = entry.load(context, location, array_ptr, array_ty)?;
 
     helper.br(entry, 0, &[entries_array], location)
 }
