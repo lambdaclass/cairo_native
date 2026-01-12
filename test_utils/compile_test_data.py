@@ -78,8 +78,9 @@ def walk(subdir, f):
             dirnames.clear()
         else:
             for filename in filenames:
-                filepath = os.path.join(dirpath, filename)
-                f(filepath)
+                if filename.endswith(".cairo"):
+                    filepath = os.path.join(dirpath, filename)
+                    f(filepath)
 
 
 walk("programs", lambda p: compile_cairo_project(p))
