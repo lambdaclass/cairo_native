@@ -17,13 +17,8 @@ use cairo_lang_sierra::{
     program_registry::ProgramRegistry,
 };
 use melior::{
-    dialect::llvm::{self, alloca, AllocaOptions},
-    helpers::{ArithBlockExt, BuiltinBlockExt, LlvmBlockExt},
-    ir::{
-        attribute::{IntegerAttribute, TypeAttribute},
-        r#type::IntegerType,
-        Block, Location,
-    },
+    helpers::{BuiltinBlockExt, LlvmBlockExt},
+    ir::{Block, Location},
     Context,
 };
 
@@ -82,25 +77,8 @@ pub fn build_into_entries<'ctx, 'this>(
         metadata,
         &info.branch_signatures()[0].vars[0].ty,
     )?;
-    let realloc_len = entry.const_int_from_type(
-        context,
-        location,
-        array_layout.pad_to_align().size(),
-        IntegerType::new(context, 64).into(),
-    )?;
-    // Create the pointer and alloc the necessary memory
-    let array_ptr = entry.append_op_result(alloca(
-        context,
-        realloc_len,
-        llvm::r#type::pointer(context, 0),
-        location,
-        AllocaOptions::new()
-            .align(Some(IntegerAttribute::new(
-                IntegerType::new(context, 64).into(),
-                array_layout.pad_to_align().size().try_into()?,
-            )))
-            .elem_type(Some(TypeAttribute::new(array_ty))),
-    ))?;
+    // Alloc the necessary memory
+    let array_ptr = entry.alloca1(context, location, array_ty, array_layout.align())?;
 
     // Runtime function that creates the array with its content
     metadata
