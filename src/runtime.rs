@@ -301,11 +301,7 @@ pub unsafe extern "C" fn cairo_native__dict_get(
 }
 
 /// Creates an array (Array<(felt252, T, T)>) by iterating the dictionary.
-unsafe fn create_dict_entries_array(
-    dict: &mut FeltDict,
-    data_prefix_offset: usize,
-    tuple_stride: usize,
-) -> ArrayAbi<c_void> {
+unsafe fn create_dict_entries_array(dict: &mut FeltDict) -> ArrayAbi<c_void> {
     let len = dict.mappings.len();
     if len == 0 {
         return ArrayAbi {
@@ -315,6 +311,17 @@ unsafe fn create_dict_entries_array(
             capacity: 0,
         };
     }
+
+    // Get elements sizes for memory allocation
+    let tuple_layout = Layout::new::<Felt252Abi>()
+        .extend(dict.layout)
+        .expect("Should be posible to extend Felt252Abi layout")
+        .0
+        .extend(dict.layout)
+        .expect("Should be able to extend with the last tuple element")
+        .0;
+    let data_prefix_offset = calc_data_prefix_offset(tuple_layout);
+    let tuple_stride = tuple_layout.pad_to_align().size();
 
     // Pointer to the space in memory with enough memory to hold the entire array
     let ptr = libc_malloc(tuple_stride * dict.mappings.len() + data_prefix_offset);
@@ -384,18 +391,7 @@ pub unsafe extern "C" fn cairo_native__dict_into_entries(
         .as_mut()
         .expect("rc inner pointer should never be null");
 
-    let tuple_layout = Layout::new::<Felt252Abi>()
-        .extend(dict.layout)
-        .expect("Should be posible to extend Felt252Abi layout")
-        .0
-        .extend(dict.layout)
-        .expect("Should be able to extend with the last tuple element")
-        .0;
-    let data_prefix_offset = calc_data_prefix_offset(tuple_layout);
-
-    let arr =
-        create_dict_entries_array(dict, data_prefix_offset, tuple_layout.pad_to_align().size());
-
+    let arr = create_dict_entries_array(dict);
     *array_ptr = arr;
 
     // This libfunc consumes the dictionary, so we need to drop it.
