@@ -623,7 +623,7 @@ pub unsafe extern "C" fn cairo_native__libfunc__qm31__qm31_add(
         rhs[0], rhs[1], rhs[2], rhs[3],
     ));
 
-    *res = to_representative_coefficients(lhs + rhs);
+    *res = qm31_to_representative_coefficients(lhs + rhs);
 }
 
 /// Compute `qm31_sub(qm31, qm31)` and store the result.
@@ -646,7 +646,7 @@ pub unsafe extern "C" fn cairo_native__libfunc__qm31__qm31_sub(
         rhs[0], rhs[1], rhs[2], rhs[3],
     ));
 
-    *res = to_representative_coefficients(lhs - rhs);
+    *res = qm31_to_representative_coefficients(lhs - rhs);
 }
 
 /// Compute `qm31_mul(qm31, qm31)` and store the result.
@@ -669,7 +669,7 @@ pub unsafe extern "C" fn cairo_native__libfunc__qm31__qm31_mul(
         rhs[0], rhs[1], rhs[2], rhs[3],
     ));
 
-    *res = to_representative_coefficients(lhs * rhs);
+    *res = qm31_to_representative_coefficients(lhs * rhs);
 }
 
 /// Compute `qm31_div(qm31, qm31)` and store the result.
@@ -694,7 +694,7 @@ pub unsafe extern "C" fn cairo_native__libfunc__qm31__qm31_div(
 
     // SAFETY: An error would be triggered here only if rhs is zero. However, in the QM31 division libfunc, the divisor
     // is of type NonZero<qm31> which ensures that we are not falling into the error case.
-    *res = to_representative_coefficients((lhs / rhs).expect("rhs should not be a QM31 0"));
+    *res = qm31_to_representative_coefficients((lhs / rhs).expect("rhs should not be a QM31 0"));
 }
 
 thread_local! {
@@ -716,7 +716,7 @@ thread_local! {
 // TODO: This is already implemented on types-rs but there is no release
 // that contains it. It should be deleted when bumping to a new version
 // and use the .to_coefficients() method from QM31 instead.
-pub fn to_representative_coefficients(qm31: QM31) -> [u32; 4] {
+pub fn qm31_to_representative_coefficients(qm31: QM31) -> [u32; 4] {
     // Take CM31 coordinates from QM31.
     let [a, b] = qm31.0.value();
 

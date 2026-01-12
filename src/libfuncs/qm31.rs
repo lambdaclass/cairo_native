@@ -464,12 +464,12 @@ mod test {
 
     use crate::{
         jit_enum, jit_struct, libfuncs::qm31::M31_PRIME, load_cairo,
-        runtime::to_representative_coefficients, utils::testing::run_program, Value,
+        runtime::qm31_to_representative_coefficients, utils::testing::run_program, Value,
     };
 
     impl From<&starknet_types_core::qm31::QM31> for Value {
         fn from(qm31: &starknet_types_core::qm31::QM31) -> Self {
-            let coefficients = to_representative_coefficients(qm31.clone());
+            let coefficients = qm31_to_representative_coefficients(qm31.clone());
             Value::QM31(
                 coefficients[0],
                 coefficients[1],
