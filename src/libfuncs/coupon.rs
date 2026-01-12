@@ -59,8 +59,12 @@ pub fn build_buy<'ctx, 'this>(
     info: &SignatureAndFunctionConcreteLibfunc,
 ) -> Result<()> {
     // In the future if the gas cost is required, this is how to get it.
-    // let gas = metadata.get::<GasMetadata>().ok_or(Error::MissingMetadata)?;
-    // let gas_cost = gas.initial_required_gas(&info.function.id);
+    // let cost_info_provider = metadata
+    //     .get::<CostInfoProvider>()
+    //     .ok_or(Error::MissingMetadata)?;
+    // let gas_cost = cost_info_provider
+    //     .gas_metadata
+    //     .initial_required_gas(&info.function.id);
     let ty = registry.build_type(
         context,
         helper,
@@ -83,8 +87,12 @@ pub fn build_refund<'ctx, 'this>(
     _info: &SignatureAndFunctionConcreteLibfunc,
 ) -> Result<()> {
     // In the future if the gas cost is required, this is how to get it.
-    // let gas = metadata.get::<GasMetadata>().ok_or(Error::MissingMetadata)?;
-    // let gas_cost = gas.initial_required_gas(&info.function.id);
+    // let cost_info_provider = metadata
+    //     .get::<CostInfoProvider>()
+    //     .ok_or(Error::MissingMetadata)?;
+    // let gas_cost = cost_info_provider
+    //     .gas_metadata
+    //     .initial_required_gas(&info.function.id);
 
     helper.br(entry, 0, &[], location)
 }

@@ -2,7 +2,7 @@ use crate::{
     clone_option_mut,
     error::{panic::ToNativeAssertError, Error},
     ffi::{get_data_layout_rep, get_target_triple},
-    metadata::{gas::GasMetadata, runtime_bindings::RuntimeBindingsMeta, MetadataStorage},
+    metadata::{gas::CostInfoProvider, runtime_bindings::RuntimeBindingsMeta, MetadataStorage},
     module::NativeModule,
     native_assert,
     statistics::Statistics,
@@ -158,15 +158,16 @@ impl NativeContext {
         let mut metadata = MetadataStorage::new();
         // Make the runtime library available.
         metadata.insert(RuntimeBindingsMeta::default());
-        // We assume that GasMetadata will be always present when the program uses the gas builtin.
-        let gas_metadata = GasMetadata::new(
+        // We assume that CostInfoProvider will be always present when the program uses the gas builtin.
+        let cost_info_provider = CostInfoProvider::new(
             program,
             &ProgramRegistryInfo::new(program)?,
             gas_metadata_config,
         )?;
+
         // Unwrapping here is not necessary since the insertion will only fail if there was
         // already some metadata of the same type.
-        metadata.insert(gas_metadata);
+        metadata.insert(cost_info_provider);
 
         #[cfg(feature = "with-libfunc-profiling")]
         metadata.insert(crate::metadata::profiler::ProfilerMeta::new());

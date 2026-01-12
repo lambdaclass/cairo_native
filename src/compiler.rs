@@ -50,7 +50,7 @@ use crate::{
     error::{panic::ToNativeAssertError, Error},
     libfuncs::{BranchArg, LibfuncBuilder, LibfuncHelper},
     metadata::{
-        gas::{GasCost, GasMetadata},
+        gas::{CostInfoProvider, GasCost},
         tail_recursion::TailRecursionMeta,
         MetadataStorage,
     },
@@ -459,8 +459,12 @@ fn compile_func(
         function.entry_point,
         initial_state,
         |statement_idx, mut state| {
-            if let Some(gas_metadata) = metadata.get::<GasMetadata>() {
-                let gas_cost = gas_metadata.get_gas_costs_for_statement(statement_idx);
+            if let Some(cost_info_provider) = metadata.get::<CostInfoProvider>() {
+                cost_info_provider.update_statement_id(statement_idx);
+
+                let gas_cost = cost_info_provider
+                    .gas_metadata
+                    .get_gas_costs_for_statement(statement_idx);
                 metadata.remove::<GasCost>();
                 metadata.insert(GasCost(gas_cost));
             }

@@ -4,6 +4,7 @@ use cairo_lang_sierra::extensions::modules::utils::Range;
 use cairo_lang_sierra::{
     edit_state::EditStateError, ids::ConcreteTypeId, program_registry::ProgramRegistryError,
 };
+use cairo_lang_sierra_to_casm::environment::gas_wallet::GasWalletError;
 use num_bigint::BigInt;
 use panic::NativeAssertError;
 use std::{alloc::LayoutError, num::TryFromIntError};
@@ -57,6 +58,9 @@ pub enum Error {
 
     #[error(transparent)]
     GasMetadataError(#[from] GasMetadataError),
+
+    #[error(transparent)]
+    GasWalletError(#[from] GasWalletError),
 
     #[error("llvm compile error: {0}")]
     LLVMCompileError(String),

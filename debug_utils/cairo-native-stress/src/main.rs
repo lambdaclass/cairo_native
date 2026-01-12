@@ -22,7 +22,7 @@ use cairo_lang_starknet::compile::compile_path;
 use cairo_native::{
     context::NativeContext,
     executor::AotNativeExecutor,
-    metadata::gas::GasMetadata,
+    metadata::gas::CostInfoProvider,
     module_to_object, object_to_shared_lib,
     starknet::DummySyscallHandler,
     utils::{find_entry_point_by_idx, SHARED_LIBRARY_EXT},
@@ -290,9 +290,10 @@ where
         let registry = ProgramRegistry::new(program).expect("failed to get program registry");
         let metadata = native_module
             .metadata()
-            .get::<GasMetadata>()
+            .get::<CostInfoProvider>()
             .cloned()
-            .expect("module should have gas metadata");
+            .expect("module should have gas metadata")
+            .gas_metadata;
 
         let shared_library = {
             let object_data = module_to_object(native_module.module(), opt_level, None)

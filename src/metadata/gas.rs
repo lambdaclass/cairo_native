@@ -12,28 +12,43 @@
 
 use cairo_lang_runner::token_gas_cost;
 use cairo_lang_sierra::{
-    extensions::gas::CostTokenType,
-    ids::FunctionId,
+    extensions::{
+        circuit::CircuitInfo,
+        gas::{CostTokenMap, CostTokenType},
+    },
+    ids::{ConcreteTypeId, FunctionId},
     program::{Program, StatementIdx},
 };
 use cairo_lang_sierra_ap_change::{ap_change_info::ApChangeInfo, ApChangeError};
-use cairo_lang_sierra_gas::{gas_info::GasInfo, CostError};
-use cairo_lang_sierra_to_casm::metadata::{
-    calc_metadata, calc_metadata_ap_change_only, Metadata as CairoGasMetadata,
-    MetadataComputationConfig, MetadataError as CairoGasMetadataError,
+use cairo_lang_sierra_gas::{
+    core_libfunc_cost::InvocationCostInfoProvider, gas_info::GasInfo, CostError,
+};
+use cairo_lang_sierra_to_casm::{
+    circuit::CircuitsInfo,
+    environment::gas_wallet::{GasWallet as CairoGasWallet, GasWalletError},
+    metadata::{
+        calc_metadata, calc_metadata_ap_change_only, Metadata as CairoGasMetadata,
+        MetadataComputationConfig, MetadataError as CairoGasMetadataError,
+    },
 };
 use cairo_lang_sierra_type_size::ProgramRegistryInfo;
+use cairo_lang_utils::unordered_hash_map::UnorderedHashMap;
 
 use crate::{
-    error::{Error, Result as NativeResult},
+    error::{panic::ToNativeAssertError, Error, Result as NativeResult},
     native_panic,
 };
 
-use std::{collections::BTreeMap, fmt, ops::Deref};
+use std::{cell::Cell, collections::BTreeMap, fmt};
 
 /// Holds global gas info.
 #[derive(Default)]
-pub struct GasMetadata(pub CairoGasMetadata);
+pub struct GasMetadata {
+    pub metadata: CairoGasMetadata,
+    // This means that MetadataComputationConfig was provided.
+    // This allows for the use of GasWallets.
+    pub gas_usage_check: bool,
+}
 
 /// The gas cost associated to a determined sierra statement.
 ///
@@ -41,6 +56,83 @@ pub struct GasMetadata(pub CairoGasMetadata);
 /// that a given sierra statement costs.
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
 pub struct GasCost(pub Vec<(u64, CostTokenType)>);
+
+#[derive(Debug, Clone)]
+pub struct GasWallet(pub CairoGasWallet);
+
+impl GasWallet {
+    pub fn update(&mut self, gas_changes: CostTokenMap<i64>) -> Result<(), GasWalletError> {
+        self.0.update(gas_changes)?;
+
+        Ok(())
+    }
+}
+
+#[derive(Debug, Clone)]
+pub struct CostInfoProvider {
+    type_sizes: UnorderedHashMap<ConcreteTypeId, i16>,
+    circuits_info: CircuitsInfo,
+    pub gas_metadata: GasMetadata,
+    // Current statement id.
+    idx: Cell<StatementIdx>,
+}
+
+impl CostInfoProvider {
+    pub fn new(
+        sierra_program: &Program,
+        program_info: &ProgramRegistryInfo,
+        config: Option<MetadataComputationConfig>,
+    ) -> NativeResult<Self> {
+        let gas_metadata = GasMetadata::new(sierra_program, program_info, config)?;
+        let type_sizes = program_info.type_sizes.clone();
+        let circuits_info = CircuitsInfo::new(
+            &program_info.registry,
+            sierra_program.type_declarations.iter().map(|td| &td.id),
+        )
+        .to_native_assert_error("Error creating CircuitsInfo")?;
+
+        Ok(Self {
+            gas_metadata,
+            circuits_info,
+            type_sizes,
+            idx: Cell::new(StatementIdx(0)),
+        })
+    }
+
+    pub fn update_statement_id(&self, idx: StatementIdx) {
+        self.idx.set(idx);
+    }
+}
+
+impl InvocationCostInfoProvider for CostInfoProvider {
+    fn type_size(&self, ty: &ConcreteTypeId) -> usize {
+        self.type_sizes[ty] as usize
+    }
+
+    fn token_usages(&self, token_type: CostTokenType) -> usize {
+        self.gas_metadata
+            .metadata
+            .gas_info
+            .variable_values
+            .get(&(self.idx.get(), token_type))
+            .copied()
+            .unwrap_or(0) as usize
+    }
+
+    fn ap_change_var_value(&self) -> usize {
+        self.gas_metadata
+            .metadata
+            .ap_change_info
+            .variable_values
+            .get(&self.idx.get())
+            .copied()
+            .unwrap_or_default()
+    }
+
+    fn circuit_info(&self, ty: &ConcreteTypeId) -> &CircuitInfo {
+        self.circuits_info.circuits.get(ty).unwrap()
+    }
+}
 
 /// Error for metadata calculations.
 #[derive(Debug, thiserror::Error, Eq, PartialEq)]
@@ -58,14 +150,18 @@ impl GasMetadata {
         sierra_program: &Program,
         sierra_program_info: &ProgramRegistryInfo,
         config: Option<MetadataComputationConfig>,
-    ) -> Result<GasMetadata, GasMetadataError> {
+    ) -> Result<Self, GasMetadataError> {
+        let gas_usage_check = config.is_some();
         let cairo_gas_metadata = if let Some(metadata_config) = config {
             calc_metadata(sierra_program, sierra_program_info, metadata_config)?
         } else {
             calc_metadata_ap_change_only(sierra_program, sierra_program_info)?
         };
 
-        Ok(GasMetadata::from(cairo_gas_metadata))
+        Ok(Self {
+            metadata: cairo_gas_metadata,
+            gas_usage_check,
+        })
     }
 
     /// Returns the initial value for the gas counter.
@@ -94,11 +190,11 @@ impl GasMetadata {
     }
 
     pub fn initial_required_gas(&self, func: &FunctionId) -> Result<Option<u64>, Error> {
-        if self.gas_info.function_costs.is_empty() {
+        if self.metadata.gas_info.function_costs.is_empty() {
             return Ok(None);
         }
         Ok(Some(
-            self.gas_info.function_costs[func]
+            self.metadata.gas_info.function_costs[func]
                 .iter()
                 .map(|(token_type, val)| {
                     let Ok(val) = TryInto::<usize>::try_into(*val) else {
@@ -116,7 +212,8 @@ impl GasMetadata {
     pub fn initial_required_gas_for_entry_points(
         &self,
     ) -> NativeResult<BTreeMap<u64, BTreeMap<u64, u64>>> {
-        self.gas_info
+        self.metadata
+            .gas_info
             .function_costs
             .iter()
             .map(|func| {
@@ -162,7 +259,8 @@ impl GasMetadata {
         idx: StatementIdx,
         cost_type: CostTokenType,
     ) -> Option<u64> {
-        self.gas_info
+        self.metadata
+            .gas_info
             .variable_values
             .get(&(idx, cost_type))
             .copied()
@@ -170,41 +268,36 @@ impl GasMetadata {
     }
 }
 
-impl From<CairoGasMetadata> for GasMetadata {
-    fn from(value: CairoGasMetadata) -> Self {
-        Self(value)
-    }
-}
-
-impl Deref for GasMetadata {
-    type Target = CairoGasMetadata;
-
-    fn deref(&self) -> &Self::Target {
-        &self.0
-    }
-}
+// impl From<CairoGasMetadata> for GasMetadata {
+//     fn from(value: CairoGasMetadata) -> Self {
+//         Self(value)
+//     }
+// }
 
 impl fmt::Debug for GasMetadata {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         f.debug_struct("GasMetadata")
-            .field("ap_change_info", &self.ap_change_info)
-            .field("gas_info", &self.gas_info)
+            .field("ap_change_info", &self.metadata.ap_change_info)
+            .field("gas_info", &self.metadata.gas_info)
             .finish()
     }
 }
 
 impl Clone for GasMetadata {
     fn clone(&self) -> Self {
-        Self(CairoGasMetadata {
-            ap_change_info: ApChangeInfo {
-                variable_values: self.ap_change_info.variable_values.clone(),
-                function_ap_change: self.ap_change_info.function_ap_change.clone(),
+        Self {
+            metadata: CairoGasMetadata {
+                ap_change_info: ApChangeInfo {
+                    variable_values: self.metadata.ap_change_info.variable_values.clone(),
+                    function_ap_change: self.metadata.ap_change_info.function_ap_change.clone(),
+                },
+                gas_info: GasInfo {
+                    variable_values: self.metadata.gas_info.variable_values.clone(),
+                    function_costs: self.metadata.gas_info.function_costs.clone(),
+                },
             },
-            gas_info: GasInfo {
-                variable_values: self.gas_info.variable_values.clone(),
-                function_costs: self.gas_info.function_costs.clone(),
-            },
-        })
+            gas_usage_check: self.gas_usage_check,
+        }
     }
 }
 

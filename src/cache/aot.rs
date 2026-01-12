@@ -1,4 +1,5 @@
 use crate::error::{Error, Result};
+use crate::metadata::gas::CostInfoProvider;
 use crate::{
     context::NativeContext, executor::AotNativeExecutor, module::NativeModule,
     utils::SHARED_LIBRARY_EXT, OptLevel,
@@ -49,6 +50,11 @@ where
             .context
             .compile(program, false, Some(Default::default()), None)?;
 
+        let gas_metadata = metadata
+            .remove::<CostInfoProvider>()
+            .ok_or(Error::MissingMetadata)?
+            .gas_metadata;
+
         // Compile module into an object.
         let object_data = crate::ffi::module_to_object(&module, opt_level, None)?;
 
@@ -64,7 +70,7 @@ where
         let executor = AotNativeExecutor::new(
             shared_library,
             registry,
-            metadata.remove().ok_or(Error::MissingMetadata)?,
+            gas_metadata,
             metadata.remove().unwrap_or_default(),
         );
 
