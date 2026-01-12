@@ -1,8 +1,8 @@
 # Environment detection.
 
 UNAME := $(shell uname)
-SCARB_VERSION = 2.12.1
-CAIRO_2_VERSION = 2.12.3
+SCARB_VERSION = 2.14.0
+CAIRO_2_VERSION = 2.14.1-dev.1
 
 # Usage is the default target for newcomers running `make`.
 .PHONY: usage
@@ -14,6 +14,7 @@ usage: check-llvm needs-cairo2
 	@echo "    build-dev:    Builds cairo-native under a development-optimized profile."
 	@echo "    check:        Checks format and lints."
 	@echo "    test:         Runs all tests."
+	@echo "    test-cairo:   Runs all Cairo tests."
 	@echo "    proptest:     Runs property tests."
 	@echo "    coverage:     Runs all tests and computes test coverage."
 	@echo "    doc:          Builds documentation."
@@ -66,7 +67,9 @@ test: check-llvm needs-cairo2 build-alexandria
 
 .PHONY: test-cairo
 test-cairo: check-llvm needs-cairo2
-	cargo r --profile ci --package cairo-native-test -- --compare-with-cairo-vm corelib
+	cargo run --profile ci --package cairo-native-test -- -O2 --compare-with-cairo-vm corelib
+	cargo run --profile ci --package cairo-native-test -- -O2 --compare-with-cairo-vm cairo/tests/bug_samples/ --starknet
+	cargo run --profile ci --package cairo-native-test -- -O2 --compare-with-cairo-vm cairo/crates/cairo-lang-starknet/cairo_level_tests/ --starknet
 
 .PHONY: proptest
 proptest: check-llvm needs-cairo2
@@ -109,7 +112,7 @@ stress-test: check-llvm
 
 .PHONY: stress-plot
 stress-plot:
-	python3 src/bin/cairo-native-stress/plotter.py cairo-native-stress-logs.jsonl
+	python3 debug_utils/cairo-native-stress/plotter.py cairo-native-stress-logs.jsonl
 
 .PHONY: stress-clean
 stress-clean:
@@ -124,7 +127,7 @@ clean: stress-clean
 	cargo clean
 
 .PHONY: deps
-deps:
+deps: cairo-tests
 ifeq ($(UNAME), Linux)
 deps: build-cairo-2-compiler install-scarb
 endif
@@ -191,3 +194,16 @@ install-scarb-macos:
 .PHONY: build-alexandria
 build-alexandria:
 	cd tests/alexandria; scarb build
+
+.PHONY: cairo-tests
+cairo-tests:
+	rm -rf cairo
+	mkdir cairo
+	cd cairo                                                          ; \
+	git init                                                          ; \
+	git remote add origin https://github.com/starkware-libs/cairo.git ; \
+	git fetch origin v2.14.0                                          ; \
+	git checkout FETCH_HEAD                                           ; \
+	git sparse-checkout set --no-cone                                   \
+	  tests/bug_samples/                                                \
+	  crates/cairo-lang-starknet/cairo_level_tests/

@@ -344,15 +344,17 @@ fn build_eval<'ctx, 'this>(
     // Ok case
     {
         // We drop circuit_data, as its consumed by this libfunc.
-        if let Some(drop_overrides_meta) = metadata.get::<DropOverridesMeta>() {
-            drop_overrides_meta.invoke_override(
-                context,
-                ok_block,
-                location,
-                &info.signature.param_signatures[3].ty,
-                circuit_data,
-            )?;
-        }
+        DropOverridesMeta::invoke_override(
+            context,
+            registry,
+            helper,
+            helper.init_block(),
+            ok_block,
+            location,
+            metadata,
+            &info.signature.param_signatures[3].ty,
+            circuit_data,
+        )?;
 
         // Increase the mul mod builtin pointer by the number of evaluated gates.
         // If the evaluation succedes, then we assume that every gate was evaluated.
@@ -416,15 +418,17 @@ fn build_eval<'ctx, 'this>(
     // Error case
     {
         // We drop circuit_data, as its consumed by this libfunc.
-        if let Some(drop_overrides_meta) = metadata.get::<DropOverridesMeta>() {
-            drop_overrides_meta.invoke_override(
-                context,
-                err_block,
-                location,
-                &info.signature.param_signatures[3].ty,
-                circuit_data,
-            )?;
-        }
+        DropOverridesMeta::invoke_override(
+            context,
+            registry,
+            helper,
+            helper.init_block(),
+            err_block,
+            location,
+            metadata,
+            &info.signature.param_signatures[3].ty,
+            circuit_data,
+        )?;
 
         // We only consider mul gates evaluated before failure
         // Increase the mul mod builtin pointer by the number of evaluated gates.
@@ -596,14 +600,15 @@ fn build_gate_evaluation<'ctx, 'this>(
                 // INV: lhs = 1 / rhs
                 (None, Some(rhs_value), Some(_)) => {
                     // Apply egcd to find gcd and inverse
-                    let euclidean_result = runtime_bindings_meta.extended_euclidean_algorithm(
-                        context,
-                        helper.module,
-                        block,
-                        location,
-                        rhs_value,
-                        circuit_modulus,
-                    )?;
+                    let euclidean_result = runtime_bindings_meta
+                        .u384_extended_euclidean_algorithm(
+                            context,
+                            helper.module,
+                            block,
+                            location,
+                            rhs_value,
+                            circuit_modulus,
+                        )?;
                     // Extract the values from the result struct
                     let gcd =
                         block.extract_value(context, location, euclidean_result, u384_type, 0)?;
@@ -630,26 +635,6 @@ fn build_gate_evaluation<'ctx, 'this>(
                         location,
                     ));
                     block = has_inverse_block;
-
-                    // if the inverse is negative, then add modulus
-                    let zero = block.const_int_from_type(context, location, 0, u384_type)?;
-                    let is_negative = block
-                        .append_operation(arith::cmpi(
-                            context,
-                            CmpiPredicate::Slt,
-                            inverse,
-                            zero,
-                            location,
-                        ))
-                        .result(0)?
-                        .into();
-                    let wrapped_inverse = block.addi(inverse, circuit_modulus, location)?;
-                    let inverse = block.append_op_result(arith::select(
-                        is_negative,
-                        wrapped_inverse,
-                        inverse,
-                        location,
-                    ))?;
 
                     gates[gate_offset.lhs] = Some(inverse);
                 }
@@ -891,15 +876,17 @@ fn build_get_output<'ctx, 'this>(
     // calling it multiple times involves duplicating the circuit outputs
     // each time. This could be fixed by implementing a reference counter,
     // like we do with regular arrays.
-    if let Some(drop_overrides_meta) = metadata.get::<DropOverridesMeta>() {
-        drop_overrides_meta.invoke_override(
-            context,
-            entry,
-            location,
-            &info.signature.param_signatures[0].ty,
-            outputs,
-        )?;
-    }
+    DropOverridesMeta::invoke_override(
+        context,
+        registry,
+        helper,
+        helper.init_block(),
+        entry,
+        location,
+        metadata,
+        &info.signature.param_signatures[0].ty,
+        outputs,
+    )?;
 
     helper.br(entry, 0, &[output_struct, guarantee], location)?;
 

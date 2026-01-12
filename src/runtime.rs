@@ -1,6 +1,6 @@
 #![allow(non_snake_case)]
 
-use crate::utils::BuiltinCosts;
+use crate::utils::{blake_utils, BuiltinCosts};
 use cairo_lang_sierra_gas::core_libfunc_cost::{
     DICT_SQUASH_REPEATED_ACCESS_COST, DICT_SQUASH_UNIQUE_KEY_COST,
 };
@@ -144,6 +144,24 @@ pub unsafe extern "C" fn cairo_native__libfunc__hades_permutation(
     *op0 = state[0].to_bytes_le();
     *op1 = state[1].to_bytes_le();
     *op2 = state[2].to_bytes_le();
+}
+
+pub unsafe extern "C" fn cairo_native__libfunc__blake_compress(
+    state: &mut [u32; 8],
+    message: &[u32; 16],
+    count_bytes: u32,
+    finalize: bool,
+) {
+    let new_state = blake_utils::blake2s_compress(
+        state,
+        message,
+        count_bytes,
+        0,
+        if finalize { 0xFFFFFFFF } else { 0 },
+        0,
+    );
+
+    *state = new_state;
 }
 
 /// Felt252 type used in cairo native runtime

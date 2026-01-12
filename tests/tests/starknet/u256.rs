@@ -1,5 +1,6 @@
 use crate::common::run_native_starknet_contract;
 use cairo_lang_compiler::CompilerConfig;
+use cairo_lang_lowering::utils::InliningStrategy;
 use cairo_lang_starknet::compile::compile_path;
 use cairo_native::starknet_stub::StubSyscallHandler;
 use lazy_static::lazy_static;
@@ -17,6 +18,7 @@ lazy_static! {
                 replace_ids: true,
                 ..Default::default()
             },
+            InliningStrategy::Default,
         )
         .unwrap()
     };
@@ -41,5 +43,5 @@ fn u256_test() {
         result.return_values,
         vec![Felt::from_hex("0xf70cba9bb86caa97b086fdfa3df602ed").unwrap()]
     );
-    assert_eq!(result.remaining_gas, 18446744073709532905);
+    assert_eq!(result.remaining_gas, 18446744073709352905);
 }

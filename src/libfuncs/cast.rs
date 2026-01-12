@@ -3,6 +3,7 @@
 use super::LibfuncHelper;
 use crate::{
     error::Result,
+    libfuncs::increment_builtin_counter,
     metadata::MetadataStorage,
     native_assert, native_panic,
     types::TypeBuilder,
@@ -46,7 +47,16 @@ pub fn build<'ctx, 'this>(
     }
 }
 
-/// Generate MLIR operations for the `downcast` libfunc.
+/// Generate MLIR operations for the `downcast` libfunc which converts from a
+/// source type `T` to a target type `U`, where `U` might not fully include `T`.
+/// This means that the operation can fail.
+///
+/// ## Signature
+/// ```cairo
+/// pub extern const fn downcast<FromType, ToType>(
+///     x: FromType,
+/// ) -> Option<ToType> implicits(RangeCheck) nopanic;
+/// ```
 pub fn build_downcast<'ctx, 'this>(
     context: &'ctx Context,
     registry: &ProgramRegistry<CoreType, CoreLibfunc>,
@@ -58,18 +68,6 @@ pub fn build_downcast<'ctx, 'this>(
 ) -> Result<()> {
     let range_check = entry.arg(0)?;
     let src_value: Value = entry.arg(1)?;
-
-    if info.signature.param_signatures[1].ty == info.signature.branch_signatures[0].vars[1].ty {
-        let k0 = entry.const_int(context, location, 0, 1)?;
-        return helper.cond_br(
-            context,
-            entry,
-            k0,
-            [0, 1],
-            [&[range_check, src_value], &[range_check]],
-            location,
-        );
-    }
 
     let src_ty = registry.get_type(&info.signature.param_signatures[1].ty)?;
     let dst_ty = registry.get_type(&info.signature.branch_signatures[0].vars[1].ty)?;
@@ -91,6 +89,28 @@ pub fn build_downcast<'ctx, 'this>(
         src_ty.integer_range(registry)?
     };
 
+    // When the source type is the same as the target type, we just return the
+    // value as it cannot fail. However, for backwards compatibility, we need to
+    // increment the range check as if we were checking the upper bound. See:
+    // - https://github.com/starkware-libs/cairo/tree/v2.12.3/crates/cairo-lang-sierra/src/extensions/modules/casts.rs#L67.
+    // - https://github.com/starkware-libs/cairo/tree/v2.12.3/crates/cairo-lang-sierra-to-casm/src/invocations/casts.rs#L56.
+    if info.signature.param_signatures[1].ty == info.signature.branch_signatures[0].vars[1].ty {
+        let range_check = if src_range.lower == 0.into() {
+            increment_builtin_counter(context, entry, location, range_check)?
+        } else {
+            range_check
+        };
+        let k1 = entry.const_int(context, location, 1, 1)?;
+        return helper.cond_br(
+            context,
+            entry,
+            k1,
+            [0, 1],
+            [&[range_check, src_value], &[range_check]],
+            location,
+        );
+    }
+
     let src_width = if src_ty.is_bounded_int(registry)? {
         src_range.offset_bit_width()
     } else {
@@ -108,6 +128,7 @@ pub fn build_downcast<'ctx, 'this>(
 
     let is_signed = src_range.lower.sign() == Sign::Minus;
 
+    // If the target type is wider than the source type, extend the value representation width.
     let src_value = if compute_width > src_width {
         if is_signed && !src_ty.is_bounded_int(registry)? && !src_ty.is_felt252(registry)? {
             entry.extsi(
@@ -126,6 +147,11 @@ pub fn build_downcast<'ctx, 'this>(
         src_value
     };
 
+    // Correct the value representation accordingly.
+    // 1. if it is a felt, then we need to convert the value from [0,P) to
+    //    [-P/2, P/2].
+    // 2. if it is a bounded_int, we need to offset the value to get the
+    //    actual value.
     let src_value = if is_signed && src_ty.is_felt252(registry)? {
         if src_range.upper.is_one() {
             let adj_offset =
@@ -159,7 +185,10 @@ pub fn build_downcast<'ctx, 'this>(
         src_value
     };
 
-    if !(dst_range.lower > src_range.lower || dst_range.upper < src_range.upper) {
+    // Check if the source type is included in the target type. If it is not
+    // then check if the value is in bounds. If the value is also not in
+    // bounds then return an error.
+    if dst_range.lower <= src_range.lower && dst_range.upper >= src_range.upper {
         let dst_value = if dst_ty.is_bounded_int(registry)? && dst_range.lower != BigInt::ZERO {
             let dst_offset = entry.const_int_from_type(
                 context,
@@ -193,6 +222,7 @@ pub fn build_downcast<'ctx, 'this>(
             location,
         )?;
     } else {
+        // Check if the value is in bounds with respect to the lower bound.
         let lower_check = if dst_range.lower > src_range.lower {
             let dst_lower = entry.const_int_from_type(
                 context,
@@ -214,6 +244,7 @@ pub fn build_downcast<'ctx, 'this>(
         } else {
             None
         };
+        // Check if the value is in bounds with respect to the upper bound.
         let upper_check = if dst_range.upper < src_range.upper {
             let dst_upper = entry.const_int_from_type(
                 context,
@@ -456,10 +487,12 @@ pub fn build_upcast<'ctx, 'this>(
 
 #[cfg(test)]
 mod test {
-    use crate::{jit_enum, jit_struct, load_cairo, utils::testing::run_program_assert_output};
+    use crate::{
+        jit_enum, jit_struct, load_cairo, utils::testing::run_program_assert_output, Value,
+    };
     use cairo_lang_sierra::program::Program;
-    use cairo_vm::Felt252;
     use lazy_static::lazy_static;
+    use starknet_types_core::felt::Felt;
     use test_case::test_case;
 
     lazy_static! {
@@ -484,6 +517,55 @@ mod test {
                 )
             }
         };
+        static ref DOWNCAST_BOUNDED_INT: (String, Program) = load_cairo! {
+            #[feature("bounded-int-utils")]
+            use core::internal::bounded_int::BoundedInt;
+
+            extern const fn downcast<FromType, ToType>( x: FromType, ) -> Option<ToType> implicits(RangeCheck) nopanic;
+
+            fn test_x_y<
+                X,
+                Y,
+                +TryInto<felt252, X>,
+                +Into<Y, felt252>
+            >(v: felt252) -> felt252 {
+                let v: X = v.try_into().unwrap();
+                let v: Y = downcast(v).unwrap();
+                v.into()
+            }
+
+            fn b0x30_b0x30(v: felt252) -> felt252 { test_x_y::<BoundedInt<0,30>, BoundedInt<0,30>>(v) }
+            fn bm31x30_b31x30(v: felt252) -> felt252 { test_x_y::<BoundedInt<-31,30>, BoundedInt<-31,30>>(v) }
+            fn bm31x30_bm5x30(v: felt252) -> felt252 { test_x_y::<BoundedInt<-31,30>, BoundedInt<-5,30>>(v) }
+            fn bm31x30_b5x30(v: felt252) -> felt252 { test_x_y::<BoundedInt<-31,30>, BoundedInt<5,30>>(v) }
+            fn b5x30_b31x31(v: felt252) -> felt252 { test_x_y::<BoundedInt<5,31>, BoundedInt<31,31>>(v) }
+            fn bm100x100_bm100xm1(v: felt252) -> felt252 { test_x_y::<BoundedInt<-100,100>, BoundedInt<-100,-1>>(v) }
+            fn bm31xm31_bm31xm31(v: felt252) -> felt252 { test_x_y::<BoundedInt<-31,-31>, BoundedInt<-31,-31>>(v) }
+            // Check if the target type is wider than the source type
+            fn b0x30_b5x40(v: felt252) -> felt252 { test_x_y::<BoundedInt<0,30>, BoundedInt<5,40>>(v) }
+            // Check if the source's lower and upper bound are included in the
+            // target type.
+            fn b0x30_bm40x40(v: felt252) -> felt252 { test_x_y::<BoundedInt<0,30>, BoundedInt<-40,40>>(v) }
+        };
+        static ref DOWNCAST_FELT: (String, Program) = load_cairo! {
+            extern const fn downcast<FromType, ToType>( x: FromType, ) -> Option<ToType> implicits(RangeCheck) nopanic;
+
+            fn test_x_y<
+                X,
+                Y,
+                +TryInto<felt252, X>,
+                +Into<Y, felt252>
+            >(v: felt252) -> felt252 {
+                let v: X = v.try_into().unwrap();
+                let v: Y = downcast(v).unwrap();
+                v.into()
+            }
+
+            fn felt252_i8(v: felt252) -> felt252 { test_x_y::<felt252, i8>(v) }
+            fn felt252_i16(v: felt252) -> felt252 { test_x_y::<felt252, i16>(v) }
+            fn felt252_i32(v: felt252) -> felt252 { test_x_y::<felt252, i32>(v) }
+            fn felt252_i64(v: felt252) -> felt252 { test_x_y::<felt252, i64>(v) }
+        };
     }
 
     #[test]
@@ -504,22 +586,57 @@ mod test {
                     jit_enum!(1, jit_struct!()),
                     jit_enum!(1, jit_struct!()),
                     jit_enum!(1, jit_struct!()),
-                    jit_enum!(1, jit_struct!()),
+                    jit_enum!(0, u8::MAX.into()),
                 ),
                 jit_struct!(
                     jit_enum!(1, jit_struct!()),
                     jit_enum!(1, jit_struct!()),
                     jit_enum!(1, jit_struct!()),
-                    jit_enum!(1, jit_struct!()),
+                    jit_enum!(0, u16::MAX.into()),
                 ),
                 jit_struct!(
                     jit_enum!(1, jit_struct!()),
                     jit_enum!(1, jit_struct!()),
-                    jit_enum!(1, jit_struct!()),
+                    jit_enum!(0, u32::MAX.into()),
                 ),
-                jit_struct!(jit_enum!(1, jit_struct!()), jit_enum!(1, jit_struct!())),
-                jit_struct!(jit_enum!(1, jit_struct!())),
+                jit_struct!(jit_enum!(1, jit_struct!()), jit_enum!(0, u64::MAX.into())),
+                jit_struct!(jit_enum!(0, u128::MAX.into())),
             ),
+        );
+    }
+
+    #[test_case("b0x30_b0x30", 5.into())]
+    #[test_case("bm31x30_b31x30", 5.into())]
+    #[test_case("bm31x30_bm5x30", (-5).into())]
+    #[test_case("bm31x30_b5x30", 30.into())]
+    #[test_case("b5x30_b31x31", 31.into())]
+    #[test_case("bm100x100_bm100xm1", (-90).into())]
+    #[test_case("bm31xm31_bm31xm31", (-31).into())]
+    #[test_case("b0x30_b5x40", 10.into())]
+    #[test_case("b0x30_bm40x40", 10.into())]
+    fn downcast_bounded_int(entry_point: &str, value: Felt) {
+        run_program_assert_output(
+            &DOWNCAST_BOUNDED_INT,
+            entry_point,
+            &[Value::Felt252(value)],
+            jit_enum!(0, jit_struct!(Value::Felt252(value))),
+        );
+    }
+
+    #[test_case("felt252_i8", i8::MAX.into())]
+    #[test_case("felt252_i8", i8::MIN.into())]
+    #[test_case("felt252_i16", i16::MAX.into())]
+    #[test_case("felt252_i16", i16::MIN.into())]
+    #[test_case("felt252_i32", i32::MAX.into())]
+    #[test_case("felt252_i32", i32::MIN.into())]
+    #[test_case("felt252_i64", i64::MAX.into())]
+    #[test_case("felt252_i64", i64::MIN.into())]
+    fn downcast_felt(entry_point: &str, value: Felt) {
+        run_program_assert_output(
+            &DOWNCAST_FELT,
+            entry_point,
+            &[Value::Felt252(value)],
+            jit_enum!(0, jit_struct!(Value::Felt252(value))),
         );
     }
 
@@ -669,13 +786,13 @@ mod test {
     #[test_case("b2x5_b1x10", 5.into())]
     #[test_case("b0x5_bm10x10", 0.into())]
     #[test_case("b0x5_bm10x10", 5.into())]
-    #[test_case("bm5x5_bm10x10", Felt252::from(-5))]
+    #[test_case("bm5x5_bm10x10", Felt::from(-5))]
     #[test_case("bm5x5_bm10x10", 5.into())]
-    #[test_case("i8_bm200x200", Felt252::from(-128))]
+    #[test_case("i8_bm200x200", Felt::from(-128))]
     #[test_case("i8_bm200x200", 127.into())]
-    #[test_case("bm100x100_i8", Felt252::from(-100))]
+    #[test_case("bm100x100_i8", Felt::from(-100))]
     #[test_case("bm100x100_i8", 100.into())]
-    fn upcast(entry_point: &str, value: Felt252) {
+    fn upcast(entry_point: &str, value: Felt) {
         let arguments = &[value.into()];
         let expected_result = jit_enum!(0, jit_struct!(value.into(),));
         run_program_assert_output(

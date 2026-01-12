@@ -3,6 +3,7 @@ use std::{error::Error, sync::Arc};
 use std::path::Path;
 
 use cairo_lang_compiler::CompilerConfig;
+use cairo_lang_lowering::utils::InliningStrategy;
 use cairo_lang_starknet::compile::compile_path;
 use cairo_lang_starknet_classes::contract_class::version_id_from_serialized_sierra_program;
 use sierra_emu::{starknet::StubSyscallHandler, ContractExecutionResult, VirtualMachine};
@@ -22,6 +23,7 @@ fn main() -> Result<(), Box<dyn Error>> {
             replace_ids: true,
             ..Default::default()
         },
+        InliningStrategy::Default,
     )?;
     let program = contract.extract_sierra_program()?;
     let (version_id, _) = version_id_from_serialized_sierra_program(&contract.sierra_program)?;
