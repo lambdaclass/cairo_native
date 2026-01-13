@@ -690,7 +690,7 @@ fn parse_result(
 mod tests {
     use super::*;
     use crate::{
-        context::NativeContext, load_cairo, include_contract, starknet_stub::StubSyscallHandler,
+        context::NativeContext, include_contract, load_cairo, starknet_stub::StubSyscallHandler,
         OptLevel,
     };
     use cairo_lang_sierra::program::Program;

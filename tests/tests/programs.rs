@@ -116,7 +116,8 @@ lazy_static! {
 #[test]
 fn fib() {
     let program = {
-        let versioned_program = include_program!("test_data_artifacts/programs/fibonacci.sierra.json");
+        let versioned_program =
+            include_program!("test_data_artifacts/programs/fibonacci.sierra.json");
         let program = versioned_program.into_v1().unwrap().program;
         let module_name = "fibonacci".to_string();
         let runner = SierraCasmRunner::new(
