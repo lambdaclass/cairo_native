@@ -7,4 +7,6 @@ repository.workspace = true
 
 [dependencies]
 honggfuzz = "0.5.58"
+cairo-lang-sierra.workspace = true
 cairo-native = { workspace = true, features = ["testing"]}
+serde_json.workspace = true
