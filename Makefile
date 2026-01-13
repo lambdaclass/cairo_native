@@ -133,7 +133,7 @@ endif
 ifeq ($(UNAME), Darwin)
 deps: deps-macos
 endif
-	python3 ./test_utils/compile_test_data.py
+	$(MAKE) compile-test-data
 
 .PHONY: deps-macos
 deps-macos: build-cairo-2-compiler-macos install-scarb-macos
@@ -191,3 +191,7 @@ install-scarb-macos:
 .PHONY: pull-external-projects
 pull-external-projects:
 	python3 ./test_utils/pull_external_projects.py v${CAIRO_2_VERSION}
+
+.PHONY: compile-test-data
+compile-test-data:
+	python3 ./test_utils/compile_test_data.py
