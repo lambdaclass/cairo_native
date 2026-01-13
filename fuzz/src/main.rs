@@ -2,7 +2,10 @@ use cairo_native::{
     context::NativeContext, executor::AotNativeExecutor, include_program,
     starknet_stub::StubSyscallHandler, OptLevel, Value,
 };
-use honggfuzz::fuzz;
+use honggfuzz::{
+    arbitrary::{Arbitrary, Unstructured},
+    fuzz,
+};
 
 fn main() {
     let program = include_program!("../test_data_artifacts/programs/corelib.sierra.json")
@@ -23,14 +26,25 @@ fn main() {
                 .expect("Test program entry point not found.")
                 .id;
 
+            let mut unstructured = Unstructured::new(data);
+
+            let Ok(v1) = u8::arbitrary(&mut unstructured) else {
+                return;
+            };
+            let Ok(v2) = u8::arbitrary(&mut unstructured) else {
+                return;
+            };
+
             let execution = executor
                 .invoke_dynamic_with_syscall_handler(
                     func_id,
-                    &[Value::Uint8(10), Value::Uint8(20)],
+                    &[Value::Uint8(v1), Value::Uint8(v2)],
                     Some(u64::MAX),
                     &mut StubSyscallHandler::default(),
                 )
                 .unwrap();
+
+            assert_eq!(execution.return_value, Value::Uint8(v1.wrapping_add(v2)))
         });
     }
 }
