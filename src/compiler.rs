@@ -154,7 +154,7 @@ pub fn compile(
 
     for function in &program.funcs {
         tracing::info!("Compiling function `{}`.", function.id);
-        
+
         if let Some(cost_info_provider) = metadata.get::<CostInfoProvider>() {
             if cost_info_provider.gas_metadata.check_gas_usage {
                 let function_costs = cost_info_provider
@@ -691,7 +691,7 @@ fn compile_func(
                             libfunc.branch_signatures().len() == gas_changes.len(),
                             "The number of gas changes should be equal the number of branches."
                         );
-                        
+
                         gas_wallet.update(gas_changes.get(0).unwrap().clone())?;
                     }
 
