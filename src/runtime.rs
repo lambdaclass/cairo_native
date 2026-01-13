@@ -370,7 +370,7 @@ unsafe fn create_dict_entries_array(dict: &mut FeltDict) -> ArrayAbi<c_void> {
         // Get the element, move to the offset of the 'last_value' and save the element in that address
         let element = dict.elements.byte_add(generic_ty_size * elem_index) as *mut u8;
         let last_val_ptr = first_val_ptr.byte_add(generic_ty_size);
-        std::ptr::swap_nonoverlapping(element, last_val_ptr, generic_ty_size);
+        std::ptr::copy_nonoverlapping(element, last_val_ptr, generic_ty_size);
     }
 
     let ptr_ptr = libc_malloc(size_of::<*mut ()>()).cast::<*mut c_void>();
