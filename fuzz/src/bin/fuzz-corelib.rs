@@ -37,7 +37,7 @@ fn main() {
 
             if is_builtin(param_ty) {
                 continue;
-            } else if is_supported(param_ty) {
+            } else if is_supported(param_ty, &registry) {
                 param_tys.push(param_ty)
             } else {
                 return;
@@ -48,7 +48,7 @@ fn main() {
 
         let mut values = vec![];
         for param_ty in param_tys {
-            let Ok(value) = arbitrary_value(param_ty, &mut unstructured) else {
+            let Ok(value) = arbitrary_value(param_ty, &mut unstructured, &registry) else {
                 return;
             };
             values.push(value);

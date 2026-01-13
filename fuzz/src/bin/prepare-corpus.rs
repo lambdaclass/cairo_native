@@ -44,7 +44,7 @@ fn main() {
 
                 if is_builtin(param_ty) {
                     continue;
-                } else if is_supported(param_ty) {
+                } else if is_supported(param_ty, &registry) {
                     param_tys.push(param_ty)
                 } else {
                     return None;
@@ -61,7 +61,7 @@ fn main() {
         input_file.write_all(&(idx as u64).to_le_bytes()).unwrap();
 
         for param_ty in param_tys {
-            let value = random_value(param_ty);
+            let value = random_value(param_ty, &registry);
             encode_value(&value, &mut input_file).unwrap();
         }
     }
