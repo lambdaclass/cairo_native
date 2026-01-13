@@ -2,7 +2,11 @@ use crate::{
     clone_option_mut,
     error::{panic::ToNativeAssertError, Error},
     ffi::{get_data_layout_rep, get_target_triple},
-    metadata::{gas::CostInfoProvider, runtime_bindings::RuntimeBindingsMeta, MetadataStorage},
+    metadata::{
+        gas::{CostInfoProvider, GasWallet},
+        runtime_bindings::RuntimeBindingsMeta,
+        MetadataStorage,
+    },
     module::NativeModule,
     native_assert,
     statistics::Statistics,
@@ -13,7 +17,9 @@ use cairo_lang_sierra::{
     program::Program,
     program_registry::ProgramRegistry,
 };
-use cairo_lang_sierra_to_casm::metadata::MetadataComputationConfig;
+use cairo_lang_sierra_to_casm::{
+    environment::gas_wallet::GasWallet as CairoGasWallet, metadata::MetadataComputationConfig,
+};
 use cairo_lang_sierra_type_size::ProgramRegistryInfo;
 use llvm_sys::target::{
     LLVM_InitializeAllAsmPrinters, LLVM_InitializeAllTargetInfos, LLVM_InitializeAllTargetMCs,
@@ -168,6 +174,8 @@ impl NativeContext {
         // Unwrapping here is not necessary since the insertion will only fail if there was
         // already some metadata of the same type.
         metadata.insert(cost_info_provider);
+        // GasWallet is only available if MetadataComputationConfig was provided.
+        metadata.insert(GasWallet(CairoGasWallet::Disabled));
 
         #[cfg(feature = "with-libfunc-profiling")]
         metadata.insert(crate::metadata::profiler::ProfilerMeta::new());

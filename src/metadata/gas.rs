@@ -47,7 +47,7 @@ pub struct GasMetadata {
     pub metadata: CairoGasMetadata,
     // This means that MetadataComputationConfig was provided.
     // This allows for the use of GasWallets.
-    pub gas_usage_check: bool,
+    pub check_gas_usage: bool,
 }
 
 /// The gas cost associated to a determined sierra statement.
@@ -151,7 +151,7 @@ impl GasMetadata {
         sierra_program_info: &ProgramRegistryInfo,
         config: Option<MetadataComputationConfig>,
     ) -> Result<Self, GasMetadataError> {
-        let gas_usage_check = config.is_some();
+        let check_gas_usage = config.is_some();
         let cairo_gas_metadata = if let Some(metadata_config) = config {
             calc_metadata(sierra_program, sierra_program_info, metadata_config)?
         } else {
@@ -160,7 +160,7 @@ impl GasMetadata {
 
         Ok(Self {
             metadata: cairo_gas_metadata,
-            gas_usage_check,
+            check_gas_usage,
         })
     }
 
@@ -268,17 +268,12 @@ impl GasMetadata {
     }
 }
 
-// impl From<CairoGasMetadata> for GasMetadata {
-//     fn from(value: CairoGasMetadata) -> Self {
-//         Self(value)
-//     }
-// }
-
 impl fmt::Debug for GasMetadata {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         f.debug_struct("GasMetadata")
             .field("ap_change_info", &self.metadata.ap_change_info)
             .field("gas_info", &self.metadata.gas_info)
+            .field("gas_usage_check", &self.check_gas_usage)
             .finish()
     }
 }
@@ -296,7 +291,7 @@ impl Clone for GasMetadata {
                     function_costs: self.metadata.gas_info.function_costs.clone(),
                 },
             },
-            gas_usage_check: self.gas_usage_check,
+            check_gas_usage: self.check_gas_usage,
         }
     }
 }

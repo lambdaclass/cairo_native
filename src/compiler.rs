@@ -50,7 +50,7 @@ use crate::{
     error::{panic::ToNativeAssertError, Error},
     libfuncs::{BranchArg, LibfuncBuilder, LibfuncHelper},
     metadata::{
-        gas::{CostInfoProvider, GasCost},
+        gas::{CostInfoProvider, GasCost, GasWallet},
         tail_recursion::TailRecursionMeta,
         MetadataStorage,
     },
@@ -70,6 +70,8 @@ use cairo_lang_sierra::{
     program::{Function, Invocation, Program, Statement, StatementIdx},
     program_registry::ProgramRegistry,
 };
+use cairo_lang_sierra_gas::core_libfunc_cost::core_libfunc_cost;
+use cairo_lang_sierra_to_casm::environment::gas_wallet::GasWallet as CairoGasWallet;
 use cairo_lang_utils::ordered_hash_map::OrderedHashMap;
 use itertools::Itertools;
 use melior::{
@@ -293,6 +295,24 @@ fn compile_func(
     } else {
         None
     };
+
+    if let Some(cost_info_provider) = metadata.get::<CostInfoProvider>() {
+        if cost_info_provider.gas_metadata.check_gas_usage {
+            let function_costs = cost_info_provider
+                .gas_metadata
+                .metadata
+                .gas_info
+                .function_costs
+                .get(&function.id)
+                .to_native_assert_error(&format!(
+                    "No function costs were found for function id: {}",
+                    function.id
+                ))?;
+            let gas_wallet = CairoGasWallet::Value(function_costs.clone());
+            metadata.remove::<GasWallet>();
+            metadata.insert(GasWallet(gas_wallet));
+        }
+    }
 
     let function_name = generate_function_name(&function.id, ignore_debug_names);
     // Don't care about whether it is for the contract executor for inner impls
@@ -652,6 +672,28 @@ fn compile_func(
                         &helper,
                         metadata,
                     )?;
+
+                    // Update GasWallet.
+                    if let Some(cost_info_provider) = metadata.get::<CostInfoProvider>() {
+                        let gas_changes = core_libfunc_cost(
+                            &cost_info_provider.gas_metadata.metadata.gas_info,
+                            &statement_idx,
+                            libfunc,
+                            cost_info_provider,
+                        );
+                        let gas_wallet = metadata
+                            .get_mut::<GasWallet>()
+                            .ok_or(Error::MissingMetadata)?;
+
+                        native_assert!(
+                            libfunc.branch_signatures().len() == gas_changes.len(),
+                            "The number of gas changes should be equal the number of branches."
+                        );
+
+                        for gas_change in gas_changes.into_iter() {
+                            gas_wallet.update(gas_change)?;
+                        }
+                    }
 
                     // When statistics are enabled, we iterate from the start
                     // to the end block of the compiled libfunc, and count all the operations.
