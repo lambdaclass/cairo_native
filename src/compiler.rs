@@ -154,6 +154,26 @@ pub fn compile(
 
     for function in &program.funcs {
         tracing::info!("Compiling function `{}`.", function.id);
+        
+        if let Some(cost_info_provider) = metadata.get::<CostInfoProvider>() {
+            if cost_info_provider.gas_metadata.check_gas_usage {
+                let function_costs = cost_info_provider
+                    .gas_metadata
+                    .metadata
+                    .gas_info
+                    .function_costs
+                    .get(&function.id)
+                    .to_native_assert_error(&format!(
+                        "No function costs were found for function id: {}",
+                        function.id
+                    ))?;
+
+                let gas_wallet = CairoGasWallet::Value(function_costs.clone());
+                metadata.remove::<GasWallet>();
+                metadata.insert(GasWallet(gas_wallet));
+            }
+        }
+
         compile_func(
             context,
             module,
@@ -294,25 +314,6 @@ fn compile_func(
     } else {
         None
     };
-
-    if let Some(cost_info_provider) = metadata.get::<CostInfoProvider>() {
-        if cost_info_provider.gas_metadata.check_gas_usage {
-            let function_costs = cost_info_provider
-                .gas_metadata
-                .metadata
-                .gas_info
-                .function_costs
-                .get(&function.id)
-                .to_native_assert_error(&format!(
-                    "No function costs were found for function id: {}",
-                    function.id
-                ))?;
-
-            let gas_wallet = CairoGasWallet::Value(function_costs.clone());
-            metadata.remove::<GasWallet>();
-            metadata.insert(GasWallet(gas_wallet));
-        }
-    }
 
     let function_name = generate_function_name(&function.id, ignore_debug_names);
     // Don't care about whether it is for the contract executor for inner impls
@@ -474,7 +475,7 @@ fn compile_func(
     ));
 
     let mut tailrec_state = Option::<(Value, BlockRef)>::None;
-    
+
     foreach_statement_in_function::<_, Error>(
         statements,
         function.entry_point,
@@ -690,10 +691,8 @@ fn compile_func(
                             libfunc.branch_signatures().len() == gas_changes.len(),
                             "The number of gas changes should be equal the number of branches."
                         );
-
-                        for gas_change in gas_changes.into_iter() {
-                            gas_wallet.update(gas_change)?;
-                        }
+                        
+                        gas_wallet.update(gas_changes.get(0).unwrap().clone())?;
                     }
 
                     // When statistics are enabled, we iterate from the start
