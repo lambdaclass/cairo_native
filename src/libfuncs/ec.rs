@@ -536,7 +536,10 @@ pub fn build_zero<'ctx, 'this>(
 mod test {
     use crate::{
         jit_enum, jit_struct, load_cairo,
-        utils::testing::{run_program, run_program_assert_output},
+        utils::{
+            testing::{run_program, run_program_assert_output},
+            PRIME,
+        },
         values::Value,
     };
     use cairo_lang_sierra::program::Program;
@@ -676,6 +679,22 @@ mod test {
         assert_eq!(
             r(1.into(), 1.into()),
             Value::EcPoint(1.into(), Felt::from(-1))
+        );
+        assert_eq!(
+            r(1.into(), Felt::from(-1)),
+            Value::EcPoint(1.into(), Felt::from(1))
+        );
+        assert_eq!(
+            r(Felt::from(-1), Felt::from(-1)),
+            Value::EcPoint(Felt::from(-1), Felt::from(1))
+        );
+        assert_eq!(
+            r(1.into(), Felt::from(PRIME.clone())),
+            Value::EcPoint(1.into(), -Felt::from(PRIME.clone()))
+        );
+        assert_eq!(
+            r(1.into(), -Felt::from(PRIME.clone())),
+            Value::EcPoint(1.into(), Felt::from(PRIME.clone()))
         );
     }
 
