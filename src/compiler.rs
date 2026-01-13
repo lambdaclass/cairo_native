@@ -50,7 +50,7 @@ use crate::{
     error::{panic::ToNativeAssertError, Error},
     libfuncs::{BranchArg, LibfuncBuilder, LibfuncHelper},
     metadata::{
-        gas::{CostInfoProvider, GasCost, GasWallet},
+        gas::{calculate_gas_changes, CostInfoProvider, GasCost, GasWallet},
         tail_recursion::TailRecursionMeta,
         MetadataStorage,
     },
@@ -70,7 +70,6 @@ use cairo_lang_sierra::{
     program::{Function, Invocation, Program, Statement, StatementIdx},
     program_registry::ProgramRegistry,
 };
-use cairo_lang_sierra_gas::core_libfunc_cost::core_libfunc_cost;
 use cairo_lang_sierra_to_casm::environment::gas_wallet::GasWallet as CairoGasWallet;
 use cairo_lang_utils::ordered_hash_map::OrderedHashMap;
 use itertools::Itertools;
@@ -308,6 +307,7 @@ fn compile_func(
                     "No function costs were found for function id: {}",
                     function.id
                 ))?;
+
             let gas_wallet = CairoGasWallet::Value(function_costs.clone());
             metadata.remove::<GasWallet>();
             metadata.insert(GasWallet(gas_wallet));
@@ -474,6 +474,7 @@ fn compile_func(
     ));
 
     let mut tailrec_state = Option::<(Value, BlockRef)>::None;
+    
     foreach_statement_in_function::<_, Error>(
         statements,
         function.entry_point,
@@ -675,7 +676,7 @@ fn compile_func(
 
                     // Update GasWallet.
                     if let Some(cost_info_provider) = metadata.get::<CostInfoProvider>() {
-                        let gas_changes = core_libfunc_cost(
+                        let gas_changes = calculate_gas_changes(
                             &cost_info_provider.gas_metadata.metadata.gas_info,
                             &statement_idx,
                             libfunc,

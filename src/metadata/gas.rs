@@ -14,6 +14,7 @@ use cairo_lang_runner::token_gas_cost;
 use cairo_lang_sierra::{
     extensions::{
         circuit::CircuitInfo,
+        core::CoreConcreteLibfunc,
         gas::{CostTokenMap, CostTokenType},
     },
     ids::{ConcreteTypeId, FunctionId},
@@ -21,7 +22,9 @@ use cairo_lang_sierra::{
 };
 use cairo_lang_sierra_ap_change::{ap_change_info::ApChangeInfo, ApChangeError};
 use cairo_lang_sierra_gas::{
-    core_libfunc_cost::InvocationCostInfoProvider, gas_info::GasInfo, CostError,
+    core_libfunc_cost::{core_libfunc_cost, InvocationCostInfoProvider},
+    gas_info::GasInfo,
+    CostError,
 };
 use cairo_lang_sierra_to_casm::{
     circuit::CircuitsInfo,
@@ -32,7 +35,7 @@ use cairo_lang_sierra_to_casm::{
     },
 };
 use cairo_lang_sierra_type_size::ProgramRegistryInfo;
-use cairo_lang_utils::unordered_hash_map::UnorderedHashMap;
+use cairo_lang_utils::{small_ordered_map::SmallOrderedMap, unordered_hash_map::UnorderedHashMap};
 
 use crate::{
     error::{panic::ToNativeAssertError, Error, Result as NativeResult},
@@ -62,7 +65,7 @@ pub struct GasWallet(pub CairoGasWallet);
 
 impl GasWallet {
     pub fn update(&mut self, gas_changes: CostTokenMap<i64>) -> Result<(), GasWalletError> {
-        self.0.update(gas_changes)?;
+        self.0 = self.0.update(gas_changes)?;
 
         Ok(())
     }
@@ -74,7 +77,7 @@ pub struct CostInfoProvider {
     circuits_info: CircuitsInfo,
     pub gas_metadata: GasMetadata,
     // Current statement id.
-    idx: Cell<StatementIdx>,
+    pub idx: Cell<StatementIdx>,
 }
 
 impl CostInfoProvider {
@@ -266,6 +269,28 @@ impl GasMetadata {
             .copied()
             .map(|x| x.try_into().expect("gas cost couldn't be converted to u64"))
     }
+}
+
+/// Utility function to calculate gas changes based on a libfunc and the statement's id.
+pub fn calculate_gas_changes(
+    gas_info: &GasInfo,
+    statement_idx: &StatementIdx,
+    libfunc: &CoreConcreteLibfunc,
+    cost_info_provider: &CostInfoProvider,
+) -> Vec<SmallOrderedMap<CostTokenType, i64>> {
+    let changes = core_libfunc_cost(gas_info, statement_idx, libfunc, cost_info_provider);
+    // The gas statement need to be process before they can be used.
+    // This is how it's done in cairo:
+    //  https://github.com/starkware-libs/cairo/blob/main/crates/cairo-lang-sierra-to-casm/src/invocations/mod.rs#L468
+    changes
+        .iter()
+        .map(|change| {
+            change
+                .iter()
+                .map(|(token_type, val)| (*token_type, -val))
+                .collect()
+        })
+        .collect()
 }
 
 impl fmt::Debug for GasMetadata {
