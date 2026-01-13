@@ -55,7 +55,7 @@ criterion = "0.5.1"
 itertools = "0.14.0"
 k256 = "0.13.4"
 keccak = "0.1.5"
-lambdaworks-math = "0.11.0"
+lambdaworks-math = "0.13.0"
 lazy_static = "1.5"
 libc = "0.2"
 libloading = "0.8.6"
@@ -81,7 +81,7 @@ sierra-emu = { path = "debug_utils/sierra-emu", version = "0.9.0-rc.0" }
 smallvec = "1.13.2"
 starknet-crypto = "0.8.1"
 starknet-curve = "0.6.0"
-starknet-types-core = "0.2.0"
+starknet-types-core = { version = "0.2.3", features = ["hash"]}
 stats_alloc = "0.1.10"
 tempfile = "3.15.0"
 test-case = "3.3"
@@ -173,6 +173,7 @@ sha2.workspace = true
 # Runtime library dependencies.
 rand.workspace = true
 starknet-curve.workspace = true
+lambdaworks-math.workspace = true
 
 [dev-dependencies]
 cairo-lang-compiler.workspace = true
