@@ -3,37 +3,39 @@ use crate::common::{
 };
 use cairo_lang_runner::{Arg, SierraCasmRunner};
 use cairo_lang_sierra::program::Program;
-use cairo_native::{starknet::DummySyscallHandler, Value};
+use cairo_native::{include_program, starknet::DummySyscallHandler, Value};
 use lazy_static::lazy_static;
 use proptest::prelude::*;
 use starknet_types_core::felt::Felt;
 
 lazy_static! {
-    static ref DICT_GET_INSERT: (String, Program, SierraCasmRunner) = load_cairo! {
-        use traits::Default;
-        use dict::Felt252DictTrait;
-
-        fn run_test(key: felt252, val: felt252) -> felt252 {
-            let mut dict: Felt252Dict<felt252> = Default::default();
-            dict.insert(key, val);
-            dict.get(key)
-        }
+    static ref DICT_GET_INSERT: (String, Program, SierraCasmRunner) = {
+        let versioned_program =
+            include_program!("test_data_artifacts/programs/dict_get_insert.sierra.json");
+        let program = versioned_program.into_v1().unwrap().program;
+        let module_name = "dict_get_insert".to_string();
+        let runner = SierraCasmRunner::new(
+            program.clone(),
+            Some(Default::default()),
+            Default::default(),
+            None,
+        )
+        .unwrap();
+        (module_name, program, runner)
     };
-    static ref SNAPSHOT_LOOP: (String, Program, SierraCasmRunner) = load_cairo! {
-        use core::dict::Felt252Dict;
-
-        fn run_test() {
-            let mut dict: Felt252Dict<u64> = Default::default();
-
-            for number in 0..50_u64 {
-                let snapshot = @dict;
-
-                let key = number.try_into().unwrap();
-                dict.insert(key, number);
-
-                drop(snapshot)
-            }
-        }
+    static ref SNAPSHOT_LOOP: (String, Program, SierraCasmRunner) = {
+        let versioned_program =
+            include_program!("test_data_artifacts/programs/snapshot_loop.sierra.json");
+        let program = versioned_program.into_v1().unwrap().program;
+        let module_name = "snapshot_loop".to_string();
+        let runner = SierraCasmRunner::new(
+            program.clone(),
+            Some(Default::default()),
+            Default::default(),
+            None,
+        )
+        .unwrap();
+        (module_name, program, runner)
     };
 }
 

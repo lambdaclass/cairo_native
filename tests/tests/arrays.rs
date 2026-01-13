@@ -1,51 +1,29 @@
+use std::default;
+
 use crate::common::{any_felt, load_cairo, run_native_program, run_vm_program};
 use crate::common::{compare_outputs, DEFAULT_GAS};
 use cairo_lang_runner::{Arg, SierraCasmRunner};
 use cairo_lang_sierra::program::Program;
 use cairo_native::starknet::DummySyscallHandler;
-use cairo_native::Value;
+use cairo_native::{include_program, Value};
 use lazy_static::lazy_static;
 use proptest::prelude::*;
 use starknet_types_core::felt::Felt;
 
 lazy_static! {
-    static ref ARRAY_GET: (String, Program, SierraCasmRunner) = load_cairo! {
-        use array::ArrayTrait;
-        use traits::TryInto;
-        use core::option::OptionTrait;
-
-        fn run_test(value: felt252, idx: felt252) -> felt252 {
-            let mut numbers: Array<felt252> = ArrayTrait::new();
-
-            numbers.append(value);
-            numbers.append(value);
-            numbers.append(value);
-            numbers.append(value);
-            numbers.append(value);
-            numbers.append(value);
-            numbers.append(value);
-            numbers.append(value);
-            numbers.append(value);
-            numbers.append(value);
-            numbers.append(value);
-            numbers.append(value);
-            numbers.append(value);
-            numbers.append(value);
-            numbers.append(value);
-            numbers.append(value);
-            numbers.append(value);
-            numbers.append(value);
-            numbers.append(value);
-            numbers.append(value);
-            numbers.append(value);
-            numbers.append(value);
-            numbers.append(value);
-            numbers.append(value);
-            numbers.append(value);
-            numbers.append(value);
-            numbers.append(value);
-            *numbers.at(idx.try_into().unwrap())
-        }
+    static ref ARRAY_GET: (String, Program, SierraCasmRunner) = {
+        let versioned_program =
+            include_program!("test_data_artifacts/programs/array_get.sierra.json");
+        let program = versioned_program.into_v1().unwrap().program;
+        let module_name = "array_get".to_string();
+        let runner = SierraCasmRunner::new(
+            program.clone(),
+            Some(Default::default()),
+            Default::default(),
+            None,
+        )
+        .unwrap();
+        (module_name, program, runner)
     };
 }
 
