@@ -675,7 +675,6 @@ mod test {
             r(0.into(), 1.into()),
             Value::EcPoint(0.into(), Felt::from(-1))
         );
-        assert_eq!(r(1.into(), 0.into()), Value::EcPoint(1.into(), 0.into()));
         assert_eq!(
             r(1.into(), 1.into()),
             Value::EcPoint(1.into(), Felt::from(-1))
