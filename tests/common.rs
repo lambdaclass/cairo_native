@@ -944,3 +944,26 @@ pub fn any_felt() -> impl Strategy<Value = Felt> {
 pub fn nonzero_felt() -> impl Strategy<Value = Felt> {
     any_felt().prop_filter("is zero", |x| x != &Felt::ZERO)
 }
+
+// TODO: Think a better name
+pub fn get_compiled_program(name: &str) -> (String, Program, SierraCasmRunner) {
+    let program_path = format!(
+        "{}/test_data_artifacts/programs/{}.sierra.json",
+        env!("CARGO_MANIFEST_DIR"),
+        name
+    );
+    let program_content = fs::read_to_string(program_path)
+        .expect("Failed to read the content of the program into a String");
+    let versioned_program =
+        serde_json::from_str::<cairo_lang_sierra::program::VersionedProgram>(&program_content)
+            .unwrap();
+    let program = versioned_program.into_v1().unwrap().program;
+    let runner = SierraCasmRunner::new(
+        program.clone(),
+        Some(Default::default()),
+        Default::default(),
+        None,
+    )
+    .unwrap();
+    (name.to_string(), program, runner)
+}

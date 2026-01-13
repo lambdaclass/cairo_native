@@ -1,108 +1,95 @@
 use crate::common::{compare_outputs, load_cairo, run_native_program, run_vm_program, DEFAULT_GAS};
 use cairo_lang_runner::{Arg, SierraCasmRunner};
 use cairo_lang_sierra::program::Program;
-use cairo_native::{starknet::DummySyscallHandler, Value};
+use cairo_native::{include_program, starknet::DummySyscallHandler, Value};
 use lazy_static::lazy_static;
 use proptest::prelude::*;
 use starknet_types_core::felt::Felt;
 
 lazy_static! {
-    static ref FELT252_TO_BOOL: (String, Program, SierraCasmRunner) = load_cairo! {
-        use array::ArrayTrait;
-
-        fn felt_to_bool(x: felt252) -> bool {
-            x == 1
-        }
-
-        fn run_test(a: felt252) -> bool {
-            felt_to_bool(a)
-        }
+    static ref FELT252_TO_BOOL: (String, Program, SierraCasmRunner) = {
+        let versioned_program =
+            include_program!("test_data_artifacts/programs/felt252_to_bool.sierra.json");
+        let program = versioned_program.into_v1().unwrap().program;
+        let module_name = "felt252_to_bool".to_string();
+        let runner = SierraCasmRunner::new(
+            program.clone(),
+            Some(Default::default()),
+            Default::default(),
+            None,
+        )
+        .unwrap();
+        (module_name, program, runner)
     };
-    static ref BOOL_NOT: (String, Program, SierraCasmRunner) = load_cairo! {
-        use array::ArrayTrait;
-        use traits::TryInto;
-        use core::option::OptionTrait;
-
-        fn felt_to_bool(x: felt252) -> bool {
-            x.try_into().unwrap() == 1_u8
-        }
-
-        fn program(a: bool) -> bool {
-            !a
-        }
-
-        fn run_test(a: felt252) -> bool {
-            program(felt_to_bool(a))
-        }
+    static ref BOOL_NOT: (String, Program, SierraCasmRunner) = {
+        let versioned_program =
+            include_program!("test_data_artifacts/programs/bool_not.sierra.json");
+        let program = versioned_program.into_v1().unwrap().program;
+        let module_name = "bool_not".to_string();
+        let runner = SierraCasmRunner::new(
+            program.clone(),
+            Some(Default::default()),
+            Default::default(),
+            None,
+        )
+        .unwrap();
+        (module_name, program, runner)
     };
-    static ref BOOL_AND: (String, Program, SierraCasmRunner) = load_cairo! {
-        use array::ArrayTrait;
-        use traits::TryInto;
-        use core::option::OptionTrait;
-
-        fn felt_to_bool(x: felt252) -> bool {
-            x.try_into().unwrap() == 1_u8
-        }
-
-        fn program(a: bool, b: bool) -> bool {
-            a && b
-        }
-
-        fn run_test(a: felt252, b: felt252) -> bool {
-            program(felt_to_bool(a), felt_to_bool(b))
-        }
+    static ref BOOL_AND: (String, Program, SierraCasmRunner) = {
+        let versioned_program =
+            include_program!("test_data_artifacts/programs/bool_and.sierra.json");
+        let program = versioned_program.into_v1().unwrap().program;
+        let module_name = "bool_and".to_string();
+        let runner = SierraCasmRunner::new(
+            program.clone(),
+            Some(Default::default()),
+            Default::default(),
+            None,
+        )
+        .unwrap();
+        (module_name, program, runner)
     };
-    static ref BOOL_OR: (String, Program, SierraCasmRunner) = load_cairo! {
-        use array::ArrayTrait;
-        use traits::TryInto;
-        use core::option::OptionTrait;
-
-        fn felt_to_bool(x: felt252) -> bool {
-            x.try_into().unwrap() == 1_u8
-        }
-
-        fn program(a: bool, b: bool) -> bool {
-            a || b
-        }
-
-        fn run_test(a: felt252, b: felt252) -> bool {
-            program(felt_to_bool(a), felt_to_bool(b))
-        }
+    static ref BOOL_OR: (String, Program, SierraCasmRunner) = {
+        let versioned_program =
+            include_program!("test_data_artifacts/programs/bool_or.sierra.json");
+        let program = versioned_program.into_v1().unwrap().program;
+        let module_name = "bool_or".to_string();
+        let runner = SierraCasmRunner::new(
+            program.clone(),
+            Some(Default::default()),
+            Default::default(),
+            None,
+        )
+        .unwrap();
+        (module_name, program, runner)
     };
-    static ref BOOL_XOR: (String, Program, SierraCasmRunner) = load_cairo! {
-        use array::ArrayTrait;
-        use traits::TryInto;
-        use core::option::OptionTrait;
-
-        fn felt_to_bool(x: felt252) -> bool {
-            x.try_into().unwrap() == 1_u8
-        }
-
-        fn program(a: bool, b: bool) -> bool {
-            a ^ b
-        }
-
-        fn run_test(a: felt252, b: felt252) -> bool {
-            program(felt_to_bool(a), felt_to_bool(b))
-        }
+    static ref BOOL_XOR: (String, Program, SierraCasmRunner) = {
+        let versioned_program =
+            include_program!("test_data_artifacts/programs/bool_xor.sierra.json");
+        let program = versioned_program.into_v1().unwrap().program;
+        let module_name = "bool_xor".to_string();
+        let runner = SierraCasmRunner::new(
+            program.clone(),
+            Some(Default::default()),
+            Default::default(),
+            None,
+        )
+        .unwrap();
+        (module_name, program, runner)
     };
-    static ref BOOL_TO_FELT252: (String, Program, SierraCasmRunner) = load_cairo! {
-        use array::ArrayTrait;
-        use core::bool_to_felt252;
-        use traits::TryInto;
-        use core::option::OptionTrait;
-
-        fn felt_to_bool(x: felt252) -> bool {
-            x.try_into().unwrap() == 1_u8
-        }
-
-        fn program(a: bool) -> felt252 {
-            bool_to_felt252(a)
-        }
-
-        fn run_test(a: felt252) -> felt252 {
-            program(felt_to_bool(a))
-        }
+    static ref BOOL_TO_FELT252: (String, Program, SierraCasmRunner) = {
+        let versioned_program =
+            include_program!("test_data_artifacts/programs/bool_to_felt252.sierra.json");
+        let program = versioned_program.into_v1().unwrap().program;
+        let module_name = "bool_to_felt252".to_string();
+        let runner = SierraCasmRunner::new(
+            program.clone(),
+            Some(Default::default()),
+            Default::default(),
+            None,
+        )
+        .unwrap();
+        (module_name, program, runner)
     };
 }
 
