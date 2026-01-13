@@ -68,7 +68,7 @@ test: check-llvm
 
 .PHONY: test-cairo
 test-cairo: check-llvm
-	bash ./test_utils/test_cairo.sh
+	bash ./scripts/test_cairo.sh
 
 .PHONY: proptest
 proptest: check-llvm
@@ -190,8 +190,8 @@ install-scarb-macos:
 
 .PHONY: pull-external-projects
 pull-external-projects:
-	python3 ./test_utils/pull_external_projects.py v${CAIRO_2_VERSION}
+	python3 ./scripts/pull_external_projects.py v${CAIRO_2_VERSION}
 
 .PHONY: compile-test-data
 compile-test-data:
-	python3 ./test_utils/compile_test_data.py
+	python3 ./scripts/compile_test_data.py
