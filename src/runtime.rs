@@ -9,6 +9,7 @@ use cairo_lang_sierra_gas::core_libfunc_cost::{
     DICT_SQUASH_REPEATED_ACCESS_COST, DICT_SQUASH_UNIQUE_KEY_COST,
 };
 use itertools::Itertools;
+use lambdaworks_math::field::fields::mersenne31::extensions::Degree4ExtensionField;
 use lazy_static::lazy_static;
 use num_bigint::BigInt;
 use num_traits::{ToPrimitive, Zero};
@@ -18,6 +19,7 @@ use starknet_types_core::{
     curve::{AffinePoint, ProjectivePoint},
     felt::Felt,
     hash::StarkHash,
+    qm31::QM31,
 };
 use std::{
     alloc::{dealloc, realloc, Layout},
@@ -704,6 +706,100 @@ pub unsafe extern "C" fn cairo_native__libfunc__ec__ec_state_try_finalize_nz(
     }
 }
 
+/// Compute `qm31_add(qm31, qm31)` and store the result.
+///
+/// # Safety
+///
+/// This function is intended to be called from MLIR, deals with pointers, and is therefore
+/// definitely unsafe to use manually.
+pub unsafe extern "C" fn cairo_native__libfunc__qm31__qm31_add(
+    lhs: &[u32; 4],
+    rhs: &[u32; 4],
+    res: &mut [u32; 4],
+) {
+    // We can use this way of creating the QM31 since we already know from cairo that the
+    // coefficients will never be more than 31 bits wide
+    let lhs = QM31(Degree4ExtensionField::const_from_coefficients(
+        lhs[0], lhs[1], lhs[2], lhs[3],
+    ));
+    let rhs = QM31(Degree4ExtensionField::const_from_coefficients(
+        rhs[0], rhs[1], rhs[2], rhs[3],
+    ));
+
+    *res = qm31_to_representative_coefficients(lhs + rhs);
+}
+
+/// Compute `qm31_sub(qm31, qm31)` and store the result.
+///
+/// # Safety
+///
+/// This function is intended to be called from MLIR, deals with pointers, and is therefore
+/// definitely unsafe to use manually.
+pub unsafe extern "C" fn cairo_native__libfunc__qm31__qm31_sub(
+    lhs: &[u32; 4],
+    rhs: &[u32; 4],
+    res: &mut [u32; 4],
+) {
+    // We can use this way of creating the QM31 since we already know from cairo that the
+    // coefficients will never be more than 31 bits wide
+    let lhs = QM31(Degree4ExtensionField::const_from_coefficients(
+        lhs[0], lhs[1], lhs[2], lhs[3],
+    ));
+    let rhs = QM31(Degree4ExtensionField::const_from_coefficients(
+        rhs[0], rhs[1], rhs[2], rhs[3],
+    ));
+
+    *res = qm31_to_representative_coefficients(lhs - rhs);
+}
+
+/// Compute `qm31_mul(qm31, qm31)` and store the result.
+///
+/// # Safety
+///
+/// This function is intended to be called from MLIR, deals with pointers, and is therefore
+/// definitely unsafe to use manually.
+pub unsafe extern "C" fn cairo_native__libfunc__qm31__qm31_mul(
+    lhs: &[u32; 4],
+    rhs: &[u32; 4],
+    res: &mut [u32; 4],
+) {
+    // We can use this way of creating the QM31 since we already know from cairo that the
+    // coefficients will never be more than 31 bits wide
+    let lhs = QM31(Degree4ExtensionField::const_from_coefficients(
+        lhs[0], lhs[1], lhs[2], lhs[3],
+    ));
+    let rhs = QM31(Degree4ExtensionField::const_from_coefficients(
+        rhs[0], rhs[1], rhs[2], rhs[3],
+    ));
+
+    *res = qm31_to_representative_coefficients(lhs * rhs);
+}
+
+/// Compute `qm31_div(qm31, qm31)` and store the result.
+///
+/// # Safety
+///
+/// This function is intended to be called from MLIR, deals with pointers, and is therefore
+/// definitely unsafe to use manually.
+pub unsafe extern "C" fn cairo_native__libfunc__qm31__qm31_div(
+    lhs: &[u32; 4],
+    rhs: &[u32; 4],
+    res: &mut [u32; 4],
+) {
+    // We can use this way of creating the QM31 since we already know from cairo that the
+    // coefficients will never be more than 31 bits wide
+    let lhs = QM31(Degree4ExtensionField::const_from_coefficients(
+        lhs[0], lhs[1], lhs[2], lhs[3],
+    ));
+    let rhs = QM31(Degree4ExtensionField::const_from_coefficients(
+        rhs[0], rhs[1], rhs[2], rhs[3],
+    ));
+
+    // SAFETY: An error would be triggered here only if rhs is zero. However, in the QM31 division libfunc, the divisor
+    // is of type NonZero<qm31> which ensures that we are not falling into the error case.
+    *res = qm31_to_representative_coefficients((lhs / rhs).expect("rhs should not be a QM31 0"));
+}
+
 thread_local! {
     pub(crate) static BUILTIN_COSTS: Cell<BuiltinCosts> = const {
         // These default values shouldn't be accessible, they will be overriden before entering
@@ -718,6 +814,25 @@ thread_local! {
             mul_mod: 0,
         })
     };
+}
+
+// TODO: This is already implemented on types-rs but there is no release
+// that contains it. It should be deleted when bumping to a new version
+// and use the .to_coefficients() method from QM31 instead.
+pub fn qm31_to_representative_coefficients(qm31: QM31) -> [u32; 4] {
+    // Take CM31 coordinates from QM31.
+    let [a, b] = qm31.0.value();
+
+    // Take M31 coordinates from both CM31.
+    let [c1, c2] = a.value();
+    let [c3, c4] = b.value();
+
+    [
+        c1.representative(),
+        c2.representative(),
+        c3.representative(),
+        c4.representative(),
+    ]
 }
 
 /// Get the costs builtin from the internal thread local.
