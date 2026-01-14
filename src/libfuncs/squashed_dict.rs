@@ -370,6 +370,7 @@ mod test {
     }
 
     #[test]
+    /// Primarily to see if there are no double frees when dropping a snapshot of the same dictionary
     fn test_into_entries_with_snapshot() {
         let result = run_program(
             &INTO_ENTRIES_WITH_SNAPSHOT,
