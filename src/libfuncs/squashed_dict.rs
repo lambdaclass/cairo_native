@@ -94,7 +94,7 @@ pub fn build_into_entries<'ctx, 'this>(
 
 #[cfg(test)]
 mod test {
-    use crate::{jit_struct, load_cairo, utils::testing::run_program, Value};
+    use crate::{jit_enum, jit_struct, load_cairo, utils::testing::run_program, Value};
     use cairo_lang_sierra::program::Program;
     use lazy_static::lazy_static;
 
@@ -151,18 +151,60 @@ mod test {
                 dict.squash().into_entries()
             }
         };
-        static ref SNAPSHOT_WITH_INTO_ENTRIES: (String, Program) = load_cairo! {
+        static ref INTO_ENTRIES_ARRAY_VALUES: (String, Program) = load_cairo! {
+            use core::nullable::NullableTrait;
             use core::dict::{Felt252Dict, Felt252DictEntryTrait, SquashedFelt252DictTrait};
 
-            fn snapshot_with_into_entries() -> Array<(felt252, u8, u8)> {
-                let mut dict: Felt252Dict<u8> = Default::default();
-                dict.insert(0, 0);
-                dict.insert(1, 1);
-                dict.insert(2, 2);
+            fn into_entries_array_values() -> Array<(felt252, Nullable<Array<u8>>, Nullable<Array<u8>>)> {
+                let arr0 = array![1, 2, 3];
+                let arr1 = array![4, 5, 6];
+                let arr2 = array![7, 8, 9];
+
+                let mut dict: Felt252Dict<Nullable<Array<u8>>> = Default::default();
+                dict.insert(0, NullableTrait::new(arr0));
+                dict.insert(1, NullableTrait::new(arr1));
+                dict.insert(2, NullableTrait::new(arr2));
+
+                dict.squash().into_entries()
+            }
+        };
+        static ref INTO_ENTRIES_USE_ARRAY_VALUES: (String, Program) = load_cairo! {
+            use core::nullable::NullableTrait;
+            use core::dict::{Felt252Dict, Felt252DictEntryTrait, SquashedFelt252DictTrait};
+
+            fn into_entries_use_array_values() -> u8 {
+                let arr0 = array![1, 2, 3];
+                let arr1 = array![4, 5, 6];
+                let arr2 = array![7, 8, 9];
+
+                let mut dict: Felt252Dict<Nullable<Array<u8>>> = Default::default();
+                dict.insert(0, NullableTrait::new(arr0));
+                dict.insert(1, NullableTrait::new(arr1));
+                dict.insert(2, NullableTrait::new(arr2));
+
+                let mut entries_array = dict.squash().into_entries();
+
+                let (_key, _prev, value) = entries_array.pop_front().unwrap();
+                let mut arr = value.deref();
+                let one = arr.pop_front().unwrap();
+                one
+            }
+        };
+        static ref INTO_ENTRIES_WITH_SNAPSHOT: (String, Program) = load_cairo! {
+            use core::nullable::NullableTrait;
+            use core::dict::{Felt252Dict, Felt252DictEntryTrait, SquashedFelt252DictTrait};
+
+            fn into_entries_with_snapshot() -> Array<(felt252, Nullable<Array<u8>>, Nullable<Array<u8>>)> {
+                let arr0 = array![1, 2, 3];
+
+                let mut dict: Felt252Dict<Nullable<Array<u8>>> = Default::default();
+                dict.insert(0, NullableTrait::new(arr0));
+
                 let dict_snapshot = @dict;
-                let squashed_dict = dict.squash().into_entries();
+                let dict_squash = dict.squash().into_entries();
                 drop(dict_snapshot);
-                squashed_dict
+
+                dict_squash
             }
         };
     }
@@ -285,25 +327,64 @@ mod test {
     }
 
     #[test]
-    fn test_snapshot_with_into_entries() {
+    fn test_into_entries_u8_array_values() {
+        let result =
+            run_program(&INTO_ENTRIES_ARRAY_VALUES, "into_entries_array_values", &[]).return_value;
+        if let Value::Array(arr) = result {
+            assert_eq!(
+                arr[0],
+                jit_struct!(
+                    Value::Felt252(0.into()),
+                    Value::Null,
+                    Value::Array(vec![Value::Uint8(1), Value::Uint8(2), Value::Uint8(3)])
+                )
+            );
+            assert_eq!(
+                arr[1],
+                jit_struct!(
+                    Value::Felt252(1.into()),
+                    Value::Null,
+                    Value::Array(vec![Value::Uint8(4), Value::Uint8(5), Value::Uint8(6)])
+                )
+            );
+            assert_eq!(
+                arr[2],
+                jit_struct!(
+                    Value::Felt252(2.into()),
+                    Value::Null,
+                    Value::Array(vec![Value::Uint8(7), Value::Uint8(8), Value::Uint8(9)])
+                )
+            );
+        }
+    }
+
+    #[test]
+    fn test_into_entries_use_values_from_array() {
         let result = run_program(
-            &SNAPSHOT_WITH_INTO_ENTRIES,
-            "snapshot_with_into_entries",
+            &INTO_ENTRIES_USE_ARRAY_VALUES,
+            "into_entries_use_array_values",
+            &[],
+        )
+        .return_value;
+        assert_eq!(result, jit_enum!(0, jit_struct!(Value::Uint8(1))));
+    }
+
+    #[test]
+    fn test_into_entries_with_snapshot() {
+        let result = run_program(
+            &INTO_ENTRIES_WITH_SNAPSHOT,
+            "into_entries_with_snapshot",
             &[],
         )
         .return_value;
         if let Value::Array(arr) = result {
             assert_eq!(
                 arr[0],
-                jit_struct!(Value::Felt252(0.into()), Value::Uint8(0), Value::Uint8(0))
-            );
-            assert_eq!(
-                arr[1],
-                jit_struct!(Value::Felt252(1.into()), Value::Uint8(0), Value::Uint8(1))
-            );
-            assert_eq!(
-                arr[2],
-                jit_struct!(Value::Felt252(2.into()), Value::Uint8(0), Value::Uint8(2))
+                jit_struct!(
+                    Value::Felt252(0.into()),
+                    Value::Null,
+                    Value::Array(vec![Value::Uint8(1), Value::Uint8(2), Value::Uint8(3)])
+                )
             );
         }
     }
