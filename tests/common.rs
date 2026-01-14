@@ -59,6 +59,18 @@ use proptest::{strategy::Strategy, test_runner::TestCaseError};
 use starknet_types_core::felt::Felt;
 use std::{collections::HashMap, env::var, fs, ops::Neg, path::Path};
 
+// TODO: Check how to properly import it
+#[macro_export]
+macro_rules! include_program {
+    ( $path:expr ) => {
+        serde_json::from_str::<cairo_lang_sierra::program::VersionedProgram>(include_str!(concat!(
+            env!("CARGO_MANIFEST_DIR"),
+            "/",
+            $path
+        )))
+        .unwrap()
+    };
+}
 #[allow(unused_macros)]
 macro_rules! load_cairo {
     ( $( $program:tt )+ ) => {
@@ -946,18 +958,10 @@ pub fn nonzero_felt() -> impl Strategy<Value = Felt> {
 }
 
 // TODO: Think a better name
-pub fn get_compiled_program(name: &str) -> (String, Program, SierraCasmRunner) {
-    let program_path = format!(
-        "{}/test_data_artifacts/programs/{}.sierra.json",
-        env!("CARGO_MANIFEST_DIR"),
-        name
-    );
-    let program_content = fs::read_to_string(program_path)
-        .expect("Failed to read the content of the program into a String");
-    let versioned_program =
-        serde_json::from_str::<cairo_lang_sierra::program::VersionedProgram>(&program_content)
-            .unwrap();
+pub fn get_compiled_program(path: &str) -> (String, Program, SierraCasmRunner) {
+    let versioned_program = include_program!("test_data_artifacts/programs/array_get.sierra.json");
     let program = versioned_program.into_v1().unwrap().program;
+    let module_name = "array_get".to_string();
     let runner = SierraCasmRunner::new(
         program.clone(),
         Some(Default::default()),
@@ -965,5 +969,5 @@ pub fn get_compiled_program(name: &str) -> (String, Program, SierraCasmRunner) {
         None,
     )
     .unwrap();
-    (name.to_string(), program, runner)
+    (module_name, program, runner)
 }
