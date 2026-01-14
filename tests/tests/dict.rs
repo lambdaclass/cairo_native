@@ -1,48 +1,16 @@
 use crate::common::{
-    any_felt, compare_outputs, load_cairo, run_native_program, run_vm_program, DEFAULT_GAS,
+    any_felt, compare_outputs, get_compiled_program, run_native_program, run_vm_program,
+    DEFAULT_GAS,
 };
-use cairo_lang_runner::{Arg, SierraCasmRunner};
-use cairo_lang_sierra::program::Program;
-use cairo_native::{include_program, starknet::DummySyscallHandler, Value};
-use lazy_static::lazy_static;
+use cairo_lang_runner::Arg;
+use cairo_native::{starknet::DummySyscallHandler, Value};
 use proptest::prelude::*;
 use starknet_types_core::felt::Felt;
-
-lazy_static! {
-    static ref DICT_GET_INSERT: (String, Program, SierraCasmRunner) = {
-        let versioned_program =
-            include_program!("test_data_artifacts/programs/dict_get_insert.sierra.json");
-        let program = versioned_program.into_v1().unwrap().program;
-        let module_name = "dict_get_insert".to_string();
-        let runner = SierraCasmRunner::new(
-            program.clone(),
-            Some(Default::default()),
-            Default::default(),
-            None,
-        )
-        .unwrap();
-        (module_name, program, runner)
-    };
-    static ref SNAPSHOT_LOOP: (String, Program, SierraCasmRunner) = {
-        let versioned_program =
-            include_program!("test_data_artifacts/programs/snapshot_loop.sierra.json");
-        let program = versioned_program.into_v1().unwrap().program;
-        let module_name = "snapshot_loop".to_string();
-        let runner = SierraCasmRunner::new(
-            program.clone(),
-            Some(Default::default()),
-            Default::default(),
-            None,
-        )
-        .unwrap();
-        (module_name, program, runner)
-    };
-}
 
 proptest! {
     #[test]
     fn dict_get_insert_proptest(a in any_felt(), b in any_felt()) {
-        let program = &DICT_GET_INSERT;
+        let program = &get_compiled_program("dict_get_insert");
         let result_vm = run_vm_program(
             program,
             "run_test",
@@ -69,7 +37,7 @@ proptest! {
 
 #[test]
 fn dict_snapshot_loop() {
-    let program = &SNAPSHOT_LOOP;
+    let program = &get_compiled_program("snapshot_loop");
     run_native_program(
         program,
         "run_test",

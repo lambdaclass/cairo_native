@@ -1,5 +1,5 @@
-use crate::common::{get_compiled_program, load_cairo};
-use cairo_native::{context::NativeContext, include_program};
+use crate::common::get_compiled_program;
+use cairo_native::context::NativeContext;
 use std::error::Error;
 use tempfile::NamedTempFile;
 

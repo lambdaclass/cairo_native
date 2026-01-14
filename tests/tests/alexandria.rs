@@ -1,4 +1,6 @@
-use crate::common::{compare_outputs, run_native_program, run_vm_program, DEFAULT_GAS};
+use crate::common::{
+    compare_outputs, get_compiled_program, run_native_program, run_vm_program, DEFAULT_GAS,
+};
 use cairo_lang_runner::SierraCasmRunner;
 use cairo_lang_sierra::program::Program;
 use cairo_native::{include_program, starknet::DummySyscallHandler};
@@ -6,26 +8,11 @@ use test_case::test_case;
 
 #[track_caller]
 fn compare_inputless_function(function_name: &str) {
-    let program = include_program!("test_data_artifacts/scarb/alexandria/alexandria.sierra.json")
-        .into_v1()
-        .unwrap()
-        .program;
-    let module_name = "alexandria";
-    let runner = SierraCasmRunner::new(
-        program.clone(),
-        Some(Default::default()),
-        Default::default(),
-        None,
-    )
-    .unwrap();
-
-    let program: (String, Program, SierraCasmRunner) = (module_name.to_string(), program, runner);
-    let program = &program;
-
+    let program: (String, Program, SierraCasmRunner) = get_compiled_program("alexandria");
     let result_vm =
-        run_vm_program(program, function_name, vec![], Some(DEFAULT_GAS as usize)).unwrap();
+        run_vm_program(&program, function_name, vec![], Some(DEFAULT_GAS as usize)).unwrap();
     let result_native = run_native_program(
-        program,
+        &program,
         function_name,
         &[],
         Some(DEFAULT_GAS),
