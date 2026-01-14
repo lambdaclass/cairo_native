@@ -946,11 +946,7 @@ pub fn nonzero_felt() -> impl Strategy<Value = Felt> {
 
 // TODO: Think a better name
 pub fn get_compiled_program(name: &str) -> (String, Program, SierraCasmRunner) {
-    let program_path = format!(
-        "{}/test_data_artifacts/programs/{}.sierra.json",
-        env!("CARGO_MANIFEST_DIR"),
-        name
-    );
+    let program_path = format!("{}/{}.sierra.json", env!("CARGO_MANIFEST_DIR"), name);
     let program_content = fs::read_to_string(program_path)
         .expect("Failed to read the content of the program into a String");
     let versioned_program =
@@ -964,5 +960,6 @@ pub fn get_compiled_program(name: &str) -> (String, Program, SierraCasmRunner) {
         None,
     )
     .unwrap();
-    (name.to_string(), program, runner)
+    let entrypoint = name.split("/").collect::<Vec<&str>>()[1].to_string();
+    (entrypoint, program, runner)
 }

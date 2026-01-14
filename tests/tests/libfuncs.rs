@@ -3,7 +3,7 @@ use cairo_native::starknet::DummySyscallHandler;
 
 #[test]
 fn enum_init() {
-    let program = &get_compiled_program("enum_init");
+    let program = &get_compiled_program("test_data_artifacts/programs/enum_init");
 
     let result_vm = run_vm_program(&program, "run_test", vec![], None).unwrap();
     let result_native = run_native_program(
@@ -25,7 +25,7 @@ fn enum_init() {
 
 #[test]
 fn enum_match() {
-    let program = &get_compiled_program("enum_match");
+    let program = &get_compiled_program("test_data_artifacts/programs/enum_match");
 
     let result_vm = run_vm_program(&program, "match_a", vec![], None).unwrap();
     let result_native = run_native_program(
