@@ -8,7 +8,8 @@ use test_case::test_case;
 
 #[track_caller]
 fn compare_inputless_function(function_name: &str) {
-    let program: (String, Program, SierraCasmRunner) = get_compiled_program("test_data_artifacts/programs/alexandria");
+    let program: (String, Program, SierraCasmRunner) =
+        get_compiled_program("test_data_artifacts/scarb/alexandria/alexandria");
     let result_vm =
         run_vm_program(&program, function_name, vec![], Some(DEFAULT_GAS as usize)).unwrap();
     let result_native = run_native_program(
