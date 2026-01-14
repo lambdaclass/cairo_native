@@ -1,32 +1,9 @@
-use crate::common::{compare_outputs, load_cairo, run_native_program, run_vm_program};
+use crate::common::{compare_outputs, get_compiled_program, run_native_program, run_vm_program};
 use cairo_native::starknet::DummySyscallHandler;
 
 #[test]
 fn enum_init() {
-    let program = load_cairo! {
-        enum MySmallEnum {
-            A: felt252,
-        }
-
-        enum MyEnum {
-            A: felt252,
-            B: u8,
-            C: u16,
-            D: u32,
-            E: u64,
-        }
-
-        fn run_test() -> (MySmallEnum, MyEnum, MyEnum, MyEnum, MyEnum, MyEnum) {
-            (
-                MySmallEnum::A(-1),
-                MyEnum::A(5678),
-                MyEnum::B(90),
-                MyEnum::C(9012),
-                MyEnum::D(34567890),
-                MyEnum::E(1234567890123456),
-            )
-        }
-    };
+    let program = &get_compiled_program("enum_init");
 
     let result_vm = run_vm_program(&program, "run_test", vec![], None).unwrap();
     let result_native = run_native_program(
@@ -48,37 +25,7 @@ fn enum_init() {
 
 #[test]
 fn enum_match() {
-    let program = load_cairo! {
-        enum MyEnum {
-            A: felt252,
-            B: u8,
-            C: u16,
-            D: u32,
-            E: u64,
-        }
-
-        fn match_a() -> felt252 {
-            let x = MyEnum::A(5);
-            match x {
-                MyEnum::A(x) => x,
-                MyEnum::B(_) => 0,
-                MyEnum::C(_) => 1,
-                MyEnum::D(_) => 2,
-                MyEnum::E(_) => 3,
-            }
-        }
-
-        fn match_b() -> u8 {
-            let x = MyEnum::B(5_u8);
-            match x {
-                MyEnum::A(_) => 0_u8,
-                MyEnum::B(x) => x,
-                MyEnum::C(_) => 1_u8,
-                MyEnum::D(_) => 2_u8,
-                MyEnum::E(_) => 3_u8,
-            }
-        }
-    };
+    let program = &get_compiled_program("enum_match");
 
     let result_vm = run_vm_program(&program, "match_a", vec![], None).unwrap();
     let result_native = run_native_program(
