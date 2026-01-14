@@ -8,7 +8,7 @@ use starknet_types_core::felt::Felt;
 
 #[test]
 fn array_get_test() {
-    let program = &get_compiled_program("array_get");
+    let program = &get_compiled_program("test_data_artifacts/programs/array_get");
     let result_vm = run_vm_program(
         program,
         "run_test",
@@ -36,7 +36,7 @@ fn array_get_test() {
 proptest! {
     #[test]
     fn array_get_test_proptest(value in any_felt(), idx in 0u32..26) {
-        let program = &get_compiled_program("array_get");
+        let program = &get_compiled_program("test_data_artifacts/programs/array_get");
         let result_vm = run_vm_program(program, "run_test", vec![
             Arg::Value(Felt::from_bytes_be(&value.to_bytes_be())),
             Arg::Value(Felt::from(idx))

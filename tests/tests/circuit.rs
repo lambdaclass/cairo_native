@@ -5,7 +5,7 @@ use cairo_native::Value;
 
 #[test]
 fn test_circuit_guarantee_first_limb() {
-    let program = &get_compiled_program("circuit");
+    let program = &get_compiled_program("test_data_artifacts/programs/circuit");
 
     let result_vm = run_vm_program(
         program,
@@ -43,7 +43,7 @@ fn test_circuit_guarantee_first_limb() {
 
 #[test]
 fn test_circuit_guarantee_last_limb() {
-    let program = &get_compiled_program("circuit");
+    let program = &get_compiled_program("test_data_artifacts/programs/circuit");
 
     let result_vm = run_vm_program(
         program,
@@ -81,7 +81,7 @@ fn test_circuit_guarantee_last_limb() {
 
 #[test]
 fn test_circuit_guarantee_middle_limb() {
-    let program = &get_compiled_program("circuit");
+    let program = &get_compiled_program("test_data_artifacts/programs/circuit");
 
     let result_vm = run_vm_program(
         program,
@@ -119,7 +119,7 @@ fn test_circuit_guarantee_middle_limb() {
 
 #[test]
 fn test_circuit_add() {
-    let program = &get_compiled_program("circuit");
+    let program = &get_compiled_program("test_data_artifacts/programs/circuit");
 
     let result_vm = run_vm_program(
         program,
@@ -148,7 +148,7 @@ fn test_circuit_add() {
 
 #[test]
 fn test_circuit_sub() {
-    let program = &get_compiled_program("circuit");
+    let program = &get_compiled_program("test_data_artifacts/programs/circuit");
 
     let result_vm = run_vm_program(
         program,
@@ -177,7 +177,7 @@ fn test_circuit_sub() {
 
 #[test]
 fn test_circuit_mul() {
-    let program = &get_compiled_program("circuit");
+    let program = &get_compiled_program("test_data_artifacts/programs/circuit");
 
     let result_vm = run_vm_program(
         program,
@@ -206,7 +206,7 @@ fn test_circuit_mul() {
 
 #[test]
 fn test_circuit_inv() {
-    let program = &get_compiled_program("circuit");
+    let program = &get_compiled_program("test_data_artifacts/programs/circuit");
 
     let result_vm = run_vm_program(
         program,
@@ -235,7 +235,7 @@ fn test_circuit_inv() {
 
 #[test]
 fn test_circuit_full() {
-    let program = &get_compiled_program("circuit");
+    let program = &get_compiled_program("test_data_artifacts/programs/circuit");
 
     let result_vm = run_vm_program(
         program,
@@ -264,7 +264,7 @@ fn test_circuit_full() {
 
 #[test]
 fn test_circuit_fail() {
-    let program = &get_compiled_program("circuit");
+    let program = &get_compiled_program("test_data_artifacts/programs/circuit");
 
     let result_vm = run_vm_program(
         program,
@@ -293,7 +293,7 @@ fn test_circuit_fail() {
 
 #[test]
 fn test_circuit_into_u96_guarantee() {
-    let program = &get_compiled_program("circuit");
+    let program = &get_compiled_program("test_data_artifacts/programs/circuit");
 
     let result_vm = run_vm_program(
         program,
@@ -326,7 +326,7 @@ fn test_circuit_into_u96_guarantee() {
 
 #[test]
 fn test_circuit_y_inv_x_neg_over_y_bn254() {
-    let program = &get_compiled_program("garaga_circuits");
+    let program = &get_compiled_program("test_data_artifacts/programs/garaga_circuits");
 
     let result_vm = run_vm_program(
         program,
@@ -359,7 +359,7 @@ fn test_circuit_y_inv_x_neg_over_y_bn254() {
 
 #[test]
 fn test_circuit_batch_3_mod_bn254() {
-    let program = &get_compiled_program("garaga_circuits");
+    let program = &get_compiled_program("test_data_artifacts/programs/garaga_circuits");
 
     let result_vm = run_vm_program(
         program,
@@ -388,7 +388,7 @@ fn test_circuit_batch_3_mod_bn254() {
 
 #[test]
 fn test_circuit_add_ec_points_g2() {
-    let program = &get_compiled_program("garaga_circuits");
+    let program = &get_compiled_program("test_data_artifacts/programs/garaga_circuits");
 
     let result_vm = run_vm_program(
         program,
@@ -457,7 +457,7 @@ fn test_circuit_add_ec_points_g2() {
 
 #[test]
 fn test_circuit_add_ec_point_unchecked() {
-    let program = &get_compiled_program("kakarot_circuit");
+    let program = &get_compiled_program("test_data_artifacts/programs/kakarot_circuit");
 
     let result_vm = run_vm_program(
         program,

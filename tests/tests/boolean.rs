@@ -8,7 +8,7 @@ use starknet_types_core::felt::Felt;
 
 #[test]
 fn felt252_to_bool_bug() {
-    let program = &get_compiled_program("felt252_to_bool");
+    let program = &get_compiled_program("test_data_artifacts/programs/felt252_to_bool");
     let a = true;
     let result_vm = run_vm_program(
         program,
@@ -61,7 +61,7 @@ fn felt252_to_bool_bug() {
 proptest! {
     #[test]
     fn bool_to_felt252_proptest(a: bool) {
-        let program = &get_compiled_program("bool_to_felt252");
+        let program = &get_compiled_program("test_data_artifacts/programs/bool_to_felt252");
         let result_vm = run_vm_program(program, "run_test", vec![
             Arg::Value(Felt::from(a)),
         ], Some(DEFAULT_GAS as usize)).unwrap();
@@ -84,7 +84,7 @@ proptest! {
 
     #[test]
     fn bool_not_proptest(a: bool) {
-        let program = &get_compiled_program("bool_not");
+        let program = &get_compiled_program("test_data_artifacts/programs/bool_not");
         let result_vm = run_vm_program(program, "run_test", vec![
             Arg::Value(Felt::from(a)),
         ], Some(DEFAULT_GAS as usize)).unwrap();
@@ -107,7 +107,7 @@ proptest! {
 
     #[test]
     fn bool_and_proptest(a: bool, b: bool) {
-        let program = &get_compiled_program("bool_and");
+        let program = &get_compiled_program("test_data_artifacts/programs/bool_and");
         let result_vm = run_vm_program(program, "run_test", vec![
             Arg::Value(Felt::from(a)),
             Arg::Value(Felt::from(b))
@@ -131,7 +131,7 @@ proptest! {
 
     #[test]
     fn bool_or_proptest(a: bool, b: bool) {
-        let program = &get_compiled_program("bool_or");
+        let program = &get_compiled_program("test_data_artifacts/programs/bool_or");
         let result_vm = run_vm_program(program, "run_test", vec![
             Arg::Value(Felt::from(a)),
             Arg::Value(Felt::from(b))
@@ -155,7 +155,7 @@ proptest! {
 
     #[test]
     fn bool_xor_proptest(a: bool, b: bool) {
-        let program = &get_compiled_program("bool_xor");
+        let program = &get_compiled_program("test_data_artifacts/programs/bool_xor");
         let result_vm = run_vm_program(program, "run_test", vec![
             Arg::Value(Felt::from(a)),
             Arg::Value(Felt::from(b))

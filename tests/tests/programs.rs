@@ -11,7 +11,7 @@ use starknet_types_core::felt::Felt;
 
 #[test]
 fn fib() {
-    let program = &get_compiled_program("fibonacci");
+    let program = &get_compiled_program("test_data_artifacts/programs/fibonacci");
     let result_vm = run_vm_program(
         &program,
         "fibonacci",
@@ -38,7 +38,7 @@ fn fib() {
 
 #[test]
 fn logistic_map() {
-    let program = &get_compiled_program("logistic_map");
+    let program = &get_compiled_program("test_data_artifacts/programs/logistic_map");
     let result_vm = run_vm_program(
         program,
         "run_test",
@@ -65,7 +65,7 @@ fn logistic_map() {
 
 #[test]
 fn pedersen() {
-    let program = &get_compiled_program("pedersen");
+    let program = &get_compiled_program("test_data_artifacts/programs/pedersen");
     let result_vm = run_vm_program(
         program,
         "run_test",
@@ -112,7 +112,7 @@ fn pedersen() {
 
 #[test]
 fn factorial() {
-    let program = &get_compiled_program("factorial");
+    let program = &get_compiled_program("test_data_artifacts/programs/factorial");
     let result_vm = run_vm_program(
         program,
         "run_test",
@@ -140,7 +140,7 @@ fn factorial() {
 proptest! {
     #[test]
     fn fib_proptest(n in 0..100i32) {
-        let program = &get_compiled_program("fib");
+        let program = &get_compiled_program("test_data_artifacts/programs/fib");
         let result_vm = run_vm_program(
             program,
             "run_test",
@@ -166,7 +166,7 @@ proptest! {
 
     #[test]
     fn logistic_map_proptest(n in 100..110i32) {
-        let program = &get_compiled_program("logistic_map");
+        let program = &get_compiled_program("test_data_artifacts/programs/logistic_map");
         let result_vm = run_vm_program(
             program,
             "run_test",
@@ -192,7 +192,7 @@ proptest! {
 
     #[test]
     fn factorial_proptest(n in 1..100i32) {
-        let program = &get_compiled_program("factorial");
+        let program = &get_compiled_program("test_data_artifacts/programs/factorial");
         let result_vm = run_vm_program(
             program,
             "run_test",
@@ -218,7 +218,7 @@ proptest! {
 
     #[test]
     fn pedersen_proptest(a in any_felt(), b in any_felt()) {
-        let program = &get_compiled_program("pedersen");
+        let program = &get_compiled_program("test_data_artifacts/programs/pedersen");
         let result_vm = run_vm_program(
             program,
             "run_test",
@@ -245,7 +245,7 @@ proptest! {
 
     #[test]
     fn poseidon_proptest(a in any_felt(), b in any_felt(), c in any_felt()) {
-        let program = &get_compiled_program("poseidon");
+        let program = &get_compiled_program("test_data_artifacts/programs/poseidon");
         let result_vm = run_vm_program(
             program,
             "run_test",
@@ -275,7 +275,7 @@ proptest! {
 
 #[test]
 fn self_referencing_struct() {
-    let program = &get_compiled_program("self_referencing");
+    let program = &get_compiled_program("test_data_artifacts/programs/self_referencing");
     let result_vm =
         run_vm_program(program, "run_test", vec![], Some(DEFAULT_GAS as usize)).unwrap();
     let result_native = run_native_program(
@@ -297,7 +297,7 @@ fn self_referencing_struct() {
 
 #[test]
 fn no_op() {
-    let program = &get_compiled_program("no_op");
+    let program = &get_compiled_program("test_data_artifacts/programs/no_op");
     let result_vm =
         run_vm_program(program, "run_test", vec![], Some(DEFAULT_GAS as usize)).unwrap();
     let result_native = run_native_program(
