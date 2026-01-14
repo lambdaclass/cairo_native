@@ -151,6 +151,20 @@ mod test {
                 dict.squash().into_entries()
             }
         };
+        static ref SNAPSHOT_WITH_INTO_ENTRIES: (String, Program) = load_cairo! {
+            use core::dict::{Felt252Dict, Felt252DictEntryTrait, SquashedFelt252DictTrait};
+
+            fn snapshot_with_into_entries() -> Array<(felt252, u8, u8)> {
+                let mut dict: Felt252Dict<u8> = Default::default();
+                dict.insert(0, 0);
+                dict.insert(1, 1);
+                dict.insert(2, 2);
+                let dict_snapshot = @dict;
+                let squashed_dict = dict.squash().into_entries();
+                drop(dict_snapshot);
+                squashed_dict
+            }
+        };
     }
 
     #[test]
@@ -266,6 +280,30 @@ mod test {
                     Value::Felt252(0.into()),
                     Value::Felt252(2.into())
                 )
+            );
+        }
+    }
+
+    #[test]
+    fn test_snapshot_with_into_entries() {
+        let result = run_program(
+            &SNAPSHOT_WITH_INTO_ENTRIES,
+            "snapshot_with_into_entries",
+            &[],
+        )
+        .return_value;
+        if let Value::Array(arr) = result {
+            assert_eq!(
+                arr[0],
+                jit_struct!(Value::Felt252(0.into()), Value::Uint8(0), Value::Uint8(0))
+            );
+            assert_eq!(
+                arr[1],
+                jit_struct!(Value::Felt252(1.into()), Value::Uint8(0), Value::Uint8(1))
+            );
+            assert_eq!(
+                arr[2],
+                jit_struct!(Value::Felt252(2.into()), Value::Uint8(0), Value::Uint8(2))
             );
         }
     }

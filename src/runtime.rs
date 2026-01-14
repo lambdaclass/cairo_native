@@ -357,7 +357,7 @@ unsafe fn create_dict_entries_array(dict: &mut FeltDict) -> ArrayAbi<c_void> {
     let ptr = ptr.byte_add(data_prefix_offset);
 
     // Get the stride for the inner types of the tuple
-    let key_size = Layout::new::<[u8; 32]>().pad_to_align().size();
+    let key_size = Layout::new::<Felt252Abi>().pad_to_align().size();
     let generic_ty_size = dict.layout.pad_to_align().size();
 
     for (key, elem_index) in &dict.mappings {
