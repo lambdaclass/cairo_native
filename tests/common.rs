@@ -960,6 +960,11 @@ pub fn get_compiled_program(name: &str) -> (String, Program, SierraCasmRunner) {
         None,
     )
     .unwrap();
-    let entrypoint = name.split("/").collect::<Vec<&str>>()[2].to_string();
+    let entrypoint = name
+        .split("/")
+        .collect::<Vec<&str>>()
+        .last()
+        .unwrap()
+        .to_string();
     (entrypoint, program, runner)
 }
