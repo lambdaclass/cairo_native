@@ -1,11 +1,11 @@
-use core::integer::u16_sqrt;
+use core::num::traits::Sqrt;
 use traits::TryInto;
 use core::option::OptionTrait;
 
-fn program(value: u16) -> u16 {
-    u16_sqrt(value)
+fn program(value: u16) -> u8 {
+    value.sqrt()
 }
 
-fn run_test(value: felt252) -> u16 {
+fn run_test(value: felt252) -> u8 {
     program(value.try_into().unwrap())
 }
