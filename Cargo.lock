@@ -1111,7 +1111,7 @@ dependencies = [
  "educe 0.5.11",
  "itertools 0.14.0",
  "keccak",
- "lambdaworks-math 0.11.0",
+ "lambdaworks-math",
  "lazy_static",
  "libc",
  "libloading",
@@ -2409,23 +2409,12 @@ version = "0.13.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "58b1a1c1102a5a7fbbda117b79fb3a01e033459c738a3c1642269603484fd1c1"
 dependencies = [
- "lambdaworks-math 0.13.0",
+ "lambdaworks-math",
  "rand 0.8.5",
  "rand_chacha 0.3.1",
  "serde",
  "sha2",
  "sha3",
-]
-
-[[package]]
-name = "lambdaworks-math"
-version = "0.11.0"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "708d148956bcdc21ae5c432b4e20bbaa26fd68d5376a3a6c461f41095abea0ba"
-dependencies = [
- "rayon",
- "serde",
- "serde_json",
 ]
 
 [[package]]
@@ -2438,6 +2427,7 @@ dependencies = [
  "num-bigint",
  "num-traits",
  "rand 0.8.5",
+ "rayon",
  "serde",
  "serde_json",
 ]
@@ -3772,7 +3762,7 @@ dependencies = [
  "blake2",
  "digest",
  "lambdaworks-crypto",
- "lambdaworks-math 0.13.0",
+ "lambdaworks-math",
  "lazy_static",
  "num-bigint",
  "num-integer",

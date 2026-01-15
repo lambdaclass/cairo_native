@@ -79,6 +79,7 @@ pub enum Value {
     Sint128(i128),
     EcPoint(Felt, Felt),
     EcState(Felt, Felt, Felt, Felt),
+    QM31(u32, u32, u32, u32),
     Secp256K1Point(Secp256k1Point),
     Secp256R1Point(Secp256r1Point),
     BoundedInt {
@@ -544,6 +545,7 @@ impl Value {
 
                     ptr
                 }
+                Self::QM31(_, _, _, _) => native_panic!("todo: allocate type QM31"),
                 Self::Secp256K1Point { .. } => native_panic!("todo: allocate type Secp256K1Point"),
                 Self::Secp256R1Point { .. } => native_panic!("todo: allocate type Secp256R1Point"),
                 Self::Null => {
@@ -735,6 +737,10 @@ impl Value {
                         Felt::from_bytes_le(&data[2]),
                         Felt::from_bytes_le(&data[3]),
                     )
+                }
+                CoreTypeConcrete::QM31(_) => {
+                    let data = ptr.cast::<[u32; 4]>().as_mut();
+                    Self::QM31(data[0], data[1], data[2], data[3])
                 }
                 CoreTypeConcrete::Felt252(_) => {
                     let data = ptr.cast::<[u8; 32]>().as_mut();
@@ -1018,7 +1024,6 @@ impl Value {
                 }
                 CoreTypeConcrete::GasReserve(_) => Self::Uint128(*ptr.cast::<u128>().as_ref()),
                 CoreTypeConcrete::Blake(_) => native_panic!("Implement from_ptr for Blake type"),
-                CoreTypeConcrete::QM31(_) => native_panic!("Implement from_ptr for QM31 type"),
             }
         })
     }
