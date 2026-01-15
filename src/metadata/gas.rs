@@ -16,23 +16,34 @@ use crate::{
 };
 use cairo_lang_runner::token_gas_cost;
 use cairo_lang_sierra::{
-    extensions::gas::CostTokenType,
-    ids::FunctionId,
-    program::{Program, StatementIdx},
+    extensions::{circuit::CircuitInfo, gas::CostTokenType},
+    ids::{ConcreteTypeId, FunctionId},
+    program::{GenStatement, Program, StatementIdx},
 };
 use cairo_lang_sierra_ap_change::{ap_change_info::ApChangeInfo, ApChangeError};
-use cairo_lang_sierra_gas::{gas_info::GasInfo, CostError};
-use cairo_lang_sierra_to_casm::metadata::{
-    calc_metadata, calc_metadata_ap_change_only, Metadata as CairoMetadata,
-    MetadataComputationConfig, MetadataError as CairoMetadataError,
+use cairo_lang_sierra_gas::{
+    core_libfunc_cost::{core_libfunc_cost, InvocationCostInfoProvider},
+    gas_info::GasInfo,
+    CostError,
 };
-use cairo_lang_sierra_type_size::ProgramRegistryInfo;
+use cairo_lang_sierra_to_casm::{
+    circuit::CircuitsInfo,
+    environment::gas_wallet::GasWallet,
+    metadata::{
+        calc_metadata, calc_metadata_ap_change_only, Metadata as CairoMetadata,
+        MetadataComputationConfig, MetadataError as CairoMetadataError,
+    },
+};
+use cairo_lang_sierra_type_size::{ProgramRegistryInfo, TypeSizeMap};
+use cairo_lang_utils::small_ordered_map::SmallOrderedMap;
+use itertools::Itertools;
 use std::{collections::BTreeMap, fmt};
 
 /// Holds global gas info.
 #[derive(Default)]
 pub struct GasMetadata {
     cairo_metadata: CairoMetadata,
+    statement_wallets: Vec<GasWallet>,
 }
 
 /// The gas cost associated to a determined sierra statement.
@@ -67,7 +78,13 @@ impl GasMetadata {
             calc_metadata_ap_change_only(sierra_program, sierra_program_info)?
         };
 
-        Ok(GasMetadata { cairo_metadata })
+        let statement_wallets =
+            calculate_statement_wallets(sierra_program, sierra_program_info, &cairo_metadata);
+
+        Ok(GasMetadata {
+            cairo_metadata,
+            statement_wallets,
+        })
     }
 
     /// Returns the initial value for the gas counter.
@@ -172,6 +189,105 @@ impl GasMetadata {
             .copied()
             .map(|x| x.try_into().expect("gas cost couldn't be converted to u64"))
     }
+
+    pub fn get_gas_wallet(&self, idx: StatementIdx) -> GasWallet {
+        self.statement_wallets[idx.0].clone()
+    }
+}
+
+fn calculate_statement_wallets(
+    program: &Program,
+    program_info: &ProgramRegistryInfo,
+    cairo_metadata: &CairoMetadata,
+) -> Vec<GasWallet> {
+    let mut wallets: Vec<Option<GasWallet>> = vec![None; program.statements.len()];
+    for function in &program.funcs {
+        wallets[function.entry_point.0] = Some(
+            match cairo_metadata.gas_info.function_costs.get(&function.id) {
+                Some(cost) => GasWallet::Value(cost.clone()),
+                None => GasWallet::Disabled,
+            },
+        );
+    }
+    let circuits_info = CircuitsInfo::new(
+        &program_info.registry,
+        program.type_declarations.iter().map(|td| &td.id),
+    )
+    .unwrap();
+
+    for (statement_idx, statement) in program.statements.iter().enumerate() {
+        if let GenStatement::Invocation(statement) = statement {
+            let statement_idx = StatementIdx(statement_idx);
+            let statement_gas_metadata = StatementGasMetadata {
+                metadata: cairo_metadata,
+                type_sizes: &program_info.type_sizes,
+                circuits_info: &circuits_info,
+                idx: statement_idx,
+            };
+            let libfunc = program_info
+                .registry()
+                .get_libfunc(&statement.libfunc_id)
+                .unwrap();
+
+            let changes = core_libfunc_cost(
+                &cairo_metadata.gas_info,
+                &statement_idx,
+                libfunc,
+                &statement_gas_metadata,
+            )
+            .iter()
+            .map(|change| {
+                change
+                    .iter()
+                    .map(|(token_type, val)| (*token_type, -val))
+                    .collect::<SmallOrderedMap<_, _>>()
+            })
+            .collect_vec();
+
+            let src_wallet = wallets[statement_idx.0].clone().unwrap();
+            for (branch_info, gas_change) in statement.branches.iter().zip(changes) {
+                let dst_statement_idx = statement_idx.next(&branch_info.target);
+                wallets[dst_statement_idx.0] = Some(src_wallet.update(gas_change).unwrap())
+            }
+        }
+    }
+
+    wallets.into_iter().map(|w| w.unwrap()).collect_vec()
+}
+
+pub struct StatementGasMetadata<'m> {
+    pub metadata: &'m CairoMetadata,
+    pub type_sizes: &'m TypeSizeMap,
+    pub circuits_info: &'m CircuitsInfo,
+    pub idx: StatementIdx,
+}
+
+impl<'m> InvocationCostInfoProvider for StatementGasMetadata<'m> {
+    fn type_size(&self, ty: &cairo_lang_sierra::ids::ConcreteTypeId) -> usize {
+        self.type_sizes[ty] as usize
+    }
+
+    fn token_usages(&self, token_type: CostTokenType) -> usize {
+        self.metadata
+            .gas_info
+            .variable_values
+            .get(&(self.idx, token_type))
+            .copied()
+            .unwrap_or(0) as usize
+    }
+
+    fn ap_change_var_value(&self) -> usize {
+        self.metadata
+            .ap_change_info
+            .variable_values
+            .get(&self.idx)
+            .copied()
+            .unwrap_or_default()
+    }
+
+    fn circuit_info(&self, ty: &ConcreteTypeId) -> &CircuitInfo {
+        self.circuits_info.circuits.get(ty).unwrap()
+    }
 }
 
 impl fmt::Debug for GasMetadata {
@@ -200,6 +316,7 @@ impl Clone for GasMetadata {
                     function_costs: self.cairo_metadata.gas_info.function_costs.clone(),
                 },
             },
+            statement_wallets: self.statement_wallets.clone(),
         }
     }
 }
