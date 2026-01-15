@@ -174,7 +174,9 @@ impl NativeContext {
         // Unwrapping here is not necessary since the insertion will only fail if there was
         // already some metadata of the same type.
         metadata.insert(cost_info_provider);
-        // GasWallet is only available if MetadataComputationConfig was provided.
+        // GasWallet is only available if MetadataComputationConfig was
+        // provided. So, by default it is disabled and, if ever need, it will
+        // updated before compiling a cairo function.
         metadata.insert(GasWallet(CairoGasWallet::Disabled));
 
         #[cfg(feature = "with-libfunc-profiling")]

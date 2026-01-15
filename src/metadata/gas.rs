@@ -60,6 +60,10 @@ pub struct GasMetadata {
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
 pub struct GasCost(pub Vec<(u64, CostTokenType)>);
 
+/// Tracks the amount of gas available in a statement's context.
+///
+/// GasWallet are independent to each other and there's one for each defined
+/// function.
 #[derive(Debug, Clone)]
 pub struct GasWallet(pub CairoGasWallet);
 
@@ -71,6 +75,7 @@ impl GasWallet {
     }
 }
 
+/// Holds all the necessary information for dealing with cost related libfuns.
 #[derive(Debug, Clone)]
 pub struct CostInfoProvider {
     type_sizes: UnorderedHashMap<ConcreteTypeId, i16>,

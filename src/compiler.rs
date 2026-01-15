@@ -154,8 +154,11 @@ pub fn compile(
 
     for function in &program.funcs {
         tracing::info!("Compiling function `{}`.", function.id);
+        println!("FUNCTION: {}", function.id);
 
         if let Some(cost_info_provider) = metadata.get::<CostInfoProvider>() {
+            // There's a GasWallet per function, so we update it relative to
+            // the function to compile.
             if cost_info_provider.gas_metadata.check_gas_usage {
                 let function_costs = cost_info_provider
                     .gas_metadata
@@ -168,9 +171,9 @@ pub fn compile(
                         function.id
                     ))?;
 
-                let gas_wallet = CairoGasWallet::Value(function_costs.clone());
+                let new_gas_wallet = CairoGasWallet::Value(function_costs.clone());
                 metadata.remove::<GasWallet>();
-                metadata.insert(GasWallet(gas_wallet));
+                metadata.insert(GasWallet(new_gas_wallet));
             }
         }
 
@@ -675,6 +678,7 @@ fn compile_func(
                         metadata,
                     )?;
 
+                    println!("  LIBFUNC: {}", libfunc_to_name(libfunc));
                     // Update GasWallet.
                     if let Some(cost_info_provider) = metadata.get::<CostInfoProvider>() {
                         let gas_changes = calculate_gas_changes(
@@ -687,11 +691,16 @@ fn compile_func(
                             .get_mut::<GasWallet>()
                             .ok_or(Error::MissingMetadata)?;
 
+                        println!("      GASWALLET: {:?}", &gas_wallet);
+                        println!("      REQUEST: {:?}", &gas_changes);
+
                         native_assert!(
                             libfunc.branch_signatures().len() == gas_changes.len(),
                             "The number of gas changes should be equal the number of branches."
                         );
 
+                        // TODO: libfuncs with more than one branch need to
+                        // decide which will be used to update the GasWallet.
                         gas_wallet.update(gas_changes.get(0).unwrap().clone())?;
                     }
 
