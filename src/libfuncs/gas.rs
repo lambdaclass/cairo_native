@@ -4,6 +4,7 @@ use super::LibfuncHelper;
 use crate::{
     error::{panic::ToNativeAssertError, Error, Result},
     metadata::{gas::GasCost, runtime_bindings::RuntimeBindingsMeta, MetadataStorage},
+    native_panic,
     utils::BuiltinCosts,
 };
 use cairo_lang_sierra::{
@@ -269,8 +270,13 @@ pub fn build_get_unspent_gas<'ctx, 'this>(
             let gas_cost = GasCost(
                 gas_wallet
                     .into_iter()
-                    .map(|(token_type, value)| (value as u64, token_type))
-                    .collect_vec(),
+                    .map(|(token_type, value)| {
+                        let Ok(value) = TryInto::<u64>::try_into(value) else {
+                            native_panic!("could not cast gas cost from i64 to usize");
+                        };
+                        Ok((value, token_type))
+                    })
+                    .try_collect()?,
             );
             let gas_wallet_value =
                 build_calculate_gas_cost(context, entry, location, gas_cost, builtin_ptr)?;
