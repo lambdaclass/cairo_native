@@ -104,7 +104,7 @@ bench: needs-cairo2
 
 .PHONY: bench-ci
 bench-ci: check-llvm needs-cairo2
-	cargo criterion --features=with-cheatcode,with-debug-utils
+	cargo criterion --features=with-cheatcode,with-debug-utils,testing
 
 .PHONY: stress-test
 stress-test: check-llvm
