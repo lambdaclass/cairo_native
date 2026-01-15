@@ -4,7 +4,7 @@ use cairo_native::{
     context::NativeContext,
     execution_result::{BuiltinStats, ExecutionResult},
     executor::JitNativeExecutor,
-    utils::find_function_id,
+    utils::{find_function_id, testing::get_compiled_program},
     OptLevel, Value,
 };
 use starknet_types_core::felt::Felt;
@@ -289,11 +289,8 @@ fn invoke1_tuple1_u64() {
 
 #[test]
 fn invoke1_tuple5_u8_u16_u32_u64_u128() {
-    let (module_name, program, _) = load_cairo! {
-        fn main(x: (u8, u16, u32, u64, u128)) -> (u8, u16, u32, u64, u128) {
-            x
-        }
-    };
+    let program =
+        get_compiled_program("test_data_artifacts/programs/invoke1_tuple5_u8_u16_u32_u64_u128");
 
     let r = |x: (u8, u16, u32, u64, u128)| {
         let x = Value::Struct {
@@ -308,7 +305,7 @@ fn invoke1_tuple5_u8_u16_u32_u64_u128() {
         };
         assert_eq!(
             run_program(
-                &program,
+                &program.1,
                 &format!("{0}::{0}::main", module_name),
                 std::slice::from_ref(&x)
             ),
