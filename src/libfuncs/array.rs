@@ -1330,7 +1330,7 @@ fn is_shared<'ctx, 'this>(
 #[cfg(test)]
 mod test {
     use crate::{
-        jit_enum, jit_panic, jit_struct, load_cairo,
+        jit_enum, jit_panic, jit_struct,
         utils::{
             felt252_str,
             testing::{get_compiled_program, run_program},

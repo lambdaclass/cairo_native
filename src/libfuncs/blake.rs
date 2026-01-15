@@ -92,26 +92,18 @@ fn build_blake_operation<'ctx, 'this>(
 
 #[cfg(test)]
 mod tests {
-    use crate::{jit_struct, load_cairo, utils::testing::run_program, Value};
+    use crate::{
+        jit_struct,
+        utils::testing::{get_compiled_program, run_program},
+        Value,
+    };
 
     // This test is taken from the Blake2s-256 implementeation RFC-7693, Appendix B.
     // https://www.rfc-editor.org/rfc/rfc7693#appendix-B.
     #[test]
     fn test_blake_3_bytes_compress() {
-        let program = load_cairo!(
-            use core::blake::{blake2s_compress, blake2s_finalize};
-
-            fn run_test() -> [u32; 8] nopanic {
-                let initial_state: Box<[u32; 8]> = BoxTrait::new([
-                    0x6B08E647, 0xBB67AE85, 0x3C6EF372, 0xA54FF53A, 0x510E527F, 0x9B05688C, 0x1F83D9AB, 0x5BE0CD19,
-                ]);
-                // This number represents the bytes for "abc" string.
-                let abc_bytes = 0x00636261;
-                let msg: Box<[u32; 16]>  = BoxTrait::new([abc_bytes, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0]);
-
-                blake2s_finalize(initial_state, 3, msg).unbox()
-            }
-        );
+        let program =
+            get_compiled_program("test_data/programs/libfuncs/blake_3_bytes_compress.cairo");
 
         let result = run_program(&program, "run_test", &[]).return_value;
 
