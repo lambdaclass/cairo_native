@@ -3,7 +3,7 @@ use crate::common::{
 };
 use cairo_lang_runner::SierraCasmRunner;
 use cairo_lang_sierra::program::Program;
-use cairo_native::{include_program, starknet::DummySyscallHandler};
+use cairo_native::starknet::DummySyscallHandler;
 use test_case::test_case;
 
 #[track_caller]
