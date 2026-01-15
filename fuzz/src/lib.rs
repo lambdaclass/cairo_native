@@ -50,9 +50,19 @@ pub fn is_supported(
         | CoreTypeConcrete::Bytes31(_) => true,
         CoreTypeConcrete::Snapshot(info)
         | CoreTypeConcrete::Box(info)
-        | CoreTypeConcrete::Nullable(info) => {
-            is_supported(registry.get_type(&info.ty).unwrap(), registry)
+        | CoreTypeConcrete::Nullable(info)
+        | CoreTypeConcrete::Array(info) => {
+            let elem_ty = registry.get_type(&info.ty).unwrap();
+            is_supported(elem_ty, registry)
         }
+        CoreTypeConcrete::Struct(info) => info
+            .members
+            .iter()
+            .all(|member_ty_id| is_supported(registry.get_type(member_ty_id).unwrap(), registry)),
+        CoreTypeConcrete::Enum(info) => info
+            .variants
+            .iter()
+            .all(|variant_ty_id| is_supported(registry.get_type(variant_ty_id).unwrap(), registry)),
         _ => false,
     }
 }
@@ -84,6 +94,34 @@ pub fn random_value(
                 Value::Null
             } else {
                 random_value(registry.get_type(&info.ty).unwrap(), registry)
+            }
+        }
+        CoreTypeConcrete::Array(info) => {
+            let elem_ty = registry.get_type(&info.ty).unwrap();
+            let length = rand::random::<u8>() as usize % 32;
+            let elements: Vec<Value> = (0..length)
+                .map(|_| random_value(elem_ty, registry))
+                .collect();
+            Value::Array(elements)
+        }
+        CoreTypeConcrete::Struct(info) => Value::Struct {
+            fields: info
+                .members
+                .iter()
+                .map(|member_ty_id| {
+                    let member_ty = registry.get_type(member_ty_id).unwrap();
+                    random_value(member_ty, registry)
+                })
+                .collect(),
+            debug_name: None,
+        },
+        CoreTypeConcrete::Enum(info) => {
+            let tag = rand::random::<u32>() as usize % info.variants.len();
+            let variant_ty = registry.get_type(&info.variants[tag]).unwrap();
+            Value::Enum {
+                tag,
+                value: Box::new(random_value(variant_ty, registry)),
+                debug_name: None,
             }
         }
         x => todo!("random: {:?}", x.info()),
@@ -124,11 +162,40 @@ pub fn arbitrary_value(
                 arbitrary_value(registry.get_type(&info.ty)?, u, registry)?
             }
         }
+        CoreTypeConcrete::Array(info) => {
+            let elem_ty = registry.get_type(&info.ty)?;
+            let length = u8::arbitrary(u)? as usize % 32;
+            let mut elements = Vec::with_capacity(length);
+            for _ in 0..length {
+                elements.push(arbitrary_value(elem_ty, u, registry)?);
+            }
+            Value::Array(elements)
+        }
+        CoreTypeConcrete::Struct(info) => {
+            let mut fields = Vec::with_capacity(info.members.len());
+            for member_ty_id in &info.members {
+                let member_ty = registry.get_type(member_ty_id)?;
+                fields.push(arbitrary_value(member_ty, u, registry)?);
+            }
+            Value::Struct {
+                fields,
+                debug_name: None,
+            }
+        }
+        CoreTypeConcrete::Enum(info) => {
+            let tag = u32::arbitrary(u)? as usize % info.variants.len();
+            let variant_ty = registry.get_type(&info.variants[tag])?;
+            Value::Enum {
+                tag,
+                value: Box::new(arbitrary_value(variant_ty, u, registry)?),
+                debug_name: None,
+            }
+        }
         x => todo!("arbitrary: {:?}", x.info()),
     })
 }
 
-pub fn encode_value(v: &Value, mut w: impl Write) -> Result<(), Box<dyn Error>> {
+pub fn encode_value(v: &Value, w: &mut impl Write) -> Result<(), Box<dyn Error>> {
     match v {
         Value::Felt252(v) => w.write_all(&v.to_bytes_le())?,
         Value::Uint8(v) => w.write_all(&v.to_le_bytes())?,
@@ -144,6 +211,21 @@ pub fn encode_value(v: &Value, mut w: impl Write) -> Result<(), Box<dyn Error>> 
         Value::Bytes31(bytes) => w.write_all(bytes)?,
         Value::Null => {
             w.write_all(&[0u8])?;
+        }
+        Value::Array(elements) => {
+            w.write_all(&(elements.len() as u8).to_le_bytes())?;
+            for elem in elements {
+                encode_value(elem, w)?;
+            }
+        }
+        Value::Struct { fields, .. } => {
+            for field in fields {
+                encode_value(field, w)?;
+            }
+        }
+        Value::Enum { tag, value, .. } => {
+            w.write_all(&(*tag as u32).to_le_bytes())?;
+            encode_value(value, w)?;
         }
         x => todo!("encode: {:?}", x),
     };
