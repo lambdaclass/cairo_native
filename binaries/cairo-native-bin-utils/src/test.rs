@@ -213,6 +213,7 @@ pub fn run_tests(
         failed_run_results: vec![],
         mismatch_reason: vec![],
     }));
+
     named_tests
         .into_par_iter()
         .map(
