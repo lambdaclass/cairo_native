@@ -307,6 +307,7 @@ impl fmt::Debug for GasMetadata {
         f.debug_struct("GasMetadata")
             .field("ap_change_info", &self.cairo_metadata.ap_change_info)
             .field("gas_info", &self.cairo_metadata.gas_info)
+            .field("statement_wallets", &self.statement_wallets)
             .finish()
     }
 }
