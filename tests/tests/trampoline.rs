@@ -259,7 +259,8 @@ fn invoke1_tuple1_u64() {
 
 #[test]
 fn invoke1_tuple5_u8_u16_u32_u64_u128() {
-    let program = &get_compiled_program("test_data_artifacts/programs/invoke1_tuple5_u8_u16_u32_u64_u128");
+    let program =
+        &get_compiled_program("test_data_artifacts/programs/invoke1_tuple5_u8_u16_u32_u64_u128");
 
     let r = |x: (u8, u16, u32, u64, u128)| {
         let x = Value::Struct {
