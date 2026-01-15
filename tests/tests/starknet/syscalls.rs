@@ -1,4 +1,4 @@
-use crate::common::{load_cairo_path, run_native_program};
+use crate::common::{get_compiled_program, run_native_program};
 use cairo_lang_runner::SierraCasmRunner;
 use cairo_lang_sierra::program::Program;
 use cairo_native::{
@@ -596,7 +596,7 @@ impl StarknetSyscallHandler for SyscallHandler {
 
 lazy_static! {
     static ref SYSCALLS_PROGRAM: (String, Program, SierraCasmRunner) =
-        load_cairo_path("tests/tests/starknet/programs/syscalls.cairo");
+        get_compiled_program("test_data_artifacts/programs/starknet/syscalls");
 }
 
 #[test]
