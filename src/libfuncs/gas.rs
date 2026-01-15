@@ -4,7 +4,6 @@ use super::LibfuncHelper;
 use crate::{
     error::{panic::ToNativeAssertError, Error, Result},
     metadata::{gas::GasCost, runtime_bindings::RuntimeBindingsMeta, MetadataStorage},
-    native_panic,
     utils::BuiltinCosts,
 };
 use cairo_lang_sierra::{
@@ -15,6 +14,8 @@ use cairo_lang_sierra::{
     },
     program_registry::ProgramRegistry,
 };
+use cairo_lang_sierra_to_casm::environment::gas_wallet::GasWallet;
+use itertools::Itertools;
 use melior::{
     dialect::{arith::CmpiPredicate, ods},
     helpers::{ArithBlockExt, BuiltinBlockExt, GepIndex, LlvmBlockExt},
@@ -48,8 +49,8 @@ pub fn build<'ctx, 'this>(
         GasConcreteLibfunc::GetBuiltinCosts(info) => {
             build_get_builtin_costs(context, registry, entry, location, helper, metadata, info)
         }
-        GasConcreteLibfunc::GetUnspentGas(_) => {
-            native_panic!("Implement GetUnspentGas libfunc");
+        GasConcreteLibfunc::GetUnspentGas(info) => {
+            build_get_unspent_gas(context, registry, entry, location, helper, metadata, info)
         }
     }
 }
@@ -233,6 +234,57 @@ pub fn build_get_builtin_costs<'ctx, 'this>(
     helper.br(entry, 0, &[builtin_ptr], location)
 }
 
+/// Generate MLIR operations for the `get_builtin_costs` libfunc.
+///
+/// Returns the amount of gas available in the `GasBuiltin`, as well as the
+/// amount of gas unused in the local wallet. Useful for asserting that a
+/// certain amount of gas was used.
+pub fn build_get_unspent_gas<'ctx, 'this>(
+    context: &'ctx Context,
+    _registry: &ProgramRegistry<CoreType, CoreLibfunc>,
+    entry: &'this Block<'ctx>,
+    location: Location<'ctx>,
+    helper: &LibfuncHelper<'ctx, 'this>,
+    metadata: &mut MetadataStorage,
+    _info: &SignatureOnlyConcreteLibfunc,
+) -> Result<()> {
+    let current_gas = entry.arg(0)?;
+
+    let gas_wallet = metadata
+        .get::<GasWallet>()
+        .to_native_assert_error("get_unspent_gas should always have a gas wallet")?
+        .clone();
+
+    let unspent_gas = match gas_wallet {
+        GasWallet::Value(gas_wallet) => {
+            let builtin_ptr = {
+                let runtime = metadata
+                    .get_mut::<RuntimeBindingsMeta>()
+                    .ok_or(Error::MissingMetadata)?;
+                runtime
+                    .get_costs_builtin(context, helper, entry, location)?
+                    .result(0)?
+                    .into()
+            };
+            let gas_cost = GasCost(
+                gas_wallet
+                    .into_iter()
+                    .map(|(token_type, value)| (value as u64, token_type))
+                    .collect_vec(),
+            );
+            let gas_wallet_value =
+                build_calculate_gas_cost(context, entry, location, gas_cost, builtin_ptr)?;
+
+            entry.addi(current_gas, gas_wallet_value, location)?
+        }
+        GasWallet::Disabled => current_gas,
+    };
+
+    let unspent_gas = entry.extui(unspent_gas, IntegerType::new(context, 128).into(), location)?;
+
+    helper.br(entry, 0, &[current_gas, unspent_gas], location)
+}
+
 /// Calculate the current gas cost, given the constant `GasCost` configuration,
 /// and the current `BuiltinCosts` pointer.
 pub fn build_calculate_gas_cost<'c, 'b>(
@@ -283,7 +335,7 @@ pub fn build_calculate_gas_cost<'c, 'b>(
 
 #[cfg(test)]
 mod test {
-    use crate::{load_cairo, utils::testing::run_program};
+    use crate::{load_cairo, utils::testing::run_program, Value};
 
     #[test]
     fn run_withdraw_gas() {
@@ -314,5 +366,40 @@ mod test {
 
         let result = run_program(&program, "run_test", &[]);
         assert_eq!(result.remaining_gas, Some(18446744073709545465));
+    }
+
+    #[test]
+    fn run_get_unspent_gas() {
+        #[rustfmt::skip]
+        let program = load_cairo!(
+            extern fn get_unspent_gas() -> u128 implicits(GasBuiltin) nopanic;
+
+            #[inline(never)]
+            fn identity<T>(t: T) -> T {
+                t
+            }
+
+            fn run_test() -> u128 {
+                let one = identity(1);
+                let two = identity(2);
+                let prev = get_unspent_gas();
+                let three = identity(one + two);
+                let four = identity(one + three);
+                let five = identity(two + three);
+                let _ten = identity(one + five + four);
+                let after = get_unspent_gas();
+                return prev - after;
+            }
+        );
+
+        let result = run_program(&program, "run_test", &[]);
+        assert_eq!(
+            result.return_value,
+            Value::Enum {
+                tag: 0,
+                value: Box::new(Value::Uint128(4000)),
+                debug_name: None,
+            }
+        );
     }
 }
