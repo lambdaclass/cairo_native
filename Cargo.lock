@@ -1238,6 +1238,7 @@ dependencies = [
  "cairo-lang-test-runner",
  "cairo-native-bin-utils",
  "clap",
+ "rayon",
  "tracing",
  "tracing-subscriber",
 ]
