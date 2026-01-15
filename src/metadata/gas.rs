@@ -19,6 +19,7 @@ use cairo_lang_sierra::{
     extensions::{circuit::CircuitInfo, gas::CostTokenType},
     ids::{ConcreteTypeId, FunctionId},
     program::{GenStatement, Program, StatementIdx},
+    program_registry::ProgramRegistryError,
 };
 use cairo_lang_sierra_ap_change::{ap_change_info::ApChangeInfo, ApChangeError};
 use cairo_lang_sierra_gas::{
@@ -28,7 +29,8 @@ use cairo_lang_sierra_gas::{
 };
 use cairo_lang_sierra_to_casm::{
     circuit::CircuitsInfo,
-    environment::gas_wallet::GasWallet,
+    compiler::CompilationError,
+    environment::gas_wallet::{GasWallet, GasWalletError},
     metadata::{
         calc_metadata, calc_metadata_ap_change_only, Metadata as CairoMetadata,
         MetadataComputationConfig, MetadataError as CairoMetadataError,
@@ -64,6 +66,14 @@ pub enum GasMetadataError {
     CairoMetadataError(#[from] CairoMetadataError),
     #[error("Not enough gas to run the operation. Required: {:?}, Available: {:?}.", gas.0, gas.1)]
     NotEnoughGas { gas: Box<(u64, u64)> },
+    #[error("Could not find gas wallet for statement")]
+    MissingGasWallet,
+    #[error(transparent)]
+    GasWalletError(#[from] GasWalletError),
+    #[error(transparent)]
+    CasmCompilationError(#[from] Box<CompilationError>),
+    #[error(transparent)]
+    ProgramRegistryError(#[from] Box<ProgramRegistryError>),
 }
 
 impl GasMetadata {
@@ -79,7 +89,7 @@ impl GasMetadata {
         };
 
         let statement_wallets =
-            calculate_statement_wallets(sierra_program, sierra_program_info, &cairo_metadata);
+            calculate_statement_wallets(sierra_program, sierra_program_info, &cairo_metadata)?;
 
         Ok(GasMetadata {
             cairo_metadata,
@@ -199,7 +209,7 @@ fn calculate_statement_wallets(
     program: &Program,
     program_info: &ProgramRegistryInfo,
     cairo_metadata: &CairoMetadata,
-) -> Vec<GasWallet> {
+) -> Result<Vec<GasWallet>, GasMetadataError> {
     let mut wallets: Vec<Option<GasWallet>> = vec![None; program.statements.len()];
     for function in &program.funcs {
         wallets[function.entry_point.0] = Some(
@@ -213,7 +223,7 @@ fn calculate_statement_wallets(
         &program_info.registry,
         program.type_declarations.iter().map(|td| &td.id),
     )
-    .unwrap();
+    .map_err(Box::new)?;
 
     for (statement_idx, statement) in program.statements.iter().enumerate() {
         if let GenStatement::Invocation(statement) = statement {
@@ -224,10 +234,7 @@ fn calculate_statement_wallets(
                 circuits_info: &circuits_info,
                 idx: statement_idx,
             };
-            let libfunc = program_info
-                .registry()
-                .get_libfunc(&statement.libfunc_id)
-                .unwrap();
+            let libfunc = program_info.registry().get_libfunc(&statement.libfunc_id)?;
 
             let changes = core_libfunc_cost(
                 &cairo_metadata.gas_info,
@@ -244,15 +251,20 @@ fn calculate_statement_wallets(
             })
             .collect_vec();
 
-            let src_wallet = wallets[statement_idx.0].clone().unwrap();
+            let src_wallet = wallets[statement_idx.0]
+                .clone()
+                .ok_or(GasMetadataError::MissingGasWallet)?;
             for (branch_info, gas_change) in statement.branches.iter().zip(changes) {
                 let dst_statement_idx = statement_idx.next(&branch_info.target);
-                wallets[dst_statement_idx.0] = Some(src_wallet.update(gas_change).unwrap())
+                wallets[dst_statement_idx.0] = Some(src_wallet.update(gas_change)?)
             }
         }
     }
 
-    wallets.into_iter().map(|w| w.unwrap()).collect_vec()
+    wallets
+        .into_iter()
+        .map(|w| w.ok_or(GasMetadataError::MissingGasWallet))
+        .try_collect()
 }
 
 pub struct StatementGasMetadata<'m> {
