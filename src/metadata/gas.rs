@@ -10,6 +10,10 @@
 //! When implementing libfuncs, the `GasCost` metadata entry already contains
 //! the `GasCost` for the current sierra statement
 
+use crate::{
+    error::{Error, Result as NativeResult},
+    native_panic,
+};
 use cairo_lang_runner::token_gas_cost;
 use cairo_lang_sierra::{
     extensions::gas::CostTokenType,
@@ -19,21 +23,17 @@ use cairo_lang_sierra::{
 use cairo_lang_sierra_ap_change::{ap_change_info::ApChangeInfo, ApChangeError};
 use cairo_lang_sierra_gas::{gas_info::GasInfo, CostError};
 use cairo_lang_sierra_to_casm::metadata::{
-    calc_metadata, calc_metadata_ap_change_only, Metadata as CairoGasMetadata,
-    MetadataComputationConfig, MetadataError as CairoGasMetadataError,
+    calc_metadata, calc_metadata_ap_change_only, Metadata as CairoMetadata,
+    MetadataComputationConfig, MetadataError as CairoMetadataError,
 };
 use cairo_lang_sierra_type_size::ProgramRegistryInfo;
-
-use crate::{
-    error::{Error, Result as NativeResult},
-    native_panic,
-};
-
-use std::{collections::BTreeMap, fmt, ops::Deref};
+use std::{collections::BTreeMap, fmt};
 
 /// Holds global gas info.
 #[derive(Default)]
-pub struct GasMetadata(pub CairoGasMetadata);
+pub struct GasMetadata {
+    cairo_metadata: CairoMetadata,
+}
 
 /// The gas cost associated to a determined sierra statement.
 ///
@@ -49,6 +49,8 @@ pub enum GasMetadataError {
     ApChangeError(#[from] ApChangeError),
     #[error(transparent)]
     CostError(#[from] CostError),
+    #[error(transparent)]
+    CairoMetadataError(#[from] CairoMetadataError),
     #[error("Not enough gas to run the operation. Required: {:?}, Available: {:?}.", gas.0, gas.1)]
     NotEnoughGas { gas: Box<(u64, u64)> },
 }
@@ -59,13 +61,13 @@ impl GasMetadata {
         sierra_program_info: &ProgramRegistryInfo,
         config: Option<MetadataComputationConfig>,
     ) -> Result<GasMetadata, GasMetadataError> {
-        let cairo_gas_metadata = if let Some(metadata_config) = config {
+        let cairo_metadata = if let Some(metadata_config) = config {
             calc_metadata(sierra_program, sierra_program_info, metadata_config)?
         } else {
             calc_metadata_ap_change_only(sierra_program, sierra_program_info)?
         };
 
-        Ok(GasMetadata::from(cairo_gas_metadata))
+        Ok(GasMetadata { cairo_metadata })
     }
 
     /// Returns the initial value for the gas counter.
@@ -94,11 +96,11 @@ impl GasMetadata {
     }
 
     pub fn initial_required_gas(&self, func: &FunctionId) -> Result<Option<u64>, Error> {
-        if self.gas_info.function_costs.is_empty() {
+        if self.cairo_metadata.gas_info.function_costs.is_empty() {
             return Ok(None);
         }
         Ok(Some(
-            self.gas_info.function_costs[func]
+            self.cairo_metadata.gas_info.function_costs[func]
                 .iter()
                 .map(|(token_type, val)| {
                     let Ok(val) = TryInto::<usize>::try_into(*val) else {
@@ -116,7 +118,8 @@ impl GasMetadata {
     pub fn initial_required_gas_for_entry_points(
         &self,
     ) -> NativeResult<BTreeMap<u64, BTreeMap<u64, u64>>> {
-        self.gas_info
+        self.cairo_metadata
+            .gas_info
             .function_costs
             .iter()
             .map(|func| {
@@ -162,7 +165,8 @@ impl GasMetadata {
         idx: StatementIdx,
         cost_type: CostTokenType,
     ) -> Option<u64> {
-        self.gas_info
+        self.cairo_metadata
+            .gas_info
             .variable_values
             .get(&(idx, cost_type))
             .copied()
@@ -170,49 +174,32 @@ impl GasMetadata {
     }
 }
 
-impl From<CairoGasMetadata> for GasMetadata {
-    fn from(value: CairoGasMetadata) -> Self {
-        Self(value)
-    }
-}
-
-impl Deref for GasMetadata {
-    type Target = CairoGasMetadata;
-
-    fn deref(&self) -> &Self::Target {
-        &self.0
-    }
-}
-
 impl fmt::Debug for GasMetadata {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         f.debug_struct("GasMetadata")
-            .field("ap_change_info", &self.ap_change_info)
-            .field("gas_info", &self.gas_info)
+            .field("ap_change_info", &self.cairo_metadata.ap_change_info)
+            .field("gas_info", &self.cairo_metadata.gas_info)
             .finish()
     }
 }
 
 impl Clone for GasMetadata {
     fn clone(&self) -> Self {
-        Self(CairoGasMetadata {
-            ap_change_info: ApChangeInfo {
-                variable_values: self.ap_change_info.variable_values.clone(),
-                function_ap_change: self.ap_change_info.function_ap_change.clone(),
+        Self {
+            cairo_metadata: CairoMetadata {
+                ap_change_info: ApChangeInfo {
+                    variable_values: self.cairo_metadata.ap_change_info.variable_values.clone(),
+                    function_ap_change: self
+                        .cairo_metadata
+                        .ap_change_info
+                        .function_ap_change
+                        .clone(),
+                },
+                gas_info: GasInfo {
+                    variable_values: self.cairo_metadata.gas_info.variable_values.clone(),
+                    function_costs: self.cairo_metadata.gas_info.function_costs.clone(),
+                },
             },
-            gas_info: GasInfo {
-                variable_values: self.gas_info.variable_values.clone(),
-                function_costs: self.gas_info.function_costs.clone(),
-            },
-        })
-    }
-}
-
-impl From<CairoGasMetadataError> for GasMetadataError {
-    fn from(value: CairoGasMetadataError) -> Self {
-        match value {
-            CairoGasMetadataError::ApChangeError(x) => GasMetadataError::ApChangeError(x),
-            CairoGasMetadataError::CostError(x) => GasMetadataError::CostError(x),
         }
     }
 }
