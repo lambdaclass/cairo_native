@@ -1,4 +1,4 @@
-use afl::{fuzz, ijon_inc, ijon_set};
+use afl::fuzz;
 use arbitrary::{Arbitrary, Unstructured};
 use cairo_lang_sierra::{
     extensions::core::{CoreLibfunc, CoreType},
@@ -9,6 +9,9 @@ use cairo_native::{
     starknet_stub::StubSyscallHandler, OptLevel,
 };
 use cairo_native_fuzz::{arbitrary_value, is_builtin, is_supported};
+
+#[cfg(fuzzing)]
+use afl::{ijon_inc, ijon_set};
 
 fn main() {
     let program = include_program!("../test_data_artifacts/programs/corelib.sierra.json")
@@ -31,9 +34,17 @@ fn main() {
             return;
         };
 
+        if !cfg!(fuzzing) {
+            println!("function {}", func.id);
+        }
+
         let mut param_tys = vec![];
         for param in &func.params {
             let param_ty = registry.get_type(&param.ty).unwrap();
+
+            if !cfg!(fuzzing) {
+                println!("- param {}", param.ty);
+            }
 
             if is_builtin(param_ty) {
                 continue;
@@ -44,6 +55,27 @@ fn main() {
             };
         }
 
+        if func
+            .signature
+            .ret_types
+            .iter()
+            .filter(|ret_ty_id| {
+                let ret_ty = registry.get_type(ret_ty_id).unwrap();
+                !is_builtin(ret_ty)
+            })
+            .count()
+            > 1
+        {
+            return;
+        }
+
+        for ret_ty_id in &func.signature.ret_types {
+            if !cfg!(fuzzing) {
+                println!("- ret {}", ret_ty_id);
+            }
+        }
+
+        #[cfg(fuzzing)]
         ijon_set!(func_idx as u32);
 
         let mut values = vec![];
@@ -51,8 +83,18 @@ fn main() {
             let Ok(value) = arbitrary_value(param_ty, &mut unstructured, &registry) else {
                 return;
             };
+
             values.push(value);
+
+            #[cfg(fuzzing)]
             ijon_inc!(func_idx as u32);
+        }
+
+        if !cfg!(fuzzing) {
+            println!("arguments");
+            for value in &values {
+                println!("- {:?}", value);
+            }
         }
 
         executor
