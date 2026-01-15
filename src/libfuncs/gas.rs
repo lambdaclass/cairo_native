@@ -397,7 +397,10 @@ mod test {
             result.return_value,
             Value::Enum {
                 tag: 0,
-                value: Box::new(Value::Uint128(4000)),
+                value: Box::new(Value::Struct {
+                    fields: vec![Value::Uint128(4000)],
+                    debug_name: None
+                }),
                 debug_name: None,
             }
         );
