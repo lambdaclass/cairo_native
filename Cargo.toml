@@ -14,7 +14,7 @@ members = [
     "binaries/starknet-native-compile",
     "binaries/cairo-native-bin-utils",
     "test_utils",
-    "fuzz",
+    "fuzzer",
 ]
 
 [workspace.package]
