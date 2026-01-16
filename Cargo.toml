@@ -8,10 +8,12 @@ members = [
     "binaries/cairo-native-dump",
     "binaries/cairo-native-run",
     "binaries/cairo-native-test",
+    "binaries/cairo-native-test-2",
     "binaries/scarb-native-dump",
     "binaries/scarb-native-test",
     "binaries/starknet-native-compile",
     "binaries/cairo-native-bin-utils",
+    "test_utils",
 ]
 
 [workspace.package]

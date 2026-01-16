@@ -7,9 +7,6 @@ usage:
 	@echo "    test-no-corelib: Runs all tests except for the ones from the cairo's corelib."
 	@echo "    clean:           Cleans the built artifacts."
 
-corelib: ../../cairo2/corelib
-	ln -s ../../cairo2/corelib corelib
-
 build:
 	cargo build --release --all-features
 .PHONY: build
@@ -19,11 +16,11 @@ check:
 	cargo clippy --all-targets --all-features -- -D warnings
 .PHONY: check
 
-test: corelib
+test:
 	cargo test --all-features
 .PHONY: test
 
-test-no-corelib: corelib
+test-no-corelib:
 	cargo test --all-features -- --skip test_corelib
 .PHONY: test-no-corelib
 

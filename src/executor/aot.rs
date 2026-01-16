@@ -203,9 +203,7 @@ impl AotNativeExecutor {
 mod tests {
     use super::*;
     use crate::{
-        context::NativeContext,
-        starknet_stub::StubSyscallHandler,
-        {load_cairo, load_starknet},
+        context::NativeContext, include_contract, load_cairo, starknet_stub::StubSyscallHandler,
     };
     use cairo_lang_sierra::program::Program;
     use rstest::*;
@@ -228,26 +226,9 @@ mod tests {
 
     #[fixture]
     fn starknet_program() -> Program {
-        let (_, program) = load_starknet! {
-            #[starknet::interface]
-            trait ISimpleStorage<TContractState> {
-                fn get(self: @TContractState) -> u128;
-            }
-
-            #[starknet::contract]
-            mod contract {
-                #[storage]
-                struct Storage {}
-
-                #[abi(embed_v0)]
-                impl ISimpleStorageImpl of super::ISimpleStorage<ContractState> {
-                    fn get(self: @ContractState) -> u128 {
-                        42
-                    }
-                }
-            }
-        };
-        program
+        include_contract!("test_data_artifacts/contracts/simple_storage_42.contract.json")
+            .extract_sierra_program()
+            .unwrap()
     }
 
     #[rstest]

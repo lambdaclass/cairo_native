@@ -11,7 +11,6 @@ use cairo_lang_filesystem::{
 };
 use cairo_lang_runner::{casm_run::format_for_panic, RunResultValue};
 use cairo_lang_sierra_generator::replace_ids::replace_sierra_ids_in_program;
-use cairo_lang_starknet::starknet_plugin_suite;
 use cairo_lang_test_plugin::{
     compile_test_prepared_db,
     test_config::{PanicExpectation, TestExpectation},
@@ -41,8 +40,6 @@ fn test_corelib() {
         b.detect_corelib();
         b.with_cfg(CfgSet::from_iter([Cfg::name("test")]));
         b.with_default_plugin_suite(test_plugin_suite());
-        b.with_default_plugin_suite(starknet_plugin_suite());
-
         b.build().unwrap()
     };
 

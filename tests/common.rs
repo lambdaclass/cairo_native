@@ -412,12 +412,11 @@ pub fn run_vm_contract(
 }
 
 pub fn compare_inputless_program(program_path: &str) {
-    let program: (String, Program, SierraCasmRunner) = load_cairo_path(program_path);
-    let program = &program;
+    let program: (String, Program, SierraCasmRunner) = get_compiled_program(program_path);
 
-    let result_vm = run_vm_program(program, "main", vec![], Some(DEFAULT_GAS as usize)).unwrap();
+    let result_vm = run_vm_program(&program, "main", vec![], Some(DEFAULT_GAS as usize)).unwrap();
     let result_native = run_native_program(
-        program,
+        &program,
         "main",
         &[],
         Some(DEFAULT_GAS),
@@ -943,4 +942,29 @@ pub fn any_felt() -> impl Strategy<Value = Felt> {
 /// Returns a [`Strategy`] that generates any nonzero Felt
 pub fn nonzero_felt() -> impl Strategy<Value = Felt> {
     any_felt().prop_filter("is zero", |x| x != &Felt::ZERO)
+}
+
+// TODO: Think a better name
+pub fn get_compiled_program(name: &str) -> (String, Program, SierraCasmRunner) {
+    let program_path = format!("{}/{}.sierra.json", env!("CARGO_MANIFEST_DIR"), name);
+    let program_content = fs::read_to_string(program_path)
+        .expect("Failed to read the content of the program into a String");
+    let versioned_program =
+        serde_json::from_str::<cairo_lang_sierra::program::VersionedProgram>(&program_content)
+            .unwrap();
+    let program = versioned_program.into_v1().unwrap().program;
+    let runner = SierraCasmRunner::new(
+        program.clone(),
+        Some(Default::default()),
+        Default::default(),
+        None,
+    )
+    .unwrap();
+    let entrypoint = name
+        .split("/")
+        .collect::<Vec<&str>>()
+        .last()
+        .unwrap()
+        .to_string();
+    (entrypoint, program, runner)
 }
