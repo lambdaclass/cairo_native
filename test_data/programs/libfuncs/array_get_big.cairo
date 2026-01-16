@@ -26,10 +26,5 @@ fn run_test() -> (u32, u32, u32, u32) {
     numbers.append(21_u32);
     numbers.append(22_u32);
     numbers.append(23_u32);
-    (
-        *numbers.at(20),
-        *numbers.at(21),
-        *numbers.at(22),
-        *numbers.at(23),
-    )
+    (*numbers.at(20), *numbers.at(21), *numbers.at(22), *numbers.at(23))
 }
