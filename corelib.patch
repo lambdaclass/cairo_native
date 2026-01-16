@@ -1013,36 +1013,6 @@ diff --color=auto -crN cairo2/corelib_1/src/test/hash_test.cairo cairo2/corelib/
 ! //         ],
 ! //     );
 ! // }
-diff --color=auto -crN cairo2/corelib_1/src/test/language_features/box_test.cairo cairo2/corelib/src/test/language_features/box_test.cairo
-*** cairo2/corelib_1/src/test/language_features/box_test.cairo	Sun Dec 14 15:13:21 2025
---- cairo2/corelib/src/test/language_features/box_test.cairo	Thu Dec 18 12:33:31 2025
-***************
-*** 7,18 ****
-      local_into_box(value)
-  }
-  
-! #[test]
-! fn test_local_into_box() {
-!     assert_eq!(into_box((1, 2_u256, 3)).unbox(), (1, 2, 3));
-!     assert_eq!(into_box(()).unbox(), ());
-!     assert_eq!(into_box(Some(6_u8)).unbox(), Some(6));
-!     assert_eq!(into_box(None::<u8>).unbox(), None);
-!     assert_eq!(into_box(Ok::<u16, u256>(7)).unbox(), Ok(7));
-!     assert_eq!(into_box(Err::<u16, u256>(8)).unbox(), Err(8));
-! }
---- 7,18 ----
-      local_into_box(value)
-  }
-  
-! // #[test]
-! // fn test_local_into_box() {
-! //     assert_eq!(into_box((1, 2_u256, 3)).unbox(), (1, 2, 3));
-! //     assert_eq!(into_box(()).unbox(), ());
-! //     assert_eq!(into_box(Some(6_u8)).unbox(), Some(6));
-! //     assert_eq!(into_box(None::<u8>).unbox(), None);
-! //     assert_eq!(into_box(Ok::<u16, u256>(7)).unbox(), Ok(7));
-! //     assert_eq!(into_box(Err::<u16, u256>(8)).unbox(), Err(8));
-! // }
 diff --color=auto -crN cairo2/corelib_1/src/test/qm31_test.cairo cairo2/corelib/src/test/qm31_test.cairo
 *** cairo2/corelib_1/src/test/qm31_test.cairo	Sun Dec 14 15:13:21 2025
 --- cairo2/corelib/src/test/qm31_test.cairo	Thu Dec 18 12:33:31 2025
