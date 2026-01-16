@@ -3,9 +3,11 @@ use cairo_lang_sierra::{
     program::Program,
     program_registry::ProgramRegistry,
 };
+use cairo_lang_starknet_classes::contract_class::ContractClass;
 use cairo_native_fuzz::{encode_value, is_builtin, is_supported, random_value};
 use clap::Parser;
 use rand::seq::SliceRandom;
+use starknet_types_core::felt::Felt;
 use std::{error::Error, fs::File, io::Write, path::PathBuf};
 
 /// Generate corpus for a Sierra program or contract class.
@@ -99,5 +101,32 @@ fn generate_contract_corpus(
     contract_path: PathBuf,
     corpus_dir: PathBuf,
 ) -> Result<(), Box<dyn Error>> {
-    todo!()
+    let contract_file = File::open(contract_path).unwrap();
+    let contract: ContractClass = serde_json::from_reader(contract_file).unwrap();
+
+    std::fs::create_dir_all(&corpus_dir).unwrap();
+
+    let mut entrypoints = []
+        .iter()
+        .chain(&contract.entry_points_by_type.external)
+        .chain(&contract.entry_points_by_type.l1_handler)
+        .chain(&contract.entry_points_by_type.constructor)
+        .collect::<Vec<_>>();
+    entrypoints.shuffle(&mut rand::rng());
+
+    for entrypoint in entrypoints.into_iter().take(10) {
+        let mut input_file =
+            File::create(corpus_dir.join(format!("f0x{:x}", entrypoint.selector))).unwrap();
+
+        let selector_felt = Felt::from(entrypoint.selector.clone());
+        input_file.write_all(&selector_felt.to_bytes_le())?;
+
+        let length = rand::random::<u8>() % 32;
+        input_file.write_all(&length.to_le_bytes())?;
+        for _ in 0..length {
+            input_file.write_all(&Felt::from_bytes_le(&rand::random()).to_bytes_le())?;
+        }
+    }
+
+    Ok(())
 }
