@@ -306,7 +306,7 @@ fn invoke1_tuple5_u8_u16_u32_u64_u128() {
         assert_eq!(
             run_program(
                 &program.1,
-                &format!("{0}::{0}::main", module_name),
+                &format!("{0}::{0}::main", program.0),
                 std::slice::from_ref(&x)
             ),
             ExecutionResult {
