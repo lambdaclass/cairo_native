@@ -11,7 +11,7 @@ use starknet_types_core::felt::Felt;
 
 #[test]
 fn fib() {
-    let program = &get_compiled_program("test_data_artifacts/programs/fibonacci");
+    let program = get_compiled_program("test_data_artifacts/programs/fibonacci");
     let result_vm = run_vm_program(
         &program,
         "fibonacci",
@@ -38,16 +38,16 @@ fn fib() {
 
 #[test]
 fn logistic_map() {
-    let program = &get_compiled_program("test_data_artifacts/programs/logistic_map");
+    let program = get_compiled_program("test_data_artifacts/programs/logistic_map");
     let result_vm = run_vm_program(
-        program,
+        &program,
         "run_test",
         vec![Arg::Value(Felt::from(1000))],
         Some(DEFAULT_GAS as usize),
     )
     .unwrap();
     let result_native = run_native_program(
-        program,
+        &program,
         "run_test",
         &[Value::Felt252(1000.into())],
         Some(DEFAULT_GAS),
@@ -65,9 +65,9 @@ fn logistic_map() {
 
 #[test]
 fn pedersen() {
-    let program = &get_compiled_program("test_data_artifacts/programs/pedersen");
+    let program = get_compiled_program("test_data_artifacts/programs/pedersen");
     let result_vm = run_vm_program(
-        program,
+        &program,
         "run_test",
         vec![
             Arg::Value(
@@ -87,7 +87,7 @@ fn pedersen() {
     )
     .unwrap();
     let result_native = run_native_program(
-        program,
+        &program,
         "run_test",
         &[
             Value::Felt252(felt252_str(
@@ -112,16 +112,16 @@ fn pedersen() {
 
 #[test]
 fn factorial() {
-    let program = &get_compiled_program("test_data_artifacts/programs/factorial");
+    let program = get_compiled_program("test_data_artifacts/programs/factorial");
     let result_vm = run_vm_program(
-        program,
+        &program,
         "run_test",
         vec![Arg::Value(Felt::from(13))],
         Some(DEFAULT_GAS as usize),
     )
     .unwrap();
     let result_native = run_native_program(
-        program,
+        &program,
         "run_test",
         &[Value::Felt252(13.into())],
         Some(DEFAULT_GAS),
@@ -140,16 +140,16 @@ fn factorial() {
 proptest! {
     #[test]
     fn fib_proptest(n in 0..100i32) {
-        let program = &get_compiled_program("test_data_artifacts/programs/fib");
+        let program = get_compiled_program("test_data_artifacts/programs/fib");
         let result_vm = run_vm_program(
-            program,
+            &program,
             "run_test",
             vec![Arg::Value(Felt::from(n))],
             Some(DEFAULT_GAS as usize),
         )
         .unwrap();
         let result_native = run_native_program(
-            program,
+            &program,
             "run_test",
             &[Value::Felt252(n.into())],
             Some(DEFAULT_GAS),
@@ -166,16 +166,16 @@ proptest! {
 
     #[test]
     fn logistic_map_proptest(n in 100..110i32) {
-        let program = &get_compiled_program("test_data_artifacts/programs/logistic_map");
+        let program = get_compiled_program("test_data_artifacts/programs/logistic_map");
         let result_vm = run_vm_program(
-            program,
+            &program,
             "run_test",
             vec![Arg::Value(Felt::from(n))],
             Some(DEFAULT_GAS as usize),
         )
         .unwrap();
         let result_native = run_native_program(
-            program,
+            &program,
             "run_test",
             &[Value::Felt252(n.into())],
             Some(DEFAULT_GAS),
@@ -192,16 +192,16 @@ proptest! {
 
     #[test]
     fn factorial_proptest(n in 1..100i32) {
-        let program = &get_compiled_program("test_data_artifacts/programs/factorial");
+        let program = get_compiled_program("test_data_artifacts/programs/factorial");
         let result_vm = run_vm_program(
-            program,
+            &program,
             "run_test",
             vec![Arg::Value(Felt::from(n))],
             Some(DEFAULT_GAS as usize),
         )
         .unwrap();
         let result_native = run_native_program(
-            program,
+            &program,
             "run_test",
             &[Value::Felt252(n.into())],
             Some(DEFAULT_GAS),
@@ -218,9 +218,9 @@ proptest! {
 
     #[test]
     fn pedersen_proptest(a in any_felt(), b in any_felt()) {
-        let program = &get_compiled_program("test_data_artifacts/programs/pedersen");
+        let program = get_compiled_program("test_data_artifacts/programs/pedersen");
         let result_vm = run_vm_program(
-            program,
+            &program,
             "run_test",
             vec![Arg::Value(Felt::from_bytes_be(&a.clone().to_bytes_be())), Arg::Value(Felt::from_bytes_be(&b.clone().to_bytes_be()))],
             Some(DEFAULT_GAS as usize),
@@ -228,7 +228,7 @@ proptest! {
         .unwrap();
 
         let result_native = run_native_program(
-            program,
+            &program,
             "run_test",
             &[Value::Felt252(a), Value::Felt252(b)],
             Some(DEFAULT_GAS),
@@ -245,9 +245,9 @@ proptest! {
 
     #[test]
     fn poseidon_proptest(a in any_felt(), b in any_felt(), c in any_felt()) {
-        let program = &get_compiled_program("test_data_artifacts/programs/poseidon");
+        let program = get_compiled_program("test_data_artifacts/programs/poseidon");
         let result_vm = run_vm_program(
-            program,
+            &program,
             "run_test",
             vec![Arg::Value(Felt::from_bytes_be(&a.clone().to_bytes_be())),
              Arg::Value(Felt::from_bytes_be(&b.clone().to_bytes_be())),
@@ -257,7 +257,7 @@ proptest! {
         .unwrap();
 
         let result_native = run_native_program(
-            program,
+            &program,
             "run_test",
             &[Value::Felt252(a), Value::Felt252(b), Value::Felt252(c)],
             Some(DEFAULT_GAS),
@@ -275,11 +275,11 @@ proptest! {
 
 #[test]
 fn self_referencing_struct() {
-    let program = &get_compiled_program("test_data_artifacts/programs/self_referencing");
+    let program = get_compiled_program("test_data_artifacts/programs/self_referencing");
     let result_vm =
-        run_vm_program(program, "run_test", vec![], Some(DEFAULT_GAS as usize)).unwrap();
+        run_vm_program(&program, "run_test", vec![], Some(DEFAULT_GAS as usize)).unwrap();
     let result_native = run_native_program(
-        program,
+        &program,
         "run_test",
         &[],
         Some(DEFAULT_GAS),
@@ -297,11 +297,11 @@ fn self_referencing_struct() {
 
 #[test]
 fn no_op() {
-    let program = &get_compiled_program("test_data_artifacts/programs/no_op");
+    let program = get_compiled_program("test_data_artifacts/programs/no_op");
     let result_vm =
-        run_vm_program(program, "run_test", vec![], Some(DEFAULT_GAS as usize)).unwrap();
+        run_vm_program(&program, "run_test", vec![], Some(DEFAULT_GAS as usize)).unwrap();
     let result_native = run_native_program(
-        program,
+        &program,
         "run_test",
         &[],
         Some(DEFAULT_GAS),
