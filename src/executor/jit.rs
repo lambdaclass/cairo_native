@@ -2,7 +2,9 @@ use crate::{
     error::Error,
     execution_result::{ContractExecutionResult, ExecutionResult},
     metadata::{
-        felt252_dict::Felt252DictOverrides, gas::GasMetadata, runtime_bindings::setup_runtime,
+        felt252_dict::Felt252DictOverrides,
+        gas::{CostInfoProvider, GasMetadata},
+        runtime_bindings::setup_runtime,
     },
     module::NativeModule,
     starknet::{DummySyscallHandler, StarknetSyscallHandler},
@@ -55,11 +57,16 @@ impl<'m> JitNativeExecutor<'m> {
             mut metadata,
         } = native_module;
 
+        let gas_metadata = metadata
+            .remove::<CostInfoProvider>()
+            .ok_or(Error::MissingMetadata)?
+            .gas_metadata;
+
         let executor = Self {
             engine: create_engine(&module, &metadata, opt_level),
             module,
             registry,
-            gas_metadata: metadata.remove().ok_or(Error::MissingMetadata)?,
+            gas_metadata,
             dict_overrides: metadata.remove().unwrap_or_default(),
         };
 

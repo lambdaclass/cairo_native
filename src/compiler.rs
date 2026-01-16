@@ -50,7 +50,7 @@ use crate::{
     error::{panic::ToNativeAssertError, Error},
     libfuncs::{BranchArg, LibfuncBuilder, LibfuncHelper},
     metadata::{
-        gas::{GasCost, GasMetadata},
+        gas::{calculate_gas_changes, CostInfoProvider, GasCost, GasWallet},
         tail_recursion::TailRecursionMeta,
         MetadataStorage,
     },
@@ -70,6 +70,7 @@ use cairo_lang_sierra::{
     program::{Function, Invocation, Program, Statement, StatementIdx},
     program_registry::ProgramRegistry,
 };
+use cairo_lang_sierra_to_casm::environment::gas_wallet::GasWallet as CairoGasWallet;
 use cairo_lang_utils::ordered_hash_map::OrderedHashMap;
 use itertools::Itertools;
 use melior::{
@@ -153,6 +154,29 @@ pub fn compile(
 
     for function in &program.funcs {
         tracing::info!("Compiling function `{}`.", function.id);
+        println!("FUNCTION: {}", function.id);
+
+        if let Some(cost_info_provider) = metadata.get::<CostInfoProvider>() {
+            // There's a GasWallet per function, so we update it relative to
+            // the function to compile.
+            if cost_info_provider.gas_metadata.check_gas_usage {
+                let function_costs = cost_info_provider
+                    .gas_metadata
+                    .metadata
+                    .gas_info
+                    .function_costs
+                    .get(&function.id)
+                    .to_native_assert_error(&format!(
+                        "No function costs were found for function id: {}",
+                        function.id
+                    ))?;
+
+                let new_gas_wallet = CairoGasWallet::Value(function_costs.clone());
+                metadata.remove::<GasWallet>();
+                metadata.insert(GasWallet(new_gas_wallet));
+            }
+        }
+
         compile_func(
             context,
             module,
@@ -454,13 +478,18 @@ fn compile_func(
     ));
 
     let mut tailrec_state = Option::<(Value, BlockRef)>::None;
+
     foreach_statement_in_function::<_, Error>(
         statements,
         function.entry_point,
         initial_state,
         |statement_idx, mut state| {
-            if let Some(gas_metadata) = metadata.get::<GasMetadata>() {
-                let gas_cost = gas_metadata.get_gas_costs_for_statement(statement_idx);
+            if let Some(cost_info_provider) = metadata.get::<CostInfoProvider>() {
+                cost_info_provider.update_statement_id(statement_idx);
+
+                let gas_cost = cost_info_provider
+                    .gas_metadata
+                    .get_gas_costs_for_statement(statement_idx);
                 metadata.remove::<GasCost>();
                 metadata.insert(GasCost(gas_cost));
             }
@@ -648,6 +677,32 @@ fn compile_func(
                         &helper,
                         metadata,
                     )?;
+
+                    println!("  LIBFUNC: {}", libfunc_to_name(libfunc));
+                    // Update GasWallet.
+                    if let Some(cost_info_provider) = metadata.get::<CostInfoProvider>() {
+                        let gas_changes = calculate_gas_changes(
+                            &cost_info_provider.gas_metadata.metadata.gas_info,
+                            &statement_idx,
+                            libfunc,
+                            cost_info_provider,
+                        );
+                        let gas_wallet = metadata
+                            .get_mut::<GasWallet>()
+                            .ok_or(Error::MissingMetadata)?;
+
+                        println!("      GASWALLET: {:?}", &gas_wallet);
+                        println!("      REQUEST: {:?}", &gas_changes);
+
+                        native_assert!(
+                            libfunc.branch_signatures().len() == gas_changes.len(),
+                            "The number of gas changes should be equal the number of branches."
+                        );
+
+                        // TODO: libfuncs with more than one branch need to
+                        // decide which will be used to update the GasWallet.
+                        gas_wallet.update(gas_changes.get(0).unwrap().clone())?;
+                    }
 
                     // When statistics are enabled, we iterate from the start
                     // to the end block of the compiled libfunc, and count all the operations.

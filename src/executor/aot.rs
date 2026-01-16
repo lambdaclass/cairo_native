@@ -2,7 +2,9 @@ use crate::{
     error::Error,
     execution_result::{ContractExecutionResult, ExecutionResult},
     metadata::{
-        felt252_dict::Felt252DictOverrides, gas::GasMetadata, runtime_bindings::setup_runtime,
+        felt252_dict::Felt252DictOverrides,
+        gas::{CostInfoProvider, GasMetadata},
+        runtime_bindings::setup_runtime,
     },
     module::NativeModule,
     starknet::{DummySyscallHandler, StarknetSyscallHandler},
@@ -74,6 +76,11 @@ impl AotNativeExecutor {
             mut metadata,
         } = module;
 
+        let gas_metadata = metadata
+            .remove::<CostInfoProvider>()
+            .ok_or(Error::MissingMetadata)?
+            .gas_metadata;
+
         let library_path = NamedTempFile::new()?
             .into_temp_path()
             .keep()
@@ -85,7 +92,7 @@ impl AotNativeExecutor {
         Ok(Self::new(
             unsafe { Library::new(&library_path)? },
             registry,
-            metadata.remove().ok_or(Error::MissingMetadata)?,
+            gas_metadata,
             metadata.remove().unwrap_or_default(),
         ))
     }

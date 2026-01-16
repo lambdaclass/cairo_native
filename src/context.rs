@@ -2,7 +2,11 @@ use crate::{
     clone_option_mut,
     error::{panic::ToNativeAssertError, Error},
     ffi::{get_data_layout_rep, get_target_triple},
-    metadata::{gas::GasMetadata, runtime_bindings::RuntimeBindingsMeta, MetadataStorage},
+    metadata::{
+        gas::{CostInfoProvider, GasWallet},
+        runtime_bindings::RuntimeBindingsMeta,
+        MetadataStorage,
+    },
     module::NativeModule,
     native_assert,
     statistics::Statistics,
@@ -13,7 +17,9 @@ use cairo_lang_sierra::{
     program::Program,
     program_registry::ProgramRegistry,
 };
-use cairo_lang_sierra_to_casm::metadata::MetadataComputationConfig;
+use cairo_lang_sierra_to_casm::{
+    environment::gas_wallet::GasWallet as CairoGasWallet, metadata::MetadataComputationConfig,
+};
 use cairo_lang_sierra_type_size::ProgramRegistryInfo;
 use llvm_sys::target::{
     LLVM_InitializeAllAsmPrinters, LLVM_InitializeAllTargetInfos, LLVM_InitializeAllTargetMCs,
@@ -158,15 +164,20 @@ impl NativeContext {
         let mut metadata = MetadataStorage::new();
         // Make the runtime library available.
         metadata.insert(RuntimeBindingsMeta::default());
-        // We assume that GasMetadata will be always present when the program uses the gas builtin.
-        let gas_metadata = GasMetadata::new(
+        // We assume that CostInfoProvider will be always present when the program uses the gas builtin.
+        let cost_info_provider = CostInfoProvider::new(
             program,
             &ProgramRegistryInfo::new(program)?,
             gas_metadata_config,
         )?;
+
         // Unwrapping here is not necessary since the insertion will only fail if there was
         // already some metadata of the same type.
-        metadata.insert(gas_metadata);
+        metadata.insert(cost_info_provider);
+        // GasWallet is only available if MetadataComputationConfig was
+        // provided. So, by default it is disabled and, if ever need, it will
+        // be updated before compiling a cairo function.
+        metadata.insert(GasWallet(CairoGasWallet::Disabled));
 
         #[cfg(feature = "with-libfunc-profiling")]
         metadata.insert(crate::metadata::profiler::ProfilerMeta::new());
