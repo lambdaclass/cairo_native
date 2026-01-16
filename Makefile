@@ -1,8 +1,8 @@
 # Environment detection.
 
 UNAME := $(shell uname)
-SCARB_VERSION = 2.14.0
-CAIRO_2_VERSION = 2.14.1-dev.1
+SCARB_VERSION = 2.15.0
+CAIRO_2_VERSION = 2.15.0
 
 # Usage is the default target for newcomers running `make`.
 .PHONY: usage
@@ -202,7 +202,7 @@ cairo-tests:
 	cd cairo                                                          ; \
 	git init                                                          ; \
 	git remote add origin https://github.com/starkware-libs/cairo.git ; \
-	git fetch origin v2.14.0                                          ; \
+	git fetch origin v$(CAIRO_2_VERSION)                              ; \
 	git checkout FETCH_HEAD                                           ; \
 	git sparse-checkout set --no-cone                                   \
 	  tests/bug_samples/                                                \
