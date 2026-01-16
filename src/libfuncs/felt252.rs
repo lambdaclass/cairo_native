@@ -245,145 +245,13 @@ pub fn build_is_zero<'ctx, 'this>(
 
 #[cfg(test)]
 pub mod test {
-    use crate::{jit_struct, load_cairo, utils::testing::run_program, values::Value};
+    use crate::{
+        jit_struct,
+        utils::testing::{get_compiled_program, run_program},
+        values::Value,
+    };
     use cairo_lang_sierra::program::Program;
-    use lazy_static::lazy_static;
     use starknet_types_core::felt::Felt;
-
-    lazy_static! {
-        static ref FELT252_ADD: (String, Program) = load_cairo! {
-            fn run_test(lhs: felt252, rhs: felt252) -> felt252 {
-                lhs + rhs
-            }
-        };
-        static ref FELT252_SUB: (String, Program) = load_cairo! {
-            fn run_test(lhs: felt252, rhs: felt252) -> felt252 {
-                lhs - rhs
-            }
-        };
-        static ref FELT252_MUL: (String, Program) = load_cairo! {
-            fn run_test(lhs: felt252, rhs: felt252) -> felt252 {
-                lhs * rhs
-            }
-        };
-        static ref FELT252_DIV: (String, Program) = load_cairo! {
-            fn run_test(lhs: felt252, rhs: felt252) -> felt252 {
-                felt252_div(lhs, rhs.try_into().unwrap())
-            }
-        };
-        static ref FELT252_CONST: (String, Program) = load_cairo! {
-            extern fn felt252_const<const value: felt252>() -> felt252 nopanic;
-
-            fn run_test() -> (felt252, felt252, felt252, felt252) {
-                (
-                    felt252_const::<0>(),
-                    felt252_const::<1>(),
-                    felt252_const::<-2>(),
-                    felt252_const::<-1>()
-                )
-            }
-        };
-        static ref FELT252_ADD_CONST: (String, Program) = load_cairo! {
-            extern fn felt252_add_const<const rhs: felt252>(lhs: felt252) -> felt252 nopanic;
-
-            fn run_test() -> (felt252, felt252, felt252, felt252, felt252, felt252, felt252, felt252, felt252) {
-                (
-                    felt252_add_const::<0>(0),
-                    felt252_add_const::<0>(1),
-                    felt252_add_const::<1>(0),
-                    felt252_add_const::<1>(1),
-                    felt252_add_const::<0>(-1),
-                    felt252_add_const::<-1>(0),
-                    felt252_add_const::<-1>(-1),
-                    felt252_add_const::<-1>(1),
-                    felt252_add_const::<1>(-1),
-                )
-            }
-        };
-        static ref FELT252_SUB_CONST: (String, Program) = load_cairo! {
-            extern fn felt252_sub_const<const rhs: felt252>(lhs: felt252) -> felt252 nopanic;
-
-            fn run_test() -> (felt252, felt252, felt252, felt252, felt252, felt252, felt252, felt252, felt252) {
-                (
-                    felt252_sub_const::<0>(0),
-                    felt252_sub_const::<0>(1),
-                    felt252_sub_const::<1>(0),
-                    felt252_sub_const::<1>(1),
-                    felt252_sub_const::<0>(-1),
-                    felt252_sub_const::<-1>(0),
-                    felt252_sub_const::<-1>(-1),
-                    felt252_sub_const::<-1>(1),
-                    felt252_sub_const::<1>(-1),
-                )
-            }
-        };
-        static ref FELT252_MUL_CONST: (String, Program) = load_cairo! {
-            extern fn felt252_mul_const<const rhs: felt252>(lhs: felt252) -> felt252 nopanic;
-
-            fn run_test() -> (felt252, felt252, felt252, felt252, felt252, felt252, felt252, felt252, felt252) {
-                (
-                    felt252_mul_const::<0>(0),
-                    felt252_mul_const::<0>(1),
-                    felt252_mul_const::<1>(0),
-                    felt252_mul_const::<1>(1),
-                    felt252_mul_const::<2>(-1),
-                    felt252_mul_const::<-2>(2),
-                    felt252_mul_const::<-1>(-1),
-                    felt252_mul_const::<-1>(1),
-                    felt252_mul_const::<1>(-1),
-                )
-            }
-        };
-        static ref FELT252_DIV_CONST: (String, Program) = load_cairo! {
-            extern fn felt252_div_const<const rhs: felt252>(lhs: felt252) -> felt252 nopanic;
-
-            fn run_test() -> (
-                felt252,
-                felt252,
-                felt252,
-                felt252,
-                felt252,
-                felt252,
-                felt252,
-                felt252,
-                felt252,
-                felt252,
-                felt252,
-                felt252,
-                felt252,
-                felt252,
-                felt252,
-                felt252
-            ) {
-                (
-                    felt252_div_const::<1>(0),
-                    felt252_div_const::<1>(1),
-                    felt252_div_const::<2>(-1),
-                    felt252_div_const::<-2>(2),
-                    felt252_div_const::<-1>(-1),
-                    felt252_div_const::<-1>(1),
-                    felt252_div_const::<1>(-1),
-                    felt252_div_const::<500>(1000),
-                    felt252_div_const::<256>(1024),
-                    felt252_div_const::<-256>(1024),
-                    felt252_div_const::<256>(-1024),
-                    felt252_div_const::<-256>(-1024),
-                    felt252_div_const::<8>(64),
-                    felt252_div_const::<8>(-64),
-                    felt252_div_const::<-8>(64),
-                    felt252_div_const::<-8>(-64),
-                )
-            }
-        };
-        static ref FELT252_IS_ZERO: (String, Program) = load_cairo! {
-            fn run_test(x: felt252) -> bool {
-                match x {
-                    0 => true,
-                    _ => false,
-                }
-            }
-        };
-    }
 
     fn f(val: &str) -> Felt {
         Felt::from_dec_str(val).unwrap()
@@ -391,9 +259,10 @@ pub mod test {
 
     #[test]
     fn felt252_add() {
-        fn r(lhs: Felt, rhs: Felt) -> Felt {
+        let program = &get_compiled_program("test_data_artifacts/programs/libfuncs/felt252_add");
+        fn r(lhs: Felt, rhs: Felt, program: &(String, Program)) -> Felt {
             match run_program(
-                &FELT252_ADD,
+                program,
                 "run_test",
                 &[Value::Felt252(lhs), Value::Felt252(rhs)],
             )
@@ -404,34 +273,35 @@ pub mod test {
             }
         }
 
-        assert_eq!(r(f("0"), f("0")), f("0"));
-        assert_eq!(r(f("1"), f("2")), f("3"));
+        assert_eq!(r(f("0"), f("0"), program), f("0"));
+        assert_eq!(r(f("1"), f("2"), program), f("3"));
 
-        assert_eq!(r(f("0"), f("1")), f("1"));
-        assert_eq!(r(f("0"), f("-2")), f("-2"));
-        assert_eq!(r(f("0"), f("-1")), f("-1"));
+        assert_eq!(r(f("0"), f("1"), program), f("1"));
+        assert_eq!(r(f("0"), f("-2"), program), f("-2"));
+        assert_eq!(r(f("0"), f("-1"), program), f("-1"));
 
-        assert_eq!(r(f("1"), f("0")), f("1"));
-        assert_eq!(r(f("1"), f("1")), f("2"));
-        assert_eq!(r(f("1"), f("-2")), f("-1"));
-        assert_eq!(r(f("1"), f("-1")), f("0"));
+        assert_eq!(r(f("1"), f("0"), program), f("1"));
+        assert_eq!(r(f("1"), f("1"), program), f("2"));
+        assert_eq!(r(f("1"), f("-2"), program), f("-1"));
+        assert_eq!(r(f("1"), f("-1"), program), f("0"));
 
-        assert_eq!(r(f("-2"), f("0")), f("-2"));
-        assert_eq!(r(f("-2"), f("1")), f("-1"));
-        assert_eq!(r(f("-2"), f("-2")), f("-4"));
-        assert_eq!(r(f("-2"), f("-1")), f("-3"));
+        assert_eq!(r(f("-2"), f("0"), program), f("-2"));
+        assert_eq!(r(f("-2"), f("1"), program), f("-1"));
+        assert_eq!(r(f("-2"), f("-2"), program), f("-4"));
+        assert_eq!(r(f("-2"), f("-1"), program), f("-3"));
 
-        assert_eq!(r(f("-1"), f("0")), f("-1"));
-        assert_eq!(r(f("-1"), f("1")), f("0"));
-        assert_eq!(r(f("-1"), f("-2")), f("-3"));
-        assert_eq!(r(f("-1"), f("-1")), f("-2"));
+        assert_eq!(r(f("-1"), f("0"), program), f("-1"));
+        assert_eq!(r(f("-1"), f("1"), program), f("0"));
+        assert_eq!(r(f("-1"), f("-2"), program), f("-3"));
+        assert_eq!(r(f("-1"), f("-1"), program), f("-2"));
     }
 
     #[test]
     fn felt252_sub() {
-        fn r(lhs: Felt, rhs: Felt) -> Felt {
+        let program = &get_compiled_program("test_data_artifacts/programs/libfuncs/felt252_sub");
+        fn r(lhs: Felt, rhs: Felt, program: &(String, Program)) -> Felt {
             match run_program(
-                &FELT252_SUB,
+                program,
                 "run_test",
                 &[Value::Felt252(lhs), Value::Felt252(rhs)],
             )
@@ -442,32 +312,33 @@ pub mod test {
             }
         }
 
-        assert_eq!(r(f("0"), f("0")), f("0"));
-        assert_eq!(r(f("0"), f("1")), f("-1"));
-        assert_eq!(r(f("0"), f("-2")), f("2"));
-        assert_eq!(r(f("0"), f("-1")), f("1"));
+        assert_eq!(r(f("0"), f("0"), program), f("0"));
+        assert_eq!(r(f("0"), f("1"), program), f("-1"));
+        assert_eq!(r(f("0"), f("-2"), program), f("2"));
+        assert_eq!(r(f("0"), f("-1"), program), f("1"));
 
-        assert_eq!(r(f("1"), f("0")), f("1"));
-        assert_eq!(r(f("1"), f("1")), f("0"));
-        assert_eq!(r(f("1"), f("-2")), f("3"));
-        assert_eq!(r(f("1"), f("-1")), f("2"));
+        assert_eq!(r(f("1"), f("0"), program), f("1"));
+        assert_eq!(r(f("1"), f("1"), program), f("0"));
+        assert_eq!(r(f("1"), f("-2"), program), f("3"));
+        assert_eq!(r(f("1"), f("-1"), program), f("2"));
 
-        assert_eq!(r(f("-2"), f("0")), f("-2"));
-        assert_eq!(r(f("-2"), f("1")), f("-3"));
-        assert_eq!(r(f("-2"), f("-2")), f("0"));
-        assert_eq!(r(f("-2"), f("-1")), f("-1"));
+        assert_eq!(r(f("-2"), f("0"), program), f("-2"));
+        assert_eq!(r(f("-2"), f("1"), program), f("-3"));
+        assert_eq!(r(f("-2"), f("-2"), program), f("0"));
+        assert_eq!(r(f("-2"), f("-1"), program), f("-1"));
 
-        assert_eq!(r(f("-1"), f("0")), f("-1"));
-        assert_eq!(r(f("-1"), f("1")), f("-2"));
-        assert_eq!(r(f("-1"), f("-2")), f("1"));
-        assert_eq!(r(f("-1"), f("-1")), f("0"));
+        assert_eq!(r(f("-1"), f("0"), program), f("-1"));
+        assert_eq!(r(f("-1"), f("1"), program), f("-2"));
+        assert_eq!(r(f("-1"), f("-2"), program), f("1"));
+        assert_eq!(r(f("-1"), f("-1"), program), f("0"));
     }
 
     #[test]
     fn felt252_mul() {
-        fn r(lhs: Felt, rhs: Felt) -> Felt {
+        let program = &get_compiled_program("test_data_artifacts/programs/libfuncs/felt252_mul");
+        fn r(lhs: Felt, rhs: Felt, program: &(String, Program)) -> Felt {
             match run_program(
-                &FELT252_MUL,
+                program,
                 "run_test",
                 &[Value::Felt252(lhs), Value::Felt252(rhs)],
             )
@@ -478,33 +349,34 @@ pub mod test {
             }
         }
 
-        assert_eq!(r(f("0"), f("0")), f("0"));
-        assert_eq!(r(f("0"), f("1")), f("0"));
-        assert_eq!(r(f("0"), f("-2")), f("0"));
-        assert_eq!(r(f("0"), f("-1")), f("0"));
+        assert_eq!(r(f("0"), f("0"), program), f("0"));
+        assert_eq!(r(f("0"), f("1"), program), f("0"));
+        assert_eq!(r(f("0"), f("-2"), program), f("0"));
+        assert_eq!(r(f("0"), f("-1"), program), f("0"));
 
-        assert_eq!(r(f("1"), f("0")), f("0"));
-        assert_eq!(r(f("1"), f("1")), f("1"));
-        assert_eq!(r(f("1"), f("-2")), f("-2"));
-        assert_eq!(r(f("1"), f("-1")), f("-1"));
+        assert_eq!(r(f("1"), f("0"), program), f("0"));
+        assert_eq!(r(f("1"), f("1"), program), f("1"));
+        assert_eq!(r(f("1"), f("-2"), program), f("-2"));
+        assert_eq!(r(f("1"), f("-1"), program), f("-1"));
 
-        assert_eq!(r(f("-2"), f("0")), f("0"));
-        assert_eq!(r(f("-2"), f("1")), f("-2"));
-        assert_eq!(r(f("-2"), f("-2")), f("4"));
-        assert_eq!(r(f("-2"), f("-1")), f("2"));
+        assert_eq!(r(f("-2"), f("0"), program), f("0"));
+        assert_eq!(r(f("-2"), f("1"), program), f("-2"));
+        assert_eq!(r(f("-2"), f("-2"), program), f("4"));
+        assert_eq!(r(f("-2"), f("-1"), program), f("2"));
 
-        assert_eq!(r(f("-1"), f("0")), f("0"));
-        assert_eq!(r(f("-1"), f("1")), f("-1"));
-        assert_eq!(r(f("-1"), f("-2")), f("2"));
-        assert_eq!(r(f("-1"), f("-1")), f("1"));
+        assert_eq!(r(f("-1"), f("0"), program), f("0"));
+        assert_eq!(r(f("-1"), f("1"), program), f("-1"));
+        assert_eq!(r(f("-1"), f("-2"), program), f("2"));
+        assert_eq!(r(f("-1"), f("-1"), program), f("1"));
     }
 
     #[test]
     fn felt252_div() {
+        let program = &get_compiled_program("test_data_artifacts/programs/libfuncs/felt252_div");
         // Helper function to run the test and extract the return value.
-        fn r(lhs: Felt, rhs: Felt) -> Option<Felt> {
+        fn r(lhs: Felt, rhs: Felt, program: &(String, Program)) -> Option<Felt> {
             match run_program(
-                &FELT252_DIV,
+                program,
                 "run_test",
                 &[Value::Felt252(lhs), Value::Felt252(rhs)],
             )
@@ -526,45 +398,50 @@ pub mod test {
         }
 
         // Helper function to assert that a division panics.
-        let assert_panics =
-            |lhs, rhs| assert!(r(lhs, rhs).is_none(), "division by 0 is expected to panic",);
+        let assert_panics = |lhs, rhs, program| {
+            assert!(
+                r(lhs, rhs, program).is_none(),
+                "division by 0 is expected to panic",
+            )
+        };
 
         // Division by zero is expected to panic.
-        assert_panics(f("0"), f("0"));
-        assert_panics(f("1"), f("0"));
-        assert_panics(f("-2"), f("0"));
+        assert_panics(f("0"), f("0"), program);
+        assert_panics(f("1"), f("0"), program);
+        assert_panics(f("-2"), f("0"), program);
 
         // Test cases for valid division results.
-        assert_eq!(r(f("0"), f("1")), Some(f("0")));
-        assert_eq!(r(f("0"), f("-2")), Some(f("0")));
-        assert_eq!(r(f("0"), f("-1")), Some(f("0")));
-        assert_eq!(r(f("1"), f("1")), Some(f("1")));
+        assert_eq!(r(f("0"), f("1"), program), Some(f("0")));
+        assert_eq!(r(f("0"), f("-2"), program), Some(f("0")));
+        assert_eq!(r(f("0"), f("-1"), program), Some(f("0")));
+        assert_eq!(r(f("1"), f("1"), program), Some(f("1")));
         assert_eq!(
-            r(f("1"), f("-2")),
+            r(f("1"), f("-2"), program),
             Some(f(
                 "1809251394333065606848661391547535052811553607665798349986546028067936010240"
             ))
         );
-        assert_eq!(r(f("1"), f("-1")), Some(f("-1")));
-        assert_eq!(r(f("-2"), f("1")), Some(f("-2")));
-        assert_eq!(r(f("-2"), f("-2")), Some(f("1")));
-        assert_eq!(r(f("-2"), f("-1")), Some(f("2")));
-        assert_eq!(r(f("-1"), f("1")), Some(f("-1")));
+        assert_eq!(r(f("1"), f("-1"), program), Some(f("-1")));
+        assert_eq!(r(f("-2"), f("1"), program), Some(f("-2")));
+        assert_eq!(r(f("-2"), f("-2"), program), Some(f("1")));
+        assert_eq!(r(f("-2"), f("-1"), program), Some(f("2")));
+        assert_eq!(r(f("-1"), f("1"), program), Some(f("-1")));
         assert_eq!(
-            r(f("-1"), f("-2")),
+            r(f("-1"), f("-2"), program),
             Some(f(
                 "1809251394333065606848661391547535052811553607665798349986546028067936010241"
             ))
         );
-        assert_eq!(r(f("-1"), f("-1")), Some(f("1")));
-        assert_eq!(r(f("6"), f("2")), Some(f("3")));
-        assert_eq!(r(f("1000"), f("2")), Some(f("500")));
+        assert_eq!(r(f("-1"), f("-1"), program), Some(f("1")));
+        assert_eq!(r(f("6"), f("2"), program), Some(f("3")));
+        assert_eq!(r(f("1000"), f("2"), program), Some(f("500")));
     }
 
     #[test]
     fn felt252_const() {
+        let program = get_compiled_program("test_data_artifacts/programs/libfuncs/felt252_const");
         assert_eq!(
-            run_program(&FELT252_CONST, "run_test", &[]).return_value,
+            run_program(&program, "run_test", &[]).return_value,
             Value::Struct {
                 fields: [f("0"), f("1"), f("-2"), f("-1")]
                     .map(Value::Felt252)
@@ -576,8 +453,10 @@ pub mod test {
 
     #[test]
     fn felt252_add_const() {
+        let program =
+            get_compiled_program("test_data_artifacts/programs/libfuncs/felt252_add_const");
         assert_eq!(
-            run_program(&FELT252_ADD_CONST, "run_test", &[]).return_value,
+            run_program(&program, "run_test", &[]).return_value,
             jit_struct!(
                 f("0").into(),
                 f("1").into(),
@@ -594,8 +473,10 @@ pub mod test {
 
     #[test]
     fn felt252_sub_const() {
+        let program =
+            get_compiled_program("test_data_artifacts/programs/libfuncs/felt252_sub_const");
         assert_eq!(
-            run_program(&FELT252_SUB_CONST, "run_test", &[]).return_value,
+            run_program(&program, "run_test", &[]).return_value,
             jit_struct!(
                 f("0").into(),
                 f("1").into(),
@@ -612,8 +493,10 @@ pub mod test {
 
     #[test]
     fn felt252_mul_const() {
+        let program =
+            get_compiled_program("test_data_artifacts/programs/libfuncs/felt252_mul_const");
         assert_eq!(
-            run_program(&FELT252_MUL_CONST, "run_test", &[]).return_value,
+            run_program(&program, "run_test", &[]).return_value,
             jit_struct!(
                 f("0").into(),
                 f("0").into(),
@@ -630,8 +513,10 @@ pub mod test {
 
     #[test]
     fn felt252_div_const() {
+        let program =
+            get_compiled_program("test_data_artifacts/programs/libfuncs/felt252_div_const");
         assert_eq!(
-            run_program(&FELT252_DIV_CONST, "run_test", &[]).return_value,
+            run_program(&program, "run_test", &[]).return_value,
             jit_struct!(
                 f("0").into(),
                 f("1").into(),
@@ -656,16 +541,18 @@ pub mod test {
 
     #[test]
     fn felt252_is_zero() {
-        fn r(x: Felt) -> bool {
-            match run_program(&FELT252_IS_ZERO, "run_test", &[Value::Felt252(x)]).return_value {
+        let program =
+            &get_compiled_program("test_data_artifacts/programs/libfuncs/felt252_is_zero");
+        fn r(x: Felt, program: &(String, Program)) -> bool {
+            match run_program(program, "run_test", &[Value::Felt252(x)]).return_value {
                 Value::Enum { tag, .. } => tag != 0,
                 _ => panic!("invalid return type"),
             }
         }
 
-        assert!(r(f("0")));
-        assert!(!r(f("1")));
-        assert!(!r(f("-2")));
-        assert!(!r(f("-1")));
+        assert!(r(f("0"), program));
+        assert!(!r(f("1"), program));
+        assert!(!r(f("-2"), program));
+        assert!(!r(f("-1"), program));
     }
 }
