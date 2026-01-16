@@ -15,7 +15,7 @@ cargo afl build --bin fuzz-corelib
 
 Generate the corpus. It generates an input example for each function in the program.
 ```bash
-cargo run --bin gen-corpus -- \
+cargo run --bin gen-corpus -- program \
     ../test_data_artifacts/programs/corelib.sierra.json \
     corpus/
 ```
@@ -30,6 +30,31 @@ To reproduce a crash, we build with AFL_NO_CFG_FUZZING=1 to enable useful debug 
 ```bash
 AFL_NO_CFG_FUZZING=1 cargo afl build --bin fuzz-corelib
  ../target/debug/fuzz-corelib < output/default/crashes/*
+```
+
+## Fuzzing Contracts
+
+Build the fuzzing target:
+```bash
+cargo afl build --bin fuzz-contract
+```
+
+Generate the corpus. It generates an input example for each entrypoint in the contract.
+```bash
+cargo run --bin gen-corpus -- contract \
+    ../test_data_artifacts/contracts/cairo_vm/fib.contract.json \
+    corpus/
+```
+
+Run the fuzzer.
+```bash
+cargo afl fuzz -i corpus -o output -- ../target/debug/fuzz-contract
+```
+
+To reproduce a crash:
+```bash
+AFL_NO_CFG_FUZZING=1 cargo afl build --bin fuzz-contract
+ ../target/debug/fuzz-contract < output/default/crashes/*
 ```
 
 ## Known Crashes
