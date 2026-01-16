@@ -236,7 +236,7 @@ fn calculate_statement_wallets(
     for (statement_idx, statement) in program.statements.iter().enumerate() {
         if let GenStatement::Invocation(statement) = statement {
             let statement_idx = StatementIdx(statement_idx);
-            let statement_gas_metadata = StatementGasMetadata {
+            let statement_gas_metadata = StatementCostInfo {
                 metadata: cairo_metadata,
                 type_sizes: &program_info.type_sizes,
                 circuits_info: &circuits_info,
@@ -296,14 +296,14 @@ fn calculate_statement_wallets(
         .try_collect()
 }
 
-pub struct StatementGasMetadata<'m> {
+pub struct StatementCostInfo<'m> {
     pub metadata: &'m CairoMetadata,
     pub type_sizes: &'m TypeSizeMap,
     pub circuits_info: &'m CircuitsInfo,
     pub idx: StatementIdx,
 }
 
-impl<'m> InvocationCostInfoProvider for StatementGasMetadata<'m> {
+impl<'m> InvocationCostInfoProvider for StatementCostInfo<'m> {
     fn type_size(&self, ty: &cairo_lang_sierra::ids::ConcreteTypeId) -> usize {
         self.type_sizes[ty] as usize
     }
