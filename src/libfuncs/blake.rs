@@ -103,7 +103,7 @@ mod tests {
     #[test]
     fn test_blake_3_bytes_compress() {
         let program =
-            get_compiled_program("test_data/programs/libfuncs/blake_3_bytes_compress.cairo");
+            get_compiled_program("test_data_artifacts/programs/libfuncs/blake_3_bytes_compress");
 
         let result = run_program(&program, "run_test", &[]).return_value;
 
