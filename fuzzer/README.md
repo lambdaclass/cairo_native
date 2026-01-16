@@ -6,11 +6,11 @@ A crate for fuzzing cairo-native with AFL (American Fuzzy Lop).
 
 - cargo-afl: `cargo install cargo-afl`.
 
-## Fuzzing the Corelib
+## Fuzzing Programs
 
 Build the fuzzing target:
 ```bash
-cargo afl build --bin fuzz-corelib
+cargo afl build --bin fuzz-program
 ```
 
 Generate the corpus. It generates an input example for each function in the program.
@@ -22,14 +22,14 @@ cargo run --bin gen-corpus -- program \
 
 Run the fuzzer.
 ```bash
-cargo afl fuzz -i corpus -o output -- ../target/debug/fuzz-corelib
+cargo afl fuzz -i corpus -o output -- ../target/debug/fuzz-program
 ```
 
 To reproduce a crash, we build with AFL_NO_CFG_FUZZING=1 to enable useful debug prints.
 
 ```bash
-AFL_NO_CFG_FUZZING=1 cargo afl build --bin fuzz-corelib
- ../target/debug/fuzz-corelib < output/default/crashes/*
+AFL_NO_CFG_FUZZING=1 cargo afl build --bin fuzz-program
+ ../target/debug/fuzz-program < output/default/crashes/*
 ```
 
 ## Fuzzing Contracts
@@ -62,5 +62,5 @@ AFL_NO_CFG_FUZZING=1 cargo afl build --bin fuzz-contract
 - SIGSEGV on Corelib's core::poseidon::_poseidon_hash_span_inner:
   ```bash
   xxd -r crashes/corelib-poseidon.xxd |
-  ../target/debug/fuzz-corelib
+  ../target/debug/fuzz-program
   ```

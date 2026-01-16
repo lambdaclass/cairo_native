@@ -8,7 +8,7 @@ use cairo_native::{
     context::NativeContext, executor::AotNativeExecutor, include_program,
     starknet_stub::StubSyscallHandler, OptLevel,
 };
-use cairo_native_fuzz::{arbitrary_value, is_builtin, is_supported};
+use cairo_native_fuzzer::{arbitrary_value, is_builtin, is_supported};
 
 #[cfg(fuzzing)]
 use afl::{ijon_inc, ijon_set};

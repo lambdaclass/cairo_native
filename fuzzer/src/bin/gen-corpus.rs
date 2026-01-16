@@ -4,27 +4,30 @@ use cairo_lang_sierra::{
     program_registry::ProgramRegistry,
 };
 use cairo_lang_starknet_classes::contract_class::ContractClass;
-use cairo_native_fuzz::{encode_value, is_builtin, is_supported, random_value};
+use cairo_native_fuzzer::{encode_value, is_builtin, is_supported, random_value};
 use clap::Parser;
 use rand::seq::SliceRandom;
 use starknet_types_core::felt::Felt;
 use std::{error::Error, fs::File, io::Write, path::PathBuf};
 
-/// Generate corpus for a Sierra program or contract class.
+/// Generate corpus for the fuzzer.
+///
+/// Randomly selects entrypoints and generates fuzz
+/// inputs for executing those entrypoints.
 #[derive(Parser, Debug)]
 enum Args {
-    /// Generate corpus for Sierra program
+    /// Generate corpus for Sierra program.
     Program {
-        /// Path to input Sierra program
+        /// Path to input Sierra program.
         sierra_path: PathBuf,
-        /// Path to corpus directory
+        /// Path to corpus directory.
         corpus_dir: PathBuf,
     },
-    /// Generate corpus for Sierra contract class
+    /// Generate corpus for Sierra contract class.
     Contract {
-        /// Path to input Sierra contract class
+        /// Path to input Sierra contract class.
         contract_path: PathBuf,
-        /// Path to corpus directory
+        /// Path to corpus directory.
         corpus_dir: PathBuf,
     },
 }
@@ -61,11 +64,6 @@ fn generate_program_corpus(
         .iter()
         .cloned()
         .enumerate()
-        .collect::<Vec<_>>();
-    funcs.shuffle(&mut rand::rng());
-
-    for (idx, func, param_tys) in funcs
-        .into_iter()
         .filter_map(|(idx, func)| {
             let mut param_tys = vec![];
             for param in &func.params {
@@ -82,8 +80,10 @@ fn generate_program_corpus(
 
             Some((idx, func, param_tys))
         })
-        .take(10)
-    {
+        .collect::<Vec<_>>();
+    funcs.shuffle(&mut rand::rng());
+
+    for (idx, func, param_tys) in funcs.into_iter().take(10) {
         let mut input_file = File::create(corpus_dir.join(format!("f{}", func.id.id))).unwrap();
 
         input_file.write_all(&(idx as u64).to_le_bytes()).unwrap();
