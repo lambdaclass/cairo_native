@@ -8,7 +8,7 @@ A crate for fuzzing cairo-native with AFL (American Fuzzy Lop).
 
 ## Fuzzing Programs
 
-Build the fuzzing target:
+Build the fuzzing target.
 ```bash
 cargo afl build --bin fuzz-program
 ```
@@ -38,7 +38,7 @@ AFL_NO_CFG_FUZZING=1 cargo afl build --bin fuzz-program
 
 ## Fuzzing Contracts
 
-Build the fuzzing target:
+Build the fuzzing target.
 ```bash
 cargo afl build --bin fuzz-contract
 ```
@@ -57,7 +57,7 @@ cargo afl fuzz -i corpus -o output -- \
     ../test_data_artifacts/contracts/cairo_vm/fib.contract.json
 ```
 
-To reproduce a crash:
+To reproduce a crash.
 ```bash
 AFL_NO_CFG_FUZZING=1 cargo afl build --bin fuzz-contract
 ../target/debug/fuzz-contract \
