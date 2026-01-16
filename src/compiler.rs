@@ -70,6 +70,7 @@ use cairo_lang_sierra::{
     program::{Function, Invocation, Program, Statement, StatementIdx},
     program_registry::ProgramRegistry,
 };
+use cairo_lang_sierra_to_casm::environment::gas_wallet::GasWallet;
 use cairo_lang_utils::ordered_hash_map::OrderedHashMap;
 use itertools::Itertools;
 use melior::{
@@ -461,7 +462,10 @@ fn compile_func(
         |statement_idx, mut state| {
             if let Some(gas_metadata) = metadata.get::<GasMetadata>() {
                 let gas_cost = gas_metadata.get_gas_costs_for_statement(statement_idx);
+                let gas_wallet = gas_metadata.get_gas_wallet(statement_idx);
                 metadata.remove::<GasCost>();
+                metadata.remove::<GasWallet>();
+                metadata.insert(gas_wallet);
                 metadata.insert(GasCost(gas_cost));
             }
 
