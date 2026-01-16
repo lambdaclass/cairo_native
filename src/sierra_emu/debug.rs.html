@@ -81,7 +81,7 @@
 <a href=#81 id=81 data-nosnippet>81</a>            BoxConcreteLibfunc::Into(<span class="kw">_</span>) =&gt; <span class="string">"box_into"</span>,
 <a href=#82 id=82 data-nosnippet>82</a>            BoxConcreteLibfunc::Unbox(<span class="kw">_</span>) =&gt; <span class="string">"box_unbox"</span>,
 <a href=#83 id=83 data-nosnippet>83</a>            BoxConcreteLibfunc::ForwardSnapshot(<span class="kw">_</span>) =&gt; <span class="string">"box_forward_snapshot"</span>,
-<a href=#84 id=84 data-nosnippet>84</a>            BoxConcreteLibfunc::LocalInto(<span class="kw">_</span>) =&gt; <span class="macro">todo!</span>(),
+<a href=#84 id=84 data-nosnippet>84</a>            BoxConcreteLibfunc::LocalInto(<span class="kw">_</span>) =&gt; <span class="string">"box_local_into"</span>,
 <a href=#85 id=85 data-nosnippet>85</a>        },
 <a href=#86 id=86 data-nosnippet>86</a>        CoreConcreteLibfunc::Cast(value) =&gt; <span class="kw">match </span>value {
 <a href=#87 id=87 data-nosnippet>87</a>            CastConcreteLibfunc::Downcast(<span class="kw">_</span>) =&gt; <span class="string">"downcast"</span>,
@@ -105,7 +105,7 @@
 <a href=#105 id=105 data-nosnippet>105</a>            EcConcreteLibfunc::PointFromX(<span class="kw">_</span>) =&gt; <span class="string">"ec_point_from_x"</span>,
 <a href=#106 id=106 data-nosnippet>106</a>            EcConcreteLibfunc::UnwrapPoint(<span class="kw">_</span>) =&gt; <span class="string">"ec_unwrap_point"</span>,
 <a href=#107 id=107 data-nosnippet>107</a>            EcConcreteLibfunc::Zero(<span class="kw">_</span>) =&gt; <span class="string">"ec_zero"</span>,
-<a href=#108 id=108 data-nosnippet>108</a>            EcConcreteLibfunc::NegNz(<span class="kw">_</span>) =&gt; <span class="macro">todo!</span>(),
+<a href=#108 id=108 data-nosnippet>108</a>            EcConcreteLibfunc::NegNz(<span class="kw">_</span>) =&gt; <span class="string">"ec_neg_nz"</span>,
 <a href=#109 id=109 data-nosnippet>109</a>        },
 <a href=#110 id=110 data-nosnippet>110</a>        CoreConcreteLibfunc::Felt252(value) =&gt; <span class="kw">match </span>value {
 <a href=#111 id=111 data-nosnippet>111</a>            Felt252Concrete::BinaryOperation(op) =&gt; <span class="kw">match </span>op {
