@@ -20,6 +20,7 @@ use cairo_native::{
 use colored::Colorize;
 use itertools::Itertools;
 use num_traits::ToPrimitive;
+use rayon::iter::{IntoParallelIterator, ParallelIterator};
 #[cfg(feature = "scarb")]
 use scarb_metadata::{PackageMetadata, TargetMetadata};
 use starknet_types_core::felt::Felt;
@@ -212,8 +213,9 @@ pub fn run_tests(
         failed_run_results: vec![],
         mismatch_reason: vec![],
     }));
+
     named_tests
-        .into_iter()
+        .into_par_iter()
         .map(
             |(name, test)| -> anyhow::Result<(String, Option<TestResult>)> {
                 if test.ignored {

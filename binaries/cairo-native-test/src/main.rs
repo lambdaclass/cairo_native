@@ -41,6 +41,8 @@ struct Args {
     /// Compares test result with Cairo VM.
     #[arg(long, default_value_t = false)]
     compare_with_cairo_vm: bool,
+    #[arg(short = 'j', long)]
+    jobs: Option<u8>,
 }
 
 fn main() -> anyhow::Result<()> {
@@ -53,6 +55,12 @@ fn main() -> anyhow::Result<()> {
             .with_env_filter(EnvFilter::from_default_env())
             .finish(),
     )?;
+
+    if let Some(num_jobs) = args.jobs {
+        rayon::ThreadPoolBuilder::new()
+            .num_threads(num_jobs as usize)
+            .build_global()?;
+    }
 
     check_compiler_path(args.single_file, &args.path)?;
 
