@@ -13,9 +13,9 @@ Build the fuzzing target:
 cargo afl build --bin fuzz-corelib
 ```
 
-Prepare the corpus. It generates an input example for each function in the program.
+Generate the corpus. It generates an input example for each function in the program.
 ```bash
-cargo run --bin prepare-corpus -- \
+cargo run --bin gen-corpus -- \
     ../test_data_artifacts/programs/corelib.sierra.json \
     corpus/
 ```
