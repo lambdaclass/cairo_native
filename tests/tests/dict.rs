@@ -1,46 +1,16 @@
 use crate::common::{
-    any_felt, compare_outputs, load_cairo, run_native_program, run_vm_program, DEFAULT_GAS,
+    any_felt, compare_outputs, get_compiled_program, run_native_program, run_vm_program,
+    DEFAULT_GAS,
 };
-use cairo_lang_runner::{Arg, SierraCasmRunner};
-use cairo_lang_sierra::program::Program;
+use cairo_lang_runner::Arg;
 use cairo_native::{starknet::DummySyscallHandler, Value};
-use lazy_static::lazy_static;
 use proptest::prelude::*;
 use starknet_types_core::felt::Felt;
-
-lazy_static! {
-    static ref DICT_GET_INSERT: (String, Program, SierraCasmRunner) = load_cairo! {
-        use traits::Default;
-        use dict::Felt252DictTrait;
-
-        fn run_test(key: felt252, val: felt252) -> felt252 {
-            let mut dict: Felt252Dict<felt252> = Default::default();
-            dict.insert(key, val);
-            dict.get(key)
-        }
-    };
-    static ref SNAPSHOT_LOOP: (String, Program, SierraCasmRunner) = load_cairo! {
-        use core::dict::Felt252Dict;
-
-        fn run_test() {
-            let mut dict: Felt252Dict<u64> = Default::default();
-
-            for number in 0..50_u64 {
-                let snapshot = @dict;
-
-                let key = number.try_into().unwrap();
-                dict.insert(key, number);
-
-                drop(snapshot)
-            }
-        }
-    };
-}
 
 proptest! {
     #[test]
     fn dict_get_insert_proptest(a in any_felt(), b in any_felt()) {
-        let program = &DICT_GET_INSERT;
+        let program = &get_compiled_program("test_data_artifacts/programs/dict_get_insert");
         let result_vm = run_vm_program(
             program,
             "run_test",
@@ -67,7 +37,7 @@ proptest! {
 
 #[test]
 fn dict_snapshot_loop() {
-    let program = &SNAPSHOT_LOOP;
+    let program = &get_compiled_program("test_data_artifacts/programs/snapshot_loop");
     run_native_program(
         program,
         "run_test",

@@ -10,7 +10,7 @@ use util::{create_vm_runner, prepare_programs};
 mod util;
 
 pub fn bench_libfuncs(c: &mut Criterion) {
-    let programs = prepare_programs("tests/cases");
+    let programs = prepare_programs("test_data/programs/cases");
 
     {
         let mut c = c.benchmark_group("Libfunc Execution Time");
