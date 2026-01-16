@@ -52,13 +52,17 @@ cargo run --bin gen-corpus -- contract \
 
 Run the fuzzer.
 ```bash
-cargo afl fuzz -i corpus -o output -- ../target/debug/fuzz-contract
+cargo afl fuzz -i corpus -o output -- \
+    ../target/debug/fuzz-contract \
+    ../test_data_artifacts/contracts/cairo_vm/fib.contract.json
 ```
 
 To reproduce a crash:
 ```bash
 AFL_NO_CFG_FUZZING=1 cargo afl build --bin fuzz-contract
- ../target/debug/fuzz-contract < output/default/crashes/*
+../target/debug/fuzz-contract \
+    ../test_data_artifacts/contracts/cairo_vm/fib.contract.json \
+    < output/default/crashes/*
 ```
 
 ## Known Crashes

@@ -1,13 +1,23 @@
 use afl::fuzz;
 use arbitrary::{Arbitrary, Unstructured};
-use cairo_lang_starknet_classes::contract_class::version_id_from_serialized_sierra_program;
-use cairo_native::{
-    executor::AotContractExecutor, include_contract, starknet_stub::StubSyscallHandler, OptLevel,
+use cairo_lang_starknet_classes::contract_class::{
+    version_id_from_serialized_sierra_program, ContractClass,
 };
+use cairo_native::{executor::AotContractExecutor, starknet_stub::StubSyscallHandler, OptLevel};
+use clap::Parser;
 use starknet_types_core::felt::Felt;
+use std::{fs::File, path::PathBuf};
+
+#[derive(Parser, Debug)]
+struct Args {
+    contract_path: PathBuf,
+}
 
 fn main() {
-    let contract = include_contract!("../test_data_artifacts/contracts/cairo_vm/fib.contract.json");
+    let args = Args::parse();
+
+    let contract_file = File::open(args.contract_path).unwrap();
+    let contract: ContractClass = serde_json::from_reader(contract_file).unwrap();
 
     let program = contract.extract_sierra_program().unwrap();
 
