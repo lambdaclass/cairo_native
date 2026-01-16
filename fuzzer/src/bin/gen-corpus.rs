@@ -4,7 +4,7 @@ use cairo_lang_sierra::{
     program_registry::ProgramRegistry,
 };
 use cairo_lang_starknet_classes::contract_class::ContractClass;
-use cairo_native_fuzzer::{encode_value, is_function_supported, random_value};
+use cairo_native_fuzzer::{encode_value, is_builtin, is_function_supported, random_value};
 use clap::Parser;
 use rand::seq::SliceRandom;
 use starknet_types_core::felt::Felt;
@@ -75,6 +75,9 @@ fn generate_program_corpus(
 
         for param_ty_id in &func.signature.param_types {
             let param_ty = registry.get_type(param_ty_id).unwrap();
+            if is_builtin(param_ty) {
+                continue;
+            }
             let value = random_value(param_ty, &registry);
             encode_value(&value, &mut input_file).unwrap();
         }

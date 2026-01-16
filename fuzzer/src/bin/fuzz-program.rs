@@ -2,22 +2,30 @@ use afl::fuzz;
 use arbitrary::{Arbitrary, Unstructured};
 use cairo_lang_sierra::{
     extensions::core::{CoreLibfunc, CoreType},
+    program::Program,
     program_registry::ProgramRegistry,
 };
 use cairo_native::{
-    context::NativeContext, executor::AotNativeExecutor, include_program,
-    starknet_stub::StubSyscallHandler, OptLevel,
+    context::NativeContext, executor::AotNativeExecutor, starknet_stub::StubSyscallHandler,
+    OptLevel,
 };
 use cairo_native_fuzzer::{arbitrary_value, is_function_supported};
+use clap::Parser;
+use std::{fs::File, path::PathBuf};
 
 #[cfg(fuzzing)]
 use afl::{ijon_inc, ijon_set};
 
+#[derive(Parser, Debug)]
+struct Args {
+    sierra_path: PathBuf,
+}
+
 fn main() {
-    let program = include_program!("../test_data_artifacts/programs/corelib.sierra.json")
-        .into_v1()
-        .unwrap()
-        .program;
+    let args = Args::parse();
+
+    let program_file = File::open(args.sierra_path).unwrap();
+    let program: Program = serde_json::from_reader(program_file).unwrap();
 
     let context = NativeContext::new();
     let module = context.compile(&program, false, None, None).unwrap();
