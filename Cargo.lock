@@ -1217,6 +1217,7 @@ dependencies = [
  "afl",
  "arbitrary",
  "cairo-lang-sierra",
+ "cairo-lang-starknet-classes",
  "cairo-native",
  "clap",
  "rand 0.9.2",

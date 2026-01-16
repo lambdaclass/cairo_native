@@ -12,6 +12,7 @@ unexpected_cfgs = { level = "deny", check-cfg = ['cfg(fuzzing)'] }
 afl = "0.17"
 arbitrary = "1.4.1"
 cairo-lang-sierra.workspace = true
+cairo-lang-starknet-classes.workspace = true
 cairo-native = { workspace = true, features = ["testing", "with-cheatcode"]}
 serde_json.workspace = true
 starknet-types-core.workspace = true

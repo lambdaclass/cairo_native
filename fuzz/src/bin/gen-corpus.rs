@@ -4,28 +4,55 @@ use cairo_lang_sierra::{
     program_registry::ProgramRegistry,
 };
 use cairo_native_fuzz::{encode_value, is_builtin, is_supported, random_value};
-use clap::{command, Parser};
+use clap::Parser;
 use rand::seq::SliceRandom;
-use std::{fs::File, io::Write, path::PathBuf};
+use std::{error::Error, fs::File, io::Write, path::PathBuf};
 
-/// Generate an example Corpus for running the given Sierra program.
+/// Generate corpus for a Sierra program or contract class.
 #[derive(Parser, Debug)]
-#[command()]
-struct Args {
-    /// Path to input Sierra program
-    sierra_path: PathBuf,
-    /// Path to corpus directory
-    corpus_dir: PathBuf,
+enum Args {
+    /// Generate corpus for Sierra program
+    Program {
+        /// Path to input Sierra program
+        sierra_path: PathBuf,
+        /// Path to corpus directory
+        corpus_dir: PathBuf,
+    },
+    /// Generate corpus for Sierra contract class
+    Contract {
+        /// Path to input Sierra contract class
+        contract_path: PathBuf,
+        /// Path to corpus directory
+        corpus_dir: PathBuf,
+    },
 }
 
-fn main() {
+fn main() -> Result<(), Box<dyn Error>> {
     let args = Args::parse();
 
-    let program_file = File::open(args.sierra_path).unwrap();
+    match args {
+        Args::Program {
+            sierra_path,
+            corpus_dir,
+        } => generate_program_corpus(sierra_path, corpus_dir)?,
+        Args::Contract {
+            contract_path,
+            corpus_dir,
+        } => generate_contract_corpus(contract_path, corpus_dir)?,
+    }
+
+    Ok(())
+}
+
+fn generate_program_corpus(
+    sierra_path: PathBuf,
+    corpus_dir: PathBuf,
+) -> Result<(), Box<dyn Error>> {
+    let program_file = File::open(sierra_path).unwrap();
     let program: Program = serde_json::from_reader(program_file).unwrap();
     let registry = ProgramRegistry::<CoreType, CoreLibfunc>::new(&program).unwrap();
 
-    std::fs::create_dir_all(&args.corpus_dir).unwrap();
+    std::fs::create_dir_all(&corpus_dir).unwrap();
 
     let mut funcs = program
         .funcs
@@ -55,8 +82,7 @@ fn main() {
         })
         .take(10)
     {
-        let mut input_file =
-            File::create(args.corpus_dir.join(format!("f{}", func.id.id))).unwrap();
+        let mut input_file = File::create(corpus_dir.join(format!("f{}", func.id.id))).unwrap();
 
         input_file.write_all(&(idx as u64).to_le_bytes()).unwrap();
 
@@ -65,4 +91,13 @@ fn main() {
             encode_value(&value, &mut input_file).unwrap();
         }
     }
+
+    Ok(())
+}
+
+fn generate_contract_corpus(
+    contract_path: PathBuf,
+    corpus_dir: PathBuf,
+) -> Result<(), Box<dyn Error>> {
+    todo!()
 }
