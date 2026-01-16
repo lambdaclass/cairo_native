@@ -105,5 +105,9 @@ fn main() {
                 &mut StubSyscallHandler::default(),
             )
             .unwrap();
+
+        if !cfg!(fuzzing) {
+            println!("ok");
+        }
     });
 }
