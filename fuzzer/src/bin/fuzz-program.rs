@@ -9,7 +9,7 @@ use cairo_native::{
     context::NativeContext, executor::AotNativeExecutor, starknet_stub::StubSyscallHandler,
     OptLevel,
 };
-use cairo_native_fuzzer::{arbitrary_value, is_function_supported};
+use cairo_native_fuzzer::{arbitrary_value, is_builtin, is_function_supported};
 use clap::Parser;
 use std::{fs::File, path::PathBuf};
 
@@ -51,6 +51,9 @@ fn main() {
         let mut values = vec![];
         for param_ty_id in &func.signature.param_types {
             let param_ty = registry.get_type(param_ty_id).unwrap();
+            if is_builtin(param_ty) {
+                continue;
+            }
             let Ok(value) = arbitrary_value(param_ty, &mut unstructured, &registry) else {
                 return;
             };
