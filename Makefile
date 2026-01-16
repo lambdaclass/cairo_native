@@ -1,8 +1,8 @@
 # Environment detection.
 
 UNAME := $(shell uname)
-SCARB_VERSION = 2.14.0
-CAIRO_2_VERSION = 2.14.1-dev.1
+SCARB_VERSION = 2.15.0
+CAIRO_2_VERSION = 2.15.0
 
 # Usage is the default target for newcomers running `make`.
 .PHONY: usage
@@ -68,7 +68,7 @@ test: check-llvm
 
 .PHONY: test-cairo
 test-cairo: check-llvm
-	bash ./test_utils/test_cairo.sh
+	bash ./scripts/test_cairo.sh
 
 .PHONY: proptest
 proptest: check-llvm
@@ -103,7 +103,7 @@ bench: check-llvm check-cairo2
 
 .PHONY: bench-ci
 bench-ci: check-llvm
-	cargo criterion --features=with-cheatcode,with-debug-utils
+	cargo criterion --features=with-cheatcode,with-debug-utils,testing
 
 .PHONY: stress-test
 stress-test: check-llvm
@@ -190,8 +190,8 @@ install-scarb-macos:
 
 .PHONY: pull-external-projects
 pull-external-projects:
-	python3 ./test_utils/pull_external_projects.py v${CAIRO_2_VERSION}
+	python3 ./scripts/pull_external_projects.py v${CAIRO_2_VERSION}
 
 .PHONY: compile-test-data
 compile-test-data:
-	python3 ./test_utils/compile_test_data.py
+	python3 ./scripts/compile_test_data.py

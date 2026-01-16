@@ -2,7 +2,6 @@
 // Sierra compilation takes forever to end. Related to
 // https://github.com/lambdaclass/cairo_native/issues/1511.
 
-
 // https://github.com/keep-starknet-strange/garaga
 //
 // MIT License

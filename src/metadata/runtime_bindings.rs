@@ -6,7 +6,9 @@
 use crate::{
     error::{Error, Result},
     libfuncs::LibfuncHelper,
+    utils::get_integer_layout,
 };
+use cairo_lang_sierra::extensions::qm31::QM31BinaryOperator;
 use itertools::Itertools;
 use melior::{
     dialect::{
@@ -47,9 +49,14 @@ enum RuntimeBinding {
     GetCostsBuiltin,
     BlakeCompress,
     DebugPrint,
+    U31ExtendedEuclideanAlgorithm,
     U252ExtendedEuclideanAlgorithm,
     U384ExtendedEuclideanAlgorithm,
     CircuitArithOperation,
+    QM31Add,
+    QM31Sub,
+    QM31Mul,
+    QM31Div,
     #[cfg(feature = "with-cheatcode")]
     VtableCheatcode,
 }
@@ -75,6 +82,9 @@ impl RuntimeBinding {
             RuntimeBinding::DictDup => "cairo_native__dict_dup",
             RuntimeBinding::GetCostsBuiltin => "cairo_native__get_costs_builtin",
             RuntimeBinding::BlakeCompress => "cairo_native__libfunc__blake_compress",
+            RuntimeBinding::U31ExtendedEuclideanAlgorithm => {
+                "cairo_native__u31_extended_euclidean_algorithm"
+            }
             RuntimeBinding::U252ExtendedEuclideanAlgorithm => {
                 "cairo_native__u252_extended_euclidean_algorithm"
             }
@@ -82,6 +92,10 @@ impl RuntimeBinding {
                 "cairo_native__u384_extended_euclidean_algorithm"
             }
             RuntimeBinding::CircuitArithOperation => "cairo_native__circuit_arith_operation",
+            RuntimeBinding::QM31Add => "cairo_native__libfunc__qm31__qm31_add",
+            RuntimeBinding::QM31Sub => "cairo_native__libfunc__qm31__qm31_sub",
+            RuntimeBinding::QM31Mul => "cairo_native__libfunc__qm31__qm31_mul",
+            RuntimeBinding::QM31Div => "cairo_native__libfunc__qm31__qm31_div",
             #[cfg(feature = "with-cheatcode")]
             RuntimeBinding::VtableCheatcode => "cairo_native__vtable_cheatcode",
         }
@@ -130,10 +144,23 @@ impl RuntimeBinding {
             RuntimeBinding::GetCostsBuiltin => {
                 crate::runtime::cairo_native__get_costs_builtin as *const ()
             }
+            RuntimeBinding::QM31Add => {
+                crate::runtime::cairo_native__libfunc__qm31__qm31_add as *const ()
+            }
+            RuntimeBinding::QM31Sub => {
+                crate::runtime::cairo_native__libfunc__qm31__qm31_sub as *const ()
+            }
+            RuntimeBinding::QM31Mul => {
+                crate::runtime::cairo_native__libfunc__qm31__qm31_mul as *const ()
+            }
+            RuntimeBinding::QM31Div => {
+                crate::runtime::cairo_native__libfunc__qm31__qm31_div as *const ()
+            }
             RuntimeBinding::BlakeCompress => {
                 crate::runtime::cairo_native__libfunc__blake_compress as *const ()
             }
-            RuntimeBinding::U252ExtendedEuclideanAlgorithm
+            RuntimeBinding::U31ExtendedEuclideanAlgorithm
+            | RuntimeBinding::U252ExtendedEuclideanAlgorithm
             | RuntimeBinding::U384ExtendedEuclideanAlgorithm => return None,
             RuntimeBinding::CircuitArithOperation => return None,
             #[cfg(feature = "with-cheatcode")]
@@ -205,6 +232,50 @@ impl RuntimeBindingsMeta {
             global_address,
             llvm::r#type::pointer(context, 0),
         )?)
+    }
+
+    /// Build if necessary the extended euclidean algorithm used in circuit inverse gates.
+    ///
+    /// After checking, calls the MLIR function with arguments `a` and `b` which are the initial remainders
+    /// used in the algorithm and returns a `Value` containing a struct where the first element is the
+    /// greatest common divisor of `a` and `b` and the second element is the bezout coefficient x.
+    ///
+    /// This implementation is only for felt252, which uses u31 integers.
+    pub fn u31_extended_euclidean_algorithm<'c, 'a>(
+        &mut self,
+        context: &'c Context,
+        module: &Module,
+        block: &'a Block<'c>,
+        location: Location<'c>,
+        a: Value<'c, '_>,
+        b: Value<'c, '_>,
+    ) -> Result<Value<'c, 'a>>
+    where
+        'c: 'a,
+    {
+        let integer_type = IntegerType::new(context, 31).into();
+        let func_symbol = RuntimeBinding::U31ExtendedEuclideanAlgorithm.symbol();
+        if self
+            .active_map
+            .insert(RuntimeBinding::U31ExtendedEuclideanAlgorithm)
+        {
+            build_egcd_function(module, context, location, func_symbol, integer_type)?;
+        }
+        // The struct returned by the function that contains both of the results
+        let return_type = llvm::r#type::r#struct(context, &[integer_type, integer_type], false);
+        Ok(block
+            .append_operation(
+                OperationBuilder::new("llvm.call", location)
+                    .add_attributes(&[(
+                        Identifier::new(context, "callee"),
+                        FlatSymbolRefAttribute::new(context, func_symbol).into(),
+                    )])
+                    .add_operands(&[a, b])
+                    .add_results(&[return_type])
+                    .build()?,
+            )
+            .result(0)?
+            .into())
     }
 
     /// Build if necessary the extended euclidean algorithm used in circuit inverse gates.
@@ -631,6 +702,57 @@ impl RuntimeBindingsMeta {
         ))
     }
 
+    /// Register QM31 binary operation function if necessary and invoke it.
+    /// The operation depends on the `op` argument which could indicate:
+    /// - Add operation
+    /// - Sub operation
+    /// - Mul operation
+    /// - Div operation
+    ///
+    /// Executes the operation on the `QM31` values referenced by `lhs_ptr` and `rhs_ptr`,
+    /// and returns the resulting `QM31`.
+    #[allow(clippy::too_many_arguments)]
+    pub fn libfunc_qm31_bin_op<'c, 'a>(
+        &mut self,
+        context: &'c Context,
+        module: &Module,
+        block: &'a Block<'c>,
+        lhs_ptr: Value<'c, '_>,
+        rhs_ptr: Value<'c, '_>,
+        op: QM31BinaryOperator,
+        location: Location<'c>,
+    ) -> Result<Value<'c, 'a>>
+    where
+        'c: 'a,
+    {
+        let qm31_ty = llvm::r#type::array(IntegerType::new(context, 31).into(), 4);
+        let res_ptr = block.alloca1(context, location, qm31_ty, get_integer_layout(31).align())?;
+
+        let function = match op {
+            QM31BinaryOperator::Add => {
+                self.build_function(context, module, block, location, RuntimeBinding::QM31Add)?
+            }
+            QM31BinaryOperator::Sub => {
+                self.build_function(context, module, block, location, RuntimeBinding::QM31Sub)?
+            }
+            QM31BinaryOperator::Mul => {
+                self.build_function(context, module, block, location, RuntimeBinding::QM31Mul)?
+            }
+            QM31BinaryOperator::Div => {
+                self.build_function(context, module, block, location, RuntimeBinding::QM31Div)?
+            }
+        };
+
+        block.append_operation(
+            OperationBuilder::new("llvm.call", location)
+                .add_operands(&[function])
+                .add_operands(&[lhs_ptr, rhs_ptr, res_ptr])
+                .build()?,
+        );
+
+        Ok(block.load(context, location, res_ptr, qm31_ty)?)
+    }
+
     /// Register if necessary, then invoke the `dict_alloc_new()` function.
     ///
     /// Returns a opaque pointer as the result.
@@ -884,6 +1006,10 @@ pub fn setup_runtime(find_symbol_ptr: impl Fn(&str) -> Option<*mut c_void>) {
         RuntimeBinding::GetCostsBuiltin,
         RuntimeBinding::BlakeCompress,
         RuntimeBinding::DebugPrint,
+        RuntimeBinding::QM31Add,
+        RuntimeBinding::QM31Sub,
+        RuntimeBinding::QM31Mul,
+        RuntimeBinding::QM31Div,
         #[cfg(feature = "with-cheatcode")]
         RuntimeBinding::VtableCheatcode,
     ] {

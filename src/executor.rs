@@ -437,6 +437,21 @@ fn parse_result(
             registry,
             true,
         )?),
+        CoreTypeConcrete::QM31(_) => match return_ptr {
+            Some(ptr) => Ok(Value::from_ptr(ptr, type_id, registry, true)?),
+            None => {
+                #[cfg(target_arch = "x86_64")]
+                return Err(Error::ParseAttributeError);
+
+                #[cfg(target_arch = "aarch64")]
+                Ok(Value::QM31(
+                    u32::try_from(ret_registers[0])?,
+                    u32::try_from(ret_registers[1])?,
+                    u32::try_from(ret_registers[2])?,
+                    u32::try_from(ret_registers[3])?,
+                ))
+            }
+        },
         CoreTypeConcrete::Felt252(_)
         | CoreTypeConcrete::Starknet(
             StarknetTypeConcrete::ClassHash(_)
@@ -679,7 +694,6 @@ fn parse_result(
         // 2.11.1
         CoreTypeConcrete::Blake(_) => native_panic!("blake not yet implemented as results"),
         // 2.12.0
-        CoreTypeConcrete::QM31(_) => native_panic!("qm31 not yet implemented as results"),
         CoreTypeConcrete::GasReserve(_) => {
             native_panic!("gas reserve not yet implemented as results")
         }

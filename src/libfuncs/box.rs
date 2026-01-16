@@ -8,7 +8,6 @@ use super::LibfuncHelper;
 use crate::{
     error::Result,
     metadata::{realloc_bindings::ReallocBindingsMeta, MetadataStorage},
-    native_panic,
     types::TypeBuilder,
     utils::ProgramRegistryExt,
 };
@@ -42,7 +41,7 @@ pub fn build<'ctx, 'this>(
     selector: &BoxConcreteLibfunc,
 ) -> Result<()> {
     match selector {
-        BoxConcreteLibfunc::Into(info) => {
+        BoxConcreteLibfunc::Into(info) | BoxConcreteLibfunc::LocalInto(info) => {
             build_into_box(context, registry, entry, location, helper, metadata, info)
         }
         BoxConcreteLibfunc::Unbox(info) => {
@@ -57,7 +56,6 @@ pub fn build<'ctx, 'this>(
             metadata,
             &info.signature.param_signatures,
         ),
-        BoxConcreteLibfunc::LocalInto(_) => native_panic!("implement box_local_into"),
     }
 }
 
@@ -171,7 +169,9 @@ pub fn unbox<'ctx, 'this>(
 
 #[cfg(test)]
 mod test {
-    use crate::{load_cairo, utils::testing::run_program_assert_output, values::Value};
+    use crate::{
+        jit_enum, jit_struct, load_cairo, utils::testing::run_program_assert_output, values::Value,
+    };
 
     #[test]
     fn run_box_unbox() {
@@ -291,6 +291,52 @@ mod test {
                 }),
                 debug_name: None,
             },
+        );
+    }
+
+    #[test]
+    fn run_local_into_box_for_option() {
+        let program = load_cairo! {
+            extern fn local_into_box<T>(value: T) -> Box<T> nopanic;
+
+            #[inline(never)]
+            pub fn into_box<T>(value: T) -> Box<T> {
+                local_into_box(value)
+            }
+
+            fn local_into_box_for_option() -> Option<u8> {
+                into_box(Some(6_u8)).unbox()
+            }
+        };
+
+        run_program_assert_output(
+            &program,
+            "local_into_box_for_option",
+            &[],
+            jit_enum!(0, Value::Uint8(6)),
+        );
+    }
+
+    #[test]
+    fn run_local_into_box_for_tuple() {
+        let program = load_cairo! {
+            extern fn local_into_box<T>(value: T) -> Box<T> nopanic;
+
+            #[inline(never)]
+            pub fn into_box<T>(value: T) -> Box<T> {
+                local_into_box(value)
+            }
+
+            fn local_into_box_for_tuple() -> (u8, u8, u8) {
+                into_box((4, 5, 6)).unbox()
+            }
+        };
+
+        run_program_assert_output(
+            &program,
+            "local_into_box_for_tuple",
+            &[],
+            jit_struct!(4u8.into(), 5u8.into(), 6u8.into()),
         );
     }
 
