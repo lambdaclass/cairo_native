@@ -11,6 +11,7 @@ serde_json.workspace = true
 
 cairo-lang-compiler = "2.14.1-dev.1"
 cairo-lang-filesystem = "2.14.1-dev.1"
+cairo-lang-lowering = "2.14.1-dev.1"
 cairo-lang-sierra = "2.14.1-dev.1"
 cairo-lang-starknet = "2.14.1-dev.1"
 cairo-lang-test-plugin = "2.14.1-dev.1"
