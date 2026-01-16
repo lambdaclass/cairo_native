@@ -272,7 +272,7 @@ pub fn build_get_unspent_gas<'ctx, 'this>(
                     .into_iter()
                     .map(|(token_type, value)| {
                         let Ok(value) = TryInto::<u64>::try_into(value) else {
-                            native_panic!("could not cast gas cost from i64 to usize");
+                            native_panic!("could not cast gas cost from i64 to u64");
                         };
                         Ok((value, token_type))
                     })
