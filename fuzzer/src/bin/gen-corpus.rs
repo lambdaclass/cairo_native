@@ -4,7 +4,7 @@ use cairo_lang_sierra::{
     program_registry::ProgramRegistry,
 };
 use cairo_lang_starknet_classes::contract_class::ContractClass;
-use cairo_native_fuzzer::{encode_value, is_builtin, is_supported, random_value};
+use cairo_native_fuzzer::{encode_value, is_function_supported, random_value};
 use clap::Parser;
 use rand::seq::SliceRandom;
 use starknet_types_core::felt::Felt;
@@ -64,31 +64,17 @@ fn generate_program_corpus(
         .iter()
         .cloned()
         .enumerate()
-        .filter_map(|(idx, func)| {
-            let mut param_tys = vec![];
-            for param in &func.params {
-                let param_ty = registry.get_type(&param.ty).unwrap();
-
-                if is_builtin(param_ty) {
-                    continue;
-                } else if is_supported(param_ty, &registry) {
-                    param_tys.push(param_ty)
-                } else {
-                    return None;
-                };
-            }
-
-            Some((idx, func, param_tys))
-        })
+        .filter(|(_, func)| is_function_supported(func, &registry))
         .collect::<Vec<_>>();
     funcs.shuffle(&mut rand::rng());
 
-    for (idx, func, param_tys) in funcs.into_iter().take(10) {
+    for (idx, func) in funcs.into_iter().take(10) {
         let mut input_file = File::create(corpus_dir.join(format!("f{}", func.id.id))).unwrap();
 
         input_file.write_all(&(idx as u64).to_le_bytes()).unwrap();
 
-        for param_ty in param_tys {
+        for param_ty_id in &func.signature.param_types {
+            let param_ty = registry.get_type(param_ty_id).unwrap();
             let value = random_value(param_ty, &registry);
             encode_value(&value, &mut input_file).unwrap();
         }

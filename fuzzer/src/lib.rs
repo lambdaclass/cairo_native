@@ -7,6 +7,7 @@ use cairo_lang_sierra::{
         circuit::CircuitTypeConcrete, core::CoreTypeConcrete, starknet::StarknetTypeConcrete,
         ConcreteType,
     },
+    program::Function,
     program_registry::ProgramRegistry,
 };
 use cairo_native::Value;
@@ -65,6 +66,37 @@ pub fn is_supported(
             .all(|variant_ty_id| is_supported(registry.get_type(variant_ty_id).unwrap(), registry)),
         _ => false,
     }
+}
+
+pub fn is_function_supported(
+    func: &Function,
+    registry: &ProgramRegistry<CoreType, CoreLibfunc>,
+) -> bool {
+    for param in &func.params {
+        let param_ty = registry.get_type(&param.ty).unwrap();
+
+        if is_builtin(param_ty) {
+            continue;
+        } else if !is_supported(param_ty, registry) {
+            return false;
+        }
+    }
+
+    let return_value_count = func
+        .signature
+        .ret_types
+        .iter()
+        .filter(|ret_ty_id| {
+            let ret_ty = registry.get_type(ret_ty_id).unwrap();
+            !is_builtin(ret_ty)
+        })
+        .count();
+
+    if return_value_count > 1 {
+        return false;
+    }
+
+    true
 }
 
 pub fn random_value(

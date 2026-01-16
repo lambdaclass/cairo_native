@@ -8,7 +8,7 @@ use cairo_native::{
     context::NativeContext, executor::AotNativeExecutor, include_program,
     starknet_stub::StubSyscallHandler, OptLevel,
 };
-use cairo_native_fuzzer::{arbitrary_value, is_builtin, is_supported};
+use cairo_native_fuzzer::{arbitrary_value, is_function_supported};
 
 #[cfg(fuzzing)]
 use afl::{ijon_inc, ijon_set};
@@ -33,53 +33,16 @@ fn main() {
         let Some(func) = program.funcs.get(func_idx) else {
             return;
         };
-
-        if !cfg!(fuzzing) {
-            println!("function {}", func.id);
-        }
-
-        let mut param_tys = vec![];
-        for param in &func.params {
-            let param_ty = registry.get_type(&param.ty).unwrap();
-
-            if !cfg!(fuzzing) {
-                println!("- param {}", param.ty);
-            }
-
-            if is_builtin(param_ty) {
-                continue;
-            } else if is_supported(param_ty, &registry) {
-                param_tys.push(param_ty)
-            } else {
-                return;
-            };
-        }
-
-        if func
-            .signature
-            .ret_types
-            .iter()
-            .filter(|ret_ty_id| {
-                let ret_ty = registry.get_type(ret_ty_id).unwrap();
-                !is_builtin(ret_ty)
-            })
-            .count()
-            > 1
-        {
+        if !is_function_supported(func, &registry) {
             return;
-        }
-
-        for ret_ty_id in &func.signature.ret_types {
-            if !cfg!(fuzzing) {
-                println!("- ret {}", ret_ty_id);
-            }
-        }
+        };
 
         #[cfg(fuzzing)]
         ijon_set!(func_idx as u32);
 
         let mut values = vec![];
-        for param_ty in param_tys {
+        for param_ty_id in &func.signature.param_types {
+            let param_ty = registry.get_type(param_ty_id).unwrap();
             let Ok(value) = arbitrary_value(param_ty, &mut unstructured, &registry) else {
                 return;
             };
@@ -91,6 +54,13 @@ fn main() {
         }
 
         if !cfg!(fuzzing) {
+            println!("function {}", func.id);
+            for param in &func.signature.param_types {
+                println!("- param {}", param);
+            }
+            for ret_ty_id in &func.signature.ret_types {
+                println!("- ret {}", ret_ty_id);
+            }
             println!("arguments");
             for value in &values {
                 println!("- {:?}", value);
