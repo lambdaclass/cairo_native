@@ -68,6 +68,8 @@ pub enum GasMetadataError {
     NotEnoughGas { gas: Box<(u64, u64)> },
     #[error("Could not find gas wallet for statement")]
     MissingGasWallet,
+    #[error("Found an inconsistent gas wallet state")]
+    InconsistentGasWallet,
     #[error(transparent)]
     GasWalletError(#[from] GasWalletError),
     #[error(transparent)]
@@ -205,12 +207,18 @@ impl GasMetadata {
     }
 }
 
+/// Calculates the gas wallet for each Sierra statement, which tracks the
+/// available gas. The calculation algorithm was taken from the sierra-to-casm
+/// compiler.
 fn calculate_statement_wallets(
     program: &Program,
     program_info: &ProgramRegistryInfo,
     cairo_metadata: &CairoMetadata,
 ) -> Result<Vec<GasWallet>, GasMetadataError> {
     let mut wallets: Vec<Option<GasWallet>> = vec![None; program.statements.len()];
+
+    // The gas wallet of a function entrypoint is defined by the cost of calling that function.
+    // See https://github.com/starkware-libs/cairo/blob/v2.15.0/crates/cairo-lang-sierra-to-casm/src/annotations.rs#L181
     for function in &program.funcs {
         wallets[function.entry_point.0] = Some(
             match cairo_metadata.gas_info.function_costs.get(&function.id) {
@@ -236,6 +244,8 @@ fn calculate_statement_wallets(
             };
             let libfunc = program_info.registry().get_libfunc(&statement.libfunc_id)?;
 
+            // We calculate the gas change for each branch.
+            // See https://github.com/starkware-libs/cairo/blob/v2.15.0/crates/cairo-lang-sierra-to-casm/src/invocations/mod.rs#L398.
             let changes = core_libfunc_cost(
                 &cairo_metadata.gas_info,
                 &statement_idx,
@@ -254,9 +264,28 @@ fn calculate_statement_wallets(
             let src_wallet = wallets[statement_idx.0]
                 .clone()
                 .ok_or(GasMetadataError::MissingGasWallet)?;
+
+            // We calculate the gas wallet of each branch's statement by
+            // updating the current gas wallet with the branch's gas change.
+            // See: https://github.com/starkware-libs/cairo/blob/v2.15.0/crates/cairo-lang-sierra-to-casm/src/annotations.rs#L433
             for (branch_info, gas_change) in statement.branches.iter().zip(changes) {
                 let dst_statement_idx = statement_idx.next(&branch_info.target);
-                wallets[dst_statement_idx.0] = Some(src_wallet.update(gas_change)?)
+
+                let new_wallet = src_wallet.update(gas_change)?;
+                let old_wallet = &mut wallets[dst_statement_idx.0];
+
+                // Multiple different statements can branch to the same
+                // statemet. In all cases, the calculated gas wallet must be
+                // the same.
+                // See: https://github.com/starkware-libs/cairo/blob/v2.15.0/crates/cairo-lang-sierra-to-casm/src/annotations.rs#L208.
+                match old_wallet {
+                    Some(old_wallet) => {
+                        if new_wallet != *old_wallet {
+                            return Err(GasMetadataError::InconsistentGasWallet);
+                        }
+                    }
+                    None => *old_wallet = Some(new_wallet),
+                }
             }
         }
     }
