@@ -235,7 +235,7 @@ pub fn build_get_builtin_costs<'ctx, 'this>(
     helper.br(entry, 0, &[builtin_ptr], location)
 }
 
-/// Generate MLIR operations for the `get_builtin_costs` libfunc.
+/// Generate MLIR operations for the `get_unspent_gas` libfunc.
 ///
 /// Returns the amount of gas available in the `GasBuiltin`, as well as the
 /// amount of gas unused in the local wallet. Useful for asserting that a
