@@ -275,7 +275,7 @@ fn calculate_statement_wallets(
                 let old_wallet = &mut wallets[dst_statement_idx.0];
 
                 // Multiple different statements can branch to the same
-                // statemet. In all cases, the calculated gas wallet must be
+                // statement. In all cases, the calculated gas wallet must be
                 // the same.
                 // See: https://github.com/starkware-libs/cairo/blob/v2.15.0/crates/cairo-lang-sierra-to-casm/src/annotations.rs#L208.
                 match old_wallet {
