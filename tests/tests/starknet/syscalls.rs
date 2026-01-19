@@ -1,11 +1,10 @@
-use crate::common::{get_compiled_program, run_native_program};
-use cairo_lang_runner::SierraCasmRunner;
-use cairo_lang_sierra::program::Program;
+use crate::common::run_native_program;
 use cairo_native::{
     starknet::{
         BlockInfo, ExecutionInfo, ExecutionInfoV2, ExecutionInfoV3, Secp256k1Point, Secp256r1Point,
         StarknetSyscallHandler, SyscallResult, TxInfo, TxV2Info, TxV3Info, U256,
     },
+    utils::testing::load_program_and_runner,
     Value,
 };
 use pretty_assertions_sorted::{assert_eq, assert_eq_sorted};
@@ -593,14 +592,9 @@ impl StarknetSyscallHandler for SyscallHandler {
     }
 }
 
-lazy_static! {
-    static ref program: (String, Program, SierraCasmRunner) =
-        get_compiled_program("test_data_artifacts/programs/starknet/syscalls");
-}
-
 #[test]
 fn get_block_hash() {
-    let program = get_compiled_program("test_data_artifacts/programs/starknet/syscalls");
+    let program = load_program_and_runner("test_data_artifacts/programs/starknet/syscalls");
     let result = run_native_program(
         &program,
         "get_block_hash",
@@ -626,7 +620,7 @@ fn get_block_hash() {
 
 #[test]
 fn get_execution_info() {
-    let program = get_compiled_program("test_data_artifacts/programs/starknet/syscalls");
+    let program = load_program_and_runner("test_data_artifacts/programs/starknet/syscalls");
     let result = run_native_program(
         &program,
         "get_execution_info",
@@ -706,7 +700,7 @@ fn get_execution_info() {
 
 #[test]
 fn get_execution_info_v2() {
-    let program = get_compiled_program("test_data_artifacts/programs/starknet/syscalls");
+    let program = load_program_and_runner("test_data_artifacts/programs/starknet/syscalls");
     let result = run_native_program(
         &program,
         "get_execution_info_v2",
@@ -799,7 +793,7 @@ fn get_execution_info_v2() {
 
 #[test]
 fn get_execution_info_v3() {
-    let program = get_compiled_program("test_data_artifacts/programs/starknet/syscalls");
+    let program = load_program_and_runner("test_data_artifacts/programs/starknet/syscalls");
     let result = run_native_program(
         &program,
         "get_execution_info_v3",
@@ -900,7 +894,7 @@ fn get_execution_info_v3() {
 
 #[test]
 fn deploy() {
-    let program = get_compiled_program("test_data_artifacts/programs/starknet/syscalls");
+    let program = load_program_and_runner("test_data_artifacts/programs/starknet/syscalls");
     let result = run_native_program(
         &program,
         "deploy",
@@ -933,7 +927,7 @@ fn deploy() {
 
 #[test]
 fn replace_class() {
-    let program = get_compiled_program("test_data_artifacts/programs/starknet/syscalls");
+    let program = load_program_and_runner("test_data_artifacts/programs/starknet/syscalls");
     let result = run_native_program(
         &program,
         "replace_class",
@@ -957,7 +951,7 @@ fn replace_class() {
 
 #[test]
 fn library_call() {
-    let program = get_compiled_program("test_data_artifacts/programs/starknet/syscalls");
+    let program = load_program_and_runner("test_data_artifacts/programs/starknet/syscalls");
     let result = run_native_program(
         &program,
         "library_call",
@@ -994,7 +988,7 @@ fn library_call() {
 
 #[test]
 fn call_contract() {
-    let program = get_compiled_program("test_data_artifacts/programs/starknet/syscalls");
+    let program = load_program_and_runner("test_data_artifacts/programs/starknet/syscalls");
     let result = run_native_program(
         &program,
         "call_contract",
@@ -1031,7 +1025,7 @@ fn call_contract() {
 
 #[test]
 fn storage_read() {
-    let program = get_compiled_program("test_data_artifacts/programs/starknet/syscalls");
+    let program = load_program_and_runner("test_data_artifacts/programs/starknet/syscalls");
     let result = run_native_program(
         &program,
         "storage_read",
@@ -1060,7 +1054,7 @@ fn storage_read() {
 
 #[test]
 fn storage_write() {
-    let program = get_compiled_program("test_data_artifacts/programs/starknet/syscalls");
+    let program = load_program_and_runner("test_data_artifacts/programs/starknet/syscalls");
     let result = run_native_program(
         &program,
         "storage_write",
@@ -1087,7 +1081,7 @@ fn storage_write() {
 
 #[test]
 fn emit_event() {
-    let program = get_compiled_program("test_data_artifacts/programs/starknet/syscalls");
+    let program = load_program_and_runner("test_data_artifacts/programs/starknet/syscalls");
     let result = run_native_program(
         &program,
         "emit_event",
@@ -1111,7 +1105,7 @@ fn emit_event() {
 
 #[test]
 fn send_message_to_l1() {
-    let program = get_compiled_program("test_data_artifacts/programs/starknet/syscalls");
+    let program = load_program_and_runner("test_data_artifacts/programs/starknet/syscalls");
     let result = run_native_program(
         &program,
         "send_message_to_l1",
@@ -1135,7 +1129,7 @@ fn send_message_to_l1() {
 
 #[test]
 fn keccak() {
-    let program = get_compiled_program("test_data_artifacts/programs/starknet/syscalls");
+    let program = load_program_and_runner("test_data_artifacts/programs/starknet/syscalls");
     let result = run_native_program(
         &program,
         "keccak",
@@ -1162,7 +1156,7 @@ fn keccak() {
 
 #[test]
 fn set_sequencer_address() {
-    let program = get_compiled_program("test_data_artifacts/programs/starknet/syscalls");
+    let program = load_program_and_runner("test_data_artifacts/programs/starknet/syscalls");
     let address = Felt::THREE;
     let state = Arc::new(Mutex::new(TestingState::default()));
 
@@ -1188,7 +1182,7 @@ fn set_sequencer_address() {
 
 #[test]
 fn set_max_fee() {
-    let program = get_compiled_program("test_data_artifacts/programs/starknet/syscalls");
+    let program = load_program_and_runner("test_data_artifacts/programs/starknet/syscalls");
     let max_fee = 3;
     let state = Arc::new(Mutex::new(TestingState::default()));
 
@@ -1214,7 +1208,7 @@ fn set_max_fee() {
 
 #[test]
 fn set_signature() {
-    let program = get_compiled_program("test_data_artifacts/programs/starknet/syscalls");
+    let program = load_program_and_runner("test_data_artifacts/programs/starknet/syscalls");
     let signature = vec![Felt::ONE, Felt::TWO, Felt::THREE];
 
     let signature_jit = signature
@@ -1247,7 +1241,7 @@ fn set_signature() {
 
 #[test]
 fn pop_log() {
-    let program = get_compiled_program("test_data_artifacts/programs/starknet/syscalls");
+    let program = load_program_and_runner("test_data_artifacts/programs/starknet/syscalls");
     let log_index = Felt::ONE;
     let mut log = (vec![Felt::ONE, Felt::TWO], vec![Felt::THREE]);
     let state = Arc::new(Mutex::new(TestingState::default()));
@@ -1298,7 +1292,7 @@ fn pop_log() {
 
 #[test]
 fn pop_log_empty() {
-    let program = get_compiled_program("test_data_artifacts/programs/starknet/syscalls");
+    let program = load_program_and_runner("test_data_artifacts/programs/starknet/syscalls");
     let log_index = Felt::ONE;
     let state = Arc::new(Mutex::new(TestingState::default()));
 
@@ -1321,7 +1315,7 @@ fn pop_log_empty() {
 
 #[test]
 fn pop_l2_to_l1_message() {
-    let program = get_compiled_program("test_data_artifacts/programs/starknet/syscalls");
+    let program = load_program_and_runner("test_data_artifacts/programs/starknet/syscalls");
     let log_index = Felt::ONE;
     let mut message = (Felt::ONE, vec![Felt::TWO, Felt::THREE]);
     let state = Arc::new(Mutex::new(TestingState::default()));
@@ -1371,7 +1365,7 @@ fn pop_l2_to_l1_message() {
 
 #[test]
 fn sha256_process() {
-    let program = get_compiled_program("test_data_artifacts/programs/starknet/syscalls");
+    let program = load_program_and_runner("test_data_artifacts/programs/starknet/syscalls");
     let result = run_native_program(
         &program,
         "sha256_process",
@@ -1407,7 +1401,7 @@ fn sha256_process() {
 
 #[test]
 fn get_class_hash_at() {
-    let program = get_compiled_program("test_data_artifacts/programs/starknet/syscalls");
+    let program = load_program_and_runner("test_data_artifacts/programs/starknet/syscalls");
     let result = run_native_program(
         &program,
         "get_class_hash_at",

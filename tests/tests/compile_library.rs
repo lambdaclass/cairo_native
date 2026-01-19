@@ -1,5 +1,5 @@
-use crate::common::get_compiled_program;
 use cairo_native::context::NativeContext;
+use cairo_native::utils::testing::load_program_and_runner;
 use std::error::Error;
 use tempfile::NamedTempFile;
 
@@ -8,7 +8,7 @@ pub fn compile_library() -> Result<(), Box<dyn Error>> {
     // Load the program.
     let context = NativeContext::new();
 
-    let program = get_compiled_program("test_data_artifacts/programs/felt252_add");
+    let program = load_program_and_runner("test_data_artifacts/programs/felt252_add");
 
     let module = context.compile(&program.1, false, Some(Default::default()), None)?;
 

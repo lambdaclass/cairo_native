@@ -1,14 +1,13 @@
-use crate::common::{
-    compare_outputs, get_compiled_program, run_native_program, run_vm_program, DEFAULT_GAS,
-};
+use crate::common::{compare_outputs, run_native_program, run_vm_program, DEFAULT_GAS};
 use cairo_lang_runner::Arg;
+use cairo_native::utils::testing::load_program_and_runner;
 use cairo_native::{starknet::DummySyscallHandler, Value};
 use proptest::prelude::*;
 
 proptest! {
     #[test]
     fn u8_overflowing_add_proptest(a in 0..u8::MAX, b in 0..u8::MAX) {
-        let program = &get_compiled_program("test_data_artifacts/programs/u8_overflowing_add");
+        let program = &load_program_and_runner("test_data_artifacts/programs/u8_overflowing_add");
         let result_vm = run_vm_program(
             program,
             "run_test",
@@ -34,7 +33,7 @@ proptest! {
 
     #[test]
     fn u8_overflowing_sub_proptest(a in 0..u8::MAX, b in 0..u8::MAX) {
-        let program = &get_compiled_program("test_data_artifacts/programs/u8_overflowing_sub");
+        let program = &load_program_and_runner("test_data_artifacts/programs/u8_overflowing_sub");
         let result_vm = run_vm_program(
             program,
             "run_test",
@@ -60,7 +59,7 @@ proptest! {
 
     #[test]
     fn u8_safe_divmod_proptest(a in 0..u8::MAX, b in 0..u8::MAX) {
-        let program = &get_compiled_program("test_data_artifacts/programs/u8_safe_divmod");
+        let program = &load_program_and_runner("test_data_artifacts/programs/u8_safe_divmod");
         let result_vm = run_vm_program(
             program,
             "run_test",
@@ -86,7 +85,7 @@ proptest! {
 
     #[test]
     fn u8_equal_proptest(a in 0..u8::MAX, b in 0..u8::MAX) {
-        let program = &get_compiled_program("test_data_artifacts/programs/u8_equal");
+        let program = &load_program_and_runner("test_data_artifacts/programs/u8_equal");
         let result_vm = run_vm_program(
             program,
             "run_test",
@@ -112,7 +111,7 @@ proptest! {
 
     #[test]
     fn u8_is_zero_proptest(a in 0..u8::MAX) {
-        let program = &get_compiled_program("test_data_artifacts/programs/u8_is_zero");
+        let program = &load_program_and_runner("test_data_artifacts/programs/u8_is_zero");
         let result_vm = run_vm_program(
             program,
             "run_test",
@@ -138,7 +137,7 @@ proptest! {
 
     #[test]
     fn u8_sqrt_proptest(a in 0..u8::MAX) {
-        let program = &get_compiled_program("test_data_artifacts/programs/u8_sqrt");
+        let program = &load_program_and_runner("test_data_artifacts/programs/u8_sqrt");
         let result_vm = run_vm_program(
             program,
             "run_test",
@@ -166,7 +165,7 @@ proptest! {
 
     #[test]
     fn u16_overflowing_add_proptest(a in 0..u16::MAX, b in 0..u16::MAX) {
-        let program = &get_compiled_program("test_data_artifacts/programs/u16_overflowing_add");
+        let program = &load_program_and_runner("test_data_artifacts/programs/u16_overflowing_add");
         let result_vm = run_vm_program(
             program,
             "run_test",
@@ -192,7 +191,7 @@ proptest! {
 
     #[test]
     fn u16_overflowing_sub_proptest(a in 0..u16::MAX, b in 0..u16::MAX) {
-        let program = &get_compiled_program("test_data_artifacts/programs/u16_overflowing_sub");
+        let program = &load_program_and_runner("test_data_artifacts/programs/u16_overflowing_sub");
         let result_vm = run_vm_program(
             program,
             "run_test",
@@ -218,7 +217,7 @@ proptest! {
 
     #[test]
     fn u16_safe_divmod_proptest(a in 0..u16::MAX, b in 0..u16::MAX) {
-        let program = &get_compiled_program("test_data_artifacts/programs/u16_safe_divmod");
+        let program = &load_program_and_runner("test_data_artifacts/programs/u16_safe_divmod");
         let result_vm = run_vm_program(
             program,
             "run_test",
@@ -244,7 +243,7 @@ proptest! {
 
     #[test]
     fn u16_equal_proptest(a in 0..u16::MAX, b in 0..u16::MAX) {
-        let program = &get_compiled_program("test_data_artifacts/programs/u16_equal");
+        let program = &load_program_and_runner("test_data_artifacts/programs/u16_equal");
         let result_vm = run_vm_program(
             program,
             "run_test",
@@ -270,7 +269,7 @@ proptest! {
 
     #[test]
     fn u16_is_zero_proptest(a in 0..u16::MAX) {
-        let program = &get_compiled_program("test_data_artifacts/programs/u16_is_zero");
+        let program = &load_program_and_runner("test_data_artifacts/programs/u16_is_zero");
         let result_vm = run_vm_program(
             program,
             "run_test",
@@ -296,7 +295,7 @@ proptest! {
 
     #[test]
     fn u16_sqrt_proptest(a in 0..u16::MAX) {
-        let program = &get_compiled_program("test_data_artifacts/programs/u16_sqrt");
+        let program = &load_program_and_runner("test_data_artifacts/programs/u16_sqrt");
         let result_vm = run_vm_program(
             program,
             "run_test",
@@ -324,7 +323,7 @@ proptest! {
 
     #[test]
     fn u32_overflowing_add_proptest(a in 0..u32::MAX, b in 0..u32::MAX) {
-        let program = &get_compiled_program("test_data_artifacts/programs/u32_overflowing_add");
+        let program = &load_program_and_runner("test_data_artifacts/programs/u32_overflowing_add");
         let result_vm = run_vm_program(
             program,
             "run_test",
@@ -350,7 +349,7 @@ proptest! {
 
     #[test]
     fn u32_overflowing_sub_proptest(a in 0..u32::MAX, b in 0..u32::MAX) {
-        let program = &get_compiled_program("test_data_artifacts/programs/u32_overflowing_sub");
+        let program = &load_program_and_runner("test_data_artifacts/programs/u32_overflowing_sub");
         let result_vm = run_vm_program(
             program,
             "run_test",
@@ -376,7 +375,7 @@ proptest! {
 
     #[test]
     fn u32_safe_divmod_proptest(a in 0..u32::MAX, b in 0..u32::MAX) {
-        let program = &get_compiled_program("test_data_artifacts/programs/u32_safe_divmod");
+        let program = &load_program_and_runner("test_data_artifacts/programs/u32_safe_divmod");
         let result_vm = run_vm_program(
             program,
             "run_test",
@@ -402,7 +401,7 @@ proptest! {
 
     #[test]
     fn u32_equal_proptest(a in 0..u32::MAX, b in 0..u32::MAX) {
-        let program = &get_compiled_program("test_data_artifacts/programs/u32_equal");
+        let program = &load_program_and_runner("test_data_artifacts/programs/u32_equal");
         let result_vm = run_vm_program(
             program,
             "run_test",
@@ -428,7 +427,7 @@ proptest! {
 
     #[test]
     fn u32_is_zero_proptest(a in 0..u32::MAX) {
-        let program = &get_compiled_program("test_data_artifacts/programs/u32_is_zero");
+        let program = &load_program_and_runner("test_data_artifacts/programs/u32_is_zero");
         let result_vm = run_vm_program(
             program,
             "run_test",
@@ -454,7 +453,7 @@ proptest! {
 
     #[test]
     fn u32_sqrt_proptest(a in 0..u32::MAX) {
-        let program = &get_compiled_program("test_data_artifacts/programs/u32_sqrt");
+        let program = &load_program_and_runner("test_data_artifacts/programs/u32_sqrt");
         let result_vm = run_vm_program(
             program,
             "run_test",
@@ -482,7 +481,7 @@ proptest! {
 
     #[test]
     fn u64_overflowing_add_proptest(a in 0..u64::MAX, b in 0..u64::MAX) {
-        let program = &get_compiled_program("test_data_artifacts/programs/u64_overflowing_add");
+        let program = &load_program_and_runner("test_data_artifacts/programs/u64_overflowing_add");
         let result_vm = run_vm_program(
             program,
             "run_test",
@@ -508,7 +507,7 @@ proptest! {
 
     #[test]
     fn u64_overflowing_sub_proptest(a in 0..u64::MAX, b in 0..u64::MAX) {
-        let program = &get_compiled_program("test_data_artifacts/programs/u64_overflowing_sub");
+        let program = &load_program_and_runner("test_data_artifacts/programs/u64_overflowing_sub");
         let result_vm = run_vm_program(
             program,
             "run_test",
@@ -534,7 +533,7 @@ proptest! {
 
     #[test]
     fn u64_safe_divmod_proptest(a in 0..u64::MAX, b in 0..u64::MAX) {
-        let program = &get_compiled_program("test_data_artifacts/programs/u64_safe_divmod");
+        let program = &load_program_and_runner("test_data_artifacts/programs/u64_safe_divmod");
         let result_vm = run_vm_program(
             program,
             "run_test",
@@ -560,7 +559,7 @@ proptest! {
 
     #[test]
     fn u64_equal_proptest(a in 0..u64::MAX, b in 0..u64::MAX) {
-        let program = &get_compiled_program("test_data_artifacts/programs/u64_equal");
+        let program = &load_program_and_runner("test_data_artifacts/programs/u64_equal");
         let result_vm = run_vm_program(
             program,
             "run_test",
@@ -586,7 +585,7 @@ proptest! {
 
     #[test]
     fn u64_is_zero_proptest(a in 0..u64::MAX) {
-        let program = &get_compiled_program("test_data_artifacts/programs/u64_is_zero");
+        let program = &load_program_and_runner("test_data_artifacts/programs/u64_is_zero");
         let result_vm = run_vm_program(
             program,
             "run_test",
@@ -612,7 +611,7 @@ proptest! {
 
     #[test]
     fn u64_sqrt_proptest(a in 0..u64::MAX) {
-        let program = &get_compiled_program("test_data_artifacts/programs/u64_sqrt");
+        let program = &load_program_and_runner("test_data_artifacts/programs/u64_sqrt");
         let result_vm = run_vm_program(
             program,
             "run_test",
@@ -640,7 +639,7 @@ proptest! {
 
     #[test]
     fn u128_overflowing_add_proptest(a in 0..u128::MAX, b in 0..u128::MAX) {
-        let program = &get_compiled_program("test_data_artifacts/programs/u128_overflowing_add");
+        let program = &load_program_and_runner("test_data_artifacts/programs/u128_overflowing_add");
         let result_vm = run_vm_program(
             program,
             "run_test",
@@ -666,7 +665,7 @@ proptest! {
 
     #[test]
     fn u128_overflowing_sub_proptest(a in 0..u128::MAX, b in 0..u128::MAX) {
-        let program = &get_compiled_program("test_data_artifacts/programs/u128_overflowing_sub");
+        let program = &load_program_and_runner("test_data_artifacts/programs/u128_overflowing_sub");
         let result_vm = run_vm_program(
             program,
             "run_test",
@@ -692,7 +691,7 @@ proptest! {
 
     #[test]
     fn u128_safe_divmod_proptest(a in 0..u128::MAX, b in 0..u128::MAX) {
-        let program = &get_compiled_program("test_data_artifacts/programs/u128_safe_divmod");
+        let program = &load_program_and_runner("test_data_artifacts/programs/u128_safe_divmod");
         let result_vm = run_vm_program(
             program,
             "run_test",
@@ -718,7 +717,7 @@ proptest! {
 
     #[test]
     fn u128_equal_proptest(a in 0..u128::MAX, b in 0..u128::MAX) {
-        let program = &get_compiled_program("test_data_artifacts/programs/u128_equal");
+        let program = &load_program_and_runner("test_data_artifacts/programs/u128_equal");
         let result_vm = run_vm_program(
             program,
             "run_test",
@@ -744,7 +743,7 @@ proptest! {
 
     #[test]
     fn u128_is_zero_proptest(a in 0..u128::MAX) {
-        let program = &get_compiled_program("test_data_artifacts/programs/u128_is_zero");
+        let program = &load_program_and_runner("test_data_artifacts/programs/u128_is_zero");
         let result_vm = run_vm_program(
             program,
             "run_test",
@@ -770,7 +769,7 @@ proptest! {
 
     #[test]
     fn u128_sqrt_proptest(a in 0..u128::MAX) {
-        let program = &get_compiled_program("test_data_artifacts/programs/u128_sqrt");
+        let program = &load_program_and_runner("test_data_artifacts/programs/u128_sqrt");
         let result_vm = run_vm_program(
             program,
             "run_test",

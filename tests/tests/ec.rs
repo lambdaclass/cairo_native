@@ -1,8 +1,6 @@
-use crate::common::{
-    any_felt, compare_outputs, get_compiled_program, run_native_program, run_vm_program,
-    DEFAULT_GAS,
-};
+use crate::common::{any_felt, compare_outputs, run_native_program, run_vm_program, DEFAULT_GAS};
 use cairo_lang_runner::Arg;
+use cairo_native::utils::testing::load_program_and_runner;
 use cairo_native::{starknet::DummySyscallHandler, Value};
 use num_bigint::BigUint;
 use proptest::prelude::*;
@@ -11,7 +9,7 @@ use std::str::FromStr;
 
 #[test]
 fn ec_point_zero() {
-    let program = &get_compiled_program("test_data_artifacts/programs/ec_point_zero");
+    let program = &load_program_and_runner("test_data_artifacts/programs/ec_point_zero");
     let result_vm =
         run_vm_program(program, "run_test", vec![], Some(DEFAULT_GAS as usize)).unwrap();
     let result_native = run_native_program(
@@ -39,7 +37,7 @@ fn ec_point_from_x_big() {
         )
         .unwrap(),
     );
-    let program = &get_compiled_program("test_data_artifacts/programs/ec_point_from_x");
+    let program = &load_program_and_runner("test_data_artifacts/programs/ec_point_from_x");
     let result_vm = run_vm_program(
         program,
         "run_test",
@@ -67,7 +65,7 @@ fn ec_point_from_x_big() {
 #[test]
 fn ec_point_from_x_small() {
     let x = Felt::from(BigUint::from_str("1234").unwrap());
-    let program = &get_compiled_program("test_data_artifacts/programs/ec_point_from_x");
+    let program = &load_program_and_runner("test_data_artifacts/programs/ec_point_from_x");
     let result_vm = run_vm_program(
         program,
         "run_test",
@@ -95,7 +93,7 @@ fn ec_point_from_x_small() {
 proptest! {
     #[test]
     fn ec_point_try_new_proptest(a in any_felt(), b in any_felt()) {
-        let program = &get_compiled_program("test_data_artifacts/programs/ec_point_try_new");
+        let program = &load_program_and_runner("test_data_artifacts/programs/ec_point_try_new");
         let result_vm = run_vm_program(
             program,
             "run_test",
@@ -121,7 +119,7 @@ proptest! {
 
     #[test]
     fn ec_point_from_x_proptest(a in any_felt()) {
-    let program = &get_compiled_program("test_data_artifacts/programs/ec_point_from_x");
+    let program = &load_program_and_runner("test_data_artifacts/programs/ec_point_from_x");
         let result_vm = run_vm_program(
             program,
             "run_test",
