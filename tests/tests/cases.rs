@@ -104,7 +104,7 @@ use test_case::test_case;
 #[test_case("test_data_artifacts/programs/cases/array/pop_front_valid")]
 #[test_case("test_data_artifacts/programs/cases/array/slice")]
 // nullable
-#[test_case("test_data_artifacts/programs/cases/nullable/test_nullable")]
+#[test_case("test_data_artifacts/programs/cases/nullable/nullable")]
 // Programs copied from the cairo-vm
 // https://github.com/lambdaclass/cairo-vm/tree/main/cairo_programs/cairo-1-programs
 #[test_case("test_data_artifacts/programs/cases/cairo_vm/programs/array_append")]
@@ -162,7 +162,7 @@ fn test_program_cases(program_path: &str) {
 #[test_case("test_data_artifacts/contracts/cairo_vm/init_squash_data.contract.json", &[10])]
 #[test_case("test_data_artifacts/contracts/cairo_vm/linear_split.contract.json", &[10])]
 #[test_case("test_data_artifacts/contracts/cairo_vm/should_skip_squash_loop.contract.json", &[])]
-#[test_case("test_data_artifacts/contracts/cairo_vm/test_less_than.contract.json", &[10])]
+#[test_case("test_data_artifacts/contracts/cairo_vm/less_than.contract.json", &[10])]
 #[test_case("test_data_artifacts/contracts/cairo_vm/u128_sqrt.contract.json", &[100])]
 #[test_case("test_data_artifacts/contracts/cairo_vm/u16_sqrt.contract.json", &[100])]
 #[test_case("test_data_artifacts/contracts/cairo_vm/u256_sqrt.contract.json", &[100])]
