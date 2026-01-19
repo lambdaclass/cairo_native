@@ -5,7 +5,6 @@ use cairo_native::{
     starknet::{Secp256k1Point, Secp256r1Point, StarknetSyscallHandler, SyscallResult, U256},
     Value,
 };
-use lazy_static::lazy_static;
 use pretty_assertions_sorted::assert_eq;
 use starknet_types_core::felt::Felt;
 use std::collections::VecDeque;
@@ -285,12 +284,13 @@ impl StarknetSyscallHandler for &mut SyscallHandler {
 }
 
 lazy_static! {
-    static ref SECP256_PROGRAM: (String, Program, SierraCasmRunner) =
+    static ref program: (String, Program, SierraCasmRunner) =
         get_compiled_program("test_data_artifacts/programs/starknet/secp256");
 }
 
 #[test]
 fn secp256k1_new() {
+    let program = get_compiled_program("test_data_artifacts/programs/starknet/secp256");
     let mut syscall_handler = SyscallHandler {
         secp256k1_new: (
             VecDeque::from([]),
@@ -318,7 +318,7 @@ fn secp256k1_new() {
     };
 
     let result = run_native_program(
-        &SECP256_PROGRAM,
+        &program,
         "secp256k1_new",
         &[
             Value::Struct {
@@ -350,7 +350,7 @@ fn secp256k1_new() {
     );
 
     let result = run_native_program(
-        &SECP256_PROGRAM,
+        &program,
         "secp256k1_new",
         &[
             Value::Struct {
@@ -379,7 +379,7 @@ fn secp256k1_new() {
     );
 
     let result = run_native_program(
-        &SECP256_PROGRAM,
+        &program,
         "secp256k1_new",
         &[
             Value::Struct {
@@ -444,6 +444,7 @@ fn secp256k1_new() {
 
 #[test]
 fn secp256k1_add() {
+    let program = get_compiled_program("test_data_artifacts/programs/starknet/secp256");
     let mut syscall_handler = SyscallHandler {
         secp256k1_add: (
             VecDeque::from([]),
@@ -481,7 +482,7 @@ fn secp256k1_add() {
     };
 
     let result = run_native_program(
-        &SECP256_PROGRAM,
+        &program,
         "secp256k1_add",
         &[
             Value::Secp256K1Point(Secp256k1Point::default()),
@@ -500,7 +501,7 @@ fn secp256k1_add() {
     );
 
     let result = run_native_program(
-        &SECP256_PROGRAM,
+        &program,
         "secp256k1_add",
         &[
             Value::Secp256K1Point(Secp256k1Point::new(0, u128::MAX, u128::MAX, 0, false)),
@@ -525,7 +526,7 @@ fn secp256k1_add() {
     );
 
     let result = run_native_program(
-        &SECP256_PROGRAM,
+        &program,
         "secp256k1_add",
         &[
             Value::Secp256K1Point(Secp256k1Point::new(
@@ -631,6 +632,7 @@ fn secp256k1_add() {
 
 #[test]
 fn secp256k1_mul() {
+    let program = get_compiled_program("test_data_artifacts/programs/starknet/secp256");
     let mut syscall_handler = SyscallHandler {
         secp256k1_mul: (
             VecDeque::from([]),
@@ -668,7 +670,7 @@ fn secp256k1_mul() {
     };
 
     let result = run_native_program(
-        &SECP256_PROGRAM,
+        &program,
         "secp256k1_mul",
         &[
             Value::Secp256K1Point(Secp256k1Point::default()),
@@ -690,7 +692,7 @@ fn secp256k1_mul() {
     );
 
     let result = run_native_program(
-        &SECP256_PROGRAM,
+        &program,
         "secp256k1_mul",
         &[
             Value::Secp256K1Point(Secp256k1Point::new(u128::MAX, 0, 0, u128::MAX, false)),
@@ -718,7 +720,7 @@ fn secp256k1_mul() {
     );
 
     let result = run_native_program(
-        &SECP256_PROGRAM,
+        &program,
         "secp256k1_mul",
         &[
             Value::Secp256K1Point(Secp256k1Point::new(u128::MAX, 0, 0, u128::MAX, false)),
@@ -770,6 +772,7 @@ fn secp256k1_mul() {
 
 #[test]
 fn secp256k1_get_point_from_x() {
+    let program = get_compiled_program("test_data_artifacts/programs/starknet/secp256");
     let mut syscall_handler = SyscallHandler {
         secp256k1_get_point_from_x: (
             VecDeque::from([]),
@@ -808,7 +811,7 @@ fn secp256k1_get_point_from_x() {
     };
 
     let result = run_native_program(
-        &SECP256_PROGRAM,
+        &program,
         "secp256k1_get_point_from_x",
         &[
             Value::Struct {
@@ -844,7 +847,7 @@ fn secp256k1_get_point_from_x() {
     );
 
     let result = run_native_program(
-        &SECP256_PROGRAM,
+        &program,
         "secp256k1_get_point_from_x",
         &[
             Value::Struct {
@@ -877,7 +880,7 @@ fn secp256k1_get_point_from_x() {
     );
 
     let result = run_native_program(
-        &SECP256_PROGRAM,
+        &program,
         "secp256k1_get_point_from_x",
         &[
             Value::Struct {
@@ -916,7 +919,7 @@ fn secp256k1_get_point_from_x() {
     );
 
     let result = run_native_program(
-        &SECP256_PROGRAM,
+        &program,
         "secp256k1_get_point_from_x",
         &[
             Value::Struct {
@@ -986,6 +989,7 @@ fn secp256k1_get_point_from_x() {
 
 #[test]
 fn secp256k1_get_xy() {
+    let program = get_compiled_program("test_data_artifacts/programs/starknet/secp256");
     let mut syscall_handler = SyscallHandler {
         secp256k1_get_xy: (
             VecDeque::from([]),
@@ -1027,7 +1031,7 @@ fn secp256k1_get_xy() {
     };
 
     let result = run_native_program(
-        &SECP256_PROGRAM,
+        &program,
         "secp256k1_get_xy",
         &[Value::Secp256K1Point(Secp256k1Point::default())],
         Some(u64::MAX),
@@ -1055,7 +1059,7 @@ fn secp256k1_get_xy() {
     );
 
     let result = run_native_program(
-        &SECP256_PROGRAM,
+        &program,
         "secp256k1_get_xy",
         &[Value::Secp256K1Point(Secp256k1Point::new(
             0,
@@ -1089,7 +1093,7 @@ fn secp256k1_get_xy() {
     );
 
     let result = run_native_program(
-        &SECP256_PROGRAM,
+        &program,
         "secp256k1_get_xy",
         &[Value::Secp256K1Point(Secp256k1Point::new(
             u128::MAX,
@@ -1123,7 +1127,7 @@ fn secp256k1_get_xy() {
     );
 
     let result = run_native_program(
-        &SECP256_PROGRAM,
+        &program,
         "secp256k1_get_xy",
         &[Value::Secp256K1Point(Secp256k1Point::new(
             u128::MAX,
@@ -1204,6 +1208,7 @@ fn secp256k1_get_xy() {
 
 #[test]
 fn secp256r1_new() {
+    let program = get_compiled_program("test_data_artifacts/programs/starknet/secp256");
     let mut syscall_handler = SyscallHandler {
         secp256r1_new: (
             VecDeque::from([]),
@@ -1231,7 +1236,7 @@ fn secp256r1_new() {
     };
 
     let result = run_native_program(
-        &SECP256_PROGRAM,
+        &program,
         "secp256r1_new",
         &[
             Value::Struct {
@@ -1263,7 +1268,7 @@ fn secp256r1_new() {
     );
 
     let result = run_native_program(
-        &SECP256_PROGRAM,
+        &program,
         "secp256r1_new",
         &[
             Value::Struct {
@@ -1292,7 +1297,7 @@ fn secp256r1_new() {
     );
 
     let result = run_native_program(
-        &SECP256_PROGRAM,
+        &program,
         "secp256r1_new",
         &[
             Value::Struct {
@@ -1357,6 +1362,7 @@ fn secp256r1_new() {
 
 #[test]
 fn secp256r1_add() {
+    let program = get_compiled_program("test_data_artifacts/programs/starknet/secp256");
     let mut syscall_handler = SyscallHandler {
         secp256r1_add: (
             VecDeque::from([]),
@@ -1394,7 +1400,7 @@ fn secp256r1_add() {
     };
 
     let result = run_native_program(
-        &SECP256_PROGRAM,
+        &program,
         "secp256r1_add",
         &[
             Value::Secp256R1Point(Secp256r1Point::default()),
@@ -1413,7 +1419,7 @@ fn secp256r1_add() {
     );
 
     let result = run_native_program(
-        &SECP256_PROGRAM,
+        &program,
         "secp256r1_add",
         &[
             Value::Secp256R1Point(Secp256r1Point::new(u128::MAX, 0, 0, u128::MAX, false)),
@@ -1438,7 +1444,7 @@ fn secp256r1_add() {
     );
 
     let result = run_native_program(
-        &SECP256_PROGRAM,
+        &program,
         "secp256r1_add",
         &[
             Value::Secp256R1Point(Secp256r1Point::new(
@@ -1493,6 +1499,7 @@ fn secp256r1_add() {
 
 #[test]
 fn secp256r1_mul() {
+    let program = get_compiled_program("test_data_artifacts/programs/starknet/secp256");
     let mut syscall_handler = SyscallHandler {
         secp256r1_mul: (
             VecDeque::from([]),
@@ -1530,7 +1537,7 @@ fn secp256r1_mul() {
     };
 
     let result = run_native_program(
-        &SECP256_PROGRAM,
+        &program,
         "secp256r1_mul",
         &[
             Value::Secp256R1Point(Secp256r1Point::default()),
@@ -1552,7 +1559,7 @@ fn secp256r1_mul() {
     );
 
     let result = run_native_program(
-        &SECP256_PROGRAM,
+        &program,
         "secp256r1_mul",
         &[
             Value::Secp256R1Point(Secp256r1Point::new(u128::MAX, 0, 0, u128::MAX, false)),
@@ -1580,7 +1587,7 @@ fn secp256r1_mul() {
     );
 
     let result = run_native_program(
-        &SECP256_PROGRAM,
+        &program,
         "secp256r1_mul",
         &[
             Value::Secp256R1Point(Secp256r1Point::new(0, u128::MAX, u128::MAX, 0, false)),
@@ -1632,6 +1639,7 @@ fn secp256r1_mul() {
 
 #[test]
 fn secp256r1_get_point_from_x() {
+    let program = get_compiled_program("test_data_artifacts/programs/starknet/secp256");
     let mut syscall_handler = SyscallHandler {
         secp256r1_get_point_from_x: (
             VecDeque::from([]),
@@ -1670,7 +1678,7 @@ fn secp256r1_get_point_from_x() {
     };
 
     let result = run_native_program(
-        &SECP256_PROGRAM,
+        &program,
         "secp256r1_get_point_from_x",
         &[
             Value::Struct {
@@ -1706,7 +1714,7 @@ fn secp256r1_get_point_from_x() {
     );
 
     let result = run_native_program(
-        &SECP256_PROGRAM,
+        &program,
         "secp256r1_get_point_from_x",
         &[
             Value::Struct {
@@ -1739,7 +1747,7 @@ fn secp256r1_get_point_from_x() {
     );
 
     let result = run_native_program(
-        &SECP256_PROGRAM,
+        &program,
         "secp256r1_get_point_from_x",
         &[
             Value::Struct {
@@ -1778,7 +1786,7 @@ fn secp256r1_get_point_from_x() {
     );
 
     let result = run_native_program(
-        &SECP256_PROGRAM,
+        &program,
         "secp256r1_get_point_from_x",
         &[
             Value::Struct {
@@ -1848,6 +1856,7 @@ fn secp256r1_get_point_from_x() {
 
 #[test]
 fn secp256r1_get_xy() {
+    let program = get_compiled_program("test_data_artifacts/programs/starknet/secp256");
     let mut syscall_handler = SyscallHandler {
         secp256r1_get_xy: (
             VecDeque::from([]),
@@ -1889,7 +1898,7 @@ fn secp256r1_get_xy() {
     };
 
     let result = run_native_program(
-        &SECP256_PROGRAM,
+        &program,
         "secp256r1_get_xy",
         &[Value::Secp256R1Point(Secp256r1Point::default())],
         Some(u64::MAX),
@@ -1917,7 +1926,7 @@ fn secp256r1_get_xy() {
     );
 
     let result = run_native_program(
-        &SECP256_PROGRAM,
+        &program,
         "secp256r1_get_xy",
         &[Value::Secp256R1Point(Secp256r1Point::new(
             0,
@@ -1951,7 +1960,7 @@ fn secp256r1_get_xy() {
     );
 
     let result = run_native_program(
-        &SECP256_PROGRAM,
+        &program,
         "secp256r1_get_xy",
         &[Value::Secp256R1Point(Secp256r1Point::new(
             u128::MAX,
@@ -1985,7 +1994,7 @@ fn secp256r1_get_xy() {
     );
 
     let result = run_native_program(
-        &SECP256_PROGRAM,
+        &program,
         "secp256r1_get_xy",
         &[Value::Secp256R1Point(Secp256r1Point::new(
             u128::MAX,
