@@ -148,6 +148,7 @@ mod tests {
 
     #[fixture]
     fn program() -> Program {
+        // TODO: This is the fib program added in other PR. When merged we can use that program
         let (_, program) = load_cairo! {
             use core::felt252;
 

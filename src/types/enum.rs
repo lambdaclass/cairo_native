@@ -514,7 +514,9 @@ pub fn get_type_for_variants<'ctx>(
 
 #[cfg(test)]
 mod test {
-    use crate::{load_cairo, metadata::MetadataStorage, types::TypeBuilder};
+    use crate::{
+        load_cairo, metadata::MetadataStorage, types::TypeBuilder, utils::testing::load_program,
+    };
     use cairo_lang_sierra::{
         extensions::core::{CoreLibfunc, CoreType},
         program_registry::ProgramRegistry,
@@ -526,16 +528,8 @@ mod test {
 
     #[test]
     fn enum_type_single_variant_no_i0() {
-        let (_, program) = load_cairo! {
-            enum MyEnum {
-                A: felt252,
-            }
-
-            fn run_program(x: MyEnum) -> MyEnum {
-                x
-            }
-        };
-
+        let program =
+            load_program("test_data_artifacts/programs/types/enum_type_single_variant_no_i0");
         let context = Context::new();
         let registry = ProgramRegistry::<CoreType, CoreLibfunc>::new(&program).unwrap();
 
