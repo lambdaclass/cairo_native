@@ -105,19 +105,13 @@ pub fn build_pedersen<'ctx>(
 
 #[cfg(test)]
 mod test {
-    use crate::{load_cairo, utils::testing::run_program_assert_output};
+    use crate::utils::testing::{get_compiled_program, run_program_assert_output};
 
     use starknet_types_core::felt::Felt;
 
     #[test]
     fn run_pedersen() {
-        let program = load_cairo!(
-            use core::pedersen::pedersen;
-
-            fn run_test(a: felt252, b: felt252) -> felt252 {
-                pedersen(a, b)
-            }
-        );
+        let program = get_compiled_program("test_data_artifacts/programs/libfuncs/pedersen");
 
         run_program_assert_output(
             &program,

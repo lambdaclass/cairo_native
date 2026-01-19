@@ -463,8 +463,10 @@ mod test {
     use num_bigint::BigInt;
 
     use crate::{
-        jit_enum, jit_struct, libfuncs::qm31::M31_PRIME, load_cairo,
-        runtime::qm31_to_representative_coefficients, utils::testing::run_program, Value,
+        jit_enum, jit_struct, libfuncs::qm31::M31_PRIME,
+        runtime::qm31_to_representative_coefficients,
+        utils::testing::{get_compiled_program, run_program},
+        Value,
     };
 
     impl From<&starknet_types_core::qm31::QM31> for Value {
@@ -481,23 +483,7 @@ mod test {
 
     #[test]
     fn run_unpack() {
-        let program = load_cairo! {
-            use core::qm31::{QM31Trait, m31, qm31};
-
-            fn run_test_1() -> [m31;4] {
-                let qm31 = QM31Trait::new(1, 2, 3, 4);
-                let unpacked_qm31 = qm31.unpack();
-
-                unpacked_qm31
-            }
-
-            fn run_test_2() -> [m31;4] {
-                let qm31 = QM31Trait::new(0x544b2fba, 0x673cff77, 0x60713d44, 0x499602d2);
-                let unpacked_qm31 = qm31.unpack();
-
-                unpacked_qm31
-            }
-        };
+        let program = get_compiled_program("test_data_artifacts/programs/libfuncs/qm31_unpack");
 
         let result = run_program(&program, "run_test_1", &[]).return_value;
         let m31_range = Range::closed(0, BigInt::from(2147483646));
@@ -555,19 +541,7 @@ mod test {
 
     #[test]
     fn run_pack() {
-        let program = load_cairo! {
-            use core::qm31::{QM31Trait, qm31};
-
-            fn run_test() -> qm31 {
-                let qm31 = QM31Trait::new(1, 2, 3, 4);
-                qm31
-            }
-
-            fn run_test_large_coefficients() -> qm31 {
-                let qm31 = QM31Trait::new(0x544b2fba, 0x673cff77, 0x60713d44, 0x499602d2);
-                qm31
-            }
-        };
+        let program = get_compiled_program("test_data_artifacts/programs/libfuncs/qm31_pack");
         // With small coefficients
         let result = run_program(&program, "run_test", &[]).return_value;
         assert_eq!(result, Value::QM31(1, 2, 3, 4));
@@ -591,19 +565,7 @@ mod test {
 
     #[test]
     fn run_const() {
-        let program = load_cairo! {
-            use core::qm31::{qm31_const, qm31};
-
-            fn run_test() -> qm31 {
-                let qm31 = qm31_const::<1, 2, 3, 4>();
-                qm31
-            }
-
-            fn run_test_large_coefficients() -> qm31 {
-                let qm31 = qm31_const::<0x544b2fba, 0x673cff77, 0x60713d44, 0x499602d2>();
-                qm31
-            }
-        };
+        let program = get_compiled_program("test_data_artifacts/programs/libfuncs/qm31_const");
 
         let result = run_program(&program, "run_test", &[]).return_value;
         assert_eq!(result, Value::QM31(1, 2, 3, 4));
@@ -617,21 +579,7 @@ mod test {
 
     #[test]
     fn run_is_zero() {
-        let program = load_cairo! {
-            use core::qm31::{QM31Trait, qm31, qm31_is_zero};
-            use core::internal::OptionRev;
-
-            fn run_test(input: qm31) -> OptionRev<NonZero<qm31>> {
-                qm31_is_zero(input)
-            }
-
-            fn run_test_edge_case() -> OptionRev<NonZero<qm31>> {
-                let lhs = QM31Trait::new(0x7ffffffe, 0x7ffffffe, 0x7ffffffe, 0x7ffffffe);
-                let rhs = QM31Trait::new(1, 1, 1, 1);
-                let qm31 = lhs + rhs;
-                qm31_is_zero(qm31)
-            }
-        };
+        let program = get_compiled_program("test_data_artifacts/programs/libfuncs/qm31_is_zero");
 
         let result = run_program(&program, "run_test", &[Value::QM31(0, 0, 0, 0)]).return_value;
         assert_eq!(result, jit_enum!(0, jit_struct!()));
@@ -659,13 +607,7 @@ mod test {
 
     #[test]
     fn run_qm31_add() {
-        let program = load_cairo! {
-            use core::qm31::{QM31Trait, qm31};
-
-            fn run_test(lhs: qm31, rhs: qm31) -> qm31 {
-                lhs + rhs
-            }
-        };
+        let program = get_compiled_program("test_data_artifacts/programs/libfuncs/qm31_add");
 
         let a = starknet_types_core::qm31::QM31::from_coefficients(
             0x544b2fba, 0x673cff77, 0x60713d44, 0x499602d2,
@@ -703,13 +645,7 @@ mod test {
 
     #[test]
     fn run_qm31_sub() {
-        let program = load_cairo! {
-            use core::qm31::{QM31Trait, qm31};
-
-            fn run_test(lhs: qm31, rhs: qm31) -> qm31 {
-                lhs - rhs
-            }
-        };
+        let program = get_compiled_program("test_data_artifacts/programs/libfuncs/qm31_sub");
 
         let a = starknet_types_core::qm31::QM31::from_coefficients(
             0x544b2fba, 0x673cff77, 0x60713d44, 0x499602d2,
@@ -739,13 +675,7 @@ mod test {
 
     #[test]
     fn run_qm31_mul() {
-        let program = load_cairo! {
-            use core::qm31::{QM31Trait, qm31, m31};
-
-            fn run_test(lhs: qm31, rhs: qm31) -> qm31 {
-                lhs * rhs
-            }
-        };
+        let program = get_compiled_program("test_data_artifacts/programs/libfuncs/qm31_mul");
 
         let a = starknet_types_core::qm31::QM31::from_coefficients(
             0x544b2fba, 0x673cff77, 0x60713d44, 0x499602d2,
@@ -781,13 +711,7 @@ mod test {
 
     #[test]
     fn run_qm31_div() {
-        let program = load_cairo! {
-            use core::qm31::{QM31Trait, qm31, m31};
-
-            fn run_test(lhs: qm31, rhs: qm31) -> qm31 {
-                lhs / rhs
-            }
-        };
+        let program = get_compiled_program("test_data_artifacts/programs/libfuncs/qm31_div");
 
         let a = starknet_types_core::qm31::QM31::from_coefficients(
             0x544b2fba, 0x673cff77, 0x60713d44, 0x499602d2,
@@ -835,21 +759,8 @@ mod test {
 
     #[test]
     fn run_from_m31() {
-        let program = load_cairo! {
-            use core::qm31::{QM31Trait, qm31, m31, qm31_from_m31};
-
-            fn run_test_with_0() -> qm31 {
-                qm31_from_m31(0)
-            }
-
-            fn run_test_with_1() -> qm31 {
-                qm31_from_m31(1)
-            }
-
-            fn run_test_with_big_coefficient() -> qm31 {
-                qm31_from_m31(0x60713d44)
-            }
-        };
+        let program =
+            get_compiled_program("test_data_artifacts/programs/libfuncs/qm31_from_m31");
 
         let result = run_program(&program, "run_test_with_0", &[]).return_value;
         assert_eq!(result, Value::QM31(0, 0, 0, 0));
@@ -865,22 +776,7 @@ mod test {
     fn run_m31_add() {
         // TODO: Refactor cairo functions to receive m31 as parameters so we don't need different ones
         // to test different cases and we can unify them into one. This can be done when issue #1217 gets closed.
-        let program = load_cairo! {
-            use core::qm31::m31_ops;
-            use core::qm31::m31;
-
-            fn run_test_1() -> m31 {
-                m31_ops::add(1, 1)
-            }
-
-            fn run_test_2() -> m31 {
-                m31_ops::add(0x567effa3, 0x5ffeb970)
-            }
-
-            fn run_test_3() -> m31 {
-                m31_ops::add(0x7ffffffe, 1)
-            }
-        };
+        let program = get_compiled_program("test_data_artifacts/programs/libfuncs/m31_add");
         let expected_range = Range {
             lower: 0.into(),
             upper: M31_PRIME.into(),
@@ -917,22 +813,7 @@ mod test {
     fn run_m31_sub() {
         // TODO: Refactor cairo functions to receive m31 as parameters so we don't need different ones
         // to test different cases and we can unify them into one. This can be done when issue #1217 gets closed.
-        let program = load_cairo! {
-            use core::qm31::m31_ops;
-            use core::qm31::m31;
-
-            fn run_test_1() -> m31 {
-                m31_ops::sub(2, 1)
-            }
-
-            fn run_test_2() -> m31 {
-                m31_ops::sub(0x567effa3, 0x567effa9)
-            }
-
-            fn run_test_3() -> m31 {
-                m31_ops::sub(0, 1)
-            }
-        };
+        let program = get_compiled_program("test_data_artifacts/programs/libfuncs/m31_sub");
         let expected_range = Range {
             lower: 0.into(),
             upper: M31_PRIME.into(),
@@ -969,22 +850,7 @@ mod test {
     fn run_m31_mul() {
         // TODO: Refactor cairo functions to receive m31 as parameters so we don't need different ones
         // to test different cases and we can unify them into one. This can be done when issue #1217 gets closed.
-        let program = load_cairo! {
-            use core::qm31::m31_ops;
-            use core::qm31::m31;
-
-            fn run_test_1() -> m31 {
-                m31_ops::mul(5, 5)
-            }
-
-            fn run_test_2() -> m31 {
-                m31_ops::mul(0x567effa3, 0x567effa9)
-            }
-
-            fn run_test_3() -> m31 {
-                m31_ops::mul(0x7ffffffe, 2)
-            }
-        };
+        let program = get_compiled_program("test_data_artifacts/programs/libfuncs/m31_mul");
         let expected_range = Range {
             lower: 0.into(),
             upper: M31_PRIME.into(),
@@ -1021,18 +887,7 @@ mod test {
     fn run_m31_div() {
         // TODO: Refactor cairo functions to receive m31 as parameters so we don't need different ones
         // to test different cases and we can unify them into one. This can be done when issue #1217 gets closed.
-        let program = load_cairo! {
-            use core::qm31::m31_ops;
-            use core::qm31::m31;
-
-            fn run_test_1() -> m31 {
-                m31_ops::div(25, 5)
-            }
-
-            fn run_test_2() -> m31 {
-                m31_ops::div(0x567effa3, 0x567effa9)
-            }
-        };
+        let program = get_compiled_program("test_data_artifacts/programs/libfuncs/m31_div");
         let expected_range = Range {
             lower: 0.into(),
             upper: M31_PRIME.into(),
