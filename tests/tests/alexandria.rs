@@ -1,16 +1,15 @@
 use crate::common::{compare_outputs, run_native_program, run_vm_program, DEFAULT_GAS};
 use cairo_lang_runner::SierraCasmRunner;
 use cairo_lang_sierra::program::Program;
-use cairo_native::starknet::DummySyscallHandler;
-use std::{fs::File, io::BufReader};
+use cairo_native::{include_program, starknet::DummySyscallHandler};
 use test_case::test_case;
 
 #[track_caller]
 fn compare_inputless_function(function_name: &str) {
-    // Load file compiled using `scarb build``
-    let file = File::open("tests/alexandria/target/dev/alexandria.sierra.json").unwrap();
-    let reader = BufReader::new(file);
-    let program: Program = serde_json::from_reader(reader).unwrap();
+    let program = include_program!("test_data_artifacts/scarb/alexandria/alexandria.sierra.json")
+        .into_v1()
+        .unwrap()
+        .program;
     let module_name = "alexandria";
     let runner = SierraCasmRunner::new(
         program.clone(),

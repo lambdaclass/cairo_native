@@ -8,7 +8,8 @@ RUN apt update -y && apt install -y lsb-release \
     build-essential \
     libclang-dev \
     libz-dev \
-    libzstd-dev
+    libzstd-dev \
+    python3
 
 # Install LLVM 19
 RUN echo "deb http://apt.llvm.org/bookworm/ llvm-toolchain-bookworm-19 main" > /etc/apt/sources.list.d/llvm-19.list

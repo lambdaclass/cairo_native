@@ -4,7 +4,7 @@ use cairo_lang_runner::{Arg, SierraCasmRunner};
 use cairo_lang_sierra::program::Program;
 use cairo_native::starknet::DummySyscallHandler;
 use cairo_native::utils::felt252_str;
-use cairo_native::Value;
+use cairo_native::{include_program, Value};
 use lazy_static::lazy_static;
 use proptest::prelude::*;
 use starknet_types_core::felt::Felt;
@@ -115,24 +115,39 @@ lazy_static! {
 
 #[test]
 fn fib() {
+    let program = {
+        let versioned_program =
+            include_program!("test_data_artifacts/programs/fibonacci.sierra.json");
+        let program = versioned_program.into_v1().unwrap().program;
+        let module_name = "fibonacci".to_string();
+        let runner = SierraCasmRunner::new(
+            program.clone(),
+            Some(Default::default()),
+            Default::default(),
+            None,
+        )
+        .unwrap();
+        (module_name, program, runner)
+    };
+
     let result_vm = run_vm_program(
-        &FIB,
-        "run_test",
+        &program,
+        "fibonacci",
         vec![Arg::Value(Felt::from(10))],
         Some(DEFAULT_GAS as usize),
     )
     .unwrap();
     let result_native = run_native_program(
-        &FIB,
-        "run_test",
+        &program,
+        "fibonacci",
         &[Value::Felt252(10.into())],
         Some(DEFAULT_GAS),
         Option::<DummySyscallHandler>::None,
     );
 
     compare_outputs(
-        &FIB.1,
-        &FIB.2.find_function("run_test").unwrap().id,
+        &program.1,
+        &program.2.find_function("fibonacci").unwrap().id,
         &result_vm,
         &result_native,
     )
