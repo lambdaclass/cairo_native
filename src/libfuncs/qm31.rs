@@ -463,7 +463,8 @@ mod test {
     use num_bigint::BigInt;
 
     use crate::{
-        jit_enum, jit_struct, libfuncs::qm31::M31_PRIME,
+        jit_enum, jit_struct,
+        libfuncs::qm31::M31_PRIME,
         runtime::qm31_to_representative_coefficients,
         utils::testing::{get_compiled_program, run_program},
         Value,
@@ -759,8 +760,7 @@ mod test {
 
     #[test]
     fn run_from_m31() {
-        let program =
-            get_compiled_program("test_data_artifacts/programs/libfuncs/qm31_from_m31");
+        let program = get_compiled_program("test_data_artifacts/programs/libfuncs/qm31_from_m31");
 
         let result = run_program(&program, "run_test_with_0", &[]).return_value;
         assert_eq!(result, Value::QM31(0, 0, 0, 0));

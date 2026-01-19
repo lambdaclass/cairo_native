@@ -125,8 +125,7 @@ mod test {
 
     #[test]
     fn run_null() {
-        let program =
-            get_compiled_program("test_data_artifacts/programs/libfuncs/nullable_null");
+        let program = get_compiled_program("test_data_artifacts/programs/libfuncs/nullable_null");
 
         run_program_assert_output(&program, "run_test", &[], jit_struct!());
     }
@@ -150,9 +149,8 @@ mod test {
 
     #[test]
     fn match_snapshot_nullable_clone_bug() {
-        let program = get_compiled_program(
-            "test_data_artifacts/programs/libfuncs/nullable_match_snapshot",
-        );
+        let program =
+            get_compiled_program("test_data_artifacts/programs/libfuncs/nullable_match_snapshot");
 
         run_program_assert_output(
             &program,

@@ -118,14 +118,16 @@ pub fn build_hades_permutation<'ctx>(
 
 #[cfg(test)]
 mod test {
-    use crate::{jit_struct, utils::testing::{get_compiled_program, run_program_assert_output}};
+    use crate::{
+        jit_struct,
+        utils::testing::{get_compiled_program, run_program_assert_output},
+    };
 
     use starknet_types_core::felt::Felt;
 
     #[test]
     fn run_hades_permutation() {
-        let program =
-            get_compiled_program("test_data_artifacts/programs/libfuncs/poseidon_hades");
+        let program = get_compiled_program("test_data_artifacts/programs/libfuncs/poseidon_hades");
 
         run_program_assert_output(
             &program,
