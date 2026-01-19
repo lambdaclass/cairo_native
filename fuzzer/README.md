@@ -26,6 +26,7 @@ cargo afl fuzz -i corpus -o output -- \
     ../target/debug/fuzz-program \
     ../test_data_artifacts/programs/corelib.sierra.json
 ```
+You can stop the fuzzer at any point.
 
 To reproduce a crash, we build with AFL_NO_CFG_FUZZING=1 to enable useful debug prints.
 
