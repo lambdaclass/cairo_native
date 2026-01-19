@@ -186,7 +186,7 @@ jobs:
     runs-on: ubuntu-24.04
     strategy:
       matrix:
-        partition: [1, 2, 3, 4]
+        partition: [1, 2, 3, 4, 5, 6, 7]
         include:
           - partition: 1
             output: lcov-1.info
@@ -196,6 +196,12 @@ jobs:
             output: lcov-3.info
           - partition: 4
             output: lcov-4.info
+          - partition: 5
+            output: lcov-5.info
+          - partition: 6
+            output: lcov-6.info
+          - partition: 7
+            output: lcov-7.info
     env:
       MLIR_SYS_190_PREFIX: /usr/lib/llvm-19/
       LLVM_SYS_191_PREFIX: /usr/lib/llvm-19/
@@ -242,7 +248,7 @@ jobs:
         run: make deps
 
       - name: Run tests and generate coverage partition ${{ matrix.partition }}
-        run: cargo llvm-cov nextest --verbose --lcov --output-path ${{ matrix.output }} --partition count:${{ matrix.partition }}/4
+        run: cargo llvm-cov nextest --verbose --lcov --output-path ${{ matrix.output }} --partition count:${{ matrix.partition }}/7
 
       - name: test and generate coverage corelib
         if: ${{ matrix.partition == '1' }}
