@@ -23,7 +23,7 @@ cargo run --bin gen-corpus -- program \
 Run the fuzzer.
 ```bash
 cargo afl fuzz -i corpus -o output -- \
-    ../target/debug/fuzz-program \
+    target/debug/fuzz-program \
     ../test_data_artifacts/programs/corelib.sierra.json
 ```
 You can stop the fuzzer at any point.
@@ -32,7 +32,7 @@ To reproduce a crash, we build with AFL_NO_CFG_FUZZING=1 to enable useful debug 
 
 ```bash
 AFL_NO_CFG_FUZZING=1 cargo afl build --bin fuzz-program
-../target/debug/fuzz-program \
+target/debug/fuzz-program \
     ../test_data_artifacts/programs/corelib.sierra.json \
     < output/default/crashes/*
 ```
@@ -54,14 +54,14 @@ cargo run --bin gen-corpus -- contract \
 Run the fuzzer.
 ```bash
 cargo afl fuzz -i corpus -o output -- \
-    ../target/debug/fuzz-contract \
+    target/debug/fuzz-contract \
     ../test_data_artifacts/contracts/cairo_vm/fib.contract.json
 ```
 
 To reproduce a crash.
 ```bash
 AFL_NO_CFG_FUZZING=1 cargo afl build --bin fuzz-contract
-../target/debug/fuzz-contract \
+target/debug/fuzz-contract \
     ../test_data_artifacts/contracts/cairo_vm/fib.contract.json \
     < output/default/crashes/*
 ```
@@ -71,6 +71,6 @@ AFL_NO_CFG_FUZZING=1 cargo afl build --bin fuzz-contract
 - SIGSEGV on Corelib's core::poseidon::_poseidon_hash_span_inner:
   ```bash
   xxd -r crashes/corelib-poseidon.xxd | \
-  ../target/debug/fuzz-program \
+  target/debug/fuzz-program \
   ../test_data_artifacts/programs/corelib.sierra.json
   ```
