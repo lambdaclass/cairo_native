@@ -432,17 +432,14 @@ fn eval_byte_reverse(
 
 #[cfg(test)]
 mod test {
-    use crate::{load_cairo, test_utils::run_test_program, Value};
+    use crate::{
+        test_utils::{load_program, run_test_program},
+        Value,
+    };
 
     #[test]
     fn test_diff_14_m2() {
-        let (_, program) = load_cairo!(
-            pub extern fn i8_diff(lhs: i8, rhs: i8) -> Result<u8, u8> implicits(RangeCheck) nopanic;
-
-            fn main() -> Result<u8, u8> {
-                i8_diff(14, -2)
-            }
-        );
+        let program = load_program("test_data_artifacts/programs/debug_utils/int_diff_14_m2");
 
         let result = run_test_program(program);
         let result = result.last().unwrap();
@@ -456,13 +453,7 @@ mod test {
 
     #[test]
     fn test_diff_m14_m2() {
-        let (_, program) = load_cairo!(
-            pub extern fn i8_diff(lhs: i8, rhs: i8) -> Result<u8, u8> implicits(RangeCheck) nopanic;
-
-            fn main() -> Result<u8, u8> {
-                i8_diff(-14, -2)
-            }
-        );
+        let program = load_program("test_data_artifacts/programs/debug_utils/int_diff_m14_m2");
 
         let result = run_test_program(program);
         let result = result.last().unwrap();
@@ -476,13 +467,7 @@ mod test {
 
     #[test]
     fn test_diff_m2_0() {
-        let (_, program) = load_cairo!(
-            pub extern fn i8_diff(lhs: i8, rhs: i8) -> Result<u8, u8> implicits(RangeCheck) nopanic;
-
-            fn main() -> Result<u8, u8> {
-                i8_diff(-2, 0)
-            }
-        );
+        let program = load_program("test_data_artifacts/programs/debug_utils/int_diff_m2_0");
 
         let result = run_test_program(program);
         let result = result.last().unwrap();
@@ -496,13 +481,7 @@ mod test {
 
     #[test]
     fn test_diff_2_10() {
-        let (_, program) = load_cairo!(
-            pub extern fn i8_diff(lhs: i8, rhs: i8) -> Result<u8, u8> implicits(RangeCheck) nopanic;
-
-            fn main() -> Result<u8, u8> {
-                i8_diff(2, 10)
-            }
-        );
+        let program = load_program("test_data_artifacts/programs/debug_utils/int_diff_2_10");
 
         let result = run_test_program(program);
         let result = result.last().unwrap();
