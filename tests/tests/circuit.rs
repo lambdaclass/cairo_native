@@ -421,39 +421,39 @@ fn test_circuit_add_ec_points_g2() {
 
 // NOTE: Since Cairo 2.14.0-dev.1, the BIG_CIRCUIT program takes forever to
 // compile to Sierra. Enable this test once fixed.
-// #[test]
-// #[ignore]
-// fn test_circuit_clear_cofactor_bls12_381() {
-//     let program = &BIG_CIRCUIT;
+#[test]
+#[ignore]
+fn test_circuit_clear_cofactor_bls12_381() {
+    let program = &get_compiled_program("test_data_artifacts/programs/big_circuit");
 
-//     let result_vm = run_vm_program(
-//         program,
-//         "run_CLEAR_COFACTOR_BLS12_381_circuit",
-//         vec![],
-//         Some(DEFAULT_GAS as usize),
-//     )
-//     .unwrap();
+    let result_vm = run_vm_program(
+        program,
+        "run_CLEAR_COFACTOR_BLS12_381_circuit",
+        vec![],
+        Some(DEFAULT_GAS as usize),
+    )
+    .unwrap();
 
-//     let result_native = run_native_program(
-//         program,
-//         "run_CLEAR_COFACTOR_BLS12_381_circuit",
-//         &[],
-//         Some(DEFAULT_GAS),
-//         Option::<DummySyscallHandler>::None,
-//     );
+    let result_native = run_native_program(
+        program,
+        "run_CLEAR_COFACTOR_BLS12_381_circuit",
+        &[],
+        Some(DEFAULT_GAS),
+        Option::<DummySyscallHandler>::None,
+    );
 
-//     compare_outputs(
-//         &program.1,
-//         &program
-//             .2
-//             .find_function("run_CLEAR_COFACTOR_BLS12_381_circuit")
-//             .unwrap()
-//             .id,
-//         &result_vm,
-//         &result_native,
-//     )
-//     .unwrap();
-// }
+    compare_outputs(
+        &program.1,
+        &program
+            .2
+            .find_function("run_CLEAR_COFACTOR_BLS12_381_circuit")
+            .unwrap()
+            .id,
+        &result_vm,
+        &result_native,
+    )
+    .unwrap();
+}
 
 #[test]
 fn test_circuit_add_ec_point_unchecked() {
