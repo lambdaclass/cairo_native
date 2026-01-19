@@ -137,21 +137,14 @@ fn build_drop<'ctx>(
 
 #[cfg(test)]
 mod test {
-    use crate::{jit_dict, load_cairo, utils::testing::run_program, values::Value};
+    use crate::{jit_dict, load_program_and_runner, utils::testing::run_program, values::Value};
     use pretty_assertions_sorted::assert_eq;
     use starknet_types_core::felt::Felt;
     use std::collections::HashMap;
 
     #[test]
     fn dict_snapshot_take() {
-        let program = load_cairo! {
-            fn run_test() -> @Felt252Dict<u32> {
-                let mut dict: Felt252Dict<u32> = Default::default();
-                            dict.insert(2, 1_u32);
-
-                @dict
-            }
-        };
+        let program = load_program_and_runner("test_data/programs/types/dict_snapshot_take");
         let result = run_program(&program, "run_test", &[]).return_value;
 
         assert_eq!(
@@ -164,15 +157,7 @@ mod test {
 
     #[test]
     fn dict_snapshot_take_complex() {
-        let program = load_cairo! {
-            fn run_test() -> @Felt252Dict<Nullable<Array<u32>>> {
-                let mut dict: Felt252Dict<Nullable<Array<u32>>> = Default::default();
-                dict.insert(2, NullableTrait::new(array![3, 4]));
-
-                @dict
-            }
-
-        };
+        let program = load_program_and_runner("test_data/programs/types/dict_snapshot_complex");
         let result = run_program(&program, "run_test", &[]).return_value;
 
         assert_eq!(
@@ -185,22 +170,10 @@ mod test {
 
     #[test]
     fn dict_snapshot_take_compare() {
-        let program = load_cairo! {
-            fn run_test() -> @Felt252Dict<Nullable<Array<u32>>> {
-                let mut dict: Felt252Dict<Nullable<Array<u32>>> = Default::default();
-                dict.insert(2, NullableTrait::new(array![3, 4]));
-
-                @dict
-            }
-        };
-        let program2 = load_cairo! {
-            fn run_test() -> Felt252Dict<Nullable<Array<u32>>> {
-                let mut dict: Felt252Dict<Nullable<Array<u32>>> = Default::default();
-                dict.insert(2, NullableTrait::new(array![3, 4]));
-
-                dict
-            }
-        };
+        let program =
+            load_program_and_runner("test_data/programs/types/dict_snapshot_compare_snapshot");
+        let program2 =
+            load_program_and_runner("test_data/programs/types/dict_snapshot_compare_owned");
 
         let result1 = run_program(&program, "run_test", &[]).return_value;
         let result2 = run_program(&program2, "run_test", &[]).return_value;
@@ -211,14 +184,7 @@ mod test {
     /// Ensure that a dictionary of booleans compiles.
     #[test]
     fn dict_type_bool() {
-        let program = load_cairo! {
-            fn run_program() -> Felt252Dict<bool> {
-                let mut x: Felt252Dict<bool> = Default::default();
-                x.insert(0, false);
-                x.insert(1, true);
-                x
-            }
-        };
+        let program = load_program_and_runner("test_data/programs/types/dict_bool");
 
         let result = run_program(&program, "run_program", &[]);
         assert_eq!(
@@ -256,16 +222,7 @@ mod test {
     /// Ensure that a dictionary of felts compiles.
     #[test]
     fn dict_type_felt252() {
-        let program = load_cairo! {
-            fn run_program() -> Felt252Dict<felt252> {
-                let mut x: Felt252Dict<felt252> = Default::default();
-                x.insert(0, 0);
-                x.insert(1, 1);
-                x.insert(2, 2);
-                x.insert(3, 3);
-                x
-            }
-        };
+        let program = load_program_and_runner("test_data/programs/types/dict_felt252");
 
         let result = run_program(&program, "run_program", &[]);
         assert_eq!(
@@ -285,23 +242,7 @@ mod test {
     /// Ensure that a dictionary of nullables compiles.
     #[test]
     fn dict_type_nullable() {
-        let program = load_cairo! {
-            #[derive(Drop)]
-            struct MyStruct {
-                a: u8,
-                b: i16,
-                c: felt252,
-            }
-
-            fn run_program() -> Felt252Dict<Nullable<MyStruct>> {
-                let mut x: Felt252Dict<Nullable<MyStruct>> = Default::default();
-                x.insert(0, Default::default());
-                x.insert(1, NullableTrait::new(MyStruct { a: 0, b: 1, c: 2 }));
-                x.insert(2, NullableTrait::new(MyStruct { a: 1, b: -2, c: 3 }));
-                x.insert(3, NullableTrait::new(MyStruct { a: 2, b: 3, c: 4 }));
-                x
-            }
-        };
+        let program = load_program_and_runner("test_data/programs/types/dict_nullable");
 
         let result = run_program(&program, "run_program", &[]);
         pretty_assertions_sorted::assert_eq_sorted!(
@@ -351,16 +292,7 @@ mod test {
     /// Ensure that a dictionary of unsigned integers compiles.
     #[test]
     fn dict_type_unsigned() {
-        let program = load_cairo! {
-            fn run_program() -> Felt252Dict<u128> {
-                let mut x: Felt252Dict<u128> = Default::default();
-                x.insert(0, 0_u128);
-                x.insert(1, 1_u128);
-                x.insert(2, 2_u128);
-                x.insert(3, 3_u128);
-                x
-            }
-        };
+        let program = load_program_and_runner("test_data/programs/types/dict_u128");
 
         let result = run_program(&program, "run_program", &[]);
         assert_eq!(
