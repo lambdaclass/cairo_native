@@ -202,7 +202,7 @@ mod test {
             let output_u512 = u512(output_u512);
             let output_u256 = u256(output_u256);
             run_program_assert_output(
-                &program,
+                program,
                 "run_test",
                 &[lhs, rhs],
                 jit_struct!(output_u512, output_u256),
