@@ -317,3 +317,21 @@ pub fn load_contract(path: &str) -> ContractClass {
     )
     .unwrap()
 }
+
+// TODO: Think a better name
+pub fn get_compiled_program(name: &str) -> (String, Program) {
+    let program_path = format!("{}/{}.sierra.json", env!("CARGO_MANIFEST_DIR"), name);
+    let program_content = fs::read_to_string(program_path)
+        .expect("Failed to read the content of the program into a String");
+    let versioned_program =
+        serde_json::from_str::<cairo_lang_sierra::program::VersionedProgram>(&program_content)
+            .unwrap();
+    let program = versioned_program.into_v1().unwrap().program;
+    let entrypoint = name
+        .split("/")
+        .collect::<Vec<&str>>()
+        .last()
+        .unwrap()
+        .to_string();
+    (entrypoint, program)
+}
