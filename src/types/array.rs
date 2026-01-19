@@ -412,20 +412,12 @@ pub fn calc_data_prefix_offset(layout: Layout) -> usize {
 
 #[cfg(test)]
 mod test {
-    use crate::{load_cairo, utils::testing::run_program, values::Value};
+    use crate::{load_program_and_runner, utils::testing::run_program, values::Value};
     use pretty_assertions_sorted::assert_eq;
 
     #[test]
     fn test_array_snapshot_deep_clone() {
-        let program = load_cairo! {
-            fn run_test() -> @Array<Array<felt252>> {
-                let mut inputs: Array<Array<felt252>> = ArrayTrait::new();
-                inputs.append(array![1, 2, 3]);
-                inputs.append(array![4, 5, 6]);
-
-                @inputs
-            }
-        };
+        let program = load_program_and_runner("test_data/programs/types/nested_arrays");
         let result = run_program(&program, "run_test", &[]).return_value;
 
         assert_eq!(

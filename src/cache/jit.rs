@@ -75,12 +75,14 @@ mod test {
 
     #[test]
     fn test_cache() {
+        // TODO: This is the felt252_add program added in other PR. When merged we can use that program
         let (_, program1) = load_cairo!(
             fn main(lhs: felt252, rhs: felt252) -> felt252 {
                 lhs + rhs
             }
         );
 
+        // TODO: This is the felt252_sub program added in other PR. When merged we can use that program
         let (_, program2) = load_cairo!(
             fn main(lhs: felt252, rhs: felt252) -> felt252 {
                 lhs - rhs
