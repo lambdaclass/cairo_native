@@ -39,7 +39,6 @@ smallvec.workspace = true
 starknet-crypto.workspace = true
 starknet-curve.workspace = true
 starknet-types-core.workspace = true
-tempfile.workspace = true
 thiserror.workspace = true
 tracing.workspace = true
 tracing-subscriber = { workspace = true, features = ["env-filter"] }

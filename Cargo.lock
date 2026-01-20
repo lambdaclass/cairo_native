@@ -3636,7 +3636,6 @@ dependencies = [
  "starknet-crypto",
  "starknet-curve",
  "starknet-types-core",
- "tempfile",
  "thiserror",
  "tracing",
  "tracing-subscriber",
