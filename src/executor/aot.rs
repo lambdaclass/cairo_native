@@ -203,7 +203,7 @@ impl AotNativeExecutor {
 mod tests {
     use super::*;
     use crate::{
-        context::NativeContext, include_contract, load_cairo, starknet_stub::StubSyscallHandler,
+        context::NativeContext, include_contract, starknet_stub::StubSyscallHandler,
         utils::testing::load_program,
     };
     use cairo_lang_sierra::program::Program;
@@ -211,8 +211,7 @@ mod tests {
 
     #[fixture]
     fn program() -> Program {
-        let program = load_program("test_data_artifacts/programs/executor_aot");
-        program
+        load_program("test_data_artifacts/programs/executor_aot")
     }
 
     #[fixture]

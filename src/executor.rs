@@ -713,8 +713,7 @@ mod tests {
 
     #[fixture]
     fn program() -> Program {
-        let program = load_program("test_data_artifacts/programs/executor_program");
-        program
+        load_program("test_data_artifacts/programs/executor_program")
     }
 
     #[fixture]
