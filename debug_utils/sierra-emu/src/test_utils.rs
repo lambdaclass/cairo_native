@@ -38,14 +38,9 @@ pub fn run_test_program(sierra_program: Program) -> Vec<Value> {
 }
 
 pub fn load_program(path: &str) -> Program {
-    let versioned_program = serde_json::from_str::<VersionedProgram>(
-        &fs::read_to_string(format!(
-            "{}/{}.sierra.json",
-            env!("CARGO_MANIFEST_DIR"),
-            path
-        ))
-        .unwrap(),
-    )
-    .unwrap();
+    let a = format!("{}/../../{}.sierra.json", env!("CARGO_MANIFEST_DIR"), path);
+    println!("{}", a);
+    let versioned_program =
+        serde_json::from_str::<VersionedProgram>(&fs::read_to_string(a).unwrap()).unwrap();
     versioned_program.into_v1().unwrap().program
 }

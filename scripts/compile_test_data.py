@@ -2,9 +2,6 @@ import os
 import subprocess
 import argparse
 
-src_root = "test_data"
-dst_root = "test_data_artifacts"
-
 parser = argparse.ArgumentParser()
 parser.add_argument("--mode", help="Defines which cairo files to compile")
 args = parser.parse_args()
@@ -31,13 +28,13 @@ def get_dst_path(src_path):
     return dst_path
 
 
-def compile_cairo_project(src_path):
+def compile_cairo_project(src_path, binary_path):
     dst_path = get_dst_path(src_path)
 
     print(f"compiling project {src_path} into {dst_path}")
     subprocess.run(
         [
-            "target/debug/compile-cairo-project",
+            binary_path,
             src_path,
             dst_path + ".sierra.json",
             dst_path + ".sierra",
@@ -89,9 +86,13 @@ def walk(subdir, f):
 
  
 if args.mode == "sierra-emu":
-    walk("programs/debug_utils", lambda p: compile_cairo_project(p))
+    src_root = "../../test_data"
+    dst_root = "../../test_data_artifacts"
+    walk("programs/debug_utils", lambda p: compile_cairo_project(p, "../../target/debug/compile-cairo-project"))
 else:
-    walk("programs", lambda p: compile_cairo_project(p))
+    src_root = "test_data"
+    dst_root = "test_data_artifacts"
+    walk("programs", lambda p: compile_cairo_project(p, "target/debug/compile-cairo-project"))
     walk("contracts", lambda p: compile_cairo_contract(p))
     walk("tests", lambda p: compile_cairo_tests(p, starknet=False))
     walk("tests_starknet", lambda p: compile_cairo_tests(p, starknet=True))
