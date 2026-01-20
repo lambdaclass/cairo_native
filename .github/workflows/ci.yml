@@ -242,7 +242,7 @@ jobs:
         run: make deps
 
       - name: Run tests and generate coverage partition ${{ matrix.partition }}
-        run: cargo llvm-cov nextest --verbose --features=with-cheatcode,with-debug-utils,testing --lcov --output-path ${{ matrix.output }} --partition count:${{ matrix.partition }}/4
+        run: cargo llvm-cov nextest --verbose --features=with-cheatcode,with-debug-utils --lcov --output-path ${{ matrix.output }} --partition count:${{ matrix.partition }}/4
 
       - name: test and generate coverage corelib
         if: ${{ matrix.partition == '1' }}
