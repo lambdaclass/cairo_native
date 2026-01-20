@@ -138,34 +138,17 @@ mod tests {
     use crate::{
         context::NativeContext,
         executor::AotNativeExecutor,
-        load_cairo,
         metadata::trace_dump::{
             trace_dump_runtime::{TraceDump, TRACE_DUMP},
             TraceBinding,
         },
+        utils::testing::load_program,
         OptLevel,
     };
 
     #[fixture]
     fn program() -> Program {
-        // TODO: This is the fib program added in other PR. When merged we can use that program
-        let (_, program) = load_cairo! {
-            use core::felt252;
-
-            fn main() -> felt252 {
-                let n = 10;
-                let result = fib(1, 1, n);
-                result
-            }
-
-            fn fib(a: felt252, b: felt252, n: felt252) -> felt252 {
-                match n {
-                    0 => a,
-                    _ => fib(b, a + b, n - 1),
-                }
-            }
-        };
-        program
+        load_program("test_data_artifacts/programs/fib_program")
     }
 
     #[rstest]
