@@ -17,10 +17,12 @@ check:
 .PHONY: check
 
 test:
+	python3 ./scripts/compile_test_data.py --mode sierra-emu
 	cargo test --all-features
 .PHONY: test
 
 test-no-corelib:
+	python3 ./scripts/compile_test_data.py --mode sierra-emu
 	cargo test --all-features -- --skip test_corelib
 .PHONY: test-no-corelib
 

@@ -1,8 +1,13 @@
 import os
 import subprocess
+import argparse
 
 src_root = "test_data"
 dst_root = "test_data_artifacts"
+
+parser = argparse.ArgumentParser()
+parser.add_argument("--mode", help="Defines which cairo files to compile")
+args = parser.parse_args()
 
 subprocess.run(
     [
@@ -82,8 +87,11 @@ def walk(subdir, f):
                     filepath = os.path.join(dirpath, filename)
                     f(filepath)
 
-
-walk("programs", lambda p: compile_cairo_project(p))
-walk("contracts", lambda p: compile_cairo_contract(p))
-walk("tests", lambda p: compile_cairo_tests(p, starknet=False))
-walk("tests_starknet", lambda p: compile_cairo_tests(p, starknet=True))
+ 
+if args.mode == "sierra-emu":
+    walk("programs/debug_utils", lambda p: compile_cairo_project(p))
+else:
+    walk("programs", lambda p: compile_cairo_project(p))
+    walk("contracts", lambda p: compile_cairo_contract(p))
+    walk("tests", lambda p: compile_cairo_tests(p, starknet=False))
+    walk("tests_starknet", lambda p: compile_cairo_tests(p, starknet=True))
