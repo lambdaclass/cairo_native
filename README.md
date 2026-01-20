@@ -60,7 +60,6 @@ use. This can be done by adding `cairo-native = "0.9.0-rc.0"` to your Cargo.toml
   on macOS you can use brew
 - Rust 1.78.0 or later, since we make use of the u128
   [abi change](https://blog.rust-lang.org/2024/03/30/i128-layout-update.html).
-- Python 3
 - Git
 
 ### Setup

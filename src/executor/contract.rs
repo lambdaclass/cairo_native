@@ -815,10 +815,10 @@ impl Drop for LockFile {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::include_contract;
-    use crate::starknet_stub::StubSyscallHandler;
-    use cairo_lang_starknet_classes::contract_class::version_id_from_serialized_sierra_program;
-    use cairo_lang_starknet_classes::contract_class::ContractClass;
+    use crate::{load_starknet_contract, starknet_stub::StubSyscallHandler};
+    use cairo_lang_starknet_classes::contract_class::{
+        version_id_from_serialized_sierra_program, ContractClass,
+    };
     use rayon::iter::ParallelBridge;
     use rstest::*;
 
@@ -826,17 +826,81 @@ mod tests {
 
     #[fixture]
     fn starknet_program() -> ContractClass {
-        include_contract!("test_data_artifacts/contracts/simple_storage_dup.contract.json")
+        let (_, program) = load_starknet_contract! {
+            #[starknet::interface]
+            trait ISimpleStorage<TContractState> {
+                fn get(self: @TContractState, x: felt252) -> (felt252, felt252);
+            }
+
+            #[starknet::contract]
+            mod contract {
+                #[storage]
+                struct Storage {}
+
+                #[abi(embed_v0)]
+                impl ISimpleStorageImpl of super::ISimpleStorage<ContractState> {
+                    fn get(self: @ContractState, x: felt252) -> (felt252, felt252) {
+                        (x, x * 2)
+                    }
+                }
+            }
+        };
+        program
     }
 
     #[fixture]
     fn starknet_program_factorial() -> ContractClass {
-        include_contract!("test_data_artifacts/contracts/simple_storage_factorial.contract.json")
+        let (_, program) = load_starknet_contract! {
+            #[starknet::interface]
+            trait ISimpleStorage<TContractState> {
+                fn get(self: @TContractState, x: felt252) -> felt252;
+            }
+
+            #[starknet::contract]
+            mod contract {
+                #[storage]
+                struct Storage {}
+
+                #[abi(embed_v0)]
+                impl ISimpleStorageImpl of super::ISimpleStorage<ContractState> {
+                    fn get(self: @ContractState, x: felt252) -> felt252 {
+                        factorial(1, x)
+                    }
+                }
+
+                fn factorial(value: felt252, n: felt252) -> felt252 {
+                    if (n == 1) {
+                        value
+                    } else {
+                        factorial(value * n, n - 1)
+                    }
+                }
+            }
+        };
+        program
     }
 
     #[fixture]
     fn starknet_program_empty() -> ContractClass {
-        include_contract!("test_data_artifacts/contracts/simple_storage_empty.contract.json")
+        let (_, program) = load_starknet_contract! {
+            #[starknet::interface]
+            trait ISimpleStorage<TContractState> {
+                fn call(self: @TContractState);
+            }
+
+            #[starknet::contract]
+            mod contract {
+                #[storage]
+                struct Storage {}
+
+                #[abi(embed_v0)]
+                impl ISimpleStorageImpl of super::ISimpleStorage<ContractState> {
+                    fn call(self: @ContractState) {
+                    }
+                }
+            }
+        };
+        program
     }
 
     #[rstest]

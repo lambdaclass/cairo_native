@@ -6,7 +6,7 @@ CAIRO_2_VERSION = 2.15.0
 
 # Usage is the default target for newcomers running `make`.
 .PHONY: usage
-usage: check-llvm check-corelib check-cairo2
+usage: check-llvm needs-cairo2
 	@echo "Usage:"
 	@echo "    deps:         Installs the necesary dependencies."
 	@echo "    build:        Builds the cairo-native library and binaries in release mode."
@@ -37,13 +37,12 @@ ifndef TABLEGEN_190_PREFIX
 endif
 	@echo "LLVM is correctly set at $(MLIR_SYS_190_PREFIX)."
 
-.PHONY: check-corelib
-check-corelib:
+.PHONY: needs-cairo2
+needs-cairo2:
+ifeq ($(wildcard ./cairo2/.),)
+	$(error You are missing the Starknet Cairo 1 compiler, please run 'make deps' to install the necessary dependencies.)
+endif
 	./scripts/check-corelib-version.sh $(CAIRO_2_VERSION)
-
-.PHONY: check-cairo2
-check-cairo2:
-	./scripts/check-cairo2-version.sh $(CAIRO_2_VERSION)
 
 .PHONY: build
 build: check-llvm
@@ -63,27 +62,29 @@ check: check-llvm
 	cargo clippy --workspace --all-targets --all-features -- -D warnings
 
 .PHONY: test
-test: check-llvm
+test: check-llvm needs-cairo2 build-alexandria
 	cargo test --profile ci --features=with-cheatcode,with-debug-utils,testing
 
 .PHONY: test-cairo
-test-cairo: check-llvm
-	bash ./scripts/test_cairo.sh
+test-cairo: check-llvm needs-cairo2
+	cargo run --profile ci --package cairo-native-test -- -O2 --compare-with-cairo-vm corelib
+	cargo run --profile ci --package cairo-native-test -- -O2 --compare-with-cairo-vm cairo/tests/bug_samples/ --starknet
+	cargo run --profile ci --package cairo-native-test -- -O2 --compare-with-cairo-vm cairo/crates/cairo-lang-starknet/cairo_level_tests/ --starknet
 
 .PHONY: proptest
-proptest: check-llvm
+proptest: check-llvm needs-cairo2
 	cargo test --profile ci --features=with-cheatcode,with-debug-utils,testing proptest
 
 .PHONY: test-cli
-test-ci: check-llvm
+test-ci: check-llvm needs-cairo2 build-alexandria
 	cargo test --profile ci --features=with-cheatcode,with-debug-utils,testing
 
 .PHONY: proptest-cli
-proptest-ci: check-llvm
+proptest-ci: check-llvm needs-cairo2
 	cargo test --profile ci --features=with-cheatcode,with-debug-utils,testing proptest
 
 .PHONY: coverage
-coverage: check-llvm
+coverage: check-llvm needs-cairo2 build-alexandria
 	cargo llvm-cov --verbose --profile ci --features=with-cheatcode,with-debug-utils,testing --workspace --lcov --output-path lcov.info
 	cargo llvm-cov --verbose --profile ci --features=with-cheatcode,with-debug-utils,testing --lcov --output-path lcov-test.info run --package cairo-native-test -- corelib
 
@@ -96,13 +97,13 @@ doc-open: check-llvm
 	cargo doc --all-features --no-deps --workspace --open
 
 .PHONY: bench
-bench: check-llvm check-cairo2
+bench: needs-cairo2
 	cargo b --release --package cairo-native-run
 	cargo b --release --package cairo-native-compile
 	./scripts/bench-hyperfine.sh
 
 .PHONY: bench-ci
-bench-ci: check-llvm
+bench-ci: check-llvm needs-cairo2
 	cargo criterion --features=with-cheatcode,with-debug-utils,testing
 
 .PHONY: stress-test
@@ -126,14 +127,16 @@ clean: stress-clean
 	cargo clean
 
 .PHONY: deps
-deps:
+deps: cairo-tests
 ifeq ($(UNAME), Linux)
 deps: build-cairo-2-compiler install-scarb
 endif
 ifeq ($(UNAME), Darwin)
 deps: deps-macos
 endif
-	$(MAKE) compile-test-data
+	-rm -rf corelib
+	-ln -s cairo2/corelib corelib
+	patch -p0 -E < corelib.patch
 
 .PHONY: deps-macos
 deps-macos: build-cairo-2-compiler-macos install-scarb-macos
@@ -188,10 +191,19 @@ install-scarb-macos:
 	sed 's/zsh_completion_block/zsh_completions_block/g' | \
 	sh -s -- --version $(SCARB_VERSION)
 
-.PHONY: pull-external-projects
-pull-external-projects:
-	python3 ./scripts/pull_external_projects.py v${CAIRO_2_VERSION}
+.PHONY: build-alexandria
+build-alexandria:
+	cd tests/alexandria; scarb build
 
-.PHONY: compile-test-data
-compile-test-data:
-	python3 ./scripts/compile_test_data.py
+.PHONY: cairo-tests
+cairo-tests:
+	rm -rf cairo
+	mkdir cairo
+	cd cairo                                                          ; \
+	git init                                                          ; \
+	git remote add origin https://github.com/starkware-libs/cairo.git ; \
+	git fetch origin v$(CAIRO_2_VERSION)                              ; \
+	git checkout FETCH_HEAD                                           ; \
+	git sparse-checkout set --no-cone                                   \
+	  tests/bug_samples/                                                \
+	  crates/cairo-lang-starknet/cairo_level_tests/

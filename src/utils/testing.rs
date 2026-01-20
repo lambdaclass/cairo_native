@@ -289,31 +289,3 @@ pub fn panic_byte_array(message: &str) -> Vec<Felt> {
 
     array
 }
-
-#[macro_export]
-macro_rules! include_program {
-    ( $path:expr ) => {
-        serde_json::from_str::<cairo_lang_sierra::program::VersionedProgram>(include_str!(concat!(
-            env!("CARGO_MANIFEST_DIR"),
-            "/",
-            $path
-        )))
-        .unwrap()
-    };
-}
-#[macro_export]
-macro_rules! include_contract {
-    ( $path:expr ) => {
-        serde_json::from_str::<cairo_lang_starknet_classes::contract_class::ContractClass>(
-            include_str!(concat!(env!("CARGO_MANIFEST_DIR"), "/", $path)),
-        )
-        .unwrap()
-    };
-}
-
-pub fn load_contract(path: &str) -> ContractClass {
-    serde_json::from_str::<ContractClass>(
-        &fs::read_to_string(format!("{}/{}", env!("CARGO_MANIFEST_DIR"), path)).unwrap(),
-    )
-    .unwrap()
-}
