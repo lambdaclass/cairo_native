@@ -1,1 +1,1 @@
-window.SIDEBAR_ITEMS = {"fn":["cairo_to_sierra","load_cairo_str","load_contract","load_starknet_contract_str","load_starknet_str","panic_byte_array","run_program","run_program_assert_output"]};
+window.SIDEBAR_ITEMS = {"fn":["cairo_to_sierra","load_cairo_str","load_contract","load_program","load_program_and_runner","load_starknet_contract_str","load_starknet_str","panic_byte_array","run_program","run_program_assert_output"]};
