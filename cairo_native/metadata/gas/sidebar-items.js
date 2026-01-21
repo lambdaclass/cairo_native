@@ -1,1 +1,1 @@
-window.SIDEBAR_ITEMS = {"enum":["GasMetadataError"],"struct":["GasCost","GasMetadata"]};
+window.SIDEBAR_ITEMS = {"enum":["GasMetadataError"],"struct":["GasCost","GasMetadata","StatementCostInfo"]};
