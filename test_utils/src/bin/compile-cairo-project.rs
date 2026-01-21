@@ -9,6 +9,7 @@ use cairo_lang_compiler::{
     project::setup_project, CompilerConfig,
 };
 use cairo_lang_filesystem::ids::CrateInput;
+use cairo_lang_lowering::optimizations::config::Optimizations;
 use cairo_lang_sierra::program::VersionedProgram;
 use clap::Parser;
 
@@ -30,6 +31,7 @@ fn main() -> Result<(), Box<dyn Error>> {
     let mut db = {
         let mut dbb = RootDatabase::builder();
         dbb.detect_corelib();
+        dbb.with_optimizations(Optimizations::Disabled);
         dbb.build()?
     };
     let crate_inputs = setup_project(&mut db, &args.cairo_path)?;

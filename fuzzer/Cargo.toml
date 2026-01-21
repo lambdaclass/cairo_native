@@ -1,0 +1,19 @@
+[workspace]
+
+[package]
+name = "cairo-native-fuzzer"
+edition = "2021"
+
+[lints.rust]
+unexpected_cfgs = { level = "deny", check-cfg = ['cfg(fuzzing)'] }
+
+[dependencies]
+afl = "0.17"
+arbitrary = "1.4.1"
+cairo-lang-sierra = "~2.15.0"
+cairo-lang-starknet-classes = "~2.15.0"
+cairo-native = { path = "..", features = ["testing", "with-cheatcode"]}
+clap = { version = "4.5.23", features = ["derive"] }
+rand = "0.9.2"
+serde_json = "1.0.128"
+starknet-types-core = "0.2.3"
