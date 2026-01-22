@@ -1052,26 +1052,33 @@ pub(crate) mod handler {
                     capacity: 0,
                 },
                 _ => {
-                    let refcount_offset =
-                        crate::types::array::calc_data_prefix_offset(Layout::new::<E>());
-                    let ptr = libc_malloc(
-                        Layout::array::<E>(data.len()).unwrap().size() + refcount_offset,
-                    ) as *mut E;
-
                     let len: u32 = data.len().try_into().unwrap();
-                    ptr.cast::<u32>().write(1);
-                    ptr.byte_add(size_of::<u32>()).cast::<u32>().write(len);
-                    let ptr = ptr.byte_add(refcount_offset);
+
+                    // Allocate data (no prefix)
+                    let data_ptr =
+                        libc_malloc(Layout::array::<E>(data.len()).unwrap().size()) as *mut E;
 
                     for (i, val) in data.iter().enumerate() {
-                        ptr.add(i).write(val.clone());
+                        data_ptr.add(i).write(val.clone());
                     }
 
-                    let ptr_ptr = libc_malloc(size_of::<*mut ()>()).cast::<*mut E>();
-                    ptr_ptr.write(ptr);
+                    // Allocate metadata: { refcount: u32, max_len: u32, data_ptr: *mut E }
+                    #[repr(C)]
+                    struct ArrayMetadata<T> {
+                        refcount: u32,
+                        max_len: u32,
+                        data_ptr: *mut T,
+                    }
+                    let metadata_ptr =
+                        libc_malloc(size_of::<ArrayMetadata<E>>()) as *mut ArrayMetadata<E>;
+                    metadata_ptr.write(ArrayMetadata {
+                        refcount: 1,
+                        max_len: len,
+                        data_ptr,
+                    });
 
                     ArrayAbi {
-                        ptr: ptr_ptr,
+                        ptr: metadata_ptr.cast(),
                         since: 0,
                         until: len,
                         capacity: len,
@@ -1085,15 +1092,27 @@ pub(crate) mod handler {
                 return;
             }
 
-            let refcount_offset = crate::types::array::calc_data_prefix_offset(Layout::new::<E>());
+            // Metadata struct: { refcount: u32, max_len: u32, data_ptr: *mut E }
+            #[repr(C)]
+            struct ArrayMetadata<T> {
+                refcount: u32,
+                _max_len: u32,
+                data_ptr: *mut T,
+            }
 
-            let ptr = data.ptr.read().byte_sub(refcount_offset);
-            match ptr.cast::<u32>().read() {
+            let metadata_ptr = data.ptr.cast::<ArrayMetadata<E>>();
+            let metadata = &mut *metadata_ptr;
+
+            match metadata.refcount {
                 1 => {
-                    libc_free(ptr.cast());
-                    libc_free(data.ptr.cast());
+                    // Last reference - free data and metadata
+                    libc_free(metadata.data_ptr.cast());
+                    libc_free(metadata_ptr.cast());
                 }
-                n => ptr.cast::<u32>().write(n - 1),
+                n => {
+                    // Decrement refcount
+                    metadata.refcount = n - 1;
+                }
             }
         }
 
