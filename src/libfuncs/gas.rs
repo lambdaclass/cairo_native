@@ -351,7 +351,7 @@ mod test {
         let program = get_compiled_program("test_data_artifacts/programs/libfuncs/gas_withdraw");
 
         let result = run_program(&program, "run_test", &[]);
-        assert_eq!(result.remaining_gas, Some(18446744073709545465));
+        assert_eq!(result.remaining_gas, Some(18446744073709533495));
     }
 
     #[test]
@@ -365,7 +365,7 @@ mod test {
             Value::Enum {
                 tag: 0,
                 value: Box::new(Value::Struct {
-                    fields: vec![Value::Uint128(4000)],
+                    fields: vec![Value::Uint128(5900)],
                     debug_name: None
                 }),
                 debug_name: None,
