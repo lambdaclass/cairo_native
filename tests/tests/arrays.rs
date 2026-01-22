@@ -1,57 +1,15 @@
-use crate::common::{any_felt, load_cairo, run_native_program, run_vm_program};
+use crate::common::{any_felt, run_native_program, run_vm_program};
 use crate::common::{compare_outputs, DEFAULT_GAS};
-use cairo_lang_runner::{Arg, SierraCasmRunner};
-use cairo_lang_sierra::program::Program;
+use cairo_lang_runner::Arg;
 use cairo_native::starknet::DummySyscallHandler;
+use cairo_native::utils::testing::load_program_and_runner;
 use cairo_native::Value;
-use lazy_static::lazy_static;
 use proptest::prelude::*;
 use starknet_types_core::felt::Felt;
 
-lazy_static! {
-    static ref ARRAY_GET: (String, Program, SierraCasmRunner) = load_cairo! {
-        use array::ArrayTrait;
-        use traits::TryInto;
-        use core::option::OptionTrait;
-
-        fn run_test(value: felt252, idx: felt252) -> felt252 {
-            let mut numbers: Array<felt252> = ArrayTrait::new();
-
-            numbers.append(value);
-            numbers.append(value);
-            numbers.append(value);
-            numbers.append(value);
-            numbers.append(value);
-            numbers.append(value);
-            numbers.append(value);
-            numbers.append(value);
-            numbers.append(value);
-            numbers.append(value);
-            numbers.append(value);
-            numbers.append(value);
-            numbers.append(value);
-            numbers.append(value);
-            numbers.append(value);
-            numbers.append(value);
-            numbers.append(value);
-            numbers.append(value);
-            numbers.append(value);
-            numbers.append(value);
-            numbers.append(value);
-            numbers.append(value);
-            numbers.append(value);
-            numbers.append(value);
-            numbers.append(value);
-            numbers.append(value);
-            numbers.append(value);
-            *numbers.at(idx.try_into().unwrap())
-        }
-    };
-}
-
 #[test]
 fn array_get_test() {
-    let program = &ARRAY_GET;
+    let program = &load_program_and_runner("test_data_artifacts/programs/array_get");
     let result_vm = run_vm_program(
         program,
         "run_test",
@@ -79,7 +37,7 @@ fn array_get_test() {
 proptest! {
     #[test]
     fn array_get_test_proptest(value in any_felt(), idx in 0u32..26) {
-        let program = &ARRAY_GET;
+        let program = &load_program_and_runner("test_data_artifacts/programs/array_get");
         let result_vm = run_vm_program(program, "run_test", vec![
             Arg::Value(Felt::from_bytes_be(&value.to_bytes_be())),
             Arg::Value(Felt::from(idx))

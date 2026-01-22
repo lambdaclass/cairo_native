@@ -1,65 +1,16 @@
 use crate::common::{
-    any_felt, compare_outputs, load_cairo, nonzero_felt, run_native_program, run_vm_program,
-    DEFAULT_GAS,
+    any_felt, compare_outputs, nonzero_felt, run_native_program, run_vm_program, DEFAULT_GAS,
 };
-use cairo_lang_runner::{Arg, SierraCasmRunner};
-use cairo_lang_sierra::program::Program;
+use cairo_lang_runner::Arg;
+use cairo_native::utils::testing::load_program_and_runner;
 use cairo_native::{starknet::DummySyscallHandler, Value};
-use lazy_static::lazy_static;
 use proptest::prelude::*;
 use starknet_types_core::felt::Felt;
-
-lazy_static! {
-
-    static ref FELT252_ADD: (String, Program, SierraCasmRunner) = load_cairo! {
-        fn run_test(lhs: felt252, rhs: felt252) -> felt252 {
-            lhs + rhs
-        }
-    };
-
-    static ref FELT252_SUB: (String, Program, SierraCasmRunner) = load_cairo! {
-        fn run_test(lhs: felt252, rhs: felt252) -> felt252 {
-            lhs - rhs
-        }
-    };
-
-    static ref FELT252_MUL: (String, Program, SierraCasmRunner) = load_cairo! {
-        fn run_test(lhs: felt252, rhs: felt252) -> felt252 {
-            lhs * rhs
-        }
-    };
-
-    static ref FELT252_DIV: (String, Program, SierraCasmRunner) = load_cairo! {
-        fn run_test(lhs: felt252, rhs: felt252) -> felt252 {
-            felt252_div(lhs, rhs.try_into().unwrap())
-        }
-    };
-
-    // TODO: Add test program for `felt252_add_const`.
-    // TODO: Add test program for `felt252_sub_const`.
-    // TODO: Add test program for `felt252_mul_const`.
-    // TODO: Add test program for `felt252_div_const`.
-
-    static ref FELT252_CONST: (String, Program, SierraCasmRunner) = load_cairo! {
-        fn run_test() -> (felt252, felt252, felt252, felt252) {
-            (0, 1, -2, -1)
-        }
-    };
-
-    static ref FELT252_IS_ZERO: (String, Program, SierraCasmRunner) = load_cairo! {
-        fn run_test(x: felt252) -> felt252 {
-            match x {
-                0 => 1,
-                _ => 0,
-            }
-        }
-    };
-}
 
 proptest! {
     #[test]
     fn felt_add_proptest(a in any_felt(), b in any_felt()) {
-        let program = &FELT252_ADD;
+        let program = &load_program_and_runner("test_data_artifacts/programs/felt252_add");
         let result_vm = run_vm_program(
             program,
             "run_test",
@@ -85,7 +36,7 @@ proptest! {
 
     #[test]
     fn felt_sub_proptest(a in any_felt(), b in any_felt()) {
-        let program = &FELT252_SUB;
+        let program = &load_program_and_runner("test_data_artifacts/programs/felt252_sub");
         let result_vm = run_vm_program(
             program,
             "run_test",
@@ -111,7 +62,7 @@ proptest! {
 
     #[test]
     fn felt_mul_proptest(a in any_felt(), b in any_felt()) {
-        let program = &FELT252_MUL;
+        let program = &load_program_and_runner("test_data_artifacts/programs/felt252_mul");
         let result_vm = run_vm_program(
             program,
             "run_test",
@@ -137,7 +88,7 @@ proptest! {
 
     #[test]
     fn felt_div_proptest(a in any_felt(), b in nonzero_felt()) {
-        let program = &FELT252_DIV;
+        let program = &load_program_and_runner("test_data_artifacts/programs/felt252_div");
         let result_vm = run_vm_program(
             program,
             "run_test",

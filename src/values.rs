@@ -215,7 +215,11 @@ impl Value {
                     ptr
                 }
 
-                Self::Bytes31(_) => native_panic!("todo: allocate type Bytes31"),
+                Self::Bytes31(data) => {
+                    let ptr = arena.alloc_layout(get_integer_layout(248)).cast();
+                    ptr.cast::<[u8; 31]>().as_mut().copy_from_slice(data);
+                    ptr
+                }
                 Self::Array(data) => {
                     if let CoreTypeConcrete::Array(info) = Self::resolve_type(ty, registry)? {
                         let elem_ty = registry.get_type(&info.ty)?;
