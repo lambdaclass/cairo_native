@@ -15,7 +15,7 @@ with tempfile.TemporaryDirectory() as root:
             "git",
             "clone",
             "https://github.com/starkware-libs/cairo",
-            "--revision",
+            "--branch",
             revision,
             root,
         ],
