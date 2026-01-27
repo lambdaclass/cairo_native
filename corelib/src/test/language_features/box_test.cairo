@@ -7,13 +7,12 @@ pub fn into_box<T>(value: T) -> Box<T> {
     local_into_box(value)
 }
 
-// TODO: Uncomment once local_into_box is implemented
-// #[test]
-// fn test_local_into_box() {
-//     assert_eq!(into_box((1, 2_u256, 3)).unbox(), (1, 2, 3));
-//     assert_eq!(into_box(()).unbox(), ());
-//     assert_eq!(into_box(Some(6_u8)).unbox(), Some(6));
-//     assert_eq!(into_box(None::<u8>).unbox(), None);
-//     assert_eq!(into_box(Ok::<u16, u256>(7)).unbox(), Ok(7));
-//     assert_eq!(into_box(Err::<u16, u256>(8)).unbox(), Err(8));
-// }
+#[test]
+fn test_local_into_box() {
+    assert_eq!(into_box((1, 2_u256, 3)).unbox(), (1, 2, 3));
+    assert_eq!(into_box(()).unbox(), ());
+    assert_eq!(into_box(Some(6_u8)).unbox(), Some(6));
+    assert_eq!(into_box(None::<u8>).unbox(), None);
+    assert_eq!(into_box(Ok::<u16, u256>(7)).unbox(), Ok(7));
+    assert_eq!(into_box(Err::<u16, u256>(8)).unbox(), Err(8));
+}
