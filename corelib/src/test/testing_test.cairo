@@ -135,19 +135,18 @@ fn identity<T>(t: T) -> T {
     t
 }
 
-// TODO: Uncomment once get_unspent_gas is implemented
-// #[test]
-// fn test_get_unspent_gas() {
-//     let one = identity(1);
-//     let two = identity(2);
-//     let prev = crate::testing::get_unspent_gas();
-//     let _three = identity(one + two);
-//     let after = crate::testing::get_unspent_gas();
-//     let expected_cost = 100 // `one + two`.
-//         + 300 // `identity(...)`.
-//         + 2300; // `get_unspent_gas()`.
-//     assert_eq!(prev - after, expected_cost);
-// }
+#[test]
+fn test_get_unspent_gas() {
+    let one = identity(1);
+    let two = identity(2);
+    let prev = crate::testing::get_unspent_gas();
+    let _three = identity(one + two);
+    let after = crate::testing::get_unspent_gas();
+    let expected_cost = 100 // `one + two`.
+        + 300 // `identity(...)`.
+        + 2300; // `get_unspent_gas()`.
+    assert_eq!(prev - after, expected_cost);
+}
 
 #[derive(Drop, Debug, PartialEq)]
 struct NoCopy {

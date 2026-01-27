@@ -16,7 +16,7 @@
 //!
 //! The pointer to the allocation (which is **not the data**) contains:
 //!   1. Reference counter.
-//!   2. Padding.
+//!   2. Array capacity.
 //!   3. Array data. Its address is the pointer to the data stored in the type.
 //!
 //! [^1]: When capacity is zero, this field is not guaranteed to be valid.
@@ -105,7 +105,7 @@ pub fn build<'ctx>(
 /// This function clones the array shallowly. That is, it'll increment the reference counter but not
 /// actually clone anything. The deep clone implementation is provided in `src/libfuncs/array.rs` as
 /// part of some libfuncs's implementations.
-fn build_dup<'ctx>(
+pub fn build_dup<'ctx>(
     context: &'ctx Context,
     module: &Module<'ctx>,
     registry: &ProgramRegistry<CoreType, CoreLibfunc>,
@@ -198,7 +198,7 @@ fn build_dup<'ctx>(
 
 /// This function decreases the reference counter of the array by one.
 /// If the reference counter reaches zero, then all the resources are freed.
-fn build_drop<'ctx>(
+pub fn build_drop<'ctx>(
     context: &'ctx Context,
     module: &Module<'ctx>,
     registry: &ProgramRegistry<CoreType, CoreLibfunc>,
@@ -399,6 +399,12 @@ fn build_drop<'ctx>(
     Ok(region)
 }
 
+/// Returns the size of the prefix in an array. This prefix contains 2
+/// integers:
+/// - Reference counter: the number of references to the allocation.
+/// - Capacity: The capacity of the allocation (not necessarily the length
+///   of the array/span being accessed) It is used to know how many elements to
+///   drop when freeing the allocation.
 pub fn calc_data_prefix_offset(layout: Layout) -> usize {
     get_integer_layout(32)
         .extend(get_integer_layout(32))

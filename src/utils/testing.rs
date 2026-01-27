@@ -3,6 +3,7 @@
 use cairo_lang_compiler::CompilerConfig;
 use cairo_lang_filesystem::{db::init_dev_corelib, ids::CrateInput};
 use cairo_lang_lowering::utils::InliningStrategy;
+use cairo_lang_runner::SierraCasmRunner;
 use cairo_lang_sierra::{
     program::{Program, VersionedProgram},
     ProgramParser,
@@ -295,15 +296,22 @@ pub fn panic_byte_array(message: &str) -> Vec<Felt> {
 
 // TODO: Eventually this function will be changed or will be replaced in a future refactor. Right now
 // so as to not make a big unrelated change we keep it like this.
-pub fn load_program_and_runner(name: &str) -> (String, Program) {
+pub fn load_program_and_runner(name: &str) -> (String, Program, SierraCasmRunner) {
     let program = load_program(name);
+    let runner = SierraCasmRunner::new(
+        program.clone(),
+        Some(Default::default()),
+        Default::default(),
+        None,
+    )
+    .unwrap();
     let entrypoint = name
         .split("/")
         .collect::<Vec<&str>>()
         .last()
         .unwrap()
         .to_string();
-    (entrypoint, program)
+    (entrypoint, program, runner)
 }
 
 #[macro_export]

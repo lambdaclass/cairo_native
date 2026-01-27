@@ -3924,6 +3924,7 @@ version = "0.9.0-rc.0"
 dependencies = [
  "cairo-lang-compiler",
  "cairo-lang-filesystem",
+ "cairo-lang-lowering",
  "cairo-lang-sierra",
  "cairo-lang-starknet",
  "cairo-lang-test-plugin",

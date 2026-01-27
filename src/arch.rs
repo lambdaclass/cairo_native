@@ -72,12 +72,8 @@ impl AbiArgument for ValueWithInfoWrapper<'_> {
     ) -> Result<()> {
         match (self.value, self.info) {
             (value, CoreTypeConcrete::Box(info)) => {
-                let ptr = value.to_ptr(
-                    self.arena,
-                    self.registry,
-                    self.type_id,
-                    find_dict_drop_override,
-                )?;
+                let ptr =
+                    value.to_ptr(self.arena, self.registry, &info.ty, find_dict_drop_override)?;
 
                 let layout = self.registry.get_type(&info.ty)?.layout(self.registry)?;
                 let heap_ptr = unsafe {

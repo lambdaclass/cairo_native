@@ -72,6 +72,7 @@ mod nullable;
 mod pedersen;
 mod poseidon;
 mod qm31;
+mod squashed_dict;
 mod starknet;
 mod r#struct;
 mod uint256;
@@ -179,9 +180,9 @@ impl LibfuncBuilder for CoreConcreteLibfunc {
             Self::Felt252Dict(selector) => self::felt252_dict::build(
                 context, registry, entry, location, helper, metadata, selector,
             ),
-            Self::Felt252SquashedDict(_) => {
-                native_panic!("Implement felt252_squashed_dict libfunc")
-            }
+            Self::Felt252SquashedDict(selector) => self::squashed_dict::build(
+                context, registry, entry, location, helper, metadata, selector,
+            ),
             Self::Felt252DictEntry(selector) => self::felt252_dict_entry::build(
                 context, registry, entry, location, helper, metadata, selector,
             ),
