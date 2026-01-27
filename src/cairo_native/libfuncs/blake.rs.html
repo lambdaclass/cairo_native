@@ -92,41 +92,33 @@
 <a href=#92 id=92 data-nosnippet>92</a>
 <a href=#93 id=93 data-nosnippet>93</a><span class="attr">#[cfg(test)]
 <a href=#94 id=94 data-nosnippet>94</a></span><span class="kw">mod </span>tests {
-<a href=#95 id=95 data-nosnippet>95</a>    <span class="kw">use crate</span>::{jit_struct, load_cairo, utils::testing::run_program, Value};
-<a href=#96 id=96 data-nosnippet>96</a>
-<a href=#97 id=97 data-nosnippet>97</a>    <span class="comment">// This test is taken from the Blake2s-256 implementeation RFC-7693, Appendix B.
-<a href=#98 id=98 data-nosnippet>98</a>    // https://www.rfc-editor.org/rfc/rfc7693#appendix-B.
-<a href=#99 id=99 data-nosnippet>99</a>    </span><span class="attr">#[test]
-<a href=#100 id=100 data-nosnippet>100</a>    </span><span class="kw">fn </span>test_blake_3_bytes_compress() {
-<a href=#101 id=101 data-nosnippet>101</a>        <span class="kw">let </span>program = <span class="macro">load_cairo!</span>(
-<a href=#102 id=102 data-nosnippet>102</a>            <span class="kw">use </span>core::blake::{blake2s_compress, blake2s_finalize};
-<a href=#103 id=103 data-nosnippet>103</a>
-<a href=#104 id=104 data-nosnippet>104</a>            <span class="kw">fn </span>run_test() -&gt; [u32; <span class="number">8</span>] nopanic {
-<a href=#105 id=105 data-nosnippet>105</a>                <span class="kw">let </span>initial_state: Box&lt;[u32; <span class="number">8</span>]&gt; = BoxTrait::new([
-<a href=#106 id=106 data-nosnippet>106</a>                    <span class="number">0x6B08E647</span>, <span class="number">0xBB67AE85</span>, <span class="number">0x3C6EF372</span>, <span class="number">0xA54FF53A</span>, <span class="number">0x510E527F</span>, <span class="number">0x9B05688C</span>, <span class="number">0x1F83D9AB</span>, <span class="number">0x5BE0CD19</span>,
-<a href=#107 id=107 data-nosnippet>107</a>                ]);
-<a href=#108 id=108 data-nosnippet>108</a>                <span class="comment">// This number represents the bytes for "abc" string.
-<a href=#109 id=109 data-nosnippet>109</a>                </span><span class="kw">let </span>abc_bytes = <span class="number">0x00636261</span>;
-<a href=#110 id=110 data-nosnippet>110</a>                <span class="kw">let </span>msg: Box&lt;[u32; <span class="number">16</span>]&gt;  = BoxTrait::new([abc_bytes, <span class="number">0</span>, <span class="number">0</span>, <span class="number">0</span>, <span class="number">0</span>, <span class="number">0</span>, <span class="number">0</span>, <span class="number">0</span>, <span class="number">0</span>, <span class="number">0</span>, <span class="number">0</span>, <span class="number">0</span>, <span class="number">0</span>, <span class="number">0</span>, <span class="number">0</span>, <span class="number">0</span>]);
-<a href=#111 id=111 data-nosnippet>111</a>
-<a href=#112 id=112 data-nosnippet>112</a>                blake2s_finalize(initial_state, <span class="number">3</span>, msg).unbox()
-<a href=#113 id=113 data-nosnippet>113</a>            }
-<a href=#114 id=114 data-nosnippet>114</a>        );
-<a href=#115 id=115 data-nosnippet>115</a>
-<a href=#116 id=116 data-nosnippet>116</a>        <span class="kw">let </span>result = run_program(<span class="kw-2">&amp;</span>program, <span class="string">"run_test"</span>, <span class="kw-2">&amp;</span>[]).return_value;
-<a href=#117 id=117 data-nosnippet>117</a>
-<a href=#118 id=118 data-nosnippet>118</a>        <span class="macro">assert_eq!</span>(
-<a href=#119 id=119 data-nosnippet>119</a>            result,
-<a href=#120 id=120 data-nosnippet>120</a>            <span class="macro">jit_struct!</span>(
-<a href=#121 id=121 data-nosnippet>121</a>                Value::Uint32(<span class="number">0x8C5E8C50</span>),
-<a href=#122 id=122 data-nosnippet>122</a>                Value::Uint32(<span class="number">0xE2147C32</span>),
-<a href=#123 id=123 data-nosnippet>123</a>                Value::Uint32(<span class="number">0xA32BA7E1</span>),
-<a href=#124 id=124 data-nosnippet>124</a>                Value::Uint32(<span class="number">0x2F45EB4E</span>),
-<a href=#125 id=125 data-nosnippet>125</a>                Value::Uint32(<span class="number">0x208B4537</span>),
-<a href=#126 id=126 data-nosnippet>126</a>                Value::Uint32(<span class="number">0x293AD69E</span>),
-<a href=#127 id=127 data-nosnippet>127</a>                Value::Uint32(<span class="number">0x4C9B994D</span>),
-<a href=#128 id=128 data-nosnippet>128</a>                Value::Uint32(<span class="number">0x82596786</span>),
-<a href=#129 id=129 data-nosnippet>129</a>            )
-<a href=#130 id=130 data-nosnippet>130</a>        );
-<a href=#131 id=131 data-nosnippet>131</a>    }
-<a href=#132 id=132 data-nosnippet>132</a>}</code></pre></div></section></main></body></html>
+<a href=#95 id=95 data-nosnippet>95</a>    <span class="kw">use crate</span>::{
+<a href=#96 id=96 data-nosnippet>96</a>        jit_struct,
+<a href=#97 id=97 data-nosnippet>97</a>        utils::testing::{get_compiled_program, run_program},
+<a href=#98 id=98 data-nosnippet>98</a>        Value,
+<a href=#99 id=99 data-nosnippet>99</a>    };
+<a href=#100 id=100 data-nosnippet>100</a>
+<a href=#101 id=101 data-nosnippet>101</a>    <span class="comment">// This test is taken from the Blake2s-256 implementeation RFC-7693, Appendix B.
+<a href=#102 id=102 data-nosnippet>102</a>    // https://www.rfc-editor.org/rfc/rfc7693#appendix-B.
+<a href=#103 id=103 data-nosnippet>103</a>    </span><span class="attr">#[test]
+<a href=#104 id=104 data-nosnippet>104</a>    </span><span class="kw">fn </span>test_blake_3_bytes_compress() {
+<a href=#105 id=105 data-nosnippet>105</a>        <span class="kw">let </span>program =
+<a href=#106 id=106 data-nosnippet>106</a>            get_compiled_program(<span class="string">"test_data_artifacts/programs/libfuncs/blake_3_bytes_compress"</span>);
+<a href=#107 id=107 data-nosnippet>107</a>
+<a href=#108 id=108 data-nosnippet>108</a>        <span class="kw">let </span>result = run_program(<span class="kw-2">&amp;</span>program, <span class="string">"run_test"</span>, <span class="kw-2">&amp;</span>[]).return_value;
+<a href=#109 id=109 data-nosnippet>109</a>
+<a href=#110 id=110 data-nosnippet>110</a>        <span class="macro">assert_eq!</span>(
+<a href=#111 id=111 data-nosnippet>111</a>            result,
+<a href=#112 id=112 data-nosnippet>112</a>            <span class="macro">jit_struct!</span>(
+<a href=#113 id=113 data-nosnippet>113</a>                Value::Uint32(<span class="number">0x8C5E8C50</span>),
+<a href=#114 id=114 data-nosnippet>114</a>                Value::Uint32(<span class="number">0xE2147C32</span>),
+<a href=#115 id=115 data-nosnippet>115</a>                Value::Uint32(<span class="number">0xA32BA7E1</span>),
+<a href=#116 id=116 data-nosnippet>116</a>                Value::Uint32(<span class="number">0x2F45EB4E</span>),
+<a href=#117 id=117 data-nosnippet>117</a>                Value::Uint32(<span class="number">0x208B4537</span>),
+<a href=#118 id=118 data-nosnippet>118</a>                Value::Uint32(<span class="number">0x293AD69E</span>),
+<a href=#119 id=119 data-nosnippet>119</a>                Value::Uint32(<span class="number">0x4C9B994D</span>),
+<a href=#120 id=120 data-nosnippet>120</a>                Value::Uint32(<span class="number">0x82596786</span>),
+<a href=#121 id=121 data-nosnippet>121</a>            )
+<a href=#122 id=122 data-nosnippet>122</a>        );
+<a href=#123 id=123 data-nosnippet>123</a>    }
+<a href=#124 id=124 data-nosnippet>124</a>}</code></pre></div></section></main></body></html>

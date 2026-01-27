@@ -488,318 +488,179 @@
 <a href=#488 id=488 data-nosnippet>488</a><span class="attr">#[cfg(test)]
 <a href=#489 id=489 data-nosnippet>489</a></span><span class="kw">mod </span>test {
 <a href=#490 id=490 data-nosnippet>490</a>    <span class="kw">use crate</span>::{
-<a href=#491 id=491 data-nosnippet>491</a>        jit_enum, jit_struct, load_cairo, utils::testing::run_program_assert_output, Value,
-<a href=#492 id=492 data-nosnippet>492</a>    };
-<a href=#493 id=493 data-nosnippet>493</a>    <span class="kw">use </span>cairo_lang_sierra::program::Program;
-<a href=#494 id=494 data-nosnippet>494</a>    <span class="kw">use </span>lazy_static::lazy_static;
+<a href=#491 id=491 data-nosnippet>491</a>        jit_enum, jit_struct,
+<a href=#492 id=492 data-nosnippet>492</a>        utils::testing::{get_compiled_program, run_program_assert_output},
+<a href=#493 id=493 data-nosnippet>493</a>        Value,
+<a href=#494 id=494 data-nosnippet>494</a>    };
 <a href=#495 id=495 data-nosnippet>495</a>    <span class="kw">use </span>starknet_types_core::felt::Felt;
 <a href=#496 id=496 data-nosnippet>496</a>    <span class="kw">use </span>test_case::test_case;
 <a href=#497 id=497 data-nosnippet>497</a>
-<a href=#498 id=498 data-nosnippet>498</a>    <span class="macro">lazy_static!</span> {
-<a href=#499 id=499 data-nosnippet>499</a>        <span class="kw">static </span><span class="kw-2">ref </span>DOWNCAST: (String, Program) = <span class="macro">load_cairo!</span> {
-<a href=#500 id=500 data-nosnippet>500</a>            <span class="kw">extern const fn </span>downcast&lt;FromType, ToType&gt;( x: FromType, ) -&gt; <span class="prelude-ty">Option</span>&lt;ToType&gt; implicits(RangeCheck) nopanic;
-<a href=#501 id=501 data-nosnippet>501</a>
-<a href=#502 id=502 data-nosnippet>502</a>            <span class="kw">fn </span>run_test(
-<a href=#503 id=503 data-nosnippet>503</a>                v8: u8, v16: u16, v32: u32, v64: u64, v128: u128
-<a href=#504 id=504 data-nosnippet>504</a>            ) -&gt; (
-<a href=#505 id=505 data-nosnippet>505</a>                (<span class="prelude-ty">Option</span>&lt;u8&gt;, <span class="prelude-ty">Option</span>&lt;u8&gt;, <span class="prelude-ty">Option</span>&lt;u8&gt;, <span class="prelude-ty">Option</span>&lt;u8&gt;, <span class="prelude-ty">Option</span>&lt;u8&gt;),
-<a href=#506 id=506 data-nosnippet>506</a>                (<span class="prelude-ty">Option</span>&lt;u16&gt;, <span class="prelude-ty">Option</span>&lt;u16&gt;, <span class="prelude-ty">Option</span>&lt;u16&gt;, <span class="prelude-ty">Option</span>&lt;u16&gt;),
-<a href=#507 id=507 data-nosnippet>507</a>                (<span class="prelude-ty">Option</span>&lt;u32&gt;, <span class="prelude-ty">Option</span>&lt;u32&gt;, <span class="prelude-ty">Option</span>&lt;u32&gt;),
-<a href=#508 id=508 data-nosnippet>508</a>                (<span class="prelude-ty">Option</span>&lt;u64&gt;, <span class="prelude-ty">Option</span>&lt;u64&gt;),
-<a href=#509 id=509 data-nosnippet>509</a>                (<span class="prelude-ty">Option</span>&lt;u128&gt;,),
-<a href=#510 id=510 data-nosnippet>510</a>            ) {
-<a href=#511 id=511 data-nosnippet>511</a>                (
-<a href=#512 id=512 data-nosnippet>512</a>                    (downcast(v128), downcast(v64), downcast(v32), downcast(v16), downcast(v8)),
-<a href=#513 id=513 data-nosnippet>513</a>                    (downcast(v128), downcast(v64), downcast(v32), downcast(v16)),
-<a href=#514 id=514 data-nosnippet>514</a>                    (downcast(v128), downcast(v64), downcast(v32)),
-<a href=#515 id=515 data-nosnippet>515</a>                    (downcast(v128), downcast(v64)),
-<a href=#516 id=516 data-nosnippet>516</a>                    (downcast(v128),),
-<a href=#517 id=517 data-nosnippet>517</a>                )
-<a href=#518 id=518 data-nosnippet>518</a>            }
-<a href=#519 id=519 data-nosnippet>519</a>        };
-<a href=#520 id=520 data-nosnippet>520</a>        <span class="kw">static </span><span class="kw-2">ref </span>DOWNCAST_BOUNDED_INT: (String, Program) = <span class="macro">load_cairo!</span> {
-<a href=#521 id=521 data-nosnippet>521</a>            <span class="attr">#[feature(<span class="string">"bounded-int-utils"</span>)]
-<a href=#522 id=522 data-nosnippet>522</a>            </span><span class="kw">use </span>core::internal::bounded_int::BoundedInt;
-<a href=#523 id=523 data-nosnippet>523</a>
-<a href=#524 id=524 data-nosnippet>524</a>            <span class="kw">extern const fn </span>downcast&lt;FromType, ToType&gt;( x: FromType, ) -&gt; <span class="prelude-ty">Option</span>&lt;ToType&gt; implicits(RangeCheck) nopanic;
-<a href=#525 id=525 data-nosnippet>525</a>
-<a href=#526 id=526 data-nosnippet>526</a>            <span class="kw">fn </span>test_x_y&lt;
-<a href=#527 id=527 data-nosnippet>527</a>                X,
-<a href=#528 id=528 data-nosnippet>528</a>                Y,
-<a href=#529 id=529 data-nosnippet>529</a>                +TryInto&lt;felt252, X&gt;,
-<a href=#530 id=530 data-nosnippet>530</a>                +Into&lt;Y, felt252&gt;
-<a href=#531 id=531 data-nosnippet>531</a>            &gt;(v: felt252) -&gt; felt252 {
-<a href=#532 id=532 data-nosnippet>532</a>                <span class="kw">let </span>v: X = v.try_into().unwrap();
-<a href=#533 id=533 data-nosnippet>533</a>                <span class="kw">let </span>v: Y = downcast(v).unwrap();
-<a href=#534 id=534 data-nosnippet>534</a>                v.into()
-<a href=#535 id=535 data-nosnippet>535</a>            }
-<a href=#536 id=536 data-nosnippet>536</a>
-<a href=#537 id=537 data-nosnippet>537</a>            <span class="kw">fn </span>b0x30_b0x30(v: felt252) -&gt; felt252 { test_x_y::&lt;BoundedInt&lt;<span class="number">0</span>,<span class="number">30</span>&gt;, BoundedInt&lt;<span class="number">0</span>,<span class="number">30</span>&gt;&gt;(v) }
-<a href=#538 id=538 data-nosnippet>538</a>            <span class="kw">fn </span>bm31x30_b31x30(v: felt252) -&gt; felt252 { test_x_y::&lt;BoundedInt&lt;-<span class="number">31</span>,<span class="number">30</span>&gt;, BoundedInt&lt;-<span class="number">31</span>,<span class="number">30</span>&gt;&gt;(v) }
-<a href=#539 id=539 data-nosnippet>539</a>            <span class="kw">fn </span>bm31x30_bm5x30(v: felt252) -&gt; felt252 { test_x_y::&lt;BoundedInt&lt;-<span class="number">31</span>,<span class="number">30</span>&gt;, BoundedInt&lt;-<span class="number">5</span>,<span class="number">30</span>&gt;&gt;(v) }
-<a href=#540 id=540 data-nosnippet>540</a>            <span class="kw">fn </span>bm31x30_b5x30(v: felt252) -&gt; felt252 { test_x_y::&lt;BoundedInt&lt;-<span class="number">31</span>,<span class="number">30</span>&gt;, BoundedInt&lt;<span class="number">5</span>,<span class="number">30</span>&gt;&gt;(v) }
-<a href=#541 id=541 data-nosnippet>541</a>            <span class="kw">fn </span>b5x30_b31x31(v: felt252) -&gt; felt252 { test_x_y::&lt;BoundedInt&lt;<span class="number">5</span>,<span class="number">31</span>&gt;, BoundedInt&lt;<span class="number">31</span>,<span class="number">31</span>&gt;&gt;(v) }
-<a href=#542 id=542 data-nosnippet>542</a>            <span class="kw">fn </span>bm100x100_bm100xm1(v: felt252) -&gt; felt252 { test_x_y::&lt;BoundedInt&lt;-<span class="number">100</span>,<span class="number">100</span>&gt;, BoundedInt&lt;-<span class="number">100</span>,-<span class="number">1</span>&gt;&gt;(v) }
-<a href=#543 id=543 data-nosnippet>543</a>            <span class="kw">fn </span>bm31xm31_bm31xm31(v: felt252) -&gt; felt252 { test_x_y::&lt;BoundedInt&lt;-<span class="number">31</span>,-<span class="number">31</span>&gt;, BoundedInt&lt;-<span class="number">31</span>,-<span class="number">31</span>&gt;&gt;(v) }
-<a href=#544 id=544 data-nosnippet>544</a>            <span class="comment">// Check if the target type is wider than the source type
-<a href=#545 id=545 data-nosnippet>545</a>            </span><span class="kw">fn </span>b0x30_b5x40(v: felt252) -&gt; felt252 { test_x_y::&lt;BoundedInt&lt;<span class="number">0</span>,<span class="number">30</span>&gt;, BoundedInt&lt;<span class="number">5</span>,<span class="number">40</span>&gt;&gt;(v) }
-<a href=#546 id=546 data-nosnippet>546</a>            <span class="comment">// Check if the source's lower and upper bound are included in the
-<a href=#547 id=547 data-nosnippet>547</a>            // target type.
-<a href=#548 id=548 data-nosnippet>548</a>            </span><span class="kw">fn </span>b0x30_bm40x40(v: felt252) -&gt; felt252 { test_x_y::&lt;BoundedInt&lt;<span class="number">0</span>,<span class="number">30</span>&gt;, BoundedInt&lt;-<span class="number">40</span>,<span class="number">40</span>&gt;&gt;(v) }
-<a href=#549 id=549 data-nosnippet>549</a>        };
-<a href=#550 id=550 data-nosnippet>550</a>        <span class="kw">static </span><span class="kw-2">ref </span>DOWNCAST_FELT: (String, Program) = <span class="macro">load_cairo!</span> {
-<a href=#551 id=551 data-nosnippet>551</a>            <span class="kw">extern const fn </span>downcast&lt;FromType, ToType&gt;( x: FromType, ) -&gt; <span class="prelude-ty">Option</span>&lt;ToType&gt; implicits(RangeCheck) nopanic;
-<a href=#552 id=552 data-nosnippet>552</a>
-<a href=#553 id=553 data-nosnippet>553</a>            <span class="kw">fn </span>test_x_y&lt;
-<a href=#554 id=554 data-nosnippet>554</a>                X,
-<a href=#555 id=555 data-nosnippet>555</a>                Y,
-<a href=#556 id=556 data-nosnippet>556</a>                +TryInto&lt;felt252, X&gt;,
-<a href=#557 id=557 data-nosnippet>557</a>                +Into&lt;Y, felt252&gt;
-<a href=#558 id=558 data-nosnippet>558</a>            &gt;(v: felt252) -&gt; felt252 {
-<a href=#559 id=559 data-nosnippet>559</a>                <span class="kw">let </span>v: X = v.try_into().unwrap();
-<a href=#560 id=560 data-nosnippet>560</a>                <span class="kw">let </span>v: Y = downcast(v).unwrap();
-<a href=#561 id=561 data-nosnippet>561</a>                v.into()
-<a href=#562 id=562 data-nosnippet>562</a>            }
-<a href=#563 id=563 data-nosnippet>563</a>
-<a href=#564 id=564 data-nosnippet>564</a>            <span class="kw">fn </span>felt252_i8(v: felt252) -&gt; felt252 { test_x_y::&lt;felt252, i8&gt;(v) }
-<a href=#565 id=565 data-nosnippet>565</a>            <span class="kw">fn </span>felt252_i16(v: felt252) -&gt; felt252 { test_x_y::&lt;felt252, i16&gt;(v) }
-<a href=#566 id=566 data-nosnippet>566</a>            <span class="kw">fn </span>felt252_i32(v: felt252) -&gt; felt252 { test_x_y::&lt;felt252, i32&gt;(v) }
-<a href=#567 id=567 data-nosnippet>567</a>            <span class="kw">fn </span>felt252_i64(v: felt252) -&gt; felt252 { test_x_y::&lt;felt252, i64&gt;(v) }
-<a href=#568 id=568 data-nosnippet>568</a>        };
-<a href=#569 id=569 data-nosnippet>569</a>    }
-<a href=#570 id=570 data-nosnippet>570</a>
-<a href=#571 id=571 data-nosnippet>571</a>    <span class="attr">#[test]
-<a href=#572 id=572 data-nosnippet>572</a>    </span><span class="kw">fn </span>downcast() {
-<a href=#573 id=573 data-nosnippet>573</a>        run_program_assert_output(
-<a href=#574 id=574 data-nosnippet>574</a>            <span class="kw-2">&amp;</span>DOWNCAST,
-<a href=#575 id=575 data-nosnippet>575</a>            <span class="string">"run_test"</span>,
-<a href=#576 id=576 data-nosnippet>576</a>            <span class="kw-2">&amp;</span>[
-<a href=#577 id=577 data-nosnippet>577</a>                u8::MAX.into(),
-<a href=#578 id=578 data-nosnippet>578</a>                u16::MAX.into(),
-<a href=#579 id=579 data-nosnippet>579</a>                u32::MAX.into(),
-<a href=#580 id=580 data-nosnippet>580</a>                u64::MAX.into(),
-<a href=#581 id=581 data-nosnippet>581</a>                u128::MAX.into(),
-<a href=#582 id=582 data-nosnippet>582</a>            ],
-<a href=#583 id=583 data-nosnippet>583</a>            <span class="macro">jit_struct!</span>(
-<a href=#584 id=584 data-nosnippet>584</a>                <span class="macro">jit_struct!</span>(
-<a href=#585 id=585 data-nosnippet>585</a>                    <span class="macro">jit_enum!</span>(<span class="number">1</span>, <span class="macro">jit_struct!</span>()),
-<a href=#586 id=586 data-nosnippet>586</a>                    <span class="macro">jit_enum!</span>(<span class="number">1</span>, <span class="macro">jit_struct!</span>()),
-<a href=#587 id=587 data-nosnippet>587</a>                    <span class="macro">jit_enum!</span>(<span class="number">1</span>, <span class="macro">jit_struct!</span>()),
-<a href=#588 id=588 data-nosnippet>588</a>                    <span class="macro">jit_enum!</span>(<span class="number">1</span>, <span class="macro">jit_struct!</span>()),
-<a href=#589 id=589 data-nosnippet>589</a>                    <span class="macro">jit_enum!</span>(<span class="number">0</span>, u8::MAX.into()),
-<a href=#590 id=590 data-nosnippet>590</a>                ),
-<a href=#591 id=591 data-nosnippet>591</a>                <span class="macro">jit_struct!</span>(
-<a href=#592 id=592 data-nosnippet>592</a>                    <span class="macro">jit_enum!</span>(<span class="number">1</span>, <span class="macro">jit_struct!</span>()),
-<a href=#593 id=593 data-nosnippet>593</a>                    <span class="macro">jit_enum!</span>(<span class="number">1</span>, <span class="macro">jit_struct!</span>()),
-<a href=#594 id=594 data-nosnippet>594</a>                    <span class="macro">jit_enum!</span>(<span class="number">1</span>, <span class="macro">jit_struct!</span>()),
-<a href=#595 id=595 data-nosnippet>595</a>                    <span class="macro">jit_enum!</span>(<span class="number">0</span>, u16::MAX.into()),
-<a href=#596 id=596 data-nosnippet>596</a>                ),
-<a href=#597 id=597 data-nosnippet>597</a>                <span class="macro">jit_struct!</span>(
-<a href=#598 id=598 data-nosnippet>598</a>                    <span class="macro">jit_enum!</span>(<span class="number">1</span>, <span class="macro">jit_struct!</span>()),
-<a href=#599 id=599 data-nosnippet>599</a>                    <span class="macro">jit_enum!</span>(<span class="number">1</span>, <span class="macro">jit_struct!</span>()),
-<a href=#600 id=600 data-nosnippet>600</a>                    <span class="macro">jit_enum!</span>(<span class="number">0</span>, u32::MAX.into()),
-<a href=#601 id=601 data-nosnippet>601</a>                ),
-<a href=#602 id=602 data-nosnippet>602</a>                <span class="macro">jit_struct!</span>(<span class="macro">jit_enum!</span>(<span class="number">1</span>, <span class="macro">jit_struct!</span>()), <span class="macro">jit_enum!</span>(<span class="number">0</span>, u64::MAX.into())),
-<a href=#603 id=603 data-nosnippet>603</a>                <span class="macro">jit_struct!</span>(<span class="macro">jit_enum!</span>(<span class="number">0</span>, u128::MAX.into())),
-<a href=#604 id=604 data-nosnippet>604</a>            ),
-<a href=#605 id=605 data-nosnippet>605</a>        );
-<a href=#606 id=606 data-nosnippet>606</a>    }
-<a href=#607 id=607 data-nosnippet>607</a>
-<a href=#608 id=608 data-nosnippet>608</a>    <span class="attr">#[test_case(<span class="string">"b0x30_b0x30"</span>, <span class="number">5</span>.into())]
-<a href=#609 id=609 data-nosnippet>609</a>    #[test_case(<span class="string">"bm31x30_b31x30"</span>, <span class="number">5</span>.into())]
-<a href=#610 id=610 data-nosnippet>610</a>    #[test_case(<span class="string">"bm31x30_bm5x30"</span>, (-<span class="number">5</span>).into())]
-<a href=#611 id=611 data-nosnippet>611</a>    #[test_case(<span class="string">"bm31x30_b5x30"</span>, <span class="number">30</span>.into())]
-<a href=#612 id=612 data-nosnippet>612</a>    #[test_case(<span class="string">"b5x30_b31x31"</span>, <span class="number">31</span>.into())]
-<a href=#613 id=613 data-nosnippet>613</a>    #[test_case(<span class="string">"bm100x100_bm100xm1"</span>, (-<span class="number">90</span>).into())]
-<a href=#614 id=614 data-nosnippet>614</a>    #[test_case(<span class="string">"bm31xm31_bm31xm31"</span>, (-<span class="number">31</span>).into())]
-<a href=#615 id=615 data-nosnippet>615</a>    #[test_case(<span class="string">"b0x30_b5x40"</span>, <span class="number">10</span>.into())]
-<a href=#616 id=616 data-nosnippet>616</a>    #[test_case(<span class="string">"b0x30_bm40x40"</span>, <span class="number">10</span>.into())]
-<a href=#617 id=617 data-nosnippet>617</a>    </span><span class="kw">fn </span>downcast_bounded_int(entry_point: <span class="kw-2">&amp;</span>str, value: Felt) {
-<a href=#618 id=618 data-nosnippet>618</a>        run_program_assert_output(
-<a href=#619 id=619 data-nosnippet>619</a>            <span class="kw-2">&amp;</span>DOWNCAST_BOUNDED_INT,
-<a href=#620 id=620 data-nosnippet>620</a>            entry_point,
-<a href=#621 id=621 data-nosnippet>621</a>            <span class="kw-2">&amp;</span>[Value::Felt252(value)],
-<a href=#622 id=622 data-nosnippet>622</a>            <span class="macro">jit_enum!</span>(<span class="number">0</span>, <span class="macro">jit_struct!</span>(Value::Felt252(value))),
-<a href=#623 id=623 data-nosnippet>623</a>        );
-<a href=#624 id=624 data-nosnippet>624</a>    }
-<a href=#625 id=625 data-nosnippet>625</a>
-<a href=#626 id=626 data-nosnippet>626</a>    <span class="attr">#[test_case(<span class="string">"felt252_i8"</span>, i8::MAX.into())]
-<a href=#627 id=627 data-nosnippet>627</a>    #[test_case(<span class="string">"felt252_i8"</span>, i8::MIN.into())]
-<a href=#628 id=628 data-nosnippet>628</a>    #[test_case(<span class="string">"felt252_i16"</span>, i16::MAX.into())]
-<a href=#629 id=629 data-nosnippet>629</a>    #[test_case(<span class="string">"felt252_i16"</span>, i16::MIN.into())]
-<a href=#630 id=630 data-nosnippet>630</a>    #[test_case(<span class="string">"felt252_i32"</span>, i32::MAX.into())]
-<a href=#631 id=631 data-nosnippet>631</a>    #[test_case(<span class="string">"felt252_i32"</span>, i32::MIN.into())]
-<a href=#632 id=632 data-nosnippet>632</a>    #[test_case(<span class="string">"felt252_i64"</span>, i64::MAX.into())]
-<a href=#633 id=633 data-nosnippet>633</a>    #[test_case(<span class="string">"felt252_i64"</span>, i64::MIN.into())]
-<a href=#634 id=634 data-nosnippet>634</a>    </span><span class="kw">fn </span>downcast_felt(entry_point: <span class="kw-2">&amp;</span>str, value: Felt) {
-<a href=#635 id=635 data-nosnippet>635</a>        run_program_assert_output(
-<a href=#636 id=636 data-nosnippet>636</a>            <span class="kw-2">&amp;</span>DOWNCAST_FELT,
-<a href=#637 id=637 data-nosnippet>637</a>            entry_point,
-<a href=#638 id=638 data-nosnippet>638</a>            <span class="kw-2">&amp;</span>[Value::Felt252(value)],
-<a href=#639 id=639 data-nosnippet>639</a>            <span class="macro">jit_enum!</span>(<span class="number">0</span>, <span class="macro">jit_struct!</span>(Value::Felt252(value))),
-<a href=#640 id=640 data-nosnippet>640</a>        );
-<a href=#641 id=641 data-nosnippet>641</a>    }
-<a href=#642 id=642 data-nosnippet>642</a>
-<a href=#643 id=643 data-nosnippet>643</a>    <span class="macro">lazy_static!</span> {
-<a href=#644 id=644 data-nosnippet>644</a>        <span class="kw">static </span><span class="kw-2">ref </span>TEST_UPCAST_PROGRAM: (String, Program) = <span class="macro">load_cairo!</span> {
-<a href=#645 id=645 data-nosnippet>645</a>            <span class="attr">#[feature(<span class="string">"bounded-int-utils"</span>)]
-<a href=#646 id=646 data-nosnippet>646</a>            </span><span class="kw">use </span>core::internal::bounded_int::{BoundedInt};
-<a href=#647 id=647 data-nosnippet>647</a>            <span class="kw">extern const fn </span>upcast&lt;FromType, ToType&gt;(x: FromType) -&gt; ToType nopanic;
-<a href=#648 id=648 data-nosnippet>648</a>
-<a href=#649 id=649 data-nosnippet>649</a>            <span class="kw">fn </span>test_x_y&lt;
-<a href=#650 id=650 data-nosnippet>650</a>                X,
-<a href=#651 id=651 data-nosnippet>651</a>                Y,
-<a href=#652 id=652 data-nosnippet>652</a>                +TryInto&lt;felt252, X&gt;,
-<a href=#653 id=653 data-nosnippet>653</a>                +Into&lt;Y, felt252&gt;
-<a href=#654 id=654 data-nosnippet>654</a>            &gt;(v: felt252) -&gt; felt252 {
-<a href=#655 id=655 data-nosnippet>655</a>                <span class="kw">let </span>v: X = v.try_into().unwrap();
-<a href=#656 id=656 data-nosnippet>656</a>                <span class="kw">let </span>v: Y = upcast(v);
-<a href=#657 id=657 data-nosnippet>657</a>                v.into()
-<a href=#658 id=658 data-nosnippet>658</a>            }
-<a href=#659 id=659 data-nosnippet>659</a>
-<a href=#660 id=660 data-nosnippet>660</a>            <span class="kw">fn </span>u8_u16(v: felt252) -&gt; felt252 { test_x_y::&lt;u8, u16&gt;(v) }
-<a href=#661 id=661 data-nosnippet>661</a>            <span class="kw">fn </span>u8_u32(v: felt252) -&gt; felt252 { test_x_y::&lt;u8, u32&gt;(v) }
-<a href=#662 id=662 data-nosnippet>662</a>            <span class="kw">fn </span>u8_u64(v: felt252) -&gt; felt252 { test_x_y::&lt;u8, u64&gt;(v) }
-<a href=#663 id=663 data-nosnippet>663</a>            <span class="kw">fn </span>u8_u128(v: felt252) -&gt; felt252 { test_x_y::&lt;u8, u128&gt;(v) }
-<a href=#664 id=664 data-nosnippet>664</a>            <span class="kw">fn </span>u8_felt252(v: felt252) -&gt; felt252 { test_x_y::&lt;u8, felt252&gt;(v) }
-<a href=#665 id=665 data-nosnippet>665</a>
-<a href=#666 id=666 data-nosnippet>666</a>            <span class="kw">fn </span>u16_u32(v: felt252) -&gt; felt252 { test_x_y::&lt;u16, u32&gt;(v) }
-<a href=#667 id=667 data-nosnippet>667</a>            <span class="kw">fn </span>u16_u64(v: felt252) -&gt; felt252 { test_x_y::&lt;u16, u64&gt;(v) }
-<a href=#668 id=668 data-nosnippet>668</a>            <span class="kw">fn </span>u16_u128(v: felt252) -&gt; felt252 { test_x_y::&lt;u16, u128&gt;(v) }
-<a href=#669 id=669 data-nosnippet>669</a>            <span class="kw">fn </span>u16_felt252(v: felt252) -&gt; felt252 { test_x_y::&lt;u16, felt252&gt;(v) }
-<a href=#670 id=670 data-nosnippet>670</a>
-<a href=#671 id=671 data-nosnippet>671</a>            <span class="kw">fn </span>u32_u64(v: felt252) -&gt; felt252 { test_x_y::&lt;u32, u64&gt;(v) }
-<a href=#672 id=672 data-nosnippet>672</a>            <span class="kw">fn </span>u32_u128(v: felt252) -&gt; felt252 { test_x_y::&lt;u32, u128&gt;(v) }
-<a href=#673 id=673 data-nosnippet>673</a>            <span class="kw">fn </span>u32_felt252(v: felt252) -&gt; felt252 { test_x_y::&lt;u32, felt252&gt;(v) }
-<a href=#674 id=674 data-nosnippet>674</a>
-<a href=#675 id=675 data-nosnippet>675</a>            <span class="kw">fn </span>u64_u128(v: felt252) -&gt; felt252 { test_x_y::&lt;u64, u128&gt;(v) }
-<a href=#676 id=676 data-nosnippet>676</a>            <span class="kw">fn </span>u64_felt252(v: felt252) -&gt; felt252 { test_x_y::&lt;u64, felt252&gt;(v) }
-<a href=#677 id=677 data-nosnippet>677</a>
-<a href=#678 id=678 data-nosnippet>678</a>            <span class="kw">fn </span>u128_felt252(v: felt252) -&gt; felt252 { test_x_y::&lt;u128, felt252&gt;(v) }
-<a href=#679 id=679 data-nosnippet>679</a>
-<a href=#680 id=680 data-nosnippet>680</a>            <span class="kw">fn </span>i8_i16(v: felt252) -&gt; felt252 { test_x_y::&lt;i8, i16&gt;(v) }
-<a href=#681 id=681 data-nosnippet>681</a>            <span class="kw">fn </span>i8_i32(v: felt252) -&gt; felt252 { test_x_y::&lt;i8, i32&gt;(v) }
-<a href=#682 id=682 data-nosnippet>682</a>            <span class="kw">fn </span>i8_i64(v: felt252) -&gt; felt252 { test_x_y::&lt;i8, i64&gt;(v) }
-<a href=#683 id=683 data-nosnippet>683</a>            <span class="kw">fn </span>i8_i128(v: felt252) -&gt; felt252 { test_x_y::&lt;i8, i128&gt;(v) }
-<a href=#684 id=684 data-nosnippet>684</a>            <span class="kw">fn </span>i8_felt252(v: felt252) -&gt; felt252 { test_x_y::&lt;i8, felt252&gt;(v) }
-<a href=#685 id=685 data-nosnippet>685</a>
-<a href=#686 id=686 data-nosnippet>686</a>            <span class="kw">fn </span>i16_i32(v: felt252) -&gt; felt252 { test_x_y::&lt;i16, i32&gt;(v) }
-<a href=#687 id=687 data-nosnippet>687</a>            <span class="kw">fn </span>i16_i64(v: felt252) -&gt; felt252 { test_x_y::&lt;i16, i64&gt;(v) }
-<a href=#688 id=688 data-nosnippet>688</a>            <span class="kw">fn </span>i16_i128(v: felt252) -&gt; felt252 { test_x_y::&lt;i16, i128&gt;(v) }
-<a href=#689 id=689 data-nosnippet>689</a>            <span class="kw">fn </span>i16_felt252(v: felt252) -&gt; felt252 { test_x_y::&lt;i16, felt252&gt;(v) }
-<a href=#690 id=690 data-nosnippet>690</a>
-<a href=#691 id=691 data-nosnippet>691</a>            <span class="kw">fn </span>i32_i64(v: felt252) -&gt; felt252 { test_x_y::&lt;i32, i64&gt;(v) }
-<a href=#692 id=692 data-nosnippet>692</a>            <span class="kw">fn </span>i32_i128(v: felt252) -&gt; felt252 { test_x_y::&lt;i32, i128&gt;(v) }
-<a href=#693 id=693 data-nosnippet>693</a>            <span class="kw">fn </span>i32_felt252(v: felt252) -&gt; felt252 { test_x_y::&lt;i32, felt252&gt;(v) }
-<a href=#694 id=694 data-nosnippet>694</a>
-<a href=#695 id=695 data-nosnippet>695</a>            <span class="kw">fn </span>i64_i128(v: felt252) -&gt; felt252 { test_x_y::&lt;i64, i128&gt;(v) }
-<a href=#696 id=696 data-nosnippet>696</a>            <span class="kw">fn </span>i64_felt252(v: felt252) -&gt; felt252 { test_x_y::&lt;i64, felt252&gt;(v) }
-<a href=#697 id=697 data-nosnippet>697</a>
-<a href=#698 id=698 data-nosnippet>698</a>            <span class="kw">fn </span>i128_felt252(v: felt252) -&gt; felt252 { test_x_y::&lt;i128, felt252&gt;(v) }
-<a href=#699 id=699 data-nosnippet>699</a>
-<a href=#700 id=700 data-nosnippet>700</a>            <span class="kw">fn </span>b0x5_b0x10(v: felt252) -&gt; felt252 { test_x_y::&lt;BoundedInt&lt;<span class="number">0</span>, <span class="number">5</span>&gt;, BoundedInt&lt;<span class="number">0</span>, <span class="number">10</span>&gt;&gt;(v) }
-<a href=#701 id=701 data-nosnippet>701</a>            <span class="kw">fn </span>b2x5_b2x10(v: felt252) -&gt; felt252 { test_x_y::&lt;BoundedInt&lt;<span class="number">2</span>, <span class="number">5</span>&gt;, BoundedInt&lt;<span class="number">2</span>, <span class="number">10</span>&gt;&gt;(v) }
-<a href=#702 id=702 data-nosnippet>702</a>            <span class="kw">fn </span>b2x5_b1x10(v: felt252) -&gt; felt252 { test_x_y::&lt;BoundedInt&lt;<span class="number">2</span>, <span class="number">5</span>&gt;, BoundedInt&lt;<span class="number">1</span>, <span class="number">10</span>&gt;&gt;(v) }
-<a href=#703 id=703 data-nosnippet>703</a>            <span class="kw">fn </span>b0x5_bm10x10(v: felt252) -&gt; felt252 { test_x_y::&lt;BoundedInt&lt;<span class="number">0</span>, <span class="number">5</span>&gt;, BoundedInt&lt;-<span class="number">10</span>, <span class="number">10</span>&gt;&gt;(v) }
-<a href=#704 id=704 data-nosnippet>704</a>            <span class="kw">fn </span>bm5x5_bm10x10(v: felt252) -&gt; felt252 { test_x_y::&lt;BoundedInt&lt;-<span class="number">5</span>, <span class="number">5</span>&gt;, BoundedInt&lt;-<span class="number">10</span>, <span class="number">10</span>&gt;&gt;(v) }
-<a href=#705 id=705 data-nosnippet>705</a>            <span class="kw">fn </span>i8_bm200x200(v: felt252) -&gt; felt252 { test_x_y::&lt;i8, BoundedInt&lt;-<span class="number">200</span>, <span class="number">200</span>&gt;&gt;(v) }
-<a href=#706 id=706 data-nosnippet>706</a>            <span class="kw">fn </span>bm100x100_i8(v: felt252) -&gt; felt252 { test_x_y::&lt;BoundedInt&lt;-<span class="number">100</span>, <span class="number">100</span>&gt;, i8&gt;(v) }
-<a href=#707 id=707 data-nosnippet>707</a>        };
-<a href=#708 id=708 data-nosnippet>708</a>    }
-<a href=#709 id=709 data-nosnippet>709</a>
-<a href=#710 id=710 data-nosnippet>710</a>    <span class="comment">// u8 upcast test
-<a href=#711 id=711 data-nosnippet>711</a>    </span><span class="attr">#[test_case(<span class="string">"u8_u16"</span>, u8::MIN.into())]
-<a href=#712 id=712 data-nosnippet>712</a>    #[test_case(<span class="string">"u8_u16"</span>, u8::MAX.into())]
-<a href=#713 id=713 data-nosnippet>713</a>    #[test_case(<span class="string">"u8_u32"</span>, u8::MIN.into())]
-<a href=#714 id=714 data-nosnippet>714</a>    #[test_case(<span class="string">"u8_u32"</span>, u8::MAX.into())]
-<a href=#715 id=715 data-nosnippet>715</a>    #[test_case(<span class="string">"u8_u64"</span>, u8::MIN.into())]
-<a href=#716 id=716 data-nosnippet>716</a>    #[test_case(<span class="string">"u8_u64"</span>, u8::MAX.into())]
-<a href=#717 id=717 data-nosnippet>717</a>    #[test_case(<span class="string">"u8_u128"</span>, u8::MIN.into())]
-<a href=#718 id=718 data-nosnippet>718</a>    #[test_case(<span class="string">"u8_u128"</span>, u8::MAX.into())]
-<a href=#719 id=719 data-nosnippet>719</a>    #[test_case(<span class="string">"u8_felt252"</span>, u8::MIN.into())]
-<a href=#720 id=720 data-nosnippet>720</a>    #[test_case(<span class="string">"u8_felt252"</span>, u8::MAX.into())]
-<a href=#721 id=721 data-nosnippet>721</a>    </span><span class="comment">// u16 upcast test
-<a href=#722 id=722 data-nosnippet>722</a>    </span><span class="attr">#[test_case(<span class="string">"u16_u32"</span>, u16::MIN.into())]
-<a href=#723 id=723 data-nosnippet>723</a>    #[test_case(<span class="string">"u16_u32"</span>, u16::MAX.into())]
-<a href=#724 id=724 data-nosnippet>724</a>    #[test_case(<span class="string">"u16_u64"</span>, u16::MIN.into())]
-<a href=#725 id=725 data-nosnippet>725</a>    #[test_case(<span class="string">"u16_u64"</span>, u16::MAX.into())]
-<a href=#726 id=726 data-nosnippet>726</a>    #[test_case(<span class="string">"u16_u128"</span>, u16::MIN.into())]
-<a href=#727 id=727 data-nosnippet>727</a>    #[test_case(<span class="string">"u16_u128"</span>, u16::MAX.into())]
-<a href=#728 id=728 data-nosnippet>728</a>    #[test_case(<span class="string">"u16_felt252"</span>, u16::MIN.into())]
-<a href=#729 id=729 data-nosnippet>729</a>    #[test_case(<span class="string">"u16_felt252"</span>, u16::MAX.into())]
-<a href=#730 id=730 data-nosnippet>730</a>    </span><span class="comment">// u32 upcast test
-<a href=#731 id=731 data-nosnippet>731</a>    </span><span class="attr">#[test_case(<span class="string">"u32_u64"</span>, u32::MIN.into())]
-<a href=#732 id=732 data-nosnippet>732</a>    #[test_case(<span class="string">"u32_u64"</span>, u32::MAX.into())]
-<a href=#733 id=733 data-nosnippet>733</a>    #[test_case(<span class="string">"u32_u128"</span>, u32::MIN.into())]
-<a href=#734 id=734 data-nosnippet>734</a>    #[test_case(<span class="string">"u32_u128"</span>, u32::MAX.into())]
-<a href=#735 id=735 data-nosnippet>735</a>    #[test_case(<span class="string">"u32_felt252"</span>, u32::MIN.into())]
-<a href=#736 id=736 data-nosnippet>736</a>    #[test_case(<span class="string">"u32_felt252"</span>, u32::MAX.into())]
-<a href=#737 id=737 data-nosnippet>737</a>    </span><span class="comment">// u64 upcast test
-<a href=#738 id=738 data-nosnippet>738</a>    </span><span class="attr">#[test_case(<span class="string">"u64_u128"</span>, u64::MIN.into())]
-<a href=#739 id=739 data-nosnippet>739</a>    #[test_case(<span class="string">"u64_u128"</span>, u64::MAX.into())]
-<a href=#740 id=740 data-nosnippet>740</a>    #[test_case(<span class="string">"u64_felt252"</span>, u64::MIN.into())]
-<a href=#741 id=741 data-nosnippet>741</a>    #[test_case(<span class="string">"u64_felt252"</span>, u64::MAX.into())]
-<a href=#742 id=742 data-nosnippet>742</a>    </span><span class="comment">// u128 upcast test
-<a href=#743 id=743 data-nosnippet>743</a>    </span><span class="attr">#[test_case(<span class="string">"u128_felt252"</span>, u128::MIN.into())]
-<a href=#744 id=744 data-nosnippet>744</a>    #[test_case(<span class="string">"u128_felt252"</span>, u128::MAX.into())]
-<a href=#745 id=745 data-nosnippet>745</a>    </span><span class="comment">// i8 upcast test
-<a href=#746 id=746 data-nosnippet>746</a>    </span><span class="attr">#[test_case(<span class="string">"i8_i16"</span>, i8::MIN.into())]
-<a href=#747 id=747 data-nosnippet>747</a>    #[test_case(<span class="string">"i8_i16"</span>, i8::MAX.into())]
-<a href=#748 id=748 data-nosnippet>748</a>    #[test_case(<span class="string">"i8_i32"</span>, i8::MIN.into())]
-<a href=#749 id=749 data-nosnippet>749</a>    #[test_case(<span class="string">"i8_i32"</span>, i8::MAX.into())]
-<a href=#750 id=750 data-nosnippet>750</a>    #[test_case(<span class="string">"i8_i64"</span>, i8::MIN.into())]
-<a href=#751 id=751 data-nosnippet>751</a>    #[test_case(<span class="string">"i8_i64"</span>, i8::MAX.into())]
-<a href=#752 id=752 data-nosnippet>752</a>    #[test_case(<span class="string">"i8_i128"</span>, i8::MIN.into())]
-<a href=#753 id=753 data-nosnippet>753</a>    #[test_case(<span class="string">"i8_i128"</span>, i8::MAX.into())]
-<a href=#754 id=754 data-nosnippet>754</a>    #[test_case(<span class="string">"i8_felt252"</span>, i8::MIN.into())]
-<a href=#755 id=755 data-nosnippet>755</a>    #[test_case(<span class="string">"i8_felt252"</span>, i8::MAX.into())]
-<a href=#756 id=756 data-nosnippet>756</a>    </span><span class="comment">// i16 upcast test
-<a href=#757 id=757 data-nosnippet>757</a>    </span><span class="attr">#[test_case(<span class="string">"i16_i32"</span>, i16::MIN.into())]
-<a href=#758 id=758 data-nosnippet>758</a>    #[test_case(<span class="string">"i16_i32"</span>, i16::MAX.into())]
-<a href=#759 id=759 data-nosnippet>759</a>    #[test_case(<span class="string">"i16_i64"</span>, i16::MIN.into())]
-<a href=#760 id=760 data-nosnippet>760</a>    #[test_case(<span class="string">"i16_i64"</span>, i16::MAX.into())]
-<a href=#761 id=761 data-nosnippet>761</a>    #[test_case(<span class="string">"i16_i128"</span>, i16::MIN.into())]
-<a href=#762 id=762 data-nosnippet>762</a>    #[test_case(<span class="string">"i16_i128"</span>, i16::MAX.into())]
-<a href=#763 id=763 data-nosnippet>763</a>    #[test_case(<span class="string">"i16_felt252"</span>, i16::MIN.into())]
-<a href=#764 id=764 data-nosnippet>764</a>    #[test_case(<span class="string">"i16_felt252"</span>, i16::MAX.into())]
-<a href=#765 id=765 data-nosnippet>765</a>    </span><span class="comment">// i32 upcast test
-<a href=#766 id=766 data-nosnippet>766</a>    </span><span class="attr">#[test_case(<span class="string">"i32_i64"</span>, i32::MIN.into())]
-<a href=#767 id=767 data-nosnippet>767</a>    #[test_case(<span class="string">"i32_i64"</span>, i32::MAX.into())]
-<a href=#768 id=768 data-nosnippet>768</a>    #[test_case(<span class="string">"i32_i128"</span>, i32::MIN.into())]
-<a href=#769 id=769 data-nosnippet>769</a>    #[test_case(<span class="string">"i32_i128"</span>, i32::MAX.into())]
-<a href=#770 id=770 data-nosnippet>770</a>    #[test_case(<span class="string">"i32_felt252"</span>, i32::MIN.into())]
-<a href=#771 id=771 data-nosnippet>771</a>    #[test_case(<span class="string">"i32_felt252"</span>, i32::MAX.into())]
-<a href=#772 id=772 data-nosnippet>772</a>    </span><span class="comment">// i64 upcast test
-<a href=#773 id=773 data-nosnippet>773</a>    </span><span class="attr">#[test_case(<span class="string">"i64_i128"</span>, i64::MIN.into())]
-<a href=#774 id=774 data-nosnippet>774</a>    #[test_case(<span class="string">"i64_i128"</span>, i64::MAX.into())]
-<a href=#775 id=775 data-nosnippet>775</a>    #[test_case(<span class="string">"i64_felt252"</span>, i64::MIN.into())]
-<a href=#776 id=776 data-nosnippet>776</a>    #[test_case(<span class="string">"i64_felt252"</span>, i64::MAX.into())]
-<a href=#777 id=777 data-nosnippet>777</a>    </span><span class="comment">// i128 upcast test
-<a href=#778 id=778 data-nosnippet>778</a>    </span><span class="attr">#[test_case(<span class="string">"i128_felt252"</span>, i128::MIN.into())]
-<a href=#779 id=779 data-nosnippet>779</a>    #[test_case(<span class="string">"i128_felt252"</span>, i128::MAX.into())]
-<a href=#780 id=780 data-nosnippet>780</a>    </span><span class="comment">// bounded int test
-<a href=#781 id=781 data-nosnippet>781</a>    </span><span class="attr">#[test_case(<span class="string">"b0x5_b0x10"</span>, <span class="number">0</span>.into())]
-<a href=#782 id=782 data-nosnippet>782</a>    #[test_case(<span class="string">"b0x5_b0x10"</span>, <span class="number">5</span>.into())]
-<a href=#783 id=783 data-nosnippet>783</a>    #[test_case(<span class="string">"b2x5_b2x10"</span>, <span class="number">2</span>.into())]
-<a href=#784 id=784 data-nosnippet>784</a>    #[test_case(<span class="string">"b2x5_b2x10"</span>, <span class="number">5</span>.into())]
-<a href=#785 id=785 data-nosnippet>785</a>    #[test_case(<span class="string">"b2x5_b1x10"</span>, <span class="number">2</span>.into())]
-<a href=#786 id=786 data-nosnippet>786</a>    #[test_case(<span class="string">"b2x5_b1x10"</span>, <span class="number">5</span>.into())]
-<a href=#787 id=787 data-nosnippet>787</a>    #[test_case(<span class="string">"b0x5_bm10x10"</span>, <span class="number">0</span>.into())]
-<a href=#788 id=788 data-nosnippet>788</a>    #[test_case(<span class="string">"b0x5_bm10x10"</span>, <span class="number">5</span>.into())]
-<a href=#789 id=789 data-nosnippet>789</a>    #[test_case(<span class="string">"bm5x5_bm10x10"</span>, Felt::from(-<span class="number">5</span>))]
-<a href=#790 id=790 data-nosnippet>790</a>    #[test_case(<span class="string">"bm5x5_bm10x10"</span>, <span class="number">5</span>.into())]
-<a href=#791 id=791 data-nosnippet>791</a>    #[test_case(<span class="string">"i8_bm200x200"</span>, Felt::from(-<span class="number">128</span>))]
-<a href=#792 id=792 data-nosnippet>792</a>    #[test_case(<span class="string">"i8_bm200x200"</span>, <span class="number">127</span>.into())]
-<a href=#793 id=793 data-nosnippet>793</a>    #[test_case(<span class="string">"bm100x100_i8"</span>, Felt::from(-<span class="number">100</span>))]
-<a href=#794 id=794 data-nosnippet>794</a>    #[test_case(<span class="string">"bm100x100_i8"</span>, <span class="number">100</span>.into())]
-<a href=#795 id=795 data-nosnippet>795</a>    </span><span class="kw">fn </span>upcast(entry_point: <span class="kw-2">&amp;</span>str, value: Felt) {
-<a href=#796 id=796 data-nosnippet>796</a>        <span class="kw">let </span>arguments = <span class="kw-2">&amp;</span>[value.into()];
-<a href=#797 id=797 data-nosnippet>797</a>        <span class="kw">let </span>expected_result = <span class="macro">jit_enum!</span>(<span class="number">0</span>, <span class="macro">jit_struct!</span>(value.into(),));
-<a href=#798 id=798 data-nosnippet>798</a>        run_program_assert_output(
-<a href=#799 id=799 data-nosnippet>799</a>            <span class="kw-2">&amp;</span>TEST_UPCAST_PROGRAM,
-<a href=#800 id=800 data-nosnippet>800</a>            entry_point,
-<a href=#801 id=801 data-nosnippet>801</a>            arguments,
-<a href=#802 id=802 data-nosnippet>802</a>            expected_result,
-<a href=#803 id=803 data-nosnippet>803</a>        );
-<a href=#804 id=804 data-nosnippet>804</a>    }
-<a href=#805 id=805 data-nosnippet>805</a>}</code></pre></div></section></main></body></html>
+<a href=#498 id=498 data-nosnippet>498</a>    <span class="attr">#[test]
+<a href=#499 id=499 data-nosnippet>499</a>    </span><span class="kw">fn </span>downcast() {
+<a href=#500 id=500 data-nosnippet>500</a>        <span class="kw">let </span>program = get_compiled_program(<span class="string">"test_data_artifacts/programs/libfuncs/cast_downcast"</span>);
+<a href=#501 id=501 data-nosnippet>501</a>        run_program_assert_output(
+<a href=#502 id=502 data-nosnippet>502</a>            <span class="kw-2">&amp;</span>program,
+<a href=#503 id=503 data-nosnippet>503</a>            <span class="string">"run_test"</span>,
+<a href=#504 id=504 data-nosnippet>504</a>            <span class="kw-2">&amp;</span>[
+<a href=#505 id=505 data-nosnippet>505</a>                u8::MAX.into(),
+<a href=#506 id=506 data-nosnippet>506</a>                u16::MAX.into(),
+<a href=#507 id=507 data-nosnippet>507</a>                u32::MAX.into(),
+<a href=#508 id=508 data-nosnippet>508</a>                u64::MAX.into(),
+<a href=#509 id=509 data-nosnippet>509</a>                u128::MAX.into(),
+<a href=#510 id=510 data-nosnippet>510</a>            ],
+<a href=#511 id=511 data-nosnippet>511</a>            <span class="macro">jit_struct!</span>(
+<a href=#512 id=512 data-nosnippet>512</a>                <span class="macro">jit_struct!</span>(
+<a href=#513 id=513 data-nosnippet>513</a>                    <span class="macro">jit_enum!</span>(<span class="number">1</span>, <span class="macro">jit_struct!</span>()),
+<a href=#514 id=514 data-nosnippet>514</a>                    <span class="macro">jit_enum!</span>(<span class="number">1</span>, <span class="macro">jit_struct!</span>()),
+<a href=#515 id=515 data-nosnippet>515</a>                    <span class="macro">jit_enum!</span>(<span class="number">1</span>, <span class="macro">jit_struct!</span>()),
+<a href=#516 id=516 data-nosnippet>516</a>                    <span class="macro">jit_enum!</span>(<span class="number">1</span>, <span class="macro">jit_struct!</span>()),
+<a href=#517 id=517 data-nosnippet>517</a>                    <span class="macro">jit_enum!</span>(<span class="number">0</span>, u8::MAX.into()),
+<a href=#518 id=518 data-nosnippet>518</a>                ),
+<a href=#519 id=519 data-nosnippet>519</a>                <span class="macro">jit_struct!</span>(
+<a href=#520 id=520 data-nosnippet>520</a>                    <span class="macro">jit_enum!</span>(<span class="number">1</span>, <span class="macro">jit_struct!</span>()),
+<a href=#521 id=521 data-nosnippet>521</a>                    <span class="macro">jit_enum!</span>(<span class="number">1</span>, <span class="macro">jit_struct!</span>()),
+<a href=#522 id=522 data-nosnippet>522</a>                    <span class="macro">jit_enum!</span>(<span class="number">1</span>, <span class="macro">jit_struct!</span>()),
+<a href=#523 id=523 data-nosnippet>523</a>                    <span class="macro">jit_enum!</span>(<span class="number">0</span>, u16::MAX.into()),
+<a href=#524 id=524 data-nosnippet>524</a>                ),
+<a href=#525 id=525 data-nosnippet>525</a>                <span class="macro">jit_struct!</span>(
+<a href=#526 id=526 data-nosnippet>526</a>                    <span class="macro">jit_enum!</span>(<span class="number">1</span>, <span class="macro">jit_struct!</span>()),
+<a href=#527 id=527 data-nosnippet>527</a>                    <span class="macro">jit_enum!</span>(<span class="number">1</span>, <span class="macro">jit_struct!</span>()),
+<a href=#528 id=528 data-nosnippet>528</a>                    <span class="macro">jit_enum!</span>(<span class="number">0</span>, u32::MAX.into()),
+<a href=#529 id=529 data-nosnippet>529</a>                ),
+<a href=#530 id=530 data-nosnippet>530</a>                <span class="macro">jit_struct!</span>(<span class="macro">jit_enum!</span>(<span class="number">1</span>, <span class="macro">jit_struct!</span>()), <span class="macro">jit_enum!</span>(<span class="number">0</span>, u64::MAX.into())),
+<a href=#531 id=531 data-nosnippet>531</a>                <span class="macro">jit_struct!</span>(<span class="macro">jit_enum!</span>(<span class="number">0</span>, u128::MAX.into())),
+<a href=#532 id=532 data-nosnippet>532</a>            ),
+<a href=#533 id=533 data-nosnippet>533</a>        );
+<a href=#534 id=534 data-nosnippet>534</a>    }
+<a href=#535 id=535 data-nosnippet>535</a>
+<a href=#536 id=536 data-nosnippet>536</a>    <span class="attr">#[test_case(<span class="string">"b0x30_b0x30"</span>, <span class="number">5</span>.into())]
+<a href=#537 id=537 data-nosnippet>537</a>    #[test_case(<span class="string">"bm31x30_b31x30"</span>, <span class="number">5</span>.into())]
+<a href=#538 id=538 data-nosnippet>538</a>    #[test_case(<span class="string">"bm31x30_bm5x30"</span>, (-<span class="number">5</span>).into())]
+<a href=#539 id=539 data-nosnippet>539</a>    #[test_case(<span class="string">"bm31x30_b5x30"</span>, <span class="number">30</span>.into())]
+<a href=#540 id=540 data-nosnippet>540</a>    #[test_case(<span class="string">"b5x30_b31x31"</span>, <span class="number">31</span>.into())]
+<a href=#541 id=541 data-nosnippet>541</a>    #[test_case(<span class="string">"bm100x100_bm100xm1"</span>, (-<span class="number">90</span>).into())]
+<a href=#542 id=542 data-nosnippet>542</a>    #[test_case(<span class="string">"bm31xm31_bm31xm31"</span>, (-<span class="number">31</span>).into())]
+<a href=#543 id=543 data-nosnippet>543</a>    #[test_case(<span class="string">"b0x30_b5x40"</span>, <span class="number">10</span>.into())]
+<a href=#544 id=544 data-nosnippet>544</a>    #[test_case(<span class="string">"b0x30_bm40x40"</span>, <span class="number">10</span>.into())]
+<a href=#545 id=545 data-nosnippet>545</a>    </span><span class="kw">fn </span>downcast_bounded_int(entry_point: <span class="kw-2">&amp;</span>str, value: Felt) {
+<a href=#546 id=546 data-nosnippet>546</a>        <span class="kw">let </span>program =
+<a href=#547 id=547 data-nosnippet>547</a>            get_compiled_program(<span class="string">"test_data_artifacts/programs/libfuncs/cast_downcast_bounded_int"</span>);
+<a href=#548 id=548 data-nosnippet>548</a>        run_program_assert_output(
+<a href=#549 id=549 data-nosnippet>549</a>            <span class="kw-2">&amp;</span>program,
+<a href=#550 id=550 data-nosnippet>550</a>            entry_point,
+<a href=#551 id=551 data-nosnippet>551</a>            <span class="kw-2">&amp;</span>[Value::Felt252(value)],
+<a href=#552 id=552 data-nosnippet>552</a>            <span class="macro">jit_enum!</span>(<span class="number">0</span>, <span class="macro">jit_struct!</span>(Value::Felt252(value))),
+<a href=#553 id=553 data-nosnippet>553</a>        );
+<a href=#554 id=554 data-nosnippet>554</a>    }
+<a href=#555 id=555 data-nosnippet>555</a>
+<a href=#556 id=556 data-nosnippet>556</a>    <span class="attr">#[test_case(<span class="string">"felt252_i8"</span>, i8::MAX.into())]
+<a href=#557 id=557 data-nosnippet>557</a>    #[test_case(<span class="string">"felt252_i8"</span>, i8::MIN.into())]
+<a href=#558 id=558 data-nosnippet>558</a>    #[test_case(<span class="string">"felt252_i16"</span>, i16::MAX.into())]
+<a href=#559 id=559 data-nosnippet>559</a>    #[test_case(<span class="string">"felt252_i16"</span>, i16::MIN.into())]
+<a href=#560 id=560 data-nosnippet>560</a>    #[test_case(<span class="string">"felt252_i32"</span>, i32::MAX.into())]
+<a href=#561 id=561 data-nosnippet>561</a>    #[test_case(<span class="string">"felt252_i32"</span>, i32::MIN.into())]
+<a href=#562 id=562 data-nosnippet>562</a>    #[test_case(<span class="string">"felt252_i64"</span>, i64::MAX.into())]
+<a href=#563 id=563 data-nosnippet>563</a>    #[test_case(<span class="string">"felt252_i64"</span>, i64::MIN.into())]
+<a href=#564 id=564 data-nosnippet>564</a>    </span><span class="kw">fn </span>downcast_felt(entry_point: <span class="kw-2">&amp;</span>str, value: Felt) {
+<a href=#565 id=565 data-nosnippet>565</a>        <span class="kw">let </span>program =
+<a href=#566 id=566 data-nosnippet>566</a>            get_compiled_program(<span class="string">"test_data_artifacts/programs/libfuncs/cast_downcast_felt"</span>);
+<a href=#567 id=567 data-nosnippet>567</a>        run_program_assert_output(
+<a href=#568 id=568 data-nosnippet>568</a>            <span class="kw-2">&amp;</span>program,
+<a href=#569 id=569 data-nosnippet>569</a>            entry_point,
+<a href=#570 id=570 data-nosnippet>570</a>            <span class="kw-2">&amp;</span>[Value::Felt252(value)],
+<a href=#571 id=571 data-nosnippet>571</a>            <span class="macro">jit_enum!</span>(<span class="number">0</span>, <span class="macro">jit_struct!</span>(Value::Felt252(value))),
+<a href=#572 id=572 data-nosnippet>572</a>        );
+<a href=#573 id=573 data-nosnippet>573</a>    }
+<a href=#574 id=574 data-nosnippet>574</a>
+<a href=#575 id=575 data-nosnippet>575</a>    <span class="comment">// u8 upcast test
+<a href=#576 id=576 data-nosnippet>576</a>    </span><span class="attr">#[test_case(<span class="string">"u8_u16"</span>, u8::MIN.into())]
+<a href=#577 id=577 data-nosnippet>577</a>    #[test_case(<span class="string">"u8_u16"</span>, u8::MAX.into())]
+<a href=#578 id=578 data-nosnippet>578</a>    #[test_case(<span class="string">"u8_u32"</span>, u8::MIN.into())]
+<a href=#579 id=579 data-nosnippet>579</a>    #[test_case(<span class="string">"u8_u32"</span>, u8::MAX.into())]
+<a href=#580 id=580 data-nosnippet>580</a>    #[test_case(<span class="string">"u8_u64"</span>, u8::MIN.into())]
+<a href=#581 id=581 data-nosnippet>581</a>    #[test_case(<span class="string">"u8_u64"</span>, u8::MAX.into())]
+<a href=#582 id=582 data-nosnippet>582</a>    #[test_case(<span class="string">"u8_u128"</span>, u8::MIN.into())]
+<a href=#583 id=583 data-nosnippet>583</a>    #[test_case(<span class="string">"u8_u128"</span>, u8::MAX.into())]
+<a href=#584 id=584 data-nosnippet>584</a>    #[test_case(<span class="string">"u8_felt252"</span>, u8::MIN.into())]
+<a href=#585 id=585 data-nosnippet>585</a>    #[test_case(<span class="string">"u8_felt252"</span>, u8::MAX.into())]
+<a href=#586 id=586 data-nosnippet>586</a>    </span><span class="comment">// u16 upcast test
+<a href=#587 id=587 data-nosnippet>587</a>    </span><span class="attr">#[test_case(<span class="string">"u16_u32"</span>, u16::MIN.into())]
+<a href=#588 id=588 data-nosnippet>588</a>    #[test_case(<span class="string">"u16_u32"</span>, u16::MAX.into())]
+<a href=#589 id=589 data-nosnippet>589</a>    #[test_case(<span class="string">"u16_u64"</span>, u16::MIN.into())]
+<a href=#590 id=590 data-nosnippet>590</a>    #[test_case(<span class="string">"u16_u64"</span>, u16::MAX.into())]
+<a href=#591 id=591 data-nosnippet>591</a>    #[test_case(<span class="string">"u16_u128"</span>, u16::MIN.into())]
+<a href=#592 id=592 data-nosnippet>592</a>    #[test_case(<span class="string">"u16_u128"</span>, u16::MAX.into())]
+<a href=#593 id=593 data-nosnippet>593</a>    #[test_case(<span class="string">"u16_felt252"</span>, u16::MIN.into())]
+<a href=#594 id=594 data-nosnippet>594</a>    #[test_case(<span class="string">"u16_felt252"</span>, u16::MAX.into())]
+<a href=#595 id=595 data-nosnippet>595</a>    </span><span class="comment">// u32 upcast test
+<a href=#596 id=596 data-nosnippet>596</a>    </span><span class="attr">#[test_case(<span class="string">"u32_u64"</span>, u32::MIN.into())]
+<a href=#597 id=597 data-nosnippet>597</a>    #[test_case(<span class="string">"u32_u64"</span>, u32::MAX.into())]
+<a href=#598 id=598 data-nosnippet>598</a>    #[test_case(<span class="string">"u32_u128"</span>, u32::MIN.into())]
+<a href=#599 id=599 data-nosnippet>599</a>    #[test_case(<span class="string">"u32_u128"</span>, u32::MAX.into())]
+<a href=#600 id=600 data-nosnippet>600</a>    #[test_case(<span class="string">"u32_felt252"</span>, u32::MIN.into())]
+<a href=#601 id=601 data-nosnippet>601</a>    #[test_case(<span class="string">"u32_felt252"</span>, u32::MAX.into())]
+<a href=#602 id=602 data-nosnippet>602</a>    </span><span class="comment">// u64 upcast test
+<a href=#603 id=603 data-nosnippet>603</a>    </span><span class="attr">#[test_case(<span class="string">"u64_u128"</span>, u64::MIN.into())]
+<a href=#604 id=604 data-nosnippet>604</a>    #[test_case(<span class="string">"u64_u128"</span>, u64::MAX.into())]
+<a href=#605 id=605 data-nosnippet>605</a>    #[test_case(<span class="string">"u64_felt252"</span>, u64::MIN.into())]
+<a href=#606 id=606 data-nosnippet>606</a>    #[test_case(<span class="string">"u64_felt252"</span>, u64::MAX.into())]
+<a href=#607 id=607 data-nosnippet>607</a>    </span><span class="comment">// u128 upcast test
+<a href=#608 id=608 data-nosnippet>608</a>    </span><span class="attr">#[test_case(<span class="string">"u128_felt252"</span>, u128::MIN.into())]
+<a href=#609 id=609 data-nosnippet>609</a>    #[test_case(<span class="string">"u128_felt252"</span>, u128::MAX.into())]
+<a href=#610 id=610 data-nosnippet>610</a>    </span><span class="comment">// i8 upcast test
+<a href=#611 id=611 data-nosnippet>611</a>    </span><span class="attr">#[test_case(<span class="string">"i8_i16"</span>, i8::MIN.into())]
+<a href=#612 id=612 data-nosnippet>612</a>    #[test_case(<span class="string">"i8_i16"</span>, i8::MAX.into())]
+<a href=#613 id=613 data-nosnippet>613</a>    #[test_case(<span class="string">"i8_i32"</span>, i8::MIN.into())]
+<a href=#614 id=614 data-nosnippet>614</a>    #[test_case(<span class="string">"i8_i32"</span>, i8::MAX.into())]
+<a href=#615 id=615 data-nosnippet>615</a>    #[test_case(<span class="string">"i8_i64"</span>, i8::MIN.into())]
+<a href=#616 id=616 data-nosnippet>616</a>    #[test_case(<span class="string">"i8_i64"</span>, i8::MAX.into())]
+<a href=#617 id=617 data-nosnippet>617</a>    #[test_case(<span class="string">"i8_i128"</span>, i8::MIN.into())]
+<a href=#618 id=618 data-nosnippet>618</a>    #[test_case(<span class="string">"i8_i128"</span>, i8::MAX.into())]
+<a href=#619 id=619 data-nosnippet>619</a>    #[test_case(<span class="string">"i8_felt252"</span>, i8::MIN.into())]
+<a href=#620 id=620 data-nosnippet>620</a>    #[test_case(<span class="string">"i8_felt252"</span>, i8::MAX.into())]
+<a href=#621 id=621 data-nosnippet>621</a>    </span><span class="comment">// i16 upcast test
+<a href=#622 id=622 data-nosnippet>622</a>    </span><span class="attr">#[test_case(<span class="string">"i16_i32"</span>, i16::MIN.into())]
+<a href=#623 id=623 data-nosnippet>623</a>    #[test_case(<span class="string">"i16_i32"</span>, i16::MAX.into())]
+<a href=#624 id=624 data-nosnippet>624</a>    #[test_case(<span class="string">"i16_i64"</span>, i16::MIN.into())]
+<a href=#625 id=625 data-nosnippet>625</a>    #[test_case(<span class="string">"i16_i64"</span>, i16::MAX.into())]
+<a href=#626 id=626 data-nosnippet>626</a>    #[test_case(<span class="string">"i16_i128"</span>, i16::MIN.into())]
+<a href=#627 id=627 data-nosnippet>627</a>    #[test_case(<span class="string">"i16_i128"</span>, i16::MAX.into())]
+<a href=#628 id=628 data-nosnippet>628</a>    #[test_case(<span class="string">"i16_felt252"</span>, i16::MIN.into())]
+<a href=#629 id=629 data-nosnippet>629</a>    #[test_case(<span class="string">"i16_felt252"</span>, i16::MAX.into())]
+<a href=#630 id=630 data-nosnippet>630</a>    </span><span class="comment">// i32 upcast test
+<a href=#631 id=631 data-nosnippet>631</a>    </span><span class="attr">#[test_case(<span class="string">"i32_i64"</span>, i32::MIN.into())]
+<a href=#632 id=632 data-nosnippet>632</a>    #[test_case(<span class="string">"i32_i64"</span>, i32::MAX.into())]
+<a href=#633 id=633 data-nosnippet>633</a>    #[test_case(<span class="string">"i32_i128"</span>, i32::MIN.into())]
+<a href=#634 id=634 data-nosnippet>634</a>    #[test_case(<span class="string">"i32_i128"</span>, i32::MAX.into())]
+<a href=#635 id=635 data-nosnippet>635</a>    #[test_case(<span class="string">"i32_felt252"</span>, i32::MIN.into())]
+<a href=#636 id=636 data-nosnippet>636</a>    #[test_case(<span class="string">"i32_felt252"</span>, i32::MAX.into())]
+<a href=#637 id=637 data-nosnippet>637</a>    </span><span class="comment">// i64 upcast test
+<a href=#638 id=638 data-nosnippet>638</a>    </span><span class="attr">#[test_case(<span class="string">"i64_i128"</span>, i64::MIN.into())]
+<a href=#639 id=639 data-nosnippet>639</a>    #[test_case(<span class="string">"i64_i128"</span>, i64::MAX.into())]
+<a href=#640 id=640 data-nosnippet>640</a>    #[test_case(<span class="string">"i64_felt252"</span>, i64::MIN.into())]
+<a href=#641 id=641 data-nosnippet>641</a>    #[test_case(<span class="string">"i64_felt252"</span>, i64::MAX.into())]
+<a href=#642 id=642 data-nosnippet>642</a>    </span><span class="comment">// i128 upcast test
+<a href=#643 id=643 data-nosnippet>643</a>    </span><span class="attr">#[test_case(<span class="string">"i128_felt252"</span>, i128::MIN.into())]
+<a href=#644 id=644 data-nosnippet>644</a>    #[test_case(<span class="string">"i128_felt252"</span>, i128::MAX.into())]
+<a href=#645 id=645 data-nosnippet>645</a>    </span><span class="comment">// bounded int test
+<a href=#646 id=646 data-nosnippet>646</a>    </span><span class="attr">#[test_case(<span class="string">"b0x5_b0x10"</span>, <span class="number">0</span>.into())]
+<a href=#647 id=647 data-nosnippet>647</a>    #[test_case(<span class="string">"b0x5_b0x10"</span>, <span class="number">5</span>.into())]
+<a href=#648 id=648 data-nosnippet>648</a>    #[test_case(<span class="string">"b2x5_b2x10"</span>, <span class="number">2</span>.into())]
+<a href=#649 id=649 data-nosnippet>649</a>    #[test_case(<span class="string">"b2x5_b2x10"</span>, <span class="number">5</span>.into())]
+<a href=#650 id=650 data-nosnippet>650</a>    #[test_case(<span class="string">"b2x5_b1x10"</span>, <span class="number">2</span>.into())]
+<a href=#651 id=651 data-nosnippet>651</a>    #[test_case(<span class="string">"b2x5_b1x10"</span>, <span class="number">5</span>.into())]
+<a href=#652 id=652 data-nosnippet>652</a>    #[test_case(<span class="string">"b0x5_bm10x10"</span>, <span class="number">0</span>.into())]
+<a href=#653 id=653 data-nosnippet>653</a>    #[test_case(<span class="string">"b0x5_bm10x10"</span>, <span class="number">5</span>.into())]
+<a href=#654 id=654 data-nosnippet>654</a>    #[test_case(<span class="string">"bm5x5_bm10x10"</span>, Felt::from(-<span class="number">5</span>))]
+<a href=#655 id=655 data-nosnippet>655</a>    #[test_case(<span class="string">"bm5x5_bm10x10"</span>, <span class="number">5</span>.into())]
+<a href=#656 id=656 data-nosnippet>656</a>    #[test_case(<span class="string">"i8_bm200x200"</span>, Felt::from(-<span class="number">128</span>))]
+<a href=#657 id=657 data-nosnippet>657</a>    #[test_case(<span class="string">"i8_bm200x200"</span>, <span class="number">127</span>.into())]
+<a href=#658 id=658 data-nosnippet>658</a>    #[test_case(<span class="string">"bm100x100_i8"</span>, Felt::from(-<span class="number">100</span>))]
+<a href=#659 id=659 data-nosnippet>659</a>    #[test_case(<span class="string">"bm100x100_i8"</span>, <span class="number">100</span>.into())]
+<a href=#660 id=660 data-nosnippet>660</a>    </span><span class="kw">fn </span>upcast(entry_point: <span class="kw-2">&amp;</span>str, value: Felt) {
+<a href=#661 id=661 data-nosnippet>661</a>        <span class="kw">let </span>program = get_compiled_program(<span class="string">"test_data_artifacts/programs/libfuncs/cast_upcast"</span>);
+<a href=#662 id=662 data-nosnippet>662</a>        <span class="kw">let </span>arguments = <span class="kw-2">&amp;</span>[value.into()];
+<a href=#663 id=663 data-nosnippet>663</a>        <span class="kw">let </span>expected_result = <span class="macro">jit_enum!</span>(<span class="number">0</span>, <span class="macro">jit_struct!</span>(value.into(),));
+<a href=#664 id=664 data-nosnippet>664</a>        run_program_assert_output(<span class="kw-2">&amp;</span>program, entry_point, arguments, expected_result);
+<a href=#665 id=665 data-nosnippet>665</a>    }
+<a href=#666 id=666 data-nosnippet>666</a>}</code></pre></div></section></main></body></html>
