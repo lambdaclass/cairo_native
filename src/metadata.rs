@@ -9,9 +9,10 @@
 //!   - Pass extra compilation info to the libfunc generators (ex.
 //!     [TailRecursionMeta](self::tail_recursion)).
 
+use cairo_lang_sierra::ids::ConcreteTypeId;
 use std::{
     any::{Any, TypeId},
-    collections::{hash_map::Entry, HashMap},
+    collections::{hash_map::Entry, BTreeMap, HashMap},
 };
 
 pub mod auto_breakpoint;
@@ -32,6 +33,8 @@ pub mod trace_dump;
 #[derive(Debug)]
 pub struct MetadataStorage {
     entries: HashMap<TypeId, Box<dyn Any>>,
+    /// Number of times each declared type is built
+    types_freqs: BTreeMap<u64, u64>,
 }
 
 impl MetadataStorage {
@@ -110,6 +113,14 @@ impl MetadataStorage {
             .downcast_mut::<T>()
             .expect("the given type does not match the actual")
     }
+
+    pub fn increment_frequency(&mut self, type_id: &ConcreteTypeId) {
+        *self.types_freqs.entry(type_id.id).or_insert(0) += 1;
+    }
+
+    pub fn types_frequencies(&self) -> BTreeMap<u64, u64> {
+        self.types_freqs.clone()
+    }
 }
 
 #[cfg(feature = "with-debug-utils")]
@@ -117,6 +128,7 @@ impl Default for MetadataStorage {
     fn default() -> Self {
         let mut metadata = Self {
             entries: Default::default(),
+            types_freqs: Default::default(),
         };
 
         metadata.insert(debug_utils::DebugUtils::default());
