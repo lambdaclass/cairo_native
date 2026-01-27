@@ -5,9 +5,9 @@ import shutil
 import os
 
 if len(sys.argv) < 2:
-    print("Expected Cairo revision as first argument")
+    print("Expected Cairo branch or tag as first argument")
     sys.exit(1)
-revision = sys.argv[1]
+ref = sys.argv[1]
 
 with tempfile.TemporaryDirectory() as root:
     subprocess.run(
@@ -16,7 +16,7 @@ with tempfile.TemporaryDirectory() as root:
             "clone",
             "https://github.com/starkware-libs/cairo",
             "--branch",
-            revision,
+            ref,
             root,
         ],
         check=True,
