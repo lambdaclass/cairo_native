@@ -1330,8 +1330,11 @@ fn is_shared<'ctx, 'this>(
 #[cfg(test)]
 mod test {
     use crate::{
-        jit_enum, jit_panic, jit_struct, load_cairo,
-        utils::{felt252_str, testing::run_program},
+        jit_enum, jit_panic, jit_struct,
+        utils::{
+            felt252_str,
+            testing::{get_compiled_program, run_program},
+        },
         values::Value,
     };
     use pretty_assertions_sorted::assert_eq;
@@ -1339,13 +1342,7 @@ mod test {
 
     #[test]
     fn run_roundtrip() {
-        let program = load_cairo!(
-            use array::ArrayTrait;
-
-            fn run_test(x: Array<u32>) -> Array<u32> {
-                x
-            }
-        );
+        let program = get_compiled_program("test_data_artifacts/programs/libfuncs/array_roundtrip");
         let result = run_program(&program, "run_test", &[[1u32, 2u32].into()]).return_value;
 
         assert_eq!(result, Value::from([1u32, 2u32]));
@@ -1353,15 +1350,7 @@ mod test {
 
     #[test]
     fn run_append() {
-        let program = load_cairo! {
-            use array::ArrayTrait;
-
-            fn run_test() -> Array<u32> {
-                let mut numbers = ArrayTrait::new();
-                numbers.append(4_u32);
-                numbers
-            }
-        };
+        let program = get_compiled_program("test_data_artifacts/programs/libfuncs/array_append");
         let result = run_program(&program, "run_test", &[]).return_value;
 
         assert_eq!(result, [4u32].into());
@@ -1369,17 +1358,7 @@ mod test {
 
     #[test]
     fn run_len() {
-        let program = load_cairo!(
-            use array::ArrayTrait;
-
-            fn run_test() -> u32 {
-                let mut numbers = ArrayTrait::new();
-                numbers.append(4_u32);
-                numbers.append(3_u32);
-                numbers.append(2_u32);
-                numbers.len()
-            }
-        );
+        let program = get_compiled_program("test_data_artifacts/programs/libfuncs/array_len");
         let result = run_program(&program, "run_test", &[]).return_value;
 
         assert_eq!(result, 3u32.into());
@@ -1387,23 +1366,7 @@ mod test {
 
     #[test]
     fn run_get() {
-        let program = load_cairo!(
-            use array::ArrayTrait;
-
-            fn run_test() -> (u32, u32, u32, u32) {
-                let mut numbers = ArrayTrait::new();
-                numbers.append(4_u32);
-                numbers.append(3_u32);
-                numbers.append(2_u32);
-                numbers.append(1_u32);
-                (
-                    *numbers.at(0),
-                    *numbers.at(1),
-                    *numbers.at(2),
-                    *numbers.at(3),
-                )
-            }
-        );
+        let program = get_compiled_program("test_data_artifacts/programs/libfuncs/array_get");
         let result = run_program(&program, "run_test", &[]).return_value;
 
         assert_eq!(
@@ -1422,43 +1385,8 @@ mod test {
 
     #[test]
     fn run_get_big() {
-        let program = load_cairo!(
-            use array::ArrayTrait;
+        let program = get_compiled_program("test_data_artifacts/programs/libfuncs/array_get_big");
 
-            fn run_test() -> (u32, u32, u32, u32) {
-                let mut numbers = ArrayTrait::new();
-                numbers.append(4_u32);
-                numbers.append(3_u32);
-                numbers.append(2_u32);
-                numbers.append(2_u32);
-                numbers.append(2_u32);
-                numbers.append(2_u32);
-                numbers.append(2_u32);
-                numbers.append(2_u32);
-                numbers.append(2_u32);
-                numbers.append(2_u32);
-                numbers.append(2_u32);
-                numbers.append(2_u32);
-                numbers.append(2_u32);
-                numbers.append(2_u32);
-                numbers.append(2_u32);
-                numbers.append(2_u32);
-                numbers.append(17_u32);
-                numbers.append(17_u32);
-                numbers.append(18_u32);
-                numbers.append(19_u32);
-                numbers.append(20_u32);
-                numbers.append(21_u32);
-                numbers.append(22_u32);
-                numbers.append(23_u32);
-                (
-                    *numbers.at(20),
-                    *numbers.at(21),
-                    *numbers.at(22),
-                    *numbers.at(23),
-                )
-            }
-        );
         let result = run_program(&program, "run_test", &[]).return_value;
 
         assert_eq!(
@@ -1477,18 +1405,7 @@ mod test {
 
     #[test]
     fn run_pop_front() {
-        let program = load_cairo!(
-            use array::ArrayTrait;
-
-            fn run_test() -> u32 {
-                let mut numbers = ArrayTrait::new();
-                numbers.append(4_u32);
-                numbers.append(3_u32);
-                let _ = numbers.pop_front();
-                numbers.append(1_u32);
-                *numbers.at(0)
-            }
-        );
+        let program = get_compiled_program("test_data_artifacts/programs/libfuncs/array_pop_front");
         let result = run_program(&program, "run_test", &[]).return_value;
 
         assert_eq!(result, jit_enum!(0, jit_struct!(3u32.into())));
@@ -1496,28 +1413,14 @@ mod test {
 
     #[test]
     fn run_pop_front_result() {
-        let program = load_cairo!(
-            use array::ArrayTrait;
-
-            fn run_test() -> Option<u32> {
-                let mut numbers = ArrayTrait::new();
-                numbers.append(4_u32);
-                numbers.append(3_u32);
-                numbers.pop_front()
-            }
-        );
+        let program =
+            get_compiled_program("test_data_artifacts/programs/libfuncs/array_pop_front_success");
         let result = run_program(&program, "run_test", &[]).return_value;
 
         assert_eq!(result, jit_enum!(0, 4u32.into()));
 
-        let program = load_cairo!(
-            use array::ArrayTrait;
-
-            fn run_test() -> Option<u32> {
-                let mut numbers = ArrayTrait::new();
-                numbers.pop_front()
-            }
-        );
+        let program =
+            get_compiled_program("test_data_artifacts/programs/libfuncs/array_pop_front_empty");
         let result = run_program(&program, "run_test", &[]).return_value;
 
         assert_eq!(result, jit_enum!(1, jit_struct!()));
@@ -1525,19 +1428,8 @@ mod test {
 
     #[test]
     fn run_pop_front_consume() {
-        let program = load_cairo!(
-            use array::ArrayTrait;
-
-            fn run_test() -> u32 {
-                let mut numbers = ArrayTrait::new();
-                numbers.append(4_u32);
-                numbers.append(3_u32);
-                match numbers.pop_front_consume() {
-                    Option::Some((_, x)) => x,
-                    Option::None(()) => 0_u32,
-                }
-            }
-        );
+        let program =
+            get_compiled_program("test_data_artifacts/programs/libfuncs/array_pop_front_consume");
         let result = run_program(&program, "run_test", &[]).return_value;
 
         assert_eq!(result, 4u32.into());
@@ -1545,23 +1437,7 @@ mod test {
 
     #[test]
     fn run_pop_back() {
-        let program = load_cairo!(
-            use array::ArrayTrait;
-
-            fn run_test() -> (Option<@u32>, Option<@u32>, Option<@u32>, Option<@u32>) {
-                let mut numbers = ArrayTrait::new();
-                numbers.append(4_u32);
-                numbers.append(3_u32);
-                numbers.append(1_u32);
-                let mut numbers = numbers.span();
-                (
-                    numbers.pop_back(),
-                    numbers.pop_back(),
-                    numbers.pop_back(),
-                    numbers.pop_back(),
-                )
-            }
-        );
+        let program = get_compiled_program("test_data_artifacts/programs/libfuncs/array_pop_back");
         let result = run_program(&program, "run_test", &[]).return_value;
 
         assert_eq!(
@@ -1583,31 +1459,7 @@ mod test {
 
     #[test]
     fn run_slice() {
-        let program = load_cairo!(
-            use array::Array;
-            use array::ArrayTrait;
-            use array::SpanTrait;
-            use option::OptionTrait;
-            use box::BoxTrait;
-
-            fn run_test() -> u32 {
-                let mut data: Array<u32> = ArrayTrait::new(); // Alloca (freed).
-                data.append(1_u32);
-                data.append(2_u32);
-                data.append(3_u32);
-                data.append(4_u32);
-                let sp = data.span(); // Alloca (leaked).
-                let slice = sp.slice(1, 2);
-                data.append(5_u32);
-                data.append(5_u32);
-                data.append(5_u32);
-                data.append(5_u32);
-                data.append(5_u32); // Realloc (freed).
-                data.append(5_u32);
-                *slice.get(1).unwrap().unbox()
-            }
-
-        );
+        let program = get_compiled_program("test_data_artifacts/programs/libfuncs/array_slice");
         let result = run_program(&program, "run_test", &[]).return_value;
 
         assert_eq!(result, jit_enum!(0, jit_struct!(3u32.into())));
@@ -1615,25 +1467,8 @@ mod test {
 
     #[test]
     fn run_slice_fail() {
-        let program = load_cairo!(
-            use array::Array;
-            use array::ArrayTrait;
-            use array::SpanTrait;
-            use option::OptionTrait;
-            use box::BoxTrait;
-
-            fn run_test() -> u32 {
-                let mut data: Array<u32> = ArrayTrait::new();
-                data.append(1_u32);
-                data.append(2_u32);
-                data.append(3_u32);
-                data.append(4_u32);
-                let sp = data.span();
-                let slice = sp.slice(1, 4); // oob
-                //data.append(5_u32);
-                *slice.get(0).unwrap().unbox()
-            }
-        );
+        let program =
+            get_compiled_program("test_data_artifacts/programs/libfuncs/array_slice_fail");
         let result = run_program(&program, "run_test", &[]).return_value;
 
         assert_eq!(
@@ -1646,12 +1481,8 @@ mod test {
 
     #[test]
     fn run_slice_empty_array() {
-        let program = load_cairo!(
-            fn run_test() -> Span<felt252> {
-                let x: Span<felt252> = array![].span();
-                x.slice(0, 0)
-            }
-        );
+        let program =
+            get_compiled_program("test_data_artifacts/programs/libfuncs/array_slice_empty");
         let result = run_program(&program, "run_test", &[]).return_value;
 
         assert_eq!(
@@ -1672,16 +1503,8 @@ mod test {
 
     #[test]
     fn run_span_from_tuple() {
-        let program = load_cairo!(
-            mod felt252_span_from_tuple {
-                pub extern fn span_from_tuple<T>(struct_like: Box<@T>) -> @Array<felt252> nopanic;
-            }
-
-            fn run_test() -> Array<felt252> {
-                let span = felt252_span_from_tuple::span_from_tuple(BoxTrait::new(@(10, 20, 30)));
-                span.clone()
-            }
-        );
+        let program =
+            get_compiled_program("test_data_artifacts/programs/libfuncs/array_span_from_tuple");
         let result = run_program(&program, "run_test", &[]).return_value;
 
         assert_eq!(
@@ -1699,20 +1522,8 @@ mod test {
 
     #[test]
     fn run_span_from_multi_tuple() {
-        let program = load_cairo!(
-            mod tuple_span_from_tuple {
-                pub extern fn span_from_tuple<T>(
-                    struct_like: Box<@T>
-                ) -> @Array<(felt252, felt252, felt252)> nopanic;
-            }
-
-            fn run_test() {
-                let multi_tuple = ((10, 20, 30), (40, 50, 60), (70, 80, 90));
-                let span = tuple_span_from_tuple::span_from_tuple(BoxTrait::new(@multi_tuple));
-                assert!(*span[0] == (10, 20, 30));
-                assert!(*span[1] == (40, 50, 60));
-                assert!(*span[2] == (70, 80, 90));
-            }
+        let program = get_compiled_program(
+            "test_data_artifacts/programs/libfuncs/array_span_from_multi_tuple",
         );
         let result = run_program(&program, "run_test", &[]).return_value;
 
@@ -1721,15 +1532,8 @@ mod test {
 
     #[test]
     fn seq_append1() {
-        let program = load_cairo!(
-            use array::ArrayTrait;
-
-            fn run_test() -> Array<u32> {
-                let mut data = ArrayTrait::new();
-                data.append(1);
-                data
-            }
-        );
+        let program =
+            get_compiled_program("test_data_artifacts/programs/libfuncs/array_seq_append1");
 
         assert_eq!(
             run_program(&program, "run_test", &[]).return_value,
@@ -1739,16 +1543,8 @@ mod test {
 
     #[test]
     fn seq_append2() {
-        let program = load_cairo!(
-            use array::ArrayTrait;
-
-            fn run_test() -> Array<u32> {
-                let mut data = ArrayTrait::new();
-                data.append(1);
-                data.append(2);
-                data
-            }
-        );
+        let program =
+            get_compiled_program("test_data_artifacts/programs/libfuncs/array_seq_append2");
 
         assert_eq!(
             run_program(&program, "run_test", &[]).return_value,
@@ -1758,17 +1554,8 @@ mod test {
 
     #[test]
     fn seq_append2_popf1() {
-        let program = load_cairo!(
-            use array::ArrayTrait;
-
-            fn run_test() -> Array<u32> {
-                let mut data = ArrayTrait::new();
-                data.append(1);
-                data.append(2);
-                let _ = data.pop_front();
-                data
-            }
-        );
+        let program =
+            get_compiled_program("test_data_artifacts/programs/libfuncs/array_seq_append2_popf1");
 
         assert_eq!(
             run_program(&program, "run_test", &[]).return_value,
@@ -1778,18 +1565,8 @@ mod test {
 
     #[test]
     fn seq_append2_popb1() {
-        let program = load_cairo!(
-            use array::ArrayTrait;
-
-            fn run_test() -> Span<u32> {
-                let mut data = ArrayTrait::new();
-                data.append(1);
-                data.append(2);
-                let mut data = data.span();
-                let _ = data.pop_back();
-                data
-            }
-        );
+        let program =
+            get_compiled_program("test_data_artifacts/programs/libfuncs/array_seq_append2_popb1");
 
         assert_eq!(
             run_program(&program, "run_test", &[]).return_value,
@@ -1799,16 +1576,8 @@ mod test {
 
     #[test]
     fn seq_append1_popf1_append1() {
-        let program = load_cairo!(
-            use array::ArrayTrait;
-
-            fn run_test() -> Array<u32> {
-                let mut data = ArrayTrait::new();
-                data.append(1);
-                let _ = data.pop_front();
-                data.append(2);
-                data
-            }
+        let program = get_compiled_program(
+            "test_data_artifacts/programs/libfuncs/array_seq_append1_popf1_append1",
         );
 
         assert_eq!(
@@ -1819,15 +1588,8 @@ mod test {
 
     #[test]
     fn seq_append1_first() {
-        let program = load_cairo!(
-            use array::ArrayTrait;
-
-            fn run_test() -> u32 {
-                let mut data = ArrayTrait::new();
-                data.append(1);
-                *data.at(0)
-            }
-        );
+        let program =
+            get_compiled_program("test_data_artifacts/programs/libfuncs/array_seq_append1_first");
 
         assert_eq!(
             run_program(&program, "run_test", &[]).return_value,
@@ -1844,16 +1606,8 @@ mod test {
 
     #[test]
     fn seq_append2_first() {
-        let program = load_cairo!(
-            use array::ArrayTrait;
-
-            fn run_test() -> u32 {
-                let mut data = ArrayTrait::new();
-                data.append(1);
-                data.append(2);
-                *data.at(0)
-            }
-        );
+        let program =
+            get_compiled_program("test_data_artifacts/programs/libfuncs/array_seq_append2_first");
 
         assert_eq!(
             run_program(&program, "run_test", &[]).return_value,
@@ -1870,16 +1624,8 @@ mod test {
 
     #[test]
     fn seq_append2_popf1_first() {
-        let program = load_cairo!(
-            use array::ArrayTrait;
-
-            fn run_test() -> u32 {
-                let mut data = ArrayTrait::new();
-                data.append(1);
-                data.append(2);
-                let _ = data.pop_front();
-                *data.at(0)
-            }
+        let program = get_compiled_program(
+            "test_data_artifacts/programs/libfuncs/array_seq_append2_popf1_first",
         );
 
         assert_eq!(
@@ -1897,18 +1643,8 @@ mod test {
 
     #[test]
     fn seq_append2_popb1_last() {
-        let program = load_cairo!(
-            use array::ArrayTrait;
-
-            fn run_test() -> u32 {
-                let mut data = ArrayTrait::new();
-                data.append(1);
-                data.append(2);
-                let mut data_span = data.span();
-                let _ = data_span.pop_back();
-                let last = data_span.len() - 1;
-                *data_span.at(last)
-            }
+        let program = get_compiled_program(
+            "test_data_artifacts/programs/libfuncs/array_seq_append2_popb1_last",
         );
 
         assert_eq!(
@@ -1926,16 +1662,8 @@ mod test {
 
     #[test]
     fn seq_append1_popf1_append1_first() {
-        let program = load_cairo!(
-            use array::ArrayTrait;
-
-            fn run_test() -> u32 {
-                let mut data = ArrayTrait::new();
-                data.append(1);
-                let _ = data.pop_front();
-                data.append(2);
-                *data.at(0)
-            }
+        let program = get_compiled_program(
+            "test_data_artifacts/programs/libfuncs/array_seq_append1_popf1_append1_first",
         );
 
         assert_eq!(
@@ -1953,12 +1681,7 @@ mod test {
 
     #[test]
     fn array_clone() {
-        let program = load_cairo!(
-            fn run_test() -> Array<u32> {
-                let x = ArrayTrait::new();
-                x.clone()
-            }
-        );
+        let program = get_compiled_program("test_data_artifacts/programs/libfuncs/array_clone");
 
         assert_eq!(
             run_program(&program, "run_test", &[]).return_value,
@@ -1975,19 +1698,8 @@ mod test {
 
     #[test]
     fn array_pop_back_state() {
-        let program = load_cairo!(
-            use array::ArrayTrait;
-
-            fn run_test() -> Span<u32> {
-                let mut numbers = ArrayTrait::new();
-                numbers.append(1_u32);
-                numbers.append(2_u32);
-                numbers.append(3_u32);
-                let mut numbers = numbers.span();
-                let _ = numbers.pop_back();
-                numbers
-            }
-        );
+        let program =
+            get_compiled_program("test_data_artifacts/programs/libfuncs/array_pop_back_state");
 
         let result = run_program(&program, "run_test", &[]).return_value;
 
@@ -1997,12 +1709,8 @@ mod test {
     #[test]
     fn array_empty_span() {
         // Tests snapshot_take on a empty array.
-        let program = load_cairo!(
-            fn run_test() -> Span<u32> {
-                let x = ArrayTrait::new();
-                x.span()
-            }
-        );
+        let program =
+            get_compiled_program("test_data_artifacts/programs/libfuncs/array_empty_span");
 
         assert_eq!(
             run_program(&program, "run_test", &[]).return_value,
@@ -2013,19 +1721,8 @@ mod test {
     #[test]
     fn array_span_modify_span() {
         // Tests pop_back on a span.
-        let program = load_cairo!(
-            use core::array::SpanTrait;
-            fn pop_elem(mut self: Span<u64>) -> Option<@u64> {
-                let x = self.pop_back();
-                x
-            }
-
-            fn run_test() -> Option<@u64> {
-                let mut data = array![2].span();
-                let x = pop_elem(data);
-                x
-            }
-        );
+        let program =
+            get_compiled_program("test_data_artifacts/programs/libfuncs/array_span_modify_span");
 
         assert_eq!(
             run_program(&program, "run_test", &[]).return_value,
@@ -2036,19 +1733,8 @@ mod test {
     #[test]
     fn array_span_check_array() {
         // Tests pop back on a span not modifying the original array.
-        let program = load_cairo!(
-            use core::array::SpanTrait;
-            fn pop_elem(mut self: Span<u64>) -> Option<@u64> {
-                let x = self.pop_back();
-                x
-            }
-
-            fn run_test() -> Array<u64> {
-                let mut data = array![1, 2];
-                let _x = pop_elem(data.span());
-                data
-            }
-        );
+        let program =
+            get_compiled_program("test_data_artifacts/programs/libfuncs/array_span_check_array");
 
         assert_eq!(
             run_program(&program, "run_test", &[]).return_value,
@@ -2058,13 +1744,8 @@ mod test {
 
     #[test]
     fn tuple_from_span() {
-        let program = load_cairo! {
-            use core::array::{tuple_from_span, FixedSizedArrayInfoImpl};
-
-            fn run_test(x: Array<felt252>) -> [felt252; 3] {
-                (*tuple_from_span::<[felt252; 3], FixedSizedArrayInfoImpl<felt252, 3>>(@x).unwrap()).unbox()
-            }
-        };
+        let program =
+            get_compiled_program("test_data_artifacts/programs/libfuncs/array_tuple_from_span");
 
         assert_eq!(
             run_program(
@@ -2097,13 +1778,9 @@ mod test {
 
     #[test]
     fn tuple_from_span_failed() {
-        let program = load_cairo! {
-            use core::array::{tuple_from_span, FixedSizedArrayInfoImpl};
-
-            fn run_test(x: Array<felt252>) -> Option<@Box<[core::felt252; 3]>> {
-                tuple_from_span::<[felt252; 3], FixedSizedArrayInfoImpl<felt252, 3>>(@x)
-            }
-        };
+        let program = get_compiled_program(
+            "test_data_artifacts/programs/libfuncs/array_tuple_from_span_failed",
+        );
 
         assert_eq!(
             run_program(
@@ -2121,15 +1798,8 @@ mod test {
 
     #[test]
     fn snapshot_multi_pop_front() {
-        let program = load_cairo!(
-            use array::ArrayTrait;
-
-            fn run_test() -> (Span<felt252>, @Box<[felt252; 3]>) {
-                let mut numbers = array![1, 2, 3, 4, 5, 6].span();
-                let popped = numbers.multi_pop_front::<3>().unwrap();
-
-                (numbers, popped)
-            }
+        let program = get_compiled_program(
+            "test_data_artifacts/programs/libfuncs/array_snapshot_multi_pop_front",
         );
         let result = run_program(&program, "run_test", &[]).return_value;
 
@@ -2161,17 +1831,8 @@ mod test {
 
     #[test]
     fn snapshot_failed_multi_pop_front() {
-        let program = load_cairo!(
-            use array::ArrayTrait;
-
-            fn run_test() -> Span<felt252> {
-                let mut numbers = array![1, 2].span();
-
-                // should fail (return none)
-                assert!(numbers.multi_pop_front::<3>().is_none());
-
-                numbers
-            }
+        let program = get_compiled_program(
+            "test_data_artifacts/programs/libfuncs/array_snapshot_failed_multi_pop_front",
         );
 
         let result = run_program(&program, "run_test", &[]).return_value;
@@ -2194,15 +1855,8 @@ mod test {
 
     #[test]
     fn snapshot_multi_pop_back() {
-        let program = load_cairo!(
-            use array::ArrayTrait;
-
-            fn run_test() -> (Span<felt252>, @Box<[felt252; 3]>) {
-                let mut numbers = array![1, 2, 3, 4, 5, 6].span();
-                let popped = numbers.multi_pop_back::<3>().unwrap();
-
-                (numbers, popped)
-            }
+        let program = get_compiled_program(
+            "test_data_artifacts/programs/libfuncs/array_snapshot_multi_pop_back",
         );
         let result = run_program(&program, "run_test", &[]).return_value;
 
@@ -2234,17 +1888,8 @@ mod test {
 
     #[test]
     fn snapshot_failed_multi_pop_back() {
-        let program = load_cairo!(
-            use array::ArrayTrait;
-
-            fn run_test() -> Span<felt252> {
-                let mut numbers = array![1, 2].span();
-
-                // should fail (return none)
-                assert!(numbers.multi_pop_back::<3>().is_none());
-
-                numbers
-            }
+        let program = get_compiled_program(
+            "test_data_artifacts/programs/libfuncs/array_snapshot_failed_multi_pop_back",
         );
 
         let result = run_program(&program, "run_test", &[]).return_value;
@@ -2267,16 +1912,8 @@ mod test {
 
     #[test]
     fn snapshot_multi_pop_back_front() {
-        let program = load_cairo!(
-            use array::ArrayTrait;
-
-            fn run_test() -> (Span<felt252>, @Box<[felt252; 2]>, @Box<[felt252; 2]>) {
-                let mut numbers = array![1, 2, 3, 4, 5, 6].span();
-                let popped_front = numbers.multi_pop_front::<2>().unwrap();
-                let popped_back = numbers.multi_pop_back::<2>().unwrap();
-
-                (numbers, popped_front, popped_back)
-            }
+        let program = get_compiled_program(
+            "test_data_artifacts/programs/libfuncs/array_snapshot_multi_pop_back_front",
         );
         let result = run_program(&program, "run_test", &[]).return_value;
 
@@ -2306,16 +1943,8 @@ mod test {
     /// Test to ensure that the returned element in `array_get` does NOT get dropped.
     #[test]
     fn array_get_avoid_dropping_element() {
-        let program = load_cairo! {
-            use core::{array::{array_append, array_at, array_new}, box::{into_box, unbox}};
-
-            fn run_test() -> @Box<felt252> {
-                let mut x: Array<Box<felt252>> = array_new();
-                array_append(ref x, into_box(42));
-
-                unbox(array_at(@x, 0))
-            }
-        };
+        let program =
+            get_compiled_program("test_data_artifacts/programs/libfuncs/array_get_avoid_dropping");
         let result = run_program(&program, "run_test", &[]).return_value;
 
         assert_eq!(result, jit_enum!(0, jit_struct!(Value::Felt252(42.into()))));
@@ -2323,20 +1952,9 @@ mod test {
 
     #[test]
     fn array_snapshot_pop_front_clone_offset() {
-        let program = load_cairo! {
-            fn run_test() -> Span<felt252> {
-                let data = array![7, 3, 4, 193827];
-                let mut data = data.span();
-
-                assert(*data.pop_front().unwrap() == 7, 0);
-                let data2 = data.clone();
-
-                assert(*data.pop_front().unwrap() == 3, 1);
-
-                drop(data2);
-                data
-            }
-        };
+        let program = get_compiled_program(
+            "test_data_artifacts/programs/libfuncs/array_snapshot_pop_front_clone_offset",
+        );
         let result = run_program(&program, "run_test", &[]).return_value;
 
         assert_eq!(
@@ -2353,20 +1971,9 @@ mod test {
 
     #[test]
     fn array_snapshot_pop_back_clone_offset() {
-        let program = load_cairo! {
-            fn run_test() -> Span<felt252> {
-                let data = array![7, 3, 4, 193827];
-                let mut data = data.span();
-
-                assert(*data.pop_front().unwrap() == 7, 0);
-                let data2 = data.clone();
-
-                assert(*data.pop_back().unwrap() == 193827, 1);
-
-                drop(data2);
-                data
-            }
-        };
+        let program = get_compiled_program(
+            "test_data_artifacts/programs/libfuncs/array_snapshot_pop_back_clone_offset",
+        );
         let result = run_program(&program, "run_test", &[]).return_value;
 
         assert_eq!(
