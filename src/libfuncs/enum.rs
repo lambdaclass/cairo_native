@@ -243,8 +243,10 @@ pub fn build_from_bounded_int<'ctx, 'this>(
         }
     };
 
-    let value = entry.append_op_result(llvm::undef(enum_ty, location))?;
-    let value = entry.insert_value(context, location, value, tag_value, 0)?;
+    let mut value = entry.append_op_result(llvm::undef(enum_ty, location))?;
+    if info.n_variants > 1 {
+        value = entry.insert_value(context, location, value, tag_value, 0)?;
+    }
 
     helper.br(entry, 0, &[value], location)
 }

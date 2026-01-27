@@ -45,6 +45,7 @@ use std::{
 };
 
 mod array;
+mod blake;
 mod r#bool;
 mod bounded_int;
 mod r#box;
@@ -70,6 +71,8 @@ mod mem;
 mod nullable;
 mod pedersen;
 mod poseidon;
+mod qm31;
+mod squashed_dict;
 mod starknet;
 mod r#struct;
 mod uint256;
@@ -177,9 +180,9 @@ impl LibfuncBuilder for CoreConcreteLibfunc {
             Self::Felt252Dict(selector) => self::felt252_dict::build(
                 context, registry, entry, location, helper, metadata, selector,
             ),
-            Self::Felt252SquashedDict(_) => {
-                native_panic!("Implement felt252_squashed_dict libfunc")
-            }
+            Self::Felt252SquashedDict(selector) => self::squashed_dict::build(
+                context, registry, entry, location, helper, metadata, selector,
+            ),
             Self::Felt252DictEntry(selector) => self::felt252_dict_entry::build(
                 context, registry, entry, location, helper, metadata, selector,
             ),
@@ -192,7 +195,9 @@ impl LibfuncBuilder for CoreConcreteLibfunc {
             Self::IntRange(selector) => self::int_range::build(
                 context, registry, entry, location, helper, metadata, selector,
             ),
-            Self::Blake(_) => native_panic!("Implement blake libfunc"),
+            Self::Blake(selector) => self::blake::build(
+                context, registry, entry, location, helper, metadata, selector,
+            ),
             Self::Mem(selector) => self::mem::build(
                 context, registry, entry, location, helper, metadata, selector,
             ),
@@ -256,10 +261,12 @@ impl LibfuncBuilder for CoreConcreteLibfunc {
                 metadata,
                 &info.signature.param_signatures,
             ),
+            Self::QM31(selector) => self::qm31::build(
+                context, registry, entry, location, helper, metadata, selector,
+            ),
             Self::GasReserve(selector) => self::gas_reserve::build(
                 context, registry, entry, location, helper, metadata, selector,
             ),
-            Self::QM31(_) => native_panic!("Implement QM31 libfunc"),
             Self::UnsafePanic(_) => native_panic!("Implement unsafe_panic libfunc"),
             Self::DummyFunctionCall(_) => native_panic!("Implement dummy_function_call libfunc"),
         }

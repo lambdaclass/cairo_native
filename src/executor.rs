@@ -437,6 +437,21 @@ fn parse_result(
             registry,
             true,
         )?),
+        CoreTypeConcrete::QM31(_) => match return_ptr {
+            Some(ptr) => Ok(Value::from_ptr(ptr, type_id, registry, true)?),
+            None => {
+                #[cfg(target_arch = "x86_64")]
+                return Err(Error::ParseAttributeError);
+
+                #[cfg(target_arch = "aarch64")]
+                Ok(Value::QM31(
+                    u32::try_from(ret_registers[0])?,
+                    u32::try_from(ret_registers[1])?,
+                    u32::try_from(ret_registers[2])?,
+                    u32::try_from(ret_registers[3])?,
+                ))
+            }
+        },
         CoreTypeConcrete::Felt252(_)
         | CoreTypeConcrete::Starknet(
             StarknetTypeConcrete::ClassHash(_)
@@ -679,7 +694,6 @@ fn parse_result(
         // 2.11.1
         CoreTypeConcrete::Blake(_) => native_panic!("blake not yet implemented as results"),
         // 2.12.0
-        CoreTypeConcrete::QM31(_) => native_panic!("qm31 not yet implemented as results"),
         CoreTypeConcrete::GasReserve(_) => {
             native_panic!("gas reserve not yet implemented as results")
         }
@@ -690,7 +704,7 @@ fn parse_result(
 mod tests {
     use super::*;
     use crate::{
-        context::NativeContext, load_cairo, load_starknet, starknet_stub::StubSyscallHandler,
+        context::NativeContext, include_contract, load_cairo, starknet_stub::StubSyscallHandler,
         OptLevel,
     };
     use cairo_lang_sierra::program::Program;
@@ -715,26 +729,9 @@ mod tests {
 
     #[fixture]
     fn starknet_program() -> Program {
-        let (_, program) = load_starknet! {
-            #[starknet::interface]
-            trait ISimpleStorage<TContractState> {
-                fn get(self: @TContractState) -> u128;
-            }
-
-            #[starknet::contract]
-            mod contract {
-                #[storage]
-                struct Storage {}
-
-                #[abi(embed_v0)]
-                impl ISimpleStorageImpl of super::ISimpleStorage<ContractState> {
-                    fn get(self: @ContractState) -> u128 {
-                        42
-                    }
-                }
-            }
-        };
-        program
+        include_contract!("test_data_artifacts/contracts/simple_storage_42.contract.json")
+            .extract_sierra_program()
+            .unwrap()
     }
 
     #[rstest]

@@ -2,31 +2,17 @@ use crate::common::{compare_outputs, run_native_program, run_vm_program, DEFAULT
 use cairo_lang_runner::SierraCasmRunner;
 use cairo_lang_sierra::program::Program;
 use cairo_native::starknet::DummySyscallHandler;
-use std::{fs::File, io::BufReader};
+use cairo_native::utils::testing::load_program_and_runner;
 use test_case::test_case;
 
 #[track_caller]
 fn compare_inputless_function(function_name: &str) {
-    // Load file compiled using `scarb build``
-    let file = File::open("tests/alexandria/target/dev/alexandria.sierra.json").unwrap();
-    let reader = BufReader::new(file);
-    let program: Program = serde_json::from_reader(reader).unwrap();
-    let module_name = "alexandria";
-    let runner = SierraCasmRunner::new(
-        program.clone(),
-        Some(Default::default()),
-        Default::default(),
-        None,
-    )
-    .unwrap();
-
-    let program: (String, Program, SierraCasmRunner) = (module_name.to_string(), program, runner);
-    let program = &program;
-
+    let program: (String, Program, SierraCasmRunner) =
+        load_program_and_runner("test_data_artifacts/scarb/alexandria/alexandria");
     let result_vm =
-        run_vm_program(program, function_name, vec![], Some(DEFAULT_GAS as usize)).unwrap();
+        run_vm_program(&program, function_name, vec![], Some(DEFAULT_GAS as usize)).unwrap();
     let result_native = run_native_program(
-        program,
+        &program,
         function_name,
         &[],
         Some(DEFAULT_GAS),
