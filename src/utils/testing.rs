@@ -3,7 +3,11 @@
 use cairo_lang_compiler::CompilerConfig;
 use cairo_lang_filesystem::{db::init_dev_corelib, ids::CrateInput};
 use cairo_lang_lowering::utils::InliningStrategy;
-use cairo_lang_sierra::{program::Program, ProgramParser};
+use cairo_lang_runner::SierraCasmRunner;
+use cairo_lang_sierra::{
+    program::{Program, VersionedProgram},
+    ProgramParser,
+};
 use cairo_lang_starknet::{compile::compile_contract_in_prepared_db, starknet_plugin_suite};
 use itertools::Itertools;
 use starknet_types_core::felt::Felt;
@@ -288,4 +292,65 @@ pub fn panic_byte_array(message: &str) -> Vec<Felt> {
     array.extend_from_slice(&[Felt::from_bytes_be_slice(&pending), pending.len().into()]);
 
     array
+}
+
+// TODO: Eventually this function will be changed or will be replaced in a future refactor. Right now
+// so as to not make a big unrelated change we keep it like this.
+pub fn load_program_and_runner(name: &str) -> (String, Program, SierraCasmRunner) {
+    let program = load_program(name);
+    let runner = SierraCasmRunner::new(
+        program.clone(),
+        Some(Default::default()),
+        Default::default(),
+        None,
+    )
+    .unwrap();
+    let entrypoint = name
+        .split("/")
+        .collect::<Vec<&str>>()
+        .last()
+        .unwrap()
+        .to_string();
+    (entrypoint, program, runner)
+}
+
+#[macro_export]
+macro_rules! include_program {
+    ( $path:expr ) => {
+        serde_json::from_str::<cairo_lang_sierra::program::VersionedProgram>(include_str!(concat!(
+            env!("CARGO_MANIFEST_DIR"),
+            "/",
+            $path
+        )))
+        .unwrap()
+    };
+}
+#[macro_export]
+macro_rules! include_contract {
+    ( $path:expr ) => {
+        serde_json::from_str::<cairo_lang_starknet_classes::contract_class::ContractClass>(
+            include_str!(concat!(env!("CARGO_MANIFEST_DIR"), "/", $path)),
+        )
+        .unwrap()
+    };
+}
+
+pub fn load_contract(path: &str) -> ContractClass {
+    serde_json::from_str::<ContractClass>(
+        &fs::read_to_string(format!("{}/{}", env!("CARGO_MANIFEST_DIR"), path)).unwrap(),
+    )
+    .unwrap()
+}
+
+pub fn load_program(path: &str) -> Program {
+    let versioned_program = serde_json::from_str::<VersionedProgram>(
+        &fs::read_to_string(format!(
+            "{}/{}.sierra.json",
+            env!("CARGO_MANIFEST_DIR"),
+            path
+        ))
+        .unwrap(),
+    )
+    .unwrap();
+    versioned_program.into_v1().unwrap().program
 }
