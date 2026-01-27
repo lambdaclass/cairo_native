@@ -8,10 +8,12 @@ members = [
     "binaries/cairo-native-dump",
     "binaries/cairo-native-run",
     "binaries/cairo-native-test",
+    "binaries/cairo-native-test-2",
     "binaries/scarb-native-dump",
     "binaries/scarb-native-test",
     "binaries/starknet-native-compile",
     "binaries/cairo-native-bin-utils",
+    "test_utils",
 ]
 
 [workspace.package]
@@ -29,24 +31,24 @@ ark-secp256k1 = "0.5.0"
 ark-secp256r1 = "0.5.0"
 bincode = "2.0.1"
 bumpalo = "3.16.0"
-cairo-lang-casm = "~2.14.1-dev.1"
-cairo-lang-compiler = "~2.14.1-dev.1"
-cairo-lang-defs = "~2.14.1-dev.1"
-cairo-lang-filesystem = "~2.14.1-dev.1"
-cairo-lang-lowering = "~2.14.1-dev.1"
-cairo-lang-runner = "~2.14.1-dev.1"
-cairo-lang-semantic = "~2.14.1-dev.1"
-cairo-lang-sierra = "~2.14.1-dev.1"
-cairo-lang-sierra-ap-change = "~2.14.1-dev.1"
-cairo-lang-sierra-gas = "~2.14.1-dev.1"
-cairo-lang-sierra-generator = "~2.14.1-dev.1"
-cairo-lang-sierra-to-casm = "~2.14.1-dev.1"
-cairo-lang-sierra-type-size = "~2.14.1-dev.1"
-cairo-lang-starknet = "~2.14.1-dev.1"
-cairo-lang-starknet-classes = "~2.14.1-dev.1"
-cairo-lang-test-plugin = "~2.14.1-dev.1"
-cairo-lang-test-runner = "~2.14.1-dev.1"
-cairo-lang-utils = "~2.14.1-dev.1"
+cairo-lang-casm = "~2.15.0"
+cairo-lang-compiler = "~2.15.0"
+cairo-lang-defs = "~2.15.0"
+cairo-lang-filesystem = "~2.15.0"
+cairo-lang-lowering = "~2.15.0"
+cairo-lang-runner = "~2.15.0"
+cairo-lang-semantic = "~2.15.0"
+cairo-lang-sierra = "~2.15.0"
+cairo-lang-sierra-ap-change = "~2.15.0"
+cairo-lang-sierra-gas = "~2.15.0"
+cairo-lang-sierra-generator = "~2.15.0"
+cairo-lang-sierra-to-casm = "~2.15.0"
+cairo-lang-sierra-type-size = "~2.15.0"
+cairo-lang-starknet = "~2.15.0"
+cairo-lang-starknet-classes = "~2.15.0"
+cairo-lang-test-plugin = "~2.15.0"
+cairo-lang-test-runner = "~2.15.0"
+cairo-lang-utils = "~2.15.0"
 cairo-native-bin-utils.path = "binaries/cairo-native-bin-utils"
 cairo-native = { path = ".", version = "0.9.0-rc.0" }
 clap = "4.5.23"
@@ -93,9 +95,10 @@ walkdir = "2.5.0"
 
 # Can't update until https://github.com/magiclen/educe/issues/27.
 educe = "0.5.11"
-# There are no releases of cairo-vm that use cairo-lang 2.14.1-dev.1.
-cairo-vm = { git = "https://github.com/lambdaclass/cairo-vm", rev = "e1a87f9909be388f96c60a4755fd75c8cc5ff934" }
-# Can't use verion > 0.14.7 due to deprecation, as stated in issue https://github.com/fizyk20/generic-array/issues/158
+# Using git dependency since doing it otherwise might rise incompatibilities with
+# cairo-lang versions.
+cairo-vm = { git = "https://github.com/lambdaclass/cairo-vm", rev = "a87e9e6a2cc4b759ae30a9c1a08efabf78ca4c17" }
+# Can't use version > 0.14.7 due to deprecation, as stated in issue https://github.com/fizyk20/generic-array/issues/158
 generic-array = "<=0.14.7"
 
 [package]
