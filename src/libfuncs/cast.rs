@@ -488,90 +488,18 @@ pub fn build_upcast<'ctx, 'this>(
 #[cfg(test)]
 mod test {
     use crate::{
-        jit_enum, jit_struct, load_cairo, utils::testing::run_program_assert_output, Value,
+        jit_enum, jit_struct,
+        utils::testing::{get_compiled_program, run_program_assert_output},
+        Value,
     };
-    use cairo_lang_sierra::program::Program;
-    use lazy_static::lazy_static;
     use starknet_types_core::felt::Felt;
     use test_case::test_case;
 
-    lazy_static! {
-        static ref DOWNCAST: (String, Program) = load_cairo! {
-            extern const fn downcast<FromType, ToType>( x: FromType, ) -> Option<ToType> implicits(RangeCheck) nopanic;
-
-            fn run_test(
-                v8: u8, v16: u16, v32: u32, v64: u64, v128: u128
-            ) -> (
-                (Option<u8>, Option<u8>, Option<u8>, Option<u8>, Option<u8>),
-                (Option<u16>, Option<u16>, Option<u16>, Option<u16>),
-                (Option<u32>, Option<u32>, Option<u32>),
-                (Option<u64>, Option<u64>),
-                (Option<u128>,),
-            ) {
-                (
-                    (downcast(v128), downcast(v64), downcast(v32), downcast(v16), downcast(v8)),
-                    (downcast(v128), downcast(v64), downcast(v32), downcast(v16)),
-                    (downcast(v128), downcast(v64), downcast(v32)),
-                    (downcast(v128), downcast(v64)),
-                    (downcast(v128),),
-                )
-            }
-        };
-        static ref DOWNCAST_BOUNDED_INT: (String, Program) = load_cairo! {
-            #[feature("bounded-int-utils")]
-            use core::internal::bounded_int::BoundedInt;
-
-            extern const fn downcast<FromType, ToType>( x: FromType, ) -> Option<ToType> implicits(RangeCheck) nopanic;
-
-            fn test_x_y<
-                X,
-                Y,
-                +TryInto<felt252, X>,
-                +Into<Y, felt252>
-            >(v: felt252) -> felt252 {
-                let v: X = v.try_into().unwrap();
-                let v: Y = downcast(v).unwrap();
-                v.into()
-            }
-
-            fn b0x30_b0x30(v: felt252) -> felt252 { test_x_y::<BoundedInt<0,30>, BoundedInt<0,30>>(v) }
-            fn bm31x30_b31x30(v: felt252) -> felt252 { test_x_y::<BoundedInt<-31,30>, BoundedInt<-31,30>>(v) }
-            fn bm31x30_bm5x30(v: felt252) -> felt252 { test_x_y::<BoundedInt<-31,30>, BoundedInt<-5,30>>(v) }
-            fn bm31x30_b5x30(v: felt252) -> felt252 { test_x_y::<BoundedInt<-31,30>, BoundedInt<5,30>>(v) }
-            fn b5x30_b31x31(v: felt252) -> felt252 { test_x_y::<BoundedInt<5,31>, BoundedInt<31,31>>(v) }
-            fn bm100x100_bm100xm1(v: felt252) -> felt252 { test_x_y::<BoundedInt<-100,100>, BoundedInt<-100,-1>>(v) }
-            fn bm31xm31_bm31xm31(v: felt252) -> felt252 { test_x_y::<BoundedInt<-31,-31>, BoundedInt<-31,-31>>(v) }
-            // Check if the target type is wider than the source type
-            fn b0x30_b5x40(v: felt252) -> felt252 { test_x_y::<BoundedInt<0,30>, BoundedInt<5,40>>(v) }
-            // Check if the source's lower and upper bound are included in the
-            // target type.
-            fn b0x30_bm40x40(v: felt252) -> felt252 { test_x_y::<BoundedInt<0,30>, BoundedInt<-40,40>>(v) }
-        };
-        static ref DOWNCAST_FELT: (String, Program) = load_cairo! {
-            extern const fn downcast<FromType, ToType>( x: FromType, ) -> Option<ToType> implicits(RangeCheck) nopanic;
-
-            fn test_x_y<
-                X,
-                Y,
-                +TryInto<felt252, X>,
-                +Into<Y, felt252>
-            >(v: felt252) -> felt252 {
-                let v: X = v.try_into().unwrap();
-                let v: Y = downcast(v).unwrap();
-                v.into()
-            }
-
-            fn felt252_i8(v: felt252) -> felt252 { test_x_y::<felt252, i8>(v) }
-            fn felt252_i16(v: felt252) -> felt252 { test_x_y::<felt252, i16>(v) }
-            fn felt252_i32(v: felt252) -> felt252 { test_x_y::<felt252, i32>(v) }
-            fn felt252_i64(v: felt252) -> felt252 { test_x_y::<felt252, i64>(v) }
-        };
-    }
-
     #[test]
     fn downcast() {
+        let program = get_compiled_program("test_data_artifacts/programs/libfuncs/cast_downcast");
         run_program_assert_output(
-            &DOWNCAST,
+            &program,
             "run_test",
             &[
                 u8::MAX.into(),
@@ -615,8 +543,10 @@ mod test {
     #[test_case("b0x30_b5x40", 10.into())]
     #[test_case("b0x30_bm40x40", 10.into())]
     fn downcast_bounded_int(entry_point: &str, value: Felt) {
+        let program =
+            get_compiled_program("test_data_artifacts/programs/libfuncs/cast_downcast_bounded_int");
         run_program_assert_output(
-            &DOWNCAST_BOUNDED_INT,
+            &program,
             entry_point,
             &[Value::Felt252(value)],
             jit_enum!(0, jit_struct!(Value::Felt252(value))),
@@ -632,79 +562,14 @@ mod test {
     #[test_case("felt252_i64", i64::MAX.into())]
     #[test_case("felt252_i64", i64::MIN.into())]
     fn downcast_felt(entry_point: &str, value: Felt) {
+        let program =
+            get_compiled_program("test_data_artifacts/programs/libfuncs/cast_downcast_felt");
         run_program_assert_output(
-            &DOWNCAST_FELT,
+            &program,
             entry_point,
             &[Value::Felt252(value)],
             jit_enum!(0, jit_struct!(Value::Felt252(value))),
         );
-    }
-
-    lazy_static! {
-        static ref TEST_UPCAST_PROGRAM: (String, Program) = load_cairo! {
-            #[feature("bounded-int-utils")]
-            use core::internal::bounded_int::{BoundedInt};
-            extern const fn upcast<FromType, ToType>(x: FromType) -> ToType nopanic;
-
-            fn test_x_y<
-                X,
-                Y,
-                +TryInto<felt252, X>,
-                +Into<Y, felt252>
-            >(v: felt252) -> felt252 {
-                let v: X = v.try_into().unwrap();
-                let v: Y = upcast(v);
-                v.into()
-            }
-
-            fn u8_u16(v: felt252) -> felt252 { test_x_y::<u8, u16>(v) }
-            fn u8_u32(v: felt252) -> felt252 { test_x_y::<u8, u32>(v) }
-            fn u8_u64(v: felt252) -> felt252 { test_x_y::<u8, u64>(v) }
-            fn u8_u128(v: felt252) -> felt252 { test_x_y::<u8, u128>(v) }
-            fn u8_felt252(v: felt252) -> felt252 { test_x_y::<u8, felt252>(v) }
-
-            fn u16_u32(v: felt252) -> felt252 { test_x_y::<u16, u32>(v) }
-            fn u16_u64(v: felt252) -> felt252 { test_x_y::<u16, u64>(v) }
-            fn u16_u128(v: felt252) -> felt252 { test_x_y::<u16, u128>(v) }
-            fn u16_felt252(v: felt252) -> felt252 { test_x_y::<u16, felt252>(v) }
-
-            fn u32_u64(v: felt252) -> felt252 { test_x_y::<u32, u64>(v) }
-            fn u32_u128(v: felt252) -> felt252 { test_x_y::<u32, u128>(v) }
-            fn u32_felt252(v: felt252) -> felt252 { test_x_y::<u32, felt252>(v) }
-
-            fn u64_u128(v: felt252) -> felt252 { test_x_y::<u64, u128>(v) }
-            fn u64_felt252(v: felt252) -> felt252 { test_x_y::<u64, felt252>(v) }
-
-            fn u128_felt252(v: felt252) -> felt252 { test_x_y::<u128, felt252>(v) }
-
-            fn i8_i16(v: felt252) -> felt252 { test_x_y::<i8, i16>(v) }
-            fn i8_i32(v: felt252) -> felt252 { test_x_y::<i8, i32>(v) }
-            fn i8_i64(v: felt252) -> felt252 { test_x_y::<i8, i64>(v) }
-            fn i8_i128(v: felt252) -> felt252 { test_x_y::<i8, i128>(v) }
-            fn i8_felt252(v: felt252) -> felt252 { test_x_y::<i8, felt252>(v) }
-
-            fn i16_i32(v: felt252) -> felt252 { test_x_y::<i16, i32>(v) }
-            fn i16_i64(v: felt252) -> felt252 { test_x_y::<i16, i64>(v) }
-            fn i16_i128(v: felt252) -> felt252 { test_x_y::<i16, i128>(v) }
-            fn i16_felt252(v: felt252) -> felt252 { test_x_y::<i16, felt252>(v) }
-
-            fn i32_i64(v: felt252) -> felt252 { test_x_y::<i32, i64>(v) }
-            fn i32_i128(v: felt252) -> felt252 { test_x_y::<i32, i128>(v) }
-            fn i32_felt252(v: felt252) -> felt252 { test_x_y::<i32, felt252>(v) }
-
-            fn i64_i128(v: felt252) -> felt252 { test_x_y::<i64, i128>(v) }
-            fn i64_felt252(v: felt252) -> felt252 { test_x_y::<i64, felt252>(v) }
-
-            fn i128_felt252(v: felt252) -> felt252 { test_x_y::<i128, felt252>(v) }
-
-            fn b0x5_b0x10(v: felt252) -> felt252 { test_x_y::<BoundedInt<0, 5>, BoundedInt<0, 10>>(v) }
-            fn b2x5_b2x10(v: felt252) -> felt252 { test_x_y::<BoundedInt<2, 5>, BoundedInt<2, 10>>(v) }
-            fn b2x5_b1x10(v: felt252) -> felt252 { test_x_y::<BoundedInt<2, 5>, BoundedInt<1, 10>>(v) }
-            fn b0x5_bm10x10(v: felt252) -> felt252 { test_x_y::<BoundedInt<0, 5>, BoundedInt<-10, 10>>(v) }
-            fn bm5x5_bm10x10(v: felt252) -> felt252 { test_x_y::<BoundedInt<-5, 5>, BoundedInt<-10, 10>>(v) }
-            fn i8_bm200x200(v: felt252) -> felt252 { test_x_y::<i8, BoundedInt<-200, 200>>(v) }
-            fn bm100x100_i8(v: felt252) -> felt252 { test_x_y::<BoundedInt<-100, 100>, i8>(v) }
-        };
     }
 
     // u8 upcast test
@@ -793,13 +658,9 @@ mod test {
     #[test_case("bm100x100_i8", Felt::from(-100))]
     #[test_case("bm100x100_i8", 100.into())]
     fn upcast(entry_point: &str, value: Felt) {
+        let program = get_compiled_program("test_data_artifacts/programs/libfuncs/cast_upcast");
         let arguments = &[value.into()];
         let expected_result = jit_enum!(0, jit_struct!(value.into(),));
-        run_program_assert_output(
-            &TEST_UPCAST_PROGRAM,
-            entry_point,
-            arguments,
-            expected_result,
-        );
+        run_program_assert_output(&program, entry_point, arguments, expected_result);
     }
 }
