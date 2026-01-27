@@ -56,7 +56,7 @@ jobs:
 
           echo "CAIRO_LATEST_RELEASE=${latest_release}" | tee -a $GITHUB_ENV
           echo "CAIRO_CURRENT_RELEASE=${current_release}" | tee -a $GITHUB_ENV
-          echo "WORKFLOW_URL=$REPO_URL/actions/runs/${{ github.run_id }}" | tee -a $GITHUB_ENV
+          echo "WORKFLOW_URL=${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}" | tee -a $GITHUB_ENV
 
       - name: Patch Native Dependencies
         if: ${{ env.SHOULD_CHECK == 'true' }}
