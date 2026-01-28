@@ -1157,6 +1157,7 @@ dependencies = [
  "colored 2.2.0",
  "itertools 0.14.0",
  "num-traits",
+ "rayon",
  "scarb-metadata",
  "starknet-types-core",
  "tracing",
@@ -1237,6 +1238,7 @@ dependencies = [
  "cairo-lang-test-runner",
  "cairo-native-bin-utils",
  "clap",
+ "rayon",
  "tracing",
  "tracing-subscriber",
 ]
@@ -3636,7 +3638,6 @@ dependencies = [
  "starknet-crypto",
  "starknet-curve",
  "starknet-types-core",
- "tempfile",
  "thiserror",
  "tracing",
  "tracing-subscriber",

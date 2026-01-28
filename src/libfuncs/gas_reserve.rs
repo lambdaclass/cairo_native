@@ -116,26 +116,15 @@ fn build_gas_reserve_utilize<'ctx, 'this>(
 
 #[cfg(test)]
 mod test {
-    use crate::{load_cairo, utils::testing::run_program, Value};
+    use crate::{
+        utils::testing::{get_compiled_program, run_program},
+        Value,
+    };
 
     #[test]
     fn run_create() {
-        let program = load_cairo!(
-            use core::gas::{GasReserve, gas_reserve_create, gas_reserve_utilize};
-
-            fn run_test_1() -> Option<GasReserve> {
-                gas_reserve_create(100)
-            }
-
-            fn run_test_2(amount: u128) -> u128 {
-                let initial_gas = core::testing::get_available_gas();
-                let reserve = gas_reserve_create(amount).unwrap();
-                let final_gas = core::testing::get_available_gas();
-                gas_reserve_utilize(reserve);
-
-                initial_gas - final_gas
-            }
-        );
+        let program =
+            get_compiled_program("test_data_artifacts/programs/libfuncs/gas_reserve_create");
 
         let result = run_program(&program, "run_test_1", &[]).return_value;
         if let Value::Enum { tag, value, .. } = result {
@@ -166,18 +155,8 @@ mod test {
 
     #[test]
     fn run_utilize() {
-        let program = load_cairo!(
-            use core::gas::{GasReserve, gas_reserve_create, gas_reserve_utilize};
-
-            fn run_test(amount: u128) -> u128 {
-                let initial_gas = core::testing::get_available_gas();
-                let reserve = gas_reserve_create(amount).unwrap();
-                gas_reserve_utilize(reserve);
-                let final_gas = core::testing::get_available_gas();
-
-                initial_gas - final_gas
-            }
-        );
+        let program =
+            get_compiled_program("test_data_artifacts/programs/libfuncs/gas_reserve_utilize");
 
         let gas_amount = 10;
         let result = run_program(&program, "run_test", &[Value::Uint128(gas_amount)]).return_value;

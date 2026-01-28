@@ -292,50 +292,20 @@ pub fn eval_trim(
 #[cfg(test)]
 mod tests {
 
-    use num_bigint::BigInt;
-
     use super::Value;
-
-    use crate::{load_cairo, test_utils::run_test_program};
+    use crate::test_utils::{load_program, run_test_program};
+    use num_bigint::BigInt;
 
     #[test]
     fn test_bounded_int_sub() {
-        let (_, program) = load_cairo!(
-            #[feature("bounded-int-utils")]
-            use core::internal::bounded_int::{self, SubHelper, BoundedInt};
-
-            impl U8BISub of SubHelper<u8, u8> {
-                type Result = BoundedInt<-255, 255>;
-            }
-
-            extern fn bounded_int_sub<Lhs, Rhs, impl H: SubHelper<Lhs, Rhs>>(
-                lhs: Lhs, rhs: Rhs,
-            ) -> H::Result nopanic;
-
-            fn main() -> BoundedInt<-255, 255> {
-                bounded_int_sub(0_u8, 255_u8)
-            }
-        );
+        let program = load_program("test_data_artifacts/programs/debug_utils/bounded_int_sub");
 
         run_test_program(program);
     }
 
     #[test]
     fn test_trim_i8() {
-        let (_, program) = load_cairo!(
-            #[feature("bounded-int-utils")]
-            use core::internal::bounded_int::{self, BoundedInt};
-            use core::internal::OptionRev;
-
-            fn main() -> BoundedInt<-127, 127> {
-                let num = match bounded_int::trim_min::<i8>(1) {
-                    OptionRev::Some(n) => n,
-                    OptionRev::None => 1,
-                };
-
-                num
-            }
-        );
+        let program = load_program("test_data_artifacts/programs/debug_utils/bounded_int_trim_i8");
 
         let result = run_test_program(program);
         let result = result.last().unwrap();
@@ -349,20 +319,7 @@ mod tests {
 
     #[test]
     fn test_trim_u32() {
-        let (_, program) = load_cairo!(
-            #[feature("bounded-int-utils")]
-            use core::internal::bounded_int::{self, BoundedInt};
-            use core::internal::OptionRev;
-
-            fn main() -> BoundedInt<0, 4294967294> {
-                let num = match bounded_int::trim_max::<u32>(0xfffffffe) {
-                    OptionRev::Some(n) => n,
-                    OptionRev::None => 0,
-                };
-
-                num
-            }
-        );
+        let program = load_program("test_data_artifacts/programs/debug_utils/bounded_int_trim_u32");
 
         let result = run_test_program(program);
         let result = result.last().unwrap();
@@ -376,20 +333,8 @@ mod tests {
 
     #[test]
     fn test_trim_none() {
-        let (_, program) = load_cairo!(
-            #[feature("bounded-int-utils")]
-            use core::internal::bounded_int::{self, BoundedInt};
-            use core::internal::OptionRev;
-
-            fn main() -> BoundedInt<-32767, 32767> {
-                let num = match bounded_int::trim_min::<i16>(-0x8000) {
-                    OptionRev::Some(n) => n,
-                    OptionRev::None => 0,
-                };
-
-                num
-            }
-        );
+        let program =
+            load_program("test_data_artifacts/programs/debug_utils/bounded_int_trim_none");
 
         let result = run_test_program(program);
         let result = result.last().unwrap();

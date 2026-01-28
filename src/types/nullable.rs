@@ -240,26 +240,17 @@ fn build_drop<'ctx>(
 
 #[cfg(test)]
 mod test {
-    use crate::{jit_enum, jit_struct, load_cairo, utils::testing::run_program, values::Value};
+    use crate::{
+        jit_enum, jit_struct,
+        utils::testing::{get_compiled_program, run_program},
+        values::Value,
+    };
     use pretty_assertions_sorted::assert_eq;
 
     #[test]
     fn test_nullable_deep_clone() {
-        let program = load_cairo! {
-            use core::array::ArrayTrait;
-            use core::NullableTrait;
-
-            fn run_test() -> @Nullable<Array<felt252>> {
-                let mut x = NullableTrait::new(array![1, 2, 3]);
-                let x_s = @x;
-
-                let mut y = NullableTrait::deref(x);
-                y.append(4);
-
-                x_s
-            }
-
-        };
+        let program =
+            get_compiled_program("test_data_artifacts/programs/types/nullable_deep_clone");
         let result = run_program(&program, "run_test", &[]).return_value;
 
         assert_eq!(

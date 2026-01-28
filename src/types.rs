@@ -1024,7 +1024,7 @@ impl<T> Deref for WithSelf<'_, T> {
 #[cfg(test)]
 mod test {
     use super::TypeBuilder;
-    use crate::load_cairo;
+    use crate::utils::testing::load_program;
     use cairo_lang_sierra::{
         extensions::core::{CoreLibfunc, CoreType},
         program_registry::ProgramRegistry,
@@ -1032,18 +1032,7 @@ mod test {
 
     #[test]
     fn ensure_padded_layouts() {
-        let (_, program) = load_cairo! {
-            #[derive(Drop)]
-            struct A {}
-            #[derive(Drop)]
-            struct B { a: u8 }
-            #[derive(Drop)]
-            struct C { a: u8, b: u16 }
-            #[derive(Drop)]
-            struct D { a: u16, b: u8 }
-
-            fn main(a: A, b: B, c: C, d: D) {}
-        };
+        let program = load_program("test_data_artifacts/programs/types/ensure_padded_layouts");
 
         let registry = ProgramRegistry::<CoreType, CoreLibfunc>::new(&program).unwrap();
         for ty in &program.type_declarations {
