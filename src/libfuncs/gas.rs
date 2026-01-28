@@ -341,62 +341,23 @@ pub fn build_calculate_gas_cost<'c, 'b>(
 
 #[cfg(test)]
 mod test {
-    use crate::{load_cairo, utils::testing::run_program, Value};
+    use crate::{
+        utils::testing::{get_compiled_program, run_program},
+        Value,
+    };
 
     #[test]
     fn run_withdraw_gas() {
-        #[rustfmt::skip]
-        let program = load_cairo!(
-            use gas::withdraw_gas;
-
-            fn run_test() {
-                let mut i = 10;
-
-                loop {
-                    if i == 0 {
-                        break;
-                    }
-
-                    match withdraw_gas() {
-                        Option::Some(()) => {
-                            i = i - 1;
-                        },
-                        Option::None(()) => {
-                            break;
-                        }
-                    };
-                    i = i - 1;
-                }
-            }
-        );
+        let program = get_compiled_program("test_data_artifacts/programs/libfuncs/gas_withdraw");
 
         let result = run_program(&program, "run_test", &[]);
-        assert_eq!(result.remaining_gas, Some(18446744073709545465));
+        assert_eq!(result.remaining_gas, Some(18446744073709533495));
     }
 
     #[test]
     fn run_get_unspent_gas() {
         #[rustfmt::skip]
-        let program = load_cairo!(
-            extern fn get_unspent_gas() -> u128 implicits(GasBuiltin) nopanic;
-
-            #[inline(never)]
-            fn identity<T>(t: T) -> T {
-                t
-            }
-
-            fn run_test() -> u128 {
-                let one = identity(1);
-                let two = identity(2);
-                let prev = get_unspent_gas();
-                let three = identity(one + two);
-                let four = identity(one + three);
-                let five = identity(two + three);
-                let _ten = identity(one + five + four);
-                let after = get_unspent_gas();
-                return prev - after;
-            }
-        );
+        let program = get_compiled_program("test_data_artifacts/programs/libfuncs/get_unspent_gas");
 
         let result = run_program(&program, "run_test", &[]);
         assert_eq!(
@@ -404,7 +365,7 @@ mod test {
             Value::Enum {
                 tag: 0,
                 value: Box::new(Value::Struct {
-                    fields: vec![Value::Uint128(4000)],
+                    fields: vec![Value::Uint128(5900)],
                     debug_name: None
                 }),
                 debug_name: None,

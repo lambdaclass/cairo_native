@@ -170,55 +170,29 @@ pub fn unbox<'ctx, 'this>(
 #[cfg(test)]
 mod test {
     use crate::{
-        jit_enum, jit_struct, load_cairo, utils::testing::run_program_assert_output, values::Value,
+        jit_enum, jit_struct,
+        utils::testing::{get_compiled_program, run_program_assert_output},
+        values::Value,
     };
 
     #[test]
     fn run_box_unbox() {
-        let program = load_cairo! {
-            use box::BoxTrait;
-            use box::BoxImpl;
-
-            fn run_test() -> u32 {
-                let x: u32 = 2_u32;
-                let box_x: Box<u32> = BoxTrait::new(x);
-                box_x.unbox()
-            }
-        };
+        let program = get_compiled_program("test_data_artifacts/programs/libfuncs/box_unbox");
 
         run_program_assert_output(&program, "run_test", &[], Value::Uint32(2));
     }
 
     #[test]
     fn run_box() {
-        let program = load_cairo! {
-            use box::BoxTrait;
-            use box::BoxImpl;
-
-            fn run_test() -> Box<u32>  {
-                let x: u32 = 2_u32;
-                let box_x: Box<u32> = BoxTrait::new(x);
-                box_x
-            }
-        };
+        let program = get_compiled_program("test_data_artifacts/programs/libfuncs/box");
 
         run_program_assert_output(&program, "run_test", &[], Value::Uint32(2));
     }
 
     #[test]
     fn box_unbox_stack_allocated_enum_single() {
-        let program = load_cairo! {
-            use core::box::BoxTrait;
-
-            enum MyEnum {
-                A: felt252,
-            }
-
-            fn run_test() -> MyEnum {
-                let x = BoxTrait::new(MyEnum::A(1234));
-                x.unbox()
-            }
-        };
+        let program =
+            get_compiled_program("test_data_artifacts/programs/libfuncs/box_unbox_enum_single");
 
         run_program_assert_output(
             &program,
@@ -234,19 +208,8 @@ mod test {
 
     #[test]
     fn box_unbox_stack_allocated_enum_c() {
-        let program = load_cairo! {
-            use core::box::BoxTrait;
-
-            enum MyEnum {
-                A: (),
-                B: (),
-            }
-
-            fn run_test() -> MyEnum {
-                let x = BoxTrait::new(MyEnum::A);
-                x.unbox()
-            }
-        };
+        let program =
+            get_compiled_program("test_data_artifacts/programs/libfuncs/box_unbox_enum_c");
 
         run_program_assert_output(
             &program,
@@ -265,19 +228,8 @@ mod test {
 
     #[test]
     fn box_unbox_stack_allocated_enum_c2() {
-        let program = load_cairo! {
-            use core::box::BoxTrait;
-
-            enum MyEnum {
-                A: (),
-                B: (),
-            }
-
-            fn run_test() -> MyEnum {
-                let x = BoxTrait::new(MyEnum::B);
-                x.unbox()
-            }
-        };
+        let program =
+            get_compiled_program("test_data_artifacts/programs/libfuncs/box_unbox_enum_c2");
 
         run_program_assert_output(
             &program,
@@ -296,18 +248,8 @@ mod test {
 
     #[test]
     fn run_local_into_box_for_option() {
-        let program = load_cairo! {
-            extern fn local_into_box<T>(value: T) -> Box<T> nopanic;
-
-            #[inline(never)]
-            pub fn into_box<T>(value: T) -> Box<T> {
-                local_into_box(value)
-            }
-
-            fn local_into_box_for_option() -> Option<u8> {
-                into_box(Some(6_u8)).unbox()
-            }
-        };
+        let program =
+            get_compiled_program("test_data_artifacts/programs/libfuncs/box_local_into_option");
 
         run_program_assert_output(
             &program,
@@ -319,18 +261,8 @@ mod test {
 
     #[test]
     fn run_local_into_box_for_tuple() {
-        let program = load_cairo! {
-            extern fn local_into_box<T>(value: T) -> Box<T> nopanic;
-
-            #[inline(never)]
-            pub fn into_box<T>(value: T) -> Box<T> {
-                local_into_box(value)
-            }
-
-            fn local_into_box_for_tuple() -> (u8, u8, u8) {
-                into_box((4, 5, 6)).unbox()
-            }
-        };
+        let program =
+            get_compiled_program("test_data_artifacts/programs/libfuncs/box_local_into_tuple");
 
         run_program_assert_output(
             &program,
@@ -342,19 +274,7 @@ mod test {
 
     #[test]
     fn box_unbox_stack_allocated_enum() {
-        let program = load_cairo! {
-            use core::box::BoxTrait;
-
-            enum MyEnum {
-                A: felt252,
-                B: u128,
-            }
-
-            fn run_test() -> MyEnum {
-                let x = BoxTrait::new(MyEnum::A(1234));
-                x.unbox()
-            }
-        };
+        let program = get_compiled_program("test_data_artifacts/programs/libfuncs/box_unbox_enum");
 
         run_program_assert_output(
             &program,

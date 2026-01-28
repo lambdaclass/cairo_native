@@ -1090,8 +1090,11 @@ fn build_u96_guarantee_verify<'ctx, 'this>(
 #[cfg(test)]
 mod test {
     use crate::{
-        jit_enum, jit_panic, jit_struct, load_cairo,
-        utils::{felt252_str, testing::run_program_assert_output},
+        jit_enum, jit_panic, jit_struct,
+        utils::{
+            felt252_str,
+            testing::{get_compiled_program, run_program_assert_output},
+        },
         values::Value,
     };
     use cairo_lang_sierra::extensions::utils::Range;
@@ -1134,31 +1137,7 @@ mod test {
 
     #[test]
     fn run_add_circuit() {
-        let program = load_cairo!(
-            use core::circuit::{
-                RangeCheck96, AddMod, MulMod, u96, CircuitElement, CircuitInput, circuit_add,
-                circuit_sub, circuit_mul, circuit_inverse, EvalCircuitTrait, u384,
-                CircuitOutputsTrait, CircuitModulus, AddInputResultTrait, CircuitInputs,
-            };
-
-            fn main() -> u384 {
-                let in1 = CircuitElement::<CircuitInput<0>> {};
-                let in2 = CircuitElement::<CircuitInput<1>> {};
-                let add = circuit_add(in1, in2);
-
-                let modulus = TryInto::<_, CircuitModulus>::try_into([12, 12, 12, 12]).unwrap();
-
-                let outputs = (add,)
-                    .new_inputs()
-                    .next([3, 3, 3, 3])
-                    .next([6, 6, 6, 6])
-                    .done()
-                    .eval(modulus)
-                    .unwrap();
-
-                outputs.get_output(add)
-            }
-        );
+        let program = get_compiled_program("test_data_artifacts/programs/libfuncs/circuit_add");
 
         run_program_assert_output(
             &program,
@@ -1170,31 +1149,7 @@ mod test {
 
     #[test]
     fn run_sub_circuit() {
-        let program = load_cairo!(
-            use core::circuit::{
-                RangeCheck96, AddMod, MulMod, u96, CircuitElement, CircuitInput, circuit_add,
-                circuit_sub, circuit_mul, circuit_inverse, EvalCircuitTrait, u384,
-                CircuitOutputsTrait, CircuitModulus, AddInputResultTrait, CircuitInputs,
-            };
-
-            fn main() -> u384 {
-                let in1 = CircuitElement::<CircuitInput<0>> {};
-                let in2 = CircuitElement::<CircuitInput<1>> {};
-                let sub = circuit_sub(in1, in2);
-
-                let modulus = TryInto::<_, CircuitModulus>::try_into([12, 12, 12, 12]).unwrap();
-
-                let outputs = (sub,)
-                    .new_inputs()
-                    .next([6, 6, 6, 6])
-                    .next([3, 3, 3, 3])
-                    .done()
-                    .eval(modulus)
-                    .unwrap();
-
-                outputs.get_output(sub)
-            }
-        );
+        let program = get_compiled_program("test_data_artifacts/programs/libfuncs/circuit_sub");
 
         run_program_assert_output(
             &program,
@@ -1206,31 +1161,7 @@ mod test {
 
     #[test]
     fn run_mul_circuit() {
-        let program = load_cairo!(
-            use core::circuit::{
-                RangeCheck96, AddMod, MulMod, u96, CircuitElement, CircuitInput, circuit_add,
-                circuit_sub, circuit_mul, circuit_inverse, EvalCircuitTrait, u384,
-                CircuitOutputsTrait, CircuitModulus, AddInputResultTrait, CircuitInputs,
-            };
-
-            fn main() -> u384 {
-                let in1 = CircuitElement::<CircuitInput<0>> {};
-                let in2 = CircuitElement::<CircuitInput<1>> {};
-                let mul = circuit_mul(in1, in2);
-
-                let modulus = TryInto::<_, CircuitModulus>::try_into([12, 12, 12, 12]).unwrap();
-
-                let outputs = (mul,)
-                    .new_inputs()
-                    .next([3, 0, 0, 0])
-                    .next([3, 3, 3, 3])
-                    .done()
-                    .eval(modulus)
-                    .unwrap();
-
-                outputs.get_output(mul)
-            }
-        );
+        let program = get_compiled_program("test_data_artifacts/programs/libfuncs/circuit_mul");
 
         run_program_assert_output(
             &program,
@@ -1242,29 +1173,7 @@ mod test {
 
     #[test]
     fn run_inverse_circuit() {
-        let program = load_cairo!(
-            use core::circuit::{
-                RangeCheck96, AddMod, MulMod, u96, CircuitElement, CircuitInput, circuit_add,
-                circuit_sub, circuit_mul, circuit_inverse, EvalCircuitTrait, u384,
-                CircuitOutputsTrait, CircuitModulus, AddInputResultTrait, CircuitInputs,
-            };
-
-            fn main() -> u384 {
-                let in1 = CircuitElement::<CircuitInput<0>> {};
-                let inv = circuit_inverse(in1);
-
-                let modulus = TryInto::<_, CircuitModulus>::try_into([11, 0, 0, 0]).unwrap();
-
-                let outputs = (inv,)
-                    .new_inputs()
-                    .next([2, 0, 0, 0])
-                    .done()
-                    .eval(modulus)
-                    .unwrap();
-
-                outputs.get_output(inv)
-            }
-        );
+        let program = get_compiled_program("test_data_artifacts/programs/libfuncs/circuit_inverse");
 
         run_program_assert_output(
             &program,
@@ -1276,29 +1185,8 @@ mod test {
 
     #[test]
     fn run_no_coprime_circuit() {
-        let program = load_cairo!(
-            use core::circuit::{
-                RangeCheck96, AddMod, MulMod, u96, CircuitElement, CircuitInput, circuit_add,
-                circuit_sub, circuit_mul, circuit_inverse, EvalCircuitTrait, u384,
-                CircuitOutputsTrait, CircuitModulus, AddInputResultTrait, CircuitInputs,
-            };
-
-            fn main() -> u384 {
-                let in1 = CircuitElement::<CircuitInput<0>> {};
-                let inv = circuit_inverse(in1);
-
-                let modulus = TryInto::<_, CircuitModulus>::try_into([12, 0, 0, 0]).unwrap();
-
-                let outputs = (inv,)
-                    .new_inputs()
-                    .next([3, 0, 0, 0])
-                    .done()
-                    .eval(modulus)
-                    .unwrap();
-
-                outputs.get_output(inv)
-            }
-        );
+        let program =
+            get_compiled_program("test_data_artifacts/programs/libfuncs/circuit_no_coprime");
 
         run_program_assert_output(
             &program,
@@ -1312,37 +1200,8 @@ mod test {
 
     #[test]
     fn run_mul_overflow_circuit() {
-        let program = load_cairo!(
-            use core::circuit::{
-                RangeCheck96, AddMod, MulMod, u96, CircuitElement, CircuitInput, circuit_add,
-                circuit_sub, circuit_mul, circuit_inverse, EvalCircuitTrait, u384,
-                CircuitOutputsTrait, CircuitModulus, AddInputResultTrait, CircuitInputs,
-            };
-
-            fn main() -> u384 {
-                let in1 = CircuitElement::<CircuitInput<0>> {};
-                let in2 = CircuitElement::<CircuitInput<1>> {};
-                let mul = circuit_mul(in1, in2);
-
-                let modulus = TryInto::<_, CircuitModulus>::try_into([
-                    0xffffffffffffffffffffffff,
-                    0xffffffffffffffffffffffff,
-                    0xffffffffffffffffffffffff,
-                    0xffffffffffffffffffffffff,
-                ])
-                .unwrap();
-
-                let outputs = (mul,)
-                    .new_inputs()
-                    .next([0, 0, 0, 0xffffffffffffffffffffffff])
-                    .next([16, 0, 0, 0])
-                    .done()
-                    .eval(modulus)
-                    .unwrap();
-
-                outputs.get_output(mul)
-            }
-        );
+        let program =
+            get_compiled_program("test_data_artifacts/programs/libfuncs/circuit_mul_overflow");
 
         run_program_assert_output(
             &program,
@@ -1357,38 +1216,7 @@ mod test {
 
     #[test]
     fn run_full_circuit() {
-        let program = load_cairo!(
-            use core::circuit::{
-                RangeCheck96, AddMod, MulMod, u96, CircuitElement, CircuitInput, circuit_add,
-                circuit_sub, circuit_mul, circuit_inverse, EvalCircuitTrait, u384,
-                CircuitOutputsTrait, CircuitModulus, AddInputResultTrait, CircuitInputs,
-            };
-
-            fn main() -> u384 {
-                let in1 = CircuitElement::<CircuitInput<0>> {};
-                let in2 = CircuitElement::<CircuitInput<1>> {};
-                let add1 = circuit_add(in1, in2);
-                let mul1 = circuit_mul(add1, in1);
-                let mul2 = circuit_mul(mul1, add1);
-                let inv1 = circuit_inverse(mul2);
-                let sub1 = circuit_sub(inv1, in2);
-                let sub2 = circuit_sub(sub1, mul2);
-                let inv2 = circuit_inverse(sub2);
-                let add2 = circuit_add(inv2, inv2);
-
-                let modulus = TryInto::<_, CircuitModulus>::try_into([17, 14, 14, 14]).unwrap();
-
-                let outputs = (add2,)
-                    .new_inputs()
-                    .next([9, 2, 9, 3])
-                    .next([5, 7, 0, 8])
-                    .done()
-                    .eval(modulus)
-                    .unwrap();
-
-                outputs.get_output(add2)
-            }
-        );
+        let program = get_compiled_program("test_data_artifacts/programs/libfuncs/circuit_full");
 
         run_program_assert_output(
             &program,
@@ -1408,19 +1236,8 @@ mod test {
 
     #[test]
     fn run_into_u96_guarantee() {
-        let program = load_cairo!(
-            use core::circuit::{into_u96_guarantee, U96Guarantee};
-            #[feature("bounded-int-utils")]
-            use core::internal::bounded_int::BoundedInt;
-
-            fn main() -> (U96Guarantee, U96Guarantee, U96Guarantee) {
-                (
-                    into_u96_guarantee::<BoundedInt<0, 79228162514264337593543950335>>(123),
-                    into_u96_guarantee::<BoundedInt<100, 1000>>(123),
-                    into_u96_guarantee::<u8>(123),
-                )
-            }
-        );
+        let program =
+            get_compiled_program("test_data_artifacts/programs/libfuncs/circuit_u96_guarantee");
 
         let range = Range {
             lower: BigInt::ZERO,
