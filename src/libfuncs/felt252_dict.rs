@@ -183,55 +183,31 @@ pub fn build_squash<'ctx, 'this>(
 #[cfg(test)]
 mod test {
     use crate::{
-        jit_dict, jit_enum, jit_struct, load_cairo,
-        utils::testing::{run_program, run_program_assert_output},
+        jit_dict, jit_enum, jit_struct,
+        utils::testing::{get_compiled_program, run_program, run_program_assert_output},
         values::Value,
     };
 
     #[test]
     fn run_dict_new() {
-        let program = load_cairo!(
-            use traits::Default;
-            use dict::Felt252DictTrait;
-
-            fn run_test() {
-                let mut _dict: Felt252Dict<u32> = Default::default();
-            }
-        );
+        let program =
+            get_compiled_program("test_data_artifacts/programs/libfuncs/felt252_dict_new");
 
         run_program_assert_output(&program, "run_test", &[], jit_struct!());
     }
 
     #[test]
     fn run_dict_insert() {
-        let program = load_cairo!(
-            use traits::Default;
-            use dict::Felt252DictTrait;
-            fn run_test() -> u32 {
-                let mut dict: Felt252Dict<u32> = Default::default();
-                dict.insert(2, 1_u32);
-                dict.get(2)
-            }
-        );
+        let program =
+            get_compiled_program("test_data_artifacts/programs/libfuncs/felt252_dict_insert");
 
         run_program_assert_output(&program, "run_test", &[], 1u32.into());
     }
 
     #[test]
     fn run_dict_insert_ret_dict() {
-        let program = load_cairo!(
-            use traits::Default;
-            use dict::Felt252DictTrait;
-
-            fn run_test() -> Felt252Dict<u32> {
-                let mut dict: Felt252Dict<u32> = Default::default();
-                dict.insert(1, 2_u32);
-                dict.insert(2, 3_u32);
-                dict.insert(3, 4_u32);
-                dict.insert(4, 5_u32);
-                dict.insert(5, 6_u32);
-                dict
-            }
+        let program = get_compiled_program(
+            "test_data_artifacts/programs/libfuncs/felt252_dict_insert_ret_dict",
         );
 
         run_program_assert_output(
@@ -250,14 +226,8 @@ mod test {
 
     #[test]
     fn run_dict_deserialize() {
-        let program = load_cairo!(
-            use traits::Default;
-            use dict::Felt252DictTrait;
-
-            fn run_test(mut dict: Felt252Dict<u32>) -> Felt252Dict<u32> {
-                dict
-            }
-        );
+        let program =
+            get_compiled_program("test_data_artifacts/programs/libfuncs/felt252_dict_deserialize");
 
         run_program_assert_output(
             &program,
@@ -270,25 +240,19 @@ mod test {
                 5 => 6u32,
             )],
             jit_dict!(
-                1 => 2u32,
-                2 => 3u32,
-                3 => 4u32,
-                4 => 5u32,
-                5 => 6u32,
+                    1 => 2u32,
+                    2 => 3u32,
+                    3 => 4u32,
+                    4 => 5u32,
+                    5 => 6u32,
             ),
         );
     }
 
     #[test]
     fn run_dict_deserialize2() {
-        let program = load_cairo!(
-            use traits::Default;
-            use dict::Felt252DictTrait;
-
-            fn run_test(mut dict: Felt252Dict<u32>) -> (felt252, Felt252Dict<u32>) {
-                (0, dict)
-            }
-        );
+        let program =
+            get_compiled_program("test_data_artifacts/programs/libfuncs/felt252_dict_deserialize2");
 
         run_program_assert_output(
             &program,
@@ -315,17 +279,21 @@ mod test {
 
     #[test]
     fn run_dict_deserialize_struct() {
-        let program = load_cairo! {
-            use core::{dict::Felt252DictTrait, nullable::Nullable};
+        let program = get_compiled_program(
+            "test_data_artifacts/programs/libfuncs/felt252_dict_deserialize_struct",
+        );
 
-            fn run_test() -> Felt252Dict<Nullable<(u32, u64, u128)>> {
-                let mut x: Felt252Dict<Nullable<(u32, u64, u128)>> = Default::default();
-                x.insert(0, NullableTrait::new((1_u32, 2_u64, 3_u128)));
-                x.insert(1, NullableTrait::new((2_u32, 3_u64, 4_u128)));
-                x.insert(2, NullableTrait::new((3_u32, 4_u64, 5_u128)));
-                x
-            }
-        };
+        run_program_assert_output(
+            &program,
+            "run_test",
+            &[],
+            jit_dict!(
+
+                0 => jit_struct!(1u32.into(), 2u64.into(), 3u128.into()),
+                1 => jit_struct!(2u32.into(), 3u64.into(), 4u128.into()),
+                2 => jit_struct!(3u32.into(), 4u64.into(), 5u128.into()),
+            ),
+        );
 
         run_program_assert_output(
             &program,
@@ -341,24 +309,9 @@ mod test {
 
     #[test]
     fn run_dict_deserialize_enum() {
-        let program = load_cairo! {
-            use core::{dict::Felt252DictTrait, nullable::Nullable};
-
-            #[derive(Drop)]
-            enum MyEnum {
-                A: u32,
-                B: u64,
-                C: u128,
-            }
-
-            fn run_test() -> Felt252Dict<Nullable<MyEnum>> {
-                let mut x: Felt252Dict<Nullable<MyEnum>> = Default::default();
-                x.insert(0, NullableTrait::new(MyEnum::A(1)));
-                x.insert(1, NullableTrait::new(MyEnum::B(2)));
-                x.insert(2, NullableTrait::new(MyEnum::C(3)));
-                x
-            }
-        };
+        let program = get_compiled_program(
+            "test_data_artifacts/programs/libfuncs/felt252_dict_deserialize_enum",
+        );
 
         run_program_assert_output(
             &program,
@@ -374,79 +327,8 @@ mod test {
 
     #[test]
     fn run_dict_squash() {
-        let program = load_cairo! {
-            use core::dict::{Felt252Dict, Felt252DictEntryTrait, SquashedFelt252DictImpl};
-
-            pub fn main() {
-                // The squash libfunc has a fixed range check cost of 2.
-
-                // If no big keys, 3 per unique key access.
-                let mut dict: Felt252Dict<felt252> = Default::default();
-                dict.insert(1, 1); // 3
-                dict.insert(2, 2); // 3
-                dict.insert(3, 3); // 3
-                dict.insert(4, 4); // 3
-                dict.insert(5, 4); // 3
-                dict.insert(6, 4); // 3
-                let _ = dict.squash(); // 2
-                // SUBTOTAL: 20
-
-                // A dictionary has big keys if there is at least one key greater than
-                // the range check bound (2**128 - 1).
-
-                // If has big keys, 2 for first unique key access,
-                // and 6 each of the remaining unique key accesses.
-                let mut dict: Felt252Dict<felt252> = Default::default();
-                dict.insert(1, 1); // 2
-                dict.insert(0xF00000000000000000000000000000002, 1); // 6
-                dict.insert(3, 1); // 6
-                dict.insert(0xF00000000000000000000000000000004, 1); // 6
-                dict.insert(5, 1); // 6
-                dict.insert(0xF00000000000000000000000000000006, 1); // 6
-                dict.insert(7, 1); // 6
-                let _ = dict.squash(); // 2
-                // SUBTOTAL: 40
-
-
-                // If no big keys, 3 per unique key access.
-                // Each repeated key adds an extra range check usage.
-                let mut dict: Felt252Dict<felt252> = Default::default();
-                dict.insert(1, 1); // 3
-                dict.insert(2, 1); // 3
-                dict.insert(3, 1); // 3
-                dict.insert(4, 1); // 3
-                dict.insert(1, 1); // 1
-                dict.insert(2, 1); // 1
-                dict.insert(1, 1); // 1
-                dict.insert(2, 1); // 1
-                dict.insert(1, 1); // 1
-                dict.insert(2, 1); // 1
-                let _ = dict.squash(); // 2
-                // SUBTOTAL: 20
-
-
-                // If has big keys, 2 for first unique key access,
-                // and 6 each of the remaining unique key accesses.
-                // Each repeated key access adds an extra range check usage.
-                let mut dict: Felt252Dict<felt252> = Default::default();
-                dict.insert(1, 1); // 2
-                dict.insert(0xF00000000000000000000000000000002, 1); // 6
-                dict.insert(1, 1); // 1
-                dict.insert(0xF00000000000000000000000000000002, 1); // 1
-                dict.insert(1, 1); // 1
-                dict.insert(0xF00000000000000000000000000000002, 1); // 1
-                dict.insert(1, 1); // 1
-                dict.insert(0xF00000000000000000000000000000002, 1); // 1
-                dict.insert(1, 1); // 1
-                dict.insert(0xF00000000000000000000000000000002, 1); // 1
-                dict.insert(1, 1); // 1
-                dict.insert(0xF00000000000000000000000000000002, 1); // 1
-                let _ = dict.squash(); // 2
-                // SUBTOTAL: 20
-
-                // TOTAL: 100
-            }
-        };
+        let program =
+            get_compiled_program("test_data_artifacts/programs/libfuncs/felt252_dict_squash");
 
         let result = run_program(&program, "main", &[]);
         assert_eq!(result.builtin_stats.range_check, 100);
