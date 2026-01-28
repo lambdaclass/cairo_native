@@ -704,8 +704,8 @@ fn parse_result(
 mod tests {
     use super::*;
     use crate::{
-        context::NativeContext, include_contract, load_cairo, starknet_stub::StubSyscallHandler,
-        OptLevel,
+        context::NativeContext, include_contract, starknet_stub::StubSyscallHandler,
+        utils::testing::load_program, OptLevel,
     };
     use cairo_lang_sierra::program::Program;
     use rstest::*;
@@ -713,18 +713,7 @@ mod tests {
 
     #[fixture]
     fn program() -> Program {
-        let (_, program) = load_cairo! {
-            use starknet::{SyscallResultTrait, get_block_hash_syscall};
-
-            fn run_test() -> felt252 {
-                42
-            }
-
-            fn get_block_hash() -> felt252 {
-                get_block_hash_syscall(1).unwrap_syscall()
-            }
-        };
-        program
+        load_program("test_data_artifacts/programs/executor_program")
     }
 
     #[fixture]
