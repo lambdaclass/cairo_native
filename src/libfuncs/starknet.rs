@@ -2291,78 +2291,39 @@ fn execute_syscall<'ctx, 'this>(
 
 #[cfg(test)]
 mod test {
-    use crate::{jit_enum, jit_struct, load_cairo, utils::testing::run_program_assert_output};
-    use cairo_lang_sierra::program::Program;
-    use lazy_static::lazy_static;
+    use crate::{
+        jit_enum, jit_struct,
+        utils::testing::{get_compiled_program, run_program_assert_output},
+    };
     use starknet_types_core::felt::Felt;
-
-    lazy_static! {
-        static ref STORAGE_BASE_ADDRESS_FROM_FELT252: (String, Program) = load_cairo! {
-            use starknet::storage_access::{StorageBaseAddress, storage_base_address_from_felt252};
-
-            fn run_program(value: felt252) -> StorageBaseAddress {
-                storage_base_address_from_felt252(value)
-            }
-        };
-        static ref STORAGE_ADDRESS_FROM_BASE: (String, Program) = load_cairo! {
-            use starknet::storage_access::{StorageAddress, StorageBaseAddress, storage_address_from_base};
-
-            fn run_program(value: StorageBaseAddress) -> StorageAddress {
-                storage_address_from_base(value)
-            }
-        };
-        static ref STORAGE_ADDRESS_FROM_BASE_AND_OFFSET: (String, Program) = load_cairo! {
-            use starknet::storage_access::{StorageAddress, StorageBaseAddress, storage_address_from_base_and_offset};
-
-            fn run_program(addr: StorageBaseAddress, offset: u8) -> StorageAddress {
-                storage_address_from_base_and_offset(addr, offset)
-            }
-        };
-        static ref STORAGE_ADDRESS_TO_FELT252: (String, Program) = load_cairo! {
-            use starknet::storage_access::{StorageAddress, storage_address_to_felt252};
-
-            fn run_program(value: StorageAddress) -> felt252 {
-                storage_address_to_felt252(value)
-            }
-        };
-        static ref STORAGE_ADDRESS_TRY_FROM_FELT252: (String, Program) = load_cairo! {
-            use starknet::storage_access::{StorageAddress, storage_address_try_from_felt252};
-
-            fn run_program(value: felt252) -> Option<StorageAddress> {
-                storage_address_try_from_felt252(value)
-            }
-        };
-        static ref CLASS_HASH_CONST: (String, Program) = load_cairo! {
-            use starknet::class_hash::ClassHash;
-
-            fn run_program() -> ClassHash {
-                0.try_into().unwrap()
-            }
-        };
-    }
 
     #[test]
     fn class_hash_const() {
+        let program =
+            get_compiled_program("test_data_artifacts/programs/libfuncs/starknet_class_hash_const");
         let expected = jit_enum!(0, jit_struct!(Felt::ZERO.into()));
-        run_program_assert_output(&CLASS_HASH_CONST, "run_program", &[], expected)
+        run_program_assert_output(&program, "run_program", &[], expected)
     }
 
     #[test]
     fn storage_base_address_from_felt252() {
+        let program = get_compiled_program(
+            "test_data_artifacts/programs/libfuncs/starknet_storage_base_address_from_felt252",
+        );
         run_program_assert_output(
-            &STORAGE_BASE_ADDRESS_FROM_FELT252,
+            &program,
             "run_program",
             &[Felt::ZERO.into()],
             Felt::ZERO.into(),
         );
         run_program_assert_output(
-            &STORAGE_BASE_ADDRESS_FROM_FELT252,
+            &program,
             "run_program",
             &[Felt::ONE.into()],
             Felt::ONE.into(),
         );
         run_program_assert_output(
-            &STORAGE_BASE_ADDRESS_FROM_FELT252,
+            &program,
             "run_program",
             &[Felt::from(-1).into()],
             Felt::from_dec_str("106710729501573572985208420194530329073740042555888586719488")
@@ -2370,7 +2331,7 @@ mod test {
                 .into(),
         );
         run_program_assert_output(
-            &STORAGE_BASE_ADDRESS_FROM_FELT252,
+            &program,
             "run_program",
             &[Felt::from_dec_str(
                 "3618502788666131106986593281521497120414687020801267626233049500247285300992",
@@ -2383,20 +2344,23 @@ mod test {
 
     #[test]
     fn storage_address_from_base() {
+        let program = get_compiled_program(
+            "test_data_artifacts/programs/libfuncs/starknet_storage_address_from_base",
+        );
         run_program_assert_output(
-            &STORAGE_ADDRESS_FROM_BASE,
+            &program,
             "run_program",
             &[Felt::ZERO.into()],
             Felt::ZERO.into(),
         );
         run_program_assert_output(
-            &STORAGE_ADDRESS_FROM_BASE,
+            &program,
             "run_program",
             &[Felt::ONE.into()],
             Felt::ONE.into(),
         );
         run_program_assert_output(
-            &STORAGE_ADDRESS_FROM_BASE,
+            &program,
             "run_program",
             &[
                 Felt::from_dec_str("106710729501573572985208420194530329073740042555888586719488")
@@ -2411,20 +2375,23 @@ mod test {
 
     #[test]
     fn storage_address_from_base_and_offset() {
+        let program = get_compiled_program(
+            "test_data_artifacts/programs/libfuncs/starknet_storage_address_from_base_and_offset",
+        );
         run_program_assert_output(
-            &STORAGE_ADDRESS_FROM_BASE_AND_OFFSET,
+            &program,
             "run_program",
             &[Felt::ZERO.into(), 0u8.into()],
             Felt::ZERO.into(),
         );
         run_program_assert_output(
-            &STORAGE_ADDRESS_FROM_BASE_AND_OFFSET,
+            &program,
             "run_program",
             &[Felt::ONE.into(), 0u8.into()],
             Felt::ONE.into(),
         );
         run_program_assert_output(
-            &STORAGE_ADDRESS_FROM_BASE_AND_OFFSET,
+            &program,
             "run_program",
             &[
                 Felt::from_dec_str("106710729501573572985208420194530329073740042555888586719488")
@@ -2438,19 +2405,19 @@ mod test {
         );
 
         run_program_assert_output(
-            &STORAGE_ADDRESS_FROM_BASE_AND_OFFSET,
+            &program,
             "run_program",
             &[Felt::ZERO.into(), 1u8.into()],
             Felt::ONE.into(),
         );
         run_program_assert_output(
-            &STORAGE_ADDRESS_FROM_BASE_AND_OFFSET,
+            &program,
             "run_program",
             &[Felt::ONE.into(), 1u8.into()],
             Felt::from(2).into(),
         );
         run_program_assert_output(
-            &STORAGE_ADDRESS_FROM_BASE_AND_OFFSET,
+            &program,
             "run_program",
             &[
                 Felt::from_dec_str("106710729501573572985208420194530329073740042555888586719488")
@@ -2464,20 +2431,20 @@ mod test {
         );
 
         run_program_assert_output(
-            &STORAGE_ADDRESS_FROM_BASE_AND_OFFSET,
+            &program,
             "run_program",
             &[Felt::ZERO.into(), 255u8.into()],
             Felt::from(255).into(),
         );
         run_program_assert_output(
-            &STORAGE_ADDRESS_FROM_BASE_AND_OFFSET,
+            &program,
             "run_program",
             &[Felt::ONE.into(), 255u8.into()],
             Felt::from(256).into(),
         );
 
         run_program_assert_output(
-            &STORAGE_ADDRESS_FROM_BASE_AND_OFFSET,
+            &program,
             "run_program",
             &[
                 Felt::from_dec_str("106710729501573572985208420194530329073740042555888586719488")
@@ -2493,20 +2460,23 @@ mod test {
 
     #[test]
     fn storage_address_to_felt252() {
+        let program = get_compiled_program(
+            "test_data_artifacts/programs/libfuncs/starknet_storage_address_to_felt252",
+        );
         run_program_assert_output(
-            &STORAGE_ADDRESS_TO_FELT252,
+            &program,
             "run_program",
             &[Felt::ZERO.into()],
             Felt::ZERO.into(),
         );
         run_program_assert_output(
-            &STORAGE_ADDRESS_TO_FELT252,
+            &program,
             "run_program",
             &[Felt::ONE.into()],
             Felt::ONE.into(),
         );
         run_program_assert_output(
-            &STORAGE_ADDRESS_TO_FELT252,
+            &program,
             "run_program",
             &[
                 Felt::from_dec_str("106710729501573572985208420194530329073740042555888586719488")
@@ -2521,20 +2491,23 @@ mod test {
 
     #[test]
     fn storage_address_try_from_felt252() {
+        let program = get_compiled_program(
+            "test_data_artifacts/programs/libfuncs/starknet_storage_address_try_from_felt252",
+        );
         run_program_assert_output(
-            &STORAGE_ADDRESS_TRY_FROM_FELT252,
+            &program,
             "run_program",
             &[Felt::ZERO.into()],
             jit_enum!(0, Felt::ZERO.into()),
         );
         run_program_assert_output(
-            &STORAGE_ADDRESS_TRY_FROM_FELT252,
+            &program,
             "run_program",
             &[Felt::ONE.into()],
             jit_enum!(0, Felt::ONE.into()),
         );
         run_program_assert_output(
-            &STORAGE_ADDRESS_TRY_FROM_FELT252,
+            &program,
             "run_program",
             &[
                 Felt::from_dec_str("106710729501573572985208420194530329073740042555888586719488")
@@ -2550,7 +2523,7 @@ mod test {
         );
 
         run_program_assert_output(
-            &STORAGE_ADDRESS_TRY_FROM_FELT252,
+            &program,
             "run_program",
             &[Felt::from(-1).into()],
             jit_enum!(1, jit_struct!()),
