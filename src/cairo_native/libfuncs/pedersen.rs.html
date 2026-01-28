@@ -105,29 +105,23 @@
 <a href=#105 id=105 data-nosnippet>105</a>
 <a href=#106 id=106 data-nosnippet>106</a><span class="attr">#[cfg(test)]
 <a href=#107 id=107 data-nosnippet>107</a></span><span class="kw">mod </span>test {
-<a href=#108 id=108 data-nosnippet>108</a>    <span class="kw">use crate</span>::{load_cairo, utils::testing::run_program_assert_output};
+<a href=#108 id=108 data-nosnippet>108</a>    <span class="kw">use </span><span class="kw">crate</span>::utils::testing::{get_compiled_program, run_program_assert_output};
 <a href=#109 id=109 data-nosnippet>109</a>
 <a href=#110 id=110 data-nosnippet>110</a>    <span class="kw">use </span>starknet_types_core::felt::Felt;
 <a href=#111 id=111 data-nosnippet>111</a>
 <a href=#112 id=112 data-nosnippet>112</a>    <span class="attr">#[test]
 <a href=#113 id=113 data-nosnippet>113</a>    </span><span class="kw">fn </span>run_pedersen() {
-<a href=#114 id=114 data-nosnippet>114</a>        <span class="kw">let </span>program = <span class="macro">load_cairo!</span>(
-<a href=#115 id=115 data-nosnippet>115</a>            <span class="kw">use </span>core::pedersen::pedersen;
-<a href=#116 id=116 data-nosnippet>116</a>
-<a href=#117 id=117 data-nosnippet>117</a>            <span class="kw">fn </span>run_test(a: felt252, b: felt252) -&gt; felt252 {
-<a href=#118 id=118 data-nosnippet>118</a>                pedersen(a, b)
-<a href=#119 id=119 data-nosnippet>119</a>            }
-<a href=#120 id=120 data-nosnippet>120</a>        );
-<a href=#121 id=121 data-nosnippet>121</a>
-<a href=#122 id=122 data-nosnippet>122</a>        run_program_assert_output(
-<a href=#123 id=123 data-nosnippet>123</a>            <span class="kw-2">&amp;</span>program,
-<a href=#124 id=124 data-nosnippet>124</a>            <span class="string">"run_test"</span>,
-<a href=#125 id=125 data-nosnippet>125</a>            <span class="kw-2">&amp;</span>[Felt::from(<span class="number">2</span>).into(), Felt::from(<span class="number">4</span>).into()],
-<a href=#126 id=126 data-nosnippet>126</a>            Felt::from_dec_str(
-<a href=#127 id=127 data-nosnippet>127</a>                <span class="string">"2178161520066714737684323463974044933282313051386084149915030950231093462467"</span>,
-<a href=#128 id=128 data-nosnippet>128</a>            )
-<a href=#129 id=129 data-nosnippet>129</a>            .unwrap()
-<a href=#130 id=130 data-nosnippet>130</a>            .into(),
-<a href=#131 id=131 data-nosnippet>131</a>        );
-<a href=#132 id=132 data-nosnippet>132</a>    }
-<a href=#133 id=133 data-nosnippet>133</a>}</code></pre></div></section></main></body></html>
+<a href=#114 id=114 data-nosnippet>114</a>        <span class="kw">let </span>program = get_compiled_program(<span class="string">"test_data_artifacts/programs/libfuncs/pedersen"</span>);
+<a href=#115 id=115 data-nosnippet>115</a>
+<a href=#116 id=116 data-nosnippet>116</a>        run_program_assert_output(
+<a href=#117 id=117 data-nosnippet>117</a>            <span class="kw-2">&amp;</span>program,
+<a href=#118 id=118 data-nosnippet>118</a>            <span class="string">"run_test"</span>,
+<a href=#119 id=119 data-nosnippet>119</a>            <span class="kw-2">&amp;</span>[Felt::from(<span class="number">2</span>).into(), Felt::from(<span class="number">4</span>).into()],
+<a href=#120 id=120 data-nosnippet>120</a>            Felt::from_dec_str(
+<a href=#121 id=121 data-nosnippet>121</a>                <span class="string">"2178161520066714737684323463974044933282313051386084149915030950231093462467"</span>,
+<a href=#122 id=122 data-nosnippet>122</a>            )
+<a href=#123 id=123 data-nosnippet>123</a>            .unwrap()
+<a href=#124 id=124 data-nosnippet>124</a>            .into(),
+<a href=#125 id=125 data-nosnippet>125</a>        );
+<a href=#126 id=126 data-nosnippet>126</a>    }
+<a href=#127 id=127 data-nosnippet>127</a>}</code></pre></div></section></main></body></html>
