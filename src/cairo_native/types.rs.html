@@ -1024,7 +1024,7 @@
 <a href=#1024 id=1024 data-nosnippet>1024</a><span class="attr">#[cfg(test)]
 <a href=#1025 id=1025 data-nosnippet>1025</a></span><span class="kw">mod </span>test {
 <a href=#1026 id=1026 data-nosnippet>1026</a>    <span class="kw">use </span><span class="kw">super</span>::TypeBuilder;
-<a href=#1027 id=1027 data-nosnippet>1027</a>    <span class="kw">use </span><span class="kw">crate</span>::load_cairo;
+<a href=#1027 id=1027 data-nosnippet>1027</a>    <span class="kw">use </span><span class="kw">crate</span>::utils::testing::load_program;
 <a href=#1028 id=1028 data-nosnippet>1028</a>    <span class="kw">use </span>cairo_lang_sierra::{
 <a href=#1029 id=1029 data-nosnippet>1029</a>        extensions::core::{CoreLibfunc, CoreType},
 <a href=#1030 id=1030 data-nosnippet>1030</a>        program_registry::ProgramRegistry,
@@ -1032,24 +1032,13 @@
 <a href=#1032 id=1032 data-nosnippet>1032</a>
 <a href=#1033 id=1033 data-nosnippet>1033</a>    <span class="attr">#[test]
 <a href=#1034 id=1034 data-nosnippet>1034</a>    </span><span class="kw">fn </span>ensure_padded_layouts() {
-<a href=#1035 id=1035 data-nosnippet>1035</a>        <span class="kw">let </span>(<span class="kw">_</span>, program) = <span class="macro">load_cairo!</span> {
-<a href=#1036 id=1036 data-nosnippet>1036</a>            <span class="attr">#[derive(Drop)]
-<a href=#1037 id=1037 data-nosnippet>1037</a>            </span><span class="kw">struct </span>A {}
-<a href=#1038 id=1038 data-nosnippet>1038</a>            <span class="attr">#[derive(Drop)]
-<a href=#1039 id=1039 data-nosnippet>1039</a>            </span><span class="kw">struct </span>B { a: u8 }
-<a href=#1040 id=1040 data-nosnippet>1040</a>            <span class="attr">#[derive(Drop)]
-<a href=#1041 id=1041 data-nosnippet>1041</a>            </span><span class="kw">struct </span>C { a: u8, b: u16 }
-<a href=#1042 id=1042 data-nosnippet>1042</a>            <span class="attr">#[derive(Drop)]
-<a href=#1043 id=1043 data-nosnippet>1043</a>            </span><span class="kw">struct </span>D { a: u16, b: u8 }
-<a href=#1044 id=1044 data-nosnippet>1044</a>
-<a href=#1045 id=1045 data-nosnippet>1045</a>            <span class="kw">fn </span>main(a: A, b: B, c: C, d: D) {}
-<a href=#1046 id=1046 data-nosnippet>1046</a>        };
-<a href=#1047 id=1047 data-nosnippet>1047</a>
-<a href=#1048 id=1048 data-nosnippet>1048</a>        <span class="kw">let </span>registry = ProgramRegistry::&lt;CoreType, CoreLibfunc&gt;::new(<span class="kw-2">&amp;</span>program).unwrap();
-<a href=#1049 id=1049 data-nosnippet>1049</a>        <span class="kw">for </span>ty <span class="kw">in </span><span class="kw-2">&amp;</span>program.type_declarations {
-<a href=#1050 id=1050 data-nosnippet>1050</a>            <span class="kw">let </span>ty = registry.get_type(<span class="kw-2">&amp;</span>ty.id).unwrap();
-<a href=#1051 id=1051 data-nosnippet>1051</a>            <span class="kw">let </span>layout = ty.layout(<span class="kw-2">&amp;</span>registry).unwrap();
-<a href=#1052 id=1052 data-nosnippet>1052</a>            <span class="macro">assert_eq!</span>(layout, layout.pad_to_align());
-<a href=#1053 id=1053 data-nosnippet>1053</a>        }
-<a href=#1054 id=1054 data-nosnippet>1054</a>    }
-<a href=#1055 id=1055 data-nosnippet>1055</a>}</code></pre></div></section></main></body></html>
+<a href=#1035 id=1035 data-nosnippet>1035</a>        <span class="kw">let </span>program = load_program(<span class="string">"test_data_artifacts/programs/types/ensure_padded_layouts"</span>);
+<a href=#1036 id=1036 data-nosnippet>1036</a>
+<a href=#1037 id=1037 data-nosnippet>1037</a>        <span class="kw">let </span>registry = ProgramRegistry::&lt;CoreType, CoreLibfunc&gt;::new(<span class="kw-2">&amp;</span>program).unwrap();
+<a href=#1038 id=1038 data-nosnippet>1038</a>        <span class="kw">for </span>ty <span class="kw">in </span><span class="kw-2">&amp;</span>program.type_declarations {
+<a href=#1039 id=1039 data-nosnippet>1039</a>            <span class="kw">let </span>ty = registry.get_type(<span class="kw-2">&amp;</span>ty.id).unwrap();
+<a href=#1040 id=1040 data-nosnippet>1040</a>            <span class="kw">let </span>layout = ty.layout(<span class="kw-2">&amp;</span>registry).unwrap();
+<a href=#1041 id=1041 data-nosnippet>1041</a>            <span class="macro">assert_eq!</span>(layout, layout.pad_to_align());
+<a href=#1042 id=1042 data-nosnippet>1042</a>        }
+<a href=#1043 id=1043 data-nosnippet>1043</a>    }
+<a href=#1044 id=1044 data-nosnippet>1044</a>}</code></pre></div></section></main></body></html>

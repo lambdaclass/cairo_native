@@ -418,36 +418,31 @@
 <a href=#418 id=418 data-nosnippet>418</a>
 <a href=#419 id=419 data-nosnippet>419</a><span class="attr">#[cfg(test)]
 <a href=#420 id=420 data-nosnippet>420</a></span><span class="kw">mod </span>test {
-<a href=#421 id=421 data-nosnippet>421</a>    <span class="kw">use crate</span>::{load_cairo, utils::testing::run_program, values::Value};
-<a href=#422 id=422 data-nosnippet>422</a>    <span class="kw">use </span>pretty_assertions_sorted::assert_eq;
-<a href=#423 id=423 data-nosnippet>423</a>
-<a href=#424 id=424 data-nosnippet>424</a>    <span class="attr">#[test]
-<a href=#425 id=425 data-nosnippet>425</a>    </span><span class="kw">fn </span>test_array_snapshot_deep_clone() {
-<a href=#426 id=426 data-nosnippet>426</a>        <span class="kw">let </span>program = <span class="macro">load_cairo!</span> {
-<a href=#427 id=427 data-nosnippet>427</a>            <span class="kw">fn </span>run_test() -&gt; @Array&lt;Array&lt;felt252&gt;&gt; {
-<a href=#428 id=428 data-nosnippet>428</a>                <span class="kw">let </span><span class="kw-2">mut </span>inputs: Array&lt;Array&lt;felt252&gt;&gt; = ArrayTrait::new();
-<a href=#429 id=429 data-nosnippet>429</a>                inputs.append(<span class="macro">array!</span>[<span class="number">1</span>, <span class="number">2</span>, <span class="number">3</span>]);
-<a href=#430 id=430 data-nosnippet>430</a>                inputs.append(<span class="macro">array!</span>[<span class="number">4</span>, <span class="number">5</span>, <span class="number">6</span>]);
+<a href=#421 id=421 data-nosnippet>421</a>    <span class="kw">use crate</span>::{
+<a href=#422 id=422 data-nosnippet>422</a>        utils::testing::{get_compiled_program, run_program},
+<a href=#423 id=423 data-nosnippet>423</a>        values::Value,
+<a href=#424 id=424 data-nosnippet>424</a>    };
+<a href=#425 id=425 data-nosnippet>425</a>    <span class="kw">use </span>pretty_assertions_sorted::assert_eq;
+<a href=#426 id=426 data-nosnippet>426</a>
+<a href=#427 id=427 data-nosnippet>427</a>    <span class="attr">#[test]
+<a href=#428 id=428 data-nosnippet>428</a>    </span><span class="kw">fn </span>test_array_snapshot_deep_clone() {
+<a href=#429 id=429 data-nosnippet>429</a>        <span class="kw">let </span>program = get_compiled_program(<span class="string">"test_data_artifacts/programs/types/nested_arrays"</span>);
+<a href=#430 id=430 data-nosnippet>430</a>        <span class="kw">let </span>result = run_program(<span class="kw-2">&amp;</span>program, <span class="string">"run_test"</span>, <span class="kw-2">&amp;</span>[]).return_value;
 <a href=#431 id=431 data-nosnippet>431</a>
-<a href=#432 id=432 data-nosnippet>432</a>                @inputs
-<a href=#433 id=433 data-nosnippet>433</a>            }
-<a href=#434 id=434 data-nosnippet>434</a>        };
-<a href=#435 id=435 data-nosnippet>435</a>        <span class="kw">let </span>result = run_program(<span class="kw-2">&amp;</span>program, <span class="string">"run_test"</span>, <span class="kw-2">&amp;</span>[]).return_value;
-<a href=#436 id=436 data-nosnippet>436</a>
-<a href=#437 id=437 data-nosnippet>437</a>        <span class="macro">assert_eq!</span>(
-<a href=#438 id=438 data-nosnippet>438</a>            result,
-<a href=#439 id=439 data-nosnippet>439</a>            Value::Array(<span class="macro">vec!</span>[
+<a href=#432 id=432 data-nosnippet>432</a>        <span class="macro">assert_eq!</span>(
+<a href=#433 id=433 data-nosnippet>433</a>            result,
+<a href=#434 id=434 data-nosnippet>434</a>            Value::Array(<span class="macro">vec!</span>[
+<a href=#435 id=435 data-nosnippet>435</a>                Value::Array(<span class="macro">vec!</span>[
+<a href=#436 id=436 data-nosnippet>436</a>                    Value::Felt252(<span class="number">1</span>.into()),
+<a href=#437 id=437 data-nosnippet>437</a>                    Value::Felt252(<span class="number">2</span>.into()),
+<a href=#438 id=438 data-nosnippet>438</a>                    Value::Felt252(<span class="number">3</span>.into()),
+<a href=#439 id=439 data-nosnippet>439</a>                ]),
 <a href=#440 id=440 data-nosnippet>440</a>                Value::Array(<span class="macro">vec!</span>[
-<a href=#441 id=441 data-nosnippet>441</a>                    Value::Felt252(<span class="number">1</span>.into()),
-<a href=#442 id=442 data-nosnippet>442</a>                    Value::Felt252(<span class="number">2</span>.into()),
-<a href=#443 id=443 data-nosnippet>443</a>                    Value::Felt252(<span class="number">3</span>.into()),
+<a href=#441 id=441 data-nosnippet>441</a>                    Value::Felt252(<span class="number">4</span>.into()),
+<a href=#442 id=442 data-nosnippet>442</a>                    Value::Felt252(<span class="number">5</span>.into()),
+<a href=#443 id=443 data-nosnippet>443</a>                    Value::Felt252(<span class="number">6</span>.into()),
 <a href=#444 id=444 data-nosnippet>444</a>                ]),
-<a href=#445 id=445 data-nosnippet>445</a>                Value::Array(<span class="macro">vec!</span>[
-<a href=#446 id=446 data-nosnippet>446</a>                    Value::Felt252(<span class="number">4</span>.into()),
-<a href=#447 id=447 data-nosnippet>447</a>                    Value::Felt252(<span class="number">5</span>.into()),
-<a href=#448 id=448 data-nosnippet>448</a>                    Value::Felt252(<span class="number">6</span>.into()),
-<a href=#449 id=449 data-nosnippet>449</a>                ]),
-<a href=#450 id=450 data-nosnippet>450</a>            ]),
-<a href=#451 id=451 data-nosnippet>451</a>        );
-<a href=#452 id=452 data-nosnippet>452</a>    }
-<a href=#453 id=453 data-nosnippet>453</a>}</code></pre></div></section></main></body></html>
+<a href=#445 id=445 data-nosnippet>445</a>            ]),
+<a href=#446 id=446 data-nosnippet>446</a>        );
+<a href=#447 id=447 data-nosnippet>447</a>    }
+<a href=#448 id=448 data-nosnippet>448</a>}</code></pre></div></section></main></body></html>
