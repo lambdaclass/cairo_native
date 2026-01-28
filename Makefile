@@ -84,8 +84,8 @@ proptest-ci: check-llvm
 
 .PHONY: coverage
 coverage: check-llvm
-	cargo llvm-cov nextest --verbose --features=with-cheatcode,with-debug-utils,testing --workspace --lcov --output-path lcov.info
-	cargo llvm-cov nextest --verbose --features=with-cheatcode,with-debug-utils,testing --lcov --output-path lcov-test.info run --package cairo-native-test -- corelib
+	cargo llvm-cov nextest --verbose --profile ci --features=with-cheatcode,with-debug-utils,testing --workspace --lcov --output-path lcov.info
+	cargo llvm-cov run --verbose --profile ci --features=with-cheatcode,with-debug-utils,testing --lcov --output-path lcov-test.info --package cairo-native-test -- corelib
 
 .PHONY: doc
 doc: check-llvm
