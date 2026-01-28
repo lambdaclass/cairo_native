@@ -242,7 +242,7 @@ fn build_drop<'ctx>(
 mod test {
     use crate::{
         jit_enum, jit_struct,
-        utils::testing::{load_program_and_runner, run_program},
+        utils::testing::{get_compiled_program, run_program},
         values::Value,
     };
     use pretty_assertions_sorted::assert_eq;
@@ -250,7 +250,7 @@ mod test {
     #[test]
     fn test_nullable_deep_clone() {
         let program =
-            load_program_and_runner("test_data_artifacts/programs/types/nullable_deep_clone");
+            get_compiled_program("test_data_artifacts/programs/types/nullable_deep_clone");
         let result = run_program(&program, "run_test", &[]).return_value;
 
         assert_eq!(

@@ -419,14 +419,14 @@ pub fn calc_data_prefix_offset(layout: Layout) -> usize {
 #[cfg(test)]
 mod test {
     use crate::{
-        utils::testing::{load_program_and_runner, run_program},
+        utils::testing::{get_compiled_program, run_program},
         values::Value,
     };
     use pretty_assertions_sorted::assert_eq;
 
     #[test]
     fn test_array_snapshot_deep_clone() {
-        let program = load_program_and_runner("test_data_artifacts/programs/types/nested_arrays");
+        let program = get_compiled_program("test_data_artifacts/programs/types/nested_arrays");
         let result = run_program(&program, "run_test", &[]).return_value;
 
         assert_eq!(

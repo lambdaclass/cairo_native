@@ -139,7 +139,7 @@ fn build_drop<'ctx>(
 mod test {
     use crate::{
         jit_dict,
-        utils::testing::{load_program_and_runner, run_program},
+        utils::testing::{get_compiled_program, run_program},
         values::Value,
     };
     use pretty_assertions_sorted::assert_eq;
@@ -148,8 +148,7 @@ mod test {
 
     #[test]
     fn dict_snapshot_take() {
-        let program =
-            load_program_and_runner("test_data_artifacts/programs/types/dict_snapshot_take");
+        let program = get_compiled_program("test_data_artifacts/programs/types/dict_snapshot_take");
         let result = run_program(&program, "run_test", &[]).return_value;
 
         assert_eq!(
@@ -163,7 +162,7 @@ mod test {
     #[test]
     fn dict_snapshot_take_complex() {
         let program =
-            load_program_and_runner("test_data_artifacts/programs/types/dict_snapshot_complex");
+            get_compiled_program("test_data_artifacts/programs/types/dict_snapshot_complex");
         let result = run_program(&program, "run_test", &[]).return_value;
 
         assert_eq!(
@@ -176,12 +175,11 @@ mod test {
 
     #[test]
     fn dict_snapshot_take_compare() {
-        let program = load_program_and_runner(
+        let program = get_compiled_program(
             "test_data_artifacts/programs/types/dict_snapshot_compare_snapshot",
         );
-        let program2 = load_program_and_runner(
-            "test_data_artifacts/programs/types/dict_snapshot_compare_owned",
-        );
+        let program2 =
+            get_compiled_program("test_data_artifacts/programs/types/dict_snapshot_compare_owned");
 
         let result1 = run_program(&program, "run_test", &[]).return_value;
         let result2 = run_program(&program2, "run_test", &[]).return_value;
@@ -192,7 +190,7 @@ mod test {
     /// Ensure that a dictionary of booleans compiles.
     #[test]
     fn dict_type_bool() {
-        let program = load_program_and_runner("test_data_artifacts/programs/types/dict_bool");
+        let program = get_compiled_program("test_data_artifacts/programs/types/dict_bool");
 
         let result = run_program(&program, "run_program", &[]);
         assert_eq!(
@@ -230,7 +228,7 @@ mod test {
     /// Ensure that a dictionary of felts compiles.
     #[test]
     fn dict_type_felt252() {
-        let program = load_program_and_runner("test_data_artifacts/programs/types/dict_felt252");
+        let program = get_compiled_program("test_data_artifacts/programs/types/dict_felt252");
 
         let result = run_program(&program, "run_program", &[]);
         assert_eq!(
@@ -250,7 +248,7 @@ mod test {
     /// Ensure that a dictionary of nullables compiles.
     #[test]
     fn dict_type_nullable() {
-        let program = load_program_and_runner("test_data_artifacts/programs/types/dict_nullable");
+        let program = get_compiled_program("test_data_artifacts/programs/types/dict_nullable");
 
         let result = run_program(&program, "run_program", &[]);
         pretty_assertions_sorted::assert_eq_sorted!(
@@ -300,7 +298,7 @@ mod test {
     /// Ensure that a dictionary of unsigned integers compiles.
     #[test]
     fn dict_type_unsigned() {
-        let program = load_program_and_runner("test_data_artifacts/programs/types/dict_u128");
+        let program = get_compiled_program("test_data_artifacts/programs/types/dict_u128");
 
         let result = run_program(&program, "run_program", &[]);
         assert_eq!(
