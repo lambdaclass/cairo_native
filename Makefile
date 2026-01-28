@@ -64,7 +64,7 @@ check: check-llvm
 
 .PHONY: test
 test: check-llvm
-	cargo nextest run --features=with-cheatcode,with-debug-utils,testing
+	cargo nextest run --cargo-profile ci --features=with-cheatcode,with-debug-utils,testing
 
 .PHONY: test-cairo
 test-cairo: check-llvm
@@ -72,15 +72,15 @@ test-cairo: check-llvm
 
 .PHONY: proptest
 proptest: check-llvm
-	cargo nextest run --features=with-cheatcode,with-debug-utils,testing proptest
+	cargo nextest run --cargo-profile ci --features=with-cheatcode,with-debug-utils,testing proptest
 
 .PHONY: test-cli
 test-ci: check-llvm
-	cargo nextest run --features=with-cheatcode,with-debug-utils,testing
+	cargo nextest run --cargo-profile ci --features=with-cheatcode,with-debug-utils,testing
 
 .PHONY: proptest-cli
 proptest-ci: check-llvm
-	cargo nextest run --features=with-cheatcode,with-debug-utils,testing proptest
+	cargo nextest run --cargo-profile ci --features=with-cheatcode,with-debug-utils,testing proptest
 
 .PHONY: coverage
 coverage: check-llvm
