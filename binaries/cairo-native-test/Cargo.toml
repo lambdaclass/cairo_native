@@ -9,5 +9,6 @@ cairo-lang-test-plugin.workspace = true
 cairo-lang-test-runner.workspace = true
 cairo-native-bin-utils = { workspace = true, features = ["with-cheatcode"] }
 clap = { workspace = true, features = ["derive"] }
+rayon = { workspace = true }
 tracing-subscriber = { workspace = true, features = ["env-filter"]}
 tracing.workspace = true

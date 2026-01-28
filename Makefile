@@ -64,7 +64,7 @@ check: check-llvm
 
 .PHONY: test
 test: check-llvm
-	cargo test --profile ci --features=with-cheatcode,with-debug-utils,testing
+	cargo nextest run --cargo-profile ci --features=with-cheatcode,with-debug-utils,testing
 
 .PHONY: test-cairo
 test-cairo: check-llvm
@@ -72,20 +72,20 @@ test-cairo: check-llvm
 
 .PHONY: proptest
 proptest: check-llvm
-	cargo test --profile ci --features=with-cheatcode,with-debug-utils,testing proptest
+	cargo nextest run --cargo-profile ci --features=with-cheatcode,with-debug-utils,testing proptest
 
 .PHONY: test-cli
 test-ci: check-llvm
-	cargo test --profile ci --features=with-cheatcode,with-debug-utils,testing
+	cargo nextest run --cargo-profile ci --features=with-cheatcode,with-debug-utils,testing
 
 .PHONY: proptest-cli
 proptest-ci: check-llvm
-	cargo test --profile ci --features=with-cheatcode,with-debug-utils,testing proptest
+	cargo nextest run --cargo-profile ci --features=with-cheatcode,with-debug-utils,testing proptest
 
 .PHONY: coverage
 coverage: check-llvm
-	cargo llvm-cov --verbose --profile ci --features=with-cheatcode,with-debug-utils,testing --workspace --lcov --output-path lcov.info
-	cargo llvm-cov --verbose --profile ci --features=with-cheatcode,with-debug-utils,testing --lcov --output-path lcov-test.info run --package cairo-native-test -- corelib
+	cargo llvm-cov nextest --verbose --profile ci --features=with-cheatcode,with-debug-utils,testing --workspace --lcov --output-path lcov.info
+	cargo llvm-cov run --verbose --profile ci --features=with-cheatcode,with-debug-utils,testing --lcov --output-path lcov-test.info --package cairo-native-test -- corelib
 
 .PHONY: doc
 doc: check-llvm
