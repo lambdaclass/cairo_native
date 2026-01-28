@@ -553,75 +553,18 @@ pub fn build_snapshot_match<'ctx, 'this>(
 #[cfg(test)]
 mod test {
     use crate::{
-        context::NativeContext, jit_enum, jit_struct, load_cairo,
-        utils::testing::run_program_assert_output, Value,
+        context::NativeContext,
+        jit_enum, jit_struct,
+        utils::testing::{get_compiled_program, run_program_assert_output},
+        Value,
     };
-    use cairo_lang_sierra::program::Program;
-    use lazy_static::lazy_static;
     use starknet_types_core::felt::Felt;
-
-    lazy_static! {
-        static ref ENUM_INIT: (String, Program) = load_cairo! {
-            enum MySmallEnum {
-                A: felt252,
-            }
-
-            enum MyEnum {
-                A: felt252,
-                B: u8,
-                C: u16,
-                D: u32,
-                E: u64,
-            }
-
-            fn run_test() -> (MySmallEnum, MyEnum, MyEnum, MyEnum, MyEnum, MyEnum) {
-                (
-                    MySmallEnum::A(-1),
-                    MyEnum::A(5678),
-                    MyEnum::B(90),
-                    MyEnum::C(9012),
-                    MyEnum::D(34567890),
-                    MyEnum::E(1234567890123456),
-                )
-            }
-        };
-        static ref ENUM_MATCH: (String, Program) = load_cairo! {
-            enum MyEnum {
-                A: felt252,
-                B: u8,
-                C: u16,
-                D: u32,
-                E: u64,
-            }
-
-            fn match_a() -> felt252 {
-                let x = MyEnum::A(5);
-                match x {
-                    MyEnum::A(x) => x,
-                    MyEnum::B(_) => 0,
-                    MyEnum::C(_) => 1,
-                    MyEnum::D(_) => 2,
-                    MyEnum::E(_) => 3,
-                }
-            }
-
-            fn match_b() -> u8 {
-                let x = MyEnum::B(5_u8);
-                match x {
-                    MyEnum::A(_) => 0_u8,
-                    MyEnum::B(x) => x,
-                    MyEnum::C(_) => 1_u8,
-                    MyEnum::D(_) => 2_u8,
-                    MyEnum::E(_) => 3_u8,
-                }
-            }
-        };
-    }
 
     #[test]
     fn enum_init() {
+        let program = get_compiled_program("test_data_artifacts/programs/libfuncs/enum_init");
         run_program_assert_output(
-            &ENUM_INIT,
+            &program,
             "run_test",
             &[],
             jit_struct!(
@@ -637,77 +580,26 @@ mod test {
 
     #[test]
     fn enum_match() {
-        run_program_assert_output(&ENUM_MATCH, "match_a", &[], Felt::from(5).into());
-        run_program_assert_output(&ENUM_MATCH, "match_b", &[], 5u8.into());
+        let program = get_compiled_program("test_data_artifacts/programs/libfuncs/enum_match");
+        run_program_assert_output(&program, "match_a", &[], Felt::from(5).into());
+        run_program_assert_output(&program, "match_b", &[], 5u8.into());
     }
 
     #[test]
     fn compile_enum_match_without_variants() {
-        let (_, program) = load_cairo! {
-            enum MyEnum {}
-
-            fn main(value: MyEnum) {
-                match value {}
-            }
-        };
+        let program =
+            get_compiled_program("test_data_artifacts/programs/libfuncs/enum_match_no_variants");
 
         let native_context = NativeContext::new();
         native_context
-            .compile(&program, false, Some(Default::default()), None)
+            .compile(&program.1, false, Some(Default::default()), None)
             .unwrap();
     }
 
     #[test]
     fn create_enum_from_bounded_int() {
-        let program = load_cairo! {
-            #[feature("bounded-int-utils")]
-            use core::internal::bounded_int::BoundedInt;
-            mod b0x4 {
-                #[feature("bounded-int-utils")]
-                use core::internal::bounded_int::BoundedInt;
-                pub extern fn enum_from_bounded_int<T>(index: BoundedInt<0, 4>) -> T nopanic;
-
-                // This wrapper is required so that the compiler won't assume extern `enum_from_bounded_int` is a
-                // branch function. Without it, the program does not compile.
-                fn wrapper<T>(index: BoundedInt<0, 4>) -> T {
-                    enum_from_bounded_int(index)
-                }
-            }
-
-            mod b0x0 {
-                #[feature("bounded-int-utils")]
-                use core::internal::bounded_int::BoundedInt;
-                pub extern fn enum_from_bounded_int<T>(index: BoundedInt<0, 0>) -> T nopanic;
-
-                // This wrapper is required so that the compiler won't assume extern `enum_from_bounded_int` is a
-                // branch function. Without it, the program does not compile.
-                fn wrapper<T>(index: BoundedInt<0, 0>) -> T {
-                    enum_from_bounded_int(index)
-                }
-            }
-
-            enum Enum1 {
-                Zero
-            }
-
-            enum Enum5 {
-                Zero,
-                One,
-                Two,
-                Three,
-                Four
-            }
-
-            fn test_1_variants(input: felt252) -> Enum1 {
-                let bi: BoundedInt<0, 0> = input.try_into().unwrap();
-                b0x0::wrapper(bi)
-            }
-
-            fn test_5_variants(input: felt252) -> Enum5 {
-                let bi: BoundedInt<0, 4> = input.try_into().unwrap();
-                b0x4::wrapper(bi)
-            }
-        };
+        let program =
+            get_compiled_program("test_data_artifacts/programs/libfuncs/enum_from_bounded_int");
 
         run_program_assert_output(
             &program,

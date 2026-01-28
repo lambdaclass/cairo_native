@@ -827,111 +827,14 @@ fn build_wrap_non_zero<'ctx, 'this>(
 
 #[cfg(test)]
 mod test {
-    use cairo_lang_sierra::program::Program;
     use cairo_vm::Felt252;
-    use lazy_static::lazy_static;
     use test_case::test_case;
 
     use crate::{
-        jit_enum, jit_panic_byte_array, jit_struct, load_cairo,
-        utils::testing::{run_program, run_program_assert_output},
+        jit_enum, jit_panic_byte_array, jit_struct,
+        utils::testing::{get_compiled_program, run_program, run_program_assert_output},
         Value,
     };
-
-    lazy_static! {
-        static ref TEST_MUL_PROGRAM: (String, Program) = load_cairo! {
-                        #[feature("bounded-int-utils")]
-            use core::internal::bounded_int::{self, BoundedInt, MulHelper, mul, UnitInt};
-
-            impl MulHelperBI_m128x127_BI_m128x127 of MulHelper<BoundedInt<-128, 127>, BoundedInt<-128, 127>> {
-                type Result = BoundedInt<-16256, 16384>;
-            }
-
-            impl MulHelperBI_0x128_BI_0x128 of MulHelper<BoundedInt<0, 128>, BoundedInt<0, 128>> {
-                type Result = BoundedInt<0, 16384>;
-            }
-
-            impl MulHelperBI_1x31_BI_1x1 of MulHelper<BoundedInt<1, 31>, BoundedInt<1, 1>> {
-                type Result = BoundedInt<1, 31>;
-            }
-
-            impl MulHelperBI_m1x31_BI_m1xm1 of MulHelper<BoundedInt<-1, 31>, BoundedInt<-1, -1>> {
-                type Result = BoundedInt<-31, 1>;
-            }
-
-            impl MulHelperBI_31x31_BI_1x1 of MulHelper<BoundedInt<31, 31>, BoundedInt<1, 1>> {
-                type Result = BoundedInt<31, 31>;
-            }
-
-            impl MulHelperBI_m10x0_BI_0x100 of MulHelper<BoundedInt<-100, 0>, BoundedInt<0, 100>> {
-                type Result = BoundedInt<-10000, 0>;
-            }
-
-            impl MulHelperBI_1x1_BI_1x1 of MulHelper<BoundedInt<1, 1>, BoundedInt<1, 1>> {
-                type Result = BoundedInt<1, 1>;
-            }
-
-            impl MulHelperBI_m5x5_UI_2 of MulHelper<BoundedInt<-5, 5>, UnitInt<2>> {
-                type Result = BoundedInt<-10, 10>;
-            }
-
-            fn bi_m128x127_times_bi_m128x127(a: felt252, b: felt252) -> BoundedInt<-16256, 16384> {
-                let a: BoundedInt<-128, 127> = a.try_into().unwrap();
-                let b: BoundedInt<-128, 127> = b.try_into().unwrap();
-
-                mul(a,b)
-            }
-
-            fn bi_0x128_times_bi_0x128(a: felt252, b: felt252) -> BoundedInt<0, 16384> {
-                let a: BoundedInt<0, 128> = a.try_into().unwrap();
-                let b: BoundedInt<0, 128> = b.try_into().unwrap();
-
-                mul(a,b)
-            }
-
-            fn bi_1x31_times_bi_1x1(a: felt252, b: felt252) -> BoundedInt<1, 31> {
-                let a: BoundedInt<1, 31> = a.try_into().unwrap();
-                let b: BoundedInt<1, 1> = b.try_into().unwrap();
-
-                mul(a,b)
-            }
-
-            fn bi_m1x31_times_bi_m1xm1(a: felt252, b: felt252) -> BoundedInt<-31, 1> {
-                let a: BoundedInt<-1, 31> = a.try_into().unwrap();
-                let b: BoundedInt<-1, -1> = b.try_into().unwrap();
-
-                mul(a,b)
-            }
-
-            fn bi_31x31_times_bi_1x1(a: felt252, b: felt252) -> BoundedInt<31, 31> {
-                let a: BoundedInt<31, 31> = a.try_into().unwrap();
-                let b: BoundedInt<1, 1> = b.try_into().unwrap();
-
-                mul(a,b)
-            }
-
-            fn bi_m100x0_times_bi_0x100(a: felt252, b: felt252) -> BoundedInt<-10000, 0> {
-                let a: BoundedInt<-100, 0> = a.try_into().unwrap();
-                let b: BoundedInt<0, 100> = b.try_into().unwrap();
-
-                mul(a,b)
-            }
-
-            fn bi_1x1_times_bi_1x1(a: felt252, b: felt252) -> BoundedInt<1, 1> {
-                let a: BoundedInt<1, 1> = a.try_into().unwrap();
-                let b: BoundedInt<1, 1> = b.try_into().unwrap();
-
-                mul(a,b)
-            }
-
-            fn bi_m5x5_times_ui_2(a: felt252, b: felt252) -> BoundedInt<-10, 10> {
-                let a: BoundedInt<-5, 5> = a.try_into().unwrap();
-                let b: UnitInt<2> = b.try_into().unwrap();
-
-                mul(a,b)
-            }
-        };
-    }
 
     #[test_case("bi_m128x127_times_bi_m128x127", -128, -128, 16384)]
     #[test_case("bi_0x128_times_bi_0x128", 126, 128, 16128)]
@@ -942,8 +845,9 @@ mod test {
     #[test_case("bi_1x1_times_bi_1x1", 1, 1, 1)]
     #[test_case("bi_m5x5_times_ui_2", -3, 2, -6)]
     fn test_mul(entry_point: &str, lhs: i32, rhs: i32, expected_result: i32) {
+        let program = get_compiled_program("test_data_artifacts/programs/libfuncs/bounded_int_mul");
         let result = run_program(
-            &TEST_MUL_PROGRAM,
+            &program,
             entry_point,
             &[
                 Value::Felt252(Felt252::from(lhs)),
@@ -962,519 +866,6 @@ mod test {
         } else {
             panic!("Test didn't return an enum as expected");
         }
-    }
-
-    lazy_static! {
-        static ref TEST_TRIM_PROGRAM: (String, Program) = load_cairo! {
-            #[feature("bounded-int-utils")]
-            use core::internal::bounded_int::{self, BoundedInt, trim_min, trim_max, TrimMinHelper, TrimMaxHelper};
-            use core::internal::OptionRev;
-
-
-            fn test_i8_min(a: felt252) {
-                let a_int: i8 = a.try_into().unwrap();
-                match trim_min::<i8>(a_int) {
-                    OptionRev::Some(v) => assert!(v == a.try_into().unwrap(), "invariant"),
-                    OptionRev::None => panic!("boundary"),
-                };
-            }
-            fn test_i8_max(a: felt252) {
-                let a_int: i8 = a.try_into().unwrap();
-                match trim_max::<i8>(a_int) {
-                    OptionRev::Some(v) => assert!(v == a.try_into().unwrap(), "invariant"),
-                    OptionRev::None => panic!("boundary"),
-                };
-            }
-
-            fn test_u8_min(a: felt252) {
-                let a_int: u8 = a.try_into().unwrap();
-                match trim_min::<u8>(a_int) {
-                    OptionRev::Some(v) => assert!(v == a.try_into().unwrap(), "invariant"),
-                    OptionRev::None => panic!("boundary"),
-                };
-            }
-            fn test_u8_max(a: felt252) {
-                let a_int: u8 = a.try_into().unwrap();
-                match trim_max::<u8>(a_int) {
-                    OptionRev::Some(v) => assert!(v == a.try_into().unwrap(), "invariant"),
-                    OptionRev::None => panic!("boundary"),
-                };
-            }
-
-            impl MinHelper_0_100 of TrimMinHelper<BoundedInt<0, 100>> {
-                type Target = BoundedInt<1, 100>;
-            }
-            fn test_0_100_min(a: felt252) {
-                let a_int: BoundedInt<0, 100> = a.try_into().unwrap();
-                match trim_min::<BoundedInt<0, 100>>(a_int) {
-                    OptionRev::Some(v) => assert!(v == a.try_into().unwrap(), "invariant"),
-                    OptionRev::None => panic!("boundary"),
-                };
-            }
-
-            impl MaxHelper_0_100 of TrimMaxHelper<BoundedInt<0, 100>> {
-                type Target = BoundedInt<0, 99>;
-            }
-            fn test_0_100_max(a: felt252) {
-                let a_int: BoundedInt<0, 100> = a.try_into().unwrap();
-                match trim_max::<BoundedInt<0, 100>>(a_int) {
-                    OptionRev::Some(v) => assert!(v == a.try_into().unwrap(), "invariant"),
-                    OptionRev::None => panic!("boundary"),
-                };
-            }
-
-            impl MinHelper_10_100 of TrimMinHelper<BoundedInt<10, 100>> {
-                type Target = BoundedInt<11, 100>;
-            }
-            fn test_10_100_min(a: felt252) {
-                let a_int: BoundedInt<10, 100> = a.try_into().unwrap();
-                match trim_min::<BoundedInt<10, 100>>(a_int) {
-                    OptionRev::Some(v) => assert!(v == a.try_into().unwrap(), "invariant"),
-                    OptionRev::None => panic!("boundary"),
-                };
-            }
-
-            impl MaxHelper_10_100 of TrimMaxHelper<BoundedInt<10, 100>> {
-                type Target = BoundedInt<10, 99>;
-            }
-            fn test_10_100_max(a: felt252) {
-                let a_int: BoundedInt<10, 100> = a.try_into().unwrap();
-                match trim_max::<BoundedInt<10, 100>>(a_int) {
-                    OptionRev::Some(v) => assert!(v == a.try_into().unwrap(), "invariant"),
-                    OptionRev::None => panic!("boundary"),
-                };
-            }
-
-            impl MinHelper_m100_0 of TrimMinHelper<BoundedInt<-100, 0>> {
-                type Target = BoundedInt<-99, 0>;
-            }
-            fn test_m100_0_min(a: felt252) {
-                let a_int: BoundedInt<-100, 0> = a.try_into().unwrap();
-                match trim_min::<BoundedInt<-100, 0>>(a_int) {
-                    OptionRev::Some(v) => assert!(v == a.try_into().unwrap(), "invariant"),
-                    OptionRev::None => panic!("boundary"),
-                };
-            }
-
-            impl MaxHelper_m100_0 of TrimMaxHelper<BoundedInt<-100, 0>> {
-                type Target = BoundedInt<-100, -1>;
-            }
-            fn test_m100_0_max(a: felt252) {
-                let a_int: BoundedInt<-100, 0> = a.try_into().unwrap();
-                match trim_max::<BoundedInt<-100, 0>>(a_int) {
-                    OptionRev::Some(v) => assert!(v == a.try_into().unwrap(), "invariant"),
-                    OptionRev::None => panic!("boundary"),
-                };
-            }
-
-            impl MinHelper_m100_m10 of TrimMinHelper<BoundedInt<-100, -10>> {
-                type Target = BoundedInt<-99, -10>;
-            }
-            fn test_m100_m10_min(a: felt252) {
-                let a_int: BoundedInt<-100, -10> = a.try_into().unwrap();
-                match trim_min::<BoundedInt<-100, -10>>(a_int) {
-                    OptionRev::Some(v) => assert!(v == a.try_into().unwrap(), "invariant"),
-                    OptionRev::None => panic!("boundary"),
-                };
-            }
-
-            impl MaxHelper_m100_m10 of TrimMaxHelper<BoundedInt<-100, -10>> {
-                type Target = BoundedInt<-100, -11>;
-            }
-            fn test_m100_m10_max(a: felt252) {
-                let a_int: BoundedInt<-100, -10> = a.try_into().unwrap();
-                match trim_max::<BoundedInt<-100, -10>>(a_int) {
-                    OptionRev::Some(v) => assert!(v == a.try_into().unwrap(), "invariant"),
-                    OptionRev::None => panic!("boundary"),
-                };
-            }
-
-            impl MinHelper_m100_100 of TrimMinHelper<BoundedInt<-100, 100>> {
-                type Target = BoundedInt<-99, 100>;
-            }
-            fn test_m100_100_min(a: felt252) {
-                let a_int: BoundedInt<-100, 100> = a.try_into().unwrap();
-                match trim_min::<BoundedInt<-100, 100>>(a_int) {
-                    OptionRev::Some(v) => assert!(v == a.try_into().unwrap(), "invariant"),
-                    OptionRev::None => panic!("boundary"),
-                };
-            }
-
-            impl MaxHelper_m100_100 of TrimMaxHelper<BoundedInt<-100, 100>> {
-                type Target = BoundedInt<-100, 99>;
-            }
-            fn test_m100_100_max(a: felt252) {
-                let a_int: BoundedInt<-100, 100> = a.try_into().unwrap();
-                match trim_max::<BoundedInt<-100, 100>>(a_int) {
-                    OptionRev::Some(v) => assert!(v == a.try_into().unwrap(), "invariant"),
-                    OptionRev::None => panic!("boundary"),
-                };
-            }
-
-            impl MinHelper_0_8 of TrimMinHelper<BoundedInt<0, 8>> {
-                type Target = BoundedInt<1, 8>;
-            }
-            fn test_0_8_min(a: felt252) {
-                let a_int: BoundedInt<0, 8> = a.try_into().unwrap();
-                match trim_min::<BoundedInt<0, 8>>(a_int) {
-                    OptionRev::Some(v) => assert!(v == a.try_into().unwrap(), "invariant"),
-                    OptionRev::None => panic!("boundary"),
-                };
-            }
-            impl MaxHelper_0_8 of TrimMaxHelper<BoundedInt<0, 8>> {
-                type Target = BoundedInt<0, 7>;
-            }
-            fn test_0_8_max(a: felt252) {
-                let a_int: BoundedInt<0, 8> = a.try_into().unwrap();
-                match trim_max::<BoundedInt<0, 8>>(a_int) {
-                    OptionRev::Some(v) => assert!(v == a.try_into().unwrap(), "invariant"),
-                    OptionRev::None => panic!("boundary"),
-                };
-            }
-        };
-        static ref TEST_SUB_PROGRAM: (String, Program) = load_cairo! {
-            #[feature("bounded-int-utils")]
-            use core::internal::bounded_int::{BoundedInt, sub, SubHelper};
-
-            impl SubHelperBI_1x1_BI_1x5 of SubHelper<BoundedInt<1, 1>, BoundedInt<1, 5>> {
-                type Result = BoundedInt<-4, 0>;
-            }
-
-            fn bi_1x1_minus_bi_1x5(
-                a: felt252,
-                b: felt252,
-            ) -> BoundedInt<-4, 0> {
-                let a: BoundedInt<1, 1> = a.try_into().unwrap();
-                let b: BoundedInt<1, 5> = b.try_into().unwrap();
-                return sub(a, b);
-            }
-
-            impl SubHelperBI_1x1_BI_1x1 of SubHelper<BoundedInt<1, 1>, BoundedInt<1, 1>> {
-                type Result = BoundedInt<0, 0>;
-            }
-
-            fn bi_1x1_minus_bi_1x1(
-                a: felt252,
-                b: felt252,
-            ) -> BoundedInt<0, 0> {
-                let a: BoundedInt<1, 1> = a.try_into().unwrap();
-                let b: BoundedInt<1, 1> = b.try_into().unwrap();
-                return sub(a, b);
-            }
-
-            impl SubHelperBI_m3xm3_BI_m3xm3 of SubHelper<BoundedInt<-3, -3>, BoundedInt<-3, -3>> {
-                type Result = BoundedInt<0, 0>;
-            }
-
-            fn bi_m3xm3_minus_bi_m3xm3(
-                a: felt252,
-                b: felt252,
-            ) -> BoundedInt<0, 0> {
-                let a: BoundedInt<-3, -3> = a.try_into().unwrap();
-                let b: BoundedInt<-3, -3> = b.try_into().unwrap();
-                return sub(a, b);
-            }
-
-            impl SubHelperBI_m6xm3_BI_1x3 of SubHelper<BoundedInt<-6, -3>, BoundedInt<1, 3>> {
-                type Result = BoundedInt<-9, -4>;
-            }
-
-            fn bi_m6xm3_minus_bi_1x3(
-                a: felt252,
-                b: felt252,
-            ) -> BoundedInt<-9, -4> {
-                let a: BoundedInt<-6, -3> = a.try_into().unwrap();
-                let b: BoundedInt<1, 3> = b.try_into().unwrap();
-                return sub(a, b);
-            }
-
-            impl SubHelperBI_m6xm2_BI_m20xm10 of SubHelper<BoundedInt<-6, -2>, BoundedInt<-20, -10>> {
-                type Result = BoundedInt<4, 18>;
-            }
-
-            fn bi_m6xm2_minus_bi_m20xm10(
-                a: felt252,
-                b: felt252,
-            ) -> BoundedInt<4, 18> {
-                let a: BoundedInt<-6, -2> = a.try_into().unwrap();
-                let b: BoundedInt<-20, -10> = b.try_into().unwrap();
-                return sub(a, b);
-            }
-        };
-        static ref TEST_ADD_PROGRAM: (String, Program) = load_cairo! {
-            #[feature("bounded-int-utils")]
-            use core::internal::bounded_int::{BoundedInt, add, AddHelper, UnitInt};
-
-            impl AddHelperBI_1x31_BI_1x1 of AddHelper<BoundedInt<1, 31>, BoundedInt<1, 1>> {
-                type Result = BoundedInt<2, 32>;
-            }
-
-            fn bi_1x31_plus_bi_1x1(
-                a: felt252,
-                b: felt252,
-            ) -> BoundedInt<2, 32> {
-                let a: BoundedInt<1, 31> = a.try_into().unwrap();
-                let b: BoundedInt<1, 1> = b.try_into().unwrap();
-                return add(a, b);
-            }
-
-            impl AddHelperBI_1x31_BI_m1xm1 of AddHelper<BoundedInt<1, 31>, BoundedInt<-1, -1>> {
-                type Result = BoundedInt<0, 30>;
-            }
-
-            fn bi_1x31_plus_bi_m1xm1(
-                a: felt252,
-                b: felt252,
-            ) -> BoundedInt<0, 30> {
-                let a: BoundedInt<1, 31> = a.try_into().unwrap();
-                let b: BoundedInt<-1, -1> = b.try_into().unwrap();
-                return add(a, b);
-            }
-
-            impl AddHelperBI_0x30_BI_0x10 of AddHelper<BoundedInt<0, 30>, BoundedInt<0, 10>> {
-                type Result = BoundedInt<0, 40>;
-            }
-
-            fn bi_0x30_plus_bi_0x10(
-                a: felt252,
-                b: felt252,
-            ) -> BoundedInt<0, 40> {
-                let a: BoundedInt<0, 30> = a.try_into().unwrap();
-                let b: BoundedInt<0, 10> = b.try_into().unwrap();
-                return add(a, b);
-            }
-
-            impl AddHelperBI_m20xm15_BI_0x10 of AddHelper<BoundedInt<-20, -15>, BoundedInt<0, 10>> {
-                type Result = BoundedInt<-20, -5>;
-            }
-
-            fn bi_m20xm15_plus_bi_0x10(
-                a: felt252,
-                b: felt252,
-            ) -> BoundedInt<-20, -5> {
-                let a: BoundedInt<-20, -15> = a.try_into().unwrap();
-                let b: BoundedInt<0, 10> = b.try_into().unwrap();
-                return add(a, b);
-            }
-
-            impl AddHelperBI_m5xm5_BI_m5xm5 of AddHelper<BoundedInt<-5, -5>, BoundedInt<-5, -5>> {
-                type Result = BoundedInt<-10, -10>;
-            }
-
-            fn bi_m5xm5_plus_bi_m5xm5(
-                a: felt252,
-                b: felt252,
-            ) -> BoundedInt<-10, -10> {
-                let a: BoundedInt<-5, -5> = a.try_into().unwrap();
-                let b: BoundedInt<-5, -5> = b.try_into().unwrap();
-                return add(a, b);
-            }
-
-            impl AddHelperBI_m5xm5_UI_m1 of AddHelper<BoundedInt<-5, -5>, UnitInt<-1>> {
-                type Result = BoundedInt<-6, -6>;
-            }
-
-            fn bi_m5xm5_plus_ui_m1(
-                a: felt252,
-                b: felt252,
-            ) -> BoundedInt<-6, -6> {
-                let a: BoundedInt<-5, -5> = a.try_into().unwrap();
-                let b: UnitInt<-1> = b.try_into().unwrap();
-                return add(a, b);
-            }
-
-            impl AddHelperUI_1_BI_m5xm5 of AddHelper<UnitInt<1>, BoundedInt<-5, -5>> {
-                type Result = BoundedInt<-4, -4>;
-            }
-
-            fn ui_m1_plus_bi_m5xm5(
-                a: felt252,
-                b: felt252,
-            ) -> BoundedInt<-4, -4> {
-                let a: UnitInt<1> = a.try_into().unwrap();
-                let b: BoundedInt<-5, -5> = b.try_into().unwrap();
-                return add(a, b);
-            }
-        };
-        static ref TEST_CONSTRAIN_PROGRAM: (String, Program) = load_cairo! {
-            #[feature("bounded-int-utils")]
-            use core::internal::bounded_int::{self, BoundedInt, ConstrainHelper, constrain};
-
-            fn constrain_bi_m128_127_lt_0(a: felt252) -> BoundedInt<-128, -1> {
-                let a: i8 = a.try_into().unwrap();
-                match constrain::<i8, 0>(a) {
-                    Ok(lt0) => lt0,
-                    Err(_gt0) => panic!(),
-                }
-            }
-
-            fn constrain_bi_m128_127_gt_0(a: felt252) -> BoundedInt<0, 127> {
-                let a: i8 = a.try_into().unwrap();
-                match constrain::<i8, 0>(a) {
-                    Ok(_lt0) => panic!(),
-                    Err(gt0) => gt0,
-                }
-            }
-
-            impl ConstrainTest1 of ConstrainHelper<BoundedInt<0, 15>, 5> {
-                type LowT = BoundedInt<0, 4>;
-                type HighT = BoundedInt<5, 15>;
-            }
-
-            fn constrain_bi_0_15_lt_5(a: felt252) -> BoundedInt<0, 4> {
-                let a_bi: BoundedInt<0, 15> = a.try_into().unwrap();
-                match constrain::<_, 5>(a_bi) {
-                    Ok(lt) => lt,
-                    Err(_gt) => panic!(),
-                }
-            }
-
-            fn constrain_bi_0_15_gt_5(a: felt252) -> BoundedInt<5, 15> {
-                let a_bi: BoundedInt<0, 15> = a.try_into().unwrap();
-                match constrain::<_, 5>(a_bi) {
-                    Ok(_lt) => panic!(),
-                    Err(gt) => gt,
-                }
-            }
-
-            impl ConstrainTest2 of ConstrainHelper<BoundedInt<-10, 10>, 0> {
-                type LowT = BoundedInt<-10, -1>;
-                type HighT = BoundedInt<0, 10>;
-            }
-
-            fn constrain_bi_m10_10_lt_0(a: felt252) -> BoundedInt<-10, -1> {
-                let a_bi: BoundedInt<-10, 10> = a.try_into().unwrap();
-                match constrain::<_, 0>(a_bi) {
-                    Ok(lt0) => lt0,
-                    Err(_gt0) => panic!(),
-                }
-            }
-
-            fn constrain_bi_m10_10_gt_0(a: felt252) -> BoundedInt<0, 10> {
-                let a_bi: BoundedInt<-10, 10> = a.try_into().unwrap();
-                match constrain::<_, 0>(a_bi) {
-                    Ok(_lt0) => panic!(),
-                    Err(gt0) => gt0,
-                }
-            }
-
-            impl ConstrainTest3 of ConstrainHelper<BoundedInt<1, 61>, 31> {
-                type LowT = BoundedInt<1, 30>;
-                type HighT = BoundedInt<31, 61>;
-            }
-
-            fn constrain_bi_1_61_lt_31(a: felt252) -> BoundedInt<1, 30> {
-                let a_bi: BoundedInt<1, 61> = a.try_into().unwrap();
-                match constrain::<_, 31>(a_bi) {
-                    Ok(lt) => lt,
-                    Err(_gt) => panic!(),
-                }
-            }
-
-            fn constrain_bi_1_61_gt_31(a: felt252) -> BoundedInt<31, 61> {
-                let a_bi: BoundedInt<1, 61> = a.try_into().unwrap();
-                match constrain::<_, 31>(a_bi) {
-                    Ok(_lt) => panic!(),
-                    Err(gt) => gt,
-                }
-            }
-
-            impl ConstrainTest4 of ConstrainHelper<BoundedInt<-200, -100>, -150> {
-                type LowT = BoundedInt<-200, -151>;
-                type HighT = BoundedInt<-150, -100>;
-            }
-
-            fn constrain_bi_m200_m100_lt_m150(a: felt252) -> BoundedInt<-200, -151> {
-                let a_bi: BoundedInt<-200, -100> = a.try_into().unwrap();
-                match constrain::<_, -150>(a_bi) {
-                    Ok(lt) => lt,
-                    Err(_gt) => panic!(),
-                }
-            }
-
-            fn constrain_bi_m200_m100_gt_m150(a: felt252) -> BoundedInt<-150, -100> {
-                let a_bi: BoundedInt<-200, -100> = a.try_into().unwrap();
-                match constrain::<_, -150>(a_bi) {
-                    Ok(_lt) => panic!(),
-                    Err(gt) => gt,
-                }
-            }
-
-            impl ConstrainTest5 of ConstrainHelper<BoundedInt<30, 100>, 100> {
-                type LowT = BoundedInt<30, 99>;
-                type HighT = BoundedInt<100, 100>;
-            }
-
-            fn constrain_bi_30_100_gt_100(a: felt252) -> BoundedInt<100, 100> {
-                let a_bi: BoundedInt<30, 100> = a.try_into().unwrap();
-                match constrain::<_, 100>(a_bi) {
-                    Ok(_lt) => panic!(),
-                    Err(gt) => gt,
-                }
-            }
-
-            impl ConstrainTest6 of ConstrainHelper<BoundedInt<-30, 31>, 0> {
-                type LowT = BoundedInt<-30, -1>;
-                type HighT = BoundedInt<0, 31>;
-            }
-
-            fn constrain_bi_m30_31_lt_0(a: felt252) -> BoundedInt<-30, -1> {
-                let a_bi: BoundedInt<-30, 31> = a.try_into().unwrap();
-                match constrain::<_, 0>(a_bi) {
-                    Ok(lt0) => lt0,
-                    Err(_gt0) => panic!(),
-                }
-            }
-
-            fn constrain_bi_m30_31_gt_0(a: felt252) -> BoundedInt<0, 31> {
-                let a_bi: BoundedInt<-30, 31> = a.try_into().unwrap();
-                match constrain::<_, 0>(a_bi) {
-                    Ok(_lt0) => panic!(),
-                    Err(gt0) => gt0,
-                }
-            }
-        };
-        static ref TEST_DIV_REM_PROGRAM: (String, Program) = load_cairo! {
-            #[feature("bounded-int-utils")]
-            use core::internal::bounded_int::{self, BoundedInt, div_rem, DivRemHelper};
-            use core::internal::OptionRev;
-            extern fn bounded_int_wrap_non_zero<T>(v: T) -> NonZero<T> nopanic;
-
-
-            impl Helper_u8_u8 of DivRemHelper<u8, u8> {
-                type DivT = BoundedInt<0, 255>;
-                type RemT = BoundedInt<0, 254>;
-            }
-            fn test_u8(a: felt252, b: felt252) -> (felt252, felt252) {
-                let a_int: u8 = a.try_into().unwrap();
-                let b_int: u8 = b.try_into().unwrap();
-                let b_nz: NonZero<u8> = b_int.try_into().unwrap();
-                let (q, r) = div_rem(a_int, b_nz);
-                return (q.into(), r.into());
-            }
-
-            impl Helper_10_100_10_40 of DivRemHelper<BoundedInt<10, 100>, BoundedInt<10, 40>> {
-                type DivT = BoundedInt<0, 10>;
-                type RemT = BoundedInt<0, 39>;
-            }
-            fn test_10_100_10_40(a: felt252, b: felt252) -> (felt252, felt252) {
-                let a_int: BoundedInt<10, 100> = a.try_into().unwrap();
-                let b_int: BoundedInt<10, 40> = b.try_into().unwrap();
-                let (q, r) = div_rem(a_int, bounded_int_wrap_non_zero(b_int));
-                return (q.into(), r.into());
-            }
-
-            impl Helper_50_100_20_40 of DivRemHelper<BoundedInt<50, 100>, BoundedInt<20, 40>> {
-                type DivT = BoundedInt<1, 5>;
-                type RemT = BoundedInt<0, 39>;
-            }
-            fn test_50_100_20_40(a: felt252, b: felt252) -> (felt252, felt252) {
-                let a_int: BoundedInt<50, 100> = a.try_into().unwrap();
-                let b_int: BoundedInt<20, 40> = b.try_into().unwrap();
-                let (q, r) = div_rem(a_int, bounded_int_wrap_non_zero(b_int));
-                return (q.into(), r.into());
-            }
-        };
     }
 
     // test trim_min on i8
@@ -1550,12 +941,14 @@ mod test {
     #[test_case("test_0_8_max", 4, None)]
     #[test_case("test_0_8_max", 8, Some("boundary"))]
     fn test_trim(entry_point: &str, argument: i32, expected_error: Option<&str>) {
+        let program =
+            get_compiled_program("test_data_artifacts/programs/libfuncs/bounded_int_trim");
         let arguments = &[Felt252::from(argument).into()];
         let expected_result = match expected_error {
             Some(error_message) => jit_panic_byte_array!(error_message),
             None => jit_enum!(0, jit_struct!(jit_struct!())),
         };
-        run_program_assert_output(&TEST_TRIM_PROGRAM, entry_point, arguments, expected_result);
+        run_program_assert_output(&program, entry_point, arguments, expected_result);
     }
 
     #[test_case("bi_1x1_minus_bi_1x5", 1, 5, -4)]
@@ -1564,8 +957,9 @@ mod test {
     #[test_case("bi_m6xm3_minus_bi_1x3", -6, 3, -9)]
     #[test_case("bi_m6xm2_minus_bi_m20xm10", -2, -20, 18)]
     fn test_sub(entry_point: &str, lhs: i32, rhs: i32, expected_result: i32) {
+        let program = get_compiled_program("test_data_artifacts/programs/libfuncs/bounded_int_sub");
         let result = run_program(
-            &TEST_SUB_PROGRAM,
+            &program,
             entry_point,
             &[
                 Value::Felt252(Felt252::from(lhs)),
@@ -1595,8 +989,9 @@ mod test {
     #[test_case("bi_m5xm5_plus_ui_m1", -5, -1, -6)]
     #[test_case("ui_m1_plus_bi_m5xm5", 1, -5, -4)]
     fn test_add(entry_point: &str, lhs: i32, rhs: i32, expected_result: i32) {
+        let program = get_compiled_program("test_data_artifacts/programs/libfuncs/bounded_int_add");
         let result = run_program(
-            &TEST_ADD_PROGRAM,
+            &program,
             entry_point,
             &[
                 Value::Felt252(Felt252::from(lhs)),
@@ -1631,27 +1026,8 @@ mod test {
 
     #[test]
     fn test_is_zero() {
-        let program = load_cairo! {
-            #[feature("bounded-int-utils")]
-            use core::internal::bounded_int::{self, BoundedInt, is_zero};
-            use core::zeroable::IsZeroResult;
-
-            fn run_test_1(a: felt252) -> bool {
-                let bi: BoundedInt<0, 5> = a.try_into().unwrap();
-                match is_zero(bi) {
-                    IsZeroResult::Zero => true,
-                    IsZeroResult::NonZero(_) => false,
-                }
-            }
-
-            fn run_test_2(a: felt252) -> bool {
-                let bi: BoundedInt<-5, 5> = a.try_into().unwrap();
-                match is_zero(bi) {
-                    IsZeroResult::Zero => true,
-                    IsZeroResult::NonZero(_) => false,
-                }
-            }
-        };
+        let program =
+            get_compiled_program("test_data_artifacts/programs/libfuncs/bounded_int_is_zero");
 
         let result =
             run_program(&program, "run_test_1", &[Value::Felt252(Felt252::from(0))]).return_value;
@@ -1685,8 +1061,10 @@ mod test {
     #[test_case("constrain_bi_m30_31_lt_0", -5, -5)]
     #[test_case("constrain_bi_m30_31_gt_0", 5, 5)]
     fn test_constrain(entry_point: &str, input: i32, expected_result: i32) {
+        let program =
+            get_compiled_program("test_data_artifacts/programs/libfuncs/bounded_int_constrain");
         let result = run_program(
-            &TEST_CONSTRAIN_PROGRAM,
+            &program,
             entry_point,
             &[Value::Felt252(Felt252::from(input))],
         )
@@ -1708,6 +1086,8 @@ mod test {
     #[test_case("test_10_100_10_40", 100, 30, 3, 10)]
     #[test_case("test_50_100_20_40", 100, 30, 3, 10)]
     fn test_div_rem(entry_point: &str, a: i32, b: i32, expected_q: u32, expected_r: u32) {
+        let program =
+            get_compiled_program("test_data_artifacts/programs/libfuncs/bounded_int_div_rem");
         let arguments = &[Felt252::from(a).into(), Felt252::from(b).into()];
         let expected_result = jit_enum!(
             0,
@@ -1716,11 +1096,6 @@ mod test {
                 Felt252::from(expected_r).into(),
             ))
         );
-        run_program_assert_output(
-            &TEST_DIV_REM_PROGRAM,
-            entry_point,
-            arguments,
-            expected_result,
-        );
+        run_program_assert_output(&program, entry_point, arguments, expected_result);
     }
 }
