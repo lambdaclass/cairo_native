@@ -2,7 +2,7 @@
 
 use std::alloc::Layout;
 
-use super::{BlockExt, WithSelf};
+use super::WithSelf;
 use crate::{
     error::{Result, SierraAssertError},
     metadata::{
@@ -22,6 +22,7 @@ use cairo_lang_sierra::{
 };
 use melior::{
     dialect::{func, llvm},
+    helpers::{ArithBlockExt, BuiltinBlockExt, LlvmBlockExt},
     ir::{r#type::IntegerType, Block, BlockLike, Location, Module, Region, Type, Value},
     Context,
 };
@@ -277,16 +278,17 @@ pub fn build_circuit_data<'ctx>(
 ///
 /// ## Layout:
 ///
-/// Holds N_VALUES elements, where each element is a u384 struct,
-/// A u384 struct contains 4 limbs, each a u96 integer.
+/// Holds the evaluated circuit output gates and the circuit modulus.
+/// - The data is stored as a dynamic array of u384 integers.
+/// - The modulus is stored as a u384 in struct form (multi-limb).
 ///
 /// ```txt
 /// type = struct {
-///     data: *u384s,
-///     modulus: u384s,
+///     data: *u384,
+///     modulus: u384struct,
 /// };
 ///
-/// u384s = struct {
+/// u384struct = struct {
 ///     limb1: u96,
 ///     limb2: u96,
 ///     limb3: u96,
@@ -330,7 +332,7 @@ pub fn build_circuit_outputs<'ctx>(
                 0,
             )?;
 
-            let u384_struct_layout = layout_repeat(&get_integer_layout(96), 4)?.0;
+            let u384_integer_layout = get_integer_layout(384);
 
             let new_gates_ptr = build_array_dup(
                 context,
@@ -338,7 +340,7 @@ pub fn build_circuit_outputs<'ctx>(
                 location,
                 gates_ptr,
                 circuit.circuit_info.values.len(),
-                u384_struct_layout,
+                u384_integer_layout,
             )?;
 
             let new_outputs = entry.insert_value(context, location, outputs, new_gates_ptr, 0)?;

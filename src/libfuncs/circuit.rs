@@ -4,14 +4,18 @@
 
 use super::{increment_builtin_counter_by, LibfuncHelper};
 use crate::{
-    error::{Result, SierraAssertError},
+    error::{panic::ToNativeAssertError, Result, SierraAssertError},
+    execution_result::{ADD_MOD_BUILTIN_SIZE, MUL_MOD_BUILTIN_SIZE, RANGE_CHECK96_BUILTIN_SIZE},
     libfuncs::r#struct::build_struct_value,
     metadata::{
-        drop_overrides::DropOverridesMeta, realloc_bindings::ReallocBindingsMeta, MetadataStorage,
+        drop_overrides::DropOverridesMeta,
+        realloc_bindings::ReallocBindingsMeta,
+        runtime_bindings::{CircuitArithOperationType, RuntimeBindingsMeta},
+        MetadataStorage,
     },
     native_panic,
     types::{circuit::build_u384_struct_type, TypeBuilder},
-    utils::{get_integer_layout, layout_repeat, BlockExt, GepIndex, ProgramRegistryExt},
+    utils::{get_integer_layout, layout_repeat, ProgramRegistryExt},
 };
 use cairo_lang_sierra::{
     extensions::{
@@ -30,7 +34,8 @@ use melior::{
         arith::{self, CmpiPredicate},
         cf, llvm,
     },
-    ir::{r#type::IntegerType, Block, BlockLike, Location, Type, Value, ValueLike},
+    helpers::{ArithBlockExt, BuiltinBlockExt, GepIndex, LlvmBlockExt},
+    ir::{r#type::IntegerType, Block, BlockLike, Location, Type, Value},
     Context,
 };
 use num_traits::Signed;
@@ -75,16 +80,8 @@ pub fn build<'ctx, 'this>(
                 context, registry, entry, location, helper, metadata, info,
             )
         }
-        CircuitConcreteLibfunc::U96GuaranteeVerify(SignatureOnlyConcreteLibfunc { signature }) => {
-            super::build_noop::<1, true>(
-                context,
-                registry,
-                entry,
-                location,
-                helper,
-                metadata,
-                &signature.param_signatures,
-            )
+        CircuitConcreteLibfunc::U96GuaranteeVerify(info) => {
+            build_u96_guarantee_verify(context, registry, entry, location, helper, metadata, info)
         }
         CircuitConcreteLibfunc::U96LimbsLessThanGuaranteeVerify(info) => {
             build_u96_limbs_less_than_guarantee_verify(
@@ -319,16 +316,18 @@ fn build_eval<'ctx, 'this>(
     let circuit_data = entry.arg(3)?;
     let circuit_modulus = entry.arg(4)?;
 
-    // arguments 5 and 6 are used to build the gate 0 (with constant value 1)
+    // Arguments 5 and 6 are used to build the gate 0 (with constant value 1).
     // let zero = entry.argument(5)?;
     // let one = entry.argument(6)?;
 
+    // Always increase the add mod builtin pointer, regardless of the evaluation result.
+    // https://github.com/starkware-libs/cairo/blob/v2.12.0-dev.1/crates/cairo-lang-sierra-to-casm/src/invocations/circuit.rs?plain=1#L257
     let add_mod = increment_builtin_counter_by(
         context,
         entry,
         location,
         add_mod,
-        circuit_info.add_offsets.len() * MOD_BUILTIN_INSTANCE_SIZE,
+        circuit_info.add_offsets.len() * ADD_MOD_BUILTIN_SIZE,
     )?;
 
     let ([ok_block, err_block], gates) = build_gate_evaluation(
@@ -336,6 +335,7 @@ fn build_eval<'ctx, 'this>(
         entry,
         location,
         helper,
+        metadata,
         circuit_info,
         circuit_data,
         circuit_modulus,
@@ -344,37 +344,34 @@ fn build_eval<'ctx, 'this>(
     // Ok case
     {
         // We drop circuit_data, as its consumed by this libfunc.
-        if let Some(drop_overrides_meta) = metadata.get::<DropOverridesMeta>() {
-            drop_overrides_meta.invoke_override(
-                context,
-                ok_block,
-                location,
-                &info.signature.param_signatures[3].ty,
-                circuit_data,
-            )?;
-        }
+        DropOverridesMeta::invoke_override(
+            context,
+            registry,
+            helper,
+            helper.init_block(),
+            ok_block,
+            location,
+            metadata,
+            &info.signature.param_signatures[3].ty,
+            circuit_data,
+        )?;
 
+        // Increase the mul mod builtin pointer by the number of evaluated gates.
+        // If the evaluation succedes, then we assume that every gate was evaluated.
+        // https://github.com/starkware-libs/cairo/blob/v2.12.0-dev.1/crates/cairo-lang-sierra-to-casm/src/invocations/circuit.rs?plain=1#L261
         let mul_mod = increment_builtin_counter_by(
             context,
             ok_block,
             location,
             mul_mod,
-            circuit_info.mul_offsets.len() * MOD_BUILTIN_INSTANCE_SIZE,
+            circuit_info.mul_offsets.len() * MUL_MOD_BUILTIN_SIZE,
         )?;
 
-        // convert circuit output from integer representation to struct representation
-        let gates = gates
-            .into_iter()
-            .map(|value| u384_integer_to_struct(context, ok_block, location, value))
-            .collect::<Result<Vec<_>>>()?;
-
-        // Calculate full capacity for array.
+        // Calculate capacity for array.
         let outputs_capacity = circuit_info.values.len();
-        let u384_struct_layout = layout_repeat(&get_integer_layout(96), 4)?.0;
-        let outputs_capacity_bytes = layout_repeat(&u384_struct_layout, outputs_capacity)?
-            .0
-            .pad_to_align()
-            .size();
+        let u384_integer_layout = get_integer_layout(384);
+        let outputs_layout = layout_repeat(&u384_integer_layout, outputs_capacity)?.0;
+        let outputs_capacity_bytes = outputs_layout.pad_to_align().size();
         let outputs_capacity_bytes_value =
             ok_block.const_int(context, location, outputs_capacity_bytes, 64)?;
 
@@ -388,13 +385,14 @@ fn build_eval<'ctx, 'this>(
             location,
         )?)?;
 
+        // Insert evaluated gates into the array.
         for (i, gate) in gates.into_iter().enumerate() {
             let value_ptr = ok_block.gep(
                 context,
                 location,
                 outputs_ptr,
                 &[GepIndex::Const(i as i32)],
-                build_u384_struct_type(context),
+                IntegerType::new(context, 384).into(),
             )?;
             ok_block.store(context, location, value_ptr, gate)?;
         }
@@ -420,21 +418,27 @@ fn build_eval<'ctx, 'this>(
     // Error case
     {
         // We drop circuit_data, as its consumed by this libfunc.
-        if let Some(drop_overrides_meta) = metadata.get::<DropOverridesMeta>() {
-            drop_overrides_meta.invoke_override(
-                context,
-                err_block,
-                location,
-                &info.signature.param_signatures[3].ty,
-                circuit_data,
-            )?;
-        }
+        DropOverridesMeta::invoke_override(
+            context,
+            registry,
+            helper,
+            helper.init_block(),
+            err_block,
+            location,
+            metadata,
+            &info.signature.param_signatures[3].ty,
+            circuit_data,
+        )?;
 
         // We only consider mul gates evaluated before failure
+        // Increase the mul mod builtin pointer by the number of evaluated gates.
+        // As the evaluation failed, we read the number of evaluated gates from
+        // the first argument of the error block.
+        // https://github.com/starkware-libs/cairo/blob/v2.12.0-dev.1/crates/cairo-lang-sierra-to-casm/src/invocations/circuit.rs?plain=1#L261
         let mul_mod = {
             let mul_mod_usage = err_block.muli(
                 err_block.arg(0)?,
-                err_block.const_int(context, location, 4, 64)?,
+                err_block.const_int(context, location, MUL_MOD_BUILTIN_SIZE, 64)?,
                 location,
             )?;
             err_block.addi(mul_mod, mul_mod_usage, location)
@@ -461,47 +465,67 @@ fn build_eval<'ctx, 'this>(
     Ok(())
 }
 
-/// Builds the evaluation of all circuit gates, returning:
-/// - An array of two branches, the success block and the error block respectively.
-///   - The error block contains the index of the first failure as argument.
-/// - A vector of the gate values. In case of failure, not all values are guaranteed to be computed.
+/// Receives the circuit inputs, and builds the evaluation of the full circuit.
 ///
-/// The original Cairo hint evaluates all gates, even in case of failure. This implementation exits on first error, as there is no need for the partial outputs yet.
+/// Returns two branches. The success block and the error block respectively.
+/// - The success block receives nothing.
+/// - The error block receives:
+///   - The index of the first gate that could not be computed.
+///
+/// The evaluated gates are returned separately, as a vector of `MLIR` values.
+/// Note that in the case of error, not all MLIR values are guaranteed to have been computed,
+/// and should not be used carelessly.
+///
+/// TODO: Consider returning the evaluated gates through the block directly:
+/// - As a pointer to a heap allocated array of gates.
+/// - As a llvm struct/array of evaluted gates (its size could get really big).
+/// - As arguments to the block (one argument per block).
+///
+/// The original Cairo hint evaluates all gates, even in case of failure.
+/// This implementation exits on first error, as there is no need for the partial outputs yet.
+#[allow(clippy::too_many_arguments)]
 fn build_gate_evaluation<'ctx, 'this>(
     context: &'this Context,
     mut block: &'this Block<'ctx>,
     location: Location<'ctx>,
     helper: &LibfuncHelper<'ctx, 'this>,
+    metadata: &mut MetadataStorage,
     circuit_info: &circuit::CircuitInfo,
     circuit_data: Value<'ctx, 'ctx>,
     circuit_modulus: Value<'ctx, 'ctx>,
 ) -> Result<([&'this Block<'ctx>; 2], Vec<Value<'ctx, 'ctx>>)> {
-    // Throughout the evaluation of the circuit we maintain an array of known gate values
-    // Initially, it only contains the inputs of the circuit.
-    // Unknown values are represented as None
+    let runtime_bindings_meta = metadata
+        .get_mut::<RuntimeBindingsMeta>()
+        .to_native_assert_error("Unable to get the RuntimeBindingsMeta from MetadataStorage")?;
 
-    let mut values = vec![None; 1 + circuit_info.n_inputs + circuit_info.values.len()];
-    values[0] = Some(block.const_int(context, location, 1, 384)?);
+    // Each gate is represented as a MLIR value, and identified by an offset in the gate vector.
+    // - `None` implies that the gate value *has not* been compiled yet.
+    // - `Some` implies that the gate values *has* already been compiled, and therefore can be safely used.
+    // Initially, some gate values are already known.
+    let mut gates = vec![None; 1 + circuit_info.n_inputs + circuit_info.values.len()];
+
+    // The first gate always has a value of 1. It is implicity referred by some gate offsets.
+    gates[0] = Some(block.const_int(context, location, 1, 384)?);
+
+    let u384_type = IntegerType::new(context, 384).into();
+
+    // The input gates are also known at the start. We take them from the `circuit_data` array.
     for i in 0..circuit_info.n_inputs {
         let value_ptr = block.gep(
             context,
             location,
             circuit_data,
             &[GepIndex::Const(i as i32)],
-            IntegerType::new(context, 384).into(),
+            u384_type,
         )?;
-        values[i + 1] = Some(block.load(
-            context,
-            location,
-            value_ptr,
-            IntegerType::new(context, 384).into(),
-        )?);
+        gates[i + 1] = Some(block.load(context, location, value_ptr, u384_type)?);
     }
 
     let err_block = helper.append_block(Block::new(&[(
         IntegerType::new(context, 64).into(),
         location,
     )]));
+    let ok_block = helper.append_block(Block::new(&[]));
 
     let mut add_offsets = circuit_info.add_offsets.iter().peekable();
     let mut mul_offsets = circuit_info.mul_offsets.iter().enumerate();
@@ -509,67 +533,40 @@ fn build_gate_evaluation<'ctx, 'this>(
     // We loop until all gates have been solved
     loop {
         // We iterate the add gate offsets as long as we can
-        while let Some(&add_gate_offset) = add_offsets.peek() {
-            let lhs_value = values[add_gate_offset.lhs].to_owned();
-            let rhs_value = values[add_gate_offset.rhs].to_owned();
-            let output_value = values[add_gate_offset.output].to_owned();
+        while let Some(&gate_offset) = add_offsets.peek() {
+            let lhs_value = gates[gate_offset.lhs].to_owned();
+            let rhs_value = gates[gate_offset.rhs].to_owned();
+            let output_value = gates[gate_offset.output].to_owned();
 
             // Depending on the values known at the time, we can deduce if we are dealing with an ADD gate or a SUB gate.
             match (lhs_value, rhs_value, output_value) {
                 // ADD: lhs + rhs = out
                 (Some(lhs_value), Some(rhs_value), None) => {
-                    // Extend to avoid overflow
-                    let lhs_value = block.extui(
+                    let value = runtime_bindings_meta.circuit_arith_operation(
+                        context,
+                        helper.module,
+                        block,
+                        location,
+                        CircuitArithOperationType::Add,
                         lhs_value,
-                        IntegerType::new(context, 384 + 1).into(),
-                        location,
-                    )?;
-                    let rhs_value = block.extui(
                         rhs_value,
-                        IntegerType::new(context, 384 + 1).into(),
-                        location,
-                    )?;
-                    let circuit_modulus = block.extui(
                         circuit_modulus,
-                        IntegerType::new(context, 384 + 1).into(),
-                        location,
                     )?;
-                    // value = (lhs_value + rhs_value) % circuit_modulus
-                    let value = block.addi(lhs_value, rhs_value, location)?;
-                    let value =
-                        block.append_op_result(arith::remui(value, circuit_modulus, location))?;
-                    // Truncate back
-                    let value =
-                        block.trunci(value, IntegerType::new(context, 384).into(), location)?;
-                    values[add_gate_offset.output] = Some(value);
+                    gates[gate_offset.output] = Some(value);
                 }
                 // SUB: lhs = out - rhs
                 (None, Some(rhs_value), Some(output_value)) => {
-                    // Extend to avoid overflow
-                    let rhs_value = block.extui(
-                        rhs_value,
-                        IntegerType::new(context, 384 + 1).into(),
+                    let value = runtime_bindings_meta.circuit_arith_operation(
+                        context,
+                        helper.module,
+                        block,
                         location,
-                    )?;
-                    let output_value = block.extui(
+                        CircuitArithOperationType::Sub,
                         output_value,
-                        IntegerType::new(context, 384 + 1).into(),
-                        location,
-                    )?;
-                    let circuit_modulus = block.extui(
+                        rhs_value,
                         circuit_modulus,
-                        IntegerType::new(context, 384 + 1).into(),
-                        location,
                     )?;
-                    // value = (output_value + circuit_modulus - rhs_value) % circuit_modulus
-                    let value = block.addi(output_value, circuit_modulus, location)?;
-                    let value = block.append_op_result(arith::subi(value, rhs_value, location))?;
-                    let value =
-                        block.append_op_result(arith::remui(value, circuit_modulus, location))?;
-                    // Truncate back
-                    let value =
-                        block.trunci(value, IntegerType::new(context, 384).into(), location)?;
-                    values[add_gate_offset.lhs] = Some(value);
+                    gates[gate_offset.lhs] = Some(value);
                 }
                 // We can't solve this add gate yet, so we break from the loop
                 _ => break,
@@ -579,72 +576,47 @@ fn build_gate_evaluation<'ctx, 'this>(
         }
 
         // If we can't advance any more with add gate offsets, then we solve the next mul gate offset and go back to the start of the loop (solving add gate offsets).
-        if let Some((gate_offset_idx, &circuit::GateOffsets { lhs, rhs, output })) =
-            mul_offsets.next()
-        {
-            let lhs_value = values[lhs].to_owned();
-            let rhs_value = values[rhs].to_owned();
-            let output_value = values[output].to_owned();
+        if let Some((gate_offset_idx, gate_offset)) = mul_offsets.next() {
+            let lhs_value = gates[gate_offset.lhs].to_owned();
+            let rhs_value = gates[gate_offset.rhs].to_owned();
+            let output_value = gates[gate_offset.output].to_owned();
 
             // Depending on the values known at the time, we can deduce if we are dealing with an MUL gate or a INV gate.
             match (lhs_value, rhs_value, output_value) {
                 // MUL: lhs * rhs = out
                 (Some(lhs_value), Some(rhs_value), None) => {
-                    // Extend to avoid overflow
-                    let lhs_value = block.extui(
+                    let value = runtime_bindings_meta.circuit_arith_operation(
+                        context,
+                        helper.module,
+                        block,
+                        location,
+                        CircuitArithOperationType::Mul,
                         lhs_value,
-                        IntegerType::new(context, 384 * 2).into(),
-                        location,
-                    )?;
-                    let rhs_value = block.extui(
                         rhs_value,
-                        IntegerType::new(context, 384 * 2).into(),
-                        location,
-                    )?;
-                    let circuit_modulus = block.extui(
                         circuit_modulus,
-                        IntegerType::new(context, 384 * 2).into(),
-                        location,
                     )?;
-                    // value = (lhs_value * rhs_value) % circuit_modulus
-                    let value = block.muli(lhs_value, rhs_value, location)?;
-                    let value =
-                        block.append_op_result(arith::remui(value, circuit_modulus, location))?;
-                    // Truncate back
-                    let value =
-                        block.trunci(value, IntegerType::new(context, 384).into(), location)?;
-                    values[output] = Some(value)
+                    gates[gate_offset.output] = Some(value)
                 }
                 // INV: lhs = 1 / rhs
                 (None, Some(rhs_value), Some(_)) => {
-                    // Extend to avoid overflow
-                    let rhs_value = block.extui(
-                        rhs_value,
-                        IntegerType::new(context, 384 * 2).into(),
-                        location,
-                    )?;
-                    let circuit_modulus = block.extui(
-                        circuit_modulus,
-                        IntegerType::new(context, 384 * 2).into(),
-                        location,
-                    )?;
-                    let integer_type = rhs_value.r#type();
-
                     // Apply egcd to find gcd and inverse
-                    let egcd_result_block = build_euclidean_algorithm(
-                        context,
-                        block,
-                        location,
-                        helper,
-                        rhs_value,
-                        circuit_modulus,
-                    )?;
-                    let gcd = egcd_result_block.arg(0)?;
-                    let inverse = egcd_result_block.arg(1)?;
-                    block = egcd_result_block;
+                    let euclidean_result = runtime_bindings_meta
+                        .u384_extended_euclidean_algorithm(
+                            context,
+                            helper.module,
+                            block,
+                            location,
+                            rhs_value,
+                            circuit_modulus,
+                        )?;
+                    // Extract the values from the result struct
+                    let gcd =
+                        block.extract_value(context, location, euclidean_result, u384_type, 0)?;
+                    let inverse =
+                        block.extract_value(context, location, euclidean_result, u384_type, 1)?;
 
                     // if the gcd is not 1, then fail (a and b are not coprimes)
-                    let one = block.const_int_from_type(context, location, 1, integer_type)?;
+                    let one = block.const_int_from_type(context, location, 1, u384_type)?;
                     let gate_offset_idx_value = block.const_int_from_type(
                         context,
                         location,
@@ -664,31 +636,7 @@ fn build_gate_evaluation<'ctx, 'this>(
                     ));
                     block = has_inverse_block;
 
-                    // if the inverse is negative, then add modulus
-                    let zero = block.const_int_from_type(context, location, 0, integer_type)?;
-                    let is_negative = block
-                        .append_operation(arith::cmpi(
-                            context,
-                            CmpiPredicate::Slt,
-                            inverse,
-                            zero,
-                            location,
-                        ))
-                        .result(0)?
-                        .into();
-                    let wrapped_inverse = block.addi(inverse, circuit_modulus, location)?;
-                    let inverse = block.append_op_result(arith::select(
-                        is_negative,
-                        wrapped_inverse,
-                        inverse,
-                        location,
-                    ))?;
-
-                    // Truncate back
-                    let inverse =
-                        block.trunci(inverse, IntegerType::new(context, 384).into(), location)?;
-
-                    values[lhs] = Some(inverse);
+                    gates[gate_offset.lhs] = Some(inverse);
                 }
                 // The imposibility to solve this mul gate offset would render the circuit unsolvable
                 _ => return Err(SierraAssertError::ImpossibleCircuit.into()),
@@ -699,15 +647,17 @@ fn build_gate_evaluation<'ctx, 'this>(
         }
     }
 
+    block.append_operation(cf::br(ok_block, &[], location));
+
     // Validate all values have been calculated
     // Should only fail if the circuit is not solvable (bad form)
-    let values = values
+    let evaluated_gates = gates
         .into_iter()
         .skip(1 + circuit_info.n_inputs)
         .collect::<Option<Vec<Value>>>()
         .ok_or(SierraAssertError::ImpossibleCircuit)?;
 
-    Ok(([block, err_block], values))
+    Ok(([ok_block, err_block], evaluated_gates))
 }
 
 /// Generate MLIR operations for the `circuit_failure_guarantee_verify` libfunc.
@@ -873,6 +823,8 @@ fn build_get_output<'ctx, 'this>(
     };
     let output_type_id = &info.output_ty;
 
+    let u384_type = IntegerType::new(context, 384).into();
+
     let output_offset_idx = *circuit_info
         .values
         .get(output_type_id)
@@ -882,7 +834,7 @@ fn build_get_output<'ctx, 'this>(
 
     let outputs = entry.arg(0)?;
 
-    let values_ptr = entry.extract_value(
+    let circuit_ptr = entry.extract_value(
         context,
         location,
         outputs,
@@ -897,20 +849,15 @@ fn build_get_output<'ctx, 'this>(
         1,
     )?;
 
-    let output_struct_ptr = entry.gep(
+    let output_integer_ptr = entry.gep(
         context,
         location,
-        values_ptr,
+        circuit_ptr,
         &[GepIndex::Const(output_idx as i32)],
-        build_u384_struct_type(context),
+        u384_type,
     )?;
-
-    let output_struct = entry.load(
-        context,
-        location,
-        output_struct_ptr,
-        build_u384_struct_type(context),
-    )?;
+    let output_integer = entry.load(context, location, output_integer_ptr, u384_type)?;
+    let output_struct = u384_integer_to_struct(context, entry, location, output_integer)?;
 
     let guarantee_type_id = &info.branch_signatures()[0].vars[1].ty;
     let guarantee = build_struct_value(
@@ -929,15 +876,17 @@ fn build_get_output<'ctx, 'this>(
     // calling it multiple times involves duplicating the circuit outputs
     // each time. This could be fixed by implementing a reference counter,
     // like we do with regular arrays.
-    if let Some(drop_overrides_meta) = metadata.get::<DropOverridesMeta>() {
-        drop_overrides_meta.invoke_override(
-            context,
-            entry,
-            location,
-            &info.signature.param_signatures[0].ty,
-            outputs,
-        )?;
-    }
+    DropOverridesMeta::invoke_override(
+        context,
+        registry,
+        helper,
+        helper.init_block(),
+        entry,
+        location,
+        metadata,
+        &info.signature.param_signatures[0].ty,
+        outputs,
+    )?;
 
     helper.br(entry, 0, &[output_struct, guarantee], location)?;
 
@@ -1023,93 +972,12 @@ fn u384_integer_to_struct<'a>(
     let struct_type = build_u384_struct_type(context);
     let struct_value = block.append_op_result(llvm::undef(struct_type, location))?;
 
-    block.insert_values(
+    Ok(block.insert_values(
         context,
         location,
         struct_value,
         &[limb1, limb2, limb3, limb4],
-    )
-}
-
-/// The extended euclidean algorithm calculates the greatest common divisor (gcd) of two integers a and b,
-/// as well as the bezout coefficients x and y such that ax+by=gcd(a,b)
-/// if gcd(a,b) = 1, then x is the modular multiplicative inverse of a modulo b.
-/// See https://en.wikipedia.org/wiki/Extended_Euclidean_algorithm
-///
-/// Given two numbers a, b. It returns a block with gcd(a, b) and the bezout coefficient x.
-fn build_euclidean_algorithm<'ctx, 'this>(
-    context: &'ctx Context,
-    block: &'ctx Block<'ctx>,
-    location: Location<'ctx>,
-    helper: &LibfuncHelper<'ctx, 'this>,
-    a: Value<'ctx, 'ctx>,
-    b: Value<'ctx, 'ctx>,
-) -> Result<&'this Block<'ctx>> {
-    let integer_type = a.r#type();
-
-    let loop_block = helper.append_block(Block::new(&[
-        (integer_type, location),
-        (integer_type, location),
-        (integer_type, location),
-        (integer_type, location),
-    ]));
-    let end_block = helper.append_block(Block::new(&[
-        (integer_type, location),
-        (integer_type, location),
-    ]));
-
-    // The algorithm egcd works by calculating a series of remainders, each the remainder of dividing the previous two
-    // For the initial setup, r0 = b, r1 = a
-    // This order is chosen because if we reverse them, then the first iteration will just swap them
-    let prev_remainder = b;
-    let remainder = a;
-    // Similarly we'll calculate another series which starts 0,1,... and from which we will retrieve the modular inverse of a
-    let prev_inverse = block.const_int_from_type(context, location, 0, integer_type)?;
-    let inverse = block.const_int_from_type(context, location, 1, integer_type)?;
-    block.append_operation(cf::br(
-        loop_block,
-        &[prev_remainder, remainder, prev_inverse, inverse],
-        location,
-    ));
-
-    // -- Loop body --
-    // Arguments are rem_(i-1), rem, inv_(i-1), inv
-    let prev_remainder = loop_block.arg(0)?;
-    let remainder = loop_block.arg(1)?;
-    let prev_inverse = loop_block.arg(2)?;
-    let inverse = loop_block.arg(3)?;
-
-    // First calculate q = rem_(i-1)/rem_i, rounded down
-    let quotient =
-        loop_block.append_op_result(arith::divui(prev_remainder, remainder, location))?;
-
-    // Then r_(i+1) = r_(i-1) - q * r_i, and inv_(i+1) = inv_(i-1) - q * inv_i
-    let rem_times_quo = loop_block.muli(remainder, quotient, location)?;
-    let inv_times_quo = loop_block.muli(inverse, quotient, location)?;
-    let next_remainder =
-        loop_block.append_op_result(arith::subi(prev_remainder, rem_times_quo, location))?;
-    let next_inverse =
-        loop_block.append_op_result(arith::subi(prev_inverse, inv_times_quo, location))?;
-
-    // Check if r_(i+1) is 0
-    // If true, then:
-    // - r_i is the gcd of a and b
-    // - inv_i is the bezout coefficient x
-
-    let zero = loop_block.const_int_from_type(context, location, 0, integer_type)?;
-    let next_remainder_eq_zero =
-        loop_block.cmpi(context, CmpiPredicate::Eq, next_remainder, zero, location)?;
-    loop_block.append_operation(cf::cond_br(
-        context,
-        next_remainder_eq_zero,
-        end_block,
-        loop_block,
-        &[remainder, inverse],
-        &[remainder, next_remainder, inverse, next_inverse],
-        location,
-    ));
-
-    Ok(end_block)
+    )?)
 }
 
 /// Extracts values from indexes `from` - `to` (exclusive) and builds a new value of type `result_type`
@@ -1133,12 +1001,12 @@ fn build_array_slice<'ctx>(
         values.push(value);
     }
 
-    block.insert_values(
+    Ok(block.insert_values(
         context,
         location,
         block.append_op_result(llvm::undef(result_type, location))?,
         &values,
-    )
+    )?)
 }
 
 /// Converts input to an U96Guarantee.
@@ -1186,13 +1054,46 @@ fn build_into_u96_guarantee<'ctx, 'this>(
     helper.br(entry, 0, &[dst], location)
 }
 
+/// Verifies an U96Guarantee
+///
+/// # Signature
+/// ```cairo
+/// extern fn u96_guarantee_verify(guarantee: U96Guarantee) implicits(RangeCheck96) nopanic;
+/// ```
+///
+/// This is actually a noop in Cairo Native.
+/// We should only increase the builtin counter.
+///
+/// The implementation is adapted from the [sierra-to-casm compiler](https://github.com/starkware-libs/cairo/blob/dc8b4f0b2e189a3b107b15062895597588b78a46/crates/cairo-lang-sierra-to-casm/src/invocations/circuit.rs?plain=1#L523).
+fn build_u96_guarantee_verify<'ctx, 'this>(
+    context: &'ctx Context,
+    _registry: &ProgramRegistry<CoreType, CoreLibfunc>,
+    entry: &'this Block<'ctx>,
+    location: Location<'ctx>,
+    helper: &LibfuncHelper<'ctx, 'this>,
+    _metadata: &mut MetadataStorage,
+    _info: &SignatureOnlyConcreteLibfunc,
+) -> Result<()> {
+    // We increase the range_check96 builtin by 1 usage
+    // https://github.com/starkware-libs/cairo/blob/v2.12.0-dev.1/crates/cairo-lang-sierra-to-casm/src/invocations/circuit.rs?plain=1#L534
+    let range_check96 = increment_builtin_counter_by(
+        context,
+        entry,
+        location,
+        entry.arg(0)?,
+        RANGE_CHECK96_BUILTIN_SIZE,
+    )?;
+
+    helper.br(entry, 0, &[range_check96], location)
+}
+
 #[cfg(test)]
 mod test {
-
     use crate::{
+        jit_enum, jit_panic, jit_struct,
         utils::{
             felt252_str,
-            test::{jit_enum, jit_panic, jit_struct, load_cairo, run_program_assert_output},
+            testing::{get_compiled_program, run_program_assert_output},
         },
         values::Value,
     };
@@ -1236,31 +1137,7 @@ mod test {
 
     #[test]
     fn run_add_circuit() {
-        let program = load_cairo!(
-            use core::circuit::{
-                RangeCheck96, AddMod, MulMod, u96, CircuitElement, CircuitInput, circuit_add,
-                circuit_sub, circuit_mul, circuit_inverse, EvalCircuitTrait, u384,
-                CircuitOutputsTrait, CircuitModulus, AddInputResultTrait, CircuitInputs,
-            };
-
-            fn main() -> u384 {
-                let in1 = CircuitElement::<CircuitInput<0>> {};
-                let in2 = CircuitElement::<CircuitInput<1>> {};
-                let add = circuit_add(in1, in2);
-
-                let modulus = TryInto::<_, CircuitModulus>::try_into([12, 12, 12, 12]).unwrap();
-
-                let outputs = (add,)
-                    .new_inputs()
-                    .next([3, 3, 3, 3])
-                    .next([6, 6, 6, 6])
-                    .done()
-                    .eval(modulus)
-                    .unwrap();
-
-                outputs.get_output(add)
-            }
-        );
+        let program = get_compiled_program("test_data_artifacts/programs/libfuncs/circuit_add");
 
         run_program_assert_output(
             &program,
@@ -1272,31 +1149,7 @@ mod test {
 
     #[test]
     fn run_sub_circuit() {
-        let program = load_cairo!(
-            use core::circuit::{
-                RangeCheck96, AddMod, MulMod, u96, CircuitElement, CircuitInput, circuit_add,
-                circuit_sub, circuit_mul, circuit_inverse, EvalCircuitTrait, u384,
-                CircuitOutputsTrait, CircuitModulus, AddInputResultTrait, CircuitInputs,
-            };
-
-            fn main() -> u384 {
-                let in1 = CircuitElement::<CircuitInput<0>> {};
-                let in2 = CircuitElement::<CircuitInput<1>> {};
-                let mul = circuit_sub(in1, in2);
-
-                let modulus = TryInto::<_, CircuitModulus>::try_into([12, 12, 12, 12]).unwrap();
-
-                let outputs = (mul,)
-                    .new_inputs()
-                    .next([6, 6, 6, 6])
-                    .next([3, 3, 3, 3])
-                    .done()
-                    .eval(modulus)
-                    .unwrap();
-
-                outputs.get_output(mul)
-            }
-        );
+        let program = get_compiled_program("test_data_artifacts/programs/libfuncs/circuit_sub");
 
         run_program_assert_output(
             &program,
@@ -1308,31 +1161,7 @@ mod test {
 
     #[test]
     fn run_mul_circuit() {
-        let program = load_cairo!(
-            use core::circuit::{
-                RangeCheck96, AddMod, MulMod, u96, CircuitElement, CircuitInput, circuit_add,
-                circuit_sub, circuit_mul, circuit_inverse, EvalCircuitTrait, u384,
-                CircuitOutputsTrait, CircuitModulus, AddInputResultTrait, CircuitInputs,
-            };
-
-            fn main() -> u384 {
-                let in1 = CircuitElement::<CircuitInput<0>> {};
-                let in2 = CircuitElement::<CircuitInput<1>> {};
-                let mul = circuit_mul(in1, in2);
-
-                let modulus = TryInto::<_, CircuitModulus>::try_into([12, 12, 12, 12]).unwrap();
-
-                let outputs = (mul,)
-                    .new_inputs()
-                    .next([3, 0, 0, 0])
-                    .next([3, 3, 3, 3])
-                    .done()
-                    .eval(modulus)
-                    .unwrap();
-
-                outputs.get_output(mul)
-            }
-        );
+        let program = get_compiled_program("test_data_artifacts/programs/libfuncs/circuit_mul");
 
         run_program_assert_output(
             &program,
@@ -1344,29 +1173,7 @@ mod test {
 
     #[test]
     fn run_inverse_circuit() {
-        let program = load_cairo!(
-            use core::circuit::{
-                RangeCheck96, AddMod, MulMod, u96, CircuitElement, CircuitInput, circuit_add,
-                circuit_sub, circuit_mul, circuit_inverse, EvalCircuitTrait, u384,
-                CircuitOutputsTrait, CircuitModulus, AddInputResultTrait, CircuitInputs,
-            };
-
-            fn main() -> u384 {
-                let in1 = CircuitElement::<CircuitInput<0>> {};
-                let inv = circuit_inverse(in1);
-
-                let modulus = TryInto::<_, CircuitModulus>::try_into([11, 0, 0, 0]).unwrap();
-
-                let outputs = (inv,)
-                    .new_inputs()
-                    .next([2, 0, 0, 0])
-                    .done()
-                    .eval(modulus)
-                    .unwrap();
-
-                outputs.get_output(inv)
-            }
-        );
+        let program = get_compiled_program("test_data_artifacts/programs/libfuncs/circuit_inverse");
 
         run_program_assert_output(
             &program,
@@ -1378,29 +1185,8 @@ mod test {
 
     #[test]
     fn run_no_coprime_circuit() {
-        let program = load_cairo!(
-            use core::circuit::{
-                RangeCheck96, AddMod, MulMod, u96, CircuitElement, CircuitInput, circuit_add,
-                circuit_sub, circuit_mul, circuit_inverse, EvalCircuitTrait, u384,
-                CircuitOutputsTrait, CircuitModulus, AddInputResultTrait, CircuitInputs,
-            };
-
-            fn main() -> u384 {
-                let in1 = CircuitElement::<CircuitInput<0>> {};
-                let inv = circuit_inverse(in1);
-
-                let modulus = TryInto::<_, CircuitModulus>::try_into([12, 0, 0, 0]).unwrap();
-
-                let outputs = (inv,)
-                    .new_inputs()
-                    .next([3, 0, 0, 0])
-                    .done()
-                    .eval(modulus)
-                    .unwrap();
-
-                outputs.get_output(inv)
-            }
-        );
+        let program =
+            get_compiled_program("test_data_artifacts/programs/libfuncs/circuit_no_coprime");
 
         run_program_assert_output(
             &program,
@@ -1414,37 +1200,8 @@ mod test {
 
     #[test]
     fn run_mul_overflow_circuit() {
-        let program = load_cairo!(
-            use core::circuit::{
-                RangeCheck96, AddMod, MulMod, u96, CircuitElement, CircuitInput, circuit_add,
-                circuit_sub, circuit_mul, circuit_inverse, EvalCircuitTrait, u384,
-                CircuitOutputsTrait, CircuitModulus, AddInputResultTrait, CircuitInputs,
-            };
-
-            fn main() -> u384 {
-                let in1 = CircuitElement::<CircuitInput<0>> {};
-                let in2 = CircuitElement::<CircuitInput<1>> {};
-                let mul = circuit_mul(in1, in2);
-
-                let modulus = TryInto::<_, CircuitModulus>::try_into([
-                    0xffffffffffffffffffffffff,
-                    0xffffffffffffffffffffffff,
-                    0xffffffffffffffffffffffff,
-                    0xffffffffffffffffffffffff,
-                ])
-                .unwrap();
-
-                let outputs = (mul,)
-                    .new_inputs()
-                    .next([0, 0, 0, 0xffffffffffffffffffffffff])
-                    .next([16, 0, 0, 0])
-                    .done()
-                    .eval(modulus)
-                    .unwrap();
-
-                outputs.get_output(mul)
-            }
-        );
+        let program =
+            get_compiled_program("test_data_artifacts/programs/libfuncs/circuit_mul_overflow");
 
         run_program_assert_output(
             &program,
@@ -1459,38 +1216,7 @@ mod test {
 
     #[test]
     fn run_full_circuit() {
-        let program = load_cairo!(
-            use core::circuit::{
-                RangeCheck96, AddMod, MulMod, u96, CircuitElement, CircuitInput, circuit_add,
-                circuit_sub, circuit_mul, circuit_inverse, EvalCircuitTrait, u384,
-                CircuitOutputsTrait, CircuitModulus, AddInputResultTrait, CircuitInputs,
-            };
-
-            fn main() -> u384 {
-                let in1 = CircuitElement::<CircuitInput<0>> {};
-                let in2 = CircuitElement::<CircuitInput<1>> {};
-                let add1 = circuit_add(in1, in2);
-                let mul1 = circuit_mul(add1, in1);
-                let mul2 = circuit_mul(mul1, add1);
-                let inv1 = circuit_inverse(mul2);
-                let sub1 = circuit_sub(inv1, in2);
-                let sub2 = circuit_sub(sub1, mul2);
-                let inv2 = circuit_inverse(sub2);
-                let add2 = circuit_add(inv2, inv2);
-
-                let modulus = TryInto::<_, CircuitModulus>::try_into([17, 14, 14, 14]).unwrap();
-
-                let outputs = (add2,)
-                    .new_inputs()
-                    .next([9, 2, 9, 3])
-                    .next([5, 7, 0, 8])
-                    .done()
-                    .eval(modulus)
-                    .unwrap();
-
-                outputs.get_output(add2)
-            }
-        );
+        let program = get_compiled_program("test_data_artifacts/programs/libfuncs/circuit_full");
 
         run_program_assert_output(
             &program,
@@ -1510,19 +1236,8 @@ mod test {
 
     #[test]
     fn run_into_u96_guarantee() {
-        let program = load_cairo!(
-            use core::circuit::{into_u96_guarantee, U96Guarantee};
-            #[feature("bounded-int-utils")]
-            use core::internal::bounded_int::BoundedInt;
-
-            fn main() -> (U96Guarantee, U96Guarantee, U96Guarantee) {
-                (
-                    into_u96_guarantee::<BoundedInt<0, 79228162514264337593543950335>>(123),
-                    into_u96_guarantee::<BoundedInt<100, 1000>>(123),
-                    into_u96_guarantee::<u8>(123),
-                )
-            }
-        );
+        let program =
+            get_compiled_program("test_data_artifacts/programs/libfuncs/circuit_u96_guarantee");
 
         let range = Range {
             lower: BigInt::ZERO,

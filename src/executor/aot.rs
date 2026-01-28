@@ -98,8 +98,7 @@ impl AotNativeExecutor {
     ) -> Result<ExecutionResult, Error> {
         let available_gas = self
             .gas_metadata
-            .get_initial_available_gas(function_id, gas)
-            .map_err(crate::error::Error::GasMetadataError)?;
+            .get_initial_available_gas(function_id, gas)?;
 
         super::invoke_dynamic(
             &self.registry,
@@ -121,8 +120,7 @@ impl AotNativeExecutor {
     ) -> Result<ExecutionResult, Error> {
         let available_gas = self
             .gas_metadata
-            .get_initial_available_gas(function_id, gas)
-            .map_err(crate::error::Error::GasMetadataError)?;
+            .get_initial_available_gas(function_id, gas)?;
 
         super::invoke_dynamic(
             &self.registry,
@@ -144,8 +142,7 @@ impl AotNativeExecutor {
     ) -> Result<ContractExecutionResult, Error> {
         let available_gas = self
             .gas_metadata
-            .get_initial_available_gas(function_id, gas)
-            .map_err(crate::error::Error::GasMetadataError)?;
+            .get_initial_available_gas(function_id, gas)?;
 
         ContractExecutionResult::from_execution_result(super::invoke_dynamic(
             &self.registry,
@@ -206,51 +203,22 @@ impl AotNativeExecutor {
 mod tests {
     use super::*;
     use crate::{
-        context::NativeContext,
-        starknet_stub::StubSyscallHandler,
-        utils::test::{load_cairo, load_starknet},
+        context::NativeContext, include_contract, starknet_stub::StubSyscallHandler,
+        utils::testing::load_program,
     };
     use cairo_lang_sierra::program::Program;
     use rstest::*;
 
     #[fixture]
     fn program() -> Program {
-        let (_, program) = load_cairo! {
-            use starknet::{SyscallResultTrait, get_block_hash_syscall};
-
-            fn run_test() -> felt252 {
-                42
-            }
-
-            fn get_block_hash() -> felt252 {
-                get_block_hash_syscall(1).unwrap_syscall()
-            }
-        };
-        program
+        load_program("test_data_artifacts/programs/executor_aot")
     }
 
     #[fixture]
     fn starknet_program() -> Program {
-        let (_, program) = load_starknet! {
-            #[starknet::interface]
-            trait ISimpleStorage<TContractState> {
-                fn get(self: @TContractState) -> u128;
-            }
-
-            #[starknet::contract]
-            mod contract {
-                #[storage]
-                struct Storage {}
-
-                #[abi(embed_v0)]
-                impl ISimpleStorageImpl of super::ISimpleStorage<ContractState> {
-                    fn get(self: @ContractState) -> u128 {
-                        42
-                    }
-                }
-            }
-        };
-        program
+        include_contract!("test_data_artifacts/contracts/simple_storage_42.contract.json")
+            .extract_sierra_program()
+            .unwrap()
     }
 
     #[rstest]
@@ -288,9 +256,9 @@ mod tests {
         // The second function in the program is `get_block_hash`.
         let entrypoint_function_id = &program.funcs.get(1).expect("should have a function").id;
 
-        let mut syscall_handler = &mut StubSyscallHandler::default();
-
-        let expected_value = syscall_handler.get_block_hash(1, &mut 0).unwrap();
+        let syscall_handler = &mut StubSyscallHandler::default();
+        let expected_value = Felt::from(123);
+        syscall_handler.block_hash.insert(1, expected_value);
 
         let result = executor
             .invoke_dynamic_with_syscall_handler(

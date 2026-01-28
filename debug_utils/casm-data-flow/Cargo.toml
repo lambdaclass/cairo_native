@@ -6,11 +6,11 @@ license.workspace = true
 repository.workspace = true
 
 [dependencies]
-bincode = { version = "2.0.0-rc.3", default-features = false }
-clap = { version = "4.5.27", features = ["derive"] }
-serde_json = "1.0.138"
+bincode.workspace = true
+clap = { workspace = true, features = ["derive"] }
+serde_json.workspace = true
 starknet-types-core.workspace = true
 cairo-lang-casm = { workspace = true, features = [ "serde", ] }
 cairo-lang-utils.workspace = true
 cairo-lang-starknet-classes.workspace = true
-cairo-vm = { git = "https://github.com/lambdaclass/cairo-vm/", rev = "3b36cd92f68f3dc26ddf5aba6c1f9a50ff3d303f", features = ["cairo-1-hints"] }
+cairo-vm = { workspace = true, features = ["cairo-1-hints"] }

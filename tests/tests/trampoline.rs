@@ -1,10 +1,9 @@
-use crate::common::load_cairo;
 use cairo_lang_sierra::program::Program;
 use cairo_native::{
     context::NativeContext,
     execution_result::{BuiltinStats, ExecutionResult},
     executor::JitNativeExecutor,
-    utils::find_function_id,
+    utils::{find_function_id, testing::load_program_and_runner},
     OptLevel, Value,
 };
 use starknet_types_core::felt::Felt;
@@ -24,12 +23,14 @@ fn run_program(program: &Program, entry_point: &str, args: &[Value]) -> Executio
 
 #[test]
 fn invoke0() {
-    let (module_name, program, _) = load_cairo! {
-        fn main() {}
-    };
+    let program = load_program_and_runner("test_data_artifacts/programs/invoke0");
 
     assert_eq!(
-        run_program(&program, &format!("{0}::{0}::main", module_name), &[]),
+        run_program(
+            &program.1,
+            &format!("{}::{}::main", program.0, program.0),
+            &[]
+        ),
         ExecutionResult {
             remaining_gas: None,
             return_value: Value::Struct {
@@ -43,19 +44,15 @@ fn invoke0() {
 
 #[test]
 fn invoke1_felt252() {
-    let (module_name, program, _) = load_cairo! {
-        fn main(x: felt252) -> felt252 {
-            x
-        }
-    };
+    let program = load_program_and_runner("test_data_artifacts/programs/invoke1_felt252");
 
     let r = |x: Felt| {
         let x = Value::Felt252(x);
         assert_eq!(
             run_program(
-                &program,
-                &format!("{0}::{0}::main", module_name),
-                &[x.clone()]
+                &program.1,
+                &format!("{}::{}::main", program.0, program.0),
+                std::slice::from_ref(&x)
             ),
             ExecutionResult {
                 remaining_gas: None,
@@ -73,19 +70,15 @@ fn invoke1_felt252() {
 
 #[test]
 fn invoke1_u8() {
-    let (module_name, program, _) = load_cairo! {
-        fn main(x: u8) -> u8 {
-            x
-        }
-    };
+    let program = load_program_and_runner("test_data_artifacts/programs/invoke1_u8");
 
     let r = |x: u8| {
         let x = Value::Uint8(x);
         assert_eq!(
             run_program(
-                &program,
-                &format!("{0}::{0}::main", module_name),
-                &[x.clone()]
+                &program.1,
+                &format!("{}::{}::main", program.0, program.0),
+                std::slice::from_ref(&x)
             ),
             ExecutionResult {
                 remaining_gas: None,
@@ -103,19 +96,15 @@ fn invoke1_u8() {
 
 #[test]
 fn invoke1_u16() {
-    let (module_name, program, _) = load_cairo! {
-        fn main(x: u16) -> u16 {
-            x
-        }
-    };
+    let program = load_program_and_runner("test_data_artifacts/programs/invoke1_u16");
 
     let r = |x: u16| {
         let x = Value::Uint16(x);
         assert_eq!(
             run_program(
-                &program,
-                &format!("{0}::{0}::main", module_name),
-                &[x.clone()]
+                &program.1,
+                &format!("{}::{}::main", program.0, program.0),
+                std::slice::from_ref(&x)
             ),
             ExecutionResult {
                 remaining_gas: None,
@@ -133,19 +122,15 @@ fn invoke1_u16() {
 
 #[test]
 fn invoke1_u32() {
-    let (module_name, program, _) = load_cairo! {
-        fn main(x: u32) -> u32 {
-            x
-        }
-    };
+    let program = load_program_and_runner("test_data_artifacts/programs/invoke1_u32");
 
     let r = |x: u32| {
         let x = Value::Uint32(x);
         assert_eq!(
             run_program(
-                &program,
-                &format!("{0}::{0}::main", module_name),
-                &[x.clone()]
+                &program.1,
+                &format!("{}::{}::main", program.0, program.0),
+                std::slice::from_ref(&x)
             ),
             ExecutionResult {
                 remaining_gas: None,
@@ -163,19 +148,15 @@ fn invoke1_u32() {
 
 #[test]
 fn invoke1_u64() {
-    let (module_name, program, _) = load_cairo! {
-        fn main(x: u64) -> u64 {
-            x
-        }
-    };
+    let program = load_program_and_runner("test_data_artifacts/programs/invoke1_u64");
 
     let r = |x: u64| {
         let x = Value::Uint64(x);
         assert_eq!(
             run_program(
-                &program,
-                &format!("{0}::{0}::main", module_name),
-                &[x.clone()]
+                &program.1,
+                &format!("{}::{}::main", program.0, program.0),
+                std::slice::from_ref(&x)
             ),
             ExecutionResult {
                 remaining_gas: None,
@@ -193,19 +174,15 @@ fn invoke1_u64() {
 
 #[test]
 fn invoke1_u128() {
-    let (module_name, program, _) = load_cairo! {
-        fn main(x: u128) -> u128 {
-            x
-        }
-    };
+    let program = load_program_and_runner("test_data_artifacts/programs/invoke1_u128");
 
     let r = |x: u128| {
         let x = Value::Uint128(x);
         assert_eq!(
             run_program(
-                &program,
-                &format!("{0}::{0}::main", module_name),
-                &[x.clone()]
+                &program.1,
+                &format!("{}::{}::main", program.0, program.0),
+                std::slice::from_ref(&x)
             ),
             ExecutionResult {
                 remaining_gas: None,
@@ -223,11 +200,7 @@ fn invoke1_u128() {
 
 #[test]
 fn invoke1_tuple1_felt252() {
-    let (module_name, program, _) = load_cairo! {
-        fn main(x: (felt252,)) -> (felt252,) {
-            x
-        }
-    };
+    let program = load_program_and_runner("test_data_artifacts/programs/invoke1_tuple1_felt252");
 
     let r = |x: (Felt,)| {
         let x = Value::Struct {
@@ -236,9 +209,9 @@ fn invoke1_tuple1_felt252() {
         };
         assert_eq!(
             run_program(
-                &program,
-                &format!("{0}::{0}::main", module_name),
-                &[x.clone()]
+                &program.1,
+                &format!("{}::{}::main", program.0, program.0),
+                std::slice::from_ref(&x)
             ),
             ExecutionResult {
                 remaining_gas: None,
@@ -256,11 +229,7 @@ fn invoke1_tuple1_felt252() {
 
 #[test]
 fn invoke1_tuple1_u64() {
-    let (module_name, program, _) = load_cairo! {
-        fn main(x: (u64,)) -> (u64,) {
-            x
-        }
-    };
+    let program = load_program_and_runner("test_data_artifacts/programs/invoke1_tuple1_u64");
 
     let r = |x: (u64,)| {
         let x = Value::Struct {
@@ -269,9 +238,9 @@ fn invoke1_tuple1_u64() {
         };
         assert_eq!(
             run_program(
-                &program,
-                &format!("{0}::{0}::main", module_name),
-                &[x.clone()]
+                &program.1,
+                &format!("{}::{}::main", program.0, program.0),
+                std::slice::from_ref(&x)
             ),
             ExecutionResult {
                 remaining_gas: None,
@@ -289,11 +258,8 @@ fn invoke1_tuple1_u64() {
 
 #[test]
 fn invoke1_tuple5_u8_u16_u32_u64_u128() {
-    let (module_name, program, _) = load_cairo! {
-        fn main(x: (u8, u16, u32, u64, u128)) -> (u8, u16, u32, u64, u128) {
-            x
-        }
-    };
+    let program =
+        load_program_and_runner("test_data_artifacts/programs/invoke1_tuple5_u8_u16_u32_u64_u128");
 
     let r = |x: (u8, u16, u32, u64, u128)| {
         let x = Value::Struct {
@@ -308,9 +274,9 @@ fn invoke1_tuple5_u8_u16_u32_u64_u128() {
         };
         assert_eq!(
             run_program(
-                &program,
-                &format!("{0}::{0}::main", module_name),
-                &[x.clone()]
+                &program.1,
+                &format!("{}::{}::main", program.0, program.0),
+                std::slice::from_ref(&x)
             ),
             ExecutionResult {
                 remaining_gas: None,
@@ -328,19 +294,15 @@ fn invoke1_tuple5_u8_u16_u32_u64_u128() {
 
 #[test]
 fn invoke1_array_felt252() {
-    let (module_name, program, _) = load_cairo! {
-        fn main(x: Array<felt252>) -> Array<felt252> {
-            x
-        }
-    };
+    let program = load_program_and_runner("test_data_artifacts/programs/invoke1_array_felt252");
 
     let r = |x: Vec<Felt>| {
         let x = Value::Array(x.into_iter().map(Value::Felt252).collect());
         assert_eq!(
             run_program(
-                &program,
-                &format!("{0}::{0}::main", module_name),
-                &[x.clone()]
+                &program.1,
+                &format!("{}::{}::main", program.0, program.0),
+                std::slice::from_ref(&x)
             ),
             ExecutionResult {
                 remaining_gas: None,
@@ -359,15 +321,7 @@ fn invoke1_array_felt252() {
 
 #[test]
 fn invoke1_enum1_unit() {
-    let (module_name, program, _) = load_cairo! {
-        enum MyEnum {
-            A: ()
-        }
-
-        fn main(x: MyEnum) -> MyEnum {
-            x
-        }
-    };
+    let program = load_program_and_runner("test_data_artifacts/programs/invoke1_enum1_unit");
 
     let x = Value::Enum {
         tag: 0,
@@ -379,9 +333,9 @@ fn invoke1_enum1_unit() {
     };
     assert_eq!(
         run_program(
-            &program,
-            &format!("{0}::{0}::main", module_name),
-            &[x.clone()]
+            &program.1,
+            &format!("{}::{}::main", program.0, program.0),
+            std::slice::from_ref(&x)
         ),
         ExecutionResult {
             remaining_gas: None,
@@ -393,15 +347,7 @@ fn invoke1_enum1_unit() {
 
 #[test]
 fn invoke1_enum1_u64() {
-    let (module_name, program, _) = load_cairo! {
-        enum MyEnum {
-            A: u64
-        }
-
-        fn main(x: MyEnum) -> MyEnum {
-            x
-        }
-    };
+    let program = load_program_and_runner("test_data_artifacts/programs/invoke1_enum1_u64");
 
     let r = |x: u64| {
         let x = Value::Enum {
@@ -411,9 +357,9 @@ fn invoke1_enum1_u64() {
         };
         assert_eq!(
             run_program(
-                &program,
-                &format!("{0}::{0}::main", module_name),
-                &[x.clone()]
+                &program.1,
+                &format!("{}::{}::main", program.0, program.0),
+                std::slice::from_ref(&x)
             ),
             ExecutionResult {
                 remaining_gas: None,
@@ -431,15 +377,7 @@ fn invoke1_enum1_u64() {
 
 #[test]
 fn invoke1_enum1_felt252() {
-    let (module_name, program, _) = load_cairo! {
-        enum MyEnum {
-            A: felt252
-        }
-
-        fn main(x: MyEnum) -> MyEnum {
-            x
-        }
-    };
+    let program = load_program_and_runner("test_data_artifacts/programs/invoke1_enum1_felt252");
 
     let r = |x: Felt| {
         let x = Value::Enum {
@@ -449,9 +387,9 @@ fn invoke1_enum1_felt252() {
         };
         assert_eq!(
             run_program(
-                &program,
-                &format!("{0}::{0}::main", module_name),
-                &[x.clone()]
+                &program.1,
+                &format!("{}::{}::main", program.0, program.0),
+                std::slice::from_ref(&x)
             ),
             ExecutionResult {
                 remaining_gas: None,
@@ -469,16 +407,7 @@ fn invoke1_enum1_felt252() {
 
 #[test]
 fn invoke1_enum2_u8_u16() {
-    let (module_name, program, _) = load_cairo! {
-        enum MyEnum {
-            A: u8,
-            B: u16,
-        }
-
-        fn main(x: MyEnum) -> MyEnum {
-            x
-        }
-    };
+    let program = load_program_and_runner("test_data_artifacts/programs/invoke1_enum2_u8_u16");
 
     enum MyEnum {
         A(u8),
@@ -500,9 +429,9 @@ fn invoke1_enum2_u8_u16() {
         };
         assert_eq!(
             run_program(
-                &program,
-                &format!("{0}::{0}::main", module_name),
-                &[x.clone()]
+                &program.1,
+                &format!("{}::{}::main", program.0, program.0),
+                std::slice::from_ref(&x)
             ),
             ExecutionResult {
                 remaining_gas: None,
@@ -524,16 +453,12 @@ fn invoke1_enum2_u8_u16() {
 
 #[test]
 fn invoke1_box_felt252() {
-    let (module_name, program, _) = load_cairo! {
-        fn main(x: Box<felt252>) -> felt252 {
-            x.unbox()
-        }
-    };
+    let program = load_program_and_runner("test_data_artifacts/programs/invoke1_box_felt252");
 
     assert_eq!(
         run_program(
-            &program,
-            &format!("{0}::{0}::main", module_name),
+            &program.1,
+            &format!("{}::{}::main", program.0, program.0),
             &[Value::Felt252(42.into())],
         ),
         ExecutionResult {
@@ -546,21 +471,12 @@ fn invoke1_box_felt252() {
 
 #[test]
 fn invoke1_nullable_felt252() {
-    let (module_name, program, _) = load_cairo! {
-        use core::nullable::{match_nullable, FromNullableResult};
-
-        fn main(x: Nullable<felt252>) -> Option<felt252> {
-            match match_nullable(x) {
-                FromNullableResult::Null(()) => Option::None(()),
-                FromNullableResult::NotNull(x) => Option::Some(x.unbox()),
-            }
-        }
-    };
+    let program = load_program_and_runner("test_data_artifacts/programs/invoke1_nullable_felt252");
 
     assert_eq!(
         run_program(
-            &program,
-            &format!("{0}::{0}::main", module_name),
+            &program.1,
+            &format!("{}::{}::main", program.0, program.0),
             &[Value::Felt252(42.into())],
         ),
         ExecutionResult {
@@ -575,8 +491,8 @@ fn invoke1_nullable_felt252() {
     );
     assert_eq!(
         run_program(
-            &program,
-            &format!("{0}::{0}::main", module_name),
+            &program.1,
+            &format!("{}::{}::main", program.0, program.0),
             &[Value::Null],
         ),
         ExecutionResult {
@@ -596,18 +512,8 @@ fn invoke1_nullable_felt252() {
 
 #[test]
 fn test_deserialize_param_bug() {
-    let (module_name, program, _) = load_cairo! {
-        fn main(
-            b0: u64,            // Pedersen
-            b1: u64,            // RangeCheck
-            b2: u64,            // Bitwise
-            b3: u128,           // GasBuiltin
-            b4: u64,            // System
-            arg0: Span<felt252> // Arguments
-        ) -> (u64, u64, u64, u128, u64, Span<felt252>) {
-            (b0, b1, b2, b3, b4, arg0)
-        }
-    };
+    let (module_name, program, _) =
+        load_program_and_runner("test_data_artifacts/programs/trampoline");
 
     let args = vec![
         Value::Uint64(0),

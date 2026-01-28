@@ -18,11 +18,12 @@ use cairo_lang_sierra::{
     program_registry::ProgramRegistry,
 };
 use cairo_lang_sierra_to_casm::metadata::MetadataComputationConfig;
+use cairo_lang_sierra_type_size::ProgramRegistryInfo;
 use cairo_lang_starknet_classes::{
     casm_contract_class::ENTRY_POINT_COST, compiler_version::VersionId,
     contract_class::ContractEntryPoints,
 };
-use cairo_lang_utils::ordered_hash_map::OrderedHashMap;
+use cairo_lang_utils::{ordered_hash_map::OrderedHashMap, small_ordered_map::SmallOrderedMap};
 use smallvec::{smallvec, SmallVec};
 use starknet_types_core::felt::Felt;
 use std::{cmp::Ordering, fmt::Debug, sync::Arc};
@@ -48,6 +49,7 @@ mod felt252_dict;
 mod felt252_dict_entry;
 mod function_call;
 mod gas;
+mod gas_reserve;
 mod int;
 mod int_range;
 mod jump;
@@ -83,8 +85,15 @@ impl Debug for VirtualMachine {
 impl VirtualMachine {
     pub fn new(program: Arc<Program>) -> Self {
         let registry = ProgramRegistry::new(&program).unwrap();
+        let program_info = ProgramRegistryInfo::new(&program).unwrap();
+
         Self {
-            gas: GasMetadata::new(&program, Some(MetadataComputationConfig::default())).unwrap(),
+            gas: GasMetadata::new(
+                &program,
+                &program_info,
+                Some(MetadataComputationConfig::default()),
+            )
+            .unwrap(),
             program,
             registry: Arc::new(registry),
             frames: Vec::new(),
@@ -107,9 +116,12 @@ impl VirtualMachine {
         };
 
         let registry = ProgramRegistry::new(&program).unwrap();
+        let program_info = ProgramRegistryInfo::new(&program).unwrap();
+
         Self {
             gas: GasMetadata::new(
                 &program,
+                &program_info,
                 Some(MetadataComputationConfig {
                     function_set_costs: entry_points
                         .constructor
@@ -119,7 +131,10 @@ impl VirtualMachine {
                         .map(|x| {
                             (
                                 FunctionId::new(x.function_idx as u64),
-                                [(CostTokenType::Const, ENTRY_POINT_COST)].into(),
+                                SmallOrderedMap::from_iter([(
+                                    CostTokenType::Const,
+                                    ENTRY_POINT_COST,
+                                )]),
                             )
                         })
                         .collect(),
@@ -520,10 +535,12 @@ fn eval<'a>(
             EvalAction::NormalBranch(0, smallvec![value])
         }
         CoreConcreteLibfunc::IntRange(selector) => self::int_range::eval(registry, selector, args),
+        CoreConcreteLibfunc::GasReserve(selector) => self::gas_reserve::eval(selector, args),
         CoreConcreteLibfunc::Blake(_) => todo!(),
         CoreConcreteLibfunc::QM31(_) => todo!(),
         CoreConcreteLibfunc::Felt252SquashedDict(_) => todo!(),
         CoreConcreteLibfunc::Trace(_) => todo!(),
         CoreConcreteLibfunc::UnsafePanic(_) => todo!(),
+        CoreConcreteLibfunc::DummyFunctionCall(_) => todo!(),
     }
 }

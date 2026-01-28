@@ -7,7 +7,11 @@ pub use self::{aot::AotNativeExecutor, contract::AotContractExecutor, jit::JitNa
 use crate::{
     arch::{AbiArgument, ValueWithInfoWrapper},
     error::{panic::ToNativeAssertError, Error},
-    execution_result::{BuiltinStats, ExecutionResult},
+    execution_result::{
+        BuiltinStats, ExecutionResult, ADD_MOD_BUILTIN_SIZE, BITWISE_BUILTIN_SIZE,
+        EC_OP_BUILTIN_SIZE, MUL_MOD_BUILTIN_SIZE, PEDERSEN_BUILTIN_SIZE, POSEIDON_BUILTIN_SIZE,
+        RANGE_CHECK96_BUILTIN_SIZE, RANGE_CHECK_BUILTIN_SIZE, SEGMENT_ARENA_BUILTIN_SIZE,
+    },
     native_panic,
     runtime::BUILTIN_COSTS,
     starknet::{handler::StarknetSyscallHandlerCallbacks, StarknetSyscallHandler},
@@ -105,6 +109,9 @@ fn invoke_dynamic(
         .peekable();
 
     let num_return_args = ret_types_iter.clone().count();
+    // If there is more than one return value, or the return value is _complex_,
+    // as defined by the architecture ABI, then we pass a return pointer as
+    // the first argument to the program entrypoint.
     let mut return_ptr = if num_return_args > 1
         || ret_types_iter
             .peek()
@@ -112,6 +119,7 @@ fn invoke_dynamic(
             .transpose()?
             == Some(true)
     {
+        // The return pointer should be able to hold all the return values.
         let layout = ret_types_iter.try_fold(Layout::new::<()>(), |layout, id| {
             let type_info = registry.get_type(id)?;
             Result::<_, Error>::Ok(layout.extend(type_info.layout(registry)?)?.0)
@@ -277,22 +285,32 @@ fn invoke_dynamic(
                         } as usize;
 
                         match type_info {
-                            CoreTypeConcrete::Bitwise(_) => builtin_stats.bitwise = value,
-                            CoreTypeConcrete::EcOp(_) => builtin_stats.ec_op = value,
-                            CoreTypeConcrete::RangeCheck(_) => builtin_stats.range_check = value,
-                            CoreTypeConcrete::Pedersen(_) => builtin_stats.pedersen = value,
-                            CoreTypeConcrete::Poseidon(_) => builtin_stats.poseidon = value,
+                            CoreTypeConcrete::RangeCheck(_) => {
+                                builtin_stats.range_check = value / RANGE_CHECK_BUILTIN_SIZE
+                            }
+                            CoreTypeConcrete::Pedersen(_) => {
+                                builtin_stats.pedersen = value / PEDERSEN_BUILTIN_SIZE
+                            }
+                            CoreTypeConcrete::Bitwise(_) => {
+                                builtin_stats.bitwise = value / BITWISE_BUILTIN_SIZE
+                            }
+                            CoreTypeConcrete::EcOp(_) => {
+                                builtin_stats.ec_op = value / EC_OP_BUILTIN_SIZE
+                            }
+                            CoreTypeConcrete::Poseidon(_) => {
+                                builtin_stats.poseidon = value / POSEIDON_BUILTIN_SIZE
+                            }
                             CoreTypeConcrete::SegmentArena(_) => {
-                                builtin_stats.segment_arena = value
+                                builtin_stats.segment_arena = value / SEGMENT_ARENA_BUILTIN_SIZE
                             }
                             CoreTypeConcrete::RangeCheck96(_) => {
-                                builtin_stats.range_check_96 = value
+                                builtin_stats.range_check96 = value / RANGE_CHECK96_BUILTIN_SIZE
                             }
                             CoreTypeConcrete::Circuit(CircuitTypeConcrete::AddMod(_)) => {
-                                builtin_stats.circuit_add = value
+                                builtin_stats.add_mod = value / ADD_MOD_BUILTIN_SIZE
                             }
                             CoreTypeConcrete::Circuit(CircuitTypeConcrete::MulMod(_)) => {
-                                builtin_stats.circuit_mul = value
+                                builtin_stats.mul_mod = value / MUL_MOD_BUILTIN_SIZE
                             }
                             _ => native_panic!("given type should be a builtin: {type_id:?}"),
                         }
@@ -419,6 +437,21 @@ fn parse_result(
             registry,
             true,
         )?),
+        CoreTypeConcrete::QM31(_) => match return_ptr {
+            Some(ptr) => Ok(Value::from_ptr(ptr, type_id, registry, true)?),
+            None => {
+                #[cfg(target_arch = "x86_64")]
+                return Err(Error::ParseAttributeError);
+
+                #[cfg(target_arch = "aarch64")]
+                Ok(Value::QM31(
+                    u32::try_from(ret_registers[0])?,
+                    u32::try_from(ret_registers[1])?,
+                    u32::try_from(ret_registers[2])?,
+                    u32::try_from(ret_registers[3])?,
+                ))
+            }
+        },
         CoreTypeConcrete::Felt252(_)
         | CoreTypeConcrete::Starknet(
             StarknetTypeConcrete::ClassHash(_)
@@ -661,7 +694,9 @@ fn parse_result(
         // 2.11.1
         CoreTypeConcrete::Blake(_) => native_panic!("blake not yet implemented as results"),
         // 2.12.0
-        CoreTypeConcrete::QM31(_) => native_panic!("qm31 not yet implemented as results"),
+        CoreTypeConcrete::GasReserve(_) => {
+            native_panic!("gas reserve not yet implemented as results")
+        }
     }
 }
 
@@ -669,8 +704,8 @@ fn parse_result(
 mod tests {
     use super::*;
     use crate::{
-        context::NativeContext, starknet_stub::StubSyscallHandler, utils::test::load_cairo,
-        utils::test::load_starknet, OptLevel,
+        context::NativeContext, include_contract, starknet_stub::StubSyscallHandler,
+        utils::testing::load_program, OptLevel,
     };
     use cairo_lang_sierra::program::Program;
     use rstest::*;
@@ -678,42 +713,14 @@ mod tests {
 
     #[fixture]
     fn program() -> Program {
-        let (_, program) = load_cairo! {
-            use starknet::{SyscallResultTrait, get_block_hash_syscall};
-
-            fn run_test() -> felt252 {
-                42
-            }
-
-            fn get_block_hash() -> felt252 {
-                get_block_hash_syscall(1).unwrap_syscall()
-            }
-        };
-        program
+        load_program("test_data_artifacts/programs/executor_program")
     }
 
     #[fixture]
     fn starknet_program() -> Program {
-        let (_, program) = load_starknet! {
-            #[starknet::interface]
-            trait ISimpleStorage<TContractState> {
-                fn get(self: @TContractState) -> u128;
-            }
-
-            #[starknet::contract]
-            mod contract {
-                #[storage]
-                struct Storage {}
-
-                #[abi(embed_v0)]
-                impl ISimpleStorageImpl of super::ISimpleStorage<ContractState> {
-                    fn get(self: @ContractState) -> u128 {
-                        42
-                    }
-                }
-            }
-        };
-        program
+        include_contract!("test_data_artifacts/contracts/simple_storage_42.contract.json")
+            .extract_sierra_program()
+            .unwrap()
     }
 
     #[rstest]

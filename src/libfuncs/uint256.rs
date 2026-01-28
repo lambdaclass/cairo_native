@@ -1,6 +1,6 @@
 //! # `u256`-related libfuncs
 
-use super::{BlockExt, LibfuncHelper};
+use super::{increment_builtin_counter_conditionally_by, LibfuncHelper};
 use crate::{error::Result, metadata::MetadataStorage, utils::ProgramRegistryExt};
 use cairo_lang_sierra::{
     extensions::{
@@ -16,6 +16,7 @@ use melior::{
         arith::{self, CmpiPredicate},
         llvm, ods, scf,
     },
+    helpers::BuiltinBlockExt,
     ir::{
         attribute::{DenseI64ArrayAttribute, IntegerAttribute},
         operation::OperationBuilder,
@@ -61,7 +62,10 @@ pub fn build_divmod<'ctx, 'this>(
     metadata: &mut MetadataStorage,
     info: &SignatureOnlyConcreteLibfunc,
 ) -> Result<()> {
-    let range_check = super::increment_builtin_counter(context, entry, location, entry.arg(0)?)?;
+    // The sierra-to-casm compiler uses the range check builtin a total of 6 times.
+    // https://github.com/starkware-libs/cairo/blob/v2.12.0-dev.1/crates/cairo-lang-sierra-to-casm/src/invocations/int/unsigned256.rs?plain=1#L47
+    let range_check =
+        super::increment_builtin_counter_by(context, entry, location, entry.arg(0)?, 6)?;
 
     let i128_ty = IntegerType::new(context, 128).into();
     let i256_ty = IntegerType::new(context, 256).into();
@@ -346,7 +350,10 @@ pub fn build_square_root<'ctx, 'this>(
     _metadata: &mut MetadataStorage,
     _info: &SignatureOnlyConcreteLibfunc,
 ) -> Result<()> {
-    let range_check = super::increment_builtin_counter(context, entry, location, entry.arg(0)?)?;
+    // The sierra-to-casm compiler uses the range check builtin a total of 7 times.
+    // https://github.com/starkware-libs/cairo/blob/v2.12.0-dev.1/crates/cairo-lang-sierra-to-casm/src/invocations/int/unsigned256.rs?plain=1#L189
+    let range_check =
+        super::increment_builtin_counter_by(context, entry, location, entry.arg(0)?, 7)?;
 
     let i128_ty = IntegerType::new(context, 128).into();
     let i256_ty = IntegerType::new(context, 256).into();
@@ -911,7 +918,7 @@ pub fn build_u256_guarantee_inv_mod_n<'ctx, 'this>(
         .append_operation(arith::cmpi(context, CmpiPredicate::Ne, inv, k0, location))
         .result(0)?
         .into();
-    let condition = entry
+    let inverse_exists_and_is_not_zero = entry
         .append_operation(arith::andi(lhs_is_invertible, inv_not_zero, location))
         .result(0)?
         .into();
@@ -921,14 +928,27 @@ pub fn build_u256_guarantee_inv_mod_n<'ctx, 'this>(
     let op = entry.append_operation(llvm::undef(guarantee_type, location));
     let guarantee = op.result(0)?.into();
 
+    // The sierra-to-casm compiler uses the range check builtin a total of 9 times if the inverse is
+    // not equal to 0 and lhs is invertible. Otherwise it will be used 7 times.
+    // https://github.com/starkware-libs/cairo/blob/v2.12.0-dev.1/crates/cairo-lang-sierra-to-casm/src/invocations/int/unsigned256.rs#L21
+    let range_check = increment_builtin_counter_conditionally_by(
+        context,
+        entry,
+        location,
+        entry.arg(0)?,
+        9,
+        7,
+        inverse_exists_and_is_not_zero,
+    )?;
+
     helper.cond_br(
         context,
         entry,
-        condition,
+        inverse_exists_and_is_not_zero,
         [0, 1],
         [
             &[
-                entry.arg(0)?,
+                range_check,
                 result_inv,
                 guarantee,
                 guarantee,
@@ -939,7 +959,7 @@ pub fn build_u256_guarantee_inv_mod_n<'ctx, 'this>(
                 guarantee,
                 guarantee,
             ],
-            &[entry.arg(0)?, guarantee, guarantee],
+            &[range_check, guarantee, guarantee],
         ],
         location,
     )
@@ -948,52 +968,14 @@ pub fn build_u256_guarantee_inv_mod_n<'ctx, 'this>(
 #[cfg(test)]
 mod test {
     use crate::{
-        utils::test::{jit_enum, jit_panic, jit_struct, load_cairo, run_program_assert_output},
+        jit_enum, jit_panic, jit_struct,
+        utils::testing::{get_compiled_program, run_program_assert_output},
         values::Value,
     };
-    use cairo_lang_sierra::program::Program;
-    use lazy_static::lazy_static;
     use num_bigint::BigUint;
     use num_traits::One;
     use starknet_types_core::felt::Felt;
     use std::ops::Shl;
-
-    lazy_static! {
-        static ref U256_IS_ZERO: (String, Program) = load_cairo! {
-            use zeroable::IsZeroResult;
-
-            extern fn u256_is_zero(a: u256) -> IsZeroResult<u256> implicits() nopanic;
-
-            fn run_test(value: u256) -> bool {
-                match u256_is_zero(value) {
-                    IsZeroResult::Zero(_) => true,
-                    IsZeroResult::NonZero(_) => false,
-                }
-            }
-        };
-        static ref U256_SAFE_DIVMOD: (String, Program) = load_cairo! {
-            fn run_test(lhs: u256, rhs: u256) -> (u256, u256) {
-                let q = lhs / rhs;
-                let r = lhs % rhs;
-
-                (q, r)
-            }
-        };
-        static ref U256_SQRT: (String, Program) = load_cairo! {
-            use core::num::traits::Sqrt;
-
-            fn run_test(value: u256) -> u128 {
-                value.sqrt()
-            }
-        };
-        static ref U256_INV_MOD_N: (String, Program) = load_cairo! {
-            use core::math::u256_inv_mod;
-
-            fn run_test(a: u256, n: NonZero<u256>) -> Option<NonZero<u256>> {
-                u256_inv_mod(a, n)
-            }
-        };
-    }
 
     fn u256(value: BigUint) -> Value {
         assert!(value.bits() <= 256);
@@ -1005,26 +987,27 @@ mod test {
 
     #[test]
     fn u256_is_zero() {
+        let program = get_compiled_program("test_data_artifacts/programs/libfuncs/u256_is_zero");
         run_program_assert_output(
-            &U256_IS_ZERO,
+            &program,
             "run_test",
             &[u256(0u32.into())],
             jit_enum!(1, jit_struct!()),
         );
         run_program_assert_output(
-            &U256_IS_ZERO,
+            &program,
             "run_test",
             &[u256(1u32.into())],
             jit_enum!(0, jit_struct!()),
         );
         run_program_assert_output(
-            &U256_IS_ZERO,
+            &program,
             "run_test",
             &[u256(BigUint::one() << 128u32)],
             jit_enum!(0, jit_struct!()),
         );
         run_program_assert_output(
-            &U256_IS_ZERO,
+            &program,
             "run_test",
             &[u256((BigUint::one() << 128u32) + 1u32)],
             jit_enum!(0, jit_struct!()),
@@ -1033,10 +1016,17 @@ mod test {
 
     #[test]
     fn u256_safe_divmod() {
+        let program =
+            get_compiled_program("test_data_artifacts/programs/libfuncs/u256_safe_divmod");
         #[track_caller]
-        fn run(lhs: (u128, u128), rhs: (u128, u128), result: Value) {
+        fn run(
+            program: &(String, cairo_lang_sierra::program::Program),
+            lhs: (u128, u128),
+            rhs: (u128, u128),
+            result: Value,
+        ) {
             run_program_assert_output(
-                &U256_SAFE_DIVMOD,
+                program,
                 "run_test",
                 &[
                     jit_struct!(lhs.1.into(), lhs.0.into()),
@@ -1049,8 +1039,9 @@ mod test {
         let u256_is_zero = Felt::from_bytes_be_slice(b"Division by 0");
         let max_value = 0xFFFFFFFF_FFFFFFFF_FFFFFFFF_FFFFFFFFu128;
 
-        run((0, 0), (0, 0), jit_panic!(u256_is_zero));
+        run(&program, (0, 0), (0, 0), jit_panic!(u256_is_zero));
         run(
+            &program,
             (0, 0),
             (0, 1),
             jit_enum!(
@@ -1062,6 +1053,7 @@ mod test {
             ),
         );
         run(
+            &program,
             (0, 0),
             (max_value, max_value),
             jit_enum!(
@@ -1073,8 +1065,9 @@ mod test {
             ),
         );
 
-        run((0, 1), (0, 0), jit_panic!(u256_is_zero));
+        run(&program, (0, 1), (0, 0), jit_panic!(u256_is_zero));
         run(
+            &program,
             (0, 1),
             (0, 1),
             jit_enum!(
@@ -1086,6 +1079,7 @@ mod test {
             ),
         );
         run(
+            &program,
             (0, 1),
             (max_value, max_value),
             jit_enum!(
@@ -1096,9 +1090,15 @@ mod test {
                 ))
             ),
         );
-        run((max_value, max_value), (0, 0), jit_panic!(u256_is_zero));
+        run(
+            &program,
+            (max_value, max_value),
+            (0, 0),
+            jit_panic!(u256_is_zero),
+        );
 
         run(
+            &program,
             (max_value, max_value),
             (0, 1),
             jit_enum!(
@@ -1110,6 +1110,7 @@ mod test {
             ),
         );
         run(
+            &program,
             (max_value, max_value),
             (max_value, max_value),
             jit_enum!(
@@ -1124,19 +1125,24 @@ mod test {
 
     #[test]
     fn u256_sqrt() {
+        let program = get_compiled_program("test_data_artifacts/programs/libfuncs/u256_sqrt");
         #[track_caller]
-        fn run(value: (u128, u128), result: Value) {
+        fn run(
+            program: &(String, cairo_lang_sierra::program::Program),
+            value: (u128, u128),
+            result: Value,
+        ) {
             run_program_assert_output(
-                &U256_SQRT,
+                program,
                 "run_test",
                 &[jit_struct!(value.1.into(), value.0.into())],
                 result,
             )
         }
 
-        run((0u128, 0u128), 0u128.into());
-        run((0u128, 1u128), 1u128.into());
-        run((u128::MAX, u128::MAX), u128::MAX.into());
+        run(&program, (0u128, 0u128), 0u128.into());
+        run(&program, (0u128, 1u128), 1u128.into());
+        run(&program, (u128::MAX, u128::MAX), u128::MAX.into());
 
         for i in 0..u128::BITS {
             let x = 1u128 << i;
@@ -1145,7 +1151,7 @@ mod test {
                 .try_into()
                 .expect("should always fit into a u128");
 
-            run((0, x), y.into());
+            run(&program, (0, x), y.into());
         }
 
         for i in 0..u128::BITS {
@@ -1156,16 +1162,22 @@ mod test {
                 .try_into()
                 .expect("should always fit into a u128");
 
-            run((x, 0), y.into());
+            run(&program, (x, 0), y.into());
         }
     }
 
     #[test]
     fn u256_inv_mod_n() {
+        let program = get_compiled_program("test_data_artifacts/programs/libfuncs/u256_inv_mod_n");
         #[track_caller]
-        fn run(a: (u128, u128), n: (u128, u128), result: Value) {
+        fn run(
+            program: &(String, cairo_lang_sierra::program::Program),
+            a: (u128, u128),
+            n: (u128, u128),
+            result: Value,
+        ) {
             run_program_assert_output(
-                &U256_INV_MOD_N,
+                program,
                 "run_test",
                 &[
                     jit_struct!(a.0.into(), a.1.into()),
@@ -1178,15 +1190,16 @@ mod test {
         let none = jit_enum!(1, jit_struct!());
 
         // Not invertible.
-        run((0, 0), (0, 0), none.clone());
-        run((1, 0), (1, 0), none.clone());
-        run((0, 0), (1, 0), none.clone());
-        run((0, 0), (7, 0), none.clone());
-        run((3, 0), (6, 0), none.clone());
-        run((4, 0), (6, 0), none.clone());
-        run((8, 0), (4, 0), none.clone());
-        run((8, 0), (24, 0), none.clone());
+        run(&program, (0, 0), (0, 0), none.clone());
+        run(&program, (1, 0), (1, 0), none.clone());
+        run(&program, (0, 0), (1, 0), none.clone());
+        run(&program, (0, 0), (7, 0), none.clone());
+        run(&program, (3, 0), (6, 0), none.clone());
+        run(&program, (4, 0), (6, 0), none.clone());
+        run(&program, (8, 0), (4, 0), none.clone());
+        run(&program, (8, 0), (24, 0), none.clone());
         run(
+            &program,
             (
                 112713230461650448610759614893138283713,
                 311795268193434200766998031144865279193,
@@ -1198,6 +1211,7 @@ mod test {
             none.clone(),
         );
         run(
+            &program,
             (
                 138560372230216185616572678448146427468,
                 178030013799389090502578959553486954963,
@@ -1211,26 +1225,31 @@ mod test {
 
         // Invertible.
         run(
+            &program,
             (5, 0),
             (24, 0),
             jit_enum!(0, jit_struct!(5u128.into(), 0u128.into())),
         );
         run(
+            &program,
             (29, 0),
             (24, 0),
             jit_enum!(0, jit_struct!(5u128.into(), 0u128.into())),
         );
         run(
+            &program,
             (1, 0),
             (24, 0),
             jit_enum!(0, jit_struct!(1u128.into(), 0u128.into())),
         );
         run(
+            &program,
             (1, 0),
             (5, 0),
             jit_enum!(0, jit_struct!(1u128.into(), 0u128.into())),
         );
         run(
+            &program,
             (2, 0),
             (5, 0),
             jit_enum!(0, jit_struct!(3u128.into(), 0u128.into())),

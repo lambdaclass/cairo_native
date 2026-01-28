@@ -1,11 +1,7 @@
 //! # `u512`-related libfuncs
 
 use super::LibfuncHelper;
-use crate::{
-    error::Result,
-    metadata::MetadataStorage,
-    utils::{BlockExt, ProgramRegistryExt},
-};
+use crate::{error::Result, metadata::MetadataStorage, utils::ProgramRegistryExt};
 use cairo_lang_sierra::{
     extensions::{
         core::{CoreLibfunc, CoreType},
@@ -17,6 +13,7 @@ use cairo_lang_sierra::{
 };
 use melior::{
     dialect::{arith, llvm},
+    helpers::{ArithBlockExt, BuiltinBlockExt, LlvmBlockExt},
     ir::{r#type::IntegerType, Block, Location, Value},
     Context,
 };
@@ -48,7 +45,10 @@ pub fn build_divmod_u256<'ctx, 'this>(
     metadata: &mut MetadataStorage,
     info: &SignatureOnlyConcreteLibfunc,
 ) -> Result<()> {
-    let range_check = super::increment_builtin_counter(context, entry, location, entry.arg(0)?)?;
+    // The sierra-to-casm compiler uses the range check builtin a total of 12 times.
+    // https://github.com/starkware-libs/cairo/blob/v2.12.0-dev.1/crates/cairo-lang-sierra-to-casm/src/invocations/int/unsigned512.rs?plain=1#L23
+    let range_check =
+        super::increment_builtin_counter_by(context, entry, location, entry.arg(0)?, 12)?;
 
     let i128_ty = IntegerType::new(context, 128).into();
     let i512_ty = IntegerType::new(context, 512).into();
@@ -160,27 +160,17 @@ pub fn build_divmod_u256<'ctx, 'this>(
 #[cfg(test)]
 mod test {
     use crate::{
-        utils::test::{jit_struct, load_cairo, run_program_assert_output},
+        jit_struct,
+        utils::testing::{get_compiled_program, run_program_assert_output},
         values::Value,
     };
-    use cairo_lang_sierra::program::Program;
-    use lazy_static::lazy_static;
     use num_bigint::BigUint;
     use num_traits::One;
 
-    lazy_static! {
-        static ref UINT512_DIVMOD_U256: (String, Program) = load_cairo! {
-            use core::integer::{u512, u512_safe_divmod_by_u256};
-
-            fn run_test(lhs: u512, rhs: NonZero<u256>) -> (u512, u256) {
-                let (lhs, rhs, _, _, _, _, _) = u512_safe_divmod_by_u256(lhs, rhs);
-                (lhs, rhs)
-            }
-        };
-    }
-
     #[test]
     fn u512_safe_divmod_by_u256() {
+        let program =
+            get_compiled_program("test_data_artifacts/programs/libfuncs/u512_safe_divmod_by_u256");
         fn u512(value: BigUint) -> Value {
             assert!(value.bits() <= 512);
             jit_struct!(
@@ -200,41 +190,51 @@ mod test {
         }
 
         #[track_caller]
-        fn r2(lhs: BigUint, rhs: BigUint, output_u512: BigUint, output_u256: BigUint) {
+        fn r2(
+            program: &(String, cairo_lang_sierra::program::Program),
+            lhs: BigUint,
+            rhs: BigUint,
+            output_u512: BigUint,
+            output_u256: BigUint,
+        ) {
             let lhs = u512(lhs);
             let rhs = u256(rhs);
             let output_u512 = u512(output_u512);
             let output_u256 = u256(output_u256);
             run_program_assert_output(
-                &UINT512_DIVMOD_U256,
+                program,
                 "run_test",
                 &[lhs, rhs],
                 jit_struct!(output_u512, output_u256),
             );
         }
 
-        r2(0u32.into(), 1u32.into(), 0u32.into(), 0u32.into());
+        r2(&program, 0u32.into(), 1u32.into(), 0u32.into(), 0u32.into());
         r2(
+            &program,
             0u32.into(),
             (BigUint::one() << 256u32) - 2u32,
             0u32.into(),
             0u32.into(),
         );
         r2(
+            &program,
             0u32.into(),
             (BigUint::one() << 256u32) - 1u32,
             0u32.into(),
             0u32.into(),
         );
 
-        r2(1u32.into(), 1u32.into(), 1u32.into(), 0u32.into());
+        r2(&program, 1u32.into(), 1u32.into(), 1u32.into(), 0u32.into());
         r2(
+            &program,
             1u32.into(),
             (BigUint::one() << 256u32) - 2u32,
             0u32.into(),
             1u32.into(),
         );
         r2(
+            &program,
             1u32.into(),
             (BigUint::one() << 256u32) - 1u32,
             0u32.into(),
@@ -242,24 +242,28 @@ mod test {
         );
 
         r2(
+            &program,
             (BigUint::one() << 512u32) - 2u32,
             (BigUint::one() << 256u32) - 2u32,
             (BigUint::one() << 256) + 2u32,
             2u32.into(),
         );
         r2(
+            &program,
             (BigUint::one() << 512u32) - 2u32,
             1u32.into(),
             (BigUint::one() << 512u32) - 2u32,
             0u32.into(),
         );
         r2(
+            &program,
             (BigUint::one() << 512u32) - 2u32,
             (BigUint::one() << 256u32) - 2u32,
             (BigUint::one() << 256) + 2u32,
             2u32.into(),
         );
         r2(
+            &program,
             (BigUint::one() << 512u32) - 2u32,
             (BigUint::one() << 256u32) - 1u32,
             BigUint::one() << 256u32,
@@ -267,18 +271,21 @@ mod test {
         );
 
         r2(
+            &program,
             (BigUint::one() << 512u32) - 1u32,
             1u32.into(),
             (BigUint::one() << 512u32) - 1u32,
             0u32.into(),
         );
         r2(
+            &program,
             (BigUint::one() << 512u32) - 1u32,
             (BigUint::one() << 256u32) - 2u32,
             (BigUint::one() << 256) + 2u32,
             3u32.into(),
         );
         r2(
+            &program,
             (BigUint::one() << 512u32) - 1u32,
             (BigUint::one() << 256u32) - 1u32,
             (BigUint::one() << 256) + 1u32,

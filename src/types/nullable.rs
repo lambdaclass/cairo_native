@@ -12,7 +12,7 @@ use crate::{
         drop_overrides::DropOverridesMeta, dup_overrides::DupOverridesMeta,
         realloc_bindings::ReallocBindingsMeta, MetadataStorage,
     },
-    utils::{BlockExt, ProgramRegistryExt},
+    utils::ProgramRegistryExt,
 };
 use cairo_lang_sierra::{
     extensions::{
@@ -23,6 +23,7 @@ use cairo_lang_sierra::{
 };
 use melior::{
     dialect::{cf, func},
+    helpers::{ArithBlockExt, BuiltinBlockExt, LlvmBlockExt},
     ir::{BlockLike, Region},
 };
 use melior::{
@@ -131,35 +132,33 @@ fn build_dup<'ctx>(
             location,
         )?)?;
 
-        match metadata.get::<DupOverridesMeta>() {
-            Some(dup_override_meta) if dup_override_meta.is_overriden(&info.ty) => {
-                let value = block_realloc.load(context, location, src_value, inner_ty)?;
-                let values = dup_override_meta.invoke_override(
+        if DupOverridesMeta::is_overriden(metadata, &info.ty) {
+            let value = block_realloc.load(context, location, src_value, inner_ty)?;
+            let values = DupOverridesMeta::invoke_override(
+                context,
+                registry,
+                module,
+                &block_realloc,
+                &block_realloc,
+                location,
+                metadata,
+                &info.ty,
+                value,
+            )?;
+            block_realloc.store(context, location, src_value, values.0)?;
+            block_realloc.store(context, location, dst_value, values.1)?;
+        } else {
+            block_realloc.append_operation(
+                ods::llvm::intr_memcpy_inline(
                     context,
-                    &block_realloc,
+                    dst_value,
+                    src_value,
+                    IntegerAttribute::new(IntegerType::new(context, 64).into(), inner_len as i64),
+                    IntegerAttribute::new(IntegerType::new(context, 1).into(), 0),
                     location,
-                    &info.ty,
-                    value,
-                )?;
-                block_realloc.store(context, location, src_value, values.0)?;
-                block_realloc.store(context, location, dst_value, values.1)?;
-            }
-            _ => {
-                block_realloc.append_operation(
-                    ods::llvm::intr_memcpy_inline(
-                        context,
-                        dst_value,
-                        src_value,
-                        IntegerAttribute::new(
-                            IntegerType::new(context, 64).into(),
-                            inner_len as i64,
-                        ),
-                        IntegerAttribute::new(IntegerType::new(context, 1).into(), 0),
-                        location,
-                    )
-                    .into(),
-                );
-            }
+                )
+                .into(),
+            );
         }
 
         block_realloc.append_operation(cf::br(&block_finish, &[dst_value], location));
@@ -216,18 +215,19 @@ fn build_drop<'ctx>(
     ));
 
     {
-        match metadata.get::<DropOverridesMeta>() {
-            Some(drop_override_meta) if drop_override_meta.is_overriden(&info.ty) => {
-                let value = block_free.load(context, location, value, inner_ty)?;
-                drop_override_meta.invoke_override(
-                    context,
-                    &block_free,
-                    location,
-                    &info.ty,
-                    value,
-                )?;
-            }
-            _ => {}
+        if DropOverridesMeta::is_overriden(metadata, &info.ty) {
+            let value = block_free.load(context, location, value, inner_ty)?;
+            DropOverridesMeta::invoke_override(
+                context,
+                registry,
+                module,
+                &block_free,
+                &block_free,
+                location,
+                metadata,
+                &info.ty,
+                value,
+            )?;
         }
 
         block_free.append_operation(ReallocBindingsMeta::free(context, value, location)?);
@@ -241,28 +241,16 @@ fn build_drop<'ctx>(
 #[cfg(test)]
 mod test {
     use crate::{
-        utils::test::{jit_enum, jit_struct, load_cairo, run_program},
+        jit_enum, jit_struct,
+        utils::testing::{get_compiled_program, run_program},
         values::Value,
     };
     use pretty_assertions_sorted::assert_eq;
 
     #[test]
     fn test_nullable_deep_clone() {
-        let program = load_cairo! {
-            use core::array::ArrayTrait;
-            use core::NullableTrait;
-
-            fn run_test() -> @Nullable<Array<felt252>> {
-                let mut x = NullableTrait::new(array![1, 2, 3]);
-                let x_s = @x;
-
-                let mut y = NullableTrait::deref(x);
-                y.append(4);
-
-                x_s
-            }
-
-        };
+        let program =
+            get_compiled_program("test_data_artifacts/programs/types/nullable_deep_clone");
         let result = run_program(&program, "run_test", &[]).return_value;
 
         assert_eq!(

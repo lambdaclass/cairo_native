@@ -1,10 +1,10 @@
 #![cfg(feature = "with-cheatcode")]
 
 use crate::{
-    error::Result,
+    error::{panic::ToNativeAssertError, Result},
     libfuncs::LibfuncHelper,
     metadata::{runtime_bindings::RuntimeBindingsMeta, MetadataStorage},
-    utils::{get_integer_layout, BlockExt, ProgramRegistryExt},
+    utils::{get_integer_layout, ProgramRegistryExt},
 };
 use cairo_lang_sierra::{
     extensions::{
@@ -16,6 +16,7 @@ use cairo_lang_sierra::{
 };
 use melior::{
     dialect::llvm::{self, alloca, AllocaOptions, LoadStoreOptions},
+    helpers::{ArithBlockExt, BuiltinBlockExt, LlvmBlockExt},
     ir::{
         attribute::{IntegerAttribute, TypeAttribute},
         r#type::IntegerType,
@@ -63,7 +64,10 @@ pub fn build<'ctx, 'this>(
     let selector = helper
         .init_block()
         .const_int(context, location, info.selector.clone(), 256)?;
-    let selector_ptr = helper.init_block().alloca_int(context, location, 256)?;
+    let selector_ptr =
+        helper
+            .init_block()
+            .alloca_int(context, location, 256, get_integer_layout(256).align())?;
 
     helper
         .init_block()
@@ -96,7 +100,7 @@ pub fn build<'ctx, 'this>(
     // Call runtime cheatcode syscall wrapper
     metadata
         .get_mut::<RuntimeBindingsMeta>()
-        .expect("Runtime library not available.")
+        .to_native_assert_error("runtime bindings should be available")?
         .vtable_cheatcode(
             context,
             helper,

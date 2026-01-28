@@ -2,10 +2,7 @@
 
 use super::LibfuncHelper;
 use crate::{
-    error::Result,
-    metadata::MetadataStorage,
-    types::TypeBuilder,
-    utils::{BlockExt, ProgramRegistryExt},
+    error::Result, metadata::MetadataStorage, types::TypeBuilder, utils::ProgramRegistryExt,
 };
 use cairo_lang_sierra::{
     extensions::{
@@ -21,6 +18,7 @@ use melior::{
         arith::{self, CmpiPredicate},
         ods,
     },
+    helpers::{ArithBlockExt, BuiltinBlockExt, LlvmBlockExt},
     ir::{Block, Location},
     Context,
 };
@@ -56,7 +54,9 @@ pub fn build_int_range_try_new<'ctx, 'this>(
     metadata: &mut MetadataStorage,
     info: &SignatureOnlyConcreteLibfunc,
 ) -> Result<()> {
-    let range_check = entry.arg(0)?;
+    // The sierra-to-casm compiler uses the range check builtin a total of 1 time.
+    // https://github.com/starkware-libs/cairo/blob/v2.12.0-dev.1/crates/cairo-lang-sierra-to-casm/src/invocations/range.rs?plain=1#L24
+    let range_check = super::increment_builtin_counter(context, entry, location, entry.arg(0)?)?;
     let x = entry.arg(1)?;
     let y = entry.arg(2)?;
     let range_ty = registry.build_type(
@@ -141,31 +141,17 @@ pub fn build_int_range_pop_front<'ctx, 'this>(
 #[cfg(test)]
 mod test {
     use crate::{
-        utils::test::{jit_enum, jit_struct, load_cairo, run_program_assert_output},
+        jit_enum, jit_struct,
+        utils::testing::{get_compiled_program, run_program_assert_output},
         values::Value,
     };
-    use cairo_lang_sierra::program::Program;
-    use lazy_static::lazy_static;
-
-    lazy_static! {
-        static ref INT_RANGE_TRY_NEW: (String, Program) = load_cairo! {
-            pub extern type IntRange<T>;
-            impl IntRangeDrop<T> of Drop<IntRange<T>>;
-
-            pub extern fn int_range_try_new<T>(
-                x: T, y: T
-            ) -> Result<IntRange<T>, IntRange<T>> implicits(core::RangeCheck) nopanic;
-
-            fn run_test(lhs: u64, rhs: u64) -> IntRange<u64> {
-                int_range_try_new(lhs, rhs).unwrap()
-            }
-        };
-    }
 
     #[test]
     fn int_range_try_new() {
+        let program =
+            get_compiled_program("test_data_artifacts/programs/libfuncs/int_range_try_new");
         run_program_assert_output(
-            &INT_RANGE_TRY_NEW,
+            &program,
             "run_test",
             &[2u64.into(), 4u64.into()],
             jit_enum!(

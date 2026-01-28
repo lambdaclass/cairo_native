@@ -4,8 +4,9 @@
 use super::LibfuncHelper;
 use crate::{
     error::{panic::ToNativeAssertError, Result},
+    execution_result::POSEIDON_BUILTIN_SIZE,
     metadata::{runtime_bindings::RuntimeBindingsMeta, MetadataStorage},
-    utils::{get_integer_layout, BlockExt, ProgramRegistryExt},
+    utils::{get_integer_layout, ProgramRegistryExt},
 };
 use cairo_lang_sierra::{
     extensions::{
@@ -18,6 +19,7 @@ use cairo_lang_sierra::{
 };
 use melior::{
     dialect::ods,
+    helpers::{ArithBlockExt, BuiltinBlockExt, LlvmBlockExt},
     ir::{r#type::IntegerType, Block, Location},
     Context,
 };
@@ -52,8 +54,15 @@ pub fn build_hades_permutation<'ctx>(
         .get_mut::<RuntimeBindingsMeta>()
         .to_native_assert_error("runtime library should be available")?;
 
-    let poseidon_builtin =
-        super::increment_builtin_counter(context, entry, location, entry.arg(0)?)?;
+    // The sierra-to-casm compiler uses the poseidon builtin a total of 1 time.
+    // https://github.com/starkware-libs/cairo/blob/v2.12.0-dev.1/crates/cairo-lang-sierra-to-casm/src/invocations/poseidon.rs?plain=1#L19
+    let poseidon_builtin = super::increment_builtin_counter_by(
+        context,
+        entry,
+        location,
+        entry.arg(0)?,
+        POSEIDON_BUILTIN_SIZE,
+    )?;
 
     let felt252_ty =
         registry.build_type(context, helper, metadata, &info.param_signatures()[1].ty)?;
@@ -109,19 +118,16 @@ pub fn build_hades_permutation<'ctx>(
 
 #[cfg(test)]
 mod test {
-    use crate::utils::test::{jit_struct, load_cairo, run_program_assert_output};
+    use crate::{
+        jit_struct,
+        utils::testing::{get_compiled_program, run_program_assert_output},
+    };
 
     use starknet_types_core::felt::Felt;
 
     #[test]
     fn run_hades_permutation() {
-        let program = load_cairo!(
-            use core::poseidon::hades_permutation;
-
-            fn run_test(a: felt252, b: felt252, c: felt252) -> (felt252, felt252, felt252) {
-                hades_permutation(a, b, c)
-            }
-        );
+        let program = get_compiled_program("test_data_artifacts/programs/libfuncs/poseidon_hades");
 
         run_program_assert_output(
             &program,

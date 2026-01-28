@@ -20,7 +20,7 @@ use crate::{
         realloc_bindings::ReallocBindingsMeta, MetadataStorage,
     },
     types::TypeBuilder,
-    utils::{BlockExt, ProgramRegistryExt},
+    utils::ProgramRegistryExt,
 };
 use cairo_lang_sierra::{
     extensions::{
@@ -31,6 +31,7 @@ use cairo_lang_sierra::{
 };
 use melior::{
     dialect::{func, llvm, ods},
+    helpers::{ArithBlockExt, BuiltinBlockExt, LlvmBlockExt},
     ir::{
         attribute::IntegerAttribute, r#type::IntegerType, Block, BlockLike, Location, Module,
         Region, Type,
@@ -111,27 +112,25 @@ fn build_dup<'ctx>(
         location,
     )?)?;
 
-    match metadata.get::<DupOverridesMeta>() {
-        Some(dup_override_meta) if dup_override_meta.is_overriden(&info.ty) => {
-            let value = entry.load(context, location, src_value, inner_ty)?;
-            let values =
-                dup_override_meta.invoke_override(context, &entry, location, &info.ty, value)?;
-            entry.store(context, location, src_value, values.0)?;
-            entry.store(context, location, dst_value, values.1)?;
-        }
-        _ => {
-            entry.append_operation(
-                ods::llvm::intr_memcpy_inline(
-                    context,
-                    dst_value,
-                    src_value,
-                    IntegerAttribute::new(IntegerType::new(context, 64).into(), inner_len as i64),
-                    IntegerAttribute::new(IntegerType::new(context, 1).into(), 0),
-                    location,
-                )
-                .into(),
-            );
-        }
+    if DupOverridesMeta::is_overriden(metadata, &info.ty) {
+        let value = entry.load(context, location, src_value, inner_ty)?;
+        let values = DupOverridesMeta::invoke_override(
+            context, registry, module, &entry, &entry, location, metadata, &info.ty, value,
+        )?;
+        entry.store(context, location, src_value, values.0)?;
+        entry.store(context, location, dst_value, values.1)?;
+    } else {
+        entry.append_operation(
+            ods::llvm::intr_memcpy_inline(
+                context,
+                dst_value,
+                src_value,
+                IntegerAttribute::new(IntegerType::new(context, 64).into(), inner_len as i64),
+                IntegerAttribute::new(IntegerType::new(context, 1).into(), 0),
+                location,
+            )
+            .into(),
+        );
     }
 
     entry.append_operation(func::r#return(&[src_value, dst_value], location));
@@ -156,12 +155,11 @@ fn build_drop<'ctx>(
     let entry = region.append_block(Block::new(&[(llvm::r#type::pointer(context, 0), location)]));
 
     let value = entry.arg(0)?;
-    match metadata.get::<DropOverridesMeta>() {
-        Some(drop_override_meta) if drop_override_meta.is_overriden(&info.ty) => {
-            let value = entry.load(context, location, value, inner_ty)?;
-            drop_override_meta.invoke_override(context, &entry, location, &info.ty, value)?;
-        }
-        _ => {}
+    if DropOverridesMeta::is_overriden(metadata, &info.ty) {
+        let value = entry.load(context, location, value, inner_ty)?;
+        DropOverridesMeta::invoke_override(
+            context, registry, module, &entry, &entry, location, metadata, &info.ty, value,
+        )?;
     }
 
     entry.append_operation(ReallocBindingsMeta::free(context, value, location)?);

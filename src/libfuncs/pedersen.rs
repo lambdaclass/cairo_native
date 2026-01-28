@@ -4,8 +4,9 @@
 use super::LibfuncHelper;
 use crate::{
     error::{panic::ToNativeAssertError, Result},
+    execution_result::PEDERSEN_BUILTIN_SIZE,
     metadata::{runtime_bindings::RuntimeBindingsMeta, MetadataStorage},
-    utils::{get_integer_layout, BlockExt, ProgramRegistryExt},
+    utils::{get_integer_layout, ProgramRegistryExt},
 };
 use cairo_lang_sierra::{
     extensions::{
@@ -17,6 +18,7 @@ use cairo_lang_sierra::{
     program_registry::ProgramRegistry,
 };
 use melior::{
+    helpers::{ArithBlockExt, BuiltinBlockExt, LlvmBlockExt},
     ir::{r#type::IntegerType, Block, Location},
     Context,
 };
@@ -51,8 +53,15 @@ pub fn build_pedersen<'ctx>(
         .get_mut::<RuntimeBindingsMeta>()
         .to_native_assert_error("runtime library should be available")?;
 
-    let pedersen_builtin =
-        super::increment_builtin_counter(context, entry, location, entry.arg(0)?)?;
+    // The sierra-to-casm compiler uses the pedersen builtin a total of 1 time.
+    // https://github.com/starkware-libs/cairo/blob/v2.12.0-dev.1/crates/cairo-lang-sierra-to-casm/src/invocations/pedersen.rs?plain=1#L23
+    let pedersen_builtin = super::increment_builtin_counter_by(
+        context,
+        entry,
+        location,
+        entry.arg(0)?,
+        PEDERSEN_BUILTIN_SIZE,
+    )?;
 
     let felt252_ty =
         registry.build_type(context, helper, metadata, &info.param_signatures()[1].ty)?;
@@ -96,19 +105,13 @@ pub fn build_pedersen<'ctx>(
 
 #[cfg(test)]
 mod test {
-    use crate::utils::test::{load_cairo, run_program_assert_output};
+    use crate::utils::testing::{get_compiled_program, run_program_assert_output};
 
     use starknet_types_core::felt::Felt;
 
     #[test]
     fn run_pedersen() {
-        let program = load_cairo!(
-            use core::pedersen::pedersen;
-
-            fn run_test(a: felt252, b: felt252) -> felt252 {
-                pedersen(a, b)
-            }
-        );
+        let program = get_compiled_program("test_data_artifacts/programs/libfuncs/pedersen");
 
         run_program_assert_output(
             &program,

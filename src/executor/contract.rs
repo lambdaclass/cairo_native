@@ -37,17 +37,21 @@ use crate::{
     context::NativeContext,
     debug::libfunc_to_name,
     error::{panic::ToNativeAssertError, Error, Result},
-    execution_result::{BuiltinStats, ContractExecutionResult},
+    execution_result::{
+        BuiltinStats, ContractExecutionResult, ADD_MOD_BUILTIN_SIZE, BITWISE_BUILTIN_SIZE,
+        EC_OP_BUILTIN_SIZE, MUL_MOD_BUILTIN_SIZE, PEDERSEN_BUILTIN_SIZE, POSEIDON_BUILTIN_SIZE,
+        RANGE_CHECK96_BUILTIN_SIZE, RANGE_CHECK_BUILTIN_SIZE, SEGMENT_ARENA_BUILTIN_SIZE,
+    },
     executor::{invoke_trampoline, BuiltinCostsGuard},
     metadata::runtime_bindings::setup_runtime,
     module::NativeModule,
     native_assert, native_panic,
     starknet::{handler::StarknetSyscallHandlerCallbacks, StarknetSyscallHandler},
-    statistics::Statistics,
+    statistics::{SierraDeclaredTypeStats, SierraFuncStats, Statistics},
     types::TypeBuilder,
     utils::{
-        decode_error_message, generate_function_name, get_integer_layout, libc_free, libc_malloc,
-        BuiltinCosts,
+        decode_error_message, generate_function_name, get_integer_layout, get_types_total_size,
+        libc_free, libc_malloc, BuiltinCosts,
     },
     OptLevel,
 };
@@ -55,9 +59,10 @@ use bumpalo::Bump;
 use cairo_lang_sierra::{
     extensions::{
         circuit::CircuitTypeConcrete,
-        core::{CoreLibfunc, CoreType, CoreTypeConcrete},
+        core::{CoreConcreteLibfunc, CoreLibfunc, CoreType, CoreTypeConcrete},
         gas::CostTokenType,
         starknet::StarknetTypeConcrete,
+        ConcreteLibfunc,
     },
     ids::FunctionId,
     program::{GenFunction, GenStatement, Program, StatementIdx},
@@ -68,6 +73,7 @@ use cairo_lang_starknet_classes::contract_class::ContractEntryPoints;
 use cairo_lang_starknet_classes::{
     casm_contract_class::ENTRY_POINT_COST, compiler_version::VersionId,
 };
+use cairo_lang_utils::small_ordered_map::SmallOrderedMap;
 use educe::Educe;
 use itertools::{chain, Itertools};
 use libloading::Library;
@@ -223,7 +229,7 @@ impl AotContractExecutor {
                 .map(|x| {
                     (
                         FunctionId::new(x.function_idx as u64),
-                        [(CostTokenType::Const, ENTRY_POINT_COST)].into(),
+                        SmallOrderedMap::from_iter([(CostTokenType::Const, ENTRY_POINT_COST)]),
                     )
                 })
                 .collect(),
@@ -236,11 +242,78 @@ impl AotContractExecutor {
         )?;
 
         if let Some(&mut ref mut stats) = stats {
+            for type_declaration in &program.type_declarations {
+                if let Ok(type_concrete) = registry.get_type(&type_declaration.id) {
+                    let type_id = type_declaration.id.id;
+                    let type_size = type_concrete.layout(&registry)?.size();
+                    stats.sierra_declared_types_stats.insert(
+                        type_id,
+                        SierraDeclaredTypeStats {
+                            size: type_size,
+                            as_param_count: 0,
+                        },
+                    );
+
+                    if let CoreTypeConcrete::Circuit(CircuitTypeConcrete::Circuit(info)) =
+                        type_concrete
+                    {
+                        stats.add_circuit_gates(&info.circuit_info)?;
+                    }
+                }
+            }
+
             for statement in &program.statements {
                 if let GenStatement::Invocation(invocation) = statement {
                     let libfunc = registry.get_libfunc(&invocation.libfunc_id)?;
                     let name = libfunc_to_name(libfunc).to_string();
                     *stats.sierra_libfunc_frequency.entry(name).or_insert(0) += 1;
+
+                    for param in libfunc.param_signatures() {
+                        let param_type_id = param.ty.id;
+                        if let Some(type_stats) =
+                            stats.sierra_declared_types_stats.get_mut(&param_type_id)
+                        {
+                            type_stats.as_param_count += 1;
+                        }
+                    }
+                }
+            }
+
+            for func in &program.funcs {
+                let func_id = func.id.id;
+                // Params
+                let params_total_size =
+                    get_types_total_size(&func.signature.param_types, &registry)?;
+                // Return types
+                let return_types_total_size =
+                    get_types_total_size(&func.signature.ret_types, &registry)?;
+
+                stats.sierra_func_stats.insert(
+                    func_id,
+                    SierraFuncStats {
+                        params_total_size,
+                        return_types_total_size,
+                        times_called: 0,
+                    },
+                );
+            }
+
+            for statement in &program.statements {
+                match statement {
+                    GenStatement::Invocation(gen_invocation) => {
+                        let libfunc = registry.get_libfunc(&gen_invocation.libfunc_id)?;
+                        if let CoreConcreteLibfunc::FunctionCall(function_call_libfunc) = libfunc {
+                            let func_id = function_call_libfunc.function.id.id;
+                            let func_entry = stats
+                                .sierra_func_stats
+                                .get_mut(&func_id)
+                                .to_native_assert_error(&format!(
+                                    "Function ID {func_id}, should be present in the stats"
+                                ))?;
+                            func_entry.times_called += 1;
+                        }
+                    }
+                    GenStatement::Return(_) => continue,
                 }
             }
         }
@@ -527,15 +600,31 @@ impl AotContractExecutor {
                     let value = unsafe { *read_value::<u64>(return_ptr) } as usize;
 
                     match x {
-                        BuiltinType::Bitwise => builtin_stats.bitwise = value,
-                        BuiltinType::EcOp => builtin_stats.ec_op = value,
-                        BuiltinType::RangeCheck => builtin_stats.range_check = value,
-                        BuiltinType::SegmentArena => builtin_stats.segment_arena = value,
-                        BuiltinType::Poseidon => builtin_stats.poseidon = value,
-                        BuiltinType::Pedersen => builtin_stats.pedersen = value,
-                        BuiltinType::RangeCheck96 => builtin_stats.range_check_96 = value,
-                        BuiltinType::CircuitAdd => builtin_stats.circuit_add = value,
-                        BuiltinType::CircuitMul => builtin_stats.circuit_mul = value,
+                        BuiltinType::RangeCheck => {
+                            builtin_stats.range_check = value / RANGE_CHECK_BUILTIN_SIZE
+                        }
+                        BuiltinType::Pedersen => {
+                            builtin_stats.pedersen = value / PEDERSEN_BUILTIN_SIZE
+                        }
+                        BuiltinType::Bitwise => {
+                            builtin_stats.bitwise = value / BITWISE_BUILTIN_SIZE
+                        }
+                        BuiltinType::EcOp => builtin_stats.ec_op = value / EC_OP_BUILTIN_SIZE,
+                        BuiltinType::Poseidon => {
+                            builtin_stats.poseidon = value / POSEIDON_BUILTIN_SIZE
+                        }
+                        BuiltinType::SegmentArena => {
+                            builtin_stats.segment_arena = value / SEGMENT_ARENA_BUILTIN_SIZE
+                        }
+                        BuiltinType::RangeCheck96 => {
+                            builtin_stats.range_check96 = value / RANGE_CHECK96_BUILTIN_SIZE
+                        }
+                        BuiltinType::CircuitAdd => {
+                            builtin_stats.add_mod = value / ADD_MOD_BUILTIN_SIZE
+                        }
+                        BuiltinType::CircuitMul => {
+                            builtin_stats.mul_mod = value / MUL_MOD_BUILTIN_SIZE
+                        }
                         BuiltinType::Gas => {}
                         BuiltinType::System => {}
                         BuiltinType::BuiltinCosts => {}
@@ -619,6 +708,7 @@ impl AotContractExecutor {
             failure_flag: tag != 0,
             return_values: array_value,
             error_msg,
+            builtin_stats,
         })
     }
 
@@ -725,10 +815,10 @@ impl Drop for LockFile {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::{starknet_stub::StubSyscallHandler, utils::test::load_starknet_contract};
-    use cairo_lang_starknet_classes::contract_class::{
-        version_id_from_serialized_sierra_program, ContractClass,
-    };
+    use crate::include_contract;
+    use crate::starknet_stub::StubSyscallHandler;
+    use cairo_lang_starknet_classes::contract_class::version_id_from_serialized_sierra_program;
+    use cairo_lang_starknet_classes::contract_class::ContractClass;
     use rayon::iter::ParallelBridge;
     use rstest::*;
 
@@ -736,81 +826,17 @@ mod tests {
 
     #[fixture]
     fn starknet_program() -> ContractClass {
-        let (_, program) = load_starknet_contract! {
-            #[starknet::interface]
-            trait ISimpleStorage<TContractState> {
-                fn get(self: @TContractState, x: felt252) -> (felt252, felt252);
-            }
-
-            #[starknet::contract]
-            mod contract {
-                #[storage]
-                struct Storage {}
-
-                #[abi(embed_v0)]
-                impl ISimpleStorageImpl of super::ISimpleStorage<ContractState> {
-                    fn get(self: @ContractState, x: felt252) -> (felt252, felt252) {
-                        (x, x * 2)
-                    }
-                }
-            }
-        };
-        program
+        include_contract!("test_data_artifacts/contracts/simple_storage_dup.contract.json")
     }
 
     #[fixture]
     fn starknet_program_factorial() -> ContractClass {
-        let (_, program) = load_starknet_contract! {
-            #[starknet::interface]
-            trait ISimpleStorage<TContractState> {
-                fn get(self: @TContractState, x: felt252) -> felt252;
-            }
-
-            #[starknet::contract]
-            mod contract {
-                #[storage]
-                struct Storage {}
-
-                #[abi(embed_v0)]
-                impl ISimpleStorageImpl of super::ISimpleStorage<ContractState> {
-                    fn get(self: @ContractState, x: felt252) -> felt252 {
-                        factorial(1, x)
-                    }
-                }
-
-                fn factorial(value: felt252, n: felt252) -> felt252 {
-                    if (n == 1) {
-                        value
-                    } else {
-                        factorial(value * n, n - 1)
-                    }
-                }
-            }
-        };
-        program
+        include_contract!("test_data_artifacts/contracts/simple_storage_factorial.contract.json")
     }
 
     #[fixture]
     fn starknet_program_empty() -> ContractClass {
-        let (_, program) = load_starknet_contract! {
-            #[starknet::interface]
-            trait ISimpleStorage<TContractState> {
-                fn call(self: @TContractState);
-            }
-
-            #[starknet::contract]
-            mod contract {
-                #[storage]
-                struct Storage {}
-
-                #[abi(embed_v0)]
-                impl ISimpleStorageImpl of super::ISimpleStorage<ContractState> {
-                    fn call(self: @ContractState) {
-                    }
-                }
-            }
-        };
-        program
+        include_contract!("test_data_artifacts/contracts/simple_storage_empty.contract.json")
     }
 
     #[rstest]
@@ -932,7 +958,7 @@ mod tests {
             )
             .unwrap();
         assert_eq!(result.return_values, vec![Felt::from(3628800)]);
-        assert_eq!(result.remaining_gas, 18446744073709545475);
+        assert_eq!(result.remaining_gas, 18446744073709546675);
     }
 
     #[rstest]

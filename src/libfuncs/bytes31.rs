@@ -4,7 +4,7 @@ use super::LibfuncHelper;
 use crate::{
     error::{Error, Result},
     metadata::MetadataStorage,
-    utils::{BlockExt, ProgramRegistryExt},
+    utils::ProgramRegistryExt,
 };
 use cairo_lang_sierra::{
     extensions::{
@@ -21,6 +21,7 @@ use melior::{
         arith::{self, CmpiPredicate},
         cf,
     },
+    helpers::{ArithBlockExt, BuiltinBlockExt},
     ir::{Attribute, Block, BlockLike, Location, Value},
     Context,
 };
@@ -110,8 +111,10 @@ pub fn build_from_felt252<'ctx, 'this>(
     metadata: &mut MetadataStorage,
     info: &SignatureOnlyConcreteLibfunc,
 ) -> Result<()> {
+    // The sierra-to-casm compiler uses the range check builtin a total of 3 times.
+    // https://github.com/starkware-libs/cairo/blob/v2.12.0-dev.1/crates/cairo-lang-sierra-to-casm/src/invocations/misc.rs?plain=1#L266
     let range_check: Value =
-        super::increment_builtin_counter(context, entry, location, entry.arg(0)?)?;
+        super::increment_builtin_counter_by(context, entry, location, entry.arg(0)?, 3)?;
 
     let value: Value = entry.arg(1)?;
 
@@ -158,36 +161,26 @@ pub fn build_from_felt252<'ctx, 'this>(
 
 #[cfg(test)]
 mod test {
-    use crate::utils::test::{
-        jit_enum, jit_panic, jit_struct, load_cairo, run_program_assert_output,
+    use crate::{
+        jit_enum, jit_panic, jit_struct,
+        utils::testing::{get_compiled_program, run_program_assert_output},
     };
-    use cairo_lang_sierra::program::Program;
-    use lazy_static::lazy_static;
     use starknet_types_core::felt::Felt;
-
-    lazy_static! {
-        // TODO: Test `bytes31_const` once the compiler supports it. See: https://github.com/lambdaclass/cairo_native/issues/1224
-        static ref BYTES31_ROUNDTRIP: (String, Program) = load_cairo! {
-            use core::bytes_31::{bytes31_try_from_felt252, bytes31_to_felt252};
-
-            fn run_test(value: felt252) -> felt252 {
-                let a: bytes31 = bytes31_try_from_felt252(value).unwrap();
-                bytes31_to_felt252(a)
-            }
-        };
-    }
 
     #[test]
     fn bytes31_roundtrip() {
+        let program =
+            get_compiled_program("test_data_artifacts/programs/libfuncs/bytes31_roundtrip");
+
         run_program_assert_output(
-            &BYTES31_ROUNDTRIP,
+            &program,
             "run_test",
             &[Felt::from(2).into()],
             jit_enum!(0, jit_struct!(Felt::from(2).into())),
         );
 
         run_program_assert_output(
-            &BYTES31_ROUNDTRIP,
+            &program,
             "run_test",
             &[Felt::MAX.into()],
             jit_panic!(Felt::from_bytes_be_slice(b"Option::unwrap failed.")),

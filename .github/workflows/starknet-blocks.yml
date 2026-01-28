@@ -32,7 +32,8 @@ jobs:
         with:
           repository: lambdaclass/starknet-replay
           path: starknet-replay
-          ref: 95c7e85f65acbf536462ffb538b866ddafb7ce39
+          ref: 7ff4d14aa25124dea769826f6011fc5fde91a4ee
+
       # We need native to use the linux deps ci action
       - name: Checkout Native
         uses: actions/checkout@v4
@@ -43,12 +44,17 @@ jobs:
         with:
           repository: lambdaclass/sequencer
           path: sequencer
-          ref: 7aaf0e38c2c80276b8121bca5df8e8389bcdc2f6
-      - name: Cache RPC Calls
-        uses: actions/cache@v4.2.0
+          # branch main-v0.14.1
+          ref: a78cfb87923946a6f428506dcfc853f82a1398b6
+      
+      - name: Restore RPC Calls
+        id: restore-rpc-calls
+        uses: actions/cache/restore@v4.2.0
         with:
-          path: starknet-replay/rpc_cache
-          key: cache-${{matrix.block}}-${{matrix.runner}}
+          path: starknet-replay/cache
+          key: cache-${{matrix.block}}-${{ github.run_id }}
+          restore-keys: |
+            cache-${{matrix.block}}
 
       # Install dependencies
       - uses: ./cairo_native/.github/actions/install-linux-deps
@@ -101,7 +107,14 @@ jobs:
         with:
           name: dump-${{matrix.block}}-${{matrix.runner}}
           path: starknet-replay/state_dumps/${{matrix.runner}}
-
+        
+      - name: Save RPC Calls
+        uses: actions/cache/save@v4.2.0
+        if: ${{ always() && matrix.runner == 'vm' }}
+        with:
+          path: starknet-replay/cache
+          key: ${{ steps.restore-rpc-calls.outputs.cache-primary-key }}
+          
   compare-dumps:
     name: Compare Dumps
     needs: [run-blocks]

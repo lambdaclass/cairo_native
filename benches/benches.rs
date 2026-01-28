@@ -1,11 +1,11 @@
 use cairo_lang_compiler::{
     compile_prepared_db, db::RootDatabase, project::setup_project, CompilerConfig,
 };
+use cairo_lang_filesystem::ids::CrateInput;
 use cairo_lang_runner::{RunResultValue, SierraCasmRunner, StarknetState};
 use cairo_lang_sierra::program::Program;
 use cairo_lang_sierra_generator::replace_ids::DebugReplacer;
 use cairo_lang_starknet::contract::{find_contracts, get_contracts_info};
-use cairo_lang_utils::Upcast;
 use cairo_native::{
     cache::{AotProgramCache, JitProgramCache},
     context::NativeContext,
@@ -84,6 +84,7 @@ fn compare(c: &mut Criterion, path: impl AsRef<Path>) {
 }
 
 fn criterion_benchmark(c: &mut Criterion) {
+    // compare(c, "programs/benches/heavy_circuit.cairo");
     compare(c, "programs/benches/dict_snapshot.cairo");
     compare(c, "programs/benches/dict_insert.cairo");
     compare(c, "programs/benches/factorial_2M.cairo");
@@ -94,7 +95,11 @@ fn criterion_benchmark(c: &mut Criterion) {
 
 fn load_contract(path: impl AsRef<Path>) -> Program {
     let mut db = RootDatabase::builder().detect_corelib().build().unwrap();
-    let main_crate_ids = setup_project(&mut db, path.as_ref()).unwrap();
+    let main_crate_ids = {
+        let main_crate_inputs =
+            setup_project(&mut db, path.as_ref()).expect("failed to setup project");
+        CrateInput::into_crate_ids(&db, main_crate_inputs)
+    };
     let sirrra_program = compile_prepared_db(
         &db,
         main_crate_ids,
@@ -113,7 +118,11 @@ fn load_contract_for_vm(path: impl AsRef<Path>) -> SierraCasmRunner {
         .detect_corelib()
         .build()
         .expect("failed to build database");
-    let main_crate_ids = setup_project(&mut db, path.as_ref()).expect("failed to setup project");
+    let main_crate_ids = {
+        let main_crate_inputs =
+            setup_project(&mut db, path.as_ref()).expect("failed to setup project");
+        CrateInput::into_crate_ids(&db, main_crate_inputs)
+    };
     let program = compile_prepared_db(
         &db,
         main_crate_ids.clone(),
@@ -125,7 +134,7 @@ fn load_contract_for_vm(path: impl AsRef<Path>) -> SierraCasmRunner {
     .expect("failed to compile program");
 
     let replacer = DebugReplacer { db: &db };
-    let contracts = find_contracts((db).upcast(), &main_crate_ids);
+    let contracts = find_contracts(&db, &main_crate_ids);
     let contracts_info =
         get_contracts_info(&db, contracts, &replacer).expect("failed to get contracts info");
 

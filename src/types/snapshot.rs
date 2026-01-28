@@ -12,9 +12,9 @@
 //! pub struct Snapshot<T>(pub T);
 //! ```
 
-use super::{BlockExt, TypeBuilder, WithSelf};
+use super::{TypeBuilder, WithSelf};
 use crate::{
-    error::{Error, Result},
+    error::Result,
     metadata::{
         drop_overrides::DropOverridesMeta, dup_overrides::DupOverridesMeta,
         enum_snapshot_variants::EnumSnapshotVariantsMeta, MetadataStorage,
@@ -30,6 +30,7 @@ use cairo_lang_sierra::{
 };
 use melior::{
     dialect::func,
+    helpers::BuiltinBlockExt,
     ir::{Block, BlockLike, Location, Module, Region, Type},
     Context,
 };
@@ -64,13 +65,7 @@ pub fn build<'ctx>(
         info.self_ty(),
         |metadata| {
             registry.build_type(context, module, metadata, &info.ty)?;
-
-            // The following unwrap is unreachable because `register_with` will always insert it before
-            // calling this closure.
-            metadata
-                .get::<DupOverridesMeta>()
-                .ok_or(Error::MissingMetadata)?
-                .is_overriden(&info.ty)
+            DupOverridesMeta::is_overriden(metadata, &info.ty)
                 .then(|| build_dup(context, module, registry, metadata, &info))
                 .transpose()
         },
@@ -85,12 +80,7 @@ pub fn build<'ctx>(
         |metadata| {
             registry.build_type(context, module, metadata, &info.ty)?;
 
-            // The following unwrap is unreachable because `register_with` will always insert it before
-            // calling this closure.
-            metadata
-                .get::<DropOverridesMeta>()
-                .ok_or(Error::MissingMetadata)?
-                .is_overriden(&info.ty)
+            DropOverridesMeta::is_overriden(metadata, &info.ty)
                 .then(|| build_drop(context, module, registry, metadata, &info))
                 .transpose()
         },
@@ -113,11 +103,17 @@ fn build_dup<'ctx>(
     let region = Region::new();
     let entry = region.append_block(Block::new(&[(inner_ty, location)]));
 
-    // The following unwrap is unreachable because the registration logic will always insert it.
-    let values = metadata
-        .get::<DupOverridesMeta>()
-        .ok_or(Error::MissingMetadata)?
-        .invoke_override(context, &entry, location, &info.ty, entry.arg(0)?)?;
+    let values = DupOverridesMeta::invoke_override(
+        context,
+        registry,
+        module,
+        &entry,
+        &entry,
+        location,
+        metadata,
+        &info.ty,
+        entry.arg(0)?,
+    )?;
 
     entry.append_operation(func::r#return(&[values.0, values.1], location));
     Ok(region)
@@ -137,11 +133,17 @@ fn build_drop<'ctx>(
     let region = Region::new();
     let entry = region.append_block(Block::new(&[(inner_ty, location)]));
 
-    // The following unwrap is unreachable because the registration logic will always insert it.
-    metadata
-        .get::<DropOverridesMeta>()
-        .ok_or(Error::MissingMetadata)?
-        .invoke_override(context, &entry, location, &info.ty, entry.arg(0)?)?;
+    DropOverridesMeta::invoke_override(
+        context,
+        registry,
+        module,
+        &entry,
+        &entry,
+        location,
+        metadata,
+        &info.ty,
+        entry.arg(0)?,
+    )?;
 
     entry.append_operation(func::r#return(&[], location));
     Ok(region)

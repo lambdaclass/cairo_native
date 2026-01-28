@@ -72,12 +72,8 @@ impl AbiArgument for ValueWithInfoWrapper<'_> {
     ) -> Result<()> {
         match (self.value, self.info) {
             (value, CoreTypeConcrete::Box(info)) => {
-                let ptr = value.to_ptr(
-                    self.arena,
-                    self.registry,
-                    self.type_id,
-                    find_dict_drop_override,
-                )?;
+                let ptr =
+                    value.to_ptr(self.arena, self.registry, &info.ty, find_dict_drop_override)?;
 
                 let layout = self.registry.get_type(&info.ty)?.layout(self.registry)?;
                 let heap_ptr = unsafe {
@@ -145,6 +141,12 @@ impl AbiArgument for ValueWithInfoWrapper<'_> {
                 y.to_bytes(buffer, find_dict_drop_override)?;
                 x0.to_bytes(buffer, find_dict_drop_override)?;
                 y0.to_bytes(buffer, find_dict_drop_override)?;
+            }
+            (Value::QM31(a, b, c, d), CoreTypeConcrete::QM31(_)) => {
+                a.to_bytes(buffer, find_dict_drop_override)?;
+                b.to_bytes(buffer, find_dict_drop_override)?;
+                c.to_bytes(buffer, find_dict_drop_override)?;
+                d.to_bytes(buffer, find_dict_drop_override)?;
             }
             (Value::Enum { tag, value, .. }, CoreTypeConcrete::Enum(info)) => {
                 if self.info.is_memory_allocated(self.registry)? {

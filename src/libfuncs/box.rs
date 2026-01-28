@@ -2,11 +2,14 @@
 //!
 //! A heap allocated value, which is internally a pointer that can't be null.
 
-use super::{BlockExt, LibfuncHelper};
+use std::alloc::Layout;
+
+use super::LibfuncHelper;
 use crate::{
     error::Result,
     metadata::{realloc_bindings::ReallocBindingsMeta, MetadataStorage},
     types::TypeBuilder,
+    utils::ProgramRegistryExt,
 };
 use cairo_lang_sierra::{
     extensions::{
@@ -14,15 +17,16 @@ use cairo_lang_sierra::{
         core::{CoreLibfunc, CoreType},
         lib_func::SignatureAndTypeConcreteLibfunc,
     },
+    ids::ConcreteTypeId,
     program_registry::ProgramRegistry,
 };
 use melior::{
     dialect::{
-        arith,
         llvm::{self, r#type::pointer, LoadStoreOptions},
         ods,
     },
-    ir::{attribute::IntegerAttribute, r#type::IntegerType, Block, BlockLike, Location},
+    helpers::{ArithBlockExt, BuiltinBlockExt},
+    ir::{attribute::IntegerAttribute, r#type::IntegerType, Block, BlockLike, Location, Value},
     Context,
 };
 
@@ -37,13 +41,13 @@ pub fn build<'ctx, 'this>(
     selector: &BoxConcreteLibfunc,
 ) -> Result<()> {
     match selector {
-        BoxConcreteLibfunc::Into(info) => {
+        BoxConcreteLibfunc::Into(info) | BoxConcreteLibfunc::LocalInto(info) => {
             build_into_box(context, registry, entry, location, helper, metadata, info)
         }
         BoxConcreteLibfunc::Unbox(info) => {
             build_unbox(context, registry, entry, location, helper, metadata, info)
         }
-        BoxConcreteLibfunc::ForwardSnapshot(info) => super::build_noop::<1, true>(
+        BoxConcreteLibfunc::ForwardSnapshot(info) => super::build_noop::<1, false>(
             context,
             registry,
             entry,
@@ -72,19 +76,20 @@ pub fn build_into_box<'ctx, 'this>(
     let inner_type = registry.get_type(&info.ty)?;
     let inner_layout = inner_type.layout(registry)?;
 
-    let value_len = entry
-        .append_operation(arith::constant(
-            context,
-            IntegerAttribute::new(
-                IntegerType::new(context, 64).into(),
-                inner_layout.pad_to_align().size().try_into()?,
-            )
-            .into(),
-            location,
-        ))
-        .result(0)?
-        .into();
+    let ptr = into_box(context, entry, location, entry.arg(0)?, inner_layout)?;
 
+    helper.br(entry, 0, &[ptr], location)
+}
+
+/// Receives a value and inserts it into a box
+pub fn into_box<'ctx, 'this>(
+    context: &'ctx Context,
+    entry: &'this Block<'ctx>,
+    location: Location<'ctx>,
+    inner_val: Value<'ctx, 'this>,
+    inner_layout: Layout,
+) -> Result<Value<'ctx, 'this>> {
+    let value_len = entry.const_int(context, location, inner_layout.pad_to_align().size(), 64)?;
     let ptr = entry
         .append_operation(ods::llvm::mlir_zero(context, pointer(context, 0), location).into())
         .result(0)?
@@ -98,7 +103,7 @@ pub fn build_into_box<'ctx, 'this>(
 
     entry.append_operation(llvm::store(
         context,
-        entry.arg(0)?,
+        inner_val,
         ptr,
         location,
         LoadStoreOptions::new().align(Some(IntegerAttribute::new(
@@ -107,7 +112,7 @@ pub fn build_into_box<'ctx, 'this>(
         ))),
     ));
 
-    helper.br(entry, 0, &[ptr], location)
+    Ok(ptr)
 }
 
 /// Generate MLIR operations for the `unbox` libfunc.
@@ -120,20 +125,34 @@ pub fn build_unbox<'ctx, 'this>(
     metadata: &mut MetadataStorage,
     info: &SignatureAndTypeConcreteLibfunc,
 ) -> Result<()> {
-    let inner_type = registry.get_type(&info.ty)?;
-    let inner_ty = inner_type.build(context, helper, registry, metadata, &info.ty)?;
-    let inner_layout = inner_type.layout(registry)?;
+    metadata.get_or_insert_with(|| ReallocBindingsMeta::new(context, helper));
 
-    if metadata.get::<ReallocBindingsMeta>().is_none() {
-        metadata.insert(ReallocBindingsMeta::new(context, helper));
-    }
+    let value = unbox(
+        context, registry, entry, location, helper, metadata, &info.ty,
+    )?;
+
+    helper.br(entry, 0, &[value], location)
+}
+
+// Gets the value that is inside a `Box`
+pub fn unbox<'ctx, 'this>(
+    context: &'ctx Context,
+    registry: &ProgramRegistry<CoreType, CoreLibfunc>,
+    entry: &'this Block<'ctx>,
+    location: Location<'ctx>,
+    helper: &LibfuncHelper<'ctx, 'this>,
+    metadata: &mut MetadataStorage,
+    inner_ty_id: &ConcreteTypeId,
+) -> Result<Value<'ctx, 'this>> {
+    let (inner_type, inner_layout) =
+        registry.build_type_with_layout(context, helper, metadata, inner_ty_id)?;
 
     // Load the boxed value from memory.
     let value = entry
         .append_operation(llvm::load(
             context,
             entry.arg(0)?,
-            inner_ty,
+            inner_type,
             location,
             LoadStoreOptions::new().align(Some(IntegerAttribute::new(
                 IntegerType::new(context, 64).into(),
@@ -145,62 +164,35 @@ pub fn build_unbox<'ctx, 'this>(
 
     entry.append_operation(ReallocBindingsMeta::free(context, entry.arg(0)?, location)?);
 
-    helper.br(entry, 0, &[value], location)
+    Ok(value)
 }
 
 #[cfg(test)]
 mod test {
     use crate::{
-        utils::test::{load_cairo, run_program_assert_output},
+        jit_enum, jit_struct,
+        utils::testing::{get_compiled_program, run_program_assert_output},
         values::Value,
     };
 
     #[test]
     fn run_box_unbox() {
-        let program = load_cairo! {
-            use box::BoxTrait;
-            use box::BoxImpl;
-
-            fn run_test() -> u32 {
-                let x: u32 = 2_u32;
-                let box_x: Box<u32> = BoxTrait::new(x);
-                box_x.unbox()
-            }
-        };
+        let program = get_compiled_program("test_data_artifacts/programs/libfuncs/box_unbox");
 
         run_program_assert_output(&program, "run_test", &[], Value::Uint32(2));
     }
 
     #[test]
     fn run_box() {
-        let program = load_cairo! {
-            use box::BoxTrait;
-            use box::BoxImpl;
-
-            fn run_test() -> Box<u32>  {
-                let x: u32 = 2_u32;
-                let box_x: Box<u32> = BoxTrait::new(x);
-                box_x
-            }
-        };
+        let program = get_compiled_program("test_data_artifacts/programs/libfuncs/box");
 
         run_program_assert_output(&program, "run_test", &[], Value::Uint32(2));
     }
 
     #[test]
     fn box_unbox_stack_allocated_enum_single() {
-        let program = load_cairo! {
-            use core::box::BoxTrait;
-
-            enum MyEnum {
-                A: felt252,
-            }
-
-            fn run_test() -> MyEnum {
-                let x = BoxTrait::new(MyEnum::A(1234));
-                x.unbox()
-            }
-        };
+        let program =
+            get_compiled_program("test_data_artifacts/programs/libfuncs/box_unbox_enum_single");
 
         run_program_assert_output(
             &program,
@@ -216,19 +208,8 @@ mod test {
 
     #[test]
     fn box_unbox_stack_allocated_enum_c() {
-        let program = load_cairo! {
-            use core::box::BoxTrait;
-
-            enum MyEnum {
-                A: (),
-                B: (),
-            }
-
-            fn run_test() -> MyEnum {
-                let x = BoxTrait::new(MyEnum::A);
-                x.unbox()
-            }
-        };
+        let program =
+            get_compiled_program("test_data_artifacts/programs/libfuncs/box_unbox_enum_c");
 
         run_program_assert_output(
             &program,
@@ -247,19 +228,8 @@ mod test {
 
     #[test]
     fn box_unbox_stack_allocated_enum_c2() {
-        let program = load_cairo! {
-            use core::box::BoxTrait;
-
-            enum MyEnum {
-                A: (),
-                B: (),
-            }
-
-            fn run_test() -> MyEnum {
-                let x = BoxTrait::new(MyEnum::B);
-                x.unbox()
-            }
-        };
+        let program =
+            get_compiled_program("test_data_artifacts/programs/libfuncs/box_unbox_enum_c2");
 
         run_program_assert_output(
             &program,
@@ -277,20 +247,34 @@ mod test {
     }
 
     #[test]
+    fn run_local_into_box_for_option() {
+        let program =
+            get_compiled_program("test_data_artifacts/programs/libfuncs/box_local_into_option");
+
+        run_program_assert_output(
+            &program,
+            "local_into_box_for_option",
+            &[],
+            jit_enum!(0, Value::Uint8(6)),
+        );
+    }
+
+    #[test]
+    fn run_local_into_box_for_tuple() {
+        let program =
+            get_compiled_program("test_data_artifacts/programs/libfuncs/box_local_into_tuple");
+
+        run_program_assert_output(
+            &program,
+            "local_into_box_for_tuple",
+            &[],
+            jit_struct!(4u8.into(), 5u8.into(), 6u8.into()),
+        );
+    }
+
+    #[test]
     fn box_unbox_stack_allocated_enum() {
-        let program = load_cairo! {
-            use core::box::BoxTrait;
-
-            enum MyEnum {
-                A: felt252,
-                B: u128,
-            }
-
-            fn run_test() -> MyEnum {
-                let x = BoxTrait::new(MyEnum::A(1234));
-                x.unbox()
-            }
-        };
+        let program = get_compiled_program("test_data_artifacts/programs/libfuncs/box_unbox_enum");
 
         run_program_assert_output(
             &program,

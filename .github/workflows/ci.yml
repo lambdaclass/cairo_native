@@ -33,6 +33,8 @@ jobs:
           keys-asc: https://apt.llvm.org/llvm-snapshot.gpg.key
       - name: Install LLVM
         run: sudo apt-get install llvm-19 llvm-19-dev llvm-19-runtime clang-19 clang-tools-19 lld-19 libpolly-19-dev libmlir-19-dev mlir-19-tools
+      - name: Compile Test Data
+        run: make compile-test-data
       - name: Clippy
         run: make check
 
@@ -79,8 +81,8 @@ jobs:
             <!-- thiscommentistofindthisformatcomment -->
           edit-mode: replace
 
-  # Check for unnecessary dependencies.
-  udeps:
+  unused-deps:
+    name: No unused dependencies
     runs-on: ubuntu-24.04
     env:
       MLIR_SYS_190_PREFIX: /usr/lib/llvm-19/
@@ -114,6 +116,10 @@ jobs:
       RUST_LOG: cairo_native=debug,cairo_native_test=debug
     steps:
       - uses: actions/checkout@v4
+      - name: Install testing tools
+        uses: taiki-e/install-action@v2
+        with:
+          tool: cargo-nextest
       - name: check and free hdd space left
         run: |
           echo "Listing 20 largest packages"
@@ -165,6 +171,10 @@ jobs:
       RUST_LOG: cairo_native=debug,cairo_native_test=debug
     steps:
       - uses: actions/checkout@v4
+      - name: Install testing tools
+        uses: taiki-e/install-action@v2
+        with:
+          tool: cargo-nextest
       - name: Rustup toolchain install
         uses: dtolnay/rust-toolchain@1.84.1
         with:
@@ -172,10 +182,6 @@ jobs:
       - name: Rust `$PATH` workaround.
         run: echo "$HOME/.cargo/bin" >> $GITHUB_PATH
       - uses: Homebrew/actions/setup-homebrew@master
-      - name: Install scarb
-        uses: software-mansion/setup-scarb@v1
-        with:
-          scarb-version: "2.11.2"
       - name: Install deps
         run: make deps
       - name: Run tests
@@ -240,21 +246,15 @@ jobs:
         uses: taiki-e/install-action@v2
         with:
           tool: cargo-nextest,cargo-llvm-cov
-      - name: Install scarb
-        uses: software-mansion/setup-scarb@v1
-        with:
-          scarb-version: "2.11.2"
       - name: Install deps
         run: make deps
-      - name: Build alexandria
-        run: make check-llvm && make needs-cairo2 && make build-alexandria
 
       - name: Run tests and generate coverage partition ${{ matrix.partition }}
-        run: cargo llvm-cov nextest --verbose --features=scarb --lcov --output-path ${{ matrix.output }} --partition count:${{ matrix.partition }}/4
+        run: cargo llvm-cov nextest --verbose --lcov --output-path ${{ matrix.output }} --partition count:${{ matrix.partition }}/4
 
       - name: test and generate coverage corelib
         if: ${{ matrix.partition == '1' }}
-        run: cargo llvm-cov nextest --verbose --features=scarb --lcov --output-path lcov-test.info run --bin cairo-native-test -- corelib
+        run: cargo llvm-cov run --verbose --lcov --output-path lcov-test.info --package cairo-native-test -- corelib
 
       - name: save coverage data with corelib
         if: ${{ matrix.partition == '1' }}
@@ -352,7 +352,7 @@ jobs:
       uses: Swatinem/rust-cache@v2
     - name: Install dependencies
       run: |
-        make build-cairo-2-compiler
+        make deps
         cd ./debug_utils/sierra-emu
         make corelib
     - name: Build

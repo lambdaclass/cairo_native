@@ -7,11 +7,10 @@ use cairo_lang_compiler::{
 };
 use cairo_lang_filesystem::{
     cfg::{Cfg, CfgSet},
-    ids::CrateId,
+    ids::CrateInput,
 };
 use cairo_lang_runner::{casm_run::format_for_panic, RunResultValue};
 use cairo_lang_sierra_generator::replace_ids::replace_sierra_ids_in_program;
-use cairo_lang_starknet::starknet_plugin_suite;
 use cairo_lang_test_plugin::{
     compile_test_prepared_db,
     test_config::{PanicExpectation, TestExpectation},
@@ -41,15 +40,13 @@ fn test_corelib() {
         b.detect_corelib();
         b.with_cfg(CfgSet::from_iter([Cfg::name("test")]));
         b.with_default_plugin_suite(test_plugin_suite());
-        b.with_default_plugin_suite(starknet_plugin_suite());
-
         b.build().unwrap()
     };
 
-    let main_crate_ids = setup_project(db, &compiler_path).unwrap();
+    let main_crate_inputs = setup_project(db, &compiler_path).unwrap();
 
     let db = db.snapshot();
-    let test_crate_ids = main_crate_ids.clone();
+    let test_crate_ids = main_crate_inputs.clone();
     let test_config = TestsCompilationConfig {
         starknet: false,
         add_statements_functions: false,
@@ -57,9 +54,10 @@ fn test_corelib() {
         contract_declarations: None,
         contract_crate_ids: None,
         executable_crate_ids: None,
+        add_functions_debug_info: false,
     };
 
-    let diag_reporter = DiagnosticsReporter::stderr().with_crates(&main_crate_ids);
+    let diag_reporter = DiagnosticsReporter::stderr().with_crates(&main_crate_inputs);
 
     let filtered_tests = vec![
         "core::test::dict_test::test_array_from_squash_dict",
@@ -236,15 +234,15 @@ fn display_results(results: &[TestStatus]) {
     }
 }
 
-fn compile_tests(
-    db: &RootDatabase,
-    test_config: TestsCompilationConfig,
-    test_crate_ids: Vec<CrateId>,
+fn compile_tests<'a>(
+    db: &'a RootDatabase,
+    test_config: TestsCompilationConfig<'a>,
+    test_crate_inputs: Vec<CrateInput>,
     diag_reporter: DiagnosticsReporter<'_>,
     with_filtered_tests: Option<&[&str]>,
-) -> TestCompilation {
+) -> TestCompilation<'a> {
     let mut compiled =
-        compile_test_prepared_db(db, test_config, test_crate_ids.clone(), diag_reporter).unwrap();
+        compile_test_prepared_db(db, test_config, test_crate_inputs, diag_reporter).unwrap();
     // replace ids to have debug_names
     compiled.sierra_program.program =
         replace_sierra_ids_in_program(db, &compiled.sierra_program.program);

@@ -1,0 +1,18 @@
+[package]
+name = "test-utils"
+version.workspace = true
+edition.workspace = true
+license.workspace = true
+repository.workspace = true
+
+[dependencies]
+clap = { workspace = true, features = ["derive"] }
+serde_json.workspace = true
+
+cairo-lang-compiler = "2.15.0"
+cairo-lang-filesystem = "2.15.0"
+cairo-lang-lowering = "2.15.0"
+cairo-lang-sierra = "2.15.0"
+cairo-lang-starknet = "2.15.0"
+cairo-lang-test-plugin = "2.15.0"
+cairo-lang-test-runner = "2.15.0"

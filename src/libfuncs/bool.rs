@@ -5,7 +5,7 @@ use crate::{
     error::{panic::ToNativeAssertError, Result},
     metadata::MetadataStorage,
     types::TypeBuilder,
-    utils::{BlockExt, ProgramRegistryExt},
+    utils::ProgramRegistryExt,
 };
 use cairo_lang_sierra::{
     extensions::{
@@ -18,6 +18,7 @@ use cairo_lang_sierra::{
 };
 use melior::{
     dialect::{arith, llvm},
+    helpers::{ArithBlockExt, BuiltinBlockExt, LlvmBlockExt},
     ir::{r#type::IntegerType, Block, Location},
     Context,
 };
@@ -207,19 +208,14 @@ pub fn build_bool_to_felt252<'ctx, 'this>(
 #[cfg(test)]
 mod test {
     use crate::{
-        utils::test::{jit_enum, jit_struct, load_cairo, run_program},
+        jit_enum, jit_struct,
+        utils::testing::{get_compiled_program, run_program},
         values::Value,
     };
 
     #[test]
     fn run_not() {
-        let program = load_cairo!(
-            use array::ArrayTrait;
-
-            fn run_test(a: bool) -> bool {
-                !a
-            }
-        );
+        let program = get_compiled_program("test_data_artifacts/programs/libfuncs/bool_not");
 
         let result = run_program(&program, "run_test", &[jit_enum!(0, jit_struct!())]).return_value;
         assert_eq!(result, jit_enum!(1, jit_struct!()));
@@ -230,13 +226,7 @@ mod test {
 
     #[test]
     fn run_and() {
-        let program = load_cairo!(
-            use array::ArrayTrait;
-
-            fn run_test(a: bool, b: bool) -> bool {
-                a && b
-            }
-        );
+        let program = get_compiled_program("test_data_artifacts/programs/libfuncs/bool_and");
 
         let result = run_program(
             &program,
@@ -273,13 +263,7 @@ mod test {
 
     #[test]
     fn run_xor() {
-        let program = load_cairo!(
-            use array::ArrayTrait;
-
-            fn run_test(a: bool, b: bool) -> bool {
-                a ^ b
-            }
-        );
+        let program = get_compiled_program("test_data_artifacts/programs/libfuncs/bool_xor");
 
         let result = run_program(
             &program,
@@ -316,13 +300,7 @@ mod test {
 
     #[test]
     fn run_or() {
-        let program = load_cairo!(
-            use array::ArrayTrait;
-
-            fn run_test(a: bool, b: bool) -> bool {
-                a || b
-            }
-        );
+        let program = get_compiled_program("test_data_artifacts/programs/libfuncs/bool_or");
 
         let result = run_program(
             &program,
@@ -359,11 +337,7 @@ mod test {
 
     #[test]
     fn bool_to_felt252() {
-        let program = load_cairo!(
-            fn run_test(a: bool) -> felt252 {
-                bool_to_felt252(a)
-            }
-        );
+        let program = get_compiled_program("test_data_artifacts/programs/libfuncs/bool_to_felt252");
 
         let result = run_program(&program, "run_test", &[jit_enum!(1, jit_struct!())]).return_value;
         assert_eq!(result, Value::Felt252(1.into()));

@@ -8,7 +8,6 @@ use crate::{
     metadata::{enum_snapshot_variants::EnumSnapshotVariantsMeta, MetadataStorage},
     native_assert, native_panic,
     types::TypeBuilder,
-    utils::BlockExt,
 };
 use cairo_lang_sierra::{
     extensions::{
@@ -22,6 +21,7 @@ use cairo_lang_sierra::{
 };
 use melior::{
     dialect::{arith, cf, llvm, ods},
+    helpers::{ArithBlockExt, BuiltinBlockExt, LlvmBlockExt},
     ir::{
         attribute::{DenseI64ArrayAttribute, IntegerAttribute},
         r#type::IntegerType,
@@ -183,6 +183,18 @@ pub fn build_enum_value<'ctx, 'this>(
 }
 
 /// Generate MLIR operations for the `enum_from_bounded_int` libfunc.
+///
+/// # Constraints
+///
+/// - The target `Enum` must contain the same number of empty variants as the number
+///   of possible values in the `BoundedInt` range.
+/// - The range of the `BoundedInt` must start from **0**.
+///
+/// # Signature
+///
+/// ```cairo
+/// fn enum_from_bounded_int<T, U>(index: U) -> T nopanic
+/// ```
 pub fn build_from_bounded_int<'ctx, 'this>(
     context: &'ctx Context,
     registry: &ProgramRegistry<CoreType, CoreLibfunc>,
@@ -203,11 +215,6 @@ pub fn build_from_bounded_int<'ctx, 'this>(
         )?
         .try_into()?;
     let enum_type = registry.get_type(&info.branch_signatures()[0].vars[0].ty)?;
-    // we assume its never memory allocated since its always an enum with only a tag
-    native_assert!(
-        !enum_type.is_memory_allocated(registry)?,
-        "an enum with only a tag should not be allocated in memory"
-    );
 
     let enum_ty = enum_type.build(
         context,
@@ -236,8 +243,10 @@ pub fn build_from_bounded_int<'ctx, 'this>(
         }
     };
 
-    let value = entry.append_op_result(llvm::undef(enum_ty, location))?;
-    let value = entry.insert_value(context, location, value, tag_value, 0)?;
+    let mut value = entry.append_op_result(llvm::undef(enum_ty, location))?;
+    if info.n_variants > 1 {
+        value = entry.insert_value(context, location, value, tag_value, 0)?;
+    }
 
     helper.br(entry, 0, &[value], location)
 }
@@ -545,74 +554,17 @@ pub fn build_snapshot_match<'ctx, 'this>(
 mod test {
     use crate::{
         context::NativeContext,
-        utils::test::{jit_enum, jit_struct, load_cairo, run_program_assert_output},
+        jit_enum, jit_struct,
+        utils::testing::{get_compiled_program, run_program_assert_output},
+        Value,
     };
-    use cairo_lang_sierra::program::Program;
-    use lazy_static::lazy_static;
     use starknet_types_core::felt::Felt;
-
-    lazy_static! {
-        static ref ENUM_INIT: (String, Program) = load_cairo! {
-            enum MySmallEnum {
-                A: felt252,
-            }
-
-            enum MyEnum {
-                A: felt252,
-                B: u8,
-                C: u16,
-                D: u32,
-                E: u64,
-            }
-
-            fn run_test() -> (MySmallEnum, MyEnum, MyEnum, MyEnum, MyEnum, MyEnum) {
-                (
-                    MySmallEnum::A(-1),
-                    MyEnum::A(5678),
-                    MyEnum::B(90),
-                    MyEnum::C(9012),
-                    MyEnum::D(34567890),
-                    MyEnum::E(1234567890123456),
-                )
-            }
-        };
-        static ref ENUM_MATCH: (String, Program) = load_cairo! {
-            enum MyEnum {
-                A: felt252,
-                B: u8,
-                C: u16,
-                D: u32,
-                E: u64,
-            }
-
-            fn match_a() -> felt252 {
-                let x = MyEnum::A(5);
-                match x {
-                    MyEnum::A(x) => x,
-                    MyEnum::B(_) => 0,
-                    MyEnum::C(_) => 1,
-                    MyEnum::D(_) => 2,
-                    MyEnum::E(_) => 3,
-                }
-            }
-
-            fn match_b() -> u8 {
-                let x = MyEnum::B(5_u8);
-                match x {
-                    MyEnum::A(_) => 0_u8,
-                    MyEnum::B(x) => x,
-                    MyEnum::C(_) => 1_u8,
-                    MyEnum::D(_) => 2_u8,
-                    MyEnum::E(_) => 3_u8,
-                }
-            }
-        };
-    }
 
     #[test]
     fn enum_init() {
+        let program = get_compiled_program("test_data_artifacts/programs/libfuncs/enum_init");
         run_program_assert_output(
-            &ENUM_INIT,
+            &program,
             "run_test",
             &[],
             jit_struct!(
@@ -628,23 +580,46 @@ mod test {
 
     #[test]
     fn enum_match() {
-        run_program_assert_output(&ENUM_MATCH, "match_a", &[], Felt::from(5).into());
-        run_program_assert_output(&ENUM_MATCH, "match_b", &[], 5u8.into());
+        let program = get_compiled_program("test_data_artifacts/programs/libfuncs/enum_match");
+        run_program_assert_output(&program, "match_a", &[], Felt::from(5).into());
+        run_program_assert_output(&program, "match_b", &[], 5u8.into());
     }
 
     #[test]
     fn compile_enum_match_without_variants() {
-        let (_, program) = load_cairo! {
-            enum MyEnum {}
-
-            fn main(value: MyEnum) {
-                match value {}
-            }
-        };
+        let program =
+            get_compiled_program("test_data_artifacts/programs/libfuncs/enum_match_no_variants");
 
         let native_context = NativeContext::new();
         native_context
-            .compile(&program, false, Some(Default::default()), None)
+            .compile(&program.1, false, Some(Default::default()), None)
             .unwrap();
+    }
+
+    #[test]
+    fn create_enum_from_bounded_int() {
+        let program =
+            get_compiled_program("test_data_artifacts/programs/libfuncs/enum_from_bounded_int");
+
+        run_program_assert_output(
+            &program,
+            "test_1_variants",
+            &[Value::Felt252(0.into())],
+            jit_enum!(0, jit_struct!(jit_enum!(0, jit_struct!()))),
+        );
+
+        run_program_assert_output(
+            &program,
+            "test_5_variants",
+            &[Value::Felt252(0.into())],
+            jit_enum!(0, jit_struct!(jit_enum!(0, jit_struct!()))),
+        );
+
+        run_program_assert_output(
+            &program,
+            "test_5_variants",
+            &[Value::Felt252(4.into())],
+            jit_enum!(0, jit_struct!(jit_enum!(4, jit_struct!()))),
+        );
     }
 }

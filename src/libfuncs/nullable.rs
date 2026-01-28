@@ -3,7 +3,7 @@
 //! Like a Box but it can be null.
 
 use super::LibfuncHelper;
-use crate::{error::Result, metadata::MetadataStorage, utils::BlockExt};
+use crate::{error::Result, metadata::MetadataStorage};
 use cairo_lang_sierra::{
     extensions::{
         core::{CoreLibfunc, CoreType},
@@ -14,6 +14,7 @@ use cairo_lang_sierra::{
 };
 use melior::{
     dialect::{cf, llvm::r#type::pointer, ods},
+    helpers::BuiltinBlockExt,
     ir::{
         attribute::IntegerAttribute, operation::OperationBuilder, r#type::IntegerType, Block,
         BlockLike, Identifier, Location,
@@ -33,7 +34,7 @@ pub fn build<'ctx, 'this>(
 ) -> Result<()> {
     match selector {
         NullableConcreteLibfunc::ForwardSnapshot(info)
-        | NullableConcreteLibfunc::NullableFromBox(info) => super::build_noop::<1, true>(
+        | NullableConcreteLibfunc::NullableFromBox(info) => super::build_noop::<1, false>(
             context,
             registry,
             entry,
@@ -117,68 +118,30 @@ fn build_match_nullable<'ctx, 'this>(
 #[cfg(test)]
 mod test {
     use crate::{
-        utils::test::{jit_enum, jit_struct, load_cairo, run_program_assert_output},
+        jit_enum, jit_struct,
+        utils::testing::{get_compiled_program, run_program_assert_output},
         values::Value,
     };
 
     #[test]
     fn run_null() {
-        let program = load_cairo!(
-            use nullable::null;
-            use nullable::match_nullable;
-            use nullable::FromNullableResult;
-            use nullable::nullable_from_box;
-            use box::BoxTrait;
-
-            fn run_test() {
-                let _a: Nullable<u8> = null();
-            }
-        );
+        let program = get_compiled_program("test_data_artifacts/programs/libfuncs/nullable_null");
 
         run_program_assert_output(&program, "run_test", &[], jit_struct!());
     }
 
     #[test]
     fn run_null_jit() {
-        let program = load_cairo!(
-            use nullable::null;
-            use nullable::match_nullable;
-            use nullable::FromNullableResult;
-            use nullable::nullable_from_box;
-            use box::BoxTrait;
-
-            fn run_test() -> Nullable<u8> {
-                let a: Nullable<u8> = null();
-                a
-            }
-        );
+        let program =
+            get_compiled_program("test_data_artifacts/programs/libfuncs/nullable_null_jit");
 
         run_program_assert_output(&program, "run_test", &[], Value::Null);
     }
 
     #[test]
     fn run_not_null() {
-        let program = load_cairo!(
-            use nullable::null;
-            use nullable::match_nullable;
-            use nullable::FromNullableResult;
-            use nullable::nullable_from_box;
-            use box::BoxTrait;
-
-            fn run_test(x: u8) -> u8 {
-                let b: Box<u8> = BoxTrait::new(x);
-                let c = if x == 0 {
-                    null()
-                } else {
-                    nullable_from_box(b)
-                };
-                let d = match match_nullable(c) {
-                    FromNullableResult::Null(_) => 99_u8,
-                    FromNullableResult::NotNull(value) => value.unbox()
-                };
-                d
-            }
-        );
+        let program =
+            get_compiled_program("test_data_artifacts/programs/libfuncs/nullable_not_null");
 
         run_program_assert_output(&program, "run_test", &[4u8.into()], 4u8.into());
         run_program_assert_output(&program, "run_test", &[0u8.into()], 99u8.into());
@@ -186,21 +149,8 @@ mod test {
 
     #[test]
     fn match_snapshot_nullable_clone_bug() {
-        let program = load_cairo! {
-            use core::{NullableTrait, match_nullable, null, nullable::FromNullableResult};
-
-            fn run_test(x: Option<u8>) -> Option<u8> {
-                let a = match x {
-                    Option::Some(x) => @NullableTrait::new(x),
-                    Option::None(_) => @null::<u8>(),
-                };
-                let b = *a;
-                match match_nullable(b) {
-                    FromNullableResult::Null(_) => Option::None(()),
-                    FromNullableResult::NotNull(x) => Option::Some(x.unbox()),
-                }
-            }
-        };
+        let program =
+            get_compiled_program("test_data_artifacts/programs/libfuncs/nullable_match_snapshot");
 
         run_program_assert_output(
             &program,

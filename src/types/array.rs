@@ -16,7 +16,7 @@
 //!
 //! The pointer to the allocation (which is **not the data**) contains:
 //!   1. Reference counter.
-//!   2. Padding.
+//!   2. Array capacity.
 //!   3. Array data. Its address is the pointer to the data stored in the type.
 //!
 //! [^1]: When capacity is zero, this field is not guaranteed to be valid.
@@ -29,7 +29,7 @@ use crate::{
         drop_overrides::DropOverridesMeta, dup_overrides::DupOverridesMeta,
         realloc_bindings::ReallocBindingsMeta, MetadataStorage,
     },
-    utils::{get_integer_layout, BlockExt, GepIndex, ProgramRegistryExt},
+    utils::{get_integer_layout, ProgramRegistryExt},
 };
 use cairo_lang_sierra::{
     extensions::{
@@ -38,7 +38,6 @@ use cairo_lang_sierra::{
     },
     program_registry::ProgramRegistry,
 };
-use melior::ir::Region;
 use melior::{
     dialect::{arith, llvm},
     ir::{r#type::IntegerType, Block, Location, Module, Type},
@@ -47,6 +46,10 @@ use melior::{
 use melior::{
     dialect::{arith::CmpiPredicate, func, scf},
     ir::BlockLike,
+};
+use melior::{
+    helpers::{ArithBlockExt, BuiltinBlockExt, GepIndex, LlvmBlockExt},
+    ir::Region,
 };
 use std::alloc::Layout;
 
@@ -102,7 +105,7 @@ pub fn build<'ctx>(
 /// This function clones the array shallowly. That is, it'll increment the reference counter but not
 /// actually clone anything. The deep clone implementation is provided in `src/libfuncs/array.rs` as
 /// part of some libfuncs's implementations.
-fn build_dup<'ctx>(
+pub fn build_dup<'ctx>(
     context: &'ctx Context,
     module: &Module<'ctx>,
     registry: &ProgramRegistry<CoreType, CoreLibfunc>,
@@ -195,7 +198,7 @@ fn build_dup<'ctx>(
 
 /// This function decreases the reference counter of the array by one.
 /// If the reference counter reaches zero, then all the resources are freed.
-fn build_drop<'ctx>(
+pub fn build_drop<'ctx>(
     context: &'ctx Context,
     module: &Module<'ctx>,
     registry: &ProgramRegistry<CoreType, CoreLibfunc>,
@@ -311,68 +314,61 @@ fn build_drop<'ctx>(
                     let region = Region::new();
                     let block = region.append_block(Block::new(&[]));
 
-                    match metadata.get::<DropOverridesMeta>() {
-                        Some(drop_overrides_meta) if drop_overrides_meta.is_overriden(&info.ty) => {
-                            let k0 = block.const_int(context, location, 0, 64)?;
-                            let elem_stride =
-                                block.const_int(context, location, elem_stride, 64)?;
+                    if DropOverridesMeta::is_overriden(metadata, &info.ty) {
+                        let k0 = block.const_int(context, location, 0, 64)?;
+                        let elem_stride = block.const_int(context, location, elem_stride, 64)?;
 
-                            let max_len_ptr = block.gep(
-                                context,
-                                location,
-                                array_ptr,
-                                &[GepIndex::Const(
-                                    -((refcount_offset - size_of::<u32>()) as i32),
-                                )],
-                                IntegerType::new(context, 8).into(),
-                            )?;
-                            let max_len = block.load(
-                                context,
-                                location,
-                                max_len_ptr,
-                                IntegerType::new(context, 32).into(),
-                            )?;
-                            let max_len = block.extui(
-                                max_len,
-                                IntegerType::new(context, 64).into(),
-                                location,
-                            )?;
-                            let offset_end = block.muli(max_len, elem_stride, location)?;
+                        let max_len_ptr = block.gep(
+                            context,
+                            location,
+                            array_ptr,
+                            &[GepIndex::Const(
+                                -((refcount_offset - size_of::<u32>()) as i32),
+                            )],
+                            IntegerType::new(context, 8).into(),
+                        )?;
+                        let max_len = block.load(
+                            context,
+                            location,
+                            max_len_ptr,
+                            IntegerType::new(context, 32).into(),
+                        )?;
+                        let max_len =
+                            block.extui(max_len, IntegerType::new(context, 64).into(), location)?;
+                        let offset_end = block.muli(max_len, elem_stride, location)?;
 
-                            // Drop each element in the array.
-                            block.append_operation(scf::r#for(
-                                k0,
-                                offset_end,
-                                elem_stride,
-                                {
-                                    let region = Region::new();
-                                    let block = region.append_block(Block::new(&[(
-                                        IntegerType::new(context, 64).into(),
-                                        location,
-                                    )]));
+                        // Drop each element in the array.
+                        block.append_operation(scf::r#for(
+                            k0,
+                            offset_end,
+                            elem_stride,
+                            {
+                                let region = Region::new();
+                                let block = region.append_block(Block::new(&[(
+                                    IntegerType::new(context, 64).into(),
+                                    location,
+                                )]));
 
-                                    let elem_offset = block.argument(0)?.into();
-                                    let elem_ptr = block.gep(
-                                        context,
-                                        location,
-                                        array_ptr,
-                                        &[GepIndex::Value(elem_offset)],
-                                        IntegerType::new(context, 8).into(),
-                                    )?;
-                                    let elem_val =
-                                        block.load(context, location, elem_ptr, elem_ty)?;
+                                let elem_offset = block.argument(0)?.into();
+                                let elem_ptr = block.gep(
+                                    context,
+                                    location,
+                                    array_ptr,
+                                    &[GepIndex::Value(elem_offset)],
+                                    IntegerType::new(context, 8).into(),
+                                )?;
+                                let elem_val = block.load(context, location, elem_ptr, elem_ty)?;
 
-                                    drop_overrides_meta.invoke_override(
-                                        context, &block, location, &info.ty, elem_val,
-                                    )?;
+                                DropOverridesMeta::invoke_override(
+                                    context, registry, module, &block, &block, location, metadata,
+                                    &info.ty, elem_val,
+                                )?;
 
-                                    block.append_operation(scf::r#yield(&[], location));
-                                    region
-                                },
-                                location,
-                            ));
-                        }
-                        _ => {}
+                                block.append_operation(scf::r#yield(&[], location));
+                                region
+                            },
+                            location,
+                        ));
                     }
 
                     // finally, free the array allocation
@@ -403,6 +399,12 @@ fn build_drop<'ctx>(
     Ok(region)
 }
 
+/// Returns the size of the prefix in an array. This prefix contains 2
+/// integers:
+/// - Reference counter: the number of references to the allocation.
+/// - Capacity: The capacity of the allocation (not necessarily the length
+///   of the array/span being accessed) It is used to know how many elements to
+///   drop when freeing the allocation.
 pub fn calc_data_prefix_offset(layout: Layout) -> usize {
     get_integer_layout(32)
         .extend(get_integer_layout(32))
@@ -417,22 +419,14 @@ pub fn calc_data_prefix_offset(layout: Layout) -> usize {
 #[cfg(test)]
 mod test {
     use crate::{
-        utils::test::{load_cairo, run_program},
+        utils::testing::{get_compiled_program, run_program},
         values::Value,
     };
     use pretty_assertions_sorted::assert_eq;
 
     #[test]
     fn test_array_snapshot_deep_clone() {
-        let program = load_cairo! {
-            fn run_test() -> @Array<Array<felt252>> {
-                let mut inputs: Array<Array<felt252>> = ArrayTrait::new();
-                inputs.append(array![1, 2, 3]);
-                inputs.append(array![4, 5, 6]);
-
-                @inputs
-            }
-        };
+        let program = get_compiled_program("test_data_artifacts/programs/types/nested_arrays");
         let result = run_program(&program, "run_test", &[]).return_value;
 
         assert_eq!(

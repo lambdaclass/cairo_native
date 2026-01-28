@@ -11,11 +11,11 @@
 
 use super::LibfuncHelper;
 use crate::{
-    error::{panic::ToNativeAssertError, Error, Result},
+    error::{panic::ToNativeAssertError, Result},
     metadata::{
         drop_overrides::DropOverridesMeta, runtime_bindings::RuntimeBindingsMeta, MetadataStorage,
     },
-    utils::{BlockExt, ProgramRegistryExt},
+    utils::ProgramRegistryExt,
 };
 use cairo_lang_sierra::{
     extensions::{
@@ -27,6 +27,7 @@ use cairo_lang_sierra::{
 };
 use melior::{
     dialect::{arith, cf, llvm},
+    helpers::{ArithBlockExt, BuiltinBlockExt, LlvmBlockExt},
     ir::{r#type::IntegerType, Block, Location},
     Context,
 };
@@ -106,10 +107,17 @@ pub fn build_print<'ctx, 'this>(
 
     let input_ty = &info.signature.param_signatures[0].ty;
     registry.build_type(context, helper, metadata, input_ty)?;
-    metadata
-        .get::<DropOverridesMeta>()
-        .ok_or(Error::MissingMetadata)?
-        .invoke_override(context, entry, location, input_ty, entry.arg(0)?)?;
+    DropOverridesMeta::invoke_override(
+        context,
+        registry,
+        helper,
+        helper.init_block(),
+        entry,
+        location,
+        metadata,
+        input_ty,
+        entry.arg(0)?,
+    )?;
 
     let k0 = entry.const_int(context, location, 0, 32)?;
     let return_code_is_ok =

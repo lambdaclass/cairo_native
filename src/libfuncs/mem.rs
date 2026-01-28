@@ -4,11 +4,7 @@
 //! segments. Because of this, all of the memory-related libfuncs here are no-ops.
 
 use super::LibfuncHelper;
-use crate::{
-    error::Result,
-    metadata::MetadataStorage,
-    utils::{BlockExt, ProgramRegistryExt},
-};
+use crate::{error::Result, metadata::MetadataStorage, utils::ProgramRegistryExt};
 use cairo_lang_sierra::{
     extensions::{
         core::{CoreLibfunc, CoreType},
@@ -20,6 +16,7 @@ use cairo_lang_sierra::{
 };
 use melior::{
     dialect::llvm,
+    helpers::BuiltinBlockExt,
     ir::{Block, Location},
     Context,
 };
@@ -41,7 +38,7 @@ pub fn build<'ctx, 'this>(
         MemConcreteLibfunc::StoreLocal(info) => {
             build_store_local(context, registry, entry, location, helper, metadata, info)
         }
-        MemConcreteLibfunc::FinalizeLocals(info) => super::build_noop::<0, true>(
+        MemConcreteLibfunc::FinalizeLocals(info) => super::build_noop::<0, false>(
             context,
             registry,
             entry,

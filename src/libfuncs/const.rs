@@ -7,7 +7,7 @@ use crate::{
     metadata::{realloc_bindings::ReallocBindingsMeta, MetadataStorage},
     native_panic,
     types::TypeBuilder,
-    utils::{BlockExt, ProgramRegistryExt, RangeExt, PRIME},
+    utils::{ProgramRegistryExt, RangeExt, PRIME},
 };
 use cairo_lang_sierra::{
     extensions::{
@@ -24,6 +24,7 @@ use cairo_lang_sierra::{
 };
 use melior::{
     dialect::llvm::{self, r#type::pointer},
+    helpers::{ArithBlockExt, BuiltinBlockExt, LlvmBlockExt},
     ir::{Block, Location, Value},
     Context,
 };
@@ -246,12 +247,12 @@ pub fn build_const_type_value<'ctx, 'this>(
             // Offset the value so that 0 matches with lower.
             let value = &value - &range.lower;
 
-            entry.const_int(
+            Ok(entry.const_int(
                 context,
                 location,
                 value,
                 inner_type.integer_range(registry)?.offset_bit_width(),
-            )
+            )?)
         }
         CoreTypeConcrete::Felt252(_) => {
             let value = match &info.inner_data.as_slice() {
@@ -265,7 +266,7 @@ pub fn build_const_type_value<'ctx, 'this>(
                 _ => value,
             };
 
-            entry.const_int_from_type(context, location, value, inner_ty)
+            Ok(entry.const_int_from_type(context, location, value, inner_ty)?)
         }
         CoreTypeConcrete::Starknet(
             StarknetTypeConcrete::ClassHash(_) | StarknetTypeConcrete::ContractAddress(_),
@@ -281,7 +282,7 @@ pub fn build_const_type_value<'ctx, 'this>(
                 _ => value,
             };
 
-            entry.const_int_from_type(context, location, value, inner_ty)
+            Ok(entry.const_int_from_type(context, location, value, inner_ty)?)
         }
         CoreTypeConcrete::Uint8(_)
         | CoreTypeConcrete::Uint16(_)
@@ -295,7 +296,7 @@ pub fn build_const_type_value<'ctx, 'this>(
         | CoreTypeConcrete::Sint128(_)
         | CoreTypeConcrete::Bytes31(_) => match &info.inner_data.as_slice() {
             [GenericArg::Value(value)] => {
-                entry.const_int_from_type(context, location, value.clone(), inner_ty)
+                Ok(entry.const_int_from_type(context, location, value.clone(), inner_ty)?)
             }
             _ => Err(Error::ConstDataMismatch),
         },
@@ -306,26 +307,14 @@ pub fn build_const_type_value<'ctx, 'this>(
 #[cfg(test)]
 pub mod test {
     use crate::{
-        utils::test::{jit_struct, load_cairo, run_program},
+        jit_struct,
+        utils::testing::{get_compiled_program, run_program},
         values::Value,
     };
 
     #[test]
     fn run_const_as_box() {
-        let program = load_cairo!(
-            use core::box::BoxTrait;
-
-            struct Hello {
-                x: i32,
-            }
-
-            fn run_test() -> Hello {
-                let x = BoxTrait::new(Hello {
-                    x: -2
-                });
-                x.unbox()
-            }
-        );
+        let program = get_compiled_program("test_data_artifacts/programs/libfuncs/const_as_box");
 
         let result = run_program(&program, "run_test", &[]).return_value;
         assert_eq!(result, jit_struct!(Value::Sint32(-2)));

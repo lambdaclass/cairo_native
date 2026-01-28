@@ -14,6 +14,7 @@ use cairo_lang_sierra::{
     program_registry::ProgramRegistry,
 };
 use cairo_lang_sierra_to_casm::metadata::MetadataComputationConfig;
+use cairo_lang_sierra_type_size::ProgramRegistryInfo;
 use llvm_sys::target::{
     LLVM_InitializeAllAsmPrinters, LLVM_InitializeAllTargetInfos, LLVM_InitializeAllTargetMCs,
     LLVM_InitializeAllTargets,
@@ -33,7 +34,7 @@ use mlir_sys::{
     mlirLLVMDIModuleAttrGet, MlirLLVMDIEmissionKind_MlirLLVMDIEmissionKindFull,
     MlirLLVMDINameTableKind_MlirLLVMDINameTableKindDefault,
 };
-use std::{ffi::c_void, sync::OnceLock, time::Instant};
+use std::{sync::OnceLock, time::Instant};
 
 /// Context of IRs, dialects and passes for Cairo programs compilation.
 #[derive(Debug, Eq, PartialEq)]
@@ -66,12 +67,12 @@ impl NativeContext {
     /// If `ignore_debug_names` is true then debug names will not be added to function names.
     /// Mainly useful for the ContractExecutor.
     pub fn compile(
-        &self,
+        &'_ self,
         program: &Program,
         ignore_debug_names: bool,
         gas_metadata_config: Option<MetadataComputationConfig>,
         stats: Option<&mut Statistics>,
-    ) -> Result<NativeModule, Error> {
+    ) -> Result<NativeModule<'_>, Error> {
         static INITIALIZED: OnceLock<()> = OnceLock::new();
         INITIALIZED.get_or_init(|| unsafe {
             LLVM_InitializeAllTargets();
@@ -158,7 +159,11 @@ impl NativeContext {
         // Make the runtime library available.
         metadata.insert(RuntimeBindingsMeta::default());
         // We assume that GasMetadata will be always present when the program uses the gas builtin.
-        let gas_metadata = GasMetadata::new(program, gas_metadata_config)?;
+        let gas_metadata = GasMetadata::new(
+            program,
+            &ProgramRegistryInfo::new(program)?,
+            gas_metadata_config,
+        )?;
         // Unwrapping here is not necessary since the insertion will only fail if there was
         // already some metadata of the same type.
         metadata.insert(gas_metadata);
@@ -204,16 +209,9 @@ impl NativeContext {
         }
 
         if let Some(&mut ref mut stats) = stats {
-            unsafe extern "C" fn callback(
-                _: mlir_sys::MlirOperation,
-                data: *mut c_void,
-            ) -> mlir_sys::MlirWalkResult {
-                let data = data.cast::<u128>().as_mut().unwrap();
-                *data += 1;
-                0
-            }
-            let data = walk_mlir_operations(module.as_operation(), callback, 0);
-            stats.mlir_operation_count = Some(data)
+            let mut operations = 0;
+            walk_mlir_operations(module.as_operation(), &mut |_| operations += 1);
+            stats.mlir_operation_count = Some(operations)
         }
 
         let pre_mlir_passes_instant = Instant::now();
