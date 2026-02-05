@@ -208,9 +208,7 @@ jobs:
         with:
           repository: starkware-libs/sequencer
           path: sequencer
-          ref: apollo-v0.14.0-testnet
-      - name: Setup rust env
-        uses: dtolnay/rust-toolchain@1.84.1
+          ref: main-v0.14.1
       - name: Retreive cached dependecies
         uses: Swatinem/rust-cache@v2
       - name: add llvm deb repository
