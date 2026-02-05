@@ -42,13 +42,12 @@ branches based on whether the remaining gas is greater than or equal to the
 amount being withdrawn.</p>
 <h4 id="example"><a class="doc-anchor" href="#example">§</a>Example</h4>
 <p>Let’s illustrate this with a simple example using the following Cairo 1 code:</p>
-
-<div class="example-wrap ignore"><a href="#" class="tooltip" title="This example is not tested">ⓘ</a><pre class="rust rust-example-rendered"><code><span class="kw">fn </span>run_test() {
-    <span class="kw">let </span><span class="kw-2">mut </span>i: u8 = <span class="number">0</span>;
-    <span class="kw">let </span><span class="kw-2">mut </span>val = <span class="number">0</span>;
-    <span class="kw">while </span>i &lt; <span class="number">5 </span>{
+<div class="example-wrap"><pre class="language-cairo"><code>fn run_test() {
+    let mut i: u8 = 0;
+    let mut val = 0;
+    while i &lt; 5 {
         val = val + i;
-        i = i + <span class="number">1</span>;
+        i = i + 1;
     }
 }</code></pre></div>
 <p>As noted earlier, gas usage is initially computed by the Cairo compiler for
@@ -141,13 +140,12 @@ Counters are then simply incremented by one each time the builtins are
 called from within the program.</p>
 <h4 id="example-1"><a class="doc-anchor" href="#example-1">§</a>Example</h4>
 <p>Let us consider the following Cairo program which uses the <code>pedersen</code> builtin:</p>
+<div class="example-wrap"><pre class="language-cairo"><code>use core::integer::bitwise;
+use core::pedersen::pedersen;
 
-<div class="example-wrap ignore"><a href="#" class="tooltip" title="This example is not tested">ⓘ</a><pre class="rust rust-example-rendered"><code><span class="kw">use </span>core::integer::bitwise;
-<span class="kw">use </span>core::pedersen::pedersen;
-
-<span class="kw">fn </span>run_test() {
-    <span class="kw">let </span><span class="kw-2">mut </span>hash = pedersen(<span class="number">1</span>.into(), <span class="number">2</span>.into());
-    hash += <span class="number">1</span>;
+fn run_test() {
+    let mut hash = pedersen(1.into(), 2.into());
+    hash += 1;
 }</code></pre></div>
 <p>We expect Native to increment the <code>pedersen</code> counter by 1 given the above code.
 Let’s first check how this compiles to Sierra:</p>

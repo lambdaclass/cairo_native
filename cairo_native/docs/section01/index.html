@@ -117,100 +117,109 @@ lowering to LLVM.
 compiled sierra programs from an entrypoint. Programs and JIT states can be
 cached in contexts where their execution will be done multiple times.</p>
 
-<div class="example-wrap ignore"><a href="#" class="tooltip" title="This example is not tested">ⓘ</a><pre class="rust rust-example-rendered"><code><span class="kw">use </span>starknet_types_core::felt::Felt;
-<span class="kw">use </span>cairo_native::context::NativeContext;
-<span class="kw">use </span>cairo_native::executor::JitNativeExecutor;
-<span class="kw">use </span>cairo_native::values::JitValue;
+<div class="example-wrap"><pre class="rust rust-example-rendered"><code><span class="kw">use </span>cairo_native::{
+    context::NativeContext, executor::JitNativeExecutor, utils::cairo_to_sierra, Value,
+};
+<span class="kw">use </span>starknet_types_core::felt::Felt;
 <span class="kw">use </span>std::path::Path;
 
-<span class="kw">let </span>program_path = Path::new(<span class="string">"programs/examples/hello.cairo"</span>);
-<span class="comment">// Compile the cairo program to sierra.
-</span><span class="kw">let </span>sierra_program = cairo_native::utils::cairo_to_sierra(program_path);
+<span class="kw">fn </span>main() {
+    <span class="kw">let </span>program_path = Path::new(<span class="string">"programs/examples/hello.cairo"</span>);
 
-<span class="comment">// Instantiate a Cairo Native MLIR context. This data structure is responsible for the MLIR
-// initialization and compilation of sierra programs into a MLIR module.
-</span><span class="kw">let </span>native_context = NativeContext::new();
+    <span class="comment">// Instantiate a Cairo Native MLIR context. This data structure is responsible for the MLIR
+    // initialization and compilation of sierra programs into a MLIR module.
+    </span><span class="kw">let </span>native_context = NativeContext::new();
 
-<span class="comment">// Compile the sierra program into a MLIR module.
-</span><span class="kw">let </span>native_program = native_context.compile(<span class="kw-2">&amp;</span>sierra_program, <span class="prelude-val">None</span>).unwrap();
+    <span class="comment">// Compile the cairo program to sierra.
+    </span><span class="kw">let </span>sierra_program = cairo_to_sierra(program_path).unwrap();
 
-<span class="comment">// The parameters of the entry point.
-</span><span class="kw">let </span>params = <span class="kw-2">&amp;</span>[JitValue::Felt252(Felt::from_bytes_be_slice(<span class="string">b"user"</span>))];
+    <span class="comment">// Compile the sierra program into a MLIR module.
+    </span><span class="kw">let </span>native_program = native_context
+        .compile(<span class="kw-2">&amp;</span>sierra_program, <span class="bool-val">false</span>, <span class="prelude-val">Some</span>(Default::default()), <span class="prelude-val">None</span>)
+        .unwrap();
 
-<span class="comment">// Find the entry point id by its name.
-</span><span class="kw">let </span>entry_point = <span class="string">"hello::hello::greet"</span>;
-<span class="kw">let </span>entry_point_id = cairo_native::utils::find_function_id(<span class="kw-2">&amp;</span>sierra_program, entry_point);
+    <span class="comment">// The parameters of the entry point.
+    </span><span class="kw">let </span>params = <span class="kw-2">&amp;</span>[Value::Felt252(Felt::from_bytes_be_slice(<span class="string">b"user"</span>))];
 
-<span class="comment">// Instantiate the executor.
-</span><span class="kw">let </span>native_executor = JitNativeExecutor::from_native_module(native_program, Default::default());
+    <span class="comment">// Find the entry point id by its name.
+    </span><span class="kw">let </span>entry_point = <span class="string">"hello::hello::greet"</span>;
+    <span class="kw">let </span>entry_point_id = cairo_native::utils::find_function_id(<span class="kw-2">&amp;</span>sierra_program, entry_point)
+        .expect(<span class="string">"entry point not found"</span>);
 
-<span class="comment">// Execute the program.
-</span><span class="kw">let </span>result = native_executor
-    .invoke_dynamic(entry_point_id, params, <span class="prelude-val">None</span>)
-    .unwrap();
+    <span class="comment">// Instantiate the executor.
+    </span><span class="kw">let </span>native_executor =
+        JitNativeExecutor::from_native_module(native_program, Default::default()).unwrap();
 
-<span class="macro">println!</span>(<span class="string">"Cairo program was compiled and executed successfully."</span>);
-<span class="macro">println!</span>(<span class="string">"{:?}"</span>, result);</code></pre></div>
+    <span class="comment">// Execute the program.
+    </span><span class="kw">let </span>result = native_executor
+        .invoke_dynamic(entry_point_id, params, <span class="prelude-val">None</span>)
+        .unwrap();
+
+    <span class="macro">println!</span>(<span class="string">"Cairo program was compiled and executed successfully."</span>);
+    <span class="macro">println!</span>(<span class="string">"{:?}"</span>, result);
+}</code></pre></div>
 <h3 id="running-a-cairo-program"><a class="doc-anchor" href="#running-a-cairo-program">§</a>Running a Cairo program</h3>
 <p>This is a usage example using the API for an easy Cairo program that
 requires the least setup to get running. It allows you to compile and
 execute a program using the JIT.</p>
 <p>Example code to run a program:</p>
 
-<div class="example-wrap ignore"><a href="#" class="tooltip" title="This example is not tested">ⓘ</a><pre class="rust rust-example-rendered"><code><span class="kw">use </span>starknet_types_core::felt::Felt;
-<span class="kw">use </span>cairo_native::context::NativeContext;
-<span class="kw">use </span>cairo_native::executor::NativeExecutor;
-<span class="kw">use </span>cairo_native::values::JitValue;
+<div class="example-wrap"><pre class="rust rust-example-rendered"><code><span class="kw">use </span>cairo_native::{
+    context::NativeContext, executor::JitNativeExecutor, utils::find_entry_point, Value,
+};
 <span class="kw">use </span>std::path::Path;
+<span class="kw">use </span>tracing_subscriber::{EnvFilter, FmtSubscriber};
 
 <span class="kw">fn </span>main() {
-    <span class="kw">let </span>program_path = Path::new(<span class="string">"programs/examples/hello.cairo"</span>);
+    <span class="kw">let </span>program_path = Path::new(<span class="string">"programs/echo.cairo"</span>);
+
     <span class="comment">// Compile the cairo program to sierra.
-    </span><span class="kw">let </span>sierra_program = cairo_native::utils::cairo_to_sierra(program_path);
+    </span><span class="kw">let </span>sierra_program = cairo_native::utils::cairo_to_sierra(program_path).unwrap();
 
     <span class="comment">// Instantiate a Cairo Native MLIR context. This data structure is responsible for the MLIR
     // initialization and compilation of sierra programs into a MLIR module.
     </span><span class="kw">let </span>native_context = NativeContext::new();
 
     <span class="comment">// Compile the sierra program into a MLIR module.
-    </span><span class="kw">let </span>native_program = native_context.compile(<span class="kw-2">&amp;</span>sierra_program).unwrap();
-
-    <span class="comment">// The parameters of the entry point.
-    </span><span class="kw">let </span>params = <span class="kw-2">&amp;</span>[JitValue::Felt252(Felt::from_bytes_be_slice(<span class="string">b"user"</span>))];
-
-    <span class="comment">// Find the entry point id by its name.
-    </span><span class="kw">let </span>entry_point = <span class="string">"hello::hello::greet"</span>;
-    <span class="kw">let </span>entry_point_id = cairo_native::utils::find_function_id(<span class="kw-2">&amp;</span>sierra_program, entry_point);
-
-    <span class="comment">// Instantiate the executor.
-    </span><span class="kw">let </span>native_executor = NativeExecutor::new(native_program);
-
-    <span class="comment">// Execute the program.
-    </span><span class="kw">let </span>result = native_executor
-        .execute(entry_point_id, params, <span class="prelude-val">None</span>)
+    </span><span class="kw">let </span>native_program = native_context
+        .compile(<span class="kw-2">&amp;</span>sierra_program, <span class="bool-val">false</span>, <span class="prelude-val">Some</span>(Default::default()), <span class="prelude-val">None</span>)
         .unwrap();
 
+    <span class="comment">// Find the entry point id by its name.
+    </span><span class="kw">let </span>entry_point_fn = find_entry_point(<span class="kw-2">&amp;</span>sierra_program, <span class="string">"echo::echo::main"</span>).unwrap();
+    <span class="kw">let </span>fn_id = <span class="kw-2">&amp;</span>entry_point_fn.id;
+
+    <span class="comment">// Instantiate the executor.
+    </span><span class="kw">let </span>native_executor =
+        JitNativeExecutor::from_native_module(native_program, Default::default()).unwrap();
+
+    <span class="comment">// Execute the program.
+    </span><span class="kw">let </span>output = native_executor.invoke_dynamic(fn_id, <span class="kw-2">&amp;</span>[Value::Felt252(<span class="number">1</span>.into())], <span class="prelude-val">None</span>);
+
+    <span class="macro">println!</span>();
     <span class="macro">println!</span>(<span class="string">"Cairo program was compiled and executed successfully."</span>);
-    <span class="macro">println!</span>(<span class="string">"{:?}"</span>, result);
+    <span class="macro">println!</span>(<span class="string">"{output:#?}"</span>);
 }</code></pre></div>
 <h3 id="running-a-starknet-contract"><a class="doc-anchor" href="#running-a-starknet-contract">§</a>Running a Starknet contract</h3>
 <p>Example code to run a Starknet contract:</p>
 
-<div class="example-wrap ignore"><a href="#" class="tooltip" title="This example is not tested">ⓘ</a><pre class="rust rust-example-rendered"><code><span class="kw">use </span>starknet_types_core::felt::Felt;
-<span class="kw">use </span>cairo_lang_compiler::CompilerConfig;
-<span class="kw">use </span>cairo_lang_starknet::contract_class::compile_path;
-<span class="kw">use </span>cairo_native::context::NativeContext;
-<span class="kw">use </span>cairo_native::executor::NativeExecutor;
-<span class="kw">use </span>cairo_native::utils::find_entry_point_by_idx;
-<span class="kw">use </span>cairo_native::values::JitValue;
+<div class="example-wrap"><pre class="rust rust-example-rendered"><code><span class="kw">use </span>cairo_lang_compiler::CompilerConfig;
+<span class="kw">use </span>cairo_lang_lowering::utils::InliningStrategy;
+<span class="kw">use </span>cairo_lang_starknet::compile::compile_path;
 <span class="kw">use </span>cairo_native::{
-    metadata::syscall_handler::SyscallHandlerMeta,
-    starknet::{BlockInfo, ExecutionInfo, StarkNetSyscallHandler, SyscallResult, TxInfo, U256},
+    context::NativeContext,
+    executor::JitNativeExecutor,
+    starknet::{
+        BlockInfo, ExecutionInfo, ExecutionInfoV2, ResourceBounds, Secp256k1Point, Secp256r1Point,
+        StarknetSyscallHandler, SyscallResult, TxInfo, TxV2Info, U256,
+    },
+    utils::find_entry_point_by_idx,
 };
+<span class="kw">use </span>starknet_types_core::felt::Felt;
 <span class="kw">use </span>std::path::Path;
 
-<span class="doccomment">/// To run a starknet contract, we need to use a syscall handler, here we show how to implement one (at the end).
-</span><span class="attr">#[derive(Debug)]
+<span class="doccomment">/// To run a starknet contract, we need to use a syscall handler.
+</span><span class="attr">#[derive(Debug, Default)]
 </span><span class="kw">struct </span>SyscallHandler;
 
 <span class="kw">fn </span>main() {
@@ -223,17 +232,17 @@ execute a program using the JIT.</p>
             replace_ids: <span class="bool-val">true</span>,
             ..Default::default()
         },
+        InliningStrategy::Default,
     )
     .unwrap();
 
-    <span class="kw">let </span>entry_point = contract.entry_points_by_type.constructor.get(<span class="number">0</span>).unwrap();
+    <span class="kw">let </span>entry_point = contract.entry_points_by_type.external.first().unwrap();
     <span class="kw">let </span>sierra_program = contract.extract_sierra_program().unwrap();
 
     <span class="kw">let </span>native_context = NativeContext::new();
 
-    <span class="kw">let </span><span class="kw-2">mut </span>native_program = native_context.compile(<span class="kw-2">&amp;</span>sierra_program).unwrap();
-    native_program
-        .insert_metadata(SyscallHandlerMeta::new(<span class="kw-2">&amp;mut </span>SyscallHandler))
+    <span class="kw">let </span>native_program = native_context
+        .compile(<span class="kw-2">&amp;</span>sierra_program, <span class="bool-val">false</span>, <span class="prelude-val">Some</span>(Default::default()), <span class="prelude-val">None</span>)
         .unwrap();
 
     <span class="comment">// Call the echo function from the contract using the generated wrapper.
@@ -242,15 +251,11 @@ execute a program using the JIT.</p>
 
     <span class="kw">let </span>fn_id = <span class="kw-2">&amp;</span>entry_point_fn.id;
 
-    <span class="kw">let </span>native_executor = NativeExecutor::new(native_program);
+    <span class="kw">let </span>native_executor =
+        JitNativeExecutor::from_native_module(native_program, Default::default()).unwrap();
 
     <span class="kw">let </span>result = native_executor
-        .execute_contract(
-            fn_id,
-            <span class="comment">// The calldata
-            </span><span class="kw-2">&amp;</span>[JitValue::Felt252(Felt::ONE)],
-            u64::MAX.into(),
-        )
+        .invoke_contract_dynamic(fn_id, <span class="kw-2">&amp;</span>[Felt::ONE], <span class="prelude-val">Some</span>(u64::MAX), SyscallHandler)
         .expect(<span class="string">"failed to execute the given contract"</span>);
 
     <span class="macro">println!</span>();
@@ -259,20 +264,13 @@ execute a program using the JIT.</p>
 }
 
 <span class="comment">// Implement an example syscall handler.
-</span><span class="kw">impl </span>StarkNetSyscallHandler <span class="kw">for </span>SyscallHandler {
-    <span class="kw">fn </span>get_block_hash(
-        <span class="kw-2">&amp;mut </span><span class="self">self</span>,
-        block_number: u64,
-        _gas: <span class="kw-2">&amp;mut </span>u64,
-    ) -&gt; SyscallResult&lt;Felt&gt; {
+</span><span class="kw">impl </span>StarknetSyscallHandler <span class="kw">for </span>SyscallHandler {
+    <span class="kw">fn </span>get_block_hash(<span class="kw-2">&amp;mut </span><span class="self">self</span>, block_number: u64, _gas: <span class="kw-2">&amp;mut </span>u64) -&gt; SyscallResult&lt;Felt&gt; {
         <span class="macro">println!</span>(<span class="string">"Called `get_block_hash({block_number})` from MLIR."</span>);
         <span class="prelude-val">Ok</span>(Felt::from_bytes_be_slice(<span class="string">b"get_block_hash ok"</span>))
     }
 
-    <span class="kw">fn </span>get_execution_info(
-        <span class="kw-2">&amp;mut </span><span class="self">self</span>,
-        _gas: <span class="kw-2">&amp;mut </span>u64,
-    ) -&gt; SyscallResult&lt;cairo_native::starknet::ExecutionInfo&gt; {
+    <span class="kw">fn </span>get_execution_info(<span class="kw-2">&amp;mut </span><span class="self">self</span>, _gas: <span class="kw-2">&amp;mut </span>u64) -&gt; SyscallResult&lt;ExecutionInfo&gt; {
         <span class="macro">println!</span>(<span class="string">"Called `get_execution_info()` from MLIR."</span>);
         <span class="prelude-val">Ok</span>(ExecutionInfo {
             block_info: BlockInfo {
@@ -295,6 +293,46 @@ execute a program using the JIT.</p>
         })
     }
 
+    <span class="kw">fn </span>get_execution_info_v2(<span class="kw-2">&amp;mut </span><span class="self">self</span>, _remaining_gas: <span class="kw-2">&amp;mut </span>u64) -&gt; SyscallResult&lt;ExecutionInfoV2&gt; {
+        <span class="macro">println!</span>(<span class="string">"Called `get_execution_info_v2()` from MLIR."</span>);
+        <span class="prelude-val">Ok</span>(ExecutionInfoV2 {
+            block_info: BlockInfo {
+                block_number: <span class="number">1234</span>,
+                block_timestamp: <span class="number">2345</span>,
+                sequencer_address: <span class="number">3456</span>.into(),
+            },
+            tx_info: TxV2Info {
+                version: <span class="number">1</span>.into(),
+                account_contract_address: <span class="number">1</span>.into(),
+                max_fee: <span class="number">0</span>,
+                signature: <span class="macro">vec!</span>[<span class="number">1</span>.into()],
+                transaction_hash: <span class="number">1</span>.into(),
+                chain_id: <span class="number">1</span>.into(),
+                nonce: <span class="number">1</span>.into(),
+                tip: <span class="number">1</span>,
+                paymaster_data: <span class="macro">vec!</span>[<span class="number">1</span>.into()],
+                nonce_data_availability_mode: <span class="number">0</span>,
+                fee_data_availability_mode: <span class="number">0</span>,
+                account_deployment_data: <span class="macro">vec!</span>[<span class="number">1</span>.into()],
+                resource_bounds: <span class="macro">vec!</span>[ResourceBounds {
+                    resource: <span class="number">2</span>.into(),
+                    max_amount: <span class="number">10</span>,
+                    max_price_per_unit: <span class="number">20</span>,
+                }],
+            },
+            caller_address: <span class="number">6543</span>.into(),
+            contract_address: <span class="number">5432</span>.into(),
+            entry_point_selector: <span class="number">4321</span>.into(),
+        })
+    }
+
+    <span class="kw">fn </span>get_execution_info_v3(
+        <span class="kw-2">&amp;mut </span><span class="self">self</span>,
+        _remaining_gas: <span class="kw-2">&amp;mut </span>u64,
+    ) -&gt; SyscallResult&lt;cairo_native::starknet::ExecutionInfoV3&gt; {
+        <span class="macro">unimplemented!</span>()
+    }
+
     <span class="kw">fn </span>deploy(
         <span class="kw-2">&amp;mut </span><span class="self">self</span>,
         class_hash: Felt,
@@ -306,15 +344,11 @@ execute a program using the JIT.</p>
         <span class="macro">println!</span>(<span class="string">"Called `deploy({class_hash}, {contract_address_salt}, {calldata:?}, {deploy_from_zero})` from MLIR."</span>);
         <span class="prelude-val">Ok</span>((
             class_hash + contract_address_salt,
-            calldata.iter().map(|x| x + <span class="kw-2">&amp;</span>Felt::ONE).collect(),
+            calldata.iter().map(|x| x + Felt::ONE).collect(),
         ))
     }
 
-    <span class="kw">fn </span>replace_class(
-        <span class="kw-2">&amp;mut </span><span class="self">self</span>,
-        class_hash: Felt,
-        _gas: <span class="kw-2">&amp;mut </span>u64,
-    ) -&gt; SyscallResult&lt;()&gt; {
+    <span class="kw">fn </span>replace_class(<span class="kw-2">&amp;mut </span><span class="self">self</span>, class_hash: Felt, _gas: <span class="kw-2">&amp;mut </span>u64) -&gt; SyscallResult&lt;()&gt; {
         <span class="macro">println!</span>(<span class="string">"Called `replace_class({class_hash})` from MLIR."</span>);
         <span class="prelude-val">Ok</span>(())
     }
@@ -366,12 +400,7 @@ execute a program using the JIT.</p>
         <span class="prelude-val">Ok</span>(())
     }
 
-    <span class="kw">fn </span>emit_event(
-        <span class="kw-2">&amp;mut </span><span class="self">self</span>,
-        keys: <span class="kw-2">&amp;</span>[Felt],
-        data: <span class="kw-2">&amp;</span>[Felt],
-        _gas: <span class="kw-2">&amp;mut </span>u64,
-    ) -&gt; SyscallResult&lt;()&gt; {
+    <span class="kw">fn </span>emit_event(<span class="kw-2">&amp;mut </span><span class="self">self</span>, keys: <span class="kw-2">&amp;</span>[Felt], data: <span class="kw-2">&amp;</span>[Felt], _gas: <span class="kw-2">&amp;mut </span>u64) -&gt; SyscallResult&lt;()&gt; {
         <span class="macro">println!</span>(<span class="string">"Called `emit_event({keys:?}, {data:?})` from MLIR."</span>);
         <span class="prelude-val">Ok</span>(())
     }
@@ -386,19 +415,126 @@ execute a program using the JIT.</p>
         <span class="prelude-val">Ok</span>(())
     }
 
-    <span class="kw">fn </span>keccak(
-        <span class="kw-2">&amp;mut </span><span class="self">self</span>,
-        input: <span class="kw-2">&amp;</span>[u64],
-        _gas: <span class="kw-2">&amp;mut </span>u64,
-    ) -&gt; SyscallResult&lt;cairo_native::starknet::U256&gt; {
+    <span class="kw">fn </span>keccak(<span class="kw-2">&amp;mut </span><span class="self">self</span>, input: <span class="kw-2">&amp;</span>[u64], _gas: <span class="kw-2">&amp;mut </span>u64) -&gt; SyscallResult&lt;U256&gt; {
         <span class="macro">println!</span>(<span class="string">"Called `keccak({input:?})` from MLIR."</span>);
-        <span class="prelude-val">Ok</span>(U256(Felt::from(<span class="number">1234567890</span>).to_le_bytes()))
+        <span class="prelude-val">Ok</span>(U256 { hi: <span class="number">0</span>, lo: <span class="number">1234567890 </span>})
     }
 
-    <span class="comment">/*
-    ... more code here, check out the full example in examples/starknet.rs
-    */
-</span>}
-</code></pre></div>
+    <span class="kw">fn </span>secp256k1_new(
+        <span class="kw-2">&amp;mut </span><span class="self">self</span>,
+        _x: U256,
+        _y: U256,
+        _remaining_gas: <span class="kw-2">&amp;mut </span>u64,
+    ) -&gt; SyscallResult&lt;<span class="prelude-ty">Option</span>&lt;Secp256k1Point&gt;&gt; {
+        <span class="macro">unimplemented!</span>()
+    }
+
+    <span class="kw">fn </span>secp256k1_add(
+        <span class="kw-2">&amp;mut </span><span class="self">self</span>,
+        _p0: Secp256k1Point,
+        _p1: Secp256k1Point,
+        _remaining_gas: <span class="kw-2">&amp;mut </span>u64,
+    ) -&gt; SyscallResult&lt;Secp256k1Point&gt; {
+        <span class="macro">unimplemented!</span>()
+    }
+
+    <span class="kw">fn </span>secp256k1_mul(
+        <span class="kw-2">&amp;mut </span><span class="self">self</span>,
+        _p: Secp256k1Point,
+        _m: U256,
+        _remaining_gas: <span class="kw-2">&amp;mut </span>u64,
+    ) -&gt; SyscallResult&lt;Secp256k1Point&gt; {
+        <span class="macro">unimplemented!</span>()
+    }
+
+    <span class="kw">fn </span>secp256k1_get_point_from_x(
+        <span class="kw-2">&amp;mut </span><span class="self">self</span>,
+        _x: U256,
+        _y_parity: bool,
+        _remaining_gas: <span class="kw-2">&amp;mut </span>u64,
+    ) -&gt; SyscallResult&lt;<span class="prelude-ty">Option</span>&lt;Secp256k1Point&gt;&gt; {
+        <span class="macro">unimplemented!</span>()
+    }
+
+    <span class="kw">fn </span>secp256k1_get_xy(
+        <span class="kw-2">&amp;mut </span><span class="self">self</span>,
+        _p: Secp256k1Point,
+        _remaining_gas: <span class="kw-2">&amp;mut </span>u64,
+    ) -&gt; SyscallResult&lt;(U256, U256)&gt; {
+        <span class="macro">unimplemented!</span>()
+    }
+
+    <span class="kw">fn </span>secp256r1_new(
+        <span class="kw-2">&amp;mut </span><span class="self">self</span>,
+        _x: U256,
+        _y: U256,
+        _remaining_gas: <span class="kw-2">&amp;mut </span>u64,
+    ) -&gt; SyscallResult&lt;<span class="prelude-ty">Option</span>&lt;Secp256r1Point&gt;&gt; {
+        <span class="macro">unimplemented!</span>()
+    }
+
+    <span class="kw">fn </span>secp256r1_add(
+        <span class="kw-2">&amp;mut </span><span class="self">self</span>,
+        _p0: Secp256r1Point,
+        _p1: Secp256r1Point,
+        _remaining_gas: <span class="kw-2">&amp;mut </span>u64,
+    ) -&gt; SyscallResult&lt;Secp256r1Point&gt; {
+        <span class="macro">unimplemented!</span>()
+    }
+
+    <span class="kw">fn </span>secp256r1_mul(
+        <span class="kw-2">&amp;mut </span><span class="self">self</span>,
+        _p: Secp256r1Point,
+        _m: U256,
+        _remaining_gas: <span class="kw-2">&amp;mut </span>u64,
+    ) -&gt; SyscallResult&lt;Secp256r1Point&gt; {
+        <span class="macro">unimplemented!</span>()
+    }
+
+    <span class="kw">fn </span>secp256r1_get_point_from_x(
+        <span class="kw-2">&amp;mut </span><span class="self">self</span>,
+        _x: U256,
+        _y_parity: bool,
+        _remaining_gas: <span class="kw-2">&amp;mut </span>u64,
+    ) -&gt; SyscallResult&lt;<span class="prelude-ty">Option</span>&lt;Secp256r1Point&gt;&gt; {
+        <span class="macro">unimplemented!</span>()
+    }
+
+    <span class="kw">fn </span>secp256r1_get_xy(
+        <span class="kw-2">&amp;mut </span><span class="self">self</span>,
+        _p: Secp256r1Point,
+        _remaining_gas: <span class="kw-2">&amp;mut </span>u64,
+    ) -&gt; SyscallResult&lt;(U256, U256)&gt; {
+        <span class="macro">unimplemented!</span>()
+    }
+
+    <span class="kw">fn </span>sha256_process_block(
+        <span class="kw-2">&amp;mut </span><span class="self">self</span>,
+        _state: <span class="kw-2">&amp;mut </span>[u32; <span class="number">8</span>],
+        _block: <span class="kw-2">&amp;</span>[u32; <span class="number">16</span>],
+        _remaining_gas: <span class="kw-2">&amp;mut </span>u64,
+    ) -&gt; SyscallResult&lt;()&gt; {
+        <span class="macro">unimplemented!</span>()
+    }
+
+    <span class="kw">fn </span>get_class_hash_at(
+        <span class="kw-2">&amp;mut </span><span class="self">self</span>,
+        _contract_address: Felt,
+        _remaining_gas: <span class="kw-2">&amp;mut </span>u64,
+    ) -&gt; SyscallResult&lt;Felt&gt; {
+        <span class="macro">unimplemented!</span>()
+    }
+
+    <span class="kw">fn </span>meta_tx_v0(
+        <span class="kw-2">&amp;mut </span><span class="self">self</span>,
+        _address: Felt,
+        _entry_point_selector: Felt,
+        _calldata: <span class="kw-2">&amp;</span>[Felt],
+        _signature: <span class="kw-2">&amp;</span>[Felt],
+        _remaining_gas: <span class="kw-2">&amp;mut </span>u64,
+    ) -&gt; SyscallResult&lt;Vec&lt;Felt&gt;&gt; {
+        <span class="macro">unimplemented!</span>()
+    }
+}</code></pre></div>
 <p>For more examples, check out the <code>examples/</code> directory.</p>
 </div></details></section></div></main></body></html>
