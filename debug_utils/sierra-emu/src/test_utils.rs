@@ -1,55 +1,9 @@
 #![cfg(test)]
 
-use std::{fs, path::Path, sync::Arc};
-
-use cairo_lang_compiler::{
-    compile_prepared_db, db::RootDatabase, diagnostics::DiagnosticsReporter,
-    project::setup_project, CompilerConfig,
-};
-use cairo_lang_filesystem::db::init_dev_corelib;
-use cairo_lang_sierra::program::Program;
+use cairo_lang_sierra::program::{Program, VersionedProgram};
+use std::{fs, sync::Arc};
 
 use crate::{starknet::StubSyscallHandler, Value, VirtualMachine};
-
-#[macro_export]
-macro_rules! load_cairo {
-    ( $( $program:tt )+ ) => {
-        $crate::test_utils::load_cairo_from_str(stringify!($($program)+))
-    };
-}
-
-pub(crate) fn load_cairo_from_str(cairo_str: &str) -> (String, Program) {
-    let mut file = tempfile::Builder::new()
-        .prefix("test_")
-        .suffix(".cairo")
-        .tempfile()
-        .unwrap();
-    let mut db = RootDatabase::default();
-
-    fs::write(&mut file, cairo_str).unwrap();
-
-    init_dev_corelib(
-        &mut db,
-        Path::new(&std::env::var("CARGO_MANIFEST_DIR").unwrap()).join("corelib/src"),
-    );
-
-    let main_crate_ids = setup_project(&mut db, file.path()).unwrap();
-
-    let sierra_with_dbg = compile_prepared_db(
-        &db,
-        main_crate_ids,
-        CompilerConfig {
-            diagnostics_reporter: DiagnosticsReporter::stderr(),
-            replace_ids: true,
-            ..Default::default()
-        },
-    )
-    .unwrap();
-
-    let module_name = file.path().with_extension("");
-    let module_name = module_name.file_name().unwrap().to_str().unwrap();
-    (module_name.to_string(), sierra_with_dbg.program)
-}
 
 pub fn run_test_program(sierra_program: Program) -> Vec<Value> {
     let function = sierra_program
@@ -81,4 +35,12 @@ pub fn run_test_program(sierra_program: Program) -> Vec<Value> {
         .values()
         .cloned()
         .collect()
+}
+
+pub fn load_program(path: &str) -> Program {
+    let program_path = format!("{}/../../{}.sierra.json", env!("CARGO_MANIFEST_DIR"), path);
+    let versioned_program =
+        serde_json::from_str::<VersionedProgram>(&fs::read_to_string(program_path).unwrap())
+            .unwrap();
+    versioned_program.into_v1().unwrap().program
 }

@@ -1,0 +1,6 @@
+fn run_test() -> @Felt252Dict<u32> {
+    let mut dict: Felt252Dict<u32> = Default::default();
+    dict.insert(2, 1_u32);
+
+    @dict
+}

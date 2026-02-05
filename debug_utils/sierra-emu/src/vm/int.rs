@@ -13,6 +13,7 @@ use cairo_lang_sierra::{
         },
         is_zero::IsZeroTraits,
         lib_func::SignatureOnlyConcreteLibfunc,
+        ConcreteLibfunc,
     },
     ids::ConcreteTypeId,
     program_registry::ProgramRegistry,
@@ -189,13 +190,28 @@ fn eval_diff(
     };
     let [lhs, rhs]: [BigInt; 2] = get_numeric_args_as_bigints(&args[1..]).try_into().unwrap();
 
-    let int_ty = &info.signature.branch_signatures[0].vars[1].ty;
+    let int_ty = &info.branch_signatures()[0].vars[1].ty;
 
-    let (res, had_overflow) =
-        apply_overflowing_op_for_type(registry, int_ty, lhs, rhs, IntOperator::OverflowingSub);
-    let res = get_value_from_integer(registry, int_ty, res);
+    let res = lhs - rhs;
 
-    EvalAction::NormalBranch(had_overflow as usize, smallvec![range_check, res])
+    // Since this libfunc returns an unsigned value, If lhs >= rhs then just
+    // return Ok(lhs - rhs). Otherwise, we need to wrap around the value, returning
+    // Err(2**n + lhs - rhs), where n is the amount of bits for that integer type.
+    if res < BigInt::ZERO {
+        let max_integer = integer_range(int_ty, registry).upper;
+        EvalAction::NormalBranch(
+            1,
+            smallvec![
+                range_check,
+                get_value_from_integer(registry, int_ty, max_integer + res)
+            ],
+        )
+    } else {
+        EvalAction::NormalBranch(
+            0,
+            smallvec![range_check, get_value_from_integer(registry, int_ty, res)],
+        )
+    }
 }
 
 fn eval_divmod(
@@ -317,7 +333,7 @@ fn eval_operation(
         panic!()
     };
     let [lhs, rhs]: [BigInt; 2] = get_numeric_args_as_bigints(&args[1..]).try_into().unwrap();
-    let int_ty = &info.signature.branch_signatures[0].vars[1].ty;
+    let int_ty = &info.signature.param_signatures[1].ty;
 
     let (res, had_overflow) =
         apply_overflowing_op_for_type(registry, int_ty, lhs, rhs, info.operator);
@@ -412,4 +428,68 @@ fn eval_byte_reverse(
     let value = value.swap_bytes();
 
     EvalAction::NormalBranch(0, smallvec![bitwise, Value::U128(value)])
+}
+
+#[cfg(test)]
+mod test {
+    use crate::{
+        test_utils::{load_program, run_test_program},
+        Value,
+    };
+
+    #[test]
+    fn test_diff_14_m2() {
+        let program = load_program("test_data_artifacts/programs/debug_utils/int_diff_14_m2");
+
+        let result = run_test_program(program);
+        let result = result.last().unwrap();
+
+        let Value::Enum { payload, .. } = result else {
+            panic!()
+        };
+
+        assert_eq!(**payload, Value::U8(16))
+    }
+
+    #[test]
+    fn test_diff_m14_m2() {
+        let program = load_program("test_data_artifacts/programs/debug_utils/int_diff_m14_m2");
+
+        let result = run_test_program(program);
+        let result = result.last().unwrap();
+
+        let Value::Enum { payload, .. } = result else {
+            panic!()
+        };
+
+        assert_eq!(**payload, Value::U8(244))
+    }
+
+    #[test]
+    fn test_diff_m2_0() {
+        let program = load_program("test_data_artifacts/programs/debug_utils/int_diff_m2_0");
+
+        let result = run_test_program(program);
+        let result = result.last().unwrap();
+
+        let Value::Enum { payload, .. } = result else {
+            panic!()
+        };
+
+        assert_eq!(**payload, Value::U8(254))
+    }
+
+    #[test]
+    fn test_diff_2_10() {
+        let program = load_program("test_data_artifacts/programs/debug_utils/int_diff_2_10");
+
+        let result = run_test_program(program);
+        let result = result.last().unwrap();
+
+        let Value::Enum { payload, .. } = result else {
+            panic!()
+        };
+
+        assert_eq!(**payload, Value::U8(248))
+    }
 }

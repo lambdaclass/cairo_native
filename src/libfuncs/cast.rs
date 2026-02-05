@@ -3,6 +3,7 @@
 use super::LibfuncHelper;
 use crate::{
     error::Result,
+    libfuncs::increment_builtin_counter,
     metadata::MetadataStorage,
     native_assert, native_panic,
     types::TypeBuilder,
@@ -46,7 +47,16 @@ pub fn build<'ctx, 'this>(
     }
 }
 
-/// Generate MLIR operations for the `downcast` libfunc.
+/// Generate MLIR operations for the `downcast` libfunc which converts from a
+/// source type `T` to a target type `U`, where `U` might not fully include `T`.
+/// This means that the operation can fail.
+///
+/// ## Signature
+/// ```cairo
+/// pub extern const fn downcast<FromType, ToType>(
+///     x: FromType,
+/// ) -> Option<ToType> implicits(RangeCheck) nopanic;
+/// ```
 pub fn build_downcast<'ctx, 'this>(
     context: &'ctx Context,
     registry: &ProgramRegistry<CoreType, CoreLibfunc>,
@@ -58,18 +68,6 @@ pub fn build_downcast<'ctx, 'this>(
 ) -> Result<()> {
     let range_check = entry.arg(0)?;
     let src_value: Value = entry.arg(1)?;
-
-    if info.signature.param_signatures[1].ty == info.signature.branch_signatures[0].vars[1].ty {
-        let k0 = entry.const_int(context, location, 0, 1)?;
-        return helper.cond_br(
-            context,
-            entry,
-            k0,
-            [0, 1],
-            [&[range_check, src_value], &[range_check]],
-            location,
-        );
-    }
 
     let src_ty = registry.get_type(&info.signature.param_signatures[1].ty)?;
     let dst_ty = registry.get_type(&info.signature.branch_signatures[0].vars[1].ty)?;
@@ -91,6 +89,28 @@ pub fn build_downcast<'ctx, 'this>(
         src_ty.integer_range(registry)?
     };
 
+    // When the source type is the same as the target type, we just return the
+    // value as it cannot fail. However, for backwards compatibility, we need to
+    // increment the range check as if we were checking the upper bound. See:
+    // - https://github.com/starkware-libs/cairo/tree/v2.12.3/crates/cairo-lang-sierra/src/extensions/modules/casts.rs#L67.
+    // - https://github.com/starkware-libs/cairo/tree/v2.12.3/crates/cairo-lang-sierra-to-casm/src/invocations/casts.rs#L56.
+    if info.signature.param_signatures[1].ty == info.signature.branch_signatures[0].vars[1].ty {
+        let range_check = if src_range.lower == 0.into() {
+            increment_builtin_counter(context, entry, location, range_check)?
+        } else {
+            range_check
+        };
+        let k1 = entry.const_int(context, location, 1, 1)?;
+        return helper.cond_br(
+            context,
+            entry,
+            k1,
+            [0, 1],
+            [&[range_check, src_value], &[range_check]],
+            location,
+        );
+    }
+
     let src_width = if src_ty.is_bounded_int(registry)? {
         src_range.offset_bit_width()
     } else {
@@ -108,6 +128,7 @@ pub fn build_downcast<'ctx, 'this>(
 
     let is_signed = src_range.lower.sign() == Sign::Minus;
 
+    // If the target type is wider than the source type, extend the value representation width.
     let src_value = if compute_width > src_width {
         if is_signed && !src_ty.is_bounded_int(registry)? && !src_ty.is_felt252(registry)? {
             entry.extsi(
@@ -126,6 +147,11 @@ pub fn build_downcast<'ctx, 'this>(
         src_value
     };
 
+    // Correct the value representation accordingly.
+    // 1. if it is a felt, then we need to convert the value from [0,P) to
+    //    [-P/2, P/2].
+    // 2. if it is a bounded_int, we need to offset the value to get the
+    //    actual value.
     let src_value = if is_signed && src_ty.is_felt252(registry)? {
         if src_range.upper.is_one() {
             let adj_offset =
@@ -159,7 +185,10 @@ pub fn build_downcast<'ctx, 'this>(
         src_value
     };
 
-    if !(dst_range.lower > src_range.lower || dst_range.upper < src_range.upper) {
+    // Check if the source type is included in the target type. If it is not
+    // then check if the value is in bounds. If the value is also not in
+    // bounds then return an error.
+    if dst_range.lower <= src_range.lower && dst_range.upper >= src_range.upper {
         let dst_value = if dst_ty.is_bounded_int(registry)? && dst_range.lower != BigInt::ZERO {
             let dst_offset = entry.const_int_from_type(
                 context,
@@ -193,6 +222,7 @@ pub fn build_downcast<'ctx, 'this>(
             location,
         )?;
     } else {
+        // Check if the value is in bounds with respect to the lower bound.
         let lower_check = if dst_range.lower > src_range.lower {
             let dst_lower = entry.const_int_from_type(
                 context,
@@ -214,6 +244,7 @@ pub fn build_downcast<'ctx, 'this>(
         } else {
             None
         };
+        // Check if the value is in bounds with respect to the upper bound.
         let upper_check = if dst_range.upper < src_range.upper {
             let dst_upper = entry.const_int_from_type(
                 context,
@@ -329,7 +360,15 @@ pub fn build_downcast<'ctx, 'this>(
     Ok(())
 }
 
-/// Generate MLIR operations for the `upcast` libfunc.
+/// Builds the `upcast` libfunc, which converts from a source type `T` to a
+/// target type `U`, where `U` fully includes `T`. This means that the operation
+/// cannot fail.
+///
+/// ## Signature
+///
+/// ```cairo
+/// extern const fn upcast<FromType, ToType>(x: FromType) -> ToType nopanic;
+/// ```
 pub fn build_upcast<'ctx, 'this>(
     context: &'ctx Context,
     registry: &ProgramRegistry<CoreType, CoreLibfunc>,
@@ -350,22 +389,32 @@ pub fn build_upcast<'ctx, 'this>(
 
     let src_range = src_ty.integer_range(registry)?;
     let dst_range = dst_ty.integer_range(registry)?;
-    native_assert!(
-        if dst_ty.is_felt252(registry)? {
-            let alt_range = Range {
+
+    // An upcast is infallible, so the target type should always contain the source type.
+    {
+        let dst_contains_src =
+            dst_range.lower <= src_range.lower && dst_range.upper >= src_range.upper;
+
+        // If the target type is a felt, then both [0; P) and [-P/2, P/2] ranges are valid.
+        let dst_contains_src = if dst_ty.is_felt252(registry)? {
+            let signed_dst_range = Range {
                 lower: BigInt::from_biguint(Sign::Minus, HALF_PRIME.clone()),
                 upper: BigInt::from_biguint(Sign::Plus, HALF_PRIME.clone()) + BigInt::one(),
             };
-
-            (dst_range.lower <= src_range.lower && dst_range.upper >= src_range.upper)
-                || (alt_range.lower <= src_range.lower && alt_range.upper >= src_range.upper)
+            let signed_dst_contains_src = signed_dst_range.lower <= src_range.lower
+                && signed_dst_range.upper >= src_range.upper;
+            dst_contains_src || signed_dst_contains_src
         } else {
-            dst_range.lower <= src_range.lower && dst_range.upper >= src_range.upper
-        },
-        "invalid upcast `{:?}` into `{:?}`: target range doesn't contain the source range",
-        info.signature.param_signatures[0].ty,
-        info.signature.branch_signatures[0].vars[0].ty
-    );
+            dst_contains_src
+        };
+
+        native_assert!(
+            dst_contains_src,
+            "cannot upcast `{:?}` into `{:?}`: target range doesn't contain source range",
+            info.signature.param_signatures[0].ty,
+            info.signature.branch_signatures[0].vars[0].ty
+        );
+    }
 
     let src_width = if src_ty.is_bounded_int(registry)? {
         src_range.offset_bit_width()
@@ -378,17 +427,17 @@ pub fn build_upcast<'ctx, 'this>(
         dst_range.zero_based_bit_width()
     };
 
-    // If the source can be negative, the target type must also contain negatives when upcasting.
-    native_assert!(
-        src_range.lower.sign() != Sign::Minus
-            || dst_ty.is_felt252(registry)?
-            || dst_range.lower.sign() == Sign::Minus,
-        "if the source range contains negatives, the target range must always contain negatives",
-    );
-    let is_signed = src_range.lower.sign() == Sign::Minus;
-
+    // Extend value to target bit width.
     let dst_value = if dst_width > src_width {
-        if is_signed && !src_ty.is_bounded_int(registry)? {
+        if src_ty.is_bounded_int(registry)? {
+            // A bounded int is always represented as a positive integer,
+            // because we store the offset to the lower bound.
+            entry.extui(
+                src_value,
+                IntegerType::new(context, dst_width).into(),
+                location,
+            )?
+        } else if src_range.lower.sign() == Sign::Minus {
             entry.extsi(
                 src_value,
                 IntegerType::new(context, dst_width).into(),
@@ -405,22 +454,22 @@ pub fn build_upcast<'ctx, 'this>(
         src_value
     };
 
-    let dst_value = if src_ty.is_bounded_int(registry)? && src_range.lower != BigInt::ZERO {
-        let dst_offset = entry.const_int_from_type(
-            context,
-            location,
-            if dst_ty.is_bounded_int(registry)? {
-                &src_range.lower - &dst_range.lower
-            } else {
-                src_range.lower.clone()
-            },
-            dst_value.r#type(),
-        )?;
-        entry.addi(dst_value, dst_offset, location)?
+    // When converting to/from bounded ints, we need to take into account the offset.
+    let offset = if src_ty.is_bounded_int(registry)? && dst_ty.is_bounded_int(registry)? {
+        &src_range.lower - &dst_range.lower
+    } else if src_ty.is_bounded_int(registry)? {
+        src_range.lower.clone()
+    } else if dst_ty.is_bounded_int(registry)? {
+        -dst_range.lower
     } else {
-        dst_value
+        BigInt::ZERO
     };
+    let offset_value = entry.const_int_from_type(context, location, offset, dst_value.r#type())?;
+    let dst_value = entry.addi(dst_value, offset_value, location)?;
 
+    // When converting to a felt from a signed integer, we need to convert
+    // the canonical signed integer representation, to the signed felt
+    // representation: `negative = P - absolute`.
     let dst_value = if dst_ty.is_felt252(registry)? && src_range.lower.sign() == Sign::Minus {
         let k0 = entry.const_int(context, location, 0, 252)?;
         let is_negative = entry.cmpi(context, CmpiPredicate::Slt, dst_value, k0, location)?;
@@ -439,63 +488,18 @@ pub fn build_upcast<'ctx, 'this>(
 #[cfg(test)]
 mod test {
     use crate::{
-        utils::test::{jit_enum, jit_struct, load_cairo, run_program_assert_output},
-        values::Value,
+        jit_enum, jit_struct,
+        utils::testing::{get_compiled_program, run_program_assert_output},
+        Value,
     };
-    use cairo_lang_sierra::program::Program;
-    use lazy_static::lazy_static;
-
-    lazy_static! {
-        static ref DOWNCAST: (String, Program) = load_cairo! {
-            extern const fn downcast<FromType, ToType>( x: FromType, ) -> Option<ToType> implicits(RangeCheck) nopanic;
-
-            fn run_test(
-                v8: u8, v16: u16, v32: u32, v64: u64, v128: u128
-            ) -> (
-                (Option<u8>, Option<u8>, Option<u8>, Option<u8>, Option<u8>),
-                (Option<u16>, Option<u16>, Option<u16>, Option<u16>),
-                (Option<u32>, Option<u32>, Option<u32>),
-                (Option<u64>, Option<u64>),
-                (Option<u128>,),
-            ) {
-                (
-                    (downcast(v128), downcast(v64), downcast(v32), downcast(v16), downcast(v8)),
-                    (downcast(v128), downcast(v64), downcast(v32), downcast(v16)),
-                    (downcast(v128), downcast(v64), downcast(v32)),
-                    (downcast(v128), downcast(v64)),
-                    (downcast(v128),),
-                )
-            }
-        };
-        static ref UPCAST: (String, Program) = load_cairo! {
-            extern const fn upcast<FromType, ToType>(x: FromType) -> ToType nopanic;
-
-            fn run_test(
-                v8: u8, v16: u16, v32: u32, v64: u64, v128: u128, v248: bytes31
-            ) -> (
-                (u8,),
-                (u16, u16),
-                (u32, u32, u32),
-                (u64, u64, u64, u64),
-                (u128, u128, u128, u128, u128),
-                (bytes31, bytes31, bytes31, bytes31, bytes31, bytes31)
-            ) {
-                (
-                    (upcast(v8),),
-                    (upcast(v8), upcast(v16)),
-                    (upcast(v8), upcast(v16), upcast(v32)),
-                    (upcast(v8), upcast(v16), upcast(v32), upcast(v64)),
-                    (upcast(v8), upcast(v16), upcast(v32), upcast(v64), upcast(v128)),
-                    (upcast(v8), upcast(v16), upcast(v32), upcast(v64), upcast(v128), upcast(v248)),
-                )
-            }
-        };
-    }
+    use starknet_types_core::felt::Felt;
+    use test_case::test_case;
 
     #[test]
     fn downcast() {
+        let program = get_compiled_program("test_data_artifacts/programs/libfuncs/cast_downcast");
         run_program_assert_output(
-            &DOWNCAST,
+            &program,
             "run_test",
             &[
                 u8::MAX.into(),
@@ -510,228 +514,153 @@ mod test {
                     jit_enum!(1, jit_struct!()),
                     jit_enum!(1, jit_struct!()),
                     jit_enum!(1, jit_struct!()),
-                    jit_enum!(1, jit_struct!()),
+                    jit_enum!(0, u8::MAX.into()),
                 ),
                 jit_struct!(
                     jit_enum!(1, jit_struct!()),
                     jit_enum!(1, jit_struct!()),
                     jit_enum!(1, jit_struct!()),
-                    jit_enum!(1, jit_struct!()),
+                    jit_enum!(0, u16::MAX.into()),
                 ),
                 jit_struct!(
                     jit_enum!(1, jit_struct!()),
                     jit_enum!(1, jit_struct!()),
-                    jit_enum!(1, jit_struct!()),
+                    jit_enum!(0, u32::MAX.into()),
                 ),
-                jit_struct!(jit_enum!(1, jit_struct!()), jit_enum!(1, jit_struct!())),
-                jit_struct!(jit_enum!(1, jit_struct!())),
+                jit_struct!(jit_enum!(1, jit_struct!()), jit_enum!(0, u64::MAX.into())),
+                jit_struct!(jit_enum!(0, u128::MAX.into())),
             ),
         );
     }
 
-    #[test]
-    fn upcast() {
+    #[test_case("b0x30_b0x30", 5.into())]
+    #[test_case("bm31x30_b31x30", 5.into())]
+    #[test_case("bm31x30_bm5x30", (-5).into())]
+    #[test_case("bm31x30_b5x30", 30.into())]
+    #[test_case("b5x30_b31x31", 31.into())]
+    #[test_case("bm100x100_bm100xm1", (-90).into())]
+    #[test_case("bm31xm31_bm31xm31", (-31).into())]
+    #[test_case("b0x30_b5x40", 10.into())]
+    #[test_case("b0x30_bm40x40", 10.into())]
+    fn downcast_bounded_int(entry_point: &str, value: Felt) {
+        let program =
+            get_compiled_program("test_data_artifacts/programs/libfuncs/cast_downcast_bounded_int");
         run_program_assert_output(
-            &UPCAST,
-            "run_test",
-            &[
-                u8::MAX.into(),
-                u16::MAX.into(),
-                u32::MAX.into(),
-                u64::MAX.into(),
-                u128::MAX.into(),
-                Value::Bytes31([0xFF; 31]),
-            ],
-            jit_struct!(
-                jit_struct!(u8::MAX.into()),
-                jit_struct!((u8::MAX as u16).into(), u16::MAX.into()),
-                jit_struct!(
-                    (u8::MAX as u32).into(),
-                    (u16::MAX as u32).into(),
-                    u32::MAX.into()
-                ),
-                jit_struct!(
-                    (u8::MAX as u64).into(),
-                    (u16::MAX as u64).into(),
-                    (u32::MAX as u64).into(),
-                    u64::MAX.into()
-                ),
-                jit_struct!(
-                    (u8::MAX as u128).into(),
-                    (u16::MAX as u128).into(),
-                    (u32::MAX as u128).into(),
-                    (u64::MAX as u128).into(),
-                    u128::MAX.into()
-                ),
-                jit_struct!(
-                    Value::Bytes31([
-                        u8::MAX,
-                        0,
-                        0,
-                        0,
-                        0,
-                        0,
-                        0,
-                        0,
-                        0,
-                        0,
-                        0,
-                        0,
-                        0,
-                        0,
-                        0,
-                        0,
-                        0,
-                        0,
-                        0,
-                        0,
-                        0,
-                        0,
-                        0,
-                        0,
-                        0,
-                        0,
-                        0,
-                        0,
-                        0,
-                        0,
-                        0,
-                    ]),
-                    Value::Bytes31([
-                        u8::MAX,
-                        u8::MAX,
-                        0,
-                        0,
-                        0,
-                        0,
-                        0,
-                        0,
-                        0,
-                        0,
-                        0,
-                        0,
-                        0,
-                        0,
-                        0,
-                        0,
-                        0,
-                        0,
-                        0,
-                        0,
-                        0,
-                        0,
-                        0,
-                        0,
-                        0,
-                        0,
-                        0,
-                        0,
-                        0,
-                        0,
-                        0,
-                    ]),
-                    Value::Bytes31([
-                        u8::MAX,
-                        u8::MAX,
-                        u8::MAX,
-                        u8::MAX,
-                        0,
-                        0,
-                        0,
-                        0,
-                        0,
-                        0,
-                        0,
-                        0,
-                        0,
-                        0,
-                        0,
-                        0,
-                        0,
-                        0,
-                        0,
-                        0,
-                        0,
-                        0,
-                        0,
-                        0,
-                        0,
-                        0,
-                        0,
-                        0,
-                        0,
-                        0,
-                        0,
-                    ]),
-                    Value::Bytes31([
-                        u8::MAX,
-                        u8::MAX,
-                        u8::MAX,
-                        u8::MAX,
-                        u8::MAX,
-                        u8::MAX,
-                        u8::MAX,
-                        u8::MAX,
-                        0,
-                        0,
-                        0,
-                        0,
-                        0,
-                        0,
-                        0,
-                        0,
-                        0,
-                        0,
-                        0,
-                        0,
-                        0,
-                        0,
-                        0,
-                        0,
-                        0,
-                        0,
-                        0,
-                        0,
-                        0,
-                        0,
-                        0,
-                    ]),
-                    Value::Bytes31([
-                        u8::MAX,
-                        u8::MAX,
-                        u8::MAX,
-                        u8::MAX,
-                        u8::MAX,
-                        u8::MAX,
-                        u8::MAX,
-                        u8::MAX,
-                        u8::MAX,
-                        u8::MAX,
-                        u8::MAX,
-                        u8::MAX,
-                        u8::MAX,
-                        u8::MAX,
-                        u8::MAX,
-                        u8::MAX,
-                        0,
-                        0,
-                        0,
-                        0,
-                        0,
-                        0,
-                        0,
-                        0,
-                        0,
-                        0,
-                        0,
-                        0,
-                        0,
-                        0,
-                        0,
-                    ]),
-                    Value::Bytes31([u8::MAX; 31]),
-                ),
-            ),
+            &program,
+            entry_point,
+            &[Value::Felt252(value)],
+            jit_enum!(0, jit_struct!(Value::Felt252(value))),
         );
+    }
+
+    #[test_case("felt252_i8", i8::MAX.into())]
+    #[test_case("felt252_i8", i8::MIN.into())]
+    #[test_case("felt252_i16", i16::MAX.into())]
+    #[test_case("felt252_i16", i16::MIN.into())]
+    #[test_case("felt252_i32", i32::MAX.into())]
+    #[test_case("felt252_i32", i32::MIN.into())]
+    #[test_case("felt252_i64", i64::MAX.into())]
+    #[test_case("felt252_i64", i64::MIN.into())]
+    fn downcast_felt(entry_point: &str, value: Felt) {
+        let program =
+            get_compiled_program("test_data_artifacts/programs/libfuncs/cast_downcast_felt");
+        run_program_assert_output(
+            &program,
+            entry_point,
+            &[Value::Felt252(value)],
+            jit_enum!(0, jit_struct!(Value::Felt252(value))),
+        );
+    }
+
+    // u8 upcast test
+    #[test_case("u8_u16", u8::MIN.into())]
+    #[test_case("u8_u16", u8::MAX.into())]
+    #[test_case("u8_u32", u8::MIN.into())]
+    #[test_case("u8_u32", u8::MAX.into())]
+    #[test_case("u8_u64", u8::MIN.into())]
+    #[test_case("u8_u64", u8::MAX.into())]
+    #[test_case("u8_u128", u8::MIN.into())]
+    #[test_case("u8_u128", u8::MAX.into())]
+    #[test_case("u8_felt252", u8::MIN.into())]
+    #[test_case("u8_felt252", u8::MAX.into())]
+    // u16 upcast test
+    #[test_case("u16_u32", u16::MIN.into())]
+    #[test_case("u16_u32", u16::MAX.into())]
+    #[test_case("u16_u64", u16::MIN.into())]
+    #[test_case("u16_u64", u16::MAX.into())]
+    #[test_case("u16_u128", u16::MIN.into())]
+    #[test_case("u16_u128", u16::MAX.into())]
+    #[test_case("u16_felt252", u16::MIN.into())]
+    #[test_case("u16_felt252", u16::MAX.into())]
+    // u32 upcast test
+    #[test_case("u32_u64", u32::MIN.into())]
+    #[test_case("u32_u64", u32::MAX.into())]
+    #[test_case("u32_u128", u32::MIN.into())]
+    #[test_case("u32_u128", u32::MAX.into())]
+    #[test_case("u32_felt252", u32::MIN.into())]
+    #[test_case("u32_felt252", u32::MAX.into())]
+    // u64 upcast test
+    #[test_case("u64_u128", u64::MIN.into())]
+    #[test_case("u64_u128", u64::MAX.into())]
+    #[test_case("u64_felt252", u64::MIN.into())]
+    #[test_case("u64_felt252", u64::MAX.into())]
+    // u128 upcast test
+    #[test_case("u128_felt252", u128::MIN.into())]
+    #[test_case("u128_felt252", u128::MAX.into())]
+    // i8 upcast test
+    #[test_case("i8_i16", i8::MIN.into())]
+    #[test_case("i8_i16", i8::MAX.into())]
+    #[test_case("i8_i32", i8::MIN.into())]
+    #[test_case("i8_i32", i8::MAX.into())]
+    #[test_case("i8_i64", i8::MIN.into())]
+    #[test_case("i8_i64", i8::MAX.into())]
+    #[test_case("i8_i128", i8::MIN.into())]
+    #[test_case("i8_i128", i8::MAX.into())]
+    #[test_case("i8_felt252", i8::MIN.into())]
+    #[test_case("i8_felt252", i8::MAX.into())]
+    // i16 upcast test
+    #[test_case("i16_i32", i16::MIN.into())]
+    #[test_case("i16_i32", i16::MAX.into())]
+    #[test_case("i16_i64", i16::MIN.into())]
+    #[test_case("i16_i64", i16::MAX.into())]
+    #[test_case("i16_i128", i16::MIN.into())]
+    #[test_case("i16_i128", i16::MAX.into())]
+    #[test_case("i16_felt252", i16::MIN.into())]
+    #[test_case("i16_felt252", i16::MAX.into())]
+    // i32 upcast test
+    #[test_case("i32_i64", i32::MIN.into())]
+    #[test_case("i32_i64", i32::MAX.into())]
+    #[test_case("i32_i128", i32::MIN.into())]
+    #[test_case("i32_i128", i32::MAX.into())]
+    #[test_case("i32_felt252", i32::MIN.into())]
+    #[test_case("i32_felt252", i32::MAX.into())]
+    // i64 upcast test
+    #[test_case("i64_i128", i64::MIN.into())]
+    #[test_case("i64_i128", i64::MAX.into())]
+    #[test_case("i64_felt252", i64::MIN.into())]
+    #[test_case("i64_felt252", i64::MAX.into())]
+    // i128 upcast test
+    #[test_case("i128_felt252", i128::MIN.into())]
+    #[test_case("i128_felt252", i128::MAX.into())]
+    // bounded int test
+    #[test_case("b0x5_b0x10", 0.into())]
+    #[test_case("b0x5_b0x10", 5.into())]
+    #[test_case("b2x5_b2x10", 2.into())]
+    #[test_case("b2x5_b2x10", 5.into())]
+    #[test_case("b2x5_b1x10", 2.into())]
+    #[test_case("b2x5_b1x10", 5.into())]
+    #[test_case("b0x5_bm10x10", 0.into())]
+    #[test_case("b0x5_bm10x10", 5.into())]
+    #[test_case("bm5x5_bm10x10", Felt::from(-5))]
+    #[test_case("bm5x5_bm10x10", 5.into())]
+    #[test_case("i8_bm200x200", Felt::from(-128))]
+    #[test_case("i8_bm200x200", 127.into())]
+    #[test_case("bm100x100_i8", Felt::from(-100))]
+    #[test_case("bm100x100_i8", 100.into())]
+    fn upcast(entry_point: &str, value: Felt) {
+        let program = get_compiled_program("test_data_artifacts/programs/libfuncs/cast_upcast");
+        let arguments = &[value.into()];
+        let expected_result = jit_enum!(0, jit_struct!(value.into(),));
+        run_program_assert_output(&program, entry_point, arguments, expected_result);
     }
 }

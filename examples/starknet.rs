@@ -1,4 +1,5 @@
 use cairo_lang_compiler::CompilerConfig;
+use cairo_lang_lowering::utils::InliningStrategy;
 use cairo_lang_starknet::compile::compile_path;
 use cairo_native::{
     context::NativeContext,
@@ -124,6 +125,14 @@ impl StarknetSyscallHandler for SyscallHandler {
             contract_address: 5432.into(),
             entry_point_selector: 4321.into(),
         })
+    }
+
+    fn get_execution_info_v3(
+        &mut self,
+        _remaining_gas: &mut u64,
+    ) -> SyscallResult<cairo_native::starknet::ExecutionInfoV3> {
+        println!("Called `get_execution_info_v3()` from MLIR.");
+        todo!();
     }
 
     fn deploy(
@@ -447,6 +456,7 @@ fn main() {
             replace_ids: true,
             ..Default::default()
         },
+        InliningStrategy::Default,
     )
     .unwrap();
 

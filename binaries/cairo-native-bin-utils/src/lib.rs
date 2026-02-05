@@ -8,7 +8,6 @@ use cairo_native::{
     starknet::{Secp256k1Point, Secp256r1Point},
     Value,
 };
-use clap::ValueEnum;
 use itertools::Itertools;
 use starknet_types_core::felt::Felt;
 use std::vec::IntoIter;
@@ -16,15 +15,8 @@ use std::vec::IntoIter;
 pub mod test;
 
 pub struct RunArgs {
-    pub run_mode: RunMode,
     pub opt_level: u8,
     pub compare_with_vm: bool,
-}
-
-#[derive(Clone, Debug, ValueEnum)]
-pub enum RunMode {
-    Aot,
-    Jit,
 }
 
 /// Find the function ending with `name_suffix` in the program.
@@ -166,6 +158,12 @@ fn jitvalue_to_felt(value: &Value) -> Vec<Felt> {
         Value::EcState(a, b, c, d) => {
             vec![*a, *b, *c, *d]
         }
+        Value::QM31(a, b, c, d) => vec![
+            Felt::from(*a),
+            Felt::from(*b),
+            Felt::from(*c),
+            Felt::from(*d),
+        ],
         Value::Secp256K1Point(Secp256k1Point {
             x,
             y,

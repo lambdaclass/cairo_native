@@ -1,14 +1,12 @@
-use crate::common::{load_cairo_path, run_native_program};
-use cairo_lang_runner::SierraCasmRunner;
-use cairo_lang_sierra::program::Program;
+use crate::common::run_native_program;
 use cairo_native::{
     starknet::{
-        BlockInfo, ExecutionInfo, ExecutionInfoV2, Secp256k1Point, Secp256r1Point,
-        StarknetSyscallHandler, SyscallResult, TxInfo, TxV2Info, U256,
+        BlockInfo, ExecutionInfo, ExecutionInfoV2, ExecutionInfoV3, Secp256k1Point, Secp256r1Point,
+        StarknetSyscallHandler, SyscallResult, TxInfo, TxV2Info, TxV3Info, U256,
     },
+    utils::testing::load_program_and_runner,
     Value,
 };
-use lazy_static::lazy_static;
 use pretty_assertions_sorted::{assert_eq, assert_eq_sorted};
 use starknet_types_core::felt::Felt;
 use std::{
@@ -164,6 +162,65 @@ impl StarknetSyscallHandler for SyscallHandler {
                 nonce_data_availability_mode: 140600095,
                 fee_data_availability_mode: 988370659,
                 account_deployment_data: Vec::new(),
+            },
+            caller_address: Felt::from_dec_str(
+                "1185632056775552928459345712365014492063999606476424661067102766803470217687",
+            )
+            .unwrap(),
+            contract_address: Felt::from_dec_str(
+                "741063429140548584082645215539704615048011618665759826371923004739480130327",
+            )
+            .unwrap(),
+            entry_point_selector: Felt::from_dec_str(
+                "477501848519111015718660527024172361930966806556174677443839145770405114061",
+            )
+            .unwrap(),
+        })
+    }
+
+    fn get_execution_info_v3(
+        &mut self,
+        _remaining_gas: &mut u64,
+    ) -> SyscallResult<ExecutionInfoV3> {
+        Ok(ExecutionInfoV3 {
+            block_info: BlockInfo {
+                block_number: 10290342497028289173,
+                block_timestamp: 8376161426686560326,
+                sequencer_address: Felt::from_dec_str(
+                    "1815189516202718271265591469295511271015058493881778555617445818147186579905",
+                )
+                .unwrap(),
+            },
+            tx_info: TxV3Info {
+                version: Felt::from_dec_str(
+                    "1946630339019864531118751968563861838541265142438690346764722398811248737786",
+                )
+                .unwrap(),
+                account_contract_address: Felt::from_dec_str(
+                    "2501333093425095943815772537228190103182643237630648877273495185321298605376",
+                )
+                .unwrap(),
+                max_fee: 268753657614351187400966367706860329387,
+                signature: Vec::new(),
+                transaction_hash: Felt::from_dec_str(
+                    "1123336726531770778820945049824733201592457249587063926479184903627272350002",
+                )
+                .unwrap(),
+                chain_id: Felt::from_dec_str(
+                    "2128916697180095451339935431635121484141376377516602728602049361615810538124",
+                )
+                .unwrap(),
+                nonce: Felt::from_dec_str(
+                    "3012936192361023209451741736298028332652992971202997279327088951248532774884",
+                )
+                .unwrap(),
+                resource_bounds: Vec::new(),
+                tip: 215444579144685671333997376989135077200,
+                paymaster_data: Vec::new(),
+                nonce_data_availability_mode: 140600095,
+                fee_data_availability_mode: 988370659,
+                account_deployment_data: Vec::new(),
+                proof_facts: vec![0.into(), 1.into(), 2.into()],
             },
             caller_address: Felt::from_dec_str(
                 "1185632056775552928459345712365014492063999606476424661067102766803470217687",
@@ -535,15 +592,11 @@ impl StarknetSyscallHandler for SyscallHandler {
     }
 }
 
-lazy_static! {
-    static ref SYSCALLS_PROGRAM: (String, Program, SierraCasmRunner) =
-        load_cairo_path("tests/tests/starknet/programs/syscalls.cairo");
-}
-
 #[test]
 fn get_block_hash() {
+    let program = load_program_and_runner("test_data_artifacts/programs/starknet/syscalls");
     let result = run_native_program(
-        &SYSCALLS_PROGRAM,
+        &program,
         "get_block_hash",
         &[],
         Some(u64::MAX),
@@ -567,8 +620,9 @@ fn get_block_hash() {
 
 #[test]
 fn get_execution_info() {
+    let program = load_program_and_runner("test_data_artifacts/programs/starknet/syscalls");
     let result = run_native_program(
-        &SYSCALLS_PROGRAM,
+        &program,
         "get_execution_info",
         &[],
         Some(u64::MAX),
@@ -646,8 +700,9 @@ fn get_execution_info() {
 
 #[test]
 fn get_execution_info_v2() {
+    let program = load_program_and_runner("test_data_artifacts/programs/starknet/syscalls");
     let result = run_native_program(
-        &SYSCALLS_PROGRAM,
+        &program,
         "get_execution_info_v2",
         &[],
         Some(u64::MAX),
@@ -737,9 +792,111 @@ fn get_execution_info_v2() {
 }
 
 #[test]
-fn deploy() {
+fn get_execution_info_v3() {
+    let program = load_program_and_runner("test_data_artifacts/programs/starknet/syscalls");
     let result = run_native_program(
-        &SYSCALLS_PROGRAM,
+        &program,
+        "get_execution_info_v3",
+        &[],
+        Some(u64::MAX),
+        Some(SyscallHandler::new()),
+    );
+
+    assert_eq_sorted!(
+        result.return_value,
+        Value::Enum {
+            tag: 0,
+            value: Box::new(Value::Struct {
+                fields: vec![
+                    Value::Struct {
+                        fields: vec![
+                            Value::Uint64(10290342497028289173),
+                            Value::Uint64(8376161426686560326),
+                            Value::Felt252(Felt::from_dec_str(
+                                "1815189516202718271265591469295511271015058493881778555617445818147186579905",
+                            )
+                            .unwrap()),
+                        ],
+                        debug_name: None,
+                    },
+                    Value::Struct {
+                        fields: vec![
+                            Value::Felt252(Felt::from_dec_str(
+                                "1946630339019864531118751968563861838541265142438690346764722398811248737786",
+                            )
+                            .unwrap()),
+                            Value::Felt252(Felt::from_dec_str(
+                                "2501333093425095943815772537228190103182643237630648877273495185321298605376",
+                            )
+                            .unwrap()),
+                            Value::Uint128(268753657614351187400966367706860329387),
+                            Value::Struct {
+                                fields: vec![Value::Array(Vec::new())],
+                                debug_name: None,
+                            },
+                            Value::Felt252(Felt::from_dec_str(
+                                "1123336726531770778820945049824733201592457249587063926479184903627272350002",
+                            )
+                            .unwrap()),
+                            Value::Felt252(Felt::from_dec_str(
+                                "2128916697180095451339935431635121484141376377516602728602049361615810538124",
+                            )
+                            .unwrap()),
+                            Value::Felt252(Felt::from_dec_str(
+                                "3012936192361023209451741736298028332652992971202997279327088951248532774884",
+                            )
+                            .unwrap()),
+                            Value::Struct {
+                                fields: vec![Value::Array(Vec::new())],
+                                debug_name: None,
+                            },
+                            Value::Uint128(215444579144685671333997376989135077200),
+                            Value::Struct {
+                                fields: vec![Value::Array(Vec::new())],
+                                debug_name: None,
+                            },
+                            Value::Uint32(140600095),
+                            Value::Uint32(988370659),
+                            Value::Struct {
+                                fields: vec![Value::Array(Vec::new())],
+                                debug_name: None,
+                            },
+                            Value::Struct {
+                                fields: vec![Value::Array(vec![
+                                    Value::Felt252(0.into()),
+                                    Value::Felt252(1.into()),
+                                    Value::Felt252(2.into()),
+                                ])],
+                                debug_name: None,
+                            },
+                        ],
+                        debug_name: None,
+                    },
+                    Value::Felt252(Felt::from_dec_str(
+                        "1185632056775552928459345712365014492063999606476424661067102766803470217687",
+                    )
+                    .unwrap()),
+                    Value::Felt252(Felt::from_dec_str(
+                        "741063429140548584082645215539704615048011618665759826371923004739480130327",
+                    )
+                    .unwrap()),
+                    Value::Felt252(Felt::from_dec_str(
+                        "477501848519111015718660527024172361930966806556174677443839145770405114061",
+                    )
+                    .unwrap()),
+                ],
+                debug_name: None,
+            }),
+            debug_name: None,
+        },
+    );
+}
+
+#[test]
+fn deploy() {
+    let program = load_program_and_runner("test_data_artifacts/programs/starknet/syscalls");
+    let result = run_native_program(
+        &program,
         "deploy",
         &[],
         Some(u64::MAX),
@@ -770,8 +927,9 @@ fn deploy() {
 
 #[test]
 fn replace_class() {
+    let program = load_program_and_runner("test_data_artifacts/programs/starknet/syscalls");
     let result = run_native_program(
-        &SYSCALLS_PROGRAM,
+        &program,
         "replace_class",
         &[],
         Some(u64::MAX),
@@ -793,8 +951,9 @@ fn replace_class() {
 
 #[test]
 fn library_call() {
+    let program = load_program_and_runner("test_data_artifacts/programs/starknet/syscalls");
     let result = run_native_program(
-        &SYSCALLS_PROGRAM,
+        &program,
         "library_call",
         &[],
         Some(u64::MAX),
@@ -829,8 +988,9 @@ fn library_call() {
 
 #[test]
 fn call_contract() {
+    let program = load_program_and_runner("test_data_artifacts/programs/starknet/syscalls");
     let result = run_native_program(
-        &SYSCALLS_PROGRAM,
+        &program,
         "call_contract",
         &[],
         Some(u64::MAX),
@@ -865,8 +1025,9 @@ fn call_contract() {
 
 #[test]
 fn storage_read() {
+    let program = load_program_and_runner("test_data_artifacts/programs/starknet/syscalls");
     let result = run_native_program(
-        &SYSCALLS_PROGRAM,
+        &program,
         "storage_read",
         &[],
         Some(u64::MAX),
@@ -893,8 +1054,9 @@ fn storage_read() {
 
 #[test]
 fn storage_write() {
+    let program = load_program_and_runner("test_data_artifacts/programs/starknet/syscalls");
     let result = run_native_program(
-        &SYSCALLS_PROGRAM,
+        &program,
         "storage_write",
         &[],
         Some(u64::MAX),
@@ -919,8 +1081,9 @@ fn storage_write() {
 
 #[test]
 fn emit_event() {
+    let program = load_program_and_runner("test_data_artifacts/programs/starknet/syscalls");
     let result = run_native_program(
-        &SYSCALLS_PROGRAM,
+        &program,
         "emit_event",
         &[],
         Some(u64::MAX),
@@ -942,8 +1105,9 @@ fn emit_event() {
 
 #[test]
 fn send_message_to_l1() {
+    let program = load_program_and_runner("test_data_artifacts/programs/starknet/syscalls");
     let result = run_native_program(
-        &SYSCALLS_PROGRAM,
+        &program,
         "send_message_to_l1",
         &[],
         Some(u64::MAX),
@@ -965,8 +1129,9 @@ fn send_message_to_l1() {
 
 #[test]
 fn keccak() {
+    let program = load_program_and_runner("test_data_artifacts/programs/starknet/syscalls");
     let result = run_native_program(
-        &SYSCALLS_PROGRAM,
+        &program,
         "keccak",
         &[],
         Some(u64::MAX),
@@ -991,12 +1156,12 @@ fn keccak() {
 
 #[test]
 fn set_sequencer_address() {
+    let program = load_program_and_runner("test_data_artifacts/programs/starknet/syscalls");
     let address = Felt::THREE;
-
     let state = Arc::new(Mutex::new(TestingState::default()));
 
     let result = run_native_program(
-        &SYSCALLS_PROGRAM,
+        &program,
         "set_sequencer_address",
         &[Value::Felt252(address)],
         Some(u64::MAX),
@@ -1017,12 +1182,12 @@ fn set_sequencer_address() {
 
 #[test]
 fn set_max_fee() {
+    let program = load_program_and_runner("test_data_artifacts/programs/starknet/syscalls");
     let max_fee = 3;
-
     let state = Arc::new(Mutex::new(TestingState::default()));
 
     let result = run_native_program(
-        &SYSCALLS_PROGRAM,
+        &program,
         "set_max_fee",
         &[Value::Felt252(Felt::from(max_fee))],
         Some(u64::MAX),
@@ -1043,6 +1208,7 @@ fn set_max_fee() {
 
 #[test]
 fn set_signature() {
+    let program = load_program_and_runner("test_data_artifacts/programs/starknet/syscalls");
     let signature = vec![Felt::ONE, Felt::TWO, Felt::THREE];
 
     let signature_jit = signature
@@ -1054,7 +1220,7 @@ fn set_signature() {
     let state = Arc::new(Mutex::new(TestingState::default()));
 
     let result = run_native_program(
-        &SYSCALLS_PROGRAM,
+        &program,
         "set_signature",
         &[Value::Array(signature_jit)],
         Some(u64::MAX),
@@ -1075,9 +1241,9 @@ fn set_signature() {
 
 #[test]
 fn pop_log() {
+    let program = load_program_and_runner("test_data_artifacts/programs/starknet/syscalls");
     let log_index = Felt::ONE;
     let mut log = (vec![Felt::ONE, Felt::TWO], vec![Felt::THREE]);
-
     let state = Arc::new(Mutex::new(TestingState::default()));
 
     let logs = ContractLogs {
@@ -1088,7 +1254,7 @@ fn pop_log() {
     state.lock().unwrap().logs.insert(log_index, logs);
 
     let result = run_native_program(
-        &SYSCALLS_PROGRAM,
+        &program,
         "pop_log",
         &[Value::Felt252(log_index)],
         Some(u64::MAX),
@@ -1126,12 +1292,12 @@ fn pop_log() {
 
 #[test]
 fn pop_log_empty() {
+    let program = load_program_and_runner("test_data_artifacts/programs/starknet/syscalls");
     let log_index = Felt::ONE;
-
     let state = Arc::new(Mutex::new(TestingState::default()));
 
     let result = run_native_program(
-        &SYSCALLS_PROGRAM,
+        &program,
         "pop_log",
         &[Value::Felt252(log_index)],
         Some(u64::MAX),
@@ -1149,9 +1315,9 @@ fn pop_log_empty() {
 
 #[test]
 fn pop_l2_to_l1_message() {
+    let program = load_program_and_runner("test_data_artifacts/programs/starknet/syscalls");
     let log_index = Felt::ONE;
     let mut message = (Felt::ONE, vec![Felt::TWO, Felt::THREE]);
-
     let state = Arc::new(Mutex::new(TestingState::default()));
 
     let logs = ContractLogs {
@@ -1162,7 +1328,7 @@ fn pop_l2_to_l1_message() {
     state.lock().unwrap().logs.insert(log_index, logs);
 
     let result = run_native_program(
-        &SYSCALLS_PROGRAM,
+        &program,
         "pop_l2_to_l1_message",
         &[Value::Felt252(log_index)],
         Some(u64::MAX),
@@ -1199,8 +1365,9 @@ fn pop_l2_to_l1_message() {
 
 #[test]
 fn sha256_process() {
+    let program = load_program_and_runner("test_data_artifacts/programs/starknet/syscalls");
     let result = run_native_program(
-        &SYSCALLS_PROGRAM,
+        &program,
         "sha256_process",
         &[],
         Some(u64::MAX),
@@ -1234,8 +1401,9 @@ fn sha256_process() {
 
 #[test]
 fn get_class_hash_at() {
+    let program = load_program_and_runner("test_data_artifacts/programs/starknet/syscalls");
     let result = run_native_program(
-        &SYSCALLS_PROGRAM,
+        &program,
         "get_class_hash_at",
         &[],
         Some(u64::MAX),

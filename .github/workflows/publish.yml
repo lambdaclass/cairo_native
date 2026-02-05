@@ -41,3 +41,5 @@ jobs:
         run: cargo publish --token ${CRATES_TOKEN} --all-features -p sierra-emu
       - name: publish cairo native
         run: cargo publish --token ${CRATES_TOKEN} --all-features -p cairo-native
+      - name: publish starknet-native-compile
+        run: cargo publish --token ${CRATES_TOKEN} --all-features -p starknet-native-compile

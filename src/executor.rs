@@ -109,6 +109,9 @@ fn invoke_dynamic(
         .peekable();
 
     let num_return_args = ret_types_iter.clone().count();
+    // If there is more than one return value, or the return value is _complex_,
+    // as defined by the architecture ABI, then we pass a return pointer as
+    // the first argument to the program entrypoint.
     let mut return_ptr = if num_return_args > 1
         || ret_types_iter
             .peek()
@@ -116,6 +119,7 @@ fn invoke_dynamic(
             .transpose()?
             == Some(true)
     {
+        // The return pointer should be able to hold all the return values.
         let layout = ret_types_iter.try_fold(Layout::new::<()>(), |layout, id| {
             let type_info = registry.get_type(id)?;
             Result::<_, Error>::Ok(layout.extend(type_info.layout(registry)?)?.0)
@@ -433,6 +437,21 @@ fn parse_result(
             registry,
             true,
         )?),
+        CoreTypeConcrete::QM31(_) => match return_ptr {
+            Some(ptr) => Ok(Value::from_ptr(ptr, type_id, registry, true)?),
+            None => {
+                #[cfg(target_arch = "x86_64")]
+                return Err(Error::ParseAttributeError);
+
+                #[cfg(target_arch = "aarch64")]
+                Ok(Value::QM31(
+                    u32::try_from(ret_registers[0])?,
+                    u32::try_from(ret_registers[1])?,
+                    u32::try_from(ret_registers[2])?,
+                    u32::try_from(ret_registers[3])?,
+                ))
+            }
+        },
         CoreTypeConcrete::Felt252(_)
         | CoreTypeConcrete::Starknet(
             StarknetTypeConcrete::ClassHash(_)
@@ -675,7 +694,6 @@ fn parse_result(
         // 2.11.1
         CoreTypeConcrete::Blake(_) => native_panic!("blake not yet implemented as results"),
         // 2.12.0
-        CoreTypeConcrete::QM31(_) => native_panic!("qm31 not yet implemented as results"),
         CoreTypeConcrete::GasReserve(_) => {
             native_panic!("gas reserve not yet implemented as results")
         }
@@ -686,8 +704,8 @@ fn parse_result(
 mod tests {
     use super::*;
     use crate::{
-        context::NativeContext, starknet_stub::StubSyscallHandler, utils::test::load_cairo,
-        utils::test::load_starknet, OptLevel,
+        context::NativeContext, include_contract, starknet_stub::StubSyscallHandler,
+        utils::testing::load_program, OptLevel,
     };
     use cairo_lang_sierra::program::Program;
     use rstest::*;
@@ -695,42 +713,14 @@ mod tests {
 
     #[fixture]
     fn program() -> Program {
-        let (_, program) = load_cairo! {
-            use starknet::{SyscallResultTrait, get_block_hash_syscall};
-
-            fn run_test() -> felt252 {
-                42
-            }
-
-            fn get_block_hash() -> felt252 {
-                get_block_hash_syscall(1).unwrap_syscall()
-            }
-        };
-        program
+        load_program("test_data_artifacts/programs/executor_program")
     }
 
     #[fixture]
     fn starknet_program() -> Program {
-        let (_, program) = load_starknet! {
-            #[starknet::interface]
-            trait ISimpleStorage<TContractState> {
-                fn get(self: @TContractState) -> u128;
-            }
-
-            #[starknet::contract]
-            mod contract {
-                #[storage]
-                struct Storage {}
-
-                #[abi(embed_v0)]
-                impl ISimpleStorageImpl of super::ISimpleStorage<ContractState> {
-                    fn get(self: @ContractState) -> u128 {
-                        42
-                    }
-                }
-            }
-        };
-        program
+        include_contract!("test_data_artifacts/contracts/simple_storage_42.contract.json")
+            .extract_sierra_program()
+            .unwrap()
     }
 
     #[rstest]
