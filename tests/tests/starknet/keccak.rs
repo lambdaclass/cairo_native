@@ -1,29 +1,9 @@
 use crate::common::{run_native_starknet_aot_contract, run_native_starknet_contract};
-use cairo_lang_compiler::CompilerConfig;
-use cairo_lang_starknet::compile::compile_path;
-use cairo_native::starknet_stub::StubSyscallHandler;
-use lazy_static::lazy_static;
-use std::path::Path;
-
-lazy_static! {
-    static ref KECCAK_CONTRACT: cairo_lang_starknet_classes::contract_class::ContractClass = {
-        let path = Path::new("tests/tests/starknet/contracts/test_keccak.cairo");
-
-        compile_path(
-            path,
-            None,
-            CompilerConfig {
-                replace_ids: true,
-                ..Default::default()
-            },
-        )
-        .unwrap()
-    };
-}
+use cairo_native::{starknet_stub::StubSyscallHandler, utils::testing::load_contract};
 
 #[test]
 fn keccak_test() {
-    let contract = &KECCAK_CONTRACT;
+    let contract = load_contract("test_data_artifacts/contracts/keccak.contract.json");
 
     let entry_point = contract.entry_points_by_type.external.first().unwrap();
 
@@ -36,11 +16,11 @@ fn keccak_test() {
     );
 
     assert!(!result.failure_flag);
-    assert_eq!(result.remaining_gas, 18446744073709505515);
+    assert_eq!(result.remaining_gas, 18446744073709325515);
     assert_eq!(result.return_values, vec![1.into()]);
 
     let result_aot_ct = run_native_starknet_aot_contract(
-        contract,
+        &contract,
         &entry_point.selector,
         &[],
         &mut StubSyscallHandler::default(),

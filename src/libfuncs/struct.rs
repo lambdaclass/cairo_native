@@ -2,13 +2,18 @@
 
 use super::LibfuncHelper;
 use crate::{
-    error::Result, metadata::MetadataStorage, types::TypeBuilder, utils::ProgramRegistryExt,
+    error::Result,
+    libfuncs::r#box::{into_box, unbox},
+    metadata::{realloc_bindings::ReallocBindingsMeta, MetadataStorage},
+    native_panic,
+    types::TypeBuilder,
+    utils::ProgramRegistryExt,
 };
 use cairo_lang_sierra::{
     extensions::{
         core::{CoreLibfunc, CoreType, CoreTypeConcrete},
         lib_func::SignatureOnlyConcreteLibfunc,
-        structure::StructConcreteLibfunc,
+        structure::{ConcreteStructBoxedDeconstructLibfunc, StructConcreteLibfunc},
         ConcreteLibfunc,
     },
     ids::ConcreteTypeId,
@@ -16,7 +21,7 @@ use cairo_lang_sierra::{
 };
 use itertools::Itertools;
 use melior::{
-    dialect::llvm,
+    dialect::llvm::{self},
     helpers::{BuiltinBlockExt, LlvmBlockExt},
     ir::{Block, BlockLike, Location, Value},
     Context,
@@ -39,6 +44,9 @@ pub fn build<'ctx, 'this>(
         StructConcreteLibfunc::Deconstruct(info)
         | StructConcreteLibfunc::SnapshotDeconstruct(info) => {
             build_deconstruct(context, registry, entry, location, helper, metadata, info)
+        }
+        StructConcreteLibfunc::BoxedDeconstruct(info) => {
+            build_boxed_deconstruct(context, registry, entry, location, helper, metadata, info)
         }
     }
 }
@@ -144,4 +152,115 @@ pub fn build_deconstruct<'ctx, 'this>(
     }
 
     helper.br(entry, 0, &fields, location)
+}
+
+/// Generate MLIR operations for the `struct_boxed_deconstruct` libfunc.
+///
+/// Receives a `Struct` inside a `Box` and returns a tuple containing each member
+/// of the `Struct` wrapped inside a `Box`.
+///
+/// # Signature
+///
+/// ```cairo
+/// struct MyStruct {
+///     x: u8,
+///     y: felt252,
+/// }
+///
+/// extern fn struct_boxed_deconstruct<T>(
+///     value: Box<T>
+/// ) -> (Box<u8>, Box<felt252>) nopanic;
+/// ```
+pub fn build_boxed_deconstruct<'ctx, 'this>(
+    context: &'ctx Context,
+    registry: &ProgramRegistry<CoreType, CoreLibfunc>,
+    entry: &'this Block<'ctx>,
+    location: Location<'ctx>,
+    helper: &LibfuncHelper<'ctx, 'this>,
+    metadata: &mut MetadataStorage,
+    info: &ConcreteStructBoxedDeconstructLibfunc,
+) -> Result<()> {
+    metadata.get_or_insert_with(|| ReallocBindingsMeta::new(context, helper));
+
+    // Unbox the container
+    let CoreTypeConcrete::Box(box_info) = registry.get_type(&info.param_signatures()[0].ty)? else {
+        native_panic!("Should receibe a Box type as argument");
+    };
+    let container = unbox(
+        context,
+        registry,
+        entry,
+        location,
+        helper,
+        metadata,
+        &box_info.ty,
+    )?;
+
+    let mut fields = Vec::<Value>::with_capacity(info.members.len());
+    for (i, member_type_id) in info.members.iter().enumerate() {
+        let type_info = registry.get_type(member_type_id)?;
+        let field_ty = type_info.build(context, helper, registry, metadata, member_type_id)?;
+
+        let member = entry.extract_value(context, location, container, field_ty, i)?;
+        let (_, member_layout) =
+            registry.build_type_with_layout(context, helper, metadata, member_type_id)?;
+        // Box the member
+        let member = into_box(context, entry, location, member, member_layout)?;
+
+        fields.push(member);
+    }
+
+    helper.br(entry, 0, &fields, location)
+}
+
+#[cfg(test)]
+mod test {
+    use crate::{
+        jit_struct,
+        utils::testing::{get_compiled_program, run_program_assert_output},
+        Value,
+    };
+
+    #[test]
+    fn boxed_deconstruct_3_fields() {
+        let program =
+            get_compiled_program("test_data_artifacts/programs/libfuncs/struct_boxed_deconstruct");
+        run_program_assert_output(
+            &program,
+            "deconstruct_struct_3_fields",
+            &[],
+            jit_struct!(Value::Felt252(2.into()), Value::Uint8(2), Value::Uint128(2)),
+        );
+    }
+
+    #[test]
+    fn boxed_deconstruct_1_field() {
+        let program =
+            get_compiled_program("test_data_artifacts/programs/libfuncs/struct_boxed_deconstruct");
+        run_program_assert_output(
+            &program,
+            "deconstruct_struct_1_field",
+            &[],
+            jit_struct!(Value::Uint8(2)),
+        );
+    }
+
+    #[test]
+    fn boxed_deconstruct_empty_struct() {
+        let program =
+            get_compiled_program("test_data_artifacts/programs/libfuncs/struct_boxed_deconstruct");
+        run_program_assert_output(&program, "deconstruct_empty_struct", &[], jit_struct!());
+    }
+
+    #[test]
+    fn boxed_deconstruct_struct_snapshot() {
+        let program =
+            get_compiled_program("test_data_artifacts/programs/libfuncs/struct_boxed_deconstruct");
+        run_program_assert_output(
+            &program,
+            "deconstruct_struct_snapshot",
+            &[],
+            jit_struct!(Value::Felt252(2.into()), Value::Uint8(2), Value::Uint128(2)),
+        );
+    }
 }

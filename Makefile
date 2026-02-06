@@ -1,12 +1,12 @@
 # Environment detection.
 
 UNAME := $(shell uname)
-SCARB_VERSION = 2.12.1
-CAIRO_2_VERSION = 2.12.2
+SCARB_VERSION = 2.15.0
+CAIRO_2_VERSION = 2.15.0
 
 # Usage is the default target for newcomers running `make`.
 .PHONY: usage
-usage: check-llvm needs-cairo2
+usage: check-llvm check-corelib check-cairo2
 	@echo "Usage:"
 	@echo "    deps:         Installs the necesary dependencies."
 	@echo "    build:        Builds the cairo-native library and binaries in release mode."
@@ -14,6 +14,7 @@ usage: check-llvm needs-cairo2
 	@echo "    build-dev:    Builds cairo-native under a development-optimized profile."
 	@echo "    check:        Checks format and lints."
 	@echo "    test:         Runs all tests."
+	@echo "    test-cairo:   Runs all Cairo tests."
 	@echo "    proptest:     Runs property tests."
 	@echo "    coverage:     Runs all tests and computes test coverage."
 	@echo "    doc:          Builds documentation."
@@ -36,24 +37,25 @@ ifndef TABLEGEN_190_PREFIX
 endif
 	@echo "LLVM is correctly set at $(MLIR_SYS_190_PREFIX)."
 
-.PHONY: needs-cairo2
-needs-cairo2:
-ifeq ($(wildcard ./cairo2/.),)
-	$(error You are missing the Starknet Cairo 1 compiler, please run 'make deps' to install the necessary dependencies.)
-endif
+.PHONY: check-corelib
+check-corelib:
 	./scripts/check-corelib-version.sh $(CAIRO_2_VERSION)
+
+.PHONY: check-cairo2
+check-cairo2:
+	./scripts/check-cairo2-version.sh $(CAIRO_2_VERSION)
 
 .PHONY: build
 build: check-llvm
-	cargo build --release --features=scarb
+	cargo build --release --workspace
 
 .PHONY: build-natives
 build-native: check-llvm
-	RUSTFLAGS="-C target-cpu=native" cargo build --release --features=scarb
+	RUSTFLAGS="-C target-cpu=native" cargo build --release
 
 .PHONY: build-dev
 build-dev: check-llvm
-	cargo build --profile optimized-dev --features=scarb
+	cargo build --profile optimized-dev
 
 .PHONY: check
 check: check-llvm
@@ -61,29 +63,29 @@ check: check-llvm
 	cargo clippy --workspace --all-targets --all-features -- -D warnings
 
 .PHONY: test
-test: check-llvm needs-cairo2 build-alexandria
-	cargo test --profile ci --features=scarb,with-cheatcode,with-debug-utils
+test: check-llvm
+	cargo nextest run --cargo-profile ci --features=with-cheatcode,with-debug-utils,testing
 
 .PHONY: test-cairo
-test-cairo: check-llvm needs-cairo2
-	cargo r --profile ci --bin cairo-native-test -- --compare-with-cairo-vm corelib
+test-cairo: check-llvm
+	bash ./scripts/test_cairo.sh
 
 .PHONY: proptest
-proptest: check-llvm needs-cairo2
-	cargo test --profile ci --features=scarb,with-cheatcode,with-debug-utils proptest
+proptest: check-llvm
+	cargo nextest run --cargo-profile ci --features=with-cheatcode,with-debug-utils,testing proptest
 
 .PHONY: test-cli
-test-ci: check-llvm needs-cairo2 build-alexandria
-	cargo test --profile ci --features=scarb,with-cheatcode,with-debug-utils
+test-ci: check-llvm
+	cargo nextest run --cargo-profile ci --features=with-cheatcode,with-debug-utils,testing
 
 .PHONY: proptest-cli
-proptest-ci: check-llvm needs-cairo2
-	cargo test --profile ci --features=scarb,with-cheatcode,with-debug-utils proptest
+proptest-ci: check-llvm
+	cargo nextest run --cargo-profile ci --features=with-cheatcode,with-debug-utils,testing proptest
 
 .PHONY: coverage
-coverage: check-llvm needs-cairo2 build-alexandria
-	cargo llvm-cov --verbose --profile ci --features=scarb,with-cheatcode,with-debug-utils --workspace --lcov --output-path lcov.info
-	cargo llvm-cov --verbose --profile ci --features=scarb,with-cheatcode,with-debug-utils --lcov --output-path lcov-test.info run --bin cairo-native-test -- corelib
+coverage: check-llvm
+	cargo llvm-cov nextest --verbose --profile ci --features=with-cheatcode,with-debug-utils,testing --workspace --lcov --output-path lcov.info
+	cargo llvm-cov run --verbose --profile ci --features=with-cheatcode,with-debug-utils,testing --lcov --output-path lcov-test.info --package cairo-native-test -- corelib
 
 .PHONY: doc
 doc: check-llvm
@@ -94,22 +96,22 @@ doc-open: check-llvm
 	cargo doc --all-features --no-deps --workspace --open
 
 .PHONY: bench
-bench: needs-cairo2
-	cargo b --release --bin cairo-native-run
-	cargo b --release --bin cairo-native-compile
+bench: check-llvm check-cairo2
+	cargo b --release --package cairo-native-run
+	cargo b --release --package cairo-native-compile
 	./scripts/bench-hyperfine.sh
 
 .PHONY: bench-ci
-bench-ci: check-llvm needs-cairo2
-	cargo criterion --features=scarb,with-cheatcode,with-debug-utils
+bench-ci: check-llvm
+	cargo criterion --features=with-cheatcode,with-debug-utils,testing
 
 .PHONY: stress-test
 stress-test: check-llvm
-	RUST_LOG=cairo_native_stress=DEBUG cargo run --bin cairo-native-stress 1000000 --output cairo-native-stress-logs.jsonl
+	RUST_LOG=cairo_native_stress=DEBUG cargo run --package cairo-native-stress 1000000 --output cairo-native-stress-logs.jsonl
 
 .PHONY: stress-plot
 stress-plot:
-	python3 src/bin/cairo-native-stress/plotter.py cairo-native-stress-logs.jsonl
+	python3 debug_utils/cairo-native-stress/plotter.py cairo-native-stress-logs.jsonl
 
 .PHONY: stress-clean
 stress-clean:
@@ -117,7 +119,7 @@ stress-clean:
 
 .PHONY: install
 install: check-llvm
-	RUSTFLAGS="-C target-cpu=native" cargo install --features=scarb,with-cheatcode --locked --path .
+	RUSTFLAGS="-C target-cpu=native" cargo install --features=with-cheatcode --locked --path .
 
 .PHONY: clean
 clean: stress-clean
@@ -131,9 +133,7 @@ endif
 ifeq ($(UNAME), Darwin)
 deps: deps-macos
 endif
-	-rm -rf corelib
-	-ln -s cairo2/corelib corelib
-	patch -p0 -E < corelib.patch
+	$(MAKE) compile-test-data
 
 .PHONY: deps-macos
 deps-macos: build-cairo-2-compiler-macos install-scarb-macos
@@ -188,6 +188,10 @@ install-scarb-macos:
 	sed 's/zsh_completion_block/zsh_completions_block/g' | \
 	sh -s -- --version $(SCARB_VERSION)
 
-.PHONY: build-alexandria
-build-alexandria:
-	cd tests/alexandria; scarb build
+.PHONY: pull-external-projects
+pull-external-projects:
+	python3 ./scripts/pull_external_projects.py v${CAIRO_2_VERSION}
+
+.PHONY: compile-test-data
+compile-test-data:
+	python3 ./scripts/compile_test_data.py

@@ -1,0 +1,13 @@
+[package]
+name = "scarb-native-test"
+edition.workspace = true
+
+[dependencies]
+anyhow.workspace = true
+cairo-lang-sierra.workspace = true
+cairo-lang-test-plugin.workspace = true
+cairo-native-bin-utils = { workspace = true, features = ["scarb"] }
+clap = { workspace = true, features = ["derive"] }
+scarb-metadata.workspace = true
+scarb-ui.workspace = true
+serde_json.workspace = true

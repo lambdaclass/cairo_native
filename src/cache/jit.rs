@@ -70,22 +70,16 @@ where
 #[cfg(test)]
 mod test {
     use super::*;
-    use crate::utils::test::load_cairo;
+    use crate::utils::testing::get_compiled_program;
     use std::time::Instant;
 
     #[test]
     fn test_cache() {
-        let (_, program1) = load_cairo!(
-            fn main(lhs: felt252, rhs: felt252) -> felt252 {
-                lhs + rhs
-            }
-        );
+        let (_, program1) =
+            get_compiled_program("test_data_artifacts/programs/libfuncs/felt252_add");
 
-        let (_, program2) = load_cairo!(
-            fn main(lhs: felt252, rhs: felt252) -> felt252 {
-                lhs - rhs
-            }
-        );
+        let (_, program2) =
+            get_compiled_program("test_data_artifacts/programs/libfuncs/felt252_sub");
 
         let context = NativeContext::new();
         let mut cache: JitProgramCache<&'static str> = JitProgramCache::new(&context);

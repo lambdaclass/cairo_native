@@ -86,7 +86,6 @@ The code is laid out in the following sections:
  src
  ├─ arch.rs             Trampoline assembly for calling functions with dynamic signatures.
  ├─ arch/               Architecture-specific code for the trampoline.
- ├─ bin/                Binary programs
  ├─ block_ext.rs        A melior (MLIR) block trait extension to write less code.
  ├─ cache.rs            Types and implementations of compiled program caches.
  ├─ compiler.rs         The glue code of the compiler, has the codegen for
@@ -151,41 +150,48 @@ lowering to LLVM.
 compiled sierra programs from an entrypoint. Programs and JIT states can be
 cached in contexts where their execution will be done multiple times.
 
-```rust,ignore
+```rust
+use cairo_native::{
+    context::NativeContext, executor::JitNativeExecutor, utils::cairo_to_sierra, Value,
+};
 use starknet_types_core::felt::Felt;
-use cairo_native::context::NativeContext;
-use cairo_native::executor::JitNativeExecutor;
-use cairo_native::values::JitValue;
 use std::path::Path;
 
-let program_path = Path::new("programs/examples/hello.cairo");
-// Compile the cairo program to sierra.
-let sierra_program = cairo_native::utils::cairo_to_sierra(program_path);
+fn main() {
+    let program_path = Path::new("programs/examples/hello.cairo");
 
-// Instantiate a Cairo Native MLIR context. This data structure is responsible for the MLIR
-// initialization and compilation of sierra programs into a MLIR module.
-let native_context = NativeContext::new();
+    // Instantiate a Cairo Native MLIR context. This data structure is responsible for the MLIR
+    // initialization and compilation of sierra programs into a MLIR module.
+    let native_context = NativeContext::new();
 
-// Compile the sierra program into a MLIR module.
-let native_program = native_context.compile(&sierra_program, None).unwrap();
+    // Compile the cairo program to sierra.
+    let sierra_program = cairo_to_sierra(program_path).unwrap();
 
-// The parameters of the entry point.
-let params = &[JitValue::Felt252(Felt::from_bytes_be_slice(b"user"))];
+    // Compile the sierra program into a MLIR module.
+    let native_program = native_context
+        .compile(&sierra_program, false, Some(Default::default()), None)
+        .unwrap();
 
-// Find the entry point id by its name.
-let entry_point = "hello::hello::greet";
-let entry_point_id = cairo_native::utils::find_function_id(&sierra_program, entry_point);
+    // The parameters of the entry point.
+    let params = &[Value::Felt252(Felt::from_bytes_be_slice(b"user"))];
 
-// Instantiate the executor.
-let native_executor = JitNativeExecutor::from_native_module(native_program, Default::default());
+    // Find the entry point id by its name.
+    let entry_point = "hello::hello::greet";
+    let entry_point_id = cairo_native::utils::find_function_id(&sierra_program, entry_point)
+        .expect("entry point not found");
 
-// Execute the program.
-let result = native_executor
-    .invoke_dynamic(entry_point_id, params, None)
-    .unwrap();
+    // Instantiate the executor.
+    let native_executor =
+        JitNativeExecutor::from_native_module(native_program, Default::default()).unwrap();
 
-println!("Cairo program was compiled and executed successfully.");
-println!("{:?}", result);
+    // Execute the program.
+    let result = native_executor
+        .invoke_dynamic(entry_point_id, params, None)
+        .unwrap();
+
+    println!("Cairo program was compiled and executed successfully.");
+    println!("{:?}", result);
+}
 ```
 
 ## Running a Cairo program
@@ -196,42 +202,42 @@ execute a program using the JIT.
 
 Example code to run a program:
 
-```rust,ignore
-use starknet_types_core::felt::Felt;
-use cairo_native::context::NativeContext;
-use cairo_native::executor::NativeExecutor;
-use cairo_native::values::JitValue;
+```rust
+use cairo_native::{
+    context::NativeContext, executor::JitNativeExecutor, utils::find_entry_point, Value,
+};
 use std::path::Path;
+use tracing_subscriber::{EnvFilter, FmtSubscriber};
 
 fn main() {
-    let program_path = Path::new("programs/examples/hello.cairo");
+    let program_path = Path::new("programs/echo.cairo");
+
     // Compile the cairo program to sierra.
-    let sierra_program = cairo_native::utils::cairo_to_sierra(program_path);
+    let sierra_program = cairo_native::utils::cairo_to_sierra(program_path).unwrap();
 
     // Instantiate a Cairo Native MLIR context. This data structure is responsible for the MLIR
     // initialization and compilation of sierra programs into a MLIR module.
     let native_context = NativeContext::new();
 
     // Compile the sierra program into a MLIR module.
-    let native_program = native_context.compile(&sierra_program).unwrap();
-
-    // The parameters of the entry point.
-    let params = &[JitValue::Felt252(Felt::from_bytes_be_slice(b"user"))];
-
-    // Find the entry point id by its name.
-    let entry_point = "hello::hello::greet";
-    let entry_point_id = cairo_native::utils::find_function_id(&sierra_program, entry_point);
-
-    // Instantiate the executor.
-    let native_executor = NativeExecutor::new(native_program);
-
-    // Execute the program.
-    let result = native_executor
-        .execute(entry_point_id, params, None)
+    let native_program = native_context
+        .compile(&sierra_program, false, Some(Default::default()), None)
         .unwrap();
 
+    // Find the entry point id by its name.
+    let entry_point_fn = find_entry_point(&sierra_program, "echo::echo::main").unwrap();
+    let fn_id = &entry_point_fn.id;
+
+    // Instantiate the executor.
+    let native_executor =
+        JitNativeExecutor::from_native_module(native_program, Default::default()).unwrap();
+
+    // Execute the program.
+    let output = native_executor.invoke_dynamic(fn_id, &[Value::Felt252(1.into())], None);
+
+    println!();
     println!("Cairo program was compiled and executed successfully.");
-    println!("{:?}", result);
+    println!("{output:#?}");
 }
 ```
 
@@ -239,22 +245,24 @@ fn main() {
 
 Example code to run a Starknet contract:
 
-```rust,ignore
-use starknet_types_core::felt::Felt;
+```rust
 use cairo_lang_compiler::CompilerConfig;
-use cairo_lang_starknet::contract_class::compile_path;
-use cairo_native::context::NativeContext;
-use cairo_native::executor::NativeExecutor;
-use cairo_native::utils::find_entry_point_by_idx;
-use cairo_native::values::JitValue;
+use cairo_lang_lowering::utils::InliningStrategy;
+use cairo_lang_starknet::compile::compile_path;
 use cairo_native::{
-    metadata::syscall_handler::SyscallHandlerMeta,
-    starknet::{BlockInfo, ExecutionInfo, StarkNetSyscallHandler, SyscallResult, TxInfo, U256},
+    context::NativeContext,
+    executor::JitNativeExecutor,
+    starknet::{
+        BlockInfo, ExecutionInfo, ExecutionInfoV2, ResourceBounds, Secp256k1Point, Secp256r1Point,
+        StarknetSyscallHandler, SyscallResult, TxInfo, TxV2Info, U256,
+    },
+    utils::find_entry_point_by_idx,
 };
+use starknet_types_core::felt::Felt;
 use std::path::Path;
 
-/// To run a starknet contract, we need to use a syscall handler, here we show how to implement one (at the end).
-#[derive(Debug)]
+/// To run a starknet contract, we need to use a syscall handler.
+#[derive(Debug, Default)]
 struct SyscallHandler;
 
 fn main() {
@@ -267,17 +275,17 @@ fn main() {
             replace_ids: true,
             ..Default::default()
         },
+        InliningStrategy::Default,
     )
     .unwrap();
 
-    let entry_point = contract.entry_points_by_type.constructor.get(0).unwrap();
+    let entry_point = contract.entry_points_by_type.external.first().unwrap();
     let sierra_program = contract.extract_sierra_program().unwrap();
 
     let native_context = NativeContext::new();
 
-    let mut native_program = native_context.compile(&sierra_program).unwrap();
-    native_program
-        .insert_metadata(SyscallHandlerMeta::new(&mut SyscallHandler))
+    let native_program = native_context
+        .compile(&sierra_program, false, Some(Default::default()), None)
         .unwrap();
 
     // Call the echo function from the contract using the generated wrapper.
@@ -286,15 +294,11 @@ fn main() {
 
     let fn_id = &entry_point_fn.id;
 
-    let native_executor = NativeExecutor::new(native_program);
+    let native_executor =
+        JitNativeExecutor::from_native_module(native_program, Default::default()).unwrap();
 
     let result = native_executor
-        .execute_contract(
-            fn_id,
-            // The calldata
-            &[JitValue::Felt252(Felt::ONE)],
-            u64::MAX.into(),
-        )
+        .invoke_contract_dynamic(fn_id, &[Felt::ONE], Some(u64::MAX), SyscallHandler)
         .expect("failed to execute the given contract");
 
     println!();
@@ -303,20 +307,13 @@ fn main() {
 }
 
 // Implement an example syscall handler.
-impl StarkNetSyscallHandler for SyscallHandler {
-    fn get_block_hash(
-        &mut self,
-        block_number: u64,
-        _gas: &mut u64,
-    ) -> SyscallResult<Felt> {
+impl StarknetSyscallHandler for SyscallHandler {
+    fn get_block_hash(&mut self, block_number: u64, _gas: &mut u64) -> SyscallResult<Felt> {
         println!("Called `get_block_hash({block_number})` from MLIR.");
         Ok(Felt::from_bytes_be_slice(b"get_block_hash ok"))
     }
 
-    fn get_execution_info(
-        &mut self,
-        _gas: &mut u64,
-    ) -> SyscallResult<cairo_native::starknet::ExecutionInfo> {
+    fn get_execution_info(&mut self, _gas: &mut u64) -> SyscallResult<ExecutionInfo> {
         println!("Called `get_execution_info()` from MLIR.");
         Ok(ExecutionInfo {
             block_info: BlockInfo {
@@ -339,6 +336,46 @@ impl StarkNetSyscallHandler for SyscallHandler {
         })
     }
 
+    fn get_execution_info_v2(&mut self, _remaining_gas: &mut u64) -> SyscallResult<ExecutionInfoV2> {
+        println!("Called `get_execution_info_v2()` from MLIR.");
+        Ok(ExecutionInfoV2 {
+            block_info: BlockInfo {
+                block_number: 1234,
+                block_timestamp: 2345,
+                sequencer_address: 3456.into(),
+            },
+            tx_info: TxV2Info {
+                version: 1.into(),
+                account_contract_address: 1.into(),
+                max_fee: 0,
+                signature: vec![1.into()],
+                transaction_hash: 1.into(),
+                chain_id: 1.into(),
+                nonce: 1.into(),
+                tip: 1,
+                paymaster_data: vec![1.into()],
+                nonce_data_availability_mode: 0,
+                fee_data_availability_mode: 0,
+                account_deployment_data: vec![1.into()],
+                resource_bounds: vec![ResourceBounds {
+                    resource: 2.into(),
+                    max_amount: 10,
+                    max_price_per_unit: 20,
+                }],
+            },
+            caller_address: 6543.into(),
+            contract_address: 5432.into(),
+            entry_point_selector: 4321.into(),
+        })
+    }
+
+    fn get_execution_info_v3(
+        &mut self,
+        _remaining_gas: &mut u64,
+    ) -> SyscallResult<cairo_native::starknet::ExecutionInfoV3> {
+        unimplemented!()
+    }
+
     fn deploy(
         &mut self,
         class_hash: Felt,
@@ -350,15 +387,11 @@ impl StarkNetSyscallHandler for SyscallHandler {
         println!("Called `deploy({class_hash}, {contract_address_salt}, {calldata:?}, {deploy_from_zero})` from MLIR.");
         Ok((
             class_hash + contract_address_salt,
-            calldata.iter().map(|x| x + &Felt::ONE).collect(),
+            calldata.iter().map(|x| x + Felt::ONE).collect(),
         ))
     }
 
-    fn replace_class(
-        &mut self,
-        class_hash: Felt,
-        _gas: &mut u64,
-    ) -> SyscallResult<()> {
+    fn replace_class(&mut self, class_hash: Felt, _gas: &mut u64) -> SyscallResult<()> {
         println!("Called `replace_class({class_hash})` from MLIR.");
         Ok(())
     }
@@ -410,12 +443,7 @@ impl StarkNetSyscallHandler for SyscallHandler {
         Ok(())
     }
 
-    fn emit_event(
-        &mut self,
-        keys: &[Felt],
-        data: &[Felt],
-        _gas: &mut u64,
-    ) -> SyscallResult<()> {
+    fn emit_event(&mut self, keys: &[Felt], data: &[Felt], _gas: &mut u64) -> SyscallResult<()> {
         println!("Called `emit_event({keys:?}, {data:?})` from MLIR.");
         Ok(())
     }
@@ -430,20 +458,127 @@ impl StarkNetSyscallHandler for SyscallHandler {
         Ok(())
     }
 
-    fn keccak(
-        &mut self,
-        input: &[u64],
-        _gas: &mut u64,
-    ) -> SyscallResult<cairo_native::starknet::U256> {
+    fn keccak(&mut self, input: &[u64], _gas: &mut u64) -> SyscallResult<U256> {
         println!("Called `keccak({input:?})` from MLIR.");
-        Ok(U256(Felt::from(1234567890).to_le_bytes()))
+        Ok(U256 { hi: 0, lo: 1234567890 })
     }
 
-    /*
-    ... more code here, check out the full example in examples/starknet.rs
-    */
-}
+    fn secp256k1_new(
+        &mut self,
+        _x: U256,
+        _y: U256,
+        _remaining_gas: &mut u64,
+    ) -> SyscallResult<Option<Secp256k1Point>> {
+        unimplemented!()
+    }
 
+    fn secp256k1_add(
+        &mut self,
+        _p0: Secp256k1Point,
+        _p1: Secp256k1Point,
+        _remaining_gas: &mut u64,
+    ) -> SyscallResult<Secp256k1Point> {
+        unimplemented!()
+    }
+
+    fn secp256k1_mul(
+        &mut self,
+        _p: Secp256k1Point,
+        _m: U256,
+        _remaining_gas: &mut u64,
+    ) -> SyscallResult<Secp256k1Point> {
+        unimplemented!()
+    }
+
+    fn secp256k1_get_point_from_x(
+        &mut self,
+        _x: U256,
+        _y_parity: bool,
+        _remaining_gas: &mut u64,
+    ) -> SyscallResult<Option<Secp256k1Point>> {
+        unimplemented!()
+    }
+
+    fn secp256k1_get_xy(
+        &mut self,
+        _p: Secp256k1Point,
+        _remaining_gas: &mut u64,
+    ) -> SyscallResult<(U256, U256)> {
+        unimplemented!()
+    }
+
+    fn secp256r1_new(
+        &mut self,
+        _x: U256,
+        _y: U256,
+        _remaining_gas: &mut u64,
+    ) -> SyscallResult<Option<Secp256r1Point>> {
+        unimplemented!()
+    }
+
+    fn secp256r1_add(
+        &mut self,
+        _p0: Secp256r1Point,
+        _p1: Secp256r1Point,
+        _remaining_gas: &mut u64,
+    ) -> SyscallResult<Secp256r1Point> {
+        unimplemented!()
+    }
+
+    fn secp256r1_mul(
+        &mut self,
+        _p: Secp256r1Point,
+        _m: U256,
+        _remaining_gas: &mut u64,
+    ) -> SyscallResult<Secp256r1Point> {
+        unimplemented!()
+    }
+
+    fn secp256r1_get_point_from_x(
+        &mut self,
+        _x: U256,
+        _y_parity: bool,
+        _remaining_gas: &mut u64,
+    ) -> SyscallResult<Option<Secp256r1Point>> {
+        unimplemented!()
+    }
+
+    fn secp256r1_get_xy(
+        &mut self,
+        _p: Secp256r1Point,
+        _remaining_gas: &mut u64,
+    ) -> SyscallResult<(U256, U256)> {
+        unimplemented!()
+    }
+
+    fn sha256_process_block(
+        &mut self,
+        _state: &mut [u32; 8],
+        _block: &[u32; 16],
+        _remaining_gas: &mut u64,
+    ) -> SyscallResult<()> {
+        unimplemented!()
+    }
+
+    fn get_class_hash_at(
+        &mut self,
+        _contract_address: Felt,
+        _remaining_gas: &mut u64,
+    ) -> SyscallResult<Felt> {
+        unimplemented!()
+    }
+
+    fn meta_tx_v0(
+        &mut self,
+        _address: Felt,
+        _entry_point_selector: Felt,
+        _calldata: &[Felt],
+        _signature: &[Felt],
+        _remaining_gas: &mut u64,
+    ) -> SyscallResult<Vec<Felt>> {
+        unimplemented!()
+    }
+}
 ```
 
 For more examples, check out the `examples/` directory.

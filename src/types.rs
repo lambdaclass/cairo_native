@@ -46,11 +46,13 @@ mod felt252;
 mod felt252_dict;
 mod felt252_dict_entry;
 mod gas_builtin;
+mod gas_reserve;
 mod int_range;
 mod non_zero;
 mod nullable;
 mod pedersen;
 mod poseidon;
+mod qm31;
 mod range_check;
 mod segment_arena;
 mod snapshot;
@@ -85,11 +87,26 @@ pub trait TypeBuilder {
 
     /// Return whether the type is a builtin.
     fn is_builtin(&self) -> bool;
-    /// Return whether the type requires a return pointer when returning.
+    /// Return whether the type requires a return pointer when returning,
+    /// instead of using the CPU registers.
+    ///
+    /// This attribute does not modify the compilation, and it only reflects
+    /// what the ABI of the target architecture already specifies.
+    /// - For x86-64: https://gitlab.com/x86-psABIs/x86-64-ABI.
+    /// - For AArch64: https://github.com/ARM-software/abi-aa.
+    ///
+    /// We can validate this empirically, by building a Cairo program that
+    /// returns a particular type, and seeing how it is lowered to machine code.
+    ///
+    /// ```bash
+    /// llc a.llvmir -o - --mtriple "aarch64"
+    /// llc a.llvmir -o - --mtriple "x86_64"
+    /// ```
     fn is_complex(
         &self,
         registry: &ProgramRegistry<CoreType, CoreLibfunc>,
     ) -> Result<bool, Self::Error>;
+
     /// Return whether the Sierra type resolves to a zero-sized type.
     fn is_zst(
         &self,
@@ -104,8 +121,21 @@ pub trait TypeBuilder {
         registry: &ProgramRegistry<CoreType, CoreLibfunc>,
     ) -> Result<Layout, Self::Error>;
 
-    /// Whether the layout should be allocated in memory (either the stack or the heap) when used as
-    /// a function invocation argument or return value.
+    /// Whether the layout should be allocated in memory (either the stack or
+    /// the heap) when used as a function invocation argument or return value.
+    ///
+    /// Unlike `is_complex`, this attribute alters the compilation:
+    ///
+    /// - When passing a memory allocated value to a function, we allocate that
+    ///   value on the stack, and pass a pointer to it.
+    ///
+    /// - If a function returns a memory allocated value, we receive a return
+    ///   pointer as its first argument, and write the return value there
+    ///   instead.
+    ///
+    /// The rationale behind allocating a value in memory, rather than
+    /// registers, is to avoid putting too much pressure on the register
+    /// allocation pass for really complex types, like enums.
     fn is_memory_allocated(
         &self,
         registry: &ProgramRegistry<CoreType, CoreLibfunc>,
@@ -438,9 +468,17 @@ impl TypeBuilder for CoreTypeConcrete {
                 metadata,
                 WithSelf::new(self_ty, info),
             ),
+            CoreTypeConcrete::GasReserve(info) => self::gas_reserve::build(
+                context,
+                module,
+                registry,
+                metadata,
+                WithSelf::new(self_ty, info),
+            ),
             Self::Blake(_) => native_panic!("Build Blake type"),
-            CoreTypeConcrete::QM31(_) => native_panic!("Build QM31 type"),
-            CoreTypeConcrete::GasReserve(_) => native_panic!("Build GasReserve type"),
+            CoreTypeConcrete::QM31(info) => {
+                self::qm31::build(context, module, registry, metadata, info)
+            }
         }
     }
 
@@ -495,13 +533,13 @@ impl TypeBuilder for CoreTypeConcrete {
             | CoreTypeConcrete::Nullable(_)
             | CoreTypeConcrete::Felt252Dict(_)
             | CoreTypeConcrete::SquashedFelt252Dict(_) => false,
-
             CoreTypeConcrete::Array(_) => true,
             CoreTypeConcrete::EcPoint(_) => true,
             CoreTypeConcrete::EcState(_) => true,
             CoreTypeConcrete::Felt252DictEntry(_) => true,
 
             CoreTypeConcrete::Felt252(_)
+            | CoreTypeConcrete::QM31(_)
             | CoreTypeConcrete::Bytes31(_)
             | CoreTypeConcrete::Starknet(
                 StarknetTypeConcrete::ClassHash(_)
@@ -547,9 +585,8 @@ impl TypeBuilder for CoreTypeConcrete {
             CoreTypeConcrete::Circuit(info) => circuit::is_complex(info),
 
             CoreTypeConcrete::IntRange(_info) => false,
+            CoreTypeConcrete::GasReserve(_info) => false,
             CoreTypeConcrete::Blake(_info) => native_panic!("Implement is_complex for Blake type"),
-            CoreTypeConcrete::QM31(_info) => native_panic!("Implement is_complex for QM31 type"),
-            CoreTypeConcrete::GasReserve(_info) => native_panic!("Implement is_complex for GasReserve type"),
         })
     }
 
@@ -596,6 +633,7 @@ impl TypeBuilder for CoreTypeConcrete {
             | CoreTypeConcrete::SquashedFelt252Dict(_)
             | CoreTypeConcrete::Starknet(_)
             | CoreTypeConcrete::Nullable(_) => false,
+            CoreTypeConcrete::QM31(_) => false,
 
             // Containers:
             CoreTypeConcrete::NonZero(info)
@@ -623,6 +661,7 @@ impl TypeBuilder for CoreTypeConcrete {
             }
 
             CoreTypeConcrete::BoundedInt(_) => false,
+            CoreTypeConcrete::GasReserve(_info) => false,
             CoreTypeConcrete::Const(info) => {
                 let type_info = registry.get_type(&info.inner_ty)?;
                 type_info.is_zst(registry)?
@@ -634,11 +673,7 @@ impl TypeBuilder for CoreTypeConcrete {
                 let type_info = registry.get_type(&info.ty)?;
                 type_info.is_zst(registry)?
             }
-            CoreTypeConcrete::Blake(_info) => native_panic!("Implement is_zst for Blake type"),
-            CoreTypeConcrete::QM31(_info) => native_panic!("Implement is_zst for QM31 type"),
-            CoreTypeConcrete::GasReserve(_info) => {
-                native_panic!("Implement is_zst for GasReserve type")
-            }
+            CoreTypeConcrete::Blake(_) => native_panic!("Implement is_zst for Blake type"),
         })
     }
 
@@ -737,6 +772,8 @@ impl TypeBuilder for CoreTypeConcrete {
             CoreTypeConcrete::Sint128(_) => get_integer_layout(128),
             CoreTypeConcrete::Bytes31(_) => get_integer_layout(248),
             CoreTypeConcrete::BoundedInt(info) => get_integer_layout(info.range.offset_bit_width()),
+            CoreTypeConcrete::QM31(_info) => layout_repeat(&get_integer_layout(31), 4)?.0,
+            CoreTypeConcrete::GasReserve(_info) => get_integer_layout(128),
 
             CoreTypeConcrete::Const(const_type) => {
                 registry.get_type(&const_type.inner_ty)?.layout(registry)?
@@ -750,10 +787,6 @@ impl TypeBuilder for CoreTypeConcrete {
                 inner.extend(inner)?.0
             }
             CoreTypeConcrete::Blake(_info) => native_panic!("Implement layout for Blake type"),
-            CoreTypeConcrete::QM31(_info) => native_panic!("Implement layout for QM31 type"),
-            CoreTypeConcrete::GasReserve(_info) => {
-                native_panic!("Implement layout for GasReserve type")
-            }
         }
         .pad_to_align())
     }
@@ -766,9 +799,6 @@ impl TypeBuilder for CoreTypeConcrete {
         // arguments.
         Ok(match self {
             CoreTypeConcrete::IntRange(_) => false,
-            CoreTypeConcrete::Blake(_info) => {
-                native_panic!("Implement is_memory_allocated for Blake type")
-            }
             CoreTypeConcrete::Array(_) => false,
             CoreTypeConcrete::Bitwise(_) => false,
             CoreTypeConcrete::Box(_) => false,
@@ -794,27 +824,13 @@ impl TypeBuilder for CoreTypeConcrete {
             CoreTypeConcrete::RangeCheck(_) => false,
             CoreTypeConcrete::RangeCheck96(_) => false,
             CoreTypeConcrete::Uninitialized(_) => false,
-            CoreTypeConcrete::Enum(info) => {
-                // Enums are memory-allocated if either:
-                //   - Has only variant which is memory-allocated.
-                //   - Has more than one variants, at least one of them being non-ZST.
-                match info.variants.len() {
-                    0 => false,
-                    1 => registry
-                        .get_type(&info.variants[0])?
-                        .is_memory_allocated(registry)?,
-                    _ => {
-                        let mut is_memory_allocated = false;
-                        for variant in &info.variants {
-                            if !registry.get_type(variant)?.is_zst(registry)? {
-                                is_memory_allocated = true;
-                                break;
-                            }
-                        }
-                        is_memory_allocated
-                    }
-                }
-            }
+            CoreTypeConcrete::Enum(info) => match info.variants.len() {
+                0 => false,
+                1 => registry
+                    .get_type(&info.variants[0])?
+                    .is_memory_allocated(registry)?,
+                _ => true,
+            },
             CoreTypeConcrete::Struct(info) => {
                 let mut is_memory_allocated = false;
                 for member in &info.members {
@@ -844,9 +860,10 @@ impl TypeBuilder for CoreTypeConcrete {
                 .is_memory_allocated(registry)?,
             CoreTypeConcrete::Coupon(_) => false,
             CoreTypeConcrete::Circuit(_) => false,
-            CoreTypeConcrete::QM31(_) => native_panic!("Implement is_memory_allocated for QM31"),
-            CoreTypeConcrete::GasReserve(_) => {
-                native_panic!("Implement is_memory_allocated for GasReserve")
+            CoreTypeConcrete::QM31(_) => false,
+            CoreTypeConcrete::GasReserve(_) => false,
+            CoreTypeConcrete::Blake(_) => {
+                native_panic!("Implement is_memory_allocated for Blake type")
             }
         })
     }
@@ -1008,7 +1025,7 @@ impl<T> Deref for WithSelf<'_, T> {
 #[cfg(test)]
 mod test {
     use super::TypeBuilder;
-    use crate::utils::test::load_cairo;
+    use crate::utils::testing::load_program;
     use cairo_lang_sierra::{
         extensions::core::{CoreLibfunc, CoreType},
         program_registry::ProgramRegistry,
@@ -1016,18 +1033,7 @@ mod test {
 
     #[test]
     fn ensure_padded_layouts() {
-        let (_, program) = load_cairo! {
-            #[derive(Drop)]
-            struct A {}
-            #[derive(Drop)]
-            struct B { a: u8 }
-            #[derive(Drop)]
-            struct C { a: u8, b: u16 }
-            #[derive(Drop)]
-            struct D { a: u16, b: u8 }
-
-            fn main(a: A, b: B, c: C, d: D) {}
-        };
+        let program = load_program("test_data_artifacts/programs/types/ensure_padded_layouts");
 
         let registry = ProgramRegistry::<CoreType, CoreLibfunc>::new(&program).unwrap();
         for ty in &program.type_declarations {

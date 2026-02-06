@@ -307,26 +307,14 @@ pub fn build_const_type_value<'ctx, 'this>(
 #[cfg(test)]
 pub mod test {
     use crate::{
-        utils::test::{jit_struct, load_cairo, run_program},
+        jit_struct,
+        utils::testing::{get_compiled_program, run_program},
         values::Value,
     };
 
     #[test]
     fn run_const_as_box() {
-        let program = load_cairo!(
-            use core::box::BoxTrait;
-
-            struct Hello {
-                x: i32,
-            }
-
-            fn run_test() -> Hello {
-                let x = BoxTrait::new(Hello {
-                    x: -2
-                });
-                x.unbox()
-            }
-        );
+        let program = get_compiled_program("test_data_artifacts/programs/libfuncs/const_as_box");
 
         let result = run_program(&program, "run_test", &[]).return_value;
         assert_eq!(result, jit_struct!(Value::Sint32(-2)));

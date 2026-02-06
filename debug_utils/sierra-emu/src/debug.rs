@@ -81,6 +81,7 @@ pub fn libfunc_to_name(value: &CoreConcreteLibfunc) -> &'static str {
             BoxConcreteLibfunc::Into(_) => "box_into",
             BoxConcreteLibfunc::Unbox(_) => "box_unbox",
             BoxConcreteLibfunc::ForwardSnapshot(_) => "box_forward_snapshot",
+            BoxConcreteLibfunc::LocalInto(_) => "box_local_into",
         },
         CoreConcreteLibfunc::Cast(value) => match value {
             CastConcreteLibfunc::Downcast(_) => "downcast",
@@ -104,6 +105,7 @@ pub fn libfunc_to_name(value: &CoreConcreteLibfunc) -> &'static str {
             EcConcreteLibfunc::PointFromX(_) => "ec_point_from_x",
             EcConcreteLibfunc::UnwrapPoint(_) => "ec_unwrap_point",
             EcConcreteLibfunc::Zero(_) => "ec_zero",
+            EcConcreteLibfunc::NegNz(_) => "ec_neg_nz",
         },
         CoreConcreteLibfunc::Felt252(value) => match value {
             Felt252Concrete::BinaryOperation(op) => match op {
@@ -306,6 +308,7 @@ pub fn libfunc_to_name(value: &CoreConcreteLibfunc) -> &'static str {
             StructConcreteLibfunc::Construct(_) => "struct_construct",
             StructConcreteLibfunc::Deconstruct(_) => "struct_deconstruct",
             StructConcreteLibfunc::SnapshotDeconstruct(_) => "struct_snapshot_deconstruct",
+            StructConcreteLibfunc::BoxedDeconstruct(_) => "struct_boxed_deconstruct",
         },
         CoreConcreteLibfunc::Felt252Dict(value) => match value {
             Felt252DictConcreteLibfunc::New(_) => "felt252dict_new",
@@ -378,6 +381,7 @@ pub fn libfunc_to_name(value: &CoreConcreteLibfunc) -> &'static str {
             StarknetConcreteLibfunc::Sha256StateHandleDigest(_) => "sha256_state_handle_digest",
             StarknetConcreteLibfunc::GetClassHashAt(_) => "get_class_hash_at",
             StarknetConcreteLibfunc::MetaTxV0(_) => todo!(),
+            StarknetConcreteLibfunc::GetExecutionInfoV3(_) => todo!(),
         },
         CoreConcreteLibfunc::Debug(value) => match value {
             DebugConcreteLibfunc::Print(_) => "debug_print",
