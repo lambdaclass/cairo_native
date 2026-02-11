@@ -48,7 +48,7 @@ use crate::{
     native_assert, native_panic,
     starknet::{handler::StarknetSyscallHandlerCallbacks, StarknetSyscallHandler},
     statistics::{SierraDeclaredTypeStats, SierraFuncStats, Statistics},
-    types::TypeBuilder,
+    types::{array::ArrayMetadata, TypeBuilder},
     utils::{
         decode_error_message, generate_function_name, get_integer_layout, get_types_total_size,
         libc_free, libc_malloc, BuiltinCosts,
@@ -482,22 +482,15 @@ impl AotContractExecutor {
         }
 
         let felt_layout = get_integer_layout(252).pad_to_align();
-        let refcount_offset = crate::types::array::calc_data_prefix_offset(felt_layout);
 
         let len_u32: u32 = args
             .len()
             .try_into()
             .to_native_assert_error("number of arguments should fit into a u32")?;
-        let array_ptr = match args.len() {
-            0 => std::ptr::null_mut(),
-            _ => unsafe {
-                let array_ptr: *mut () =
-                    libc_malloc(felt_layout.size() * args.len() + refcount_offset).cast();
 
-                // Write reference count.
-                array_ptr.cast::<(u32, u32)>().write((1, len_u32));
-                array_ptr.byte_add(refcount_offset)
-            },
+        let data_ptr = match args.len() {
+            0 => std::ptr::null_mut(),
+            _ => unsafe { libc_malloc(felt_layout.size() * args.len()).cast::<u8>() },
         };
 
         for (idx, elem) in args.iter().enumerate() {
@@ -505,24 +498,28 @@ impl AotContractExecutor {
             unsafe {
                 std::ptr::copy_nonoverlapping(
                     f.as_ptr().cast::<u8>(),
-                    array_ptr.byte_add(idx * felt_layout.size()).cast::<u8>(),
+                    data_ptr.byte_add(idx * felt_layout.size()).cast::<u8>(),
                     felt_layout.size(),
                 )
             };
         }
 
-        // Make double pointer.
-        let array_ptr_ptr = if array_ptr.is_null() {
+        // Allocate metadata struct: { refcount: u32, max_len: u32, data_ptr: *mut () }
+        let metadata_ptr = if data_ptr.is_null() {
             ptr::null_mut()
         } else {
             unsafe {
-                let array_ptr_ptr = libc_malloc(size_of::<*mut ()>()).cast::<*mut ()>();
-                array_ptr_ptr.write(array_ptr);
-                array_ptr_ptr
+                let metadata = libc_malloc(size_of::<ArrayMetadata>()).cast::<ArrayMetadata>();
+                metadata.write(ArrayMetadata {
+                    refcount: 1,
+                    max_len: len_u32,
+                    data_ptr,
+                });
+                metadata.cast::<()>()
             }
         };
 
-        array_ptr_ptr.to_bytes(&mut invoke_data, |_| unreachable!())?;
+        metadata_ptr.to_bytes(&mut invoke_data, |_| unreachable!())?;
         if cfg!(target_arch = "aarch64") {
             0u32.to_bytes(&mut invoke_data, |_| unreachable!())?; // start
             len_u32.to_bytes(&mut invoke_data, |_| unreachable!())?; // end
@@ -653,18 +650,19 @@ impl AotContractExecutor {
         let value_layout = unsafe { Layout::from_size_align_unchecked(24, 8) };
         let mut value_ptr = unsafe { enum_ptr.byte_add(tag_layout.extend(value_layout)?.1).cast() };
 
-        let array_ptr_ptr = unsafe { *read_value::<*mut NonNull<()>>(&mut value_ptr) };
+        let metadata_ptr = unsafe { *read_value::<*mut NonNull<()>>(&mut value_ptr) };
         let array_start = unsafe { *read_value::<u32>(&mut value_ptr) };
         let array_end = unsafe { *read_value::<u32>(&mut value_ptr) };
         let _array_capacity = unsafe { *read_value::<u32>(&mut value_ptr) };
 
         let mut array_value = Vec::with_capacity((array_end - array_start) as usize);
-        if !array_ptr_ptr.is_null() {
-            let array_ptr = unsafe { array_ptr_ptr.read() };
+        if !metadata_ptr.is_null() {
+            let metadata = unsafe { metadata_ptr.cast::<ArrayMetadata>().read() };
+            let data_ptr = metadata.data_ptr;
 
             let elem_stride = felt_layout.pad_to_align().size();
             for i in array_start..array_end {
-                let cur_elem_ptr = unsafe { array_ptr.byte_add(elem_stride * i as usize) };
+                let cur_elem_ptr = unsafe { data_ptr.byte_add(elem_stride * i as usize) };
 
                 let mut data = unsafe { cur_elem_ptr.cast::<[u8; 32]>().read() };
                 data[31] &= 0x0F; // Filter out first 4 bits (they're outside an i252).
@@ -673,13 +671,12 @@ impl AotContractExecutor {
             }
 
             unsafe {
-                let array_ptr = array_ptr.byte_sub(refcount_offset);
                 native_assert!(
-                    array_ptr.cast::<u32>().read() == 1,
+                    metadata.refcount == 1,
                     "return array should have a reference count of 1"
                 );
-                libc_free(array_ptr.as_ptr().cast());
-                libc_free(array_ptr_ptr.cast());
+                libc_free(data_ptr.cast());
+                libc_free(metadata_ptr.cast());
             }
         }
 

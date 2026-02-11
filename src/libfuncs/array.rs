@@ -8,7 +8,7 @@ use crate::{
         realloc_bindings::ReallocBindingsMeta, MetadataStorage,
     },
     native_assert,
-    types::array::calc_data_prefix_offset,
+    types::array::{calc_metadata_size, get_metadata_llvm_type},
     utils::ProgramRegistryExt,
 };
 use cairo_lang_sierra::{
@@ -188,41 +188,20 @@ pub fn build_span_from_tuple<'ctx, 'this>(
     let (_, tuple_layout) = registry.build_type_with_layout(context, helper, metadata, &info.ty)?;
 
     let array_len_bytes = tuple_layout.pad_to_align().size();
-    let array_len_bytes_with_offset = entry.const_int(
-        context,
-        location,
-        array_len_bytes + calc_data_prefix_offset(tuple_layout),
-        64,
-    )?;
-    let array_len_bytes = entry.const_int(context, location, array_len_bytes, 64)?;
+    let array_len_bytes_val = entry.const_int(context, location, array_len_bytes, 64)?;
     let array_len = entry.const_int_from_type(context, location, tuple_len, len_ty)?;
 
     let k0 = entry.const_int_from_type(context, location, 0, len_ty)?;
     let k1 = entry.const_int_from_type(context, location, 1, len_ty)?;
 
-    // Allocate space for the array.
-    let allocation_ptr = entry.append_op_result(llvm::zero(ptr_ty, location))?;
-    let allocation_ptr = entry.append_op_result(ReallocBindingsMeta::realloc(
+    // Allocate space for the array data (no prefix).
+    let data_ptr = entry.append_op_result(llvm::zero(ptr_ty, location))?;
+    let data_ptr = entry.append_op_result(ReallocBindingsMeta::realloc(
         context,
-        allocation_ptr,
-        array_len_bytes_with_offset,
+        data_ptr,
+        array_len_bytes_val,
         location,
     )?)?;
-
-    // Write the array data prefix.
-    let data_prefix = entry.append_op_result(llvm::undef(
-        llvm::r#type::r#struct(context, &[len_ty, len_ty], false),
-        location,
-    ))?;
-    let data_prefix = entry.insert_values(context, location, data_prefix, &[k1, array_len])?;
-    entry.store(context, location, allocation_ptr, data_prefix)?;
-    let array_ptr = entry.gep(
-        context,
-        location,
-        allocation_ptr,
-        &[GepIndex::Const(calc_data_prefix_offset(tuple_layout) as i32)],
-        IntegerType::new(context, 8).into(),
-    )?;
 
     // Move the data into the array and free the original tuple. Since the tuple and the array are
     // represented the same way, a simple memcpy is enough.
@@ -230,8 +209,8 @@ pub fn build_span_from_tuple<'ctx, 'this>(
         context,
         location,
         entry.argument(0)?.into(),
-        array_ptr,
-        array_len_bytes,
+        data_ptr,
+        array_len_bytes_val,
     );
     entry.append_operation(ReallocBindingsMeta::free(
         context,
@@ -239,18 +218,49 @@ pub fn build_span_from_tuple<'ctx, 'this>(
         location,
     )?);
 
-    // Build the array representation.
-    let k8 = entry.const_int(context, location, 8, 64)?;
-    let array_ptr_ptr =
-        entry.append_op_result(llvm::zero(llvm::r#type::pointer(context, 0), location))?;
-    let array_ptr_ptr: Value<'ctx, '_> = entry.append_op_result(ReallocBindingsMeta::realloc(
+    // Allocate metadata struct: { refcount: u32, max_len: u32, data_ptr: *mut u8 }
+    let metadata_size = entry.const_int(context, location, calc_metadata_size(), 64)?;
+    let metadata_ptr = entry.append_op_result(llvm::zero(ptr_ty, location))?;
+    let metadata_ptr = entry.append_op_result(ReallocBindingsMeta::realloc(
         context,
-        array_ptr_ptr,
-        k8,
+        metadata_ptr,
+        metadata_size,
         location,
     )?)?;
-    entry.store(context, location, array_ptr_ptr, array_ptr)?;
 
+    let metadata_type = get_metadata_llvm_type(context);
+
+    // Store refcount (field 0)
+    let refcount_ptr = entry.gep(
+        context,
+        location,
+        metadata_ptr,
+        &[GepIndex::Const(0), GepIndex::Const(0)],
+        metadata_type,
+    )?;
+    entry.store(context, location, refcount_ptr, k1)?;
+
+    // Store max_len (field 1)
+    let max_len_ptr = entry.gep(
+        context,
+        location,
+        metadata_ptr,
+        &[GepIndex::Const(0), GepIndex::Const(1)],
+        metadata_type,
+    )?;
+    entry.store(context, location, max_len_ptr, array_len)?;
+
+    // Store data_ptr (field 2)
+    let data_ptr_field = entry.gep(
+        context,
+        location,
+        metadata_ptr,
+        &[GepIndex::Const(0), GepIndex::Const(2)],
+        metadata_type,
+    )?;
+    entry.store(context, location, data_ptr_field, data_ptr)?;
+
+    // Build the array representation (4 fields: metadata_ptr, start, end, capacity)
     let value = entry.append_op_result(llvm::undef(
         llvm::r#type::r#struct(context, &[ptr_ty, len_ty, len_ty, len_ty], false),
         location,
@@ -259,7 +269,7 @@ pub fn build_span_from_tuple<'ctx, 'this>(
         context,
         location,
         value,
-        &[array_ptr_ptr, k0, array_len, array_len],
+        &[metadata_ptr, k0, array_len, array_len],
     )?;
 
     helper.br(entry, 0, &[value], location)
@@ -312,7 +322,7 @@ pub fn build_tuple_from_span<'ctx, 'this>(
     let (tuple_ty, tuple_layout) =
         registry.build_type_with_layout(context, helper, metadata, &info.ty)?;
 
-    let array_ptr_ptr =
+    let metadata_ptr =
         entry.extract_value(context, location, entry.argument(0)?.into(), ptr_ty, 0)?;
     let array_start =
         entry.extract_value(context, location, entry.argument(0)?.into(), len_ty, 1)?;
@@ -369,17 +379,25 @@ pub fn build_tuple_from_span<'ctx, 'this>(
             location,
         ))?;
 
-        let array_ptr = valid_block.load(context, location, array_ptr_ptr, ptr_ty)?;
+        let data_ptr_field = valid_block.gep(
+            context,
+            location,
+            metadata_ptr,
+            &[GepIndex::Const(0), GepIndex::Const(2)],
+            get_metadata_llvm_type(context),
+        )?;
+        let data_ptr = valid_block.load(context, location, data_ptr_field, ptr_ty)?;
+
         let array_data_start_ptr = valid_block.gep(
             context,
             location,
-            array_ptr,
+            data_ptr,
             &[GepIndex::Value(array_start_offset)],
             IntegerType::new(context, 8).into(),
         )?;
 
         // Check if the array is shared.
-        let is_shared = is_shared(context, valid_block, location, array_ptr_ptr, elem_layout)?;
+        let is_shared = is_shared(context, valid_block, location, metadata_ptr, elem_layout)?;
         valid_block.append_operation(scf::r#if(
             is_shared,
             &[],
@@ -443,21 +461,12 @@ pub fn build_tuple_from_span<'ctx, 'this>(
                 // the Cairo compiler.
 
                 // TODO: Drop elements before array_start and between array_end and max length.
-                let data_ptr = block.gep(
-                    context,
-                    location,
-                    array_ptr,
-                    &[GepIndex::Const(
-                        -(calc_data_prefix_offset(elem_layout) as i32),
-                    )],
-                    IntegerType::new(context, 8).into(),
-                )?;
+
+                // Free the data allocation
                 block.append_operation(ReallocBindingsMeta::free(context, data_ptr, location)?);
-                block.append_operation(ReallocBindingsMeta::free(
-                    context,
-                    array_ptr_ptr,
-                    location,
-                )?);
+
+                // Free the metadata struct
+                block.append_operation(ReallocBindingsMeta::free(context, metadata_ptr, location)?);
 
                 block.append_operation(scf::r#yield(&[], location));
                 region
@@ -541,12 +550,21 @@ pub fn build_append<'ctx, 'this>(
         Result::Ok((realloc_len, realloc_size))
     }
 
-    let data_prefix_size = calc_data_prefix_offset(elem_layout);
-
-    let array_capacity =
-        entry.extract_value(context, location, entry.argument(0)?.into(), len_ty, 3)?;
+    let metadata_ptr =
+        entry.extract_value(context, location, entry.argument(0)?.into(), ptr_ty, 0)?;
+    let null_ptr = entry.append_op_result(llvm::zero(ptr_ty, location))?;
+    let is_empty = entry.append_op_result(
+        ods::llvm::icmp(
+            context,
+            IntegerType::new(context, 1).into(),
+            metadata_ptr,
+            null_ptr,
+            IntegerAttribute::new(IntegerType::new(context, 64).into(), 0).into(),
+            location,
+        )
+        .into(),
+    )?;
     let k0 = entry.const_int_from_type(context, location, 0, len_ty)?;
-    let is_empty = entry.cmpi(context, CmpiPredicate::Eq, array_capacity, k0, location)?;
     let array_obj = entry.append_op_result(scf::r#if(
         is_empty,
         &[self_ty],
@@ -554,48 +572,64 @@ pub fn build_append<'ctx, 'this>(
             let region = Region::new();
             let block = region.append_block(Block::new(&[]));
 
-            let (array_capacity, realloc_len) =
-                compute_next_capacity(context, &block, location, elem_stride, array_capacity)?;
-
-            let data_prefix_size_value =
-                block.const_int(context, location, data_prefix_size, 64)?;
-            let realloc_len = block.addi(realloc_len, data_prefix_size_value, location)?;
+            let k0_capacity = block.const_int_from_type(context, location, 0, len_ty)?;
+            let (array_capacity, realloc_size) =
+                compute_next_capacity(context, &block, location, elem_stride, k0_capacity)?;
 
             let null_ptr = block.append_op_result(llvm::zero(ptr_ty, location))?;
-            let array_ptr = block.append_op_result(ReallocBindingsMeta::realloc(
+            let data_ptr = block.append_op_result(ReallocBindingsMeta::realloc(
                 context,
                 null_ptr,
-                realloc_len,
+                realloc_size,
+                location,
+            )?)?;
+
+            // Allocate metadata struct: { refcount: u32, max_len: u32, capacity: u32, data_ptr: *mut u8 }
+            let metadata_size = block.const_int(context, location, calc_metadata_size(), 64)?;
+            let metadata_ptr = block.append_op_result(ReallocBindingsMeta::realloc(
+                context,
+                null_ptr,
+                metadata_size,
                 location,
             )?)?;
 
             let k1 = block.const_int_from_type(context, location, 1, len_ty)?;
-            block.store(context, location, array_ptr, k1)?;
+
+            let metadata_type = get_metadata_llvm_type(context);
+
+            // Store refcount (field 0)
+            let refcount_ptr = block.gep(
+                context,
+                location,
+                metadata_ptr,
+                &[GepIndex::Const(0), GepIndex::Const(0)],
+                metadata_type,
+            )?;
+            block.store(context, location, refcount_ptr, k1)?;
+
+            // Store max_len (field 1)
             let max_len_ptr = block.gep(
                 context,
                 location,
-                array_ptr,
-                &[GepIndex::Const(size_of::<u32>() as i32)],
-                IntegerType::new(context, 8).into(),
+                metadata_ptr,
+                &[GepIndex::Const(0), GepIndex::Const(1)],
+                metadata_type,
             )?;
             block.store(context, location, max_len_ptr, k0)?;
 
-            let array_ptr = block.gep(
+            // Store data_ptr (field 2)
+            let data_ptr_field = block.gep(
                 context,
                 location,
-                array_ptr,
-                &[GepIndex::Const(data_prefix_size as i32)],
-                IntegerType::new(context, 8).into(),
+                metadata_ptr,
+                &[GepIndex::Const(0), GepIndex::Const(2)],
+                metadata_type,
             )?;
+            block.store(context, location, data_ptr_field, data_ptr)?;
 
-            let k8 = block.const_int(context, location, 8, 64)?;
-            let array_ptr_ptr = block.append_op_result(ReallocBindingsMeta::realloc(
-                context, null_ptr, k8, location,
-            )?)?;
-            block.store(context, location, array_ptr_ptr, array_ptr)?;
-
+            // Build 4-field struct with capacity
             let array_obj = entry.argument(0)?.into();
-            let array_obj = block.insert_value(context, location, array_obj, array_ptr_ptr, 0)?;
+            let array_obj = block.insert_value(context, location, array_obj, metadata_ptr, 0)?;
             let array_obj = block.insert_value(context, location, array_obj, array_capacity, 3)?;
             block.append_operation(scf::r#yield(&[array_obj], location));
             region
@@ -603,6 +637,9 @@ pub fn build_append<'ctx, 'this>(
         {
             let region = Region::new();
             let block = region.append_block(Block::new(&[]));
+
+            let array_capacity =
+                block.extract_value(context, location, entry.argument(0)?.into(), len_ty, 3)?;
 
             let array_end =
                 block.extract_value(context, location, entry.argument(0)?.into(), len_ty, 2)?;
@@ -627,7 +664,7 @@ pub fn build_append<'ctx, 'this>(
                     let region = Region::new();
                     let block = region.append_block(Block::new(&[]));
 
-                    let (array_capacity, realloc_len) = compute_next_capacity(
+                    let (new_capacity, realloc_size) = compute_next_capacity(
                         context,
                         &block,
                         location,
@@ -635,49 +672,37 @@ pub fn build_append<'ctx, 'this>(
                         array_capacity,
                     )?;
 
-                    let data_prefix_size_value =
-                        block.const_int(context, location, data_prefix_size, 64)?;
-                    let realloc_len = block.addi(realloc_len, data_prefix_size_value, location)?;
-
-                    let array_ptr_ptr = block.extract_value(
+                    let metadata_ptr = block.extract_value(
                         context,
                         location,
                         entry.argument(0)?.into(),
                         ptr_ty,
                         0,
                     )?;
-                    let array_ptr = block.load(context, location, array_ptr_ptr, ptr_ty)?;
-                    let array_ptr = block.gep(
+                    let data_ptr_field = block.gep(
                         context,
                         location,
-                        array_ptr,
-                        &[GepIndex::Const(-(data_prefix_size as i32))],
-                        IntegerType::new(context, 8).into(),
+                        metadata_ptr,
+                        &[GepIndex::Const(0), GepIndex::Const(2)],
+                        get_metadata_llvm_type(context),
                     )?;
+                    let data_ptr = block.load(context, location, data_ptr_field, ptr_ty)?;
 
-                    let array_ptr = block.append_op_result(ReallocBindingsMeta::realloc(
+                    // Realloc the data
+                    let new_data_ptr = block.append_op_result(ReallocBindingsMeta::realloc(
                         context,
-                        array_ptr,
-                        realloc_len,
+                        data_ptr,
+                        realloc_size,
                         location,
                     )?)?;
-                    let array_ptr = block.gep(
-                        context,
-                        location,
-                        array_ptr,
-                        &[GepIndex::Const(data_prefix_size as i32)],
-                        IntegerType::new(context, 8).into(),
-                    )?;
 
-                    block.store(context, location, array_ptr_ptr, array_ptr)?;
+                    // Update data_ptr in metadata
+                    block.store(context, location, data_ptr_field, new_data_ptr)?;
 
-                    let array_obj = block.insert_value(
-                        context,
-                        location,
-                        entry.argument(0)?.into(),
-                        array_capacity,
-                        3,
-                    )?;
+                    // Update capacity in struct field 3
+                    let array_obj = entry.argument(0)?.into();
+                    let array_obj =
+                        block.insert_value(context, location, array_obj, new_capacity, 3)?;
                     block.append_operation(scf::r#yield(&[array_obj], location));
                     region
                 },
@@ -690,8 +715,16 @@ pub fn build_append<'ctx, 'this>(
         location,
     ))?;
 
-    let array_ptr_ptr = entry.extract_value(context, location, array_obj, ptr_ty, 0)?;
-    let array_ptr = entry.load(context, location, array_ptr_ptr, ptr_ty)?;
+    let metadata_ptr = entry.extract_value(context, location, array_obj, ptr_ty, 0)?;
+    let metadata_type = get_metadata_llvm_type(context);
+    let data_ptr_field = entry.gep(
+        context,
+        location,
+        metadata_ptr,
+        &[GepIndex::Const(0), GepIndex::Const(2)],
+        metadata_type,
+    )?;
+    let data_ptr = entry.load(context, location, data_ptr_field, ptr_ty)?;
 
     // Insert the value.
     let target_offset = entry.extract_value(context, location, array_obj, len_ty, 2)?;
@@ -704,7 +737,7 @@ pub fn build_append<'ctx, 'this>(
     let target_ptr = entry.gep(
         context,
         location,
-        array_ptr,
+        data_ptr,
         &[GepIndex::Value(target_offset)],
         IntegerType::new(context, 8).into(),
     )?;
@@ -717,16 +750,13 @@ pub fn build_append<'ctx, 'this>(
     let array_end = entry.addi(array_end, k1, location)?;
     let array_obj = entry.insert_value(context, location, array_obj, array_end, 2)?;
 
-    // Update max length.
+    // Update max_len in metadata (field 1)
     let max_len_ptr = entry.gep(
         context,
         location,
-        array_ptr,
-        &[GepIndex::Const(
-            -((crate::types::array::calc_data_prefix_offset(elem_layout) - size_of::<u32>())
-                as i32),
-        )],
-        IntegerType::new(context, 8).into(),
+        metadata_ptr,
+        &[GepIndex::Const(0), GepIndex::Const(1)],
+        metadata_type,
     )?;
     entry.store(context, location, max_len_ptr, array_end)?;
 
@@ -839,8 +869,16 @@ fn build_pop<'ctx, 'this, const CONSUME: bool, const REVERSE: bool>(
     {
         let mut branch_values = branch_values.clone();
 
-        let array_ptr_ptr = valid_block.extract_value(context, location, array_obj, ptr_ty, 0)?;
-        let array_ptr = valid_block.load(context, location, array_ptr_ptr, ptr_ty)?;
+        let metadata_ptr = valid_block.extract_value(context, location, array_obj, ptr_ty, 0)?;
+
+        let data_ptr_field = valid_block.gep(
+            context,
+            location,
+            metadata_ptr,
+            &[GepIndex::Const(0), GepIndex::Const(2)],
+            get_metadata_llvm_type(context),
+        )?;
+        let data_ptr = valid_block.load(context, location, data_ptr_field, ptr_ty)?;
 
         let elem_stride =
             valid_block.const_int(context, location, elem_layout.pad_to_align().size(), 64)?;
@@ -858,24 +896,24 @@ fn build_pop<'ctx, 'this, const CONSUME: bool, const REVERSE: bool>(
             let data_offset =
                 valid_block.extui(array_end, IntegerType::new(context, 64).into(), location)?;
             let data_offset = valid_block.muli(elem_stride, data_offset, location)?;
-            let data_ptr = valid_block.gep(
+            let source_ptr = valid_block.gep(
                 context,
                 location,
-                array_ptr,
+                data_ptr,
                 &[GepIndex::Value(data_offset)],
                 IntegerType::new(context, 8).into(),
             )?;
 
-            (array_obj, data_ptr)
+            (array_obj, source_ptr)
         } else {
-            // Compute data offset (elem_stride * array_end) and GEP.
+            // Compute data offset (elem_stride * array_start) and GEP.
             let data_offset =
                 valid_block.extui(array_start, IntegerType::new(context, 64).into(), location)?;
             let data_offset = valid_block.muli(elem_stride, data_offset, location)?;
-            let data_ptr = valid_block.gep(
+            let source_ptr = valid_block.gep(
                 context,
                 location,
-                array_ptr,
+                data_ptr,
                 &[GepIndex::Value(data_offset)],
                 IntegerType::new(context, 8).into(),
             )?;
@@ -888,7 +926,7 @@ fn build_pop<'ctx, 'this, const CONSUME: bool, const REVERSE: bool>(
             let array_obj =
                 valid_block.insert_value(context, location, array_obj, array_start, 1)?;
 
-            (array_obj, data_ptr)
+            (array_obj, source_ptr)
         };
 
         // Allocate output pointer.
@@ -1041,13 +1079,22 @@ pub fn build_get<'ctx, 'this>(
             location,
         )?;
         let source_offset = valid_block.muli(source_offset, elem_stride, location)?;
-        let source_ptr =
+
+        let metadata_ptr =
             valid_block.extract_value(context, location, entry.argument(1)?.into(), ptr_ty, 0)?;
-        let source_ptr = valid_block.load(context, location, source_ptr, ptr_ty)?;
+        let data_ptr_field = valid_block.gep(
+            context,
+            location,
+            metadata_ptr,
+            &[GepIndex::Const(0), GepIndex::Const(2)],
+            get_metadata_llvm_type(context),
+        )?;
+        let data_ptr = valid_block.load(context, location, data_ptr_field, ptr_ty)?;
+
         let source_ptr = valid_block.gep(
             context,
             location,
-            source_ptr,
+            data_ptr,
             &[GepIndex::Value(source_offset)],
             IntegerType::new(context, 8).into(),
         )?;
@@ -1235,8 +1282,8 @@ fn is_shared<'ctx, 'this>(
     context: &'ctx Context,
     block: &'this Block<'ctx>,
     location: Location<'ctx>,
-    array_ptr_ptr: Value<'ctx, 'this>,
-    elem_layout: Layout,
+    metadata_ptr: Value<'ctx, 'this>,
+    _elem_layout: Layout,
 ) -> Result<Value<'ctx, 'this>> {
     let null_ptr =
         block.append_op_result(llvm::zero(llvm::r#type::pointer(context, 0), location))?;
@@ -1244,7 +1291,7 @@ fn is_shared<'ctx, 'this>(
         ods::llvm::icmp(
             context,
             IntegerType::new(context, 1).into(),
-            array_ptr_ptr,
+            metadata_ptr,
             null_ptr,
             IntegerAttribute::new(IntegerType::new(context, 64).into(), 0).into(),
             location,
@@ -1268,25 +1315,10 @@ fn is_shared<'ctx, 'this>(
             let region = Region::new();
             let block = region.append_block(Block::new(&[]));
 
-            let array_ptr = block.load(
-                context,
-                location,
-                array_ptr_ptr,
-                llvm::r#type::pointer(context, 0),
-            )?;
-            let array_ptr = block.gep(
-                context,
-                location,
-                array_ptr,
-                &[GepIndex::Const(
-                    -(calc_data_prefix_offset(elem_layout) as i32),
-                )],
-                IntegerType::new(context, 8).into(),
-            )?;
             let ref_count = block.load(
                 context,
                 location,
-                array_ptr,
+                metadata_ptr,
                 IntegerType::new(context, 32).into(),
             )?;
 
