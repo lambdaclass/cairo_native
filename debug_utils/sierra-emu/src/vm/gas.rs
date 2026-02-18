@@ -53,7 +53,7 @@ fn eval_builtin_withdraw_gas(
         panic!()
     };
 
-    let builtin_costs: [u64; 7] = builtin_costs.into();
+    let builtin_costs: [u64; 8] = builtin_costs.into();
 
     let gas_cost = gas_meta.get_gas_costs_for_statement(statement_idx);
 
@@ -72,6 +72,7 @@ fn eval_builtin_withdraw_gas(
             CostTokenType::Poseidon => 4,
             CostTokenType::AddMod => 5,
             CostTokenType::MulMod => 6,
+            CostTokenType::Blake => 7,
             _ => panic!(),
         };
 
@@ -99,7 +100,7 @@ fn eval_withdraw_gas(
         panic!()
     };
 
-    let builtin_costs: [u64; 7] = builtin_costs.into();
+    let builtin_costs: [u64; 8] = builtin_costs.into();
 
     let gas_cost = gas_meta.get_gas_costs_for_statement(statement_idx);
 
@@ -118,6 +119,7 @@ fn eval_withdraw_gas(
             CostTokenType::Poseidon => 4,
             CostTokenType::AddMod => 5,
             CostTokenType::MulMod => 6,
+            CostTokenType::Blake => 7,
             _ => panic!(),
         };
 
@@ -145,7 +147,7 @@ fn eval_redeposit_gas(
         panic!()
     };
 
-    let builtin_costs: [u64; 7] = builtin_costs.into();
+    let builtin_costs: [u64; 8] = builtin_costs.into();
 
     let gas_cost = gas_meta.get_gas_costs_for_statement(statement_idx);
     let mut total_gas_cost = 0;
@@ -162,6 +164,7 @@ fn eval_redeposit_gas(
             CostTokenType::Poseidon => 4,
             CostTokenType::AddMod => 5,
             CostTokenType::MulMod => 6,
+            CostTokenType::Blake => 7,
             _ => panic!(),
         };
 

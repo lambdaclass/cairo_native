@@ -97,7 +97,7 @@ fn load_program(path: &Path, is_contract: bool) -> Result<Program, Box<dyn std::
                 },
             )?;
 
-            contract.extract_sierra_program()?
+            contract.extract_sierra_program(false)?.program
         }
         Some("sierra") => {
             let program_src = fs::read_to_string(path)?;

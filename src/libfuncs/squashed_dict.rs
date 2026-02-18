@@ -202,10 +202,13 @@ mod test {
 
                 let dict_snapshot = @dict;
                 let dict_squash = dict.squash().into_entries();
-                drop(dict_snapshot);
+                drop_snapshot(dict_snapshot);
 
                 dict_squash
             }
+
+            #[inline(never)]
+            fn drop_snapshot<T, +Drop<T>>(_x: T) {}
         };
     }
 

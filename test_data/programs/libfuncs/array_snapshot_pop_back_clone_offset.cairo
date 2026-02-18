@@ -10,3 +10,7 @@ fn run_test() -> Span<felt252> {
     drop(data2);
     data
 }
+
+#[inline(never)]
+fn drop<T,+Drop<T>>(_x: T) {
+}
