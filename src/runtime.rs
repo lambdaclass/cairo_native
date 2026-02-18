@@ -812,6 +812,7 @@ thread_local! {
             poseidon: 0,
             add_mod: 0,
             mul_mod: 0,
+            blake: 0,
         })
     };
 }
@@ -836,8 +837,8 @@ pub fn qm31_to_representative_coefficients(qm31: QM31) -> [u32; 4] {
 }
 
 /// Get the costs builtin from the internal thread local.
-pub extern "C" fn cairo_native__get_costs_builtin() -> *const [u64; 7] {
-    BUILTIN_COSTS.with(|x| x.as_ptr()) as *const [u64; 7]
+pub extern "C" fn cairo_native__get_costs_builtin() -> *const [u64; 8] {
+    BUILTIN_COSTS.with(|x| x.as_ptr()) as *const [u64; 8]
 }
 
 // Utility methods for the print runtime function
