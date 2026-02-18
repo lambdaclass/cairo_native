@@ -851,7 +851,10 @@ mod tests {
             version_id_from_serialized_sierra_program(&starknet_program.sierra_program).unwrap();
         let executor = Arc::new(
             AotContractExecutor::new(
-                &starknet_program.extract_sierra_program().unwrap(),
+                &starknet_program
+                    .extract_sierra_program(false)
+                    .unwrap()
+                    .program,
                 &starknet_program.entry_points_by_type,
                 sierra_version,
                 optlevel,
@@ -891,7 +894,10 @@ mod tests {
         let (sierra_version, _) =
             version_id_from_serialized_sierra_program(&starknet_program.sierra_program).unwrap();
         let executor = AotContractExecutor::new(
-            &starknet_program.extract_sierra_program().unwrap(),
+            &starknet_program
+                .extract_sierra_program(false)
+                .unwrap()
+                .program,
             &starknet_program.entry_points_by_type,
             sierra_version,
             optlevel,
@@ -931,7 +937,10 @@ mod tests {
             version_id_from_serialized_sierra_program(&starknet_program_factorial.sierra_program)
                 .unwrap();
         let executor = AotContractExecutor::new(
-            &starknet_program_factorial.extract_sierra_program().unwrap(),
+            &starknet_program_factorial
+                .extract_sierra_program(false)
+                .unwrap()
+                .program,
             &starknet_program_factorial.entry_points_by_type,
             sierra_version,
             optlevel,
@@ -972,7 +981,10 @@ mod tests {
             version_id_from_serialized_sierra_program(&starknet_program_empty.sierra_program)
                 .unwrap();
         let executor = AotContractExecutor::new(
-            &starknet_program_empty.extract_sierra_program().unwrap(),
+            &starknet_program_empty
+                .extract_sierra_program(false)
+                .unwrap()
+                .program,
             &starknet_program_empty.entry_points_by_type,
             sierra_version,
             optlevel,

@@ -9,7 +9,7 @@ fn u256_test() {
 
     let entry_point = contract.entry_points_by_type.external.first().unwrap();
 
-    let program = contract.extract_sierra_program().unwrap();
+    let program = contract.extract_sierra_program(false).unwrap().program;
     let result = run_native_starknet_contract(
         &program,
         entry_point.function_idx,

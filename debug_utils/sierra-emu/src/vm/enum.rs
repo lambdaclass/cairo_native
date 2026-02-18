@@ -24,6 +24,7 @@ pub fn eval(
         EnumConcreteLibfunc::FromBoundedInt(info) => eval_from_bounded_int(registry, info, args),
         EnumConcreteLibfunc::Match(info) => eval_match(registry, info, args),
         EnumConcreteLibfunc::SnapshotMatch(info) => eval_snapshot_match(registry, info, args),
+        EnumConcreteLibfunc::BoxedMatch(_) => todo!(),
     }
 }
 

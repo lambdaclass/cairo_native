@@ -79,7 +79,7 @@ mod test {
         )
         .unwrap();
 
-        let sierra_program = contract.extract_sierra_program().unwrap();
+        let sierra_program = contract.extract_sierra_program(false).unwrap().program;
 
         let (sierra_version, _) =
             version_id_from_serialized_sierra_program(&contract.sierra_program).unwrap();
@@ -130,7 +130,7 @@ mod test {
         let (sierra_version, _) =
             version_id_from_serialized_sierra_program(&contract.sierra_program).unwrap();
 
-        let sierra_program = contract.extract_sierra_program().unwrap();
+        let sierra_program = contract.extract_sierra_program(false).unwrap().program;
 
         let entry_point = contract.entry_points_by_type.constructor.first().unwrap();
 

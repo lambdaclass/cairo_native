@@ -108,8 +108,8 @@ fn load_sierra_program_from_file(
     Ok((
         contract_class.clone(),
         contract_class
-            .extract_sierra_program()
-            .context("Error extracting Sierra program from contract class.")?,
+            .extract_sierra_program(false)
+            .context("Error extracting Sierra program from contract class.")?.program,
         sierra_version,
     ))
 }

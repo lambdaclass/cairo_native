@@ -192,8 +192,8 @@ mod Contract {{
     .expect("failed to compile cairo contract");
 
     let program = contract_class
-        .extract_sierra_program()
-        .expect("failed to extract sierra program");
+        .extract_sierra_program(false)
+        .expect("failed to extract sierra program").program;
 
     let entry_point_idx = contract_class
         .entry_points_by_type

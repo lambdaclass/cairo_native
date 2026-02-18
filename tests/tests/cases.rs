@@ -187,8 +187,8 @@ fn test_contract_cases(name: &str, args: &[u128]) {
         .expect("contract should have at least one external entrypoint");
 
     let program = contract
-        .extract_sierra_program()
-        .expect("contract bytes should be a valid sierra program");
+        .extract_sierra_program(false)
+        .expect("contract bytes should be a valid sierra program").program;
 
     let native_result = run_native_starknet_contract(
         &program,

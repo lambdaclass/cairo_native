@@ -25,7 +25,7 @@ fn main() -> Result<(), Box<dyn Error>> {
         },
         InliningStrategy::Default,
     )?;
-    let program = contract.extract_sierra_program()?;
+    let program = contract.extract_sierra_program(false)?.program;
     let (version_id, _) = version_id_from_serialized_sierra_program(&contract.sierra_program)?;
 
     // Find entrypoint to execute
