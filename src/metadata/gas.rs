@@ -37,7 +37,6 @@ use cairo_lang_sierra_to_casm::{
     },
 };
 use cairo_lang_sierra_type_size::{ProgramRegistryInfo, TypeSizeMap};
-use cairo_lang_utils::small_ordered_map::SmallOrderedMap;
 use itertools::Itertools;
 use std::{collections::BTreeMap, fmt};
 
@@ -248,18 +247,10 @@ fn calculate_statement_wallets(
             // See https://github.com/starkware-libs/cairo/blob/v2.15.0/crates/cairo-lang-sierra-to-casm/src/invocations/mod.rs#L398.
             let changes = core_libfunc_cost(
                 &cairo_metadata.gas_info,
-                &statement_idx,
+                statement_idx,
                 libfunc,
                 &statement_gas_metadata,
-            )
-            .iter()
-            .map(|change| {
-                change
-                    .iter()
-                    .map(|(token_type, val)| (*token_type, -val))
-                    .collect::<SmallOrderedMap<_, _>>()
-            })
-            .collect_vec();
+            );
 
             let src_wallet = wallets[statement_idx.0]
                 .clone()
@@ -269,9 +260,9 @@ fn calculate_statement_wallets(
             // updating the current gas wallet with the branch's gas change.
             // See: https://github.com/starkware-libs/cairo/blob/v2.15.0/crates/cairo-lang-sierra-to-casm/src/annotations.rs#L433
             for (branch_info, gas_change) in statement.branches.iter().zip(changes) {
-                let dst_statement_idx = statement_idx.next(&branch_info.target);
+                let dst_statement_idx = statement_idx.next(branch_info.target);
 
-                let new_wallet = src_wallet.update(gas_change)?;
+                let new_wallet = src_wallet.clone().update(gas_change)?;
                 let old_wallet = &mut wallets[dst_statement_idx.0];
 
                 // Multiple different statements can branch to the same

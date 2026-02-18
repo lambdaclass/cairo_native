@@ -292,9 +292,13 @@ pub fn run_vm_contract(
         .map(|arg| MaybeRelocatable::Int(*arg))
         .collect_vec();
 
-    let contract =
-        CasmContractClass::from_contract_class(cairo_contract.clone(), false, usize::MAX)
-            .expect("failed to compile sierra contract to casm");
+    let contract = CasmContractClass::from_contract_class(
+        cairo_contract.clone(),
+        cairo_contract.extract_sierra_program(false).unwrap(),
+        false,
+        usize::MAX,
+    )
+    .expect("failed to compile sierra contract to casm");
 
     let program = contract
         .clone()
@@ -461,12 +465,11 @@ pub fn run_native_starknet_aot_contract(
     args: &[Felt],
     handler: impl StarknetSyscallHandler,
 ) -> ContractExecutionResult {
-    let (sierra_version, _) =
-        version_id_from_serialized_sierra_program(&contract.sierra_program).unwrap();
+    let extracted = contract.extract_sierra_program(false).unwrap();
     let native_executor = AotContractExecutor::new(
-        &contract.extract_sierra_program().unwrap(),
+        &extracted.program,
         &contract.entry_points_by_type,
-        sierra_version,
+        extracted.sierra_version,
         Default::default(),
         None,
     )

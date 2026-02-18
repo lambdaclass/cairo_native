@@ -54,6 +54,7 @@ pub fn build<'ctx, 'this>(
         EnumConcreteLibfunc::FromBoundedInt(info) => {
             build_from_bounded_int(context, registry, entry, location, helper, metadata, info)
         }
+        EnumConcreteLibfunc::BoxedMatch(_) => todo!("BoxedMatch libfunc not yet implemented"),
     }
 }
 

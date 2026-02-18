@@ -365,7 +365,7 @@ mod test {
             Value::Enum {
                 tag: 0,
                 value: Box::new(Value::Struct {
-                    fields: vec![Value::Uint128(5900)],
+                    fields: vec![Value::Uint128(6200)],
                     debug_name: None
                 }),
                 debug_name: None,

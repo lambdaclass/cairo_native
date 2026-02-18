@@ -21,6 +21,7 @@ use cairo_lang_sierra::{
         StatementIdx, TypeDeclaration,
     },
 };
+use std::collections::HashMap;
 use std::{
     cell::{OnceCell, RefCell},
     iter::once,
@@ -74,7 +75,10 @@ where
         let libfunc = T::by_id(&generic_id).unwrap();
         let libfunc_signature = libfunc
             .specialize_signature(
-                &SierraGeneratorWrapper(RefCell::new(&mut self)),
+                &SierraGeneratorWrapper {
+                    generator: RefCell::new(&mut self),
+                    type_info_cache: RefCell::new(HashMap::new()),
+                },
                 &generic_args,
             )
             .unwrap();
@@ -373,7 +377,13 @@ where
 
         let type_info = U::by_id(&generic_id)
             .unwrap()
-            .specialize(&SierraGeneratorWrapper(RefCell::new(self)), &generic_args)
+            .specialize(
+                &SierraGeneratorWrapper {
+                    generator: RefCell::new(self),
+                    type_info_cache: RefCell::new(HashMap::new()),
+                },
+                &generic_args,
+            )
             .unwrap()
             .info()
             .clone();
@@ -411,9 +421,13 @@ where
     }
 }
 
-struct SierraGeneratorWrapper<'a, T>(RefCell<&'a mut SierraGenerator<T>>)
+struct SierraGeneratorWrapper<'a, T>
 where
-    T: GenericLibfunc;
+    T: GenericLibfunc,
+{
+    generator: RefCell<&'a mut SierraGenerator<T>>,
+    type_info_cache: RefCell<HashMap<ConcreteTypeId, TypeInfo>>,
+}
 
 impl<T> SignatureSpecializationContext for SierraGeneratorWrapper<'_, T>
 where
@@ -425,7 +439,7 @@ where
         generic_args: &[GenericArg],
     ) -> Option<ConcreteTypeId> {
         Some(
-            self.0
+            self.generator
                 .borrow_mut()
                 .push_type_declaration_with_generic_id::<CoreType>(id, generic_args)
                 .clone(),
@@ -445,14 +459,24 @@ impl<T> TypeSpecializationContext for SierraGeneratorWrapper<'_, T>
 where
     T: GenericLibfunc,
 {
-    fn try_get_type_info(&self, id: ConcreteTypeId) -> Option<TypeInfo> {
-        self.0
+    fn try_get_type_info<'a>(&'a self, id: &ConcreteTypeId) -> Option<&'a TypeInfo> {
+        // Check if already cached
+        if self.type_info_cache.borrow().contains_key(id) {
+            // SAFETY: We know the key exists and we never remove from the cache
+            let cache = self.type_info_cache.borrow();
+            let ptr = cache.get(id).unwrap() as *const TypeInfo;
+            return Some(unsafe { &*ptr });
+        }
+
+        // Find and cache the type info
+        let type_info = self
+            .generator
             .borrow()
             .program
             .type_declarations
             .iter()
             .find_map(|type_declaration| {
-                (type_declaration.id == id).then(|| {
+                (type_declaration.id == *id).then(|| {
                     let declared_type_info = type_declaration.declared_type_info.as_ref().unwrap();
                     TypeInfo {
                         long_id: type_declaration.long_id.clone(),
@@ -462,7 +486,16 @@ where
                         zero_sized: declared_type_info.zero_sized,
                     }
                 })
-            })
+            })?;
+
+        self.type_info_cache
+            .borrow_mut()
+            .insert(id.clone(), type_info);
+
+        // SAFETY: We just inserted the value and we never remove from the cache
+        let cache = self.type_info_cache.borrow();
+        let ptr = cache.get(id).unwrap() as *const TypeInfo;
+        Some(unsafe { &*ptr })
     }
 }
 

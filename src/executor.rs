@@ -719,8 +719,9 @@ mod tests {
     #[fixture]
     fn starknet_program() -> Program {
         include_contract!("test_data_artifacts/contracts/simple_storage_42.contract.json")
-            .extract_sierra_program()
+            .extract_sierra_program(true)
             .unwrap()
+            .program
     }
 
     #[rstest]
