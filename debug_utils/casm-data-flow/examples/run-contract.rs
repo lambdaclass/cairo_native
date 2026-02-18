@@ -69,8 +69,15 @@ pub fn main() {
     implicit_args.extend([initial_gas]);
     implicit_args.extend([syscall_segment]);
 
-    let builtin_costs: Vec<MaybeRelocatable> =
-        vec![0.into(), 0.into(), 0.into(), 0.into(), 0.into()];
+    let builtin_costs: Vec<MaybeRelocatable> = vec![
+        0.into(),
+        0.into(),
+        0.into(),
+        0.into(),
+        0.into(),
+        0.into(),
+        0.into(),
+    ];
     let builtin_costs_ptr = runner.vm.add_memory_segment();
     runner
         .vm

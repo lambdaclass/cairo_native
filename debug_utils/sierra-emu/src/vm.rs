@@ -5,7 +5,7 @@ use crate::{
     ContractExecutionResult, ProgramTrace, StateDump, Value,
 };
 use cairo_lang_sierra::{
-    edit_state,
+    edit_state::EditState,
     extensions::{
         circuit::CircuitTypeConcrete,
         core::{CoreConcreteLibfunc, CoreLibfunc, CoreType, CoreTypeConcrete},
@@ -327,9 +327,11 @@ impl VirtualMachine {
                     "Executing invocation of libfunc: {}",
                     libfunc_to_name(libfunc)
                 );
-                let (state, values) =
-                    edit_state::take_args(std::mem::take(&mut frame.state), invocation.args.iter())
-                        .unwrap();
+                let (state, values) = {
+                    let mut state = std::mem::take(&mut frame.state);
+                    let values = state.take_vars(invocation.args.iter()).unwrap();
+                    (state, values)
+                };
 
                 match eval(
                     &self.registry,
@@ -365,12 +367,11 @@ impl VirtualMachine {
                             )
                         );
 
-                        frame.pc = frame.pc.next(&invocation.branches[branch_idx].target);
-                        frame.state = edit_state::put_results(
-                            state,
-                            invocation.branches[branch_idx].results.iter().zip(results),
-                        )
-                        .unwrap();
+                        frame.pc = frame.pc.next(invocation.branches[branch_idx].target);
+                        frame
+                            .state
+                            .put_vars(invocation.branches[branch_idx].results.iter().zip(results))
+                            .unwrap();
                     }
                     EvalAction::FunctionCall(function_id, args) => {
                         let function = self.registry.get_function(&function_id).unwrap();
@@ -392,9 +393,11 @@ impl VirtualMachine {
             GenStatement::Return(ids) => {
                 let mut curr_frame = self.frames.pop().unwrap();
                 if let Some(prev_frame) = self.frames.last_mut() {
-                    let (state, values) =
-                        edit_state::take_args(std::mem::take(&mut curr_frame.state), ids.iter())
-                            .unwrap();
+                    let (state, values) = {
+                        let mut state = std::mem::take(&mut curr_frame.state);
+                        let values = state.take_vars(ids.iter()).unwrap();
+                        (state, values)
+                    };
                     assert!(state.is_empty());
 
                     let target_branch = match &self.program.statements[prev_frame.pc.0] {
@@ -406,12 +409,11 @@ impl VirtualMachine {
                     };
 
                     assert_eq!(target_branch.results.len(), values.len());
-                    prev_frame.pc = prev_frame.pc.next(&target_branch.target);
-                    prev_frame.state = edit_state::put_results(
-                        std::mem::take(&mut prev_frame.state),
-                        target_branch.results.iter().zip(values),
-                    )
-                    .unwrap();
+                    prev_frame.pc = prev_frame.pc.next(target_branch.target);
+                    prev_frame
+                        .state
+                        .put_vars(target_branch.results.iter().zip(values))
+                        .unwrap();
                 }
             }
         }
