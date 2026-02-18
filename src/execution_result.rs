@@ -30,6 +30,7 @@ pub struct BuiltinStats {
     pub range_check96: usize,
     pub add_mod: usize,
     pub mul_mod: usize,
+    pub blake: usize,
 }
 
 pub const RANGE_CHECK_BUILTIN_SIZE: usize = 1;
@@ -41,6 +42,7 @@ pub const SEGMENT_ARENA_BUILTIN_SIZE: usize = 3;
 pub const RANGE_CHECK96_BUILTIN_SIZE: usize = 1;
 pub const ADD_MOD_BUILTIN_SIZE: usize = 7;
 pub const MUL_MOD_BUILTIN_SIZE: usize = 7;
+pub const BLAKE_BUILTIN_SIZE: usize = 1;
 
 /// The result of the JIT execution.
 #[derive(Debug, Clone, PartialEq, Eq, serde::Serialize, serde::Deserialize)]
@@ -188,6 +190,7 @@ impl Add for BuiltinStats {
             range_check96: self.range_check96 + rhs.range_check96,
             add_mod: self.add_mod + rhs.add_mod,
             mul_mod: self.mul_mod + rhs.mul_mod,
+            blake: self.blake + rhs.blake,
         }
     }
 }

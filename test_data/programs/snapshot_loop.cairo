@@ -12,3 +12,6 @@ fn run_test() {
         drop(snapshot)
     }
 }
+#[inline(never)]
+fn drop<T,+Drop<T>>(_x: T) {
+}

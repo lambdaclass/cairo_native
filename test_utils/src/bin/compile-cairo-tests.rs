@@ -32,6 +32,7 @@ fn main() -> Result<(), Box<dyn Error>> {
             add_statements_functions: false,
             add_statements_code_locations: false,
             add_functions_debug_info: false,
+            replace_ids: false,
         },
     )?;
     let compilation = compiler.build()?;

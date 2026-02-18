@@ -9,3 +9,6 @@ fn run_test() {
 
     dict.insert(2, 2);
 }
+#[inline(never)]
+fn drop<T,+Drop<T>>(_x: T) {
+}
