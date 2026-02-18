@@ -7,6 +7,5 @@ fn run_test() -> Span<felt252> {
 
     assert(*data.pop_back().unwrap() == 193827, 1);
 
-    drop(data2);
     data
 }

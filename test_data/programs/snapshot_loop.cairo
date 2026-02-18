@@ -12,3 +12,7 @@ fn run_test() {
         drop(snapshot)
     }
 }
+#[inline(never)]
+// Force T to stay alive until after the end of the scope.
+fn drop<T,+Drop<T>>(_x: T) {
+}
