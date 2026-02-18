@@ -303,6 +303,7 @@ pub fn libfunc_to_name(value: &CoreConcreteLibfunc) -> &'static str {
             EnumConcreteLibfunc::FromBoundedInt(_) => "enum_from_bounded_int",
             EnumConcreteLibfunc::Match(_) => "enum_match",
             EnumConcreteLibfunc::SnapshotMatch(_) => "enum_snapshot_match",
+            EnumConcreteLibfunc::BoxedMatch(_) => "enum_boxed_match",
         },
         CoreConcreteLibfunc::Struct(value) => match value {
             StructConcreteLibfunc::Construct(_) => "struct_construct",

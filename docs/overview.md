@@ -280,7 +280,7 @@ fn main() {
     .unwrap();
 
     let entry_point = contract.entry_points_by_type.external.first().unwrap();
-    let sierra_program = contract.extract_sierra_program().unwrap();
+    let sierra_program = contract.extract_sierra_program(false).unwrap().program;
 
     let native_context = NativeContext::new();
 
@@ -290,7 +290,7 @@ fn main() {
 
     // Call the echo function from the contract using the generated wrapper.
     let entry_point_fn =
-        find_entry_point_by_idx(&sierra_program, entry_point.function_idx).unwrap();
+        find_entry_point_by_idx(&sierra_program.program, entry_point.function_idx).unwrap();
 
     let fn_id = &entry_point_fn.id;
 

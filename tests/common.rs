@@ -38,7 +38,7 @@ use cairo_native::{
     execution_result::{ContractExecutionResult, ExecutionResult},
     executor::{AotContractExecutor, JitNativeExecutor},
     starknet::{DummySyscallHandler, StarknetSyscallHandler},
-    utils::{find_entry_point_by_idx, testing::load_program_and_runner, HALF_PRIME, PRIME},
+    utils::{find_entry_point_by_idx, HALF_PRIME, PRIME},
     OptLevel, Value,
 };
 use cairo_vm::{
@@ -416,11 +416,12 @@ pub fn run_vm_contract(
 }
 
 pub fn compare_inputless_program(program_path: &str) {
-    let program: (String, Program, SierraCasmRunner) = load_program_and_runner(program_path);
+    let program: (String, Program, SierraCasmRunner) = load_cairo_path(program_path);
+    let program = &program;
 
-    let result_vm = run_vm_program(&program, "main", vec![], Some(DEFAULT_GAS as usize)).unwrap();
+    let result_vm = run_vm_program(program, "main", vec![], Some(DEFAULT_GAS as usize)).unwrap();
     let result_native = run_native_program(
-        &program,
+        program,
         "main",
         &[],
         Some(DEFAULT_GAS),
