@@ -5,7 +5,6 @@ use std::path::Path;
 use cairo_lang_compiler::CompilerConfig;
 use cairo_lang_lowering::utils::InliningStrategy;
 use cairo_lang_starknet::compile::compile_path;
-use cairo_lang_starknet_classes::contract_class::version_id_from_serialized_sierra_program;
 use sierra_emu::{starknet::StubSyscallHandler, ContractExecutionResult, VirtualMachine};
 use starknet_crypto::Felt;
 
@@ -25,8 +24,7 @@ fn main() -> Result<(), Box<dyn Error>> {
         },
         InliningStrategy::Default,
     )?;
-    let program = contract.extract_sierra_program()?;
-    let (version_id, _) = version_id_from_serialized_sierra_program(&contract.sierra_program)?;
+    let extracted = contract.extract_sierra_program(false)?;
 
     // Find entrypoint to execute
     let entrypoint = contract
@@ -38,9 +36,9 @@ fn main() -> Result<(), Box<dyn Error>> {
 
     // Build virtual machine
     let mut vm = VirtualMachine::new_starknet(
-        Arc::new(program),
+        Arc::new(extracted.program),
         &contract.entry_points_by_type,
-        version_id,
+        extracted.sierra_version,
     );
     vm.call_contract(entrypoint.selector.into(), initial_gas, arguments, None);
 

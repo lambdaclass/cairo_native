@@ -70,8 +70,12 @@ pub fn build_divmod<'ctx, 'this>(
     let i128_ty = IntegerType::new(context, 128).into();
     let i256_ty = IntegerType::new(context, 256).into();
 
-    let guarantee_type =
-        registry.build_type(context, helper, metadata, &info.output_types()[0][3])?;
+    let guarantee_type = registry.build_type(
+        context,
+        helper,
+        metadata,
+        info.output_types().next().unwrap().nth(3).unwrap(),
+    )?;
 
     let lhs_struct: Value = entry.arg(1)?;
     let rhs_struct: Value = entry.arg(2)?;
@@ -878,7 +882,12 @@ pub fn build_u256_guarantee_inv_mod_n<'ctx, 'this>(
         .result(0)?
         .into();
 
-    let return_ty = registry.build_type(context, helper, metadata, &info.output_types()[0][1])?;
+    let return_ty = registry.build_type(
+        context,
+        helper,
+        metadata,
+        info.output_types().next().unwrap().nth(1).unwrap(),
+    )?;
     let result_inv = entry
         .append_operation(llvm::undef(return_ty, location))
         .result(0)?
@@ -923,8 +932,12 @@ pub fn build_u256_guarantee_inv_mod_n<'ctx, 'this>(
         .result(0)?
         .into();
 
-    let guarantee_type =
-        registry.build_type(context, helper, metadata, &info.output_types()[0][2])?;
+    let guarantee_type = registry.build_type(
+        context,
+        helper,
+        metadata,
+        info.output_types().next().unwrap().nth(2).unwrap(),
+    )?;
     let op = entry.append_operation(llvm::undef(guarantee_type, location));
     let guarantee = op.result(0)?.into();
 

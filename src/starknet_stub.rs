@@ -1,7 +1,7 @@
 //! An usable implementation of the starknet syscall handler trait.
 //!
 //! Based of cairo-lang-runner syscall handler implementation.
-//! - https://github.com/starkware-libs/cairo/blob/v2.14.0/crates/cairo-lang-runner/src/casm_run/mod.rs
+//! - https://github.com/starkware-libs/cairo/blob/v2.16.0/crates/cairo-lang-runner/src/casm_run/mod.rs
 
 use std::{
     collections::{HashMap, VecDeque},
@@ -984,7 +984,7 @@ impl StarknetSyscallHandler for &mut StubSyscallHandler {
     }
 
     // Reference implementation:
-    // https://github.com/starkware-libs/cairo/blob/v2.14.0/crates/cairo-lang-runner/src/casm_run/mod.rs#L1451
+    // https://github.com/starkware-libs/cairo/blob/v2.16.0/crates/cairo-lang-runner/src/casm_run/mod.rs#L1455
     fn sha256_process_block(
         &mut self,
         state: &mut [u32; 8],

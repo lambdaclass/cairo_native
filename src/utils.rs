@@ -87,6 +87,7 @@ impl BuiltinCosts {
             CostTokenType::Poseidon => 4,
             CostTokenType::AddMod => 5,
             CostTokenType::MulMod => 6,
+            CostTokenType::Blake => 7,
             _ => native_panic!("matched an unexpected CostTokenType which is not being used"),
         };
 
