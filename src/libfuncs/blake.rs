@@ -105,10 +105,10 @@ mod tests {
         let program =
             get_compiled_program("test_data_artifacts/programs/libfuncs/blake_3_bytes_compress");
 
-        let result = run_program(&program, "run_test", &[]).return_value;
+        let result = run_program(&program, "run_test", &[]);
 
         assert_eq!(
-            result,
+            result.return_value,
             jit_struct!(
                 Value::Uint32(0x8C5E8C50),
                 Value::Uint32(0xE2147C32),
@@ -119,6 +119,12 @@ mod tests {
                 Value::Uint32(0x4C9B994D),
                 Value::Uint32(0x82596786),
             )
+        );
+
+        // blake2s_finalize calls build_blake_operation once → blake count = 1
+        assert_eq!(
+            result.builtin_stats.blake, 1,
+            "blake counter should be exactly 1 for a single blake2s_finalize call"
         );
     }
 }
