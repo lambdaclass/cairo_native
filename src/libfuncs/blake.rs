@@ -13,7 +13,7 @@ use melior::{
 };
 
 use crate::{
-    error::{panic::ToNativeAssertError, Result},
+    error::{panic::ToNativeAssertError, Error, Result},
     metadata::{runtime_bindings::RuntimeBindingsMeta, MetadataStorage},
 };
 
@@ -85,6 +85,15 @@ fn build_blake_operation<'ctx, 'this>(
         location,
     )?;
 
+    // Increment the global blake call counter by 1 for each blake operation.
+    // Unlike buffer-based builtins (Pedersen, etc.), Blake doesn't have an implicit
+    // counter argument, so we track invocations via a global counter.
+    let one = entry.const_int(context, location, 1, 64)?;
+    let runtime = metadata
+        .get_mut::<RuntimeBindingsMeta>()
+        .ok_or(Error::MissingMetadata)?;
+    runtime.increment_blake_counter(context, helper, entry, location, one)?;
+
     helper.br(entry, 0, &[state_ptr], location)?;
 
     Ok(())
@@ -105,10 +114,10 @@ mod tests {
         let program =
             get_compiled_program("test_data_artifacts/programs/libfuncs/blake_3_bytes_compress");
 
-        let result = run_program(&program, "run_test", &[]).return_value;
+        let result = run_program(&program, "run_test", &[]);
 
         assert_eq!(
-            result,
+            result.return_value,
             jit_struct!(
                 Value::Uint32(0x8C5E8C50),
                 Value::Uint32(0xE2147C32),
@@ -119,6 +128,12 @@ mod tests {
                 Value::Uint32(0x4C9B994D),
                 Value::Uint32(0x82596786),
             )
+        );
+
+        // blake2s_finalize calls build_blake_operation once → blake count = 1
+        assert_eq!(
+            result.builtin_stats.blake, 1,
+            "blake counter should be exactly 1 for a single blake2s_finalize call"
         );
     }
 }

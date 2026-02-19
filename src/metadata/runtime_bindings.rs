@@ -48,6 +48,7 @@ enum RuntimeBinding {
     DictDup,
     GetCostsBuiltin,
     BlakeCompress,
+    IncrementBlakeCounter,
     DebugPrint,
     U31ExtendedEuclideanAlgorithm,
     U252ExtendedEuclideanAlgorithm,
@@ -92,6 +93,7 @@ impl RuntimeBinding {
             RuntimeBinding::U384ExtendedEuclideanAlgorithm => {
                 "cairo_native__u384_extended_euclidean_algorithm"
             }
+            RuntimeBinding::IncrementBlakeCounter => "cairo_native__increment_blake_counter",
             RuntimeBinding::CircuitArithOperation => "cairo_native__circuit_arith_operation",
             RuntimeBinding::DictIntoEntries => "cairo_native__dict_into_entries",
             RuntimeBinding::QM31Add => "cairo_native__libfunc__qm31__qm31_add",
@@ -146,6 +148,16 @@ impl RuntimeBinding {
             RuntimeBinding::GetCostsBuiltin => {
                 crate::runtime::cairo_native__get_costs_builtin as *const ()
             }
+            RuntimeBinding::U31ExtendedEuclideanAlgorithm => return None,
+            RuntimeBinding::U252ExtendedEuclideanAlgorithm => return None,
+            RuntimeBinding::U384ExtendedEuclideanAlgorithm => return None,
+            RuntimeBinding::BlakeCompress => {
+                crate::runtime::cairo_native__libfunc__blake_compress as *const ()
+            }
+            RuntimeBinding::IncrementBlakeCounter => {
+                crate::runtime::cairo_native__increment_blake_counter as *const ()
+            }
+            RuntimeBinding::CircuitArithOperation => return None,
             RuntimeBinding::DictIntoEntries => {
                 crate::runtime::cairo_native__dict_into_entries as *const ()
             }
@@ -161,13 +173,6 @@ impl RuntimeBinding {
             RuntimeBinding::QM31Div => {
                 crate::runtime::cairo_native__libfunc__qm31__qm31_div as *const ()
             }
-            RuntimeBinding::BlakeCompress => {
-                crate::runtime::cairo_native__libfunc__blake_compress as *const ()
-            }
-            RuntimeBinding::U31ExtendedEuclideanAlgorithm
-            | RuntimeBinding::U252ExtendedEuclideanAlgorithm
-            | RuntimeBinding::U384ExtendedEuclideanAlgorithm => return None,
-            RuntimeBinding::CircuitArithOperation => return None,
             #[cfg(feature = "with-cheatcode")]
             RuntimeBinding::VtableCheatcode => {
                 crate::starknet::cairo_native__vtable_cheatcode as *const ()
@@ -988,6 +993,36 @@ impl RuntimeBindingsMeta {
         ))
     }
 
+    /// Register if necessary, then invoke the `increment_blake_counter()` function.
+    /// This increments the global blake call counter by the given amount.
+    #[allow(clippy::too_many_arguments)]
+    pub fn increment_blake_counter<'c, 'a>(
+        &mut self,
+        context: &'c Context,
+        module: &Module,
+        block: &'a Block<'c>,
+        location: Location<'c>,
+        count: Value<'c, 'a>,
+    ) -> Result<OperationRef<'c, 'a>>
+    where
+        'c: 'a,
+    {
+        let function = self.build_function(
+            context,
+            module,
+            block,
+            location,
+            RuntimeBinding::IncrementBlakeCounter,
+        )?;
+
+        Ok(block.append_operation(
+            OperationBuilder::new("llvm.call", location)
+                .add_operands(&[function])
+                .add_operands(&[count])
+                .build()?,
+        ))
+    }
+
     /// Register if necessary, then invoke the `vtable_cheatcode()` runtime function.
     ///
     /// Calls the cheatcode syscall with the given arguments.
@@ -1043,6 +1078,7 @@ pub fn setup_runtime(find_symbol_ptr: impl Fn(&str) -> Option<*mut c_void>) {
         RuntimeBinding::DictDup,
         RuntimeBinding::GetCostsBuiltin,
         RuntimeBinding::BlakeCompress,
+        RuntimeBinding::IncrementBlakeCounter,
         RuntimeBinding::DebugPrint,
         RuntimeBinding::DictIntoEntries,
         RuntimeBinding::QM31Add,

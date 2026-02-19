@@ -47,6 +47,7 @@ use crate::{
     metadata::runtime_bindings::setup_runtime,
     module::NativeModule,
     native_assert, native_panic,
+    runtime::BLAKE_CALL_COUNT,
     starknet::{handler::StarknetSyscallHandlerCallbacks, StarknetSyscallHandler},
     statistics::{SierraDeclaredTypeStats, SierraFuncStats, Statistics},
     types::{array::ArrayMetadata, TypeBuilder},
@@ -699,6 +700,10 @@ impl AotContractExecutor {
 
         // Restore the original builtin costs pointer.
         drop(builtin_costs_guard);
+
+        // Get the blake call count from the global counter (blake doesn't have a buffer-based counter
+        // like other builtins, so it's tracked globally via withdraw_gas)
+        builtin_stats.blake = BLAKE_CALL_COUNT.with(|c| c.replace(0)) as usize;
 
         #[cfg(feature = "with-mem-tracing")]
         crate::utils::mem_tracing::report_stats();
