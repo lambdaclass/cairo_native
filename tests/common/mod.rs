@@ -825,6 +825,9 @@ pub fn compare_outputs(
         native_builtins.insert("range_check96", native_result.builtin_stats.range_check96);
         native_builtins.insert("add_mod", native_result.builtin_stats.add_mod);
         native_builtins.insert("mul_mod", native_result.builtin_stats.mul_mod);
+        // Note: blake is not included here because the VM tracks it as an opcode
+        // (OpcodeExtension::Blake), not as a builtin in builtin_instance_counter.
+        // Blake counter accuracy is validated separately in test_blake_builtin_counter.
         native_builtins.retain(|_, &mut v| v != 0);
         native_builtins
     };
