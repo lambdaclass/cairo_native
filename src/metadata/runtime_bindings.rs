@@ -146,6 +146,13 @@ impl RuntimeBinding {
             RuntimeBinding::GetCostsBuiltin => {
                 crate::runtime::cairo_native__get_costs_builtin as *const ()
             }
+            RuntimeBinding::U31ExtendedEuclideanAlgorithm => return None,
+            RuntimeBinding::U252ExtendedEuclideanAlgorithm => return None,
+            RuntimeBinding::U384ExtendedEuclideanAlgorithm => return None,
+            RuntimeBinding::BlakeCompress => {
+                crate::runtime::cairo_native__libfunc__blake_compress as *const ()
+            }
+            RuntimeBinding::CircuitArithOperation => return None,
             RuntimeBinding::DictIntoEntries => {
                 crate::runtime::cairo_native__dict_into_entries as *const ()
             }
@@ -161,13 +168,6 @@ impl RuntimeBinding {
             RuntimeBinding::QM31Div => {
                 crate::runtime::cairo_native__libfunc__qm31__qm31_div as *const ()
             }
-            RuntimeBinding::BlakeCompress => {
-                crate::runtime::cairo_native__libfunc__blake_compress as *const ()
-            }
-            RuntimeBinding::U31ExtendedEuclideanAlgorithm
-            | RuntimeBinding::U252ExtendedEuclideanAlgorithm
-            | RuntimeBinding::U384ExtendedEuclideanAlgorithm => return None,
-            RuntimeBinding::CircuitArithOperation => return None,
             #[cfg(feature = "with-cheatcode")]
             RuntimeBinding::VtableCheatcode => {
                 crate::starknet::cairo_native__vtable_cheatcode as *const ()
