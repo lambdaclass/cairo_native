@@ -5,14 +5,22 @@
 use super::LibfuncHelper;
 use crate::{
     error::{panic::ToNativeAssertError, Error, Result},
-    metadata::{enum_snapshot_variants::EnumSnapshotVariantsMeta, MetadataStorage},
+    libfuncs::r#box::into_box,
+    metadata::{
+        enum_snapshot_variants::EnumSnapshotVariantsMeta, realloc_bindings::ReallocBindingsMeta,
+        MetadataStorage,
+    },
     native_assert, native_panic,
     types::TypeBuilder,
+    utils::ProgramRegistryExt,
 };
 use cairo_lang_sierra::{
     extensions::{
-        core::{CoreLibfunc, CoreType},
-        enm::{EnumConcreteLibfunc, EnumFromBoundedIntConcreteLibfunc, EnumInitConcreteLibfunc},
+        core::{CoreLibfunc, CoreType, CoreTypeConcrete},
+        enm::{
+            EnumBoxedMatchConcreteLibfunc, EnumConcreteLibfunc, EnumFromBoundedIntConcreteLibfunc,
+            EnumInitConcreteLibfunc,
+        },
         lib_func::SignatureOnlyConcreteLibfunc,
         ConcreteLibfunc,
     },
@@ -54,7 +62,9 @@ pub fn build<'ctx, 'this>(
         EnumConcreteLibfunc::FromBoundedInt(info) => {
             build_from_bounded_int(context, registry, entry, location, helper, metadata, info)
         }
-        EnumConcreteLibfunc::BoxedMatch(_) => todo!("BoxedMatch libfunc not yet implemented"),
+        EnumConcreteLibfunc::BoxedMatch(info) => {
+            build_boxed_match(context, registry, entry, location, helper, metadata, info)
+        }
     }
 }
 
@@ -551,11 +561,193 @@ pub fn build_snapshot_match<'ctx, 'this>(
     Ok(())
 }
 
+/// Generate MLIR operations for the `enum_boxed_match` libfunc.
+///
+/// Receives an `Enum` inside a `Box` and branches based on the variant,
+/// returning a `Box` containing the variant's payload.
+///
+/// # Signature
+///
+/// ```cairo
+/// enum MyEnum {
+///     A: felt252,
+///     B: u128,
+/// }
+///
+/// extern fn enum_boxed_match<T>(
+///     value: Box<T>
+/// ) -> Box<felt252> | Box<u128> nopanic;
+/// ```
+pub fn build_boxed_match<'ctx, 'this>(
+    context: &'ctx Context,
+    registry: &ProgramRegistry<CoreType, CoreLibfunc>,
+    entry: &'this Block<'ctx>,
+    location: Location<'ctx>,
+    helper: &LibfuncHelper<'ctx, 'this>,
+    metadata: &mut MetadataStorage,
+    info: &EnumBoxedMatchConcreteLibfunc,
+) -> Result<()> {
+    metadata.get_or_insert_with(|| ReallocBindingsMeta::new(context, helper));
+
+    // Get the Box type info to extract the inner enum type
+    let CoreTypeConcrete::Box(box_info) = registry.get_type(&info.param_signatures()[0].ty)? else {
+        native_panic!("Should receive a Box type as argument");
+    };
+
+    // Get the inner enum type (which might be a snapshot of an enum)
+    let inner_type_info = registry.get_type(&box_info.ty)?;
+
+    // Get the variant type IDs from the concrete libfunc info
+    let variant_ids = &info.variants;
+
+    match variant_ids.len() {
+        0 => {
+            // The Cairo compiler will generate an enum match for enums without variants, so this
+            // case cannot be a compile-time error. We're assuming that even though it's been
+            // generated, it's just dead code and can be made into an assertion that always fails.
+            let k0 = entry.const_int(context, location, 0, 1)?;
+            entry.append_operation(cf::assert(
+                context,
+                k0,
+                "attempt to match a zero-variant enum",
+                location,
+            ));
+            entry.append_operation(llvm::unreachable(location));
+        }
+        1 => {
+            // For single-variant enums, the payload IS the enum value (no tag)
+            // Load the value from the box and re-box it for the output
+
+            let (inner_type, _inner_layout) =
+                registry.build_type_with_layout(context, helper, metadata, &box_info.ty)?;
+
+            let inner_val = entry.load(context, location, entry.arg(0)?, inner_type)?;
+
+            // Free the input box
+            entry.append_operation(ReallocBindingsMeta::free(context, entry.arg(0)?, location)?);
+
+            // Get the output variant type layout for boxing
+            let output_variant_type_id = &info.branch_signatures()[0].vars[0].ty;
+            let CoreTypeConcrete::Box(output_box_info) =
+                registry.get_type(output_variant_type_id)?
+            else {
+                native_panic!("Output should be a Box type");
+            };
+            let (_, output_layout) =
+                registry.build_type_with_layout(context, helper, metadata, &output_box_info.ty)?;
+
+            // Box the payload
+            let boxed_payload = into_box(context, entry, location, inner_val, output_layout)?;
+
+            helper.br(entry, 0, &[boxed_payload], location)?;
+        }
+        _ => {
+            let (layout, (tag_ty, _), variant_tys) = crate::types::r#enum::get_type_for_variants(
+                context,
+                helper,
+                registry,
+                metadata,
+                variant_ids,
+            )?;
+
+            // Load the enum from the box to get the tag
+            let inner_type =
+                inner_type_info.build(context, helper, registry, metadata, &box_info.ty)?;
+
+            // Allocate stack space and load enum from box
+            let stack_ptr =
+                helper
+                    .init_block()
+                    .alloca1(context, location, inner_type, layout.align())?;
+
+            let enum_val = entry.load(context, location, entry.arg(0)?, inner_type)?;
+            entry.store(context, location, stack_ptr, enum_val)?;
+
+            // Free the input box
+            entry.append_operation(ReallocBindingsMeta::free(context, entry.arg(0)?, location)?);
+
+            // Extract the tag
+            let tag_val = entry.load(context, location, stack_ptr, tag_ty)?;
+
+            let default_block = helper.append_block(Block::new(&[]));
+            let variant_blocks = variant_tys
+                .iter()
+                .map(|_| helper.append_block(Block::new(&[])))
+                .collect::<Vec<_>>();
+
+            let case_values = (0..variant_tys.len())
+                .map(i64::try_from)
+                .collect::<std::result::Result<Vec<_>, TryFromIntError>>()?;
+
+            entry.append_operation(cf::switch(
+                context,
+                &case_values,
+                tag_val,
+                tag_ty,
+                (default_block, &[]),
+                &variant_blocks
+                    .iter()
+                    .copied()
+                    .map(|block| (block, [].as_slice()))
+                    .collect::<Vec<_>>(),
+                location,
+            )?);
+
+            // Default block (invalid tag).
+            {
+                let val = default_block.const_int(context, location, 0, 1)?;
+
+                default_block.append_operation(cf::assert(
+                    context,
+                    val,
+                    "Invalid enum tag.",
+                    location,
+                ));
+                default_block.append_operation(llvm::unreachable(location));
+            }
+
+            // Enum variants.
+            for (i, (block, (payload_ty, _))) in
+                variant_blocks.into_iter().zip(variant_tys).enumerate()
+            {
+                let enum_ty = llvm::r#type::r#struct(context, &[tag_ty, payload_ty], false);
+
+                // Extract the payload from the enum
+                let payload_val = {
+                    let val = block.load(context, location, stack_ptr, enum_ty)?;
+                    block.extract_value(context, location, val, payload_ty, 1)?
+                };
+
+                // Get the output variant type layout for boxing
+                let output_variant_type_id = &info.branch_signatures()[i].vars[0].ty;
+                let CoreTypeConcrete::Box(output_box_info) =
+                    registry.get_type(output_variant_type_id)?
+                else {
+                    native_panic!("Output should be a Box type");
+                };
+                let (_, output_layout) = registry.build_type_with_layout(
+                    context,
+                    helper,
+                    metadata,
+                    &output_box_info.ty,
+                )?;
+
+                // Box the payload
+                let boxed_payload = into_box(context, block, location, payload_val, output_layout)?;
+
+                helper.br(block, i, &[boxed_payload], location)?;
+            }
+        }
+    }
+
+    Ok(())
+}
+
 #[cfg(test)]
 mod test {
     use crate::{
         context::NativeContext,
-        jit_enum, jit_struct,
+        jit_enum, jit_struct, load_cairo,
         utils::testing::{get_compiled_program, run_program_assert_output},
         Value,
     };
@@ -622,5 +814,39 @@ mod test {
             &[Value::Felt252(4.into())],
             jit_enum!(0, jit_struct!(jit_enum!(4, jit_struct!()))),
         );
+    }
+
+    #[test]
+    fn enum_boxed_match() {
+        let program = load_cairo! {
+            use core::box::BoxTrait;
+
+            enum BoxedOption {
+                Some: Box<felt252>,
+                None: Box<()>,
+            }
+
+            extern fn enum_boxed_match<T>(e: Box<T>) -> BoxedOption nopanic;
+
+            fn test_some() -> felt252 {
+                let boxed = BoxTrait::new(Option::Some(42_felt252));
+                match enum_boxed_match(boxed) {
+                    BoxedOption::Some(v) => BoxTrait::unbox(v),
+                    BoxedOption::None(_) => 0,
+                }
+            }
+
+            fn test_none() -> felt252 {
+                let opt: Option<felt252> = Option::None;
+                let boxed = BoxTrait::new(opt);
+                match enum_boxed_match(boxed) {
+                    BoxedOption::Some(_) => 1,
+                    BoxedOption::None(_) => 0,
+                }
+            }
+        };
+
+        run_program_assert_output(&program, "test_some", &[], Felt::from(42).into());
+        run_program_assert_output(&program, "test_none", &[], Felt::from(0).into());
     }
 }
