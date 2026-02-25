@@ -4,22 +4,22 @@
 //!
 //! ## Layout
 //!
-//! Being dynamically allocated, we just need to keep the pointer to the data, its length and
+//! Being dynamically allocated, we just need to keep the pointer to the metadata, its length and
 //! its capacity:
 //!
-//! | Index | Type           | Description              |
-//! | ----- | -------------- | ------------------------ |
-//! |   0   | `!llvm.ptr<T>` | Pointer to the data[^1]. |
-//! |   1   | `i32`          | Array start offset[^2].  |
-//! |   1   | `i32`          | Array end offset[^2].    |
-//! |   2   | `i32`          | Allocated capacity[^2].  |
+//! | Index | Type        | Description                   |
+//! | ----- | ----------- | ----------------------------- |
+//! |   0   | `!llvm.ptr` | Pointer to ArrayMetadata[^1]. |
+//! |   1   | `i32`       | Array start offset[^2].       |
+//! |   2   | `i32`       | Array end offset[^2].         |
+//! |   3   | `i32`       | Allocated capacity[^2].       |
 //!
-//! The pointer to the allocation (which is **not the data**) contains:
-//!   1. Reference counter.
-//!   2. Array capacity.
-//!   3. Array data. Its address is the pointer to the data stored in the type.
+//! The ArrayMetadata struct contains:
+//!   1. Reference counter (`u32`).
+//!   2. Array max length (`u32`).
+//!   3. Pointer to array data (`*mut u8`).
 //!
-//! [^1]: When capacity is zero, this field is not guaranteed to be valid.
+//! [^1]: This pointer is null when the array has not yet been allocated (i.e., initially).
 //! [^2]: Those numbers are number of items, **not bytes**.
 
 use super::{TypeBuilder, WithSelf};
@@ -29,7 +29,7 @@ use crate::{
         drop_overrides::DropOverridesMeta, dup_overrides::DupOverridesMeta,
         realloc_bindings::ReallocBindingsMeta, MetadataStorage,
     },
-    utils::{get_integer_layout, ProgramRegistryExt},
+    utils::ProgramRegistryExt,
 };
 use cairo_lang_sierra::{
     extensions::{
@@ -39,8 +39,8 @@ use cairo_lang_sierra::{
     program_registry::ProgramRegistry,
 };
 use melior::{
-    dialect::{arith, llvm},
-    ir::{r#type::IntegerType, Block, Location, Module, Type},
+    dialect::{arith, llvm, ods},
+    ir::{attribute::IntegerAttribute, r#type::IntegerType, Block, Location, Module, Type},
     Context,
 };
 use melior::{
@@ -51,7 +51,6 @@ use melior::{
     helpers::{ArithBlockExt, BuiltinBlockExt, GepIndex, LlvmBlockExt},
     ir::Region,
 };
-use std::alloc::Layout;
 
 /// Build the MLIR type.
 ///
@@ -115,27 +114,30 @@ pub fn build_dup<'ctx>(
     let location = Location::unknown(context);
     let value_ty = registry.build_type(context, module, metadata, info.self_ty())?;
 
-    let elem_layout = registry.get_type(&info.ty)?.layout(registry)?;
-    let refcount_offset = calc_data_prefix_offset(elem_layout);
-
     let region = Region::new();
     let entry = region.append_block(Block::new(&[(value_ty, location)]));
 
-    let array_cap = entry.extract_value(
+    let metadata_ptr = entry.extract_value(
         context,
         location,
         entry.argument(0)?.into(),
-        IntegerType::new(context, 32).into(),
-        3,
+        llvm::r#type::pointer(context, 0),
+        0,
     )?;
-    let k0 = entry.const_int(context, location, 0, 32)?;
-    let is_empty = entry.append_op_result(arith::cmpi(
-        context,
-        CmpiPredicate::Eq,
-        array_cap,
-        k0,
-        location,
-    ))?;
+
+    let null_ptr =
+        entry.append_op_result(llvm::zero(llvm::r#type::pointer(context, 0), location))?;
+    let is_empty = entry.append_op_result(
+        ods::llvm::icmp(
+            context,
+            IntegerType::new(context, 1).into(),
+            metadata_ptr,
+            null_ptr,
+            IntegerAttribute::new(IntegerType::new(context, 64).into(), 0).into(),
+            location,
+        )
+        .into(),
+    )?;
 
     entry.append_operation(scf::r#if(
         is_empty,
@@ -151,26 +153,14 @@ pub fn build_dup<'ctx>(
             let region = Region::new();
             let block = region.append_block(Block::new(&[]));
 
-            let array_ptr_ptr = block.extract_value(
-                context,
-                location,
-                entry.argument(0)?.into(),
-                llvm::r#type::pointer(context, 0),
-                0,
-            )?;
-            let array_ptr = block.load(
-                context,
-                location,
-                array_ptr_ptr,
-                llvm::r#type::pointer(context, 0),
-            )?;
-
+            // Metadata struct: { refcount: u32, max_len: u32, data_ptr: *mut u8 }
+            // Access refcount field (index 0)
             let refcount_ptr = block.gep(
                 context,
                 location,
-                array_ptr,
-                &[GepIndex::Const(-(refcount_offset as i32))],
-                IntegerType::new(context, 8).into(),
+                metadata_ptr,
+                &[GepIndex::Const(0), GepIndex::Const(0)],
+                get_metadata_llvm_type(context),
             )?;
             let ref_count = block.load(
                 context,
@@ -215,13 +205,11 @@ pub fn build_drop<'ctx>(
     let elem_ty = registry.get_type(&info.ty)?;
     let elem_stride = elem_ty.layout(registry)?.pad_to_align().size();
     let elem_ty = elem_ty.build(context, module, registry, metadata, &info.ty)?;
-    let elem_layout = registry.get_type(&info.ty)?.layout(registry)?;
-    let refcount_offset = calc_data_prefix_offset(elem_layout);
 
     let region = Region::new();
     let entry = region.append_block(Block::new(&[(value_ty, location)]));
 
-    let array_ptr_ptr = entry.extract_value(
+    let metadata_ptr = entry.extract_value(
         context,
         location,
         entry.argument(0)?.into(),
@@ -229,27 +217,25 @@ pub fn build_drop<'ctx>(
         0,
     )?;
 
-    let array_cap = entry.extract_value(
-        context,
-        location,
-        entry.argument(0)?.into(),
-        IntegerType::new(context, 32).into(),
-        3,
+    let null_ptr =
+        entry.append_op_result(llvm::zero(llvm::r#type::pointer(context, 0), location))?;
+    let is_null = entry.append_op_result(
+        ods::llvm::icmp(
+            context,
+            IntegerType::new(context, 1).into(),
+            metadata_ptr,
+            null_ptr,
+            IntegerAttribute::new(IntegerType::new(context, 64).into(), 0).into(),
+            location,
+        )
+        .into(),
     )?;
-    let k0 = entry.const_int(context, location, 0, 32)?;
-    let zero_capacity = entry.append_op_result(arith::cmpi(
-        context,
-        CmpiPredicate::Eq,
-        array_cap,
-        k0,
-        location,
-    ))?;
 
     entry.append_operation(scf::r#if(
-        zero_capacity,
+        is_null,
         &[],
         {
-            // if the array has no capacity, do nothing, as there is no allocation
+            // if the metadata pointer is null, do nothing
 
             let region = Region::new();
             let block = region.append_block(Block::new(&[]));
@@ -258,25 +244,20 @@ pub fn build_drop<'ctx>(
             region
         },
         {
-            // if the array has capacity, decrease the reference counter
+            // if metadata exists, decrease the reference counter
             // and, in case it reaches zero, free all the resources.
 
             let region = Region::new();
             let block = region.append_block(Block::new(&[]));
 
-            // obtain the reference counter
-            let array_ptr = block.load(
-                context,
-                location,
-                array_ptr_ptr,
-                llvm::r#type::pointer(context, 0),
-            )?;
+            // Metadata struct: { refcount: u32, max_len: u32, data_ptr: *mut u8 }
+            // Access refcount field (index 0)
             let refcount_ptr = block.gep(
                 context,
                 location,
-                array_ptr,
-                &[GepIndex::Const(-(refcount_offset as i32))],
-                IntegerType::new(context, 8).into(),
+                metadata_ptr,
+                &[GepIndex::Const(0), GepIndex::Const(0)],
+                get_metadata_llvm_type(context),
             )?;
             let ref_count = block.load(
                 context,
@@ -318,14 +299,13 @@ pub fn build_drop<'ctx>(
                         let k0 = block.const_int(context, location, 0, 64)?;
                         let elem_stride = block.const_int(context, location, elem_stride, 64)?;
 
+                        // Load max_len from metadata (field index 1)
                         let max_len_ptr = block.gep(
                             context,
                             location,
-                            array_ptr,
-                            &[GepIndex::Const(
-                                -((refcount_offset - size_of::<u32>()) as i32),
-                            )],
-                            IntegerType::new(context, 8).into(),
+                            metadata_ptr,
+                            &[GepIndex::Const(0), GepIndex::Const(1)],
+                            get_metadata_llvm_type(context),
                         )?;
                         let max_len = block.load(
                             context,
@@ -336,6 +316,21 @@ pub fn build_drop<'ctx>(
                         let max_len =
                             block.extui(max_len, IntegerType::new(context, 64).into(), location)?;
                         let offset_end = block.muli(max_len, elem_stride, location)?;
+
+                        // Load data_ptr from metadata (field index 2)
+                        let data_ptr_ptr = block.gep(
+                            context,
+                            location,
+                            metadata_ptr,
+                            &[GepIndex::Const(0), GepIndex::Const(2)],
+                            get_metadata_llvm_type(context),
+                        )?;
+                        let data_ptr = block.load(
+                            context,
+                            location,
+                            data_ptr_ptr,
+                            llvm::r#type::pointer(context, 0),
+                        )?;
 
                         // Drop each element in the array.
                         block.append_operation(scf::r#for(
@@ -353,7 +348,7 @@ pub fn build_drop<'ctx>(
                                 let elem_ptr = block.gep(
                                     context,
                                     location,
-                                    array_ptr,
+                                    data_ptr,
                                     &[GepIndex::Value(elem_offset)],
                                     IntegerType::new(context, 8).into(),
                                 )?;
@@ -371,15 +366,28 @@ pub fn build_drop<'ctx>(
                         ));
                     }
 
-                    // finally, free the array allocation
-                    block.append_operation(ReallocBindingsMeta::free(
+                    // Load data_ptr from metadata (field index 2) and free it
+                    let data_ptr_ptr = block.gep(
                         context,
-                        refcount_ptr,
                         location,
-                    )?);
+                        metadata_ptr,
+                        &[GepIndex::Const(0), GepIndex::Const(2)],
+                        get_metadata_llvm_type(context),
+                    )?;
+                    let data_ptr = block.load(
+                        context,
+                        location,
+                        data_ptr_ptr,
+                        llvm::r#type::pointer(context, 0),
+                    )?;
+
+                    // Free the data allocation
+                    block.append_operation(ReallocBindingsMeta::free(context, data_ptr, location)?);
+
+                    // Free the metadata struct
                     block.append_operation(ReallocBindingsMeta::free(
                         context,
-                        array_ptr_ptr,
+                        metadata_ptr,
                         location,
                     )?);
 
@@ -399,21 +407,36 @@ pub fn build_drop<'ctx>(
     Ok(region)
 }
 
-/// Returns the size of the prefix in an array. This prefix contains 2
-/// integers:
-/// - Reference counter: the number of references to the allocation.
-/// - Capacity: The capacity of the allocation (not necessarily the length
-///   of the array/span being accessed) It is used to know how many elements to
-///   drop when freeing the allocation.
-pub fn calc_data_prefix_offset(layout: Layout) -> usize {
-    get_integer_layout(32)
-        .extend(get_integer_layout(32))
-        .expect("creating a layout of two i32 should never fail")
-        .0
-        .align_to(layout.align())
-        .expect("layout size rounded up to the next multiple of layout alignment should never be greater than ISIZE::MAX")
-        .pad_to_align()
-        .size()
+/// Metadata struct definition for arrays (RC, maxlen, data_ptr)
+/// Note: capacity stays in the array struct, not here!
+#[repr(C)]
+pub struct ArrayMetadata {
+    pub refcount: u32,
+    pub max_len: u32,
+    pub data_ptr: *mut u8,
+}
+
+/// Returns the metadata struct layout size.
+pub fn calc_metadata_size() -> usize {
+    std::mem::size_of::<ArrayMetadata>()
+}
+
+/// Get the LLVM struct type for ArrayMetadata: { refcount: i32, max_len: i32, data_ptr: ptr }
+///
+/// Field indices:
+/// - 0: refcount (u32)
+/// - 1: max_len (u32)
+/// - 2: data_ptr (*mut u8)
+pub fn get_metadata_llvm_type(context: &Context) -> Type<'_> {
+    llvm::r#type::r#struct(
+        context,
+        &[
+            IntegerType::new(context, 32).into(), // refcount: u32
+            IntegerType::new(context, 32).into(), // max_len: u32
+            llvm::r#type::pointer(context, 0),    // data_ptr: *mut u8
+        ],
+        false,
+    )
 }
 
 #[cfg(test)]

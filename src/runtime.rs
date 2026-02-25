@@ -2,7 +2,7 @@
 
 use crate::{
     starknet::{ArrayAbi, Felt252Abi},
-    types::array::calc_data_prefix_offset,
+    types::array::ArrayMetadata,
     utils::{blake_utils, libc_malloc, BuiltinCosts},
 };
 use cairo_lang_sierra_gas::core_libfunc_cost::{
@@ -340,21 +340,10 @@ unsafe fn create_dict_entries_array(dict: &mut FeltDict) -> ArrayAbi<c_void> {
         .extend(dict.layout)
         .expect("Should be able to extend with the last tuple element")
         .0;
-    let data_prefix_offset = calc_data_prefix_offset(tuple_layout);
     let tuple_stride = tuple_layout.pad_to_align().size();
 
-    // Pointer to the space in memory with enough memory to hold the entire array
-    let ptr = libc_malloc(tuple_stride * dict.mappings.len() + data_prefix_offset);
-
-    // Store the reference counter
-    ptr.cast::<u32>().write(1);
-    // Store the max length
-    ptr.byte_add(size_of::<u32>())
-        .cast::<u32>()
-        .write(len as u32);
-    // Move the pointer past the prefix (reference counter and max length) into where the data
-    // will be stored
-    let ptr = ptr.byte_add(data_prefix_offset);
+    // Allocate data separately (no inline prefix)
+    let data_ptr = libc_malloc(tuple_stride * dict.mappings.len());
 
     // Get the stride for the inner types of the tuple
     let key_size = Layout::new::<Felt252Abi>().pad_to_align().size();
@@ -362,7 +351,7 @@ unsafe fn create_dict_entries_array(dict: &mut FeltDict) -> ArrayAbi<c_void> {
 
     for (key, elem_index) in &dict.mappings {
         // Move the ptr to the offset of the tuple we want to modify
-        let key_ptr = ptr.byte_add(tuple_stride * elem_index) as *mut [u8; 32];
+        let key_ptr = data_ptr.byte_add(tuple_stride * elem_index) as *mut [u8; 32];
 
         // Save the key and move to the offset of the 'first_value'
         *key_ptr = *key;
@@ -375,11 +364,16 @@ unsafe fn create_dict_entries_array(dict: &mut FeltDict) -> ArrayAbi<c_void> {
         std::ptr::copy_nonoverlapping(element, last_val_ptr, generic_ty_size);
     }
 
-    let ptr_ptr = libc_malloc(size_of::<*mut ()>()).cast::<*mut c_void>();
-    ptr_ptr.write(ptr);
+    // Allocate and initialize ArrayMetadata struct
+    let metadata_ptr = libc_malloc(size_of::<ArrayMetadata>()) as *mut ArrayMetadata;
+    metadata_ptr.write(ArrayMetadata {
+        refcount: 1,
+        max_len: len as u32,
+        data_ptr: data_ptr.cast::<u8>(),
+    });
 
     ArrayAbi {
-        ptr: ptr_ptr,
+        ptr: metadata_ptr.cast(),
         since: 0,
         until: len as u32,
         capacity: len as u32,
