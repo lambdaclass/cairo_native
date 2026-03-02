@@ -1,5 +1,6 @@
 //! Starknet related code for `cairo_native`
 
+use crate::types::array::ArrayMetadata;
 use serde::{Deserialize, Serialize};
 use starknet_types_core::felt::Felt;
 
@@ -23,7 +24,12 @@ impl From<&ArrayAbi<Felt252Abi>> for Vec<Felt> {
             let len = until_offset - since_offset;
             match len {
                 0 => &[],
-                _ => std::slice::from_raw_parts(value.ptr.read().add(since_offset), len),
+                _ => {
+                    // Access data through ArrayMetadata.data_ptr
+                    let metadata = &*value.ptr.cast::<ArrayMetadata>();
+                    let data_ptr = metadata.data_ptr.cast::<Felt252Abi>();
+                    std::slice::from_raw_parts(data_ptr.add(since_offset), len)
+                }
             }
         }
         .iter()
@@ -636,7 +642,10 @@ impl StarknetSyscallHandler for DummySyscallHandler {
 // TODO: Move to the correct place or remove if unused. See: https://github.com/lambdaclass/cairo_native/issues/1222
 pub(crate) mod handler {
     use super::*;
-    use crate::utils::{libc_free, libc_malloc};
+    use crate::{
+        types::array::ArrayMetadata,
+        utils::{libc_free, libc_malloc},
+    };
     use std::{
         alloc::Layout,
         fmt::Debug,
@@ -1052,26 +1061,26 @@ pub(crate) mod handler {
                     capacity: 0,
                 },
                 _ => {
-                    let refcount_offset =
-                        crate::types::array::calc_data_prefix_offset(Layout::new::<E>());
-                    let ptr = libc_malloc(
-                        Layout::array::<E>(data.len()).unwrap().size() + refcount_offset,
-                    ) as *mut E;
-
                     let len: u32 = data.len().try_into().unwrap();
-                    ptr.cast::<u32>().write(1);
-                    ptr.byte_add(size_of::<u32>()).cast::<u32>().write(len);
-                    let ptr = ptr.byte_add(refcount_offset);
+
+                    // Allocate data (no prefix)
+                    let data_ptr =
+                        libc_malloc(Layout::array::<E>(data.len()).unwrap().size()) as *mut E;
 
                     for (i, val) in data.iter().enumerate() {
-                        ptr.add(i).write(val.clone());
+                        data_ptr.add(i).write(val.clone());
                     }
 
-                    let ptr_ptr = libc_malloc(size_of::<*mut ()>()).cast::<*mut E>();
-                    ptr_ptr.write(ptr);
+                    let metadata_ptr =
+                        libc_malloc(size_of::<ArrayMetadata>()) as *mut ArrayMetadata;
+                    metadata_ptr.write(ArrayMetadata {
+                        refcount: 1,
+                        max_len: len,
+                        data_ptr: data_ptr.cast::<u8>(),
+                    });
 
                     ArrayAbi {
-                        ptr: ptr_ptr,
+                        ptr: metadata_ptr.cast(),
                         since: 0,
                         until: len,
                         capacity: len,
@@ -1085,15 +1094,19 @@ pub(crate) mod handler {
                 return;
             }
 
-            let refcount_offset = crate::types::array::calc_data_prefix_offset(Layout::new::<E>());
+            let metadata_ptr = data.ptr.cast::<ArrayMetadata>();
+            let metadata = &mut *metadata_ptr;
 
-            let ptr = data.ptr.read().byte_sub(refcount_offset);
-            match ptr.cast::<u32>().read() {
+            match metadata.refcount {
                 1 => {
-                    libc_free(ptr.cast());
-                    libc_free(data.ptr.cast());
+                    // Last reference - free data and metadata
+                    libc_free(metadata.data_ptr.cast());
+                    libc_free(metadata_ptr.cast());
                 }
-                n => ptr.cast::<u32>().write(n - 1),
+                n => {
+                    // Decrement refcount
+                    metadata.refcount = n - 1;
+                }
             }
         }
 
@@ -1629,7 +1642,12 @@ pub(crate) mod handler {
                 let len = until_offset - since_offset;
                 match len {
                     0 => &[],
-                    _ => std::slice::from_raw_parts(input.ptr.read().add(since_offset), len),
+                    _ => {
+                        // Access data through ArrayMetadata.data_ptr
+                        let metadata = &*input.ptr.cast::<ArrayMetadata>();
+                        let data_ptr = metadata.data_ptr.cast::<u64>();
+                        std::slice::from_raw_parts(data_ptr.add(since_offset), len)
+                    }
                 }
             };
 
