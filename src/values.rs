@@ -7,7 +7,7 @@ use crate::{
     native_assert, native_panic,
     runtime::FeltDict,
     starknet::{Secp256k1Point, Secp256r1Point},
-    types::TypeBuilder,
+    types::{array::ArrayMetadata, TypeBuilder},
     utils::{
         felt252_bigint, get_integer_layout, layout_repeat, libc_free, libc_malloc, RangeExt, PRIME,
     },
@@ -31,7 +31,7 @@ use std::{
     alloc::{alloc, Layout},
     collections::HashMap,
     ffi::c_void,
-    mem::forget,
+    mem::{forget, size_of},
     ptr::{null_mut, NonNull},
     rc::Rc,
     slice,
@@ -225,23 +225,14 @@ impl Value {
                         let elem_ty = registry.get_type(&info.ty)?;
                         let elem_layout = elem_ty.layout(registry)?.pad_to_align();
 
-                        let refcount_offset =
-                            crate::types::array::calc_data_prefix_offset(elem_layout);
                         let len: u32 = data
                             .len()
                             .try_into()
                             .map_err(|_| Error::IntegerConversion)?;
-                        let ptr: *mut () = match len {
-                            0 => std::ptr::null_mut(),
-                            _ => {
-                                let ptr: *mut () =
-                                    libc_malloc(elem_layout.size() * data.len() + refcount_offset)
-                                        .cast();
 
-                                // Write reference count.
-                                ptr.cast::<(u32, u32)>().write((1, len));
-                                ptr.byte_add(refcount_offset).cast()
-                            }
+                        let data_ptr: *mut u8 = match len {
+                            0 => std::ptr::null_mut::<u8>(),
+                            _ => libc_malloc(elem_layout.size() * data.len()).cast::<u8>(),
                         };
 
                         // Write the data.
@@ -251,23 +242,28 @@ impl Value {
 
                             std::ptr::copy_nonoverlapping(
                                 elem.cast::<u8>().as_ptr(),
-                                ptr.byte_add(idx * elem_layout.size()).cast::<u8>(),
+                                data_ptr.byte_add(idx * elem_layout.size()).cast::<u8>(),
                                 elem_layout.size(),
                             );
                         }
 
-                        // Make double pointer.
-                        let ptr_ptr = if ptr.is_null() {
+                        // Allocate metadata struct: { refcount: u32, max_len: u32, data_ptr: *mut () }
+                        let metadata_ptr: *mut () = if data_ptr.is_null() {
                             null_mut()
                         } else {
-                            let ptr_ptr: *mut *mut () = libc_malloc(8).cast();
-                            ptr_ptr.write(ptr);
-                            ptr_ptr
+                            let metadata: *mut ArrayMetadata =
+                                libc_malloc(size_of::<ArrayMetadata>()).cast();
+                            metadata.write(ArrayMetadata {
+                                refcount: 1,
+                                max_len: len,
+                                data_ptr,
+                            });
+                            metadata.cast()
                         };
 
                         let target = arena
                             .alloc_layout(
-                                Layout::new::<*mut ()>() // ptr
+                                Layout::new::<*mut ()>() // metadata_ptr
                                     .extend(Layout::new::<u32>())? // start
                                     .0
                                     .extend(Layout::new::<u32>())? // end
@@ -278,17 +274,18 @@ impl Value {
                             )
                             .as_ptr();
 
-                        *target.cast::<*mut ()>() = ptr_ptr.cast();
+                        *target.cast::<*mut ()>() = metadata_ptr.cast();
 
                         let (layout, offset) =
                             Layout::new::<*mut NonNull<()>>().extend(Layout::new::<u32>())?;
-                        *target.byte_add(offset).cast::<u32>() = 0;
+                        *target.byte_add(offset).cast::<u32>() = 0; // start
 
                         let (layout, offset) = layout.extend(Layout::new::<u32>())?;
-                        *target.byte_add(offset).cast::<u32>() = len;
+                        *target.byte_add(offset).cast::<u32>() = len; // end
 
                         let (_, offset) = layout.extend(Layout::new::<u32>())?;
-                        *target.byte_add(offset).cast::<u32>() = len;
+                        *target.byte_add(offset).cast::<u32>() = len; // capacity
+
                         NonNull::new_unchecked(target).cast()
                     } else {
                         Err(Error::UnexpectedValue(format!(
@@ -618,27 +615,26 @@ impl Value {
                         .to_native_assert_error("tried to make a non-null ptr out of a null one")?
                         .cast::<u32>()
                         .as_ref();
-                    let (_, offset) = ptr_layout.extend(len_layout)?;
+                    let (ptr_layout, offset) = ptr_layout.extend(len_layout)?;
                     let end_offset_value = *NonNull::new(ptr.as_ptr().byte_add(offset))
                         .to_native_assert_error("tried to make a non-null ptr out of a null one")?
                         .cast::<u32>()
                         .as_ref();
+                    let (_ptr_layout, _offset) = ptr_layout.extend(len_layout)?; // capacity (unused here)
 
                     // This pointer can be null if the array is empty.
-                    let array_ptr_ptr = *ptr.cast::<*mut *mut ()>().as_ref();
+                    let metadata_ptr = *ptr.cast::<*mut *mut ()>().as_ref();
 
-                    let refcount_offset = crate::types::array::calc_data_prefix_offset(elem_layout);
-                    let array_value = if array_ptr_ptr.is_null() {
+                    let array_value = if metadata_ptr.is_null() {
                         Vec::new()
                     } else {
-                        let array_ptr = array_ptr_ptr.read();
-                        let ref_count = array_ptr
-                            .byte_sub(refcount_offset)
-                            .cast::<u32>()
+                        let metadata = metadata_ptr
+                            .cast::<ArrayMetadata>()
                             .as_mut()
-                            .to_native_assert_error("array data pointer should not be null")?;
+                            .to_native_assert_error("metadata pointer should not be null")?;
+
                         if should_drop {
-                            *ref_count -= 1;
+                            metadata.refcount -= 1;
                         }
 
                         native_assert!(
@@ -647,16 +643,18 @@ impl Value {
                         );
                         let num_elems = (end_offset_value - start_offset_value) as usize;
 
-                        if *ref_count == 0 {
+                        let data_ptr = metadata.data_ptr;
+
+                        if metadata.refcount == 0 {
                             // Drop prefix elements.
                             for i in 0..start_offset_value {
                                 let cur_elem_ptr =
-                                    NonNull::new(array_ptr.byte_add(elem_stride * i as usize))
+                                    NonNull::new(data_ptr.byte_add(elem_stride * i as usize))
                                         .to_native_assert_error(
                                             "tried to make a non-null ptr out of a null one",
                                         )?;
                                 drop(Self::from_ptr(
-                                    cur_elem_ptr,
+                                    cur_elem_ptr.cast(),
                                     &info.ty,
                                     registry,
                                     should_drop,
@@ -665,43 +663,41 @@ impl Value {
                         }
 
                         let mut array_value = Vec::with_capacity(num_elems);
+                        let ref_count_is_zero = metadata.refcount == 0;
                         for i in start_offset_value..end_offset_value {
                             let cur_elem_ptr =
-                                NonNull::new(array_ptr.byte_add(elem_stride * i as usize))
+                                NonNull::new(data_ptr.byte_add(elem_stride * i as usize))
                                     .to_native_assert_error(
                                         "tried to make a non-null ptr out of a null one",
                                     )?;
                             array_value.push(Self::from_ptr(
-                                cur_elem_ptr,
+                                cur_elem_ptr.cast(),
                                 &info.ty,
                                 registry,
-                                *ref_count == 0,
+                                ref_count_is_zero,
                             )?);
                         }
 
-                        if *ref_count == 0 {
+                        if ref_count_is_zero {
                             // Drop suffix elements.
-                            let array_max_len = array_ptr
-                                .byte_sub(refcount_offset - size_of::<u32>())
-                                .cast::<u32>()
-                                .read();
+                            let array_max_len = metadata.max_len;
                             for i in end_offset_value..array_max_len {
                                 let cur_elem_ptr =
-                                    NonNull::new(array_ptr.byte_add(elem_stride * i as usize))
+                                    NonNull::new(data_ptr.byte_add(elem_stride * i as usize))
                                         .to_native_assert_error(
                                             "tried to make a non-null ptr out of a null one",
                                         )?;
                                 drop(Self::from_ptr(
-                                    cur_elem_ptr,
+                                    cur_elem_ptr.cast(),
                                     &info.ty,
                                     registry,
                                     should_drop,
                                 )?);
                             }
 
-                            // Free array storage.
-                            libc_free(array_ptr.byte_sub(refcount_offset).cast());
-                            libc_free(array_ptr_ptr.cast());
+                            // Free data allocation and metadata.
+                            libc_free(data_ptr.cast());
+                            libc_free(metadata_ptr.cast());
                         }
 
                         array_value
