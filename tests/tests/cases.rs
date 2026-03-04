@@ -209,3 +209,37 @@ fn test_contract_cases(name: &str, args: &[u128]) {
 
     assert_eq_sorted!(vm_output, native_output);
 }
+
+/// Test that the blake builtin counter accurately tracks the number of blake operations.
+/// The heavy_blake2s contract calls blake2s_compress 6 times and blake2s_finalize once,
+/// for a total of 7 blake operations.
+#[test]
+fn test_blake_builtin_counter() {
+    let contract =
+        load_contract("test_data_artifacts/contracts/cairo_vm/heavy_blake2s.contract.json");
+
+    let entrypoint = contract
+        .entry_points_by_type
+        .external
+        .first()
+        .expect("contract should have at least one external entrypoint");
+
+    let program = contract
+        .extract_sierra_program(false)
+        .expect("contract bytes should be a valid sierra program")
+        .program;
+
+    let native_result =
+        run_native_starknet_contract(&program, entrypoint.function_idx, &[], DummySyscallHandler);
+
+    assert!(
+        !native_result.failure_flag,
+        "native contract execution failed"
+    );
+
+    // heavy_blake2s: 6 blake2s_compress + 1 blake2s_finalize = 7 blake operations
+    assert_eq!(
+        native_result.builtin_stats.blake, 7,
+        "blake counter should be exactly 7 (6 compress + 1 finalize)"
+    );
+}

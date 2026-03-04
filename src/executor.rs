@@ -14,7 +14,7 @@ use crate::{
         SEGMENT_ARENA_BUILTIN_SIZE,
     },
     native_panic,
-    runtime::BUILTIN_COSTS,
+    runtime::{BLAKE_CALL_COUNT, BUILTIN_COSTS},
     starknet::{handler::StarknetSyscallHandlerCallbacks, StarknetSyscallHandler},
     types::TypeBuilder,
     utils::{libc_free, BuiltinCosts, RangeExt},
@@ -346,6 +346,10 @@ fn invoke_dynamic(
             fields: vec![],
             debug_name: None,
         });
+
+    // Get the blake call count from the global counter (blake doesn't have a buffer-based counter
+    // like other builtins, so it's tracked globally via the blake libfuncs)
+    builtin_stats.blake = BLAKE_CALL_COUNT.with(|c| c.replace(0)) as usize;
 
     #[cfg(feature = "with-mem-tracing")]
     crate::utils::mem_tracing::report_stats();
