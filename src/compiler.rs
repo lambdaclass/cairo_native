@@ -61,7 +61,7 @@ use crate::{
 };
 use bumpalo::Bump;
 use cairo_lang_sierra::{
-    edit_state,
+    edit_state::EditState,
     extensions::{
         core::{CoreConcreteLibfunc, CoreLibfunc, CoreType},
         ConcreteLibfunc,
@@ -396,8 +396,8 @@ fn compile_func(
     let pre_entry_block =
         region.insert_block_before(entry_block, Block::new(&pre_entry_block_args));
 
-    let initial_state = edit_state::put_results(OrderedHashMap::<_, Value>::default(), {
-        let mut values = Vec::new();
+    let initial_state = {
+        let mut values = OrderedHashMap::default();
 
         let mut count = 0;
         for param in &function.params {
@@ -409,8 +409,8 @@ fn compile_func(
                 0,
             );
 
-            values.push((
-                &param.id,
+            values.insert(
+                param.id.clone(),
                 if type_info.is_builtin() && type_info.is_zst(registry)? {
                     pre_entry_block
                         .append_operation(llvm::undef(
@@ -425,14 +425,14 @@ fn compile_func(
 
                     value
                 },
-            ));
+            );
 
             #[cfg(feature = "with-trace-dump")]
             var_types.insert(param.id.clone(), param.ty.clone());
         }
 
-        values.into_iter()
-    })?;
+        values
+    };
 
     tracing::trace!("Implementing the entry block.");
     entry_block.append_operation(cf::br(
@@ -474,28 +474,22 @@ fn compile_func(
             if let Some((landing_block, _)) = landing_block {
                 tracing::trace!("Implementing the statement {statement_idx}'s landing block.");
 
-                state = edit_state::put_results(
-                    OrderedHashMap::default(),
-                    state
-                        .keys()
-                        .sorted_by_key(|x| x.id)
-                        .enumerate()
-                        .map(|(idx, var_id)| Ok((var_id, landing_block.argument(idx)?.into())))
-                        .collect::<Result<Vec<_>, Error>>()?
-                        .into_iter(),
-                )?;
+                state = state
+                    .keys()
+                    .sorted_by_key(|x| x.id)
+                    .enumerate()
+                    .map(|(idx, var_id)| Ok((var_id.clone(), landing_block.argument(idx)?.into())))
+                    .collect::<Result<_, Error>>()?;
 
                 landing_block.append_operation(cf::br(
                     block,
-                    &edit_state::take_args(
-                        state.clone(),
+                    &state.clone().take_vars(
                         match &statements[statement_idx.0] {
                             Statement::Invocation(x) => &x.args,
                             Statement::Return(x) => x,
                         }
                         .iter(),
-                    )?
-                    .1,
+                    )?,
                     Location::name(
                         context,
                         &format!("landing_block(stmt_idx={})", statement_idx),
@@ -552,7 +546,7 @@ fn compile_func(
                         &var_types,
                     );
 
-                    let (state, _) = edit_state::take_args(state, invocation.args.iter())?;
+                    state.take_vars(invocation.args.iter())?;
 
                     let libfunc = registry.get_libfunc(&invocation.libfunc_id)?;
                     if is_recursive {
@@ -702,10 +696,11 @@ fn compile_func(
                                     "Mismatched number of returned values from branch."
                                 );
 
-                                Ok(edit_state::put_results(
-                                    state.clone(),
+                                let mut new_state = state.clone();
+                                new_state.put_vars(
                                     branch_info.results.iter().zip(result_values.into_iter()),
-                                )?)
+                                )?;
+                                Ok(new_state)
                             })
                             .collect::<Result<_, Error>>()?,
                     )
@@ -739,7 +734,7 @@ fn compile_func(
                         );
                     }
 
-                    let (_, mut values) = edit_state::take_args(state, var_ids.iter())?;
+                    let mut values = state.take_vars(var_ids.iter())?;
 
                     let mut block = *block;
                     if is_recursive {
@@ -1048,22 +1043,18 @@ fn generate_function_structure<'c, 'a>(
     metadata_storage: &mut MetadataStorage,
     sierra_stmt_start_offset: usize,
 ) -> Result<(BlockRef<'c, 'a>, BlockStorage<'c, 'a>, bool), Error> {
-    let initial_state = edit_state::put_results::<Type>(
-        OrderedHashMap::default(),
-        function
-            .params
-            .iter()
-            .zip(&function.signature.param_types)
-            .map(|(param, ty)| {
-                let type_info = registry.get_type(ty)?;
-                Ok((
-                    &param.id,
-                    type_info.build(context, module, registry, metadata_storage, ty)?,
-                ))
-            })
-            .collect::<Result<Vec<_>, Error>>()?
-            .into_iter(),
-    )?;
+    let initial_state: OrderedHashMap<_, Type> = function
+        .params
+        .iter()
+        .zip(&function.signature.param_types)
+        .map(|(param, ty)| {
+            let type_info = registry.get_type(ty)?;
+            Ok((
+                param.id.clone(),
+                type_info.build(context, module, registry, metadata_storage, ty)?,
+            ))
+        })
+        .collect::<Result<_, Error>>()?;
 
     let mut blocks = BTreeMap::new();
     let mut predecessors = HashMap::from([(function.entry_point, (initial_state.clone(), 0))]);
@@ -1093,8 +1084,11 @@ fn generate_function_structure<'c, 'a>(
                         invocation.libfunc_id
                     );
 
-                    let (state, types) =
-                        edit_state::take_args(state.clone(), invocation.args.iter())?;
+                    let (state, types) = {
+                        let mut state = state.clone();
+                        let types = state.take_vars(invocation.args.iter())?;
+                        (state, types)
+                    };
 
                     let location = Location::new(
                         context,
@@ -1120,8 +1114,8 @@ fn generate_function_structure<'c, 'a>(
                             .iter()
                             .zip(libfunc.branch_signatures())
                             .map(|(branch, branch_signature)| {
-                                let state = edit_state::put_results(
-                                    state.clone(),
+                                let mut new_state = state.clone();
+                                new_state.put_vars(
                                     branch.results.iter().zip(
                                         branch_signature
                                             .vars
@@ -1139,18 +1133,19 @@ fn generate_function_structure<'c, 'a>(
                                     ),
                                 )?;
 
-                                let (prev_state, pred_count) =
-                                    match predecessors.entry(statement_idx.next(&branch.target)) {
-                                        Entry::Occupied(entry) => entry.into_mut(),
-                                        Entry::Vacant(entry) => entry.insert((state.clone(), 0)),
-                                    };
+                                let (prev_state, pred_count) = match predecessors
+                                    .entry(statement_idx.next(branch.target))
+                                {
+                                    Entry::Occupied(entry) => entry.into_mut(),
+                                    Entry::Vacant(entry) => entry.insert((new_state.clone(), 0)),
+                                };
                                 native_assert!(
-                                    prev_state.eq_unordered(&state),
+                                    prev_state.eq_unordered(&new_state),
                                     "Branch target states do not match."
                                 );
                                 *pred_count += 1;
 
-                                Ok(state)
+                                Ok(new_state)
                             })
                             .collect::<Result<_, Error>>()?,
                     )
@@ -1160,7 +1155,11 @@ fn generate_function_structure<'c, 'a>(
                         "Creating block for return statement at index {statement_idx}."
                     );
 
-                    let (state, types) = edit_state::take_args(state.clone(), var_ids.iter())?;
+                    let (state, types) = {
+                        let mut state = state.clone();
+                        let types = state.take_vars(var_ids.iter())?;
+                        (state, types)
+                    };
                     native_assert!(
                         state.is_empty(),
                         "State must be empty after a return statement."
@@ -1330,7 +1329,7 @@ where
                 queue.extend(
                     branches
                         .iter()
-                        .map(|branch| statement_idx.next(&branch.target))
+                        .map(|branch| statement_idx.next(branch.target))
                         .zip(branch_states),
                 );
             }
@@ -1360,7 +1359,7 @@ where
         .branches
         .iter()
         .map(move |branch| {
-            let target_idx = statement_idx.next(&branch.target);
+            let target_idx = statement_idx.next(branch.target);
             let (landing_block, block) = &blocks[&target_idx];
 
             match landing_block {
