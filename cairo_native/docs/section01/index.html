@@ -237,7 +237,7 @@ execute a program using the JIT.</p>
     .unwrap();
 
     <span class="kw">let </span>entry_point = contract.entry_points_by_type.external.first().unwrap();
-    <span class="kw">let </span>sierra_program = contract.extract_sierra_program().unwrap();
+    <span class="kw">let </span>sierra_program = contract.extract_sierra_program(<span class="bool-val">false</span>).unwrap().program;
 
     <span class="kw">let </span>native_context = NativeContext::new();
 

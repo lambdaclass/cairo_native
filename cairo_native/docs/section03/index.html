@@ -122,7 +122,7 @@ fn run(lhs: u128, rhs: u128) -&gt; Parity&lt;u128&gt; {
     <span class="string">"core::panics::PanicResult::&lt;(sample::sample::Parity::&lt;core::integer::u128&gt;,)&gt;"</span>,
   ),
 }
-Builtin stats: BuiltinStats { bitwise: <span class="number">1</span>, ec_op: <span class="number">0</span>, range_check: <span class="number">1</span>, pedersen: <span class="number">0</span>, poseidon: <span class="number">0</span>, segment_arena: <span class="number">0 </span>}</code></pre></div>
+BuiltinStats { bitwise: <span class="number">1</span>, ec_op: <span class="number">0</span>, range_check: <span class="number">1</span>, pedersen: <span class="number">0</span>, poseidon: <span class="number">0</span>, segment_arena: <span class="number">0</span>, range_check96: <span class="number">0</span>, add_mod: <span class="number">0</span>, mul_mod: <span class="number">0</span>, blake: <span class="number">0 </span>}</code></pre></div>
 <h4 id="contracts"><a class="doc-anchor" href="#contracts">§</a>Contracts</h4>
 <p>Contracts always have the same interface, therefore they have an alternative to <code>invoke_dynamic</code> called <code>invoke_contract_dynamic</code>.</p>
 
@@ -160,7 +160,7 @@ Return value:  [
   JitValue::Felt252(1),
   JitValue::Felt252(5555),
 ]
-Builtin stats: BuiltinStats { bitwise: 1, ec_op: 0, range_check: 1, pedersen: 0, poseidon: 0, segment_arena: 0 }</code></pre></div><h3 id="the-cairo-native-runtime"><a class="doc-anchor" href="#the-cairo-native-runtime">§</a>The Cairo Native runtime</h3>
+BuiltinStats { bitwise: 1, ec_op: 0, range_check: 1, pedersen: 0, poseidon: 0, segment_arena: 0, range_check96: 0, add_mod: 0, mul_mod: 0, blake: 0 }</code></pre></div><h3 id="the-cairo-native-runtime"><a class="doc-anchor" href="#the-cairo-native-runtime">§</a>The Cairo Native runtime</h3>
 <p>Sometimes we need to use stuff that would be too complicated or error-prone to implement in MLIR, but that we have readily available from Rust. That’s when we use the runtime library.</p>
 <p>When using the JIT it’ll be automatically linked (if compiled with support for it, which is enabled by default). If using the AOT, the <code>CAIRO_NATIVE_RUNTIME_LIBRARY</code> environment variable will have to be modified to point to the <code>libcairo_native_runtime.a</code> file, which is built and placed in said folder by <code>make build</code>.</p>
 <p>Although it’s implemented in Rust, its functions use the C ABI and have Rust’s name mangling disabled. This means that to the extern observer it’s technically indistinguishible from a library written in C. By doing this we’re making the functions callable from MLIR.</p>

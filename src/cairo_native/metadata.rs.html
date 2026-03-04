@@ -65,7 +65,7 @@
 <a href=#65 id=65 data-nosnippet>65</a>        </span>T: Any,
 <a href=#66 id=66 data-nosnippet>66</a>    {
 <a href=#67 id=67 data-nosnippet>67</a>        <span class="self">self</span>.entries.remove(<span class="kw-2">&amp;</span>TypeId::of::&lt;T&gt;()).map(|meta| {
-<a href=#68 id=68 data-nosnippet>68</a>            <span class="kw-2">*</span>(Box::&lt;(<span class="kw">dyn </span>Any + <span class="lifetime">'static</span>)&gt;::downcast::&lt;T&gt;(meta).expect(
+<a href=#68 id=68 data-nosnippet>68</a>            <span class="kw-2">*</span>(Box::&lt;<span class="kw">dyn </span>Any + <span class="lifetime">'static</span>&gt;::downcast::&lt;T&gt;(meta).expect(
 <a href=#69 id=69 data-nosnippet>69</a>                <span class="string">"attempt to downcast a boxed value to a type which does not match the actual"</span>,
 <a href=#70 id=70 data-nosnippet>70</a>            ))
 <a href=#71 id=71 data-nosnippet>71</a>        })

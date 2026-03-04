@@ -53,7 +53,7 @@
 <a href=#53 id=53 data-nosnippet>53</a>        <span class="macro">panic!</span>()
 <a href=#54 id=54 data-nosnippet>54</a>    };
 <a href=#55 id=55 data-nosnippet>55</a>
-<a href=#56 id=56 data-nosnippet>56</a>    <span class="kw">let </span>builtin_costs: [u64; <span class="number">7</span>] = builtin_costs.into();
+<a href=#56 id=56 data-nosnippet>56</a>    <span class="kw">let </span>builtin_costs: [u64; <span class="number">8</span>] = builtin_costs.into();
 <a href=#57 id=57 data-nosnippet>57</a>
 <a href=#58 id=58 data-nosnippet>58</a>    <span class="kw">let </span>gas_cost = gas_meta.get_gas_costs_for_statement(statement_idx);
 <a href=#59 id=59 data-nosnippet>59</a>
@@ -72,125 +72,128 @@
 <a href=#72 id=72 data-nosnippet>72</a>            CostTokenType::Poseidon =&gt; <span class="number">4</span>,
 <a href=#73 id=73 data-nosnippet>73</a>            CostTokenType::AddMod =&gt; <span class="number">5</span>,
 <a href=#74 id=74 data-nosnippet>74</a>            CostTokenType::MulMod =&gt; <span class="number">6</span>,
-<a href=#75 id=75 data-nosnippet>75</a>            <span class="kw">_ </span>=&gt; <span class="macro">panic!</span>(),
-<a href=#76 id=76 data-nosnippet>76</a>        };
-<a href=#77 id=77 data-nosnippet>77</a>
-<a href=#78 id=78 data-nosnippet>78</a>        <span class="kw">let </span>cost_value = cost_count * builtin_costs[builtin_costs_index <span class="kw">as </span>usize];
-<a href=#79 id=79 data-nosnippet>79</a>        total_gas_cost += cost_value;
-<a href=#80 id=80 data-nosnippet>80</a>    }
-<a href=#81 id=81 data-nosnippet>81</a>
-<a href=#82 id=82 data-nosnippet>82</a>    <span class="kw">let </span>new_gas = gas.saturating_sub(total_gas_cost);
-<a href=#83 id=83 data-nosnippet>83</a>    <span class="kw">if </span>gas &gt;= total_gas_cost {
-<a href=#84 id=84 data-nosnippet>84</a>        EvalAction::NormalBranch(<span class="number">0</span>, <span class="macro">smallvec!</span>[range_check, Value::U64(new_gas)])
-<a href=#85 id=85 data-nosnippet>85</a>    } <span class="kw">else </span>{
-<a href=#86 id=86 data-nosnippet>86</a>        EvalAction::NormalBranch(<span class="number">1</span>, <span class="macro">smallvec!</span>[range_check, Value::U64(gas)])
-<a href=#87 id=87 data-nosnippet>87</a>    }
-<a href=#88 id=88 data-nosnippet>88</a>}
-<a href=#89 id=89 data-nosnippet>89</a>
-<a href=#90 id=90 data-nosnippet>90</a><span class="kw">fn </span>eval_withdraw_gas(
-<a href=#91 id=91 data-nosnippet>91</a>    _registry: <span class="kw-2">&amp;</span>ProgramRegistry&lt;CoreType, CoreLibfunc&gt;,
-<a href=#92 id=92 data-nosnippet>92</a>    _info: <span class="kw-2">&amp;</span>SignatureOnlyConcreteLibfunc,
-<a href=#93 id=93 data-nosnippet>93</a>    args: Vec&lt;Value&gt;,
-<a href=#94 id=94 data-nosnippet>94</a>    gas_meta: <span class="kw-2">&amp;</span>GasMetadata,
-<a href=#95 id=95 data-nosnippet>95</a>    statement_idx: StatementIdx,
-<a href=#96 id=96 data-nosnippet>96</a>    builtin_costs: BuiltinCosts,
-<a href=#97 id=97 data-nosnippet>97</a>) -&gt; EvalAction {
-<a href=#98 id=98 data-nosnippet>98</a>    <span class="kw">let </span>[range_check @ Value::Unit, Value::U64(gas)]: [Value; <span class="number">2</span>] = args.try_into().unwrap() <span class="kw">else </span>{
-<a href=#99 id=99 data-nosnippet>99</a>        <span class="macro">panic!</span>()
-<a href=#100 id=100 data-nosnippet>100</a>    };
-<a href=#101 id=101 data-nosnippet>101</a>
-<a href=#102 id=102 data-nosnippet>102</a>    <span class="kw">let </span>builtin_costs: [u64; <span class="number">7</span>] = builtin_costs.into();
-<a href=#103 id=103 data-nosnippet>103</a>
-<a href=#104 id=104 data-nosnippet>104</a>    <span class="kw">let </span>gas_cost = gas_meta.get_gas_costs_for_statement(statement_idx);
-<a href=#105 id=105 data-nosnippet>105</a>
-<a href=#106 id=106 data-nosnippet>106</a>    <span class="kw">let </span><span class="kw-2">mut </span>total_gas_cost = <span class="number">0</span>;
-<a href=#107 id=107 data-nosnippet>107</a>
-<a href=#108 id=108 data-nosnippet>108</a>    <span class="kw">for </span>(cost_count, token_type) <span class="kw">in </span><span class="kw-2">&amp;</span>gas_cost {
-<a href=#109 id=109 data-nosnippet>109</a>        <span class="kw">if </span><span class="kw-2">*</span>cost_count == <span class="number">0 </span>{
-<a href=#110 id=110 data-nosnippet>110</a>            <span class="kw">continue</span>;
-<a href=#111 id=111 data-nosnippet>111</a>        }
-<a href=#112 id=112 data-nosnippet>112</a>
-<a href=#113 id=113 data-nosnippet>113</a>        <span class="kw">let </span>builtin_costs_index = <span class="kw">match </span>token_type {
-<a href=#114 id=114 data-nosnippet>114</a>            CostTokenType::Const =&gt; <span class="number">0</span>,
-<a href=#115 id=115 data-nosnippet>115</a>            CostTokenType::Pedersen =&gt; <span class="number">1</span>,
-<a href=#116 id=116 data-nosnippet>116</a>            CostTokenType::Bitwise =&gt; <span class="number">2</span>,
-<a href=#117 id=117 data-nosnippet>117</a>            CostTokenType::EcOp =&gt; <span class="number">3</span>,
-<a href=#118 id=118 data-nosnippet>118</a>            CostTokenType::Poseidon =&gt; <span class="number">4</span>,
-<a href=#119 id=119 data-nosnippet>119</a>            CostTokenType::AddMod =&gt; <span class="number">5</span>,
-<a href=#120 id=120 data-nosnippet>120</a>            CostTokenType::MulMod =&gt; <span class="number">6</span>,
-<a href=#121 id=121 data-nosnippet>121</a>            <span class="kw">_ </span>=&gt; <span class="macro">panic!</span>(),
-<a href=#122 id=122 data-nosnippet>122</a>        };
-<a href=#123 id=123 data-nosnippet>123</a>
-<a href=#124 id=124 data-nosnippet>124</a>        <span class="kw">let </span>cost_value = cost_count * builtin_costs[builtin_costs_index <span class="kw">as </span>usize];
-<a href=#125 id=125 data-nosnippet>125</a>        total_gas_cost += cost_value;
-<a href=#126 id=126 data-nosnippet>126</a>    }
-<a href=#127 id=127 data-nosnippet>127</a>
-<a href=#128 id=128 data-nosnippet>128</a>    <span class="kw">let </span>new_gas = gas.saturating_sub(total_gas_cost);
-<a href=#129 id=129 data-nosnippet>129</a>    <span class="kw">if </span>gas &gt;= total_gas_cost {
-<a href=#130 id=130 data-nosnippet>130</a>        EvalAction::NormalBranch(<span class="number">0</span>, <span class="macro">smallvec!</span>[range_check, Value::U64(new_gas)])
-<a href=#131 id=131 data-nosnippet>131</a>    } <span class="kw">else </span>{
-<a href=#132 id=132 data-nosnippet>132</a>        EvalAction::NormalBranch(<span class="number">1</span>, <span class="macro">smallvec!</span>[range_check, Value::U64(gas)])
-<a href=#133 id=133 data-nosnippet>133</a>    }
-<a href=#134 id=134 data-nosnippet>134</a>}
-<a href=#135 id=135 data-nosnippet>135</a>
-<a href=#136 id=136 data-nosnippet>136</a><span class="kw">fn </span>eval_redeposit_gas(
-<a href=#137 id=137 data-nosnippet>137</a>    _registry: <span class="kw-2">&amp;</span>ProgramRegistry&lt;CoreType, CoreLibfunc&gt;,
-<a href=#138 id=138 data-nosnippet>138</a>    _info: <span class="kw-2">&amp;</span>SignatureOnlyConcreteLibfunc,
-<a href=#139 id=139 data-nosnippet>139</a>    args: Vec&lt;Value&gt;,
-<a href=#140 id=140 data-nosnippet>140</a>    gas_meta: <span class="kw-2">&amp;</span>GasMetadata,
-<a href=#141 id=141 data-nosnippet>141</a>    statement_idx: StatementIdx,
-<a href=#142 id=142 data-nosnippet>142</a>    builtin_costs: BuiltinCosts,
-<a href=#143 id=143 data-nosnippet>143</a>) -&gt; EvalAction {
-<a href=#144 id=144 data-nosnippet>144</a>    <span class="kw">let </span>[Value::U64(gas)]: [Value; <span class="number">1</span>] = args.try_into().unwrap() <span class="kw">else </span>{
-<a href=#145 id=145 data-nosnippet>145</a>        <span class="macro">panic!</span>()
-<a href=#146 id=146 data-nosnippet>146</a>    };
-<a href=#147 id=147 data-nosnippet>147</a>
-<a href=#148 id=148 data-nosnippet>148</a>    <span class="kw">let </span>builtin_costs: [u64; <span class="number">7</span>] = builtin_costs.into();
+<a href=#75 id=75 data-nosnippet>75</a>            CostTokenType::Blake =&gt; <span class="number">7</span>,
+<a href=#76 id=76 data-nosnippet>76</a>            <span class="kw">_ </span>=&gt; <span class="macro">panic!</span>(),
+<a href=#77 id=77 data-nosnippet>77</a>        };
+<a href=#78 id=78 data-nosnippet>78</a>
+<a href=#79 id=79 data-nosnippet>79</a>        <span class="kw">let </span>cost_value = cost_count * builtin_costs[builtin_costs_index <span class="kw">as </span>usize];
+<a href=#80 id=80 data-nosnippet>80</a>        total_gas_cost += cost_value;
+<a href=#81 id=81 data-nosnippet>81</a>    }
+<a href=#82 id=82 data-nosnippet>82</a>
+<a href=#83 id=83 data-nosnippet>83</a>    <span class="kw">let </span>new_gas = gas.saturating_sub(total_gas_cost);
+<a href=#84 id=84 data-nosnippet>84</a>    <span class="kw">if </span>gas &gt;= total_gas_cost {
+<a href=#85 id=85 data-nosnippet>85</a>        EvalAction::NormalBranch(<span class="number">0</span>, <span class="macro">smallvec!</span>[range_check, Value::U64(new_gas)])
+<a href=#86 id=86 data-nosnippet>86</a>    } <span class="kw">else </span>{
+<a href=#87 id=87 data-nosnippet>87</a>        EvalAction::NormalBranch(<span class="number">1</span>, <span class="macro">smallvec!</span>[range_check, Value::U64(gas)])
+<a href=#88 id=88 data-nosnippet>88</a>    }
+<a href=#89 id=89 data-nosnippet>89</a>}
+<a href=#90 id=90 data-nosnippet>90</a>
+<a href=#91 id=91 data-nosnippet>91</a><span class="kw">fn </span>eval_withdraw_gas(
+<a href=#92 id=92 data-nosnippet>92</a>    _registry: <span class="kw-2">&amp;</span>ProgramRegistry&lt;CoreType, CoreLibfunc&gt;,
+<a href=#93 id=93 data-nosnippet>93</a>    _info: <span class="kw-2">&amp;</span>SignatureOnlyConcreteLibfunc,
+<a href=#94 id=94 data-nosnippet>94</a>    args: Vec&lt;Value&gt;,
+<a href=#95 id=95 data-nosnippet>95</a>    gas_meta: <span class="kw-2">&amp;</span>GasMetadata,
+<a href=#96 id=96 data-nosnippet>96</a>    statement_idx: StatementIdx,
+<a href=#97 id=97 data-nosnippet>97</a>    builtin_costs: BuiltinCosts,
+<a href=#98 id=98 data-nosnippet>98</a>) -&gt; EvalAction {
+<a href=#99 id=99 data-nosnippet>99</a>    <span class="kw">let </span>[range_check @ Value::Unit, Value::U64(gas)]: [Value; <span class="number">2</span>] = args.try_into().unwrap() <span class="kw">else </span>{
+<a href=#100 id=100 data-nosnippet>100</a>        <span class="macro">panic!</span>()
+<a href=#101 id=101 data-nosnippet>101</a>    };
+<a href=#102 id=102 data-nosnippet>102</a>
+<a href=#103 id=103 data-nosnippet>103</a>    <span class="kw">let </span>builtin_costs: [u64; <span class="number">8</span>] = builtin_costs.into();
+<a href=#104 id=104 data-nosnippet>104</a>
+<a href=#105 id=105 data-nosnippet>105</a>    <span class="kw">let </span>gas_cost = gas_meta.get_gas_costs_for_statement(statement_idx);
+<a href=#106 id=106 data-nosnippet>106</a>
+<a href=#107 id=107 data-nosnippet>107</a>    <span class="kw">let </span><span class="kw-2">mut </span>total_gas_cost = <span class="number">0</span>;
+<a href=#108 id=108 data-nosnippet>108</a>
+<a href=#109 id=109 data-nosnippet>109</a>    <span class="kw">for </span>(cost_count, token_type) <span class="kw">in </span><span class="kw-2">&amp;</span>gas_cost {
+<a href=#110 id=110 data-nosnippet>110</a>        <span class="kw">if </span><span class="kw-2">*</span>cost_count == <span class="number">0 </span>{
+<a href=#111 id=111 data-nosnippet>111</a>            <span class="kw">continue</span>;
+<a href=#112 id=112 data-nosnippet>112</a>        }
+<a href=#113 id=113 data-nosnippet>113</a>
+<a href=#114 id=114 data-nosnippet>114</a>        <span class="kw">let </span>builtin_costs_index = <span class="kw">match </span>token_type {
+<a href=#115 id=115 data-nosnippet>115</a>            CostTokenType::Const =&gt; <span class="number">0</span>,
+<a href=#116 id=116 data-nosnippet>116</a>            CostTokenType::Pedersen =&gt; <span class="number">1</span>,
+<a href=#117 id=117 data-nosnippet>117</a>            CostTokenType::Bitwise =&gt; <span class="number">2</span>,
+<a href=#118 id=118 data-nosnippet>118</a>            CostTokenType::EcOp =&gt; <span class="number">3</span>,
+<a href=#119 id=119 data-nosnippet>119</a>            CostTokenType::Poseidon =&gt; <span class="number">4</span>,
+<a href=#120 id=120 data-nosnippet>120</a>            CostTokenType::AddMod =&gt; <span class="number">5</span>,
+<a href=#121 id=121 data-nosnippet>121</a>            CostTokenType::MulMod =&gt; <span class="number">6</span>,
+<a href=#122 id=122 data-nosnippet>122</a>            CostTokenType::Blake =&gt; <span class="number">7</span>,
+<a href=#123 id=123 data-nosnippet>123</a>            <span class="kw">_ </span>=&gt; <span class="macro">panic!</span>(),
+<a href=#124 id=124 data-nosnippet>124</a>        };
+<a href=#125 id=125 data-nosnippet>125</a>
+<a href=#126 id=126 data-nosnippet>126</a>        <span class="kw">let </span>cost_value = cost_count * builtin_costs[builtin_costs_index <span class="kw">as </span>usize];
+<a href=#127 id=127 data-nosnippet>127</a>        total_gas_cost += cost_value;
+<a href=#128 id=128 data-nosnippet>128</a>    }
+<a href=#129 id=129 data-nosnippet>129</a>
+<a href=#130 id=130 data-nosnippet>130</a>    <span class="kw">let </span>new_gas = gas.saturating_sub(total_gas_cost);
+<a href=#131 id=131 data-nosnippet>131</a>    <span class="kw">if </span>gas &gt;= total_gas_cost {
+<a href=#132 id=132 data-nosnippet>132</a>        EvalAction::NormalBranch(<span class="number">0</span>, <span class="macro">smallvec!</span>[range_check, Value::U64(new_gas)])
+<a href=#133 id=133 data-nosnippet>133</a>    } <span class="kw">else </span>{
+<a href=#134 id=134 data-nosnippet>134</a>        EvalAction::NormalBranch(<span class="number">1</span>, <span class="macro">smallvec!</span>[range_check, Value::U64(gas)])
+<a href=#135 id=135 data-nosnippet>135</a>    }
+<a href=#136 id=136 data-nosnippet>136</a>}
+<a href=#137 id=137 data-nosnippet>137</a>
+<a href=#138 id=138 data-nosnippet>138</a><span class="kw">fn </span>eval_redeposit_gas(
+<a href=#139 id=139 data-nosnippet>139</a>    _registry: <span class="kw-2">&amp;</span>ProgramRegistry&lt;CoreType, CoreLibfunc&gt;,
+<a href=#140 id=140 data-nosnippet>140</a>    _info: <span class="kw-2">&amp;</span>SignatureOnlyConcreteLibfunc,
+<a href=#141 id=141 data-nosnippet>141</a>    args: Vec&lt;Value&gt;,
+<a href=#142 id=142 data-nosnippet>142</a>    gas_meta: <span class="kw-2">&amp;</span>GasMetadata,
+<a href=#143 id=143 data-nosnippet>143</a>    statement_idx: StatementIdx,
+<a href=#144 id=144 data-nosnippet>144</a>    builtin_costs: BuiltinCosts,
+<a href=#145 id=145 data-nosnippet>145</a>) -&gt; EvalAction {
+<a href=#146 id=146 data-nosnippet>146</a>    <span class="kw">let </span>[Value::U64(gas)]: [Value; <span class="number">1</span>] = args.try_into().unwrap() <span class="kw">else </span>{
+<a href=#147 id=147 data-nosnippet>147</a>        <span class="macro">panic!</span>()
+<a href=#148 id=148 data-nosnippet>148</a>    };
 <a href=#149 id=149 data-nosnippet>149</a>
-<a href=#150 id=150 data-nosnippet>150</a>    <span class="kw">let </span>gas_cost = gas_meta.get_gas_costs_for_statement(statement_idx);
-<a href=#151 id=151 data-nosnippet>151</a>    <span class="kw">let </span><span class="kw-2">mut </span>total_gas_cost = <span class="number">0</span>;
-<a href=#152 id=152 data-nosnippet>152</a>    <span class="kw">for </span>(cost_count, token_type) <span class="kw">in </span><span class="kw-2">&amp;</span>gas_cost {
-<a href=#153 id=153 data-nosnippet>153</a>        <span class="kw">if </span><span class="kw-2">*</span>cost_count == <span class="number">0 </span>{
-<a href=#154 id=154 data-nosnippet>154</a>            <span class="kw">continue</span>;
-<a href=#155 id=155 data-nosnippet>155</a>        }
-<a href=#156 id=156 data-nosnippet>156</a>
-<a href=#157 id=157 data-nosnippet>157</a>        <span class="kw">let </span>builtin_costs_index = <span class="kw">match </span>token_type {
-<a href=#158 id=158 data-nosnippet>158</a>            CostTokenType::Const =&gt; <span class="number">0</span>,
-<a href=#159 id=159 data-nosnippet>159</a>            CostTokenType::Pedersen =&gt; <span class="number">1</span>,
-<a href=#160 id=160 data-nosnippet>160</a>            CostTokenType::Bitwise =&gt; <span class="number">2</span>,
-<a href=#161 id=161 data-nosnippet>161</a>            CostTokenType::EcOp =&gt; <span class="number">3</span>,
-<a href=#162 id=162 data-nosnippet>162</a>            CostTokenType::Poseidon =&gt; <span class="number">4</span>,
-<a href=#163 id=163 data-nosnippet>163</a>            CostTokenType::AddMod =&gt; <span class="number">5</span>,
-<a href=#164 id=164 data-nosnippet>164</a>            CostTokenType::MulMod =&gt; <span class="number">6</span>,
-<a href=#165 id=165 data-nosnippet>165</a>            <span class="kw">_ </span>=&gt; <span class="macro">panic!</span>(),
-<a href=#166 id=166 data-nosnippet>166</a>        };
-<a href=#167 id=167 data-nosnippet>167</a>
-<a href=#168 id=168 data-nosnippet>168</a>        <span class="kw">let </span>cost_value = cost_count * builtin_costs[builtin_costs_index <span class="kw">as </span>usize];
-<a href=#169 id=169 data-nosnippet>169</a>        total_gas_cost += cost_value;
-<a href=#170 id=170 data-nosnippet>170</a>    }
-<a href=#171 id=171 data-nosnippet>171</a>
-<a href=#172 id=172 data-nosnippet>172</a>    <span class="kw">let </span>new_gas = gas.saturating_add(total_gas_cost);
-<a href=#173 id=173 data-nosnippet>173</a>
-<a href=#174 id=174 data-nosnippet>174</a>    EvalAction::NormalBranch(<span class="number">0</span>, <span class="macro">smallvec!</span>[Value::U64(new_gas)])
-<a href=#175 id=175 data-nosnippet>175</a>}
+<a href=#150 id=150 data-nosnippet>150</a>    <span class="kw">let </span>builtin_costs: [u64; <span class="number">8</span>] = builtin_costs.into();
+<a href=#151 id=151 data-nosnippet>151</a>
+<a href=#152 id=152 data-nosnippet>152</a>    <span class="kw">let </span>gas_cost = gas_meta.get_gas_costs_for_statement(statement_idx);
+<a href=#153 id=153 data-nosnippet>153</a>    <span class="kw">let </span><span class="kw-2">mut </span>total_gas_cost = <span class="number">0</span>;
+<a href=#154 id=154 data-nosnippet>154</a>    <span class="kw">for </span>(cost_count, token_type) <span class="kw">in </span><span class="kw-2">&amp;</span>gas_cost {
+<a href=#155 id=155 data-nosnippet>155</a>        <span class="kw">if </span><span class="kw-2">*</span>cost_count == <span class="number">0 </span>{
+<a href=#156 id=156 data-nosnippet>156</a>            <span class="kw">continue</span>;
+<a href=#157 id=157 data-nosnippet>157</a>        }
+<a href=#158 id=158 data-nosnippet>158</a>
+<a href=#159 id=159 data-nosnippet>159</a>        <span class="kw">let </span>builtin_costs_index = <span class="kw">match </span>token_type {
+<a href=#160 id=160 data-nosnippet>160</a>            CostTokenType::Const =&gt; <span class="number">0</span>,
+<a href=#161 id=161 data-nosnippet>161</a>            CostTokenType::Pedersen =&gt; <span class="number">1</span>,
+<a href=#162 id=162 data-nosnippet>162</a>            CostTokenType::Bitwise =&gt; <span class="number">2</span>,
+<a href=#163 id=163 data-nosnippet>163</a>            CostTokenType::EcOp =&gt; <span class="number">3</span>,
+<a href=#164 id=164 data-nosnippet>164</a>            CostTokenType::Poseidon =&gt; <span class="number">4</span>,
+<a href=#165 id=165 data-nosnippet>165</a>            CostTokenType::AddMod =&gt; <span class="number">5</span>,
+<a href=#166 id=166 data-nosnippet>166</a>            CostTokenType::MulMod =&gt; <span class="number">6</span>,
+<a href=#167 id=167 data-nosnippet>167</a>            CostTokenType::Blake =&gt; <span class="number">7</span>,
+<a href=#168 id=168 data-nosnippet>168</a>            <span class="kw">_ </span>=&gt; <span class="macro">panic!</span>(),
+<a href=#169 id=169 data-nosnippet>169</a>        };
+<a href=#170 id=170 data-nosnippet>170</a>
+<a href=#171 id=171 data-nosnippet>171</a>        <span class="kw">let </span>cost_value = cost_count * builtin_costs[builtin_costs_index <span class="kw">as </span>usize];
+<a href=#172 id=172 data-nosnippet>172</a>        total_gas_cost += cost_value;
+<a href=#173 id=173 data-nosnippet>173</a>    }
+<a href=#174 id=174 data-nosnippet>174</a>
+<a href=#175 id=175 data-nosnippet>175</a>    <span class="kw">let </span>new_gas = gas.saturating_add(total_gas_cost);
 <a href=#176 id=176 data-nosnippet>176</a>
-<a href=#177 id=177 data-nosnippet>177</a><span class="kw">fn </span>eval_get_available_gas(
-<a href=#178 id=178 data-nosnippet>178</a>    _registry: <span class="kw-2">&amp;</span>ProgramRegistry&lt;CoreType, CoreLibfunc&gt;,
-<a href=#179 id=179 data-nosnippet>179</a>    _info: <span class="kw-2">&amp;</span>SignatureOnlyConcreteLibfunc,
-<a href=#180 id=180 data-nosnippet>180</a>    args: Vec&lt;Value&gt;,
-<a href=#181 id=181 data-nosnippet>181</a>) -&gt; EvalAction {
-<a href=#182 id=182 data-nosnippet>182</a>    <span class="kw">let </span>[gas_val @ Value::U64(gas)]: [Value; <span class="number">1</span>] = args.try_into().unwrap() <span class="kw">else </span>{
-<a href=#183 id=183 data-nosnippet>183</a>        <span class="macro">panic!</span>();
-<a href=#184 id=184 data-nosnippet>184</a>    };
-<a href=#185 id=185 data-nosnippet>185</a>
-<a href=#186 id=186 data-nosnippet>186</a>    EvalAction::NormalBranch(<span class="number">0</span>, <span class="macro">smallvec!</span>[gas_val, Value::U128(gas <span class="kw">as </span>u128)])
-<a href=#187 id=187 data-nosnippet>187</a>}
+<a href=#177 id=177 data-nosnippet>177</a>    EvalAction::NormalBranch(<span class="number">0</span>, <span class="macro">smallvec!</span>[Value::U64(new_gas)])
+<a href=#178 id=178 data-nosnippet>178</a>}
+<a href=#179 id=179 data-nosnippet>179</a>
+<a href=#180 id=180 data-nosnippet>180</a><span class="kw">fn </span>eval_get_available_gas(
+<a href=#181 id=181 data-nosnippet>181</a>    _registry: <span class="kw-2">&amp;</span>ProgramRegistry&lt;CoreType, CoreLibfunc&gt;,
+<a href=#182 id=182 data-nosnippet>182</a>    _info: <span class="kw-2">&amp;</span>SignatureOnlyConcreteLibfunc,
+<a href=#183 id=183 data-nosnippet>183</a>    args: Vec&lt;Value&gt;,
+<a href=#184 id=184 data-nosnippet>184</a>) -&gt; EvalAction {
+<a href=#185 id=185 data-nosnippet>185</a>    <span class="kw">let </span>[gas_val @ Value::U64(gas)]: [Value; <span class="number">1</span>] = args.try_into().unwrap() <span class="kw">else </span>{
+<a href=#186 id=186 data-nosnippet>186</a>        <span class="macro">panic!</span>();
+<a href=#187 id=187 data-nosnippet>187</a>    };
 <a href=#188 id=188 data-nosnippet>188</a>
-<a href=#189 id=189 data-nosnippet>189</a><span class="kw">fn </span>eval_get_builtin_costs(
-<a href=#190 id=190 data-nosnippet>190</a>    _registry: <span class="kw-2">&amp;</span>ProgramRegistry&lt;CoreType, CoreLibfunc&gt;,
-<a href=#191 id=191 data-nosnippet>191</a>    _info: <span class="kw-2">&amp;</span>SignatureOnlyConcreteLibfunc,
-<a href=#192 id=192 data-nosnippet>192</a>    _args: Vec&lt;Value&gt;,
-<a href=#193 id=193 data-nosnippet>193</a>    builtin_costs: BuiltinCosts,
-<a href=#194 id=194 data-nosnippet>194</a>) -&gt; EvalAction {
-<a href=#195 id=195 data-nosnippet>195</a>    EvalAction::NormalBranch(<span class="number">0</span>, <span class="macro">smallvec!</span>[Value::BuiltinCosts(builtin_costs)])
-<a href=#196 id=196 data-nosnippet>196</a>}</code></pre></div></section></main></body></html>
+<a href=#189 id=189 data-nosnippet>189</a>    EvalAction::NormalBranch(<span class="number">0</span>, <span class="macro">smallvec!</span>[gas_val, Value::U128(gas <span class="kw">as </span>u128)])
+<a href=#190 id=190 data-nosnippet>190</a>}
+<a href=#191 id=191 data-nosnippet>191</a>
+<a href=#192 id=192 data-nosnippet>192</a><span class="kw">fn </span>eval_get_builtin_costs(
+<a href=#193 id=193 data-nosnippet>193</a>    _registry: <span class="kw-2">&amp;</span>ProgramRegistry&lt;CoreType, CoreLibfunc&gt;,
+<a href=#194 id=194 data-nosnippet>194</a>    _info: <span class="kw-2">&amp;</span>SignatureOnlyConcreteLibfunc,
+<a href=#195 id=195 data-nosnippet>195</a>    _args: Vec&lt;Value&gt;,
+<a href=#196 id=196 data-nosnippet>196</a>    builtin_costs: BuiltinCosts,
+<a href=#197 id=197 data-nosnippet>197</a>) -&gt; EvalAction {
+<a href=#198 id=198 data-nosnippet>198</a>    EvalAction::NormalBranch(<span class="number">0</span>, <span class="macro">smallvec!</span>[Value::BuiltinCosts(builtin_costs)])
+<a href=#199 id=199 data-nosnippet>199</a>}</code></pre></div></section></main></body></html>

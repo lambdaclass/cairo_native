@@ -1,1 +1,1 @@
-window.SIDEBAR_ITEMS = {"fn":["get_sierra_version_from_program","load_sierra_program_from_file","main"],"struct":["Args"]};
+window.SIDEBAR_ITEMS = {"fn":["load_sierra_program_from_file","main"],"struct":["Args"]};
