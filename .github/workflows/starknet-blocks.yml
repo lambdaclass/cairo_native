@@ -45,7 +45,7 @@ jobs:
           repository: lambdaclass/sequencer
           path: sequencer
           # branch main-v0.14.2
-          ref: 995d850b31ff942058e400b69e853a437bbbedde
+          ref: e8a8f2df0c674c142cef0c9076e682d3ceb73c7c
       
       - name: Restore RPC Calls
         id: restore-rpc-calls
