@@ -280,7 +280,7 @@ fn main() {
     .unwrap();
 
     let entry_point = contract.entry_points_by_type.external.first().unwrap();
-    let sierra_program = contract.extract_sierra_program().unwrap();
+    let sierra_program = contract.extract_sierra_program(false).unwrap().program;
 
     let native_context = NativeContext::new();
 

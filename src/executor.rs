@@ -9,11 +9,12 @@ use crate::{
     error::{panic::ToNativeAssertError, Error},
     execution_result::{
         BuiltinStats, ExecutionResult, ADD_MOD_BUILTIN_SIZE, BITWISE_BUILTIN_SIZE,
-        EC_OP_BUILTIN_SIZE, MUL_MOD_BUILTIN_SIZE, PEDERSEN_BUILTIN_SIZE, POSEIDON_BUILTIN_SIZE,
-        RANGE_CHECK96_BUILTIN_SIZE, RANGE_CHECK_BUILTIN_SIZE, SEGMENT_ARENA_BUILTIN_SIZE,
+        BLAKE_BUILTIN_SIZE, EC_OP_BUILTIN_SIZE, MUL_MOD_BUILTIN_SIZE, PEDERSEN_BUILTIN_SIZE,
+        POSEIDON_BUILTIN_SIZE, RANGE_CHECK96_BUILTIN_SIZE, RANGE_CHECK_BUILTIN_SIZE,
+        SEGMENT_ARENA_BUILTIN_SIZE,
     },
     native_panic,
-    runtime::BUILTIN_COSTS,
+    runtime::{BLAKE_CALL_COUNT, BUILTIN_COSTS},
     starknet::{handler::StarknetSyscallHandlerCallbacks, StarknetSyscallHandler},
     types::TypeBuilder,
     utils::{libc_free, BuiltinCosts, RangeExt},
@@ -312,6 +313,9 @@ fn invoke_dynamic(
                             CoreTypeConcrete::Circuit(CircuitTypeConcrete::MulMod(_)) => {
                                 builtin_stats.mul_mod = value / MUL_MOD_BUILTIN_SIZE
                             }
+                            CoreTypeConcrete::Blake(_) => {
+                                builtin_stats.blake = value / BLAKE_BUILTIN_SIZE
+                            }
                             _ => native_panic!("given type should be a builtin: {type_id:?}"),
                         }
                     }
@@ -342,6 +346,10 @@ fn invoke_dynamic(
             fields: vec![],
             debug_name: None,
         });
+
+    // Get the blake call count from the global counter (blake doesn't have a buffer-based counter
+    // like other builtins, so it's tracked globally via the blake libfuncs)
+    builtin_stats.blake = BLAKE_CALL_COUNT.with(|c| c.replace(0)) as usize;
 
     #[cfg(feature = "with-mem-tracing")]
     crate::utils::mem_tracing::report_stats();
@@ -719,8 +727,9 @@ mod tests {
     #[fixture]
     fn starknet_program() -> Program {
         include_contract!("test_data_artifacts/contracts/simple_storage_42.contract.json")
-            .extract_sierra_program()
+            .extract_sierra_program(true)
             .unwrap()
+            .program
     }
 
     #[rstest]

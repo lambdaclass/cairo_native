@@ -10,7 +10,6 @@ use cairo_lang_filesystem::{
     ids::CrateInput,
 };
 use cairo_lang_runner::{casm_run::format_for_panic, RunResultValue};
-use cairo_lang_sierra_generator::replace_ids::replace_sierra_ids_in_program;
 use cairo_lang_test_plugin::{
     compile_test_prepared_db,
     test_config::{PanicExpectation, TestExpectation},
@@ -55,6 +54,7 @@ fn test_corelib() {
         contract_crate_ids: None,
         executable_crate_ids: None,
         add_functions_debug_info: false,
+        replace_ids: true,
     };
 
     let diag_reporter = DiagnosticsReporter::stderr().with_crates(&main_crate_inputs);
@@ -243,9 +243,8 @@ fn compile_tests<'a>(
 ) -> TestCompilation<'a> {
     let mut compiled =
         compile_test_prepared_db(db, test_config, test_crate_inputs, diag_reporter).unwrap();
-    // replace ids to have debug_names
-    compiled.sierra_program.program =
-        replace_sierra_ids_in_program(db, &compiled.sierra_program.program);
+    // Note: No need to call replace_sierra_ids_in_program — compile_test_prepared_db with
+    // replace_ids: true already replaces IDs (new in cairo 2.16).
 
     if let Some(compilation_filter) = with_filtered_tests {
         let should_skip_test = |name: &str| -> bool {

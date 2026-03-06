@@ -76,6 +76,7 @@ fn main() -> anyhow::Result<()> {
             contract_declarations: None,
             contract_crate_ids: None,
             executable_crate_ids: None,
+            replace_ids: true,
         },
     )?;
 
