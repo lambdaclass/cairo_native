@@ -151,7 +151,7 @@ Return value:  Enum {
     "core::panics::PanicResult::<(sample::sample::Parity::<core::integer::u128>,)>",
   ),
 }
-Builtin stats: BuiltinStats { bitwise: 1, ec_op: 0, range_check: 1, pedersen: 0, poseidon: 0, segment_arena: 0 }
+BuiltinStats { bitwise: 1, ec_op: 0, range_check: 1, pedersen: 0, poseidon: 0, segment_arena: 0, range_check96: 0, add_mod: 0, mul_mod: 0, blake: 0 }
 ```
 
 ### Contracts
@@ -200,7 +200,7 @@ Return value:  [
   JitValue::Felt252(1),
   JitValue::Felt252(5555),
 ]
-Builtin stats: BuiltinStats { bitwise: 1, ec_op: 0, range_check: 1, pedersen: 0, poseidon: 0, segment_arena: 0 }
+BuiltinStats { bitwise: 1, ec_op: 0, range_check: 1, pedersen: 0, poseidon: 0, segment_arena: 0, range_check96: 0, add_mod: 0, mul_mod: 0, blake: 0 }
 ```
 
 ## The Cairo Native runtime

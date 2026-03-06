@@ -508,7 +508,7 @@ pub mod trace_dump_runtime {
             | CoreTypeConcrete::Uint128MulGuarantee(_) => Value::Unit,
 
             CoreTypeConcrete::BuiltinCosts(_) => {
-                let builtin_costs = value_ptr.cast::<&[u64; 7]>().read();
+                let builtin_costs = value_ptr.cast::<&[u64; 8]>().read();
                 Value::BuiltinCosts(sierra_emu::BuiltinCosts {
                     r#const: builtin_costs[0],
                     pedersen: builtin_costs[1],
@@ -517,6 +517,7 @@ pub mod trace_dump_runtime {
                     poseidon: builtin_costs[4],
                     add_mod: builtin_costs[5],
                     mul_mod: builtin_costs[6],
+                    blake: builtin_costs[7],
                 })
             }
 
