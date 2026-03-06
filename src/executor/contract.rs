@@ -39,13 +39,15 @@ use crate::{
     error::{panic::ToNativeAssertError, Error, Result},
     execution_result::{
         BuiltinStats, ContractExecutionResult, ADD_MOD_BUILTIN_SIZE, BITWISE_BUILTIN_SIZE,
-        EC_OP_BUILTIN_SIZE, MUL_MOD_BUILTIN_SIZE, PEDERSEN_BUILTIN_SIZE, POSEIDON_BUILTIN_SIZE,
-        RANGE_CHECK96_BUILTIN_SIZE, RANGE_CHECK_BUILTIN_SIZE, SEGMENT_ARENA_BUILTIN_SIZE,
+        BLAKE_BUILTIN_SIZE, EC_OP_BUILTIN_SIZE, MUL_MOD_BUILTIN_SIZE, PEDERSEN_BUILTIN_SIZE,
+        POSEIDON_BUILTIN_SIZE, RANGE_CHECK96_BUILTIN_SIZE, RANGE_CHECK_BUILTIN_SIZE,
+        SEGMENT_ARENA_BUILTIN_SIZE,
     },
     executor::{invoke_trampoline, BuiltinCostsGuard},
     metadata::runtime_bindings::setup_runtime,
     module::NativeModule,
     native_assert, native_panic,
+    runtime::BLAKE_CALL_COUNT,
     starknet::{handler::StarknetSyscallHandlerCallbacks, StarknetSyscallHandler},
     statistics::{SierraDeclaredTypeStats, SierraFuncStats, Statistics},
     types::{array::ArrayMetadata, TypeBuilder},
@@ -134,6 +136,7 @@ pub enum BuiltinType {
     Gas,
     System,
     BuiltinCosts,
+    Blake,
 }
 
 impl BuiltinType {
@@ -623,6 +626,7 @@ impl AotContractExecutor {
                         BuiltinType::CircuitMul => {
                             builtin_stats.mul_mod = value / MUL_MOD_BUILTIN_SIZE
                         }
+                        BuiltinType::Blake => builtin_stats.blake = value / BLAKE_BUILTIN_SIZE,
                         BuiltinType::Gas => {}
                         BuiltinType::System => {}
                         BuiltinType::BuiltinCosts => {}
@@ -697,6 +701,10 @@ impl AotContractExecutor {
 
         // Restore the original builtin costs pointer.
         drop(builtin_costs_guard);
+
+        // Get the blake call count from the global counter (blake doesn't have a buffer-based counter
+        // like other builtins, so it's tracked globally via the blake libfuncs on each invocation)
+        builtin_stats.blake = BLAKE_CALL_COUNT.with(|c| c.replace(0)) as usize;
 
         #[cfg(feature = "with-mem-tracing")]
         crate::utils::mem_tracing::report_stats();
@@ -773,6 +781,7 @@ fn find_entrypoint_builtins(
                 }
                 CoreTypeConcrete::GasBuiltin(_) => BuiltinType::Gas,
                 CoreTypeConcrete::Starknet(StarknetTypeConcrete::System(_)) => BuiltinType::System,
+                CoreTypeConcrete::Blake(_) => BuiltinType::Blake,
                 _ => native_panic!("unknown builtin type for function {}", function),
             })
         })
@@ -815,7 +824,6 @@ mod tests {
     use super::*;
     use crate::include_contract;
     use crate::starknet_stub::StubSyscallHandler;
-    use cairo_lang_starknet_classes::contract_class::version_id_from_serialized_sierra_program;
     use cairo_lang_starknet_classes::contract_class::ContractClass;
     use rayon::iter::ParallelBridge;
     use rstest::*;
@@ -845,13 +853,12 @@ mod tests {
     ) {
         use rayon::iter::ParallelIterator;
 
-        let (sierra_version, _) =
-            version_id_from_serialized_sierra_program(&starknet_program.sierra_program).unwrap();
+        let extracted = starknet_program.extract_sierra_program(false).unwrap();
         let executor = Arc::new(
             AotContractExecutor::new(
-                &starknet_program.extract_sierra_program().unwrap(),
+                &extracted.program,
                 &starknet_program.entry_points_by_type,
-                sierra_version,
+                extracted.sierra_version,
                 optlevel,
                 None,
             )
@@ -886,12 +893,11 @@ mod tests {
     #[case(OptLevel::None)]
     #[case(OptLevel::Default)]
     fn test_contract_executor(starknet_program: ContractClass, #[case] optlevel: OptLevel) {
-        let (sierra_version, _) =
-            version_id_from_serialized_sierra_program(&starknet_program.sierra_program).unwrap();
+        let extracted = starknet_program.extract_sierra_program(false).unwrap();
         let executor = AotContractExecutor::new(
-            &starknet_program.extract_sierra_program().unwrap(),
+            &extracted.program,
             &starknet_program.entry_points_by_type,
-            sierra_version,
+            extracted.sierra_version,
             optlevel,
             None,
         )
@@ -925,13 +931,13 @@ mod tests {
         starknet_program_factorial: ContractClass,
         #[case] optlevel: OptLevel,
     ) {
-        let (sierra_version, _) =
-            version_id_from_serialized_sierra_program(&starknet_program_factorial.sierra_program)
-                .unwrap();
+        let extracted = starknet_program_factorial
+            .extract_sierra_program(false)
+            .unwrap();
         let executor = AotContractExecutor::new(
-            &starknet_program_factorial.extract_sierra_program().unwrap(),
+            &extracted.program,
             &starknet_program_factorial.entry_points_by_type,
-            sierra_version,
+            extracted.sierra_version,
             optlevel,
             None,
         )
@@ -966,13 +972,13 @@ mod tests {
         starknet_program_empty: ContractClass,
         #[case] optlevel: OptLevel,
     ) {
-        let (sierra_version, _) =
-            version_id_from_serialized_sierra_program(&starknet_program_empty.sierra_program)
-                .unwrap();
+        let extracted = starknet_program_empty
+            .extract_sierra_program(false)
+            .unwrap();
         let executor = AotContractExecutor::new(
-            &starknet_program_empty.extract_sierra_program().unwrap(),
+            &extracted.program,
             &starknet_program_empty.entry_points_by_type,
-            sierra_version,
+            extracted.sierra_version,
             optlevel,
             None,
         )

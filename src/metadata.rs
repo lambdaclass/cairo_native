@@ -65,7 +65,7 @@ impl MetadataStorage {
         T: Any,
     {
         self.entries.remove(&TypeId::of::<T>()).map(|meta| {
-            *(Box::<(dyn Any + 'static)>::downcast::<T>(meta).expect(
+            *(Box::<dyn Any + 'static>::downcast::<T>(meta).expect(
                 "attempt to downcast a boxed value to a type which does not match the actual",
             ))
         })

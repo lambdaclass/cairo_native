@@ -31,7 +31,7 @@ use cairo_lang_starknet::{
 };
 use cairo_lang_starknet_classes::{
     casm_contract_class::{CasmContractClass, ENTRY_POINT_COST},
-    contract_class::{version_id_from_serialized_sierra_program, ContractClass},
+    contract_class::ContractClass,
 };
 use cairo_native::{
     context::NativeContext,
@@ -292,9 +292,13 @@ pub fn run_vm_contract(
         .map(|arg| MaybeRelocatable::Int(*arg))
         .collect_vec();
 
-    let contract =
-        CasmContractClass::from_contract_class(cairo_contract.clone(), false, usize::MAX)
-            .expect("failed to compile sierra contract to casm");
+    let contract = CasmContractClass::from_contract_class(
+        cairo_contract.clone(),
+        cairo_contract.extract_sierra_program(false).unwrap(),
+        false,
+        usize::MAX,
+    )
+    .expect("failed to compile sierra contract to casm");
 
     let program = contract
         .clone()
@@ -335,8 +339,7 @@ pub fn run_vm_contract(
     implicit_args.extend([syscall_segment]);
 
     // Load builtin costs
-    let builtin_costs: Vec<MaybeRelocatable> =
-        vec![0.into(), 0.into(), 0.into(), 0.into(), 0.into()];
+    let builtin_costs: Vec<MaybeRelocatable> = vec![0.into(); 7];
     let builtin_costs_ptr = runner.vm.add_memory_segment();
 
     runner
@@ -461,12 +464,11 @@ pub fn run_native_starknet_aot_contract(
     args: &[Felt],
     handler: impl StarknetSyscallHandler,
 ) -> ContractExecutionResult {
-    let (sierra_version, _) =
-        version_id_from_serialized_sierra_program(&contract.sierra_program).unwrap();
+    let extracted = contract.extract_sierra_program(false).unwrap();
     let native_executor = AotContractExecutor::new(
-        &contract.extract_sierra_program().unwrap(),
+        &extracted.program,
         &contract.entry_points_by_type,
-        sierra_version,
+        extracted.sierra_version,
         Default::default(),
         None,
     )
@@ -823,6 +825,9 @@ pub fn compare_outputs(
         native_builtins.insert("range_check96", native_result.builtin_stats.range_check96);
         native_builtins.insert("add_mod", native_result.builtin_stats.add_mod);
         native_builtins.insert("mul_mod", native_result.builtin_stats.mul_mod);
+        // Note: blake is not included here because the VM tracks it as an opcode
+        // (OpcodeExtension::Blake), not as a builtin in builtin_instance_counter.
+        // Blake counter accuracy is validated separately in test_blake_builtin_counter.
         native_builtins.retain(|_, &mut v| v != 0);
         native_builtins
     };

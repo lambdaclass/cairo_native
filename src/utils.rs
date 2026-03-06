@@ -75,6 +75,7 @@ pub struct BuiltinCosts {
     pub poseidon: u64,
     pub add_mod: u64,
     pub mul_mod: u64,
+    pub blake: u64,
 }
 
 impl BuiltinCosts {
@@ -87,6 +88,7 @@ impl BuiltinCosts {
             CostTokenType::Poseidon => 4,
             CostTokenType::AddMod => 5,
             CostTokenType::MulMod => 6,
+            CostTokenType::Blake => 7,
             _ => native_panic!("matched an unexpected CostTokenType which is not being used"),
         };
 
@@ -104,6 +106,7 @@ impl Default for BuiltinCosts {
             poseidon: token_gas_cost(CostTokenType::Poseidon) as u64,
             add_mod: token_gas_cost(CostTokenType::AddMod) as u64,
             mul_mod: token_gas_cost(CostTokenType::MulMod) as u64,
+            blake: token_gas_cost(CostTokenType::Blake) as u64,
         }
     }
 }

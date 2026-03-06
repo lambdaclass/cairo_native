@@ -1,7 +1,7 @@
 use afl::fuzz;
 use arbitrary::{Arbitrary, Unstructured};
 use cairo_lang_starknet_classes::contract_class::{
-    version_id_from_serialized_sierra_program, ContractClass,
+     ContractClass,
 };
 use cairo_native::{executor::AotContractExecutor, starknet_stub::StubSyscallHandler, OptLevel};
 use clap::Parser;
@@ -19,14 +19,12 @@ fn main() {
     let contract_file = File::open(args.contract_path).unwrap();
     let contract: ContractClass = serde_json::from_reader(contract_file).unwrap();
 
-    let program = contract.extract_sierra_program().unwrap();
 
-    let (sierra_version, _) =
-        version_id_from_serialized_sierra_program(&contract.sierra_program).unwrap();
+    let extracted = contract.extract_sierra_program(false).unwrap();
     let executor = AotContractExecutor::new(
-        &program,
+        &extracted.program,
         &contract.entry_points_by_type,
-        sierra_version,
+        extracted.sierra_version,
         OptLevel::Aggressive,
         None,
     )

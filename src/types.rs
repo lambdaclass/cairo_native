@@ -497,6 +497,7 @@ impl TypeBuilder for CoreTypeConcrete {
                 | CoreTypeConcrete::SegmentArena(_)
                 | CoreTypeConcrete::Circuit(CircuitTypeConcrete::AddMod(_))
                 | CoreTypeConcrete::Circuit(CircuitTypeConcrete::MulMod(_))
+                | CoreTypeConcrete::Blake(_)
         )
     }
 
@@ -585,7 +586,7 @@ impl TypeBuilder for CoreTypeConcrete {
 
             CoreTypeConcrete::IntRange(_info) => false,
             CoreTypeConcrete::GasReserve(_info) => false,
-            CoreTypeConcrete::Blake(_info) => native_panic!("Implement is_complex for Blake type"),
+            CoreTypeConcrete::Blake(_) => false,
         })
     }
 
@@ -672,7 +673,7 @@ impl TypeBuilder for CoreTypeConcrete {
                 let type_info = registry.get_type(&info.ty)?;
                 type_info.is_zst(registry)?
             }
-            CoreTypeConcrete::Blake(_) => native_panic!("Implement is_zst for Blake type"),
+            CoreTypeConcrete::Blake(_) => false,
         })
     }
 
@@ -785,7 +786,7 @@ impl TypeBuilder for CoreTypeConcrete {
                 let inner = registry.get_type(&info.ty)?.layout(registry)?;
                 inner.extend(inner)?.0
             }
-            CoreTypeConcrete::Blake(_info) => native_panic!("Implement layout for Blake type"),
+            CoreTypeConcrete::Blake(_) => get_integer_layout(64),
         }
         .pad_to_align())
     }
@@ -861,9 +862,7 @@ impl TypeBuilder for CoreTypeConcrete {
             CoreTypeConcrete::Circuit(_) => false,
             CoreTypeConcrete::QM31(_) => false,
             CoreTypeConcrete::GasReserve(_) => false,
-            CoreTypeConcrete::Blake(_) => {
-                native_panic!("Implement is_memory_allocated for Blake type")
-            }
+            CoreTypeConcrete::Blake(_) => false,
         })
     }
 

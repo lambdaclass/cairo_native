@@ -166,6 +166,10 @@ pub unsafe extern "C" fn cairo_native__libfunc__blake_compress(
     );
 
     *state = new_state;
+
+    // Track blake invocations: Blake doesn't have an implicit counter argument
+    // like buffer-based builtins, so we count calls here directly.
+    BLAKE_CALL_COUNT.with(|c| c.set(c.get() + 1));
 }
 
 /// Felt252 type used in cairo native runtime
@@ -806,8 +810,15 @@ thread_local! {
             poseidon: 0,
             add_mod: 0,
             mul_mod: 0,
+            blake: 0,
         })
     };
+
+    /// Global counter for blake builtin calls.
+    /// Unlike buffer-based builtins (Pedersen, etc.), Blake is a VM opcode without
+    /// an implicit counter argument. This global counter is incremented by the
+    /// Blake libfuncs (blake2s_compress, blake2s_finalize) on each invocation.
+    pub(crate) static BLAKE_CALL_COUNT: Cell<u64> = const { Cell::new(0) };
 }
 
 // TODO: This is already implemented on types-rs but there is no release
@@ -830,8 +841,8 @@ pub fn qm31_to_representative_coefficients(qm31: QM31) -> [u32; 4] {
 }
 
 /// Get the costs builtin from the internal thread local.
-pub extern "C" fn cairo_native__get_costs_builtin() -> *const [u64; 7] {
-    BUILTIN_COSTS.with(|x| x.as_ptr()) as *const [u64; 7]
+pub extern "C" fn cairo_native__get_costs_builtin() -> *const [u64; 8] {
+    BUILTIN_COSTS.with(|x| x.as_ptr()) as *const [u64; 8]
 }
 
 // Utility methods for the print runtime function
