@@ -177,49 +177,22 @@ pub fn build_downcast<'ctx, 'this>(
         src_value
     };
 
+    let to_range = &info.to_range;
+
     // Check if the source type is included in the target type. If it is not
     // then check if the value is in bounds. If the value is also not in
     // bounds then return an error.
-    if dst_range.lower <= src_range.lower && dst_range.upper >= src_range.upper {
-        let dst_value = if dst_ty.is_bounded_int(registry)? && dst_range.lower != BigInt::ZERO {
-            let dst_offset = entry.const_int_from_type(
-                context,
-                location,
-                dst_range.lower,
-                src_value.r#type(),
-            )?;
-            entry.append_op_result(arith::subi(src_value, dst_offset, location))?
-        } else {
-            src_value
-        };
-
-        let dst_value = if dst_width < compute_width {
-            entry.trunci(
-                dst_value,
-                IntegerType::new(context, dst_width).into(),
-                location,
-            )?
-        } else {
-            dst_value
-        };
-
-        let is_in_bounds = entry.const_int(context, location, 1, 1)?;
-
-        helper.cond_br(
-            context,
-            entry,
-            is_in_bounds,
-            [0, 1],
-            [&[range_check, dst_value], &[range_check]],
-            location,
-        )?;
+    let (is_in_bounds, range_check) = if to_range.lower <= src_range.lower
+        && to_range.upper >= src_range.upper
+    {
+        (entry.const_int(context, location, 1, 1)?, range_check)
     } else {
         // Check if the value is in bounds with respect to the lower bound.
-        let lower_check = if dst_range.lower > src_range.lower {
+        let lower_check = if to_range.lower > src_range.lower {
             let dst_lower = entry.const_int_from_type(
                 context,
                 location,
-                dst_range.lower.clone(),
+                to_range.lower.clone(),
                 src_value.r#type(),
             )?;
             Some(entry.cmpi(
@@ -237,11 +210,11 @@ pub fn build_downcast<'ctx, 'this>(
             None
         };
         // Check if the value is in bounds with respect to the upper bound.
-        let upper_check = if dst_range.upper < src_range.upper {
+        let upper_check = if to_range.upper < src_range.upper {
             let dst_upper = entry.const_int_from_type(
                 context,
                 location,
-                dst_range.upper.clone(),
+                to_range.upper.clone(),
                 src_value.r#type(),
             )?;
             Some(entry.cmpi(
@@ -285,7 +258,7 @@ pub fn build_downcast<'ctx, 'this>(
                 entry,
                 location,
                 range_check,
-                if dst_range.size() < rc_size { 2 } else { 1 },
+                if to_range.size() < rc_size { 2 } else { 1 },
                 3,
                 is_in_bounds,
             )?
@@ -317,37 +290,44 @@ pub fn build_downcast<'ctx, 'this>(
             }
         };
 
-        let dst_value = if dst_ty.is_bounded_int(registry)? && dst_range.lower != BigInt::ZERO {
-            let dst_offset = entry.const_int_from_type(
-                context,
-                location,
-                dst_range.lower,
-                src_value.r#type(),
-            )?;
-            entry.append_op_result(arith::subi(src_value, dst_offset, location))?
-        } else {
-            src_value
-        };
+        (is_in_bounds, range_check)
+    };
 
-        let dst_value = if dst_width < compute_width {
-            entry.trunci(
-                dst_value,
-                IntegerType::new(context, dst_width).into(),
-                location,
-            )?
-        } else {
-            dst_value
-        };
+    let dst_value = if dst_ty.is_bounded_int(registry)? && dst_range.lower != BigInt::ZERO {
+        let dst_offset =
+            entry.const_int_from_type(context, location, dst_range.lower, src_value.r#type())?;
+        entry.append_op_result(arith::subi(src_value, dst_offset, location))?
+    } else {
+        src_value
+    };
 
-        helper.cond_br(
-            context,
-            entry,
-            is_in_bounds,
-            [0, 1],
-            [&[range_check, dst_value], &[range_check]],
+    // When converting to a felt from a signed integer, we need to convert
+    // the canonical signed integer representation, to the signed felt
+    // representation: `negative = P - absolute`.
+    let dst_value = if dst_ty.is_felt252(registry)? && src_range.lower.sign() == Sign::Minus {
+        signed_to_felt252_repr(context, entry, location, dst_value)?
+    } else {
+        dst_value
+    };
+
+    let dst_value = if dst_width < compute_width {
+        entry.trunci(
+            dst_value,
+            IntegerType::new(context, dst_width).into(),
             location,
-        )?;
-    }
+        )?
+    } else {
+        dst_value
+    };
+
+    helper.cond_br(
+        context,
+        entry,
+        is_in_bounds,
+        [0, 1],
+        [&[range_check, dst_value], &[range_check]],
+        location,
+    )?;
 
     Ok(())
 }
@@ -455,18 +435,29 @@ pub fn build_upcast<'ctx, 'this>(
     // the canonical signed integer representation, to the signed felt
     // representation: `negative = P - absolute`.
     let dst_value = if dst_ty.is_felt252(registry)? && src_range.lower.sign() == Sign::Minus {
-        let k0 = entry.const_int(context, location, 0, 252)?;
-        let is_negative = entry.cmpi(context, CmpiPredicate::Slt, dst_value, k0, location)?;
-
-        let k_prime = entry.const_int(context, location, PRIME.clone(), 252)?;
-        let adj_value = entry.addi(dst_value, k_prime, location)?;
-
-        entry.append_op_result(arith::select(is_negative, adj_value, dst_value, location))?
+        signed_to_felt252_repr(context, entry, location, dst_value)?
     } else {
         dst_value
     };
 
     helper.br(entry, 0, &[dst_value], location)
+}
+
+/// Converts a value from the two's complement signed representation into the
+/// canonical felt252 representation: `negative = P - absolute`.
+fn signed_to_felt252_repr<'ctx, 'this>(
+    context: &'ctx Context,
+    entry: &'this Block<'ctx>,
+    location: Location<'ctx>,
+    value: Value<'ctx, 'this>,
+) -> Result<Value<'ctx, 'this>> {
+    let k0 = entry.const_int_from_type(context, location, 0, value.r#type())?;
+    let is_negative = entry.cmpi(context, CmpiPredicate::Slt, value, k0, location)?;
+
+    let k_prime = entry.const_int_from_type(context, location, PRIME.clone(), value.r#type())?;
+    let adj_value = entry.addi(value, k_prime, location)?;
+
+    Ok(entry.append_op_result(arith::select(is_negative, adj_value, value, location))?)
 }
 
 #[cfg(test)]
