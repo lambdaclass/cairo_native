@@ -35,6 +35,45 @@ fn felt252_to_i8_downcast_neg_one_matches_vm() {
 }
 
 #[test]
+fn felt252_to_negative_bounded_int_downcast_matches_vm() {
+    let program = &load_program_and_runner("programs/cast_downcast_felt_neg_range");
+
+    // The destination range is [1 - PRIME, 5 - PRIME], so felts 1..=5 (whose
+    // negative interpretation is `felt - PRIME`) are accepted and everything
+    // else is rejected. Felt 0 is always interpreted as 0, which is out of
+    // range, so it must be rejected too.
+    for value in 0u64..=6 {
+        let value = Felt::from(value);
+        let result_vm = run_vm_program(
+            program,
+            "run_test",
+            vec![Arg::Value(value)],
+            Some(DEFAULT_GAS as usize),
+        )
+        .unwrap();
+        let result_native = run_native_program(
+            program,
+            "run_test",
+            &[Value::Felt252(value)],
+            Some(DEFAULT_GAS),
+            Option::<DummySyscallHandler>::None,
+        );
+
+        compare_outputs(
+            &program.1,
+            &program.2.find_function("run_test").unwrap().id,
+            &result_vm,
+            &result_native,
+        )
+        .unwrap_or_else(|e| {
+            panic!(
+                "felt252 -> BoundedInt<1-P, 5-P> downcast of {value} diverges between VM and native: {e:?}"
+            )
+        });
+    }
+}
+
+#[test]
 fn nonneg_to_i8_downcast_matches_vm() {
     let program = &load_program_and_runner("programs/cast_downcast_nonneg_i8");
 
