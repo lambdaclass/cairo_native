@@ -112,11 +112,13 @@ fn eval_state_init(
     _info: &SignatureOnlyConcreteLibfunc,
     _args: Vec<Value>,
 ) -> EvalAction {
+    // The canonical projective identity `[0 : 1 : 0]`.
     EvalAction::NormalBranch(
         0,
         smallvec![Value::EcState {
             x: 0.into(),
-            y: 0.into()
+            y: 1.into(),
+            z: 0.into(),
         }],
     )
 }
@@ -126,24 +128,27 @@ fn eval_state_add(
     _info: &SignatureOnlyConcreteLibfunc,
     args: Vec<Value>,
 ) -> EvalAction {
-    let [Value::EcState { x: s_x, y: s_y }, Value::EcPoint { x, y }]: [Value; 2] =
-        args.try_into().unwrap()
+    let [Value::EcState {
+        x: s_x,
+        y: s_y,
+        z: s_z,
+    }, Value::EcPoint { x, y }]: [Value; 2] = args.try_into().unwrap()
     else {
         panic!()
     };
 
-    if s_x.is_zero() && s_y.is_zero() {
-        return EvalAction::NormalBranch(0, smallvec![Value::EcState { x, y }]);
-    }
-    let mut state = ProjectivePoint::from_affine(s_x, s_y).unwrap();
-    let point = AffinePoint::new(x, y).unwrap();
+    let mut state = ProjectivePoint::new_unchecked(s_x, s_y, s_z);
+    let point = ProjectivePoint::from_affine(x, y).unwrap();
 
     state += &point;
-    let (x, y) = match state.to_affine() {
-        Ok(state) => (state.x(), state.y()),
-        Err(_) => (Felt::ZERO, Felt::ZERO),
-    };
-    EvalAction::NormalBranch(0, smallvec![Value::EcState { x, y }])
+    EvalAction::NormalBranch(
+        0,
+        smallvec![Value::EcState {
+            x: state.x(),
+            y: state.y(),
+            z: state.z(),
+        }],
+    )
 }
 
 fn eval_state_add_mul(
@@ -151,25 +156,30 @@ fn eval_state_add_mul(
     _info: &SignatureOnlyConcreteLibfunc,
     args: Vec<Value>,
 ) -> EvalAction {
-    let [ec @ Value::Unit, Value::EcState { x: s_x, y: s_y }, Value::Felt(scalar), Value::EcPoint { x, y }]: [Value; 4] =
-        args.try_into().unwrap()
+    let [ec @ Value::Unit, Value::EcState {
+        x: s_x,
+        y: s_y,
+        z: s_z,
+    }, Value::Felt(scalar), Value::EcPoint { x, y }]: [Value; 4] = args.try_into().unwrap()
     else {
         panic!()
     };
 
-    let mut state = if s_x.is_zero() && s_y.is_zero() {
-        ProjectivePoint::identity()
-    } else {
-        ProjectivePoint::from_affine(s_x, s_y).unwrap()
-    };
+    let mut state = ProjectivePoint::new_unchecked(s_x, s_y, s_z);
     let point = ProjectivePoint::from_affine(x, y).unwrap();
 
     state += &point.mul(scalar);
-    let (x, y) = match state.to_affine() {
-        Ok(state) => (state.x(), state.y()),
-        Err(_) => (Felt::ZERO, Felt::ZERO),
-    };
-    EvalAction::NormalBranch(0, smallvec![ec, Value::EcState { x, y }])
+    EvalAction::NormalBranch(
+        0,
+        smallvec![
+            ec,
+            Value::EcState {
+                x: state.x(),
+                y: state.y(),
+                z: state.z(),
+            }
+        ],
+    )
 }
 
 fn eval_state_finalize(
@@ -177,14 +187,21 @@ fn eval_state_finalize(
     _info: &SignatureOnlyConcreteLibfunc,
     args: Vec<Value>,
 ) -> EvalAction {
-    let [Value::EcState { x, y }]: [Value; 1] = args.try_into().unwrap() else {
+    let [Value::EcState { x, y, z }]: [Value; 1] = args.try_into().unwrap() else {
         panic!()
     };
 
-    if x.is_zero() && y.is_zero() {
-        EvalAction::NormalBranch(1, smallvec![])
-    } else {
-        EvalAction::NormalBranch(0, smallvec![Value::EcPoint { x, y }])
+    // The single normalisation of the pipeline. `to_affine` fails exactly when
+    // `z == 0`, so it doubles as the point-at-infinity test.
+    match ProjectivePoint::new_unchecked(x, y, z).to_affine() {
+        Ok(point) => EvalAction::NormalBranch(
+            0,
+            smallvec![Value::EcPoint {
+                x: point.x(),
+                y: point.y(),
+            }],
+        ),
+        Err(_) => EvalAction::NormalBranch(1, smallvec![]),
     }
 }
 

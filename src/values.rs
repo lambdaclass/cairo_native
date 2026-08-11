@@ -7,8 +7,8 @@ use crate::{
     native_assert, native_panic,
     runtime::FeltDict,
     starknet::{ArrayAbi, Secp256k1Point, Secp256r1Point},
-    types::TypeBuilder,
-    utils::{felt252_bigint, get_integer_layout, layout_repeat, RangeExt, PRIME},
+    types::{ec_point, ec_state, TypeBuilder},
+    utils::{felt252_bigint, felt_from_slot, get_integer_layout, layout_repeat, RangeExt, PRIME},
 };
 use bumpalo::Bump;
 use cairo_lang_sierra::{
@@ -24,7 +24,7 @@ use cairo_lang_sierra::{
 use educe::Educe;
 use num_bigint::{BigInt, BigUint, Sign};
 use num_traits::{Euclid, One};
-use starknet_types_core::felt::Felt;
+use starknet_types_core::{curve::ProjectivePoint, felt::Felt};
 use std::{
     alloc::Layout,
     collections::HashMap,
@@ -485,16 +485,43 @@ impl Value {
 
                     ptr
                 }
-                Self::EcPoint(a, b) | Self::EcState(a, b) => {
+                Self::EcPoint(a, b) => {
                     let ptr = arena
-                        .alloc_layout(layout_repeat(&get_integer_layout(252), 2)?.0.pad_to_align())
+                        .alloc_layout(
+                            layout_repeat(&get_integer_layout(252), ec_point::NUM_FELTS)?
+                                .0
+                                .pad_to_align(),
+                        )
                         .cast();
 
                     let a = felt252_bigint(a.to_bigint()).to_bytes_le();
                     let b = felt252_bigint(b.to_bigint()).to_bytes_le();
                     let data = [a, b];
 
-                    ptr.cast::<[[u8; 32]; 2]>().as_mut().copy_from_slice(&data);
+                    ptr.cast::<[[u8; 32]; ec_point::NUM_FELTS]>()
+                        .as_mut()
+                        .copy_from_slice(&data);
+
+                    ptr
+                }
+                Self::EcState(x, y) => {
+                    // The public `Value::EcState` is affine with `(0, 0)` for the
+                    // point at infinity; the native representation is projective.
+                    // See [`crate::types::ec_state`].
+                    let ptr = arena
+                        .alloc_layout(
+                            layout_repeat(&get_integer_layout(252), ec_state::NUM_FELTS)?
+                                .0
+                                .pad_to_align(),
+                        )
+                        .cast();
+
+                    let data = ec_state::to_projective(*x, *y)
+                        .map(|felt| felt252_bigint(felt.to_bigint()).to_bytes_le());
+
+                    ptr.cast::<[[u8; 32]; ec_state::NUM_FELTS]>()
+                        .as_mut()
+                        .copy_from_slice(&data);
 
                     ptr
                 }
@@ -609,20 +636,26 @@ impl Value {
                     Self::from_ptr(inner, &info.ty, registry)?
                 }
                 CoreTypeConcrete::EcPoint(_) => {
-                    let data = ptr.cast::<[[u8; 32]; 2]>().as_mut();
+                    let data = ptr.cast::<[[u8; 32]; ec_point::NUM_FELTS]>().as_ref();
 
-                    data[0][31] &= 0x0F; // Filter out first 4 bits (they're outside an i252).
-                    data[1][31] &= 0x0F; // Filter out first 4 bits (they're outside an i252).
-
-                    Self::EcPoint(Felt::from_bytes_le(&data[0]), Felt::from_bytes_le(&data[1]))
+                    Self::EcPoint(felt_from_slot(&data[0]), felt_from_slot(&data[1]))
                 }
                 CoreTypeConcrete::EcState(_) => {
-                    let data = ptr.cast::<[[u8; 32]; 2]>().as_mut();
+                    // Normalise the projective native representation back to the
+                    // affine pair the public `Value` exposes; `to_affine` fails
+                    // exactly when `Z == 0`, i.e. at the point at infinity.
+                    let data = ptr.cast::<[[u8; 32]; ec_state::NUM_FELTS]>().as_ref();
 
-                    data[0][31] &= 0x0F; // Filter out first 4 bits (they're outside an i252).
-                    data[1][31] &= 0x0F; // Filter out first 4 bits (they're outside an i252).
+                    let state = ProjectivePoint::new_unchecked(
+                        felt_from_slot(&data[0]),
+                        felt_from_slot(&data[1]),
+                        felt_from_slot(&data[2]),
+                    );
 
-                    Self::EcState(Felt::from_bytes_le(&data[0]), Felt::from_bytes_le(&data[1]))
+                    match state.to_affine() {
+                        Ok(point) => Self::EcState(point.x(), point.y()),
+                        Err(_) => Self::EcState(Felt::ZERO, Felt::ZERO),
+                    }
                 }
                 CoreTypeConcrete::QM31(_) => {
                     let data = ptr.cast::<[u32; 4]>().as_mut();
@@ -1278,7 +1311,7 @@ mod test {
                 *Value::EcPoint(Felt::from(1234), Felt::from(4321))
                     .to_ptr(&Bump::new(), &registry, &program.type_declarations[0].id)
                     .unwrap()
-                    .cast::<[[u32; 8]; 2]>()
+                    .cast::<[[u32; 8]; ec_point::NUM_FELTS]>()
                     .as_ptr()
             },
             [[1234, 0, 0, 0, 0, 0, 0, 0], [4321, 0, 0, 0, 0, 0, 0, 0]]
@@ -1293,15 +1326,104 @@ mod test {
 
         let registry = ProgramRegistry::<CoreType, CoreLibfunc>::new(&program).unwrap();
 
+        // The public `Value` is affine; the native representation is projective,
+        // so an ordinary point gains a `Z` of one.
         assert_eq!(
             unsafe {
                 *Value::EcState(Felt::from(1234), Felt::from(4321))
                     .to_ptr(&Bump::new(), &registry, &program.type_declarations[0].id)
                     .unwrap()
-                    .cast::<[[u32; 8]; 2]>()
+                    .cast::<[[u32; 8]; ec_state::NUM_FELTS]>()
                     .as_ptr()
             },
-            [[1234, 0, 0, 0, 0, 0, 0, 0], [4321, 0, 0, 0, 0, 0, 0, 0],]
+            [
+                [1234, 0, 0, 0, 0, 0, 0, 0],
+                [4321, 0, 0, 0, 0, 0, 0, 0],
+                [1, 0, 0, 0, 0, 0, 0, 0],
+            ]
+        );
+    }
+
+    /// The affine `(0, 0)` sentinel for the point at infinity becomes the
+    /// canonical projective identity `[0, 1, 0]`.
+    #[test]
+    fn test_to_ptr_ec_state_identity() {
+        let program = ProgramParser::new()
+            .parse("type EcState = EcState;")
+            .unwrap();
+
+        let registry = ProgramRegistry::<CoreType, CoreLibfunc>::new(&program).unwrap();
+
+        assert_eq!(
+            unsafe {
+                *Value::EcState(Felt::ZERO, Felt::ZERO)
+                    .to_ptr(&Bump::new(), &registry, &program.type_declarations[0].id)
+                    .unwrap()
+                    .cast::<[[u32; 8]; ec_state::NUM_FELTS]>()
+                    .as_ptr()
+            },
+            [
+                [0, 0, 0, 0, 0, 0, 0, 0],
+                [1, 0, 0, 0, 0, 0, 0, 0],
+                [0, 0, 0, 0, 0, 0, 0, 0],
+            ]
+        );
+    }
+
+    /// `from_ptr` must normalise, not merely read the first two slots. Projective
+    /// representatives are not unique, and arithmetic freely produces
+    /// non-canonical ones: `[2x : 2y : 2]` is the same point as `[x : y : 1]`.
+    #[test]
+    fn test_from_ptr_ec_state_non_canonical() {
+        let program = ProgramParser::new()
+            .parse("type EcState = EcState;")
+            .unwrap();
+
+        let registry = ProgramRegistry::<CoreType, CoreLibfunc>::new(&program).unwrap();
+        let type_id = &program.type_declarations[0].id;
+
+        let (x, y) = (Felt::from(1234), Felt::from(4321));
+        let arena = Bump::new();
+        let ptr = Value::EcState(x, y)
+            .to_ptr(&arena, &registry, type_id)
+            .unwrap();
+
+        // Scale the representative by two in place.
+        unsafe {
+            let data = ptr.cast::<[[u8; 32]; ec_state::NUM_FELTS]>().as_mut();
+            for (slot, felt) in data
+                .iter_mut()
+                .zip([x * Felt::TWO, y * Felt::TWO, Felt::TWO])
+            {
+                *slot = felt.to_bytes_le();
+            }
+        }
+
+        assert_eq!(
+            Value::from_ptr(ptr, type_id, &registry).unwrap(),
+            Value::EcState(x, y)
+        );
+    }
+
+    /// A `Z` of zero is the point at infinity, which the public `Value` encodes
+    /// as the affine `(0, 0)` sentinel.
+    #[test]
+    fn test_from_ptr_ec_state_infinity() {
+        let program = ProgramParser::new()
+            .parse("type EcState = EcState;")
+            .unwrap();
+
+        let registry = ProgramRegistry::<CoreType, CoreLibfunc>::new(&program).unwrap();
+        let type_id = &program.type_declarations[0].id;
+
+        let arena = Bump::new();
+        let ptr = Value::EcState(Felt::ZERO, Felt::ZERO)
+            .to_ptr(&arena, &registry, type_id)
+            .unwrap();
+
+        assert_eq!(
+            Value::from_ptr(ptr, type_id, &registry).unwrap(),
+            Value::EcState(Felt::ZERO, Felt::ZERO)
         );
     }
 

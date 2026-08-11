@@ -49,10 +49,7 @@ use lambdaworks_math::{
 use num_bigint::{BigInt, BigUint, Sign};
 use pretty_assertions_sorted::assert_eq_sorted;
 use proptest::{strategy::Strategy, test_runner::TestCaseError};
-use starknet_types_core::{
-    curve::{AffinePoint, ProjectivePoint},
-    felt::Felt,
-};
+use starknet_types_core::{curve::ProjectivePoint, felt::Felt};
 use std::{collections::HashMap, env::var, fs, ops::Neg, path::Path};
 
 #[allow(unused_macros)]
@@ -495,7 +492,8 @@ pub fn compare_outputs(
                         .sum(),
                     CoreTypeConcrete::NonZero(info) => map_vm_sizes(size_cache, registry, &info.ty),
                     // In the VM an `EcState` is `(x, y, random_ptr)` = 3 felts (the third
-                    // being a pointer to the random shift point), unlike native which uses 2.
+                    // being a pointer to the random shift point). This is the VM's own
+                    // layout and is unrelated to native's projective triple.
                     CoreTypeConcrete::EcState(_) => 3,
                     CoreTypeConcrete::Snapshot(info) => {
                         map_vm_sizes(size_cache, registry, &info.ty)
@@ -712,9 +710,9 @@ pub fn compare_outputs(
                 // accumulated point *shifted* by a random point sampled at `ec_state_init`, and
                 // `random_ptr` points to that random shift point `(random_x, random_y)`.
                 //
-                // Native represents an `EcState` as the plain accumulated point (starting from
-                // the identity `(0, 0)`), so to compare we must undo the shift by computing
-                // `(x, y) - (random_x, random_y)`.
+                // The public `cairo_native::Value::EcState` is the plain accumulated point in
+                // affine coordinates (with `(0, 0)` for the point at infinity), so to compare
+                // we must undo the shift by computing `(x, y) - (random_x, random_y)`.
                 assert_eq!(values.len(), 3);
 
                 let x = Felt::from_bytes_le(&values[0].to_bytes_le());
@@ -726,7 +724,7 @@ pub fn compare_outputs(
 
                 // `(x, y) - (random_x, random_y) == (x, y) + (random_x, -random_y)`.
                 let mut state = ProjectivePoint::from_affine_unchecked(x, y);
-                state += &AffinePoint::new_unchecked(random_x, -random_y);
+                state += &ProjectivePoint::from_affine_unchecked(random_x, -random_y);
 
                 match state.to_affine() {
                     Ok(point) => Value::EcState(point.x(), point.y()),

@@ -262,6 +262,7 @@ impl VirtualMachine {
                         CoreTypeConcrete::RangeCheck(_)
                         | CoreTypeConcrete::RangeCheck96(_)
                         | CoreTypeConcrete::Bitwise(_)
+                        | CoreTypeConcrete::EcOp(_)
                         | CoreTypeConcrete::Pedersen(_)
                         | CoreTypeConcrete::Poseidon(_)
                         | CoreTypeConcrete::SegmentArena(_)

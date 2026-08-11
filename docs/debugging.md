@@ -408,7 +408,8 @@ Once you have generated the traces for both the Sierra emulator and Cairo Native
     ```
 2. Look for the first significant difference between the traces. Not all the differences are significant, for example:
     1. Sometimes the emulator and Cairo Native differ in the Gas builtin. It usually doesn’t affect the outcome of the contract.
-    2. The ec_state_init libfunc randomizes an elliptic curve point, which is why they always differ.
+    2. An `EcState` is projective; `[X : Y : Z]` and `[λX : λY : λZ]` are the same point — compare
+       `X/Z`, `Y/Z` before concluding a real difference.
 3. Find the index of the statement executed immediately previous to the first difference.
 4. Open `traces/prog_0.sierra` and look for that statement.
     1. If it’s a return, then you are dealing with a control flow bug. These are difficult to debug.

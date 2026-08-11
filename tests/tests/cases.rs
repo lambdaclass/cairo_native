@@ -14,6 +14,9 @@ use test_case::test_case;
 #[test_case("programs/cases/felt_ops/negation")]
 #[test_case("programs/cases/felt_ops/div")]
 // generic tests
+// Returns an unfinalized `EcState` — the only test exercising the `EcState` arm
+// of `map_vm_values`.
+#[test_case("programs/cases/ec_state_chain")]
 #[test_case("programs/cases/fib_counter")]
 #[test_case("programs/cases/fib_local")]
 #[test_case("programs/cases/pedersen_hash")]

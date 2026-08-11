@@ -229,7 +229,7 @@ pub mod trace_dump_runtime {
     use crate::{
         starknet::ArrayAbi,
         types::TypeBuilder,
-        utils::{get_integer_layout, layout_repeat},
+        utils::{felt_from_slot, get_integer_layout, layout_repeat},
     };
 
     use crate::runtime::FeltDict;
@@ -296,6 +296,14 @@ pub mod trace_dump_runtime {
             .push(StateDump::new(StatementIdx(statement_idx as usize), items));
     }
 
+    /// Read `N` consecutive `felt252` slots starting at `ptr`.
+    ///
+    /// Each slot is 32 bytes: `get_integer_layout(252)` is size 32, align 16, so
+    /// repeating it gives a stride of 32.
+    unsafe fn read_felts<const N: usize>(ptr: NonNull<()>) -> [Felt; N] {
+        std::array::from_fn(|i| felt_from_slot(ptr.byte_add(i * 32).cast().as_ref()))
+    }
+
     /// TODO: Can we reuse `cairo_native::Value::from_ptr`?
     unsafe fn value_from_ptr(
         registry: &ProgramRegistry<CoreType, CoreLibfunc>,
@@ -309,7 +317,8 @@ pub mod trace_dump_runtime {
             | CoreTypeConcrete::Starknet(StarknetTypeConcrete::ClassHash(_))
             | CoreTypeConcrete::Starknet(StarknetTypeConcrete::StorageAddress(_))
             | CoreTypeConcrete::Starknet(StarknetTypeConcrete::StorageBaseAddress(_)) => {
-                Value::Felt(Felt::from_bytes_le(value_ptr.cast().as_ref()))
+                let [value] = read_felts(value_ptr);
+                Value::Felt(value)
             }
             CoreTypeConcrete::Uint8(_) => Value::U8(value_ptr.cast().read()),
             CoreTypeConcrete::Uint16(_) => Value::U16(value_ptr.cast().read()),
@@ -338,42 +347,15 @@ pub mod trace_dump_runtime {
             }
 
             CoreTypeConcrete::EcPoint(_) => {
-                let layout = Layout::new::<()>();
-                let (x, layout) = {
-                    let (layout, offset) = layout.extend(Layout::new::<[u128; 2]>()).unwrap();
-                    (
-                        Felt::from_bytes_le(value_ptr.byte_add(offset).cast().as_ref()),
-                        layout,
-                    )
-                };
-                let (y, _) = {
-                    let (layout, offset) = layout.extend(Layout::new::<[u128; 2]>()).unwrap();
-                    (
-                        Felt::from_bytes_le(value_ptr.byte_add(offset).cast().as_ref()),
-                        layout,
-                    )
-                };
-
+                let [x, y] = read_felts(value_ptr);
                 Value::EcPoint { x, y }
             }
             CoreTypeConcrete::EcState(_) => {
-                let layout = Layout::new::<()>();
-                let (x, layout) = {
-                    let (layout, offset) = layout.extend(Layout::new::<[u128; 2]>()).unwrap();
-                    (
-                        Felt::from_bytes_le(value_ptr.byte_add(offset).cast().as_ref()),
-                        layout,
-                    )
-                };
-                let (y, _) = {
-                    let (layout, offset) = layout.extend(Layout::new::<[u128; 2]>()).unwrap();
-                    (
-                        Felt::from_bytes_le(value_ptr.byte_add(offset).cast().as_ref()),
-                        layout,
-                    )
-                };
-
-                Value::EcState { x, y }
+                // Projective `[x : y : z]`, matching the native representation;
+                // `sierra_emu::Value::EcState` is projective too, so no
+                // normalisation is needed for the traces to compare.
+                let [x, y, z] = read_felts(value_ptr);
+                Value::EcState { x, y, z }
             }
 
             CoreTypeConcrete::Uninitialized(info) => Value::Uninitialized {
