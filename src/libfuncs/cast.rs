@@ -24,7 +24,7 @@ use melior::{
     ir::{r#type::IntegerType, Block, Location, Value, ValueLike},
     Context,
 };
-use num_bigint::{BigInt, Sign};
+use num_bigint::{BigInt, BigUint, Sign};
 use num_traits::One;
 
 /// Select and call the correct libfunc builder function from the selector.
@@ -145,26 +145,28 @@ pub fn build_downcast<'ctx, 'this>(
     // 2. if it is a bounded_int, we need to offset the value to get the
     //    actual value.
     let src_value = if is_signed && src_ty.is_felt252(registry)? {
-        if src_range.upper.is_one() {
-            let adj_offset =
-                entry.const_int_from_type(context, location, PRIME.clone(), src_value.r#type())?;
-            entry.append_op_result(arith::subi(src_value, adj_offset, location))?
-        } else {
-            let adj_offset = entry.const_int_from_type(
-                context,
-                location,
-                HALF_PRIME.clone(),
-                src_value.r#type(),
-            )?;
-            let is_negative =
-                entry.cmpi(context, CmpiPredicate::Ugt, src_value, adj_offset, location)?;
+        // A felt is interpreted as negative (`felt - PRIME`) when it exceeds
+        // a threshold: HALF_PRIME when the destination range straddles zero,
+        // and 0 when it is non-positive (every nonzero felt is negative,
+        // while felt 0 stays 0 and must fail the bounds check).
+        let adj_offset = entry.const_int_from_type(
+            context,
+            location,
+            if src_range.upper.is_one() {
+                BigUint::ZERO
+            } else {
+                HALF_PRIME.clone()
+            },
+            src_value.r#type(),
+        )?;
+        let is_negative =
+            entry.cmpi(context, CmpiPredicate::Ugt, src_value, adj_offset, location)?;
 
-            let k_prime =
-                entry.const_int_from_type(context, location, PRIME.clone(), src_value.r#type())?;
-            let adj_value = entry.append_op_result(arith::subi(src_value, k_prime, location))?;
+        let k_prime =
+            entry.const_int_from_type(context, location, PRIME.clone(), src_value.r#type())?;
+        let adj_value = entry.append_op_result(arith::subi(src_value, k_prime, location))?;
 
-            entry.append_op_result(arith::select(is_negative, adj_value, src_value, location))?
-        }
+        entry.append_op_result(arith::select(is_negative, adj_value, src_value, location))?
     } else if src_ty.is_bounded_int(registry)? && src_range.lower != BigInt::ZERO {
         let dst_offset = entry.const_int_from_type(
             context,
