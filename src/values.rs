@@ -157,6 +157,11 @@ impl Value {
     }
 
     /// Allocates the value in the given arena so it can be passed to the JIT engine or a compiled program.
+    ///
+    /// Invariant: the returned pointer always points to the value's inline representation as
+    /// given by [`TypeBuilder::layout`], which is exactly what [`Value::from_ptr`] reads. The
+    /// ABI decision of passing memory-allocated types by pointer is made by the `AbiArgument`
+    /// impl in `crate::arch`, not here.
     pub(crate) fn to_ptr(
         &self,
         arena: &Bump,
@@ -269,7 +274,6 @@ impl Value {
                         let mut layout: Option<Layout> = None;
                         let mut data = Vec::with_capacity(info.members.len());
 
-                        let mut is_memory_allocated = false;
                         for (member_type_id, member) in info.members.iter().zip(members) {
                             let member_ty = registry.get_type(member_type_id)?;
                             let member_layout = member_ty.layout(registry)?;
@@ -281,19 +285,7 @@ impl Value {
                             layout = Some(new_layout);
 
                             let member_ptr = member.to_ptr(arena, registry, member_type_id)?;
-                            data.push((
-                                member_layout,
-                                offset,
-                                if member_ty.is_memory_allocated(registry)? {
-                                    is_memory_allocated = true;
-
-                                    // Undo the wrapper pointer added because the member's memory
-                                    // allocated flag.
-                                    *member_ptr.cast::<NonNull<()>>().as_ref()
-                                } else {
-                                    member_ptr
-                                },
-                            ));
+                            data.push((member_layout, offset, member_ptr));
                         }
 
                         let ptr = arena
@@ -308,12 +300,7 @@ impl Value {
                             );
                         }
 
-                        if is_memory_allocated {
-                            // alloc returns a ref, so its never null
-                            NonNull::new_unchecked(arena.alloc(ptr) as *mut _).cast()
-                        } else {
-                            NonNull::new_unchecked(ptr).cast()
-                        }
+                        NonNull::new_unchecked(ptr).cast()
                     } else {
                         Err(Error::UnexpectedValue(format!(
                             "expected value of type {:?} but got a struct",
@@ -327,17 +314,7 @@ impl Value {
                         native_assert!(*tag < info.variants.len(), "Variant index out of range.");
 
                         let payload_type_id = &info.variants[*tag];
-                        let payload_ty = registry.get_type(payload_type_id)?;
                         let payload = value.to_ptr(arena, registry, payload_type_id)?;
-
-                        // Undo the wrapper pointer added when the payload is memory
-                        // allocated (e.g. a nested >=2-variant enum), so that the copy
-                        // below reads the payload data rather than the wrapper pointer.
-                        let payload = if payload_ty.is_memory_allocated(registry)? {
-                            *payload.cast::<NonNull<()>>().as_ref()
-                        } else {
-                            payload
-                        };
 
                         let (layout, tag_layout, variant_layouts) =
                             crate::types::r#enum::get_layout_for_variants(
@@ -362,12 +339,7 @@ impl Value {
                             variant_layouts[*tag].size(),
                         );
 
-                        if resolved_ty.is_memory_allocated(registry)? {
-                            // alloc returns a reference so its never null
-                            NonNull::new_unchecked(arena.alloc(ptr) as *mut _).cast()
-                        } else {
-                            NonNull::new_unchecked(ptr).cast()
-                        }
+                        NonNull::new_unchecked(ptr).cast()
                     } else {
                         Err(Error::UnexpectedValue(format!(
                             "expected value of type {:?} but got an enum value",
@@ -417,7 +389,10 @@ impl Value {
                             );
                         }
 
-                        NonNull::new_unchecked(dict_ptr as *mut ()).cast()
+                        // The dict's inline representation is a single pointer to the
+                        // `FeltDict`, so return a slot holding that pointer.
+                        // alloc returns a reference so its never null
+                        NonNull::new_unchecked(arena.alloc(dict_ptr) as *mut _).cast()
                     } else {
                         Err(Error::UnexpectedValue(format!(
                             "expected value of type {:?} but got a felt dict",
@@ -1765,6 +1740,107 @@ mod test {
             }
             _ => panic!("Unexpected error type: {:?}", result),
         }
+    }
+
+    /// Helper for the round-trip tests below: a `bool` value (a 2-variant enum
+    /// of unit structs, hence memory-allocated).
+    fn bool_value(value: bool) -> Value {
+        Value::Enum {
+            tag: value as usize,
+            value: Box::new(Value::Struct {
+                fields: Vec::new(),
+                debug_name: None,
+            }),
+            debug_name: None,
+        }
+    }
+
+    /// `to_ptr` returns a pointer to the inline representation, which is
+    /// exactly what `from_ptr` reads — so any value must round-trip.
+    fn assert_roundtrip(program_src: &str, type_idx: usize, value: Value) {
+        let program = ProgramParser::new().parse(program_src).unwrap();
+        let registry = ProgramRegistry::<CoreType, CoreLibfunc>::new(&program).unwrap();
+        let type_id = &program.type_declarations[type_idx].id;
+
+        let arena = Bump::new();
+        let ptr = value.to_ptr(&arena, &registry, type_id).unwrap();
+        let result = Value::from_ptr(ptr, type_id, &registry).unwrap();
+
+        assert_eq!(result, value);
+    }
+
+    #[test]
+    fn test_roundtrip_bool_array() {
+        assert_roundtrip(
+            "type Unit = Struct<ut@Tuple>;
+            type bool = Enum<ut@core::bool, Unit, Unit>;
+            type BoolArray = Array<bool>;",
+            2,
+            Value::Array(vec![
+                bool_value(true),
+                bool_value(false),
+                bool_value(true),
+                bool_value(true),
+            ]),
+        );
+    }
+
+    #[test]
+    fn test_roundtrip_struct_with_bool() {
+        assert_roundtrip(
+            "type u8 = u8;
+            type Unit = Struct<ut@Tuple>;
+            type bool = Enum<ut@core::bool, Unit, Unit>;
+            type MyStruct = Struct<ut@MyStruct, u8, bool>;",
+            3,
+            Value::Struct {
+                fields: vec![Value::Uint8(123), bool_value(true)],
+                debug_name: None,
+            },
+        );
+    }
+
+    #[test]
+    fn test_roundtrip_nested_enum() {
+        let program_src = "type felt252 = felt252;
+            type Inner = Enum<ut@Inner, felt252, felt252>;
+            type Outer = Enum<ut@Outer, Inner, Inner>;";
+
+        for (outer_tag, inner_tag) in [(0, 0), (0, 1), (1, 0), (1, 1)] {
+            assert_roundtrip(
+                program_src,
+                2,
+                Value::Enum {
+                    tag: outer_tag,
+                    value: Box::new(Value::Enum {
+                        tag: inner_tag,
+                        value: Box::new(Value::Felt252(Felt::from(0x1234))),
+                        debug_name: None,
+                    }),
+                    debug_name: None,
+                },
+            );
+        }
+    }
+
+    #[test]
+    fn test_roundtrip_bool_dict() {
+        assert_roundtrip(
+            "type Unit = Struct<ut@Tuple>;
+            type bool = Enum<ut@core::bool, Unit, Unit>;
+            type BoolDict = Felt252Dict<bool>;",
+            2,
+            Value::Felt252Dict {
+                value: [
+                    (Felt::from(0), bool_value(true)),
+                    (Felt::from(1), bool_value(false)),
+                    (Felt::from(2), bool_value(true)),
+                ]
+                .into_iter()
+                .collect(),
+                debug_name: None,
+            },
+        );
     }
 }
 

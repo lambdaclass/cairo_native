@@ -99,3 +99,55 @@ fn nested_enum_argument_matches_vm() {
         });
     }
 }
+
+#[test]
+fn bool_array_argument_matches_vm() {
+    // `bool` is a 2-variant enum, so it is memory-allocated and `to_ptr` must
+    // un-wrap each element before copying it into the array's data buffer. The
+    // program counts the `true` elements, so any corruption changes the count.
+    let program = &load_program_and_runner("programs/array_bool_arg");
+
+    // The VM tag of a 2-variant enum equals the variant index.
+    let values = [true, false, true, true, false];
+
+    let result_vm = run_vm_program(
+        program,
+        "run_test",
+        vec![Arg::Array(
+            values
+                .iter()
+                .map(|&v| Arg::Value(Felt::from(v as u64)))
+                .collect(),
+        )],
+        Some(DEFAULT_GAS as usize),
+    )
+    .unwrap();
+
+    let result_native = run_native_program(
+        program,
+        "run_test",
+        &[Value::Array(
+            values
+                .iter()
+                .map(|&v| Value::Enum {
+                    tag: v as usize,
+                    value: Box::new(Value::Struct {
+                        fields: Vec::new(),
+                        debug_name: None,
+                    }),
+                    debug_name: None,
+                })
+                .collect(),
+        )],
+        Some(DEFAULT_GAS),
+        Option::<DummySyscallHandler>::None,
+    );
+
+    compare_outputs(
+        &program.1,
+        &program.2.find_function("run_test").unwrap().id,
+        &result_vm,
+        &result_native,
+    )
+    .expect("bool array argument must agree between VM and native");
+}
