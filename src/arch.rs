@@ -3,7 +3,6 @@ use crate::{
     native_panic,
     starknet::{ArrayAbi, Secp256k1Point, Secp256r1Point},
     types::TypeBuilder,
-    utils::libc_malloc,
     values::Value,
 };
 use bumpalo::Bump;
@@ -15,8 +14,6 @@ use cairo_lang_sierra::{
     ids::ConcreteTypeId,
     program_registry::ProgramRegistry,
 };
-use std::ptr::null;
-
 mod aarch64;
 mod x86_64;
 
@@ -60,33 +57,11 @@ impl<'a> ValueWithInfoWrapper<'a> {
 impl AbiArgument for ValueWithInfoWrapper<'_> {
     fn to_bytes(&self, buffer: &mut Vec<u8>) -> Result<()> {
         match (self.value, self.info) {
-            (value, CoreTypeConcrete::Box(info)) => {
-                let ptr = value.to_ptr(self.arena, self.registry, &info.ty)?;
-
-                let layout = self.registry.get_type(&info.ty)?.layout(self.registry)?;
-                let heap_ptr = unsafe {
-                    let heap_ptr = libc_malloc(layout.size());
-                    libc::memcpy(heap_ptr, ptr.as_ptr().cast(), layout.size());
-                    heap_ptr
-                };
-
-                heap_ptr.to_bytes(buffer)?;
-            }
-            (value, CoreTypeConcrete::Nullable(info)) => {
-                if matches!(value, Value::Null) {
-                    null::<()>().to_bytes(buffer)?;
-                } else {
-                    let ptr = value.to_ptr(self.arena, self.registry, &info.ty)?;
-
-                    let layout = self.registry.get_type(&info.ty)?.layout(self.registry)?;
-                    let heap_ptr = unsafe {
-                        let heap_ptr = libc_malloc(layout.size());
-                        libc::memcpy(heap_ptr, ptr.as_ptr().cast(), layout.size());
-                        heap_ptr
-                    };
-
-                    heap_ptr.to_bytes(buffer)?;
-                }
+            (value, CoreTypeConcrete::Box(_) | CoreTypeConcrete::Nullable(_)) => {
+                // The inline representation is a slot holding the (possibly null)
+                // arena-allocated payload pointer; the ABI passes that pointer by value.
+                let ptr = value.to_ptr(self.arena, self.registry, self.type_id)?;
+                unsafe { *ptr.cast::<*mut ()>().as_ref() }.to_bytes(buffer)?;
             }
             (value, CoreTypeConcrete::NonZero(info) | CoreTypeConcrete::Snapshot(info)) => {
                 self.map(value, &info.ty)?.to_bytes(buffer)?

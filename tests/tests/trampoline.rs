@@ -539,3 +539,63 @@ fn test_deserialize_param_bug() {
         },
     );
 }
+
+#[test]
+fn invoke1_nullable_bool() {
+    // `bool` is a 2-variant enum, so it is memory-allocated: marshaling the
+    // argument exercises `to_ptr`'s Nullable handling with a payload that must
+    // be stored inline behind the nullable pointer.
+    let program = load_program_and_runner("programs/invoke1_nullable_bool");
+
+    let bool_value = |v: bool| Value::Enum {
+        tag: v as usize,
+        value: Box::new(Value::Struct {
+            fields: Vec::new(),
+            debug_name: None,
+        }),
+        debug_name: None,
+    };
+
+    for (arg, expected) in [
+        (Value::Null, 100),
+        (bool_value(true), 1),
+        (bool_value(false), 0),
+    ] {
+        assert_eq!(
+            run_program(
+                &program.1,
+                &format!("{0}::{0}::main", program.0),
+                std::slice::from_ref(&arg),
+            ),
+            ExecutionResult {
+                remaining_gas: None,
+                return_value: Value::Felt252(expected.into()),
+                builtin_stats: BuiltinStats::default(),
+            },
+            "wrong result for argument {arg:?}",
+        );
+    }
+}
+
+#[test]
+fn invoke1_box_in_struct() {
+    // A `Box` nested inside a struct argument: `to_ptr` must write the payload
+    // into the arena and store only the pointer inline in the struct.
+    let program = load_program_and_runner("programs/invoke1_box_in_struct");
+
+    assert_eq!(
+        run_program(
+            &program.1,
+            &format!("{0}::{0}::main", program.0),
+            &[Value::Struct {
+                fields: vec![Value::Felt252(10.into()), Value::Felt252(32.into())],
+                debug_name: None,
+            }],
+        ),
+        ExecutionResult {
+            remaining_gas: None,
+            return_value: Value::Felt252(42.into()),
+            builtin_stats: BuiltinStats::default(),
+        },
+    );
+}
