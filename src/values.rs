@@ -8,7 +8,7 @@ use crate::{
     runtime::FeltDict,
     starknet::{ArrayAbi, Secp256k1Point, Secp256r1Point},
     types::TypeBuilder,
-    utils::{felt252_bigint, get_integer_layout, layout_repeat, RangeExt, PRIME},
+    utils::{felt252_bigint, get_integer_layout, layout_repeat, RangeExt},
 };
 use bumpalo::Bump;
 use cairo_lang_sierra::{
@@ -23,7 +23,7 @@ use cairo_lang_sierra::{
 };
 use educe::Educe;
 use num_bigint::{BigInt, BigUint, Sign};
-use num_traits::{Euclid, One};
+use num_traits::One;
 use starknet_types_core::felt::Felt;
 use std::{
     alloc::Layout,
@@ -229,22 +229,35 @@ impl Value {
                         .into());
                     }
 
-                    let prime = BigInt::from_biguint(Sign::Plus, PRIME.clone());
-                    let lower = lower.rem_euclid(&prime);
-                    let upper = upper.rem_euclid(&prime);
-
-                    // Check if value is within the valid range
-                    if !(lower <= value && value < upper) {
-                        return Err(CompilerError::BoundedIntOutOfRange {
-                            value: Box::new(value),
-                            range: Box::new((lower, upper)),
+                    let range = match Self::resolve_type(ty, registry)? {
+                        CoreTypeConcrete::BoundedInt(info)
+                        | CoreTypeConcrete::BoundedIntGuarantee(info) => &info.range,
+                        _ => {
+                            return Err(Error::UnexpectedValue(format!(
+                                "expected value of type {:?} but got a bounded int",
+                                type_id.debug_name
+                            )))
                         }
-                        .into());
-                    }
+                    };
 
-                    let ptr = arena.alloc_layout(get_integer_layout(252)).cast();
-                    let data = felt252_bigint(value).to_bytes_le();
-                    ptr.cast::<[u8; 32]>().as_mut().copy_from_slice(&data);
+                    // The native representation is the compact one: `value - lower`
+                    // stored in `repr_bit_width()` bits, which is what `from_ptr`
+                    // decodes and what compiled code expects.
+                    let data = range.repr_encode(&value).ok_or_else(|| {
+                        CompilerError::BoundedIntOutOfRange {
+                            value: Box::new(value),
+                            range: Box::new((range.lower.clone(), range.upper.clone())),
+                        }
+                    })?;
+
+                    let ptr: NonNull<()> = arena
+                        .alloc_layout(get_integer_layout(range.repr_bit_width()))
+                        .cast();
+                    std::ptr::copy_nonoverlapping(
+                        data.as_ptr(),
+                        ptr.cast::<u8>().as_ptr(),
+                        data.len(),
+                    );
                     ptr
                 }
 
@@ -820,19 +833,13 @@ impl Value {
                 CoreTypeConcrete::Const(_) => native_panic!("implement const from_ptr"),
                 CoreTypeConcrete::BoundedInt(info)
                 | CoreTypeConcrete::BoundedIntGuarantee(info) => {
-                    let mut data = BigInt::from_biguint(
-                        Sign::Plus,
-                        BigUint::from_bytes_le(slice::from_raw_parts(
-                            ptr.cast::<u8>().as_ptr(),
-                            (info.range.repr_bit_width().next_multiple_of(8) >> 3) as usize,
-                        )),
-                    );
-
-                    data &= (BigInt::one() << info.range.repr_bit_width()) - BigInt::one();
-                    data += &info.range.lower;
+                    let raw = BigUint::from_bytes_le(slice::from_raw_parts(
+                        ptr.cast::<u8>().as_ptr(),
+                        (info.range.repr_bit_width().next_multiple_of(8) >> 3) as usize,
+                    ));
 
                     Self::BoundedInt {
-                        value: data.into(),
+                        value: info.range.repr_decode(raw).into(),
                         range: info.range.clone(),
                     }
                 }
@@ -1352,23 +1359,93 @@ mod test {
         // Create the registry for the program
         let registry = ProgramRegistry::<CoreType, CoreLibfunc>::new(&program).unwrap();
 
-        // Valid case
-        assert_eq!(
-            unsafe {
-                *Value::BoundedInt {
-                    value: Felt::from(16),
-                    range: Range {
-                        lower: BigInt::from(10),
-                        upper: BigInt::from(510),
-                    },
-                }
-                .to_ptr(&Bump::new(), &registry, &program.type_declarations[1].id)
-                .unwrap()
-                .cast::<[u32; 8]>()
-                .as_ptr()
+        // Valid case: `BoundedInt<10, 510>` (a `Range` of `[10, 511)`) has a
+        // 9-bit compact representation (2 bytes), storing `value - lower`.
+        let value = Value::BoundedInt {
+            value: Felt::from(16),
+            range: Range {
+                lower: BigInt::from(10),
+                upper: BigInt::from(511),
             },
-            [16, 0, 0, 0, 0, 0, 0, 0]
+        };
+
+        let arena = Bump::new();
+        let ptr = value
+            .to_ptr(&arena, &registry, &program.type_declarations[1].id)
+            .unwrap();
+
+        assert_eq!(unsafe { *ptr.cast::<[u8; 2]>().as_ptr() }, [6, 0]);
+        assert_eq!(
+            Value::from_ptr(ptr, &program.type_declarations[1].id, &registry).unwrap(),
+            value
         );
+    }
+
+    #[test]
+    fn test_roundtrip_bounded_int_array() {
+        // `BoundedInt<3, 10>` has a 3-bit compact representation (1-byte layout
+        // and stride), storing `value - 3`.
+        let program = ProgramParser::new()
+            .parse(
+                "type B = BoundedInt<3, 10>;
+                type A = Array<B>;",
+            )
+            .unwrap();
+        let registry = ProgramRegistry::<CoreType, CoreLibfunc>::new(&program).unwrap();
+
+        let bounded = |v: u64| Value::BoundedInt {
+            value: Felt::from(v),
+            range: Range {
+                lower: BigInt::from(3),
+                upper: BigInt::from(11),
+            },
+        };
+        let value = Value::Array(vec![bounded(3), bounded(7), bounded(9)]);
+
+        let arena = Bump::new();
+        let ptr = value
+            .to_ptr(&arena, &registry, &program.type_declarations[1].id)
+            .unwrap();
+
+        // Check the raw element buffer: 1-byte stride of biased values.
+        let abi = unsafe { ptr.cast::<crate::starknet::ArrayAbi<u8>>().as_ref() };
+        assert_eq!(
+            unsafe { std::slice::from_raw_parts(abi.ptr, 3) },
+            &[0, 4, 6]
+        );
+
+        assert_eq!(
+            Value::from_ptr(ptr, &program.type_declarations[1].id, &registry).unwrap(),
+            value
+        );
+    }
+
+    #[test]
+    fn test_roundtrip_bounded_int_negative_lower() {
+        let program = ProgramParser::new()
+            .parse("type B = BoundedInt<-5, 5>;")
+            .unwrap();
+        let registry = ProgramRegistry::<CoreType, CoreLibfunc>::new(&program).unwrap();
+
+        for v in [-5_i64, -1, 0, 4] {
+            let value = Value::BoundedInt {
+                value: Felt::from(v),
+                range: Range {
+                    lower: BigInt::from(-5),
+                    upper: BigInt::from(6),
+                },
+            };
+
+            let arena = Bump::new();
+            let ptr = value
+                .to_ptr(&arena, &registry, &program.type_declarations[0].id)
+                .unwrap();
+
+            assert_eq!(
+                Value::from_ptr(ptr, &program.type_declarations[0].id, &registry).unwrap(),
+                value
+            );
+        }
     }
 
     #[test]
