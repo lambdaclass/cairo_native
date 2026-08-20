@@ -172,6 +172,19 @@ pub fn decode_error_message(data: &[u8]) -> String {
     })
 }
 
+/// Decode a `felt252` from its 32-byte little-endian in-memory slot.
+///
+/// An `i252` is stored in 32 bytes, so the top 4 bits are padding that LLVM
+/// leaves undefined. They must be masked off before decoding: `from_bytes_le`
+/// reduces modulo the prime, so a stray bit silently yields a different felt.
+///
+/// The mask is applied to a copy, leaving the caller's buffer untouched.
+pub(crate) fn felt_from_slot(slot: &[u8; 32]) -> Felt {
+    let mut slot = *slot;
+    slot[31] &= 0x0F; // Filter out first 4 bits (they're outside an i252).
+    Felt::from_bytes_le(&slot)
+}
+
 /// Return the layout for an integer of arbitrary width.
 ///
 /// This assumes the platform's maximum (effective) alignment is 16 bytes, and that every integer

@@ -153,6 +153,21 @@ mod tests {
 
     #[rstest]
     fn test_program(program: Program) {
+        assert_traces_match(program);
+    }
+
+    /// `EcState` is stored projectively, and `sierra_emu::Value::EcState` derives
+    /// `PartialEq` field-wise, so trace equality compares the projective
+    /// *representative* rather than the point. This passes only while the runtime
+    /// and the emulator perform the same sequence of curve operations.
+    #[rstest]
+    fn test_ec_state_program() {
+        assert_traces_match(load_program("programs/cases/ec_state_chain"));
+    }
+
+    /// Run a program through both the native executor and the emulator, and
+    /// require their traces to agree.
+    fn assert_traces_match(program: Program) {
         let entrypoint_function = &program
             .funcs
             .iter()
@@ -198,7 +213,7 @@ mod tests {
 
         let initial_gas = u64::MAX;
         let args = [];
-        vm.call_program(entrypoint_function, initial_gas, args.into_iter());
+        vm.call_program(entrypoint_function, initial_gas, args);
 
         let syscall_handler = &mut StubSyscallHandler::default();
         let emu_trace = vm.run_with_trace(syscall_handler);

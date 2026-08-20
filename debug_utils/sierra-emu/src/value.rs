@@ -54,9 +54,17 @@ pub enum Value {
         x: Felt,
         y: Felt,
     },
+    /// An elliptic curve accumulator in **projective** coordinates `[x : y : z]`,
+    /// representing the affine point `(x/z, y/z)`. `z == 0` is the point at
+    /// infinity.
+    ///
+    /// Note that `PartialEq` here is bitwise on the representative, not
+    /// projective equivalence, so the emulator must perform the same sequence of
+    /// curve operations as the runtime.
     EcState {
         x: Felt,
         y: Felt,
+        z: Felt,
     },
     I128(i128),
     I64(i64),

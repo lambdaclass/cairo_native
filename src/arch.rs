@@ -113,8 +113,10 @@ impl AbiArgument for ValueWithInfoWrapper<'_> {
                 y.to_bytes(buffer)?;
             }
             (Value::EcState(x, y), CoreTypeConcrete::EcState(_)) => {
-                x.to_bytes(buffer)?;
-                y.to_bytes(buffer)?;
+                // Native representation is projective; see `crate::types::ec_state`.
+                for felt in crate::types::ec_state::to_projective(*x, *y) {
+                    felt.to_bytes(buffer)?;
+                }
             }
             (Value::QM31(a, b, c, d), CoreTypeConcrete::QM31(_)) => {
                 a.to_bytes(buffer)?;

@@ -6,6 +6,7 @@ use crate::{
     execution_result::EC_OP_BUILTIN_SIZE,
     libfuncs::increment_builtin_counter_conditionally_by,
     metadata::{runtime_bindings::RuntimeBindingsMeta, MetadataStorage},
+    types::{ec_point::ec_point_ty, ec_state::ec_state_ty},
     utils::{get_integer_layout, ProgramRegistryExt, PRIME},
 };
 use cairo_lang_sierra::{
@@ -178,14 +179,7 @@ pub fn build_point_from_x<'ctx, 'this>(
     metadata: &mut MetadataStorage,
     _info: &SignatureOnlyConcreteLibfunc,
 ) -> Result<()> {
-    let ec_point_ty = llvm::r#type::r#struct(
-        context,
-        &[
-            IntegerType::new(context, 252).into(),
-            IntegerType::new(context, 252).into(),
-        ],
-        false,
-    );
+    let ec_point_ty = ec_point_ty(context);
 
     let point_ptr = helper.init_block().alloca1(
         context,
@@ -240,14 +234,7 @@ pub fn build_state_add<'ctx, 'this>(
     metadata: &mut MetadataStorage,
     _info: &SignatureOnlyConcreteLibfunc,
 ) -> Result<()> {
-    let ec_state_ty = llvm::r#type::r#struct(
-        context,
-        &[
-            IntegerType::new(context, 252).into(),
-            IntegerType::new(context, 252).into(),
-        ],
-        false,
-    );
+    let ec_state_ty = ec_state_ty(context);
 
     let state_ptr = helper.init_block().alloca1(
         context,
@@ -258,7 +245,7 @@ pub fn build_state_add<'ctx, 'this>(
     let point_ptr = helper.init_block().alloca1(
         context,
         location,
-        ec_state_ty,
+        ec_point_ty(context),
         get_integer_layout(252).align(),
     )?;
 
@@ -296,8 +283,8 @@ pub fn build_state_add_mul<'ctx, 'this>(
     )?;
 
     let felt252_ty = IntegerType::new(context, 252).into();
-    let ec_state_ty = llvm::r#type::r#struct(context, &[felt252_ty, felt252_ty], false);
-    let ec_point_ty = llvm::r#type::r#struct(context, &[felt252_ty, felt252_ty], false);
+    let ec_state_ty = ec_state_ty(context);
+    let ec_point_ty = ec_point_ty(context);
 
     let state_ptr = helper.init_block().alloca1(
         context,
@@ -344,9 +331,8 @@ pub fn build_state_finalize<'ctx, 'this>(
     metadata: &mut MetadataStorage,
     _info: &SignatureOnlyConcreteLibfunc,
 ) -> Result<()> {
-    let felt252_ty = IntegerType::new(context, 252).into();
-    let ec_state_ty = llvm::r#type::r#struct(context, &[felt252_ty, felt252_ty], false);
-    let ec_point_ty = llvm::r#type::r#struct(context, &[felt252_ty, felt252_ty], false);
+    let ec_state_ty = ec_state_ty(context);
+    let ec_point_ty = ec_point_ty(context);
 
     let point_ptr = helper.init_block().alloca1(
         context,
@@ -385,13 +371,17 @@ pub fn build_state_init<'ctx, 'this>(
     _metadata: &mut MetadataStorage,
     _info: &SignatureOnlyConcreteLibfunc,
 ) -> Result<()> {
-    let felt252_ty = IntegerType::new(context, 252).into();
-    let ec_state_ty = llvm::r#type::r#struct(context, &[felt252_ty, felt252_ty], false);
+    let ec_state_ty = ec_state_ty(context);
 
+    // The canonical projective identity `[0 : 1 : 0]`. Any `Z == 0` is the point
+    // at infinity, but emitting the canonical form keeps memory dumps readable
+    // and matches `ProjectivePoint::identity`.
     let k0 = entry.const_int(context, location, 0, 252)?;
+    let k1 = entry.const_int(context, location, 1, 252)?;
     let state = entry.append_op_result(llvm::undef(ec_state_ty, location))?;
     let state = entry.insert_value(context, location, state, k0, 0)?;
-    let state = entry.insert_value(context, location, state, k0, 1)?;
+    let state = entry.insert_value(context, location, state, k1, 1)?;
+    let state = entry.insert_value(context, location, state, k0, 2)?;
 
     helper.br(entry, 0, &[state], location)
 }
@@ -406,14 +396,7 @@ pub fn build_try_new<'ctx, 'this>(
     metadata: &mut MetadataStorage,
     _info: &SignatureOnlyConcreteLibfunc,
 ) -> Result<()> {
-    let ec_point_ty = llvm::r#type::r#struct(
-        context,
-        &[
-            IntegerType::new(context, 252).into(),
-            IntegerType::new(context, 252).into(),
-        ],
-        false,
-    );
+    let ec_point_ty = ec_point_ty(context);
 
     let point_ptr = helper.init_block().alloca1(
         context,

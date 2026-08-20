@@ -38,8 +38,8 @@ mod bytes31;
 pub mod circuit;
 mod coupon;
 mod ec_op;
-mod ec_point;
-mod ec_state;
+pub(crate) mod ec_point;
+pub(crate) mod ec_state;
 pub mod r#enum;
 mod felt252;
 mod felt252_dict;
@@ -695,8 +695,12 @@ impl TypeBuilder for CoreTypeConcrete {
             CoreTypeConcrete::Bitwise(_) => Layout::new::<u64>(),
             CoreTypeConcrete::Box(_) => Layout::new::<*mut ()>(),
             CoreTypeConcrete::EcOp(_) => Layout::new::<u64>(),
-            CoreTypeConcrete::EcPoint(_) => layout_repeat(&get_integer_layout(252), 2)?.0,
-            CoreTypeConcrete::EcState(_) => layout_repeat(&get_integer_layout(252), 2)?.0,
+            CoreTypeConcrete::EcPoint(_) => {
+                layout_repeat(&get_integer_layout(252), ec_point::NUM_FELTS)?.0
+            }
+            CoreTypeConcrete::EcState(_) => {
+                layout_repeat(&get_integer_layout(252), ec_state::NUM_FELTS)?.0
+            }
             CoreTypeConcrete::Felt252(_) => get_integer_layout(252),
             CoreTypeConcrete::GasBuiltin(_) => get_integer_layout(64),
             CoreTypeConcrete::BuiltinCosts(_) => Layout::new::<*const ()>(),
