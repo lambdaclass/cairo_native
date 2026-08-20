@@ -153,57 +153,72 @@
 <a href=#153 id=153 data-nosnippet>153</a>
 <a href=#154 id=154 data-nosnippet>154</a>    <span class="attr">#[rstest]
 <a href=#155 id=155 data-nosnippet>155</a>    </span><span class="kw">fn </span>test_program(program: Program) {
-<a href=#156 id=156 data-nosnippet>156</a>        <span class="kw">let </span>entrypoint_function = <span class="kw-2">&amp;</span>program
-<a href=#157 id=157 data-nosnippet>157</a>            .funcs
-<a href=#158 id=158 data-nosnippet>158</a>            .iter()
-<a href=#159 id=159 data-nosnippet>159</a>            .find(|x| {
-<a href=#160 id=160 data-nosnippet>160</a>                x.id.debug_name
-<a href=#161 id=161 data-nosnippet>161</a>                    .as_ref()
-<a href=#162 id=162 data-nosnippet>162</a>                    .map(|x| x.contains(<span class="string">"main"</span>))
-<a href=#163 id=163 data-nosnippet>163</a>                    .unwrap_or_default()
-<a href=#164 id=164 data-nosnippet>164</a>            })
-<a href=#165 id=165 data-nosnippet>165</a>            .unwrap()
-<a href=#166 id=166 data-nosnippet>166</a>            .clone();
+<a href=#156 id=156 data-nosnippet>156</a>        assert_traces_match(program);
+<a href=#157 id=157 data-nosnippet>157</a>    }
+<a href=#158 id=158 data-nosnippet>158</a>
+<a href=#159 id=159 data-nosnippet>159</a>    <span class="doccomment">/// `EcState` is stored projectively, and `sierra_emu::Value::EcState` derives
+<a href=#160 id=160 data-nosnippet>160</a>    /// `PartialEq` field-wise, so trace equality compares the projective
+<a href=#161 id=161 data-nosnippet>161</a>    /// *representative* rather than the point. This passes only while the runtime
+<a href=#162 id=162 data-nosnippet>162</a>    /// and the emulator perform the same sequence of curve operations.
+<a href=#163 id=163 data-nosnippet>163</a>    </span><span class="attr">#[rstest]
+<a href=#164 id=164 data-nosnippet>164</a>    </span><span class="kw">fn </span>test_ec_state_program() {
+<a href=#165 id=165 data-nosnippet>165</a>        assert_traces_match(load_program(<span class="string">"programs/cases/ec_state_chain"</span>));
+<a href=#166 id=166 data-nosnippet>166</a>    }
 <a href=#167 id=167 data-nosnippet>167</a>
-<a href=#168 id=168 data-nosnippet>168</a>        <span class="kw">let </span>native_context = NativeContext::new();
-<a href=#169 id=169 data-nosnippet>169</a>        <span class="kw">let </span>module = native_context
-<a href=#170 id=170 data-nosnippet>170</a>            .compile(<span class="kw-2">&amp;</span>program, <span class="bool-val">false</span>, <span class="prelude-val">Some</span>(Default::default()), <span class="prelude-val">None</span>)
-<a href=#171 id=171 data-nosnippet>171</a>            .expect(<span class="string">"failed to compile context"</span>);
-<a href=#172 id=172 data-nosnippet>172</a>        <span class="kw">let </span>executor = AotNativeExecutor::from_native_module(module, OptLevel::default()).unwrap();
-<a href=#173 id=173 data-nosnippet>173</a>
-<a href=#174 id=174 data-nosnippet>174</a>        <span class="kw">if let </span><span class="prelude-val">Some</span>(trace_id) = executor.find_symbol_ptr(TraceBinding::TraceId.symbol()) {
-<a href=#175 id=175 data-nosnippet>175</a>            <span class="kw">let </span>trace_id = trace_id.cast::&lt;u64&gt;();
-<a href=#176 id=176 data-nosnippet>176</a>            <span class="kw">unsafe </span>{ <span class="kw-2">*</span>trace_id = <span class="number">0 </span>};
-<a href=#177 id=177 data-nosnippet>177</a>        }
-<a href=#178 id=178 data-nosnippet>178</a>
-<a href=#179 id=179 data-nosnippet>179</a>        TRACE_DUMP
-<a href=#180 id=180 data-nosnippet>180</a>            .lock()
-<a href=#181 id=181 data-nosnippet>181</a>            .unwrap()
-<a href=#182 id=182 data-nosnippet>182</a>            .insert(<span class="number">0</span>, TraceDump::new(ProgramRegistry::new(<span class="kw-2">&amp;</span>program).unwrap()));
-<a href=#183 id=183 data-nosnippet>183</a>
-<a href=#184 id=184 data-nosnippet>184</a>        executor
-<a href=#185 id=185 data-nosnippet>185</a>            .invoke_dynamic(<span class="kw-2">&amp;</span>entrypoint_function.id, <span class="kw-2">&amp;</span>[], <span class="prelude-val">Some</span>(u64::MAX))
-<a href=#186 id=186 data-nosnippet>186</a>            .unwrap();
-<a href=#187 id=187 data-nosnippet>187</a>
-<a href=#188 id=188 data-nosnippet>188</a>        <span class="kw">let </span>native_trace = TRACE_DUMP
-<a href=#189 id=189 data-nosnippet>189</a>            .lock()
-<a href=#190 id=190 data-nosnippet>190</a>            .unwrap()
-<a href=#191 id=191 data-nosnippet>191</a>            .values()
-<a href=#192 id=192 data-nosnippet>192</a>            .next()
-<a href=#193 id=193 data-nosnippet>193</a>            .unwrap()
-<a href=#194 id=194 data-nosnippet>194</a>            .trace
-<a href=#195 id=195 data-nosnippet>195</a>            .clone();
-<a href=#196 id=196 data-nosnippet>196</a>
-<a href=#197 id=197 data-nosnippet>197</a>        <span class="kw">let </span><span class="kw-2">mut </span>vm = VirtualMachine::new(Arc::new(program));
+<a href=#168 id=168 data-nosnippet>168</a>    <span class="doccomment">/// Run a program through both the native executor and the emulator, and
+<a href=#169 id=169 data-nosnippet>169</a>    /// require their traces to agree.
+<a href=#170 id=170 data-nosnippet>170</a>    </span><span class="kw">fn </span>assert_traces_match(program: Program) {
+<a href=#171 id=171 data-nosnippet>171</a>        <span class="kw">let </span>entrypoint_function = <span class="kw-2">&amp;</span>program
+<a href=#172 id=172 data-nosnippet>172</a>            .funcs
+<a href=#173 id=173 data-nosnippet>173</a>            .iter()
+<a href=#174 id=174 data-nosnippet>174</a>            .find(|x| {
+<a href=#175 id=175 data-nosnippet>175</a>                x.id.debug_name
+<a href=#176 id=176 data-nosnippet>176</a>                    .as_ref()
+<a href=#177 id=177 data-nosnippet>177</a>                    .map(|x| x.contains(<span class="string">"main"</span>))
+<a href=#178 id=178 data-nosnippet>178</a>                    .unwrap_or_default()
+<a href=#179 id=179 data-nosnippet>179</a>            })
+<a href=#180 id=180 data-nosnippet>180</a>            .unwrap()
+<a href=#181 id=181 data-nosnippet>181</a>            .clone();
+<a href=#182 id=182 data-nosnippet>182</a>
+<a href=#183 id=183 data-nosnippet>183</a>        <span class="kw">let </span>native_context = NativeContext::new();
+<a href=#184 id=184 data-nosnippet>184</a>        <span class="kw">let </span>module = native_context
+<a href=#185 id=185 data-nosnippet>185</a>            .compile(<span class="kw-2">&amp;</span>program, <span class="bool-val">false</span>, <span class="prelude-val">Some</span>(Default::default()), <span class="prelude-val">None</span>)
+<a href=#186 id=186 data-nosnippet>186</a>            .expect(<span class="string">"failed to compile context"</span>);
+<a href=#187 id=187 data-nosnippet>187</a>        <span class="kw">let </span>executor = AotNativeExecutor::from_native_module(module, OptLevel::default()).unwrap();
+<a href=#188 id=188 data-nosnippet>188</a>
+<a href=#189 id=189 data-nosnippet>189</a>        <span class="kw">if let </span><span class="prelude-val">Some</span>(trace_id) = executor.find_symbol_ptr(TraceBinding::TraceId.symbol()) {
+<a href=#190 id=190 data-nosnippet>190</a>            <span class="kw">let </span>trace_id = trace_id.cast::&lt;u64&gt;();
+<a href=#191 id=191 data-nosnippet>191</a>            <span class="kw">unsafe </span>{ <span class="kw-2">*</span>trace_id = <span class="number">0 </span>};
+<a href=#192 id=192 data-nosnippet>192</a>        }
+<a href=#193 id=193 data-nosnippet>193</a>
+<a href=#194 id=194 data-nosnippet>194</a>        TRACE_DUMP
+<a href=#195 id=195 data-nosnippet>195</a>            .lock()
+<a href=#196 id=196 data-nosnippet>196</a>            .unwrap()
+<a href=#197 id=197 data-nosnippet>197</a>            .insert(<span class="number">0</span>, TraceDump::new(ProgramRegistry::new(<span class="kw-2">&amp;</span>program).unwrap()));
 <a href=#198 id=198 data-nosnippet>198</a>
-<a href=#199 id=199 data-nosnippet>199</a>        <span class="kw">let </span>initial_gas = u64::MAX;
-<a href=#200 id=200 data-nosnippet>200</a>        <span class="kw">let </span>args = [];
-<a href=#201 id=201 data-nosnippet>201</a>        vm.call_program(entrypoint_function, initial_gas, args.into_iter());
+<a href=#199 id=199 data-nosnippet>199</a>        executor
+<a href=#200 id=200 data-nosnippet>200</a>            .invoke_dynamic(<span class="kw-2">&amp;</span>entrypoint_function.id, <span class="kw-2">&amp;</span>[], <span class="prelude-val">Some</span>(u64::MAX))
+<a href=#201 id=201 data-nosnippet>201</a>            .unwrap();
 <a href=#202 id=202 data-nosnippet>202</a>
-<a href=#203 id=203 data-nosnippet>203</a>        <span class="kw">let </span>syscall_handler = <span class="kw-2">&amp;mut </span>StubSyscallHandler::default();
-<a href=#204 id=204 data-nosnippet>204</a>        <span class="kw">let </span>emu_trace = vm.run_with_trace(syscall_handler);
-<a href=#205 id=205 data-nosnippet>205</a>
-<a href=#206 id=206 data-nosnippet>206</a>        <span class="macro">assert_eq_sorted!</span>(emu_trace, native_trace);
-<a href=#207 id=207 data-nosnippet>207</a>    }
-<a href=#208 id=208 data-nosnippet>208</a>}
+<a href=#203 id=203 data-nosnippet>203</a>        <span class="kw">let </span>native_trace = TRACE_DUMP
+<a href=#204 id=204 data-nosnippet>204</a>            .lock()
+<a href=#205 id=205 data-nosnippet>205</a>            .unwrap()
+<a href=#206 id=206 data-nosnippet>206</a>            .values()
+<a href=#207 id=207 data-nosnippet>207</a>            .next()
+<a href=#208 id=208 data-nosnippet>208</a>            .unwrap()
+<a href=#209 id=209 data-nosnippet>209</a>            .trace
+<a href=#210 id=210 data-nosnippet>210</a>            .clone();
+<a href=#211 id=211 data-nosnippet>211</a>
+<a href=#212 id=212 data-nosnippet>212</a>        <span class="kw">let </span><span class="kw-2">mut </span>vm = VirtualMachine::new(Arc::new(program));
+<a href=#213 id=213 data-nosnippet>213</a>
+<a href=#214 id=214 data-nosnippet>214</a>        <span class="kw">let </span>initial_gas = u64::MAX;
+<a href=#215 id=215 data-nosnippet>215</a>        <span class="kw">let </span>args = [];
+<a href=#216 id=216 data-nosnippet>216</a>        vm.call_program(entrypoint_function, initial_gas, args);
+<a href=#217 id=217 data-nosnippet>217</a>
+<a href=#218 id=218 data-nosnippet>218</a>        <span class="kw">let </span>syscall_handler = <span class="kw-2">&amp;mut </span>StubSyscallHandler::default();
+<a href=#219 id=219 data-nosnippet>219</a>        <span class="kw">let </span>emu_trace = vm.run_with_trace(syscall_handler);
+<a href=#220 id=220 data-nosnippet>220</a>
+<a href=#221 id=221 data-nosnippet>221</a>        <span class="macro">assert_eq_sorted!</span>(emu_trace, native_trace);
+<a href=#222 id=222 data-nosnippet>222</a>    }
+<a href=#223 id=223 data-nosnippet>223</a>}
 </code></pre></div></section></main></body></html>

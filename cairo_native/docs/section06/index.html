@@ -320,7 +320,8 @@ delta &quot;traces/{emu,native}/trace_0.json&quot; --side-by-side</code></pre></
 <li>Look for the first significant difference between the traces. Not all the differences are significant, for example:
 <ol>
 <li>Sometimes the emulator and Cairo Native differ in the Gas builtin. It usually doesn’t affect the outcome of the contract.</li>
-<li>The ec_state_init libfunc randomizes an elliptic curve point, which is why they always differ.</li>
+<li>An <code>EcState</code> is projective; <code>[X : Y : Z]</code> and <code>[λX : λY : λZ]</code> are the same point — compare
+<code>X/Z</code>, <code>Y/Z</code> before concluding a real difference.</li>
 </ol>
 </li>
 <li>Find the index of the statement executed immediately previous to the first difference.</li>
