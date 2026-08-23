@@ -15,7 +15,7 @@ use cairo_lang_sierra::{
     ids::ConcreteTypeId,
     program_registry::ProgramRegistry,
 };
-use std::ptr::{null, NonNull};
+use std::ptr::null;
 
 mod aarch64;
 mod x86_64;
@@ -76,7 +76,7 @@ impl AbiArgument for ValueWithInfoWrapper<'_> {
                 if matches!(value, Value::Null) {
                     null::<()>().to_bytes(buffer)?;
                 } else {
-                    let ptr = value.to_ptr(self.arena, self.registry, self.type_id)?;
+                    let ptr = value.to_ptr(self.arena, self.registry, &info.ty)?;
 
                     let layout = self.registry.get_type(&info.ty)?.layout(self.registry)?;
                     let heap_ptr = unsafe {
@@ -126,9 +126,9 @@ impl AbiArgument for ValueWithInfoWrapper<'_> {
             }
             (Value::Enum { tag, value, .. }, CoreTypeConcrete::Enum(info)) => {
                 if self.info.is_memory_allocated(self.registry)? {
+                    // Memory-allocated types are passed by pointer to their inline
+                    // representation.
                     let abi_ptr = self.value.to_ptr(self.arena, self.registry, self.type_id)?;
-
-                    let abi_ptr = unsafe { *abi_ptr.cast::<NonNull<()>>().as_ref() };
                     abi_ptr.as_ptr().to_bytes(buffer)?;
                 } else {
                     match info
@@ -158,10 +158,11 @@ impl AbiArgument for ValueWithInfoWrapper<'_> {
             (Value::Felt252Dict { .. }, CoreTypeConcrete::Felt252Dict(_)) => {
                 // TODO: Assert that `info.ty` matches all the values' types.
 
-                self.value
-                    .to_ptr(self.arena, self.registry, self.type_id)?
-                    .as_ptr()
-                    .to_bytes(buffer)?
+                let ptr = self.value.to_ptr(self.arena, self.registry, self.type_id)?;
+
+                // The dict's inline representation is a slot holding the `FeltDict`
+                // pointer; the ABI passes that pointer by value.
+                unsafe { *ptr.cast::<*mut ()>().as_ref() }.to_bytes(buffer)?
             }
             (
                 Value::Secp256K1Point(Secp256k1Point { x, y, is_infinity }),
@@ -186,9 +187,9 @@ impl AbiArgument for ValueWithInfoWrapper<'_> {
             (Value::Sint8(value), CoreTypeConcrete::Sint8(_)) => value.to_bytes(buffer)?,
             (Value::Struct { fields, .. }, CoreTypeConcrete::Struct(info)) => {
                 if self.info.is_memory_allocated(self.registry)? {
+                    // Memory-allocated types are passed by pointer to their inline
+                    // representation.
                     let abi_ptr = self.value.to_ptr(self.arena, self.registry, self.type_id)?;
-
-                    let abi_ptr = unsafe { *abi_ptr.cast::<NonNull<()>>().as_ref() };
                     abi_ptr.as_ptr().to_bytes(buffer)?;
                 } else {
                     fields
