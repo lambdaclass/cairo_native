@@ -79,6 +79,9 @@ impl AbiArgument for ValueWithInfoWrapper<'_> {
                 abi.capacity.to_bytes(buffer)?;
             }
             (Value::BoundedInt { .. }, CoreTypeConcrete::BoundedInt(_)) => {
+                // TODO: implement top-level BoundedInt arguments on top of
+                // `RangeExt::repr_encode` (dispatch on `repr_bit_width()`: <=64 via the
+                // `u64` impl, <=128 via `u128`, wider by memory like `Felt`).
                 // See: https://github.com/starkware-libs/cairo_native/issues/1217
                 native_panic!("todo: implement AbiArgument for Value::BoundedInt case")
             }

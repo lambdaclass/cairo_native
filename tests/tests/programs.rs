@@ -314,3 +314,37 @@ fn no_op() {
     )
     .unwrap();
 }
+
+#[test]
+fn box_return_forced_through_return_ptr() {
+    // The pedersen builtin makes the function return more than one value (the
+    // builtin plus the box), so the box comes back through the return pointer,
+    // which `parse_result` must dereference once before reading the payload.
+    let program = &load_program_and_runner("programs/box_return_with_pedersen");
+
+    let (a, b) = (Felt::from(1234), Felt::from(5678));
+
+    let result_vm = run_vm_program(
+        program,
+        "run_test",
+        vec![Arg::Value(a), Arg::Value(b)],
+        Some(DEFAULT_GAS as usize),
+    )
+    .unwrap();
+
+    let result_native = run_native_program(
+        program,
+        "run_test",
+        &[Value::Felt252(a), Value::Felt252(b)],
+        Some(DEFAULT_GAS),
+        Option::<DummySyscallHandler>::None,
+    );
+
+    compare_outputs(
+        &program.1,
+        &program.2.find_function("run_test").unwrap().id,
+        &result_vm,
+        &result_native,
+    )
+    .expect("boxed return through return pointer must agree between VM and native");
+}

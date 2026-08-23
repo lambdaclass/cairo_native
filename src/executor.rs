@@ -42,8 +42,7 @@ use cairo_lang_sierra::{
     program_registry::ProgramRegistry,
 };
 use libc::c_void;
-use num_bigint::BigInt;
-use num_traits::One;
+use num_bigint::BigUint;
 use std::{alloc::Layout, arch::global_asm, ptr::NonNull};
 
 mod aot;
@@ -454,9 +453,14 @@ fn parse_result(
             registry,
         )?),
         CoreTypeConcrete::Box(info) => unsafe {
-            let ptr =
-                return_ptr.unwrap_or_else(|| NonNull::new_unchecked(ret_registers[0] as *mut ()));
-            let value = Value::from_ptr(ptr, &info.ty, registry)?;
+            // With a return pointer the returned value is the box's inline
+            // representation — a slot holding the payload pointer — so it must be
+            // dereferenced once. Without one, the register holds the payload
+            // pointer itself.
+            let ptr = return_ptr.map_or(ret_registers[0] as *mut (), |x| {
+                *x.cast::<*mut ()>().as_ref()
+            });
+            let value = Value::from_ptr(NonNull::new_unchecked(ptr), &info.ty, registry)?;
             Ok(value)
         },
         CoreTypeConcrete::EcPoint(_) | CoreTypeConcrete::EcState(_) => Ok(Value::from_ptr(
@@ -523,17 +527,14 @@ fn parse_result(
             match return_ptr {
                 Some(return_ptr) => Ok(Value::from_ptr(return_ptr, type_id, registry)?),
                 None => {
-                    let mut data = if info.range.repr_bit_width() <= 64 {
-                        BigInt::from(ret_registers[0])
+                    let raw = if info.range.repr_bit_width() <= 64 {
+                        BigUint::from(ret_registers[0])
                     } else {
-                        BigInt::from(((ret_registers[1] as u128) << 64) | ret_registers[0] as u128)
+                        BigUint::from(((ret_registers[1] as u128) << 64) | ret_registers[0] as u128)
                     };
 
-                    data &= (BigInt::one() << info.range.repr_bit_width()) - BigInt::one();
-                    data += &info.range.lower;
-
                     Ok(Value::BoundedInt {
-                        value: data.into(),
+                        value: info.range.repr_decode(raw).into(),
                         range: info.range.clone(),
                     })
                 }
