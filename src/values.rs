@@ -170,6 +170,40 @@ impl Value {
     ) -> Result<NonNull<()>, Error> {
         let ty = registry.get_type(type_id)?;
 
+        // `Box<T>` and `Nullable<T>` have no dedicated `Value` variant, so they are handled
+        // by type before dispatching on the value: the payload is marshaled recursively and
+        // moved into the execution arena (boxes are arena-owned and never individually
+        // freed, see `crate::libfuncs::box`), and the returned slot holds the payload
+        // pointer — the type's inline representation.
+        match Self::resolve_type(ty, registry)? {
+            CoreTypeConcrete::Nullable(_) if matches!(self, Self::Null) => {
+                return Ok(unsafe {
+                    // alloc returns a reference so its never null
+                    NonNull::new_unchecked(arena.alloc(std::ptr::null_mut::<()>()) as *mut _).cast()
+                });
+            }
+            CoreTypeConcrete::Box(info) | CoreTypeConcrete::Nullable(info) => {
+                let inner_layout = registry.get_type(&info.ty)?.layout(registry)?;
+                let inner_ptr = self.to_ptr(arena, registry, &info.ty)?;
+
+                return Ok(unsafe {
+                    let payload = crate::runtime::cairo_native__arena_alloc(
+                        inner_layout.size() as u64,
+                        inner_layout.align() as u64,
+                    );
+                    std::ptr::copy_nonoverlapping(
+                        inner_ptr.cast::<u8>().as_ptr(),
+                        payload,
+                        inner_layout.size(),
+                    );
+
+                    // alloc returns a reference so its never null
+                    NonNull::new_unchecked(arena.alloc(payload.cast::<()>()) as *mut _).cast()
+                });
+            }
+            _ => {}
+        }
+
         Ok(unsafe {
             match self {
                 Self::Felt252(value) => {
@@ -1821,6 +1855,43 @@ mod test {
                 },
             );
         }
+    }
+
+    #[test]
+    fn test_roundtrip_boxed_bool() {
+        let program_src = "type Unit = Struct<ut@Tuple>;
+            type bool = Enum<ut@core::bool, Unit, Unit>;
+            type BoolBox = Box<bool>;";
+
+        for value in [bool_value(false), bool_value(true)] {
+            assert_roundtrip(program_src, 2, value);
+        }
+    }
+
+    #[test]
+    fn test_roundtrip_nullable() {
+        let program_src = "type Unit = Struct<ut@Tuple>;
+            type bool = Enum<ut@core::bool, Unit, Unit>;
+            type NullableBool = Nullable<bool>;";
+
+        for value in [Value::Null, bool_value(false), bool_value(true)] {
+            assert_roundtrip(program_src, 2, value);
+        }
+    }
+
+    #[test]
+    fn test_roundtrip_box_in_struct() {
+        assert_roundtrip(
+            "type u8 = u8;
+            type felt252 = felt252;
+            type FeltBox = Box<felt252>;
+            type MyStruct = Struct<ut@MyStruct, u8, FeltBox>;",
+            3,
+            Value::Struct {
+                fields: vec![Value::Uint8(123), Value::Felt252(Felt::from(0x1234))],
+                debug_name: None,
+            },
+        );
     }
 
     #[test]
