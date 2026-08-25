@@ -333,12 +333,9 @@ pub fn build_append<'ctx, 'this>(
 
         let k1 = block.const_int_from_type(context, location, 1, len_ty)?;
         let k8 = block.const_int_from_type(context, location, 8, len_ty)?;
-        let k1024 = block.const_int_from_type(context, location, 1024, len_ty)?;
 
+        // Always double the capacity (minimum 8).
         let realloc_len = block.append_op_result(arith::shli(array_capacity, k1, location))?;
-        let realloc_len = block.append_op_result(arith::minui(realloc_len, k1024, location))?;
-        let realloc_len =
-            block.append_op_result(arith::addi(realloc_len, array_capacity, location))?;
         let realloc_len = block.append_op_result(arith::maxui(realloc_len, k8, location))?;
 
         let realloc_size = block.append_op_result(arith::extui(
