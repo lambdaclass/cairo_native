@@ -1,8 +1,9 @@
-use crate::common::{compare_outputs, DEFAULT_GAS};
+use crate::common::{compare_outputs, get_run_result, DEFAULT_GAS};
 use crate::common::{run_native_program, run_vm_program};
 use cairo_native::starknet::DummySyscallHandler;
 use cairo_native::utils::testing::load_program_and_runner;
 use cairo_native::Value;
+use starknet_types_core::felt::Felt;
 
 #[test]
 fn test_circuit_guarantee_first_limb() {
@@ -323,6 +324,52 @@ fn test_circuit_into_u96_guarantee() {
         &result_native,
     )
     .unwrap();
+}
+
+/// Checks that on a failing circuit evaluation, native fills the failure
+/// guarantee with the same `(nullifier, modulus)` values as the VM's hint
+/// (`nullifier = modulus / gcd(input, modulus)`) instead of an undef value.
+///
+/// The program (`test_data/programs/circuit_failure_guarantee.cairo`)
+/// destructs the guarantee manually and returns how many limb pairs the walk
+/// visits (the position of the first difference between the nullifier and
+/// modulus limbs, most significant first) as a first-class value. In
+/// production this position is only observable through gas, as the corelib's
+/// destruct walk redeposits a different amount on each arm.
+///
+/// The two moduli expect different walk lengths, so a walk steered by
+/// anything other than the actual limb values (e.g. an undef guarantee, whose
+/// branches fold to some fixed arm) fails at least one of them.
+#[test]
+fn test_circuit_fail_inverse_guarantee_walk_length() {
+    let program = &load_program_and_runner("programs/circuit_failure_guarantee");
+
+    for (entry_point, expected_length) in [("walk_secp256k1", 2), ("walk_full", 4)] {
+        let result_vm =
+            run_vm_program(program, entry_point, vec![], Some(DEFAULT_GAS as usize)).unwrap();
+
+        let result_native = run_native_program(
+            program,
+            entry_point,
+            &[],
+            Some(DEFAULT_GAS),
+            Option::<DummySyscallHandler>::None,
+        );
+
+        assert_eq!(
+            get_run_result(&result_vm.value),
+            vec![Felt::from(expected_length).to_string()],
+            "unexpected VM walk length for {entry_point}",
+        );
+
+        compare_outputs(
+            &program.1,
+            &program.2.find_function(entry_point).unwrap().id,
+            &result_vm,
+            &result_native,
+        )
+        .unwrap_or_else(|e| panic!("VM/native mismatch for {entry_point}: {e:?}"));
+    }
 }
 
 #[test]

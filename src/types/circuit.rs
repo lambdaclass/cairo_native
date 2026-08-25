@@ -66,9 +66,20 @@ pub fn build<'ctx>(
         CircuitTypeConcrete::AddMod(_) | CircuitTypeConcrete::MulMod(_) => {
             Ok(IntegerType::new(context, 64).into())
         }
+        // The VM's failure guarantee holds pointers into the builtin segments. There
+        // are no builtin segments in native, so it carries the `{ nullifier, modulus }`
+        // limbs that `circuit_failure_guarantee_verify` turns into the
+        // `U96LimbsLtGuarantee<4>` output instead.
+        CircuitTypeConcrete::CircuitFailureGuarantee(_) => Ok(llvm::r#type::r#struct(
+            context,
+            &[
+                build_u384_struct_type(context),
+                build_u384_struct_type(context),
+            ],
+            false,
+        )),
         // noops
         CircuitTypeConcrete::CircuitDescriptor(_)
-        | CircuitTypeConcrete::CircuitFailureGuarantee(_)
         | CircuitTypeConcrete::CircuitPartialOutputs(_) => {
             Ok(llvm::r#type::array(IntegerType::new(context, 8).into(), 0))
         }
@@ -135,8 +146,7 @@ pub const fn is_zst(info: &CircuitTypeConcrete) -> bool {
         | CircuitTypeConcrete::InverseGate(_)
         | CircuitTypeConcrete::U96LimbsLessThanGuarantee(_)
         | CircuitTypeConcrete::Circuit(_)
-        | CircuitTypeConcrete::CircuitDescriptor(_)
-        | CircuitTypeConcrete::CircuitFailureGuarantee(_) => true,
+        | CircuitTypeConcrete::CircuitDescriptor(_) => true,
 
         CircuitTypeConcrete::AddMod(_)
         | CircuitTypeConcrete::CircuitModulus(_)
@@ -145,6 +155,7 @@ pub const fn is_zst(info: &CircuitTypeConcrete) -> bool {
         | CircuitTypeConcrete::CircuitInputAccumulator(_)
         | CircuitTypeConcrete::CircuitPartialOutputs(_)
         | CircuitTypeConcrete::CircuitData(_)
+        | CircuitTypeConcrete::CircuitFailureGuarantee(_)
         | CircuitTypeConcrete::CircuitOutputs(_) => false,
     }
 }
@@ -167,8 +178,12 @@ pub fn layout(
         | CircuitTypeConcrete::InverseGate(_)
         | CircuitTypeConcrete::U96LimbsLessThanGuarantee(_)
         | CircuitTypeConcrete::Circuit(_)
-        | CircuitTypeConcrete::CircuitDescriptor(_)
-        | CircuitTypeConcrete::CircuitFailureGuarantee(_) => Ok(Layout::new::<()>()),
+        | CircuitTypeConcrete::CircuitDescriptor(_) => Ok(Layout::new::<()>()),
+
+        // Two `u384` limb structs: nullifier and modulus.
+        CircuitTypeConcrete::CircuitFailureGuarantee(_) => {
+            Ok(layout_repeat(&get_integer_layout(96), 8)?.0)
+        }
 
         CircuitTypeConcrete::CircuitData(_) => Ok(Layout::new::<*mut ()>()),
         CircuitTypeConcrete::CircuitOutputs(_) => {
